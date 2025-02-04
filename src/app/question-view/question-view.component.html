@@ -1,0 +1,24 @@
+<mat-card class="question-card" *ngIf="question">
+    <div class="question-container">
+      <!-- 🟢 Soru Resmi ve Metni -->
+      <div class="question-content">
+        <h2>{{ question.text }}</h2>
+        <img *ngIf="question.imageUrl" [src]="question.imageUrl" class="question-image" />
+      </div>
+  
+      <!-- 🟢 Şıklar -->
+      <div class="answers-container">
+        <div *ngFor="let answer of question.answers; let i = index" class="answer-box" (click)="selectAnswer(i)"
+                [ngClass]="{ 'selected-answer': selectedAnswerIndex === i }">
+          <span class="answer-label">{{ getAnswerLabel(i) }}</span>
+          <button mat-raised-button class="answer-btn"
+            [ngClass]="{ 'correct': isCorrect(i), 'wrong': isWrong(i) }"
+            >
+            <img *ngIf="answer.imageUrl" [src]="answer.imageUrl" class="answer-image" />
+            <span>{{ answer.text }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </mat-card>
+  

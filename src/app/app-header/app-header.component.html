@@ -1,0 +1,23 @@
+<mat-toolbar color="primary">
+    <span class="app-title">Sınav Yönetimi</span>
+  
+    <span class="spacer"></span>
+  
+    <button mat-button (click)="navigateTo('/questions/create')">
+      <mat-icon>add_circle</mat-icon> Soru Ekle
+    </button>
+  
+    <button mat-button (click)="navigateTo('/tests')">
+      <mat-icon>list</mat-icon> Testler
+    </button>
+  
+    <!-- Profil Menüsü -->
+    <button mat-button [matMenuTriggerFor]="menu">
+      <img src="assets/profile.png" class="profile-image" alt="Profile" />
+    </button>
+  
+    <mat-menu #menu="matMenu">
+      <button mat-menu-item (click)="logout()">Çıkış Yap</button>
+    </mat-menu>
+  </mat-toolbar>
+  

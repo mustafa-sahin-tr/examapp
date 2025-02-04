@@ -1,0 +1,45 @@
+<mat-card class="question-card">
+    <mat-card-title>Soru Oluştur</mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
+        
+        <!-- 🟢 Soru Metni -->
+        <label for="text">Soru Metni</label>
+        <textarea id="text" formControlName="text"></textarea>
+       
+        <!-- 🟢 Soru Resmi -->
+        <label for="questionImage">Soru Resmi</label>
+        <input type="file" id="questionImage" (change)="onImageUploadForQuestion($event)" />
+        <img *ngIf="questionForm.value.image" [src]="questionForm.value.image" class="preview-image" />
+
+  
+        <!-- 🟢 Kategori Seçimi -->
+        <label for="category">Kategori</label>
+        <select id="category" formControlName="categoryId">
+            <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
+        </select>
+  
+        <!-- 🟢 Puan Belirleme -->
+        <label for="point">Puan</label>
+        <input type="number" id="point" formControlName="point" min="1" max="20" />
+  
+        <!-- 🟢 Cevap Şıkları -->
+        <h3>Cevap Şıkları</h3>
+        <div *ngFor="let answer of answers.controls; let i = index">
+          <label for="answer-{{i}}">{{getAnswerLabel(i)}}</label>
+          <input id="answer-{{i}}" type="text" [formControl]="getFormControl(answer.get('text'))" />
+  
+          <input type="file" (change)="onImageUpload($event,'image', i)" />
+          <img *ngIf="answer.value.image" [src]="answer.value.image" class="preview-image" />
+  
+          <input type="radio" formControlName="correctAnswer" [value]="i" id="correctAnswer-{{i}}" />
+          <label for="correctAnswer-{{i}}">Doğru Cevap</label>
+        </div>
+  
+        <button mat-raised-button color="primary" class="full-width" type="submit">
+          Kaydet
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+  

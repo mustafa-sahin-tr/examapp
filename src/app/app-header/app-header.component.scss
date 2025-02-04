@@ -1,0 +1,28 @@
+.question-card {
+    width: 500px;
+    margin: auto;
+    padding: 20px;
+  }
+  
+  label {
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+  }
+  
+  textarea, input, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+  
+  .preview-image {
+    max-width: 100px;
+    max-height: 100px;
+    display: block;
+    margin-top: 10px;
+  }
+  

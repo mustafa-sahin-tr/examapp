@@ -18,6 +18,8 @@ public class User
     [Required]
     public string PasswordHash { get; set; }
 
+    public string? AvatarUrl { get; set; }
+
     [Required]
     public UserRole Role { get; set; } // Öğrenci, Öğretmen, Veli
 

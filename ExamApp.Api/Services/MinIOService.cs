@@ -6,7 +6,12 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-public class MinIoService
+public interface IMinIoService
+{
+    Task<string> UploadFileAsync(Stream fileStream, string fileName);
+}
+
+public class MinIoService : IMinIoService
 {
     private readonly IMinioClient _minioClient;
     private readonly string _bucketName;

@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 public class QuestionsController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly MinIoService _minioService;
+    private readonly IMinIoService _minioService;
 
-    public QuestionsController(AppDbContext context, MinIoService minioService)
+    public QuestionsController(AppDbContext context, IMinIoService minioService)
     {
         _context = context;
         _minioService = minioService;
@@ -24,15 +24,16 @@ public class QuestionsController : ControllerBase
     {
         var question = await _context.Questions
             .Include(q => q.Answers)
-            .Include(q => q.Category)
+            .Include(q => q.Subject)
             .Where(q => q.Id == id)
             .Select(q => new
             {
                 q.Id,
                 q.Text,
+                q.SubText,
                 q.ImageUrl,
-                q.CategoryId,
-                CategoryName = q.Category.Name,
+                q.SubjectId,
+                CategoryName = q.Subject.Name,
                 q.Point,
                 Answers = q.Answers.Select(a => new
                 {
@@ -59,10 +60,13 @@ public class QuestionsController : ControllerBase
             var question = new Question
             {
                 Text = questionDto.Text,
+                SubText = questionDto.SubText,
                 // Category = questionDto.Category,
                 Point = questionDto.Point,
                 CorrectAnswer = questionDto.CorrectAnswer,
-                CategoryId = questionDto.CategoryId,
+                SubjectId = questionDto.SubjectId,
+                TopicId = questionDto.TopicId,
+                SubTopicId = questionDto.SubTopicId,
             };
 
             // Soru Resmini MinIO'ya yükleyelim

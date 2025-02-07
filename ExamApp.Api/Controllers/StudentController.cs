@@ -69,5 +69,57 @@ namespace ExamApp.Api.Controllers
             return Ok(new { HasStudentRecord = false });
         }
 
+
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetStudentProfile(int studentId)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            var student = await _context.Students
+                .Include(s => s.User)
+                .Where(s => s.UserId == userId)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.User.FullName,
+                    s.User.AvatarUrl,
+                    XP = s.StudentPoints.Sum(sp => sp.XP),
+                    Level = s.StudentPoints.OrderByDescending(sp => sp.LastUpdated).Select(sp => sp.Level).FirstOrDefault(), // 🟢 En son seviye
+                    TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == studentId),
+                    CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == studentId && p.Reason == "Doğru Cevap"),
+                    WrongAnswers = _context.StudentPointHistories.Count(p => p.StudentId == studentId && p.Reason == "Yanlış Cevap"),
+                    TestsCompleted = _context.TestInstances.Count(t => t.StudentId == studentId),
+                    TotalRewards = _context.StudentRewards.Count(r => r.StudentId == studentId),
+                    Badges = _context.StudentBadges
+                        .Where(sb => sb.StudentId == studentId)
+                        .Select(sb => new { sb.Badge.Name, sb.Badge.ImageUrl })
+                        .ToList(),
+                    LeaderboardRank = _context.Leaderboards
+                        .Where(lb => lb.StudentId == studentId)
+                        .OrderByDescending(lb => lb.RecordedAt)
+                        .Select(lb => lb.Rank)
+                        .FirstOrDefault(),
+                    RecentTests = _context.TestInstances
+                        .Where(ti => ti.StudentId == studentId)
+                        .OrderByDescending(ti => ti.StartTime)
+                        .Take(5)
+                        .Select(ti => new
+                        {
+                            ti.Test.Name,
+                            ti.StartTime,
+                            Score = ti.TestInstanceQuestions.Count(tiq => tiq.IsCorrect) * 10, // 10 puan üzerinden hesaplama
+                            TotalQuestions = ti.TestInstanceQuestions.Count()
+                        })
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            if (student == null)
+                return NotFound(new { message = "Öğrenci bulunamadı." });
+
+            return Ok(student);
+        }
+
+
     }
 }

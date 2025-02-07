@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using ExamApp.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,8 +37,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<JwtService>();
-builder.Services.AddSingleton<MinIoService>();
+builder.Services.AddScoped<IJwtService,JwtService>();
+builder.Services.AddSingleton<IMinIoService, MinIoService>();
 
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>

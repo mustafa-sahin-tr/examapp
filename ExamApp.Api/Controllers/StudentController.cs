@@ -12,11 +12,64 @@ namespace ExamApp.Api.Controllers
     public class StudentController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMinIoService _minioService;
 
-        public StudentController(AppDbContext context)
+        public StudentController(AppDbContext context, IMinIoService minioService)
         {
             _context = context;
+            _minioService = minioService;
         }
+
+        [HttpPost("update-grade")]
+        public async Task<IActionResult> UpdateStudentGrade([FromBody] int newGradeId)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null || user.Role != UserRole.Student)
+            {
+                return BadRequest("Invalid User ID or User is not a Student.");
+            }
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (student == null)
+                return NotFound(new { message = "Öğrenci bulunamadı." });
+
+            student.GradeId = newGradeId;
+            await _context.SaveChangesAsync();
+
+            return await GetStudentProfile();
+        }
+
+        [HttpPost("update-avatar")]
+        public async Task<IActionResult> UpdateAvatar(IFormFile avatar)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null || user.Role != UserRole.Student)
+            {
+                return BadRequest("Invalid User ID or User is not a Student.");
+            }
+
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest(new { message = "Geçersiz dosya." });
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
+            var filePath = $"avatars/{fileName}";
+
+            using (var stream = avatar.OpenReadStream())
+            {
+                await _minioService.UploadFileAsync(stream, filePath, "student-avatars");
+            }
+
+            user.AvatarUrl = $"http://localhost/minio-api/student-avatars/{filePath}";
+            await _context.SaveChangesAsync();
+
+            return await GetStudentProfile();
+            
+        }
+
+
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
         [HttpPost("register-student")]
@@ -69,9 +122,16 @@ namespace ExamApp.Api.Controllers
             return Ok(new { HasStudentRecord = false });
         }
 
+        [HttpGet("grades")]
+        public async Task<IActionResult> GetGradesAsync()
+        {
+            var grades = await _context.Grades.ToListAsync();
+            return Ok(grades);
+        }
 
+        [Authorize]
         [HttpGet("profile")]
-        public async Task<IActionResult> GetStudentProfile(int studentId)
+        public async Task<IActionResult> GetStudentProfile()
         {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
@@ -83,24 +143,25 @@ namespace ExamApp.Api.Controllers
                     s.Id,
                     s.User.FullName,
                     s.User.AvatarUrl,
+                    s.GradeId,
                     XP = s.StudentPoints.Sum(sp => sp.XP),
                     Level = s.StudentPoints.OrderByDescending(sp => sp.LastUpdated).Select(sp => sp.Level).FirstOrDefault(), // 🟢 En son seviye
-                    TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == studentId),
-                    CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == studentId && p.Reason == "Doğru Cevap"),
-                    WrongAnswers = _context.StudentPointHistories.Count(p => p.StudentId == studentId && p.Reason == "Yanlış Cevap"),
-                    TestsCompleted = _context.TestInstances.Count(t => t.StudentId == studentId),
-                    TotalRewards = _context.StudentRewards.Count(r => r.StudentId == studentId),
+                    TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == s.Id),
+                    CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Doğru Cevap"),
+                    WrongAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Yanlış Cevap"),
+                    TestsCompleted = _context.TestInstances.Count(t => t.StudentId == s.Id),
+                    TotalRewards = _context.StudentRewards.Count(r => r.StudentId == s.Id),
                     Badges = _context.StudentBadges
-                        .Where(sb => sb.StudentId == studentId)
+                        .Where(sb => sb.StudentId == s.Id)
                         .Select(sb => new { sb.Badge.Name, sb.Badge.ImageUrl })
                         .ToList(),
                     LeaderboardRank = _context.Leaderboards
-                        .Where(lb => lb.StudentId == studentId)
+                        .Where(lb => lb.StudentId == s.Id)
                         .OrderByDescending(lb => lb.RecordedAt)
                         .Select(lb => lb.Rank)
                         .FirstOrDefault(),
                     RecentTests = _context.TestInstances
-                        .Where(ti => ti.StudentId == studentId)
+                        .Where(ti => ti.StudentId == s.Id)
                         .OrderByDescending(ti => ti.StartTime)
                         .Take(5)
                         .Select(ti => new

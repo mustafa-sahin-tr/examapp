@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 public interface IMinIoService
 {
-    Task<string> UploadFileAsync(Stream fileStream, string fileName);
+    Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null);
 }
 
 public class MinIoService : IMinIoService
@@ -28,20 +28,24 @@ public class MinIoService : IMinIoService
             .Build();
     }
 
-    public async Task<string> UploadFileAsync(Stream fileStream, string fileName)
+    public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null)
     {
         try
         {
+            if(string.IsNullOrEmpty(bucketName))
+            {
+                bucketName = _bucketName;
+            }   
             // Bucket varsa oluşturma, yoksa oluştur
-            bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(_bucketName));
+            bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName));
             if (!found)
             {
-                await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(_bucketName));
+                await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName));
             }
 
             // Dosyayı MinIO'ya yükle
             var respo = await _minioClient.PutObjectAsync(new PutObjectArgs()
-                .WithBucket(_bucketName)
+                .WithBucket(bucketName)
                 .WithObject(fileName)
                 .WithStreamData(fileStream)
                 .WithObjectSize(fileStream.Length)

@@ -35,5 +35,10 @@ public class Question
     public ICollection<TestQuestion> TestQuestions { get; set; } = new List<TestQuestion>();
 
     public ICollection<Answer> Answers { get; set; } = new List<Answer>();  // Şıklar
+
+    public int? PassageId { get; set; } // 🟢 Kapsam ID (Opsiyonel)
+
+    [ForeignKey("PassageId")]
+    public Passage Passage { get; set; } // 🟢 Navigation Property
 }
 

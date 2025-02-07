@@ -207,6 +207,12 @@ public class AppDbContext : DbContext
             .HasMany(b => b.StudentBadges)
             .WithOne(sb => sb.Badge)
             .HasForeignKey(sb => sb.BadgeId);
+
+        modelBuilder.Entity<Passage>()
+            .HasMany(p => p.Questions)
+            .WithOne(q => q.Passage)
+            .HasForeignKey(q => q.PassageId);
+            
     }
 }
 

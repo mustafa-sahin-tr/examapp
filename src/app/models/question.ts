@@ -1,10 +1,11 @@
 import { Answer } from "./answer";
-import { Category } from "./category";
+import { Subject } from "./subject";
 
 export interface Question {
     id: number,
     text: string,
+    subText?: string,
     imageUrl: string,
-    category: Category,
+    category: Subject,
     answers: Answer[]
 }

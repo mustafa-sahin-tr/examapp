@@ -6,6 +6,8 @@ import { StudentRegisterComponent } from './student-register/student-register.co
 import { AuthGuard } from './guards/auth.guard';
 import { QuestionComponent } from './question/question.component';
 import { QuestionViewComponent } from './question-view/question-view.component';
+import { TestSolveComponent } from './test-solve/test-solve.component';
+import { StudentProfileComponent } from './student-profile/student-profile.component';
 
 export const routes: Routes = [
   { path: 'register', component: RegisterComponent },
@@ -14,5 +16,7 @@ export const routes: Routes = [
   { path: 'student-register', component: StudentRegisterComponent, canActivate: [AuthGuard] },
   { path: 'questions/create', component: QuestionComponent, canActivate: [AuthGuard] },
   { path: 'questions/view', component: QuestionViewComponent, canActivate: [AuthGuard] },
+  { path: 'test/:testInstanceId', component: TestSolveComponent, canActivate: [AuthGuard] },  // 🆕 Test çözme sayfası
+  { path: 'student-profile/:studentId', component: StudentProfileComponent, canActivate: [AuthGuard] },  // 🆕 Test çözme sayfası
   { path: '**', redirectTo: 'login' }
 ];

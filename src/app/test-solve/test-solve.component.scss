@@ -1,0 +1,39 @@
+.test-container {
+    max-width: 800px;
+    margin: auto;
+    padding: 16px;
+  }
+  
+  .test-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #3f51b5;
+    color: white;
+    padding: 8px;
+    font-size: 18px;
+  }
+  
+  .test-title {
+    font-weight: bold;
+  }
+  
+  .test-progress {
+    font-size: 16px;
+  }
+  
+  .test-timer {
+    font-size: 16px;
+    font-weight: bold;
+  }
+  
+  .question-container {
+    margin-top: 16px;
+  }
+  
+  .navigation-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+  }
+  

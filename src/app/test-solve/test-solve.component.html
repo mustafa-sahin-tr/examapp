@@ -1,0 +1,30 @@
+<mat-card class="test-container" *ngIf="testInstance">
+    <!-- Header: Test Bilgileri -->
+    <mat-toolbar class="test-header" >  
+      <span class="test-title">{{ testInstance.testName }}</span>
+      <span class="test-progress">{{ currentQuestionIndex + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+      <span class="test-timer">Geçen Süre : {{ formattedTime }}</span>
+      <span class="test-timer">Soru Süresi : {{ formattedQuestionTime }}</span>
+      <button *ngIf="showStopButton" mat-button color="warn" (click)="pauseTest()">Durdur</button>
+    </mat-toolbar>
+  
+    <!-- Soru Gösterimi -->
+    <div class="question-container">
+      <app-question-view
+        [question]="testInstance.testInstanceQuestions[currentQuestionIndex].question" 
+        [selectedAnswerIndex]="testInstance.testInstanceQuestions[currentQuestionIndex].selectedAnswerId"       
+        (answerSelected)="selectAnswer($event)">
+      </app-question-view>
+    </div>
+  
+    <!-- Navigasyon Butonları -->
+    <div class="navigation-buttons">
+      <button mat-raised-button color="primary" (click)="prevQuestion()" [disabled]="currentQuestionIndex === 0">
+        Geri
+      </button>
+      <button mat-raised-button color="accent" (click)="nextQuestion()" [disabled]="currentQuestionIndex === testInstance.testInstanceQuestions.length - 1">
+        İleri
+      </button>
+    </div>
+  </mat-card>
+  

@@ -10,9 +10,11 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
-import { CategoryService } from '../services/category.service';
-import { Category } from '../models/category';
+import { SubjectService } from '../services/subject.service';
+import { Subject } from '../models/subject';
 import { QuestionService } from '../services/question.service';
+import { SubTopic } from '../models/subtopic';
+import { Topic } from '../models/topic';
 
 @Component({
   selector: 'app-question',
@@ -33,15 +35,21 @@ import { QuestionService } from '../services/question.service';
 })
 export class QuestionComponent implements OnInit {
   questionForm: FormGroup;
-  categories: Category[] = [];
+  subjects: Subject[] = [];
+  topics: Topic[] = [];
+  subTopics: SubTopic[] = [];
+
   point: number = 5;
   constructor(private fb: FormBuilder, private snackBar: MatSnackBar,
-      private catService: CategoryService, private questionService: QuestionService
+      private subjectService: SubjectService, private questionService: QuestionService
   ) {
     this.questionForm = this.fb.group({
       text: ['', Validators.required],
+      subText: [''],
       image: [null],
-      categoryId: ['', Validators.required],
+      subjectId: ['', Validators.required],
+      topicId: ['', Validators.required],
+      subtopicId: ['', Validators.required],
       point: [5, Validators.required],
       correctAnswer: [null, Validators.required], // ✅ Tek bir doğru cevap tutulacak
       answers: this.fb.array(
@@ -73,9 +81,20 @@ export class QuestionComponent implements OnInit {
   }
   
   loadCategories() {
-    this.catService.loadCategories().subscribe(data => {
-      this.categories = data;
+    this.subjectService.loadCategories().subscribe(data => {
+      this.subjects = data;
     });
+  }
+
+  onSubjectChange() {
+    const selectedSubjectId = this.questionForm.value.subjectId;
+    this.subjectService.getTopicsBySubject(selectedSubjectId).subscribe(data => this.topics = data);
+    this.subTopics = []; // Konu değişince alt konuları sıfırla
+  }
+  
+  onTopicChange() {
+    const selectedTopicId = this.questionForm.value.topicId;
+    this.subjectService.getSubTopicsByTopic(selectedTopicId).subscribe(data => this.subTopics = data);
   }
 
   getFormControl(control: any): FormControl {
@@ -115,7 +134,7 @@ export class QuestionComponent implements OnInit {
       return;
     }
 
-    if (!formData.correctAnswer) {
+    if (formData.correctAnswer === null) {
       this.snackBar.open('Lütfen doğru cevabı seçin!', 'Tamam', { duration: 3000 });
       return;
     }
@@ -126,10 +145,14 @@ export class QuestionComponent implements OnInit {
         // ✅ Base64'ten Temizlenmiş Bir Soru Nesnesi Hazırlıyoruz
         const questionPayload = {
           text: formData.text,
+          subText: formData.subText,
           image: formData.image,
           categoryId: formData.categoryId,
           point: formData.point,
           correctAnswer: formData.correctAnswer,
+          topicId: formData.topicId,
+          subtopicId: formData.subtopicId,
+          subjectId : formData.subjectId,
           answers: formData.answers.map((answer: any) => ({
             text: answer.text,
             image: answer.image

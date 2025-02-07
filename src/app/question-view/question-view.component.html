@@ -4,6 +4,7 @@
       <div class="question-content">
         <h2>{{ question.text }}</h2>
         <img *ngIf="question.imageUrl" [src]="question.imageUrl" class="question-image" />
+        <p *ngIf="question.subText" class="question-alt-text">{{ question.subText }}</p> <!-- Alt Text için özel stil -->
       </div>
   
       <!-- 🟢 Şıklar -->

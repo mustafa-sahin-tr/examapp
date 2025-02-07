@@ -46,6 +46,7 @@
     transition: background 0.3s ease;
     width: 100%;
     overflow: hidden;
+    cursor: pointer;
   }
   
   /* 🟢 Şık Harfleri (A, B, C, D) */
@@ -58,6 +59,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    margin: 5px;
     width: 36px;
     height: 36px;
   }
@@ -110,6 +112,14 @@
   .selected-answer {
     border: 2px solid #2196f3 !important;
   }
+
+  .question-alt-text {
+    font-weight: bold;
+    color: #2f7ed3; /* Kırmızı bir renk */
+    font-size: 1.2rem;
+    text-align: center;
+    margin-top: 10px;
+}
   
   
   

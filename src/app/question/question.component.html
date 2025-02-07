@@ -12,12 +12,31 @@
         <input type="file" id="questionImage" (change)="onImageUploadForQuestion($event)" />
         <img *ngIf="questionForm.value.image" [src]="questionForm.value.image" class="preview-image" />
 
+         <!-- 🟢 Soru Metni -->
+         <label for="subText">Soru Alt Metni</label>
+         <textarea id="subText" formControlName="subText"></textarea>
+
   
-        <!-- 🟢 Kategori Seçimi -->
-        <label for="category">Kategori</label>
-        <select id="category" formControlName="categoryId">
-            <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
+        <!-- 🟢 Ders Seçimi -->
+        <label for="subject">Ders</label>
+        <select id="subject" formControlName="subjectId" (change)="onSubjectChange()">
+            <option *ngFor="let subject of subjects" [value]="subject.id">{{ subject.name }}</option>
         </select>
+
+        <!-- 🟢 Konu Seçimi (Ders seçilmeden disabled olacak) -->
+        <label for="topic">Konu</label>
+        <select id="topic" formControlName="topicId" [disabled]="!topics.length" (change)="onTopicChange()">
+            <option *ngFor="let topic of topics" [value]="topic.id">{{ topic.name }}</option>
+        </select>
+
+        <!-- 🟢 Alt Konu Seçimi (Konu seçilmeden disabled olacak) -->
+        <label for="subTopic">Alt Konu</label>
+        <select id="subTopic" formControlName="subtopicId" [disabled]="!subTopics.length">
+            <option *ngFor="let subTopic of subTopics" [value]="subTopic.id">{{ subTopic.name }}</option>
+        </select>
+
+
+
   
         <!-- 🟢 Puan Belirleme -->
         <label for="point">Puan</label>

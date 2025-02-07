@@ -9,6 +9,7 @@ import { SubTopic } from '../models/subtopic';
 import { TestInstance } from '../models/test-instance';
 import { StudentAnswer } from '../models/student-answer';
 import { StudentProfile } from '../models/student-profile';
+import { Grade } from '../models/student';
 
 @Injectable({
   providedIn: 'root'
@@ -20,5 +21,19 @@ export class StudentService {
   getProfile(): Observable<StudentProfile> {
     return this.http.get<StudentProfile>(`/api/student/profile`);
   }
-  
+
+  updateGrade(newGradeId: number): Observable<StudentProfile> {
+    return this.http.post<StudentProfile>(`/api/student/update-grade`, newGradeId);
+  }
+
+  updateAvatar(file: File): Observable<StudentProfile> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return this.http.post<StudentProfile>(`/api/student/update-avatar`, formData);
+  }
+
+  loadGrades(): Observable<Grade[]> {
+    return this.http.get<Grade[]>(`/api/student/grades`);
+  }
+
 }

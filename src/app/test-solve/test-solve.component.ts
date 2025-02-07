@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../services/test.service';
 import { Question } from '../models/question';
-import { TestInstance } from '../models/test-instance';
+import { TestInstance, TestInstanceQuestion, TestStatus } from '../models/test-instance';
 import { QuestionViewComponent } from '../question-view/question-view.component';
 import { CommonModule } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -29,6 +29,7 @@ export class TestSolveComponent implements OnInit {
   showStopButton: boolean = false; // Eğer test durdurulabilirse
   questionTimerSubscription!: Subscription;
   testTimerSubscription!: Subscription;
+  passageGroups: { [key: number]: number[] } = {};
   constructor(private route: ActivatedRoute,
     private testService: TestService,
     private router: Router) {}
@@ -50,17 +51,43 @@ export class TestSolveComponent implements OnInit {
       console.log('Test loaded', data);
 
       this.testInstance = data;
+      // check passages 
+      this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
+        if (q.question.passage && q.question.passage.id) {
+          if(!this.passageGroups[q.question.passage.id])
+            this.passageGroups[q.question.passage.id] = [];
+          this.passageGroups[q.question.passage.id].push(q.order);
+        }
+      });
+
+      this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
+        if (q.question.passage && q.question.passage.id) {
+          q.question.passage.title = this.formatString(q.question.passage.title, this.passageGroups[q.question.passage.id]);
+        }
+      });
 
       console.log('TestInstance', this.testInstance.testInstanceQuestions);
+
+      if(this.testInstance.status === TestStatus.Completed) {
+        this.router.navigate(['/student-profile']);
+      }
+    
       this.startTimer();
       this.startQuestionTimer();
     });
+  }
+
+   formatString(format: string, args: number[]): string {
+    return format.replace(/{(\d+)}/g, (match, index) => "" + args[index]);
   }
 
   // Zamanlayıcı başlat
   startTimer() {
     this.testTimerSubscription = interval(1000).subscribe(() => {
       this.testDuration++;
+      if(this.testDuration >= this.testInstance.maxDurationSeconds) {
+        this.completeTest();
+      }
     });
   }
 
@@ -88,7 +115,16 @@ export class TestSolveComponent implements OnInit {
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   }
 
-  
+  completeTest() {
+    this.testService.completeTest(this.testInstance.id).subscribe({
+      next: () => {
+        this.router.navigate(['/test-summary', this.testInstance.id]);
+      },
+      error: (error) => {
+        console.error('Error completing test', error);
+      }
+    });
+  }
 
   // Cevap kaydet
   selectAnswer(selectedIndex: number) {

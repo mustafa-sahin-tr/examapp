@@ -1,5 +1,8 @@
+import { Grade } from "./student";
+
 export interface StudentProfile {
   fullName: string;
+  gradeId: number;
   avatarUrl: string;
   xp: number;
   level: number;

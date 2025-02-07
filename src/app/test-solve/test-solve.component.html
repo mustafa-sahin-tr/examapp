@@ -25,6 +25,9 @@
       <button mat-raised-button color="accent" (click)="nextQuestion()" [disabled]="currentQuestionIndex === testInstance.testInstanceQuestions.length - 1">
         İleri
       </button>
+      <button mat-raised-button color="accent" (click)="completeTest()" *ngIf="currentQuestionIndex === testInstance.testInstanceQuestions.length - 1">
+        Sınavı Bitir
+      </button>
     </div>
   </mat-card>
   

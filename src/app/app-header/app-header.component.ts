@@ -34,6 +34,11 @@ export class AppHeaderComponent {
       this.isAuthenticated = status;
       //this.cdr.detectChanges(); 
     });
+
+  }
+
+  get userAvatarUrl () {
+    return this.authService.getUserAvatar() || this.profileImage;
   }
 
   navigateTo(path: string) {

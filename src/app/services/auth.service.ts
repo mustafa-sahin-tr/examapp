@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 export class AuthService {
   private tokenKey = 'auth_token';
   private roleKey = 'user_role';
+  private avatarKey = 'user_avatar';
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable(); // 🟢 Diğer bileşenler bunu subscribe edebilir
 
@@ -25,11 +26,12 @@ export class AuthService {
     return this.http.get<CheckStudentResponse>('/api/student/check-student');
   }
 
-  login(credentials: any): Observable<{ token: string; role: string }> {
-    return this.http.post<{ token: string; role: string }>('/api/auth/login', credentials).pipe(
+  login(credentials: any): Observable<{ token: string; role: string , avatar: string}> {
+    return this.http.post<{ token: string; role: string , avatar: string}>('/api/auth/login', credentials).pipe(
       tap(res => {
         localStorage.setItem(this.tokenKey, res.token);
         localStorage.setItem(this.roleKey, res.role);
+        localStorage.setItem(this.avatarKey, res.avatar);
         this.isAuthenticatedSubject.next(true);
       })
     );
@@ -42,6 +44,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.roleKey);
+    localStorage.removeItem(this.avatarKey);
     localStorage.removeItem('student');
     this.isAuthenticatedSubject.next(false);
     this.router.navigate(['/login']);
@@ -57,6 +60,10 @@ export class AuthService {
 
   getUserRole(): string | null {
     return localStorage.getItem(this.roleKey);
+  }
+
+  getUserAvatar(): string | null {
+    return localStorage.getItem(this.avatarKey);
   }
 
   hasToken(): boolean {

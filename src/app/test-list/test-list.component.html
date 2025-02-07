@@ -1,0 +1,23 @@
+<mat-card *ngFor="let test of tests" class="test-card">
+    <mat-card-title>{{ test.name }}</mat-card-title>
+    <mat-card-content>
+      <p>⏳ Süre: {{ test.maxDurationSeconds / 60 }} dk</p>
+  
+      <p *ngIf="test.instanceStatus === 0">✅ Test Tamamlandı</p>
+      <p *ngIf="test.instanceStatus === 1">⏳ Süre Doldu</p>
+      <p *ngIf="test.instanceStatus === 2">🔄 Test Devam Ediyor</p>
+      <p *ngIf="!test.instanceStatus">📌 Henüz Bu Testi Almadınız</p>
+  
+      <button mat-raised-button color="primary"
+              *ngIf="!test.instanceStatus"
+              (click)="startTest(test.id)">
+        🏁 Başlat
+      </button>
+      <button mat-raised-button color="primary"
+              *ngIf="test.instanceStatus === 1"
+              (click)="startTest(test.id)">
+        🏁 Sonucunu Gör
+      </button>
+    </mat-card-content>
+  </mat-card>
+  

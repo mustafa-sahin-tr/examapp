@@ -15,7 +15,7 @@ import { Subject } from '../models/subject';
 import { QuestionService } from '../services/question.service';
 import { SubTopic } from '../models/subtopic';
 import { Topic } from '../models/topic';
-
+import { QuillModule } from 'ngx-quill';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -31,7 +31,8 @@ import { Topic } from '../models/topic';
             FormsModule,
             ReactiveFormsModule,
             CommonModule,
-            MatCardModule]
+            MatCardModule,
+            QuillModule]
 })
 export class QuestionComponent implements OnInit {
   questionForm: FormGroup;

@@ -1,14 +1,14 @@
 <mat-card class="question-card" *ngIf="question">
     <div class="question-container">
      <!-- 🟢 Soru Resmi ve Metni -->
-     <div class="question-content" *ngIf="question.passage">
+     <div class="question-content" *ngIf="question.passage && question.passage.text">
         <h2>{{ question.passage.text }}</h2>
         <img *ngIf="question.passage.imageUrl" [src]="question.passage.imageUrl" class="question-image" />
         <p *ngIf="question.passage.title" class="question-alt-text">{{ question.passage.title }}</p> <!-- Alt Text için özel stil -->
       </div>
       <!-- 🟢 Soru Resmi ve Metni -->
       <div class="question-content">
-        <h2>{{ question.text }}</h2>
+        <div class="question-text" [innerHTML]="question.text"></div>
         <img *ngIf="question.imageUrl" [src]="question.imageUrl" class="question-image" />
         <p *ngIf="question.subText" class="question-alt-text">{{ question.subText }}</p> <!-- Alt Text için özel stil -->
       </div>

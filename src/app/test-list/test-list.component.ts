@@ -38,5 +38,10 @@ export class TestListComponent implements OnInit {
       .subscribe(response => {
         this.router.navigate(['/test', testId]);
       });
-  }
+    }
+    
+    continueTest(testId: number) {        
+        this.router.navigate(['/test', testId]);          
+    }
+  
 }

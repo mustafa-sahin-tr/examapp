@@ -16,5 +16,11 @@ export interface Question {
     imageUrl: string,
     category: Subject,
     answers: Answer[],
-    passage?: Passage
+    passage?: Passage,
+    practiceCorrectAnswer?: string,
+    isExample: boolean,
+    subjectId: number,
+    topicId: number,
+    subtTopicId: number,
+    correctAnswer: number,
 }

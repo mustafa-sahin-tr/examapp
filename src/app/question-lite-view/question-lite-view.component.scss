@@ -1,0 +1,80 @@
+.question-lite-card {
+    // max-width: 45%;
+    padding: 10px;
+    margin: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+  }
+  
+  .question-lite-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .question-lite-text {
+    font-size: 14px;
+    font-weight: bold;
+    // text-align: center;
+  }
+  
+  .question-lite-image {
+    max-width: 80%;
+    height: auto;
+    margin: 10px 0;
+  }
+  
+  .answers-lite-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+    max-width: 100%;
+  }
+  
+  .answer-lite-box {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    text-align: left;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    transition: background 0.3s ease;
+    width: 100%;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  
+  .selected-answer {
+    background-color: #4caf50 !important;
+    color: white;
+  }
+
+   /* 🟢 Şık Harfleri (A, B, C, D) */
+   .answer-label {
+    font-weight: bold;
+    font-size: 18px;
+    padding: 10px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 5px;
+    width: 10px;
+    height: 10px;
+  }
+
+  .question-lite-content {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+  }
+  
+  

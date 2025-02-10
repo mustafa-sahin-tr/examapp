@@ -14,15 +14,18 @@ import { Question } from '../models/question';
   imports: [ MatCardModule, MatButtonModule, CommonModule]
 })
 export class QuestionViewComponent implements OnInit {
-  
+  @Input() isPracticeTest: boolean = false; // 🆕 Practice test mi yoksa gerçek sınav mı olduğunu belirlemek için
   @Input() question: Question | null = null; // Soru
   @Output() answerSelected = new EventEmitter<number>(); // 🆕 Event tanımlandı
+  @Output() answerOpened = new EventEmitter<number>(); // 🆕 Event tanımlandı
   @Input() selectedAnswerIndex: number | null = null; // Kullanıcının seçtiği şık
   correctAnswerIndex: number | null = null; // Doğru şık (API'den dönecek)
   showFeedback: boolean = false; // Kullanıcının seçim yaptığı anı kontrol etme
   layouts = ['single-column', 'two-column', 'grid', 'top-image']; // Farklı layout seçenekleri
   selectedLayout = 'single-column'; // Varsayılan layout
+  correctAnswerVisible = false;
 
+  
   constructor(private questionService: QuestionService) {}
 
   // fetchQuestion() {
@@ -36,6 +39,14 @@ export class QuestionViewComponent implements OnInit {
     this.selectedLayout = this.layouts[Math.floor(Math.random() * this.layouts.length)]; // Rastgele bir layout seç
     // this.fetchQuestion();
   }
+
+  showCorrectAnswer() {
+    // if (this.selectedAnswerIndex !== null) return; // Kullanıcı sadece 1 kez seçim yapabilir
+    console.log('selected index: ',this.selectedAnswerIndex);
+    this.correctAnswerVisible = true;
+    this.answerOpened.emit(1); // 🆕 Seçilen cevap üst componente gönderiliyor
+  }
+
 
   selectAnswer(index: number) {
     // if (this.selectedAnswerIndex !== null) return; // Kullanıcı sadece 1 kez seçim yapabilir

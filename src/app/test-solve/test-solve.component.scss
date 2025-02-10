@@ -1,5 +1,5 @@
 .test-container {
-    max-width: 800px;
+    max-width: 960px;
     margin: auto;
     padding: 16px;
   }
@@ -36,4 +36,36 @@
     justify-content: space-between;
     margin-top: 16px;
   }
+
+  // .question-lite-container {
+  //   display: grid;
+  //   grid-template-columns: repeat(2, 1fr); /* 2 sütun */
+  //   gap: 16px; /* Kartlar arasında boşluk */
+  //   align-items: start; /* Kartların üst hizadan başlamasını sağlar */
+  // }
+  
+  // .question-lite-container > div {
+  //   display: flex;
+  //   flex-direction: column;
+  //   gap: 16px; /* Kartlar arasında boşluk */
+  // }
+
+  .question-lite-container {
+    column-count: 2; /* 2 sütun */
+    column-gap: 16px; /* Sütunlar arasındaki boşluk */
+  }
+  
+  .question-lite-card {
+    display: inline-block; /* Kartların düzgün hizalanmasını sağla */
+    width: 100%; /* Kartların sütunu tam kaplamasını sağla */
+    margin-bottom: 16px; /* Kartlar arasında boşluk */
+    break-inside: avoid; /* Kartın bölünmesini önle */
+  }
+
+  @media (max-width: 768px) {
+    .question-lite-container {
+      grid-template-columns: repeat(1, 1fr); /* Mobilde tek sütun */
+    }
+  }
+  
   

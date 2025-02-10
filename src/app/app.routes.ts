@@ -15,7 +15,8 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'home', component: HomeComponent , canActivate: [AuthGuard]},
   { path: 'student-register', component: StudentRegisterComponent, canActivate: [AuthGuard] },
-  { path: 'questions/create', component: QuestionComponent, canActivate: [AuthGuard] },
+  { path: 'question/:id', component: QuestionComponent, canActivate: [AuthGuard] },
+  { path: 'question', component: QuestionComponent, canActivate: [AuthGuard] },
   { path: 'tests', component: TestListComponent, canActivate: [AuthGuard] },
   { path: 'questions/view', component: QuestionViewComponent, canActivate: [AuthGuard] },
   { path: 'test/:testInstanceId', component: TestSolveComponent, canActivate: [AuthGuard] },  // 🆕 Test çözme sayfası

@@ -1,0 +1,29 @@
+<mat-card class="question-lite-card" *ngIf="question">
+    <div class="question-lite-container">
+      <!-- 🟢 Soru Başlığı ve Resmi -->
+      <div class="question-lite-content">
+        <div class="question-lite-text" [innerHTML]="question.text"></div>
+        <img *ngIf="question.imageUrl" [src]="question.imageUrl" class="question-lite-image" />
+      </div>
+  
+      <!-- 🟢 Eğer Practice Test ise, cevabı otomatik göster -->
+      <div *ngIf="isPracticeTest">
+        <div class="correct-answer" *ngIf="question.isExample || correctAnswerVisible">
+          Doğru Cevap: <b>{{ question.practiceCorrectAnswer }}</b>
+        </div>
+        <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+      </div>
+  
+      <!-- 🟢 Cevap Şıkları -->
+      <div *ngIf="!isPracticeTest" class="answers-lite-container">
+        <div *ngFor="let answer of question.answers; let i = index" class="answer-lite-box"
+            [ngClass]="{ 'selected-answer': selectedAnswerIndex === i }"
+            (click)="selectAnswer(i)">
+         <span class="answer-label">{{ getAnswerLabel(i) }}</span>
+                <span class="answer-text">{{ answer.text }}</span>
+          
+        </div>
+      </div>
+    </div>
+  </mat-card>
+  

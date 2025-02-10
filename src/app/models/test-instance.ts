@@ -3,6 +3,7 @@ import { Answer } from "./answer";
 import { Question } from "./question";
 
 export enum TestStatus {
+    NotStarted = -1,
     Started = 0,
     Completed = 1,
     Expired = 2
@@ -21,6 +22,7 @@ export interface TestInstance {
     status: TestStatus;
     maxDurationSeconds: number;
     testInstanceQuestions: TestInstanceQuestion[];
+    isPracticeTest: boolean;
 }
 
 export interface Exam {
@@ -30,4 +32,5 @@ export interface Exam {
     maxDurationSeconds: number;
     totalQuestions: number;    
     instanceStatus : TestStatus;
+    testInstanceId: number;
 }

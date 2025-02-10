@@ -11,7 +11,7 @@ export class QuestionService {
 
   constructor(private http: HttpClient) {}
 
-  createQuestion(questionData: any): Observable<any> {
+  saveQuestion(questionData: any): Observable<any> {
     return this.http.post<any>(this.apiUrl, questionData);
   }
 

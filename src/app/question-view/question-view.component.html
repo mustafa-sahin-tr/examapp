@@ -13,8 +13,13 @@
         <p *ngIf="question.subText" class="question-alt-text">{{ question.subText }}</p> <!-- Alt Text için özel stil -->
       </div>
   
+      <div *ngIf="isPracticeTest">        
+        <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>    
+        <div *ngIf="correctAnswerVisible || question.isExample" [innerHTML]="question.practiceCorrectAnswer"></div>
+      </div>
+    
       <!-- 🟢 Şıklar -->
-      <div class="answers-container">
+      <div *ngIf="!isPracticeTest" class="answers-container">
         <div *ngFor="let answer of question.answers; let i = index" class="answer-box" (click)="selectAnswer(i)"
                 [ngClass]="{ 'selected-answer': selectedAnswerIndex === i }">
           <span class="answer-label">{{ getAnswerLabel(i) }}</span>
@@ -26,6 +31,6 @@
           </button>
         </div>
       </div>
-    </div>
+    </div> 
   </mat-card>
   

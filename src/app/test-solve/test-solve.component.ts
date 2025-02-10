@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, QueryList, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../services/test.service';
 import { Question } from '../models/question';
@@ -9,18 +9,17 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import {  MatCardModule } from '@angular/material/card';
 import { interval, Subscription } from 'rxjs';
+import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 
 @Component({
   selector: 'app-test-solve',
   standalone: true,
   templateUrl: './test-solve.component.html',
   styleUrls: ['./test-solve.component.scss'],
-  imports: [QuestionViewComponent, CommonModule, MatToolbarModule, MatButtonModule, MatCardModule]
+  imports: [QuestionViewComponent, CommonModule, MatToolbarModule, MatButtonModule, MatCardModule /* , QuestionLiteViewComponent */]
 })
-export class TestSolveComponent implements OnInit {
-
+export class TestSolveComponent implements OnInit, AfterViewInit {
   testInstanceId!: number;
-
   testInstance!: TestInstance; // Test bilgisi ve sorular
   currentQuestionIndex:number = 0; // Şu anki soru index'i
   testDuration: number = 0; // Saniye cinsinden süre
@@ -30,15 +29,51 @@ export class TestSolveComponent implements OnInit {
   questionTimerSubscription!: Subscription;
   testTimerSubscription!: Subscription;
   passageGroups: { [key: number]: number[] } = {};
+  leftColumn: any[] = [];
+  rightColumn: any[] = [];
+  @ViewChildren('questionCard') questionCards!: QueryList<ElementRef>;
   constructor(private route: ActivatedRoute,
     private testService: TestService,
     private router: Router) {}
+
+  ngAfterViewInit() {
+    
+  }
+
+
+  distributeQuestions() {
+    const questions = [...this.testInstance.testInstanceQuestions]; // Soruların kopyasını al
+    let leftHeight = 0;
+    let rightHeight = 0;
+
+    questions.forEach((question, index) => {
+      const height = this.getEstimatedHeight(question); // Sorunun yüksekliğini tahmini olarak al
+
+      if (leftHeight <= rightHeight) {
+        this.leftColumn.push(question);
+        leftHeight += height;
+      } else {
+        this.rightColumn.push(question);
+        rightHeight += height;
+      }
+    });
+
+    console.log('Left Column:', this.leftColumn);
+    console.log('Right Column:', this.rightColumn);
+  }
+
+  // Örnek bir tahmini yükseklik hesaplama metodu
+  getEstimatedHeight(question: any): number {
+    // İçerik uzunluğuna göre bir yükseklik hesaplıyoruz
+    const baseHeight = 100; // Minimum kart yüksekliği
+    return baseHeight + (question.text.length * 0.5); // İçeriğin uzunluğuna göre dinamik yükseklik tahmini
+  }
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       this.testInstanceId = Number(params.get('testInstanceId'));
       if (this.testInstanceId) {
-        this.loadTest(this.testInstanceId);
+        this.loadTest(this.testInstanceId);        
       } else {
         this.router.navigate(['/']); // Geçersiz ID varsa anasayfaya yönlendir
       }
@@ -71,7 +106,7 @@ export class TestSolveComponent implements OnInit {
       if(this.testInstance.status === TestStatus.Completed) {
         this.router.navigate(['/student-profile']);
       }
-    
+      
       this.startTimer();
       this.startQuestionTimer();
     });
@@ -130,6 +165,32 @@ export class TestSolveComponent implements OnInit {
   selectAnswer(selectedIndex: number) {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
   }
+  
+  openAnswer(selectedIndex: number) {
+    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
+    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
+    if(this.questionTimerSubscription)
+      this.questionTimerSubscription.unsubscribe();
+  }
+
+  persistPracticetime() {
+    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = 0;
+    // durationn süreyi gördüğü anda durdu.
+    this.testService.saveAnswer({
+      testQuestionId: this.testInstance.testInstanceQuestions[this.currentQuestionIndex].id,
+      selectedAnswerId: 0,
+      testInstanceId: this.testInstance.id,
+      timeTaken: this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken
+    }).subscribe({
+      next: () => {
+        // Cevap kaydedildi, sonraki soruya geç
+        //this.nextQuestion();
+      },
+      error: (error) => {
+        console.error('Error saving answer', error);
+      }
+    })
+  }
 
   persistAnswer(selectedIndex: number) {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
@@ -153,7 +214,12 @@ export class TestSolveComponent implements OnInit {
   
   // Önceki soruya git
   prevQuestion() {
-    this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);
+    if(this.testInstance.isPracticeTest) {
+      this.persistPracticetime();
+    }
+    else {
+      this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);      
+    }
     if (this.currentQuestionIndex > 0) {
       this.currentQuestionIndex--;
       this.startQuestionTimer(); 
@@ -162,7 +228,12 @@ export class TestSolveComponent implements OnInit {
 
   // Sonraki soruya git
   nextQuestion() {
-    this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);
+    if(this.testInstance.isPracticeTest) {
+
+    }
+    else {
+      this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);
+    }    
     if (this.currentQuestionIndex < this.testInstance.testInstanceQuestions.length - 1) {
       this.currentQuestionIndex++;
       this.startQuestionTimer(); 

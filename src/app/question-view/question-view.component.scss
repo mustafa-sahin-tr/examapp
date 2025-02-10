@@ -1,5 +1,5 @@
 .question-card {
-    max-width: 800px;
+    max-width: 960px;
     margin: auto;
     padding: 20px;
   }
@@ -27,7 +27,7 @@
   /* 🟢 Şıklar Container */
   .answers-container {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
     justify-content: center;
     align-items: stretch;

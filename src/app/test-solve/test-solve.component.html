@@ -12,9 +12,24 @@
     <div class="question-container">
       <app-question-view
         [question]="testInstance.testInstanceQuestions[currentQuestionIndex].question" 
-        [selectedAnswerIndex]="testInstance.testInstanceQuestions[currentQuestionIndex].selectedAnswerId"       
-        (answerSelected)="selectAnswer($event)">
+        [selectedAnswerIndex]="testInstance.testInstanceQuestions[currentQuestionIndex].selectedAnswerId"    
+        [isPracticeTest]="testInstance.isPracticeTest"   
+        (answerSelected)="selectAnswer($event)"
+        (answerOpened)="openAnswer($event)">
       </app-question-view>
+
+      <!-- <div  class="question-lite-container">
+        <div>
+            <ng-container *ngFor="let answer of testInstance.testInstanceQuestions; let i = index">
+                <app-question-lite-view class="question-lite-card"
+                    [question]="testInstance.testInstanceQuestions[i].question" 
+                    [isPracticeTest]="testInstance.isPracticeTest">
+                </app-question-lite-view>
+              </ng-container>
+        </div>
+        <div>
+        </div>
+    </div> -->
     </div>
   
     <!-- Navigasyon Butonları -->

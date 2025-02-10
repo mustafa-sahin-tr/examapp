@@ -16,6 +16,7 @@ import { QuestionService } from '../services/question.service';
 import { SubTopic } from '../models/subtopic';
 import { Topic } from '../models/topic';
 import { QuillModule } from 'ngx-quill';
+import { ActivatedRoute } from '@angular/router';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -39,11 +40,23 @@ export class QuestionComponent implements OnInit {
   subjects: Subject[] = [];
   topics: Topic[] = [];
   subTopics: SubTopic[] = [];
-
+  id: number | null = null;
   point: number = 5;
+  isEditMode: boolean = false;
+  modules = {
+    formula: true,
+    toolbar: [      
+      [{ header: [1, 2, false] }],
+      ['bold', 'italic', 'underline'],
+      ['formula'], 
+      ['image', 'code-block'],
+      ['color','background']
+    ]
+  };
+
   constructor(private fb: FormBuilder, private snackBar: MatSnackBar,
-      private subjectService: SubjectService, private questionService: QuestionService
-  ) {
+      private subjectService: SubjectService, private questionService: QuestionService,private route: ActivatedRoute) 
+  {
     this.questionForm = this.fb.group({
       text: ['', Validators.required],
       subText: [''],
@@ -53,6 +66,8 @@ export class QuestionComponent implements OnInit {
       subtopicId: ['', Validators.required],
       point: [5, Validators.required],
       correctAnswer: [null, Validators.required], // ✅ Tek bir doğru cevap tutulacak
+      isExample: [false],
+      practiceCorrectAnswer: [null],
       answers: this.fb.array(
         Array(4).fill(0).map(() => this.fb.group({
           text: [''],
@@ -63,7 +78,43 @@ export class QuestionComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
+    this.isEditMode = this.id !== null;  
     this.loadCategories();
+    if(this.isEditMode) {
+      this.loadQuestion();
+    }
+  }
+
+  loadQuestion() {
+    this.questionService.get(this.id!).subscribe(question => {
+      this.questionForm.patchValue({
+        text: question.text,
+        subText: question.subText,
+        image: question.imageUrl,
+        subjectId: question.subjectId,
+        topicId: question.topicId,
+        subtopicId: question.subjectId,
+        point: 10,
+        correctAnswer: question.correctAnswer,
+        isExample: question.isExample,
+        practiceCorrectAnswer: question.practiceCorrectAnswer
+      });
+
+      const answerArray = this.questionForm.get('answers') as FormArray;
+      answerArray.clear();
+      question.answers.forEach((answer: any) => {
+        answerArray.push(
+          this.fb.group({
+            text: [answer.text],
+            image: [answer.imageUrl]
+          })
+        );
+      });
+
+      this.onSubjectChange();
+      this.onTopicChange();
+    });
   }
 
   get answers(): FormArray {
@@ -130,8 +181,8 @@ export class QuestionComponent implements OnInit {
     }
 
     const validAnswers = formData.answers.filter((ans: any) => ans.text || ans.image);
-    if (validAnswers.length < 4) {
-      this.snackBar.open('Lütfen tüm cevap şıklarını doldurun!', 'Tamam', { duration: 3000 });
+    if (validAnswers.length < 3) {
+      this.snackBar.open('Lütfen en az 3 cevap şıkkını doldurun!', 'Tamam', { duration: 3000 });
       return;
     }
 
@@ -145,6 +196,7 @@ export class QuestionComponent implements OnInit {
     
         // ✅ Base64'ten Temizlenmiş Bir Soru Nesnesi Hazırlıyoruz
         const questionPayload = {
+          id: this.id,
           text: formData.text,
           subText: formData.subText,
           image: formData.image,
@@ -154,6 +206,8 @@ export class QuestionComponent implements OnInit {
           topicId: formData.topicId,
           subtopicId: formData.subtopicId,
           subjectId : formData.subjectId,
+          isExample: formData.isExample,
+          practiceCorrectAnswer: formData.practiceCorrectAnswer,
           answers: formData.answers.map((answer: any) => ({
             text: answer.text,
             image: answer.image
@@ -161,11 +215,10 @@ export class QuestionComponent implements OnInit {
         };
   
         // ✅ Backend API'ye POST isteği gönderiyoruz
-        this.questionService.createQuestion(questionPayload).subscribe({
+        this.questionService.saveQuestion(questionPayload).subscribe({
           next: (response) => {
             console.log('Soru Kaydedildi:', response);
-            alert('Soru başarıyla kaydedildi!');
-            this.questionForm.reset();
+            alert('Soru başarıyla kaydedildi!');            
           },
           error: (err) => {
             console.error('Hata oluştu:', err);

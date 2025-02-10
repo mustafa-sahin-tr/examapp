@@ -26,4 +26,6 @@ public class TestInstanceQuestion
 
     public bool IsCorrect { get; set; }
     public int TimeTaken { get; set; } // Kaç saniyede çözüldü
+    public bool ShowCorrectAnswer { get; set; } // Kullanıcı "Sonucu Gör" yaptı mı?
+
 }

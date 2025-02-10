@@ -11,6 +11,7 @@ public class TestQuestion
     public Test Test { get; set; }
     public int Order { get; set; } // 🟢 Test içinde soru sırası
     public int QuestionId { get; set; }
-    public Question Question { get; set; }
+    public Question Question { get; set; }    
+
 }
 

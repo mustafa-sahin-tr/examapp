@@ -7,7 +7,7 @@ namespace ExamApp.Api.Data;
 public class Question
 {
     public int Id { get; set; }
-    public string Text { get; set; } = string.Empty;  // Soru metni
+    public string? Text { get; set; } = string.Empty;  // Soru metni
     public string? SubText { get; set; } = string.Empty;  // Soru metni
     public string? ImageUrl { get; set; }  // Eğer soru resimli ise
 
@@ -40,5 +40,9 @@ public class Question
 
     [ForeignKey("PassageId")]
     public Passage Passage { get; set; } // 🟢 Navigation Property
+
+    public string? PracticeCorrectAnswer { get; set; } // Eğer çalışma testi ise bu alan kullanılacak
+    public bool IsExample { get; set; } = false;// Eğer true ise bu soru örnek sorudur ve cevabı otomatik gösterilir.
+
 }
 

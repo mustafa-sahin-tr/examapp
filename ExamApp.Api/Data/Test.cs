@@ -22,5 +22,7 @@ public class Test
     // Test içindeki sorular (Ara tablo ile ilişkilendirilecek)
     public ICollection<TestQuestion> TestQuestions { get; set; } = new List<TestQuestion>();
     public int MaxDurationSeconds { get; set; } // 🕒 Maksimum test süresi (saniye)
+    public bool IsPracticeTest { get; set; } // True ise Çalışma Testi, False ise Normal Test
+
     
 }

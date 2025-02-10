@@ -47,7 +47,12 @@ public class ExamController : ControllerBase
     public async Task<IActionResult> GetTestsAsync(int gradeId)
     {
          // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return BadRequest("User ID claim not found.");
+        }
+        var userId = int.Parse(userIdClaim);
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null || user.Role != UserRole.Student)
@@ -65,22 +70,22 @@ public class ExamController : ControllerBase
             .Where(ti => ti.StudentId == student.Id)
             .ToListAsync();
 
-        var response = tests.Select(test => new
-        {
-            test.Id,
-            test.Name,
-            test.Description,
-            test.MaxDurationSeconds,
-            TotalQuestions = test.TestQuestions.Count,
-            InstanceStatus = testInstances
-                .Where(ti => ti.TestId == test.Id)                
-                .Select(ti => ti.Status)
-                .FirstOrDefault(), // Kullanıcının en son bu testi hangi durumda bıraktığını al
-            StartTime = testInstances
-                .Where(ti => ti.TestId == test.Id)
-                .Select(ti => ti.StartTime)
-                .FirstOrDefault()
-        }).ToList();
+        var response = (from test in _context.Tests
+                join testInstance in _context.TestInstances
+                on test.Id equals testInstance.TestId into testGroup
+                from tg in testGroup.DefaultIfEmpty()
+                where test.GradeId == student.GradeId
+                select new
+                {
+                    test.Id,
+                    test.Name,
+                    test.Description,
+                    test.MaxDurationSeconds,
+                    TotalQuestions = test.TestQuestions.Count,
+                    InstanceStatus = tg != null ? (int?)tg.Status : -1,
+                    StartTime = tg != null ? tg.StartTime : (DateTime?)null,
+                    TestInstanceId = tg != null ? tg.Id : -1
+                }).ToList();
         
         return Ok(response);
     }
@@ -129,7 +134,12 @@ public class ExamController : ControllerBase
     public async Task<IActionResult> StartTest(int testId)
     {
         // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return BadRequest("User ID claim not found.");
+        }
+        var userId = int.Parse(userIdClaim);
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null || user.Role != UserRole.Student)
@@ -191,8 +201,14 @@ public class ExamController : ControllerBase
     public async Task<IActionResult> GetTestInstanceQuestions(int testInstanceId)
     {
         // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return Unauthorized();
+        }        
+        // 🔹 Token’dan UserId'yi al
+        var userId = int.Parse(userIdClaim);
+        
         var user = await _context.Users.FindAsync(userId);
         if (user == null || user.Role != UserRole.Student)
         {
@@ -222,6 +238,7 @@ public class ExamController : ControllerBase
             TestName = testInstance.Test.Name,            
             Status = testInstance.Status,
             MaxDurationSeconds = testInstance.Test.MaxDurationSeconds,
+            testInstance.Test.IsPracticeTest,
             TestInstanceQuestions = testInstance.TestInstanceQuestions.Select(tiq => new
             {
                 Id = tiq.Id,
@@ -231,12 +248,14 @@ public class ExamController : ControllerBase
                     tiq.TestQuestion.Question.Text,
                     tiq.TestQuestion.Question.SubText,
                     tiq.TestQuestion.Question.ImageUrl,
-                    Passage = new {
+                    tiq.TestQuestion.Question.IsExample,
+                    Passage = tiq.TestQuestion.Question.PassageId.HasValue ? new {
                         tiq.TestQuestion.Question.Passage?.Id,
                         tiq.TestQuestion.Question.Passage?.Title,
                         tiq.TestQuestion.Question.Passage?.Text,
                         tiq.TestQuestion.Question.Passage?.ImageUrl
-                    },
+                    } : null,
+                    tiq.TestQuestion.Question.PracticeCorrectAnswer,
                     Answers = tiq.TestQuestion.Question.Answers.Select(a => new
                     {
                         a.Id,
@@ -249,7 +268,7 @@ public class ExamController : ControllerBase
         };
 
         return Ok(response);
-    }
+    }    
 
     [Authorize]
     [HttpPost("save-answer")]
@@ -286,7 +305,7 @@ public class ExamController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Cevap kaydedildi!" });
-    }
+    }    
 
     [Authorize]
     [HttpPut("end-test/{testInstanceId}")]

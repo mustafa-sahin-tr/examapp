@@ -10,7 +10,7 @@
       <div class="question-content">
         <div class="question-text" [innerHTML]="question.text"></div>
         <img *ngIf="question.imageUrl" [src]="question.imageUrl" class="question-image" />
-        <p *ngIf="question.subText" class="question-alt-text">{{ question.subText }}</p> <!-- Alt Text için özel stil -->
+        <p *ngIf="question.subText" class="question-alt-text" [innerHTML]="question.subText"></p> <!-- Alt Text için özel stil -->
       </div>
   
       <div *ngIf="isPracticeTest">        

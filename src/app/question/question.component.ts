@@ -16,7 +16,8 @@ import { QuestionService } from '../services/question.service';
 import { SubTopic } from '../models/subtopic';
 import { Topic } from '../models/topic';
 import { QuillModule } from 'ngx-quill';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -32,7 +33,7 @@ import { ActivatedRoute } from '@angular/router';
             FormsModule,
             ReactiveFormsModule,
             CommonModule,
-            MatCardModule,
+            MatCardModule,MatIconModule,
             QuillModule]
 })
 export class QuestionComponent implements OnInit {
@@ -55,19 +56,47 @@ export class QuestionComponent implements OnInit {
   };
 
   constructor(private fb: FormBuilder, private snackBar: MatSnackBar,
-      private subjectService: SubjectService, private questionService: QuestionService,private route: ActivatedRoute) 
+      private subjectService: SubjectService, private questionService: QuestionService,
+      private route: ActivatedRoute, private router: Router) 
   {
+    const navigation = this.router.getCurrentNavigation();
+    const state = navigation?.extras.state as { subjectId?: number; topicId?: number, subtopicId?: number };
+
     this.questionForm = this.fb.group({
       text: ['', Validators.required],
       subText: [''],
       image: [null],
-      subjectId: ['', Validators.required],
-      topicId: ['', Validators.required],
-      subtopicId: ['', Validators.required],
+      subjectId: [state?.subjectId, Validators.required],
+      topicId: [state?.topicId, Validators.required],
+      subtopicId: [state?.subtopicId, Validators.required],
       point: [5, Validators.required],
       correctAnswer: [null, Validators.required], // ✅ Tek bir doğru cevap tutulacak
       isExample: [false],
       practiceCorrectAnswer: [null],
+      answerColCount: [3],
+      answers: this.fb.array(
+        Array(4).fill(0).map(() => this.fb.group({
+          text: [''],
+          image: [null]
+        }))
+      )
+    });
+    
+  }
+
+  resetFormWithDefaultValues(state: any) {
+    this.questionForm = this.fb.group({
+      text: ['', Validators.required],
+      subText: [''],
+      image: [null],
+      subjectId: [state?.subjectId, Validators.required],
+      topicId: [state?.topicId, Validators.required],
+      subtopicId: [state?.subtopicId, Validators.required],
+      point: [5, Validators.required],
+      correctAnswer: [null, Validators.required], // ✅ Tek bir doğru cevap tutulacak
+      isExample: [false],
+      practiceCorrectAnswer: [null],
+      answerColCount: [3],
       answers: this.fb.array(
         Array(4).fill(0).map(() => this.fb.group({
           text: [''],
@@ -98,7 +127,8 @@ export class QuestionComponent implements OnInit {
         point: 10,
         correctAnswer: question.correctAnswer,
         isExample: question.isExample,
-        practiceCorrectAnswer: question.practiceCorrectAnswer
+        practiceCorrectAnswer: question.practiceCorrectAnswer,
+        answerColCount: question.answerColCount
       });
 
       const answerArray = this.questionForm.get('answers') as FormArray;
@@ -115,6 +145,21 @@ export class QuestionComponent implements OnInit {
       this.onSubjectChange();
       this.onTopicChange();
     });
+  }
+
+  addAnswer() {
+    this.answers.push(
+      this.fb.group({
+        text: [''],
+        image: ['']
+      })
+    );
+  }
+
+  removeAnswer(index: number) {
+    if (this.answers.length > 2) { // En az iki şık olmalı
+      this.answers.removeAt(index);
+    }
   }
 
   get answers(): FormArray {
@@ -135,18 +180,30 @@ export class QuestionComponent implements OnInit {
   loadCategories() {
     this.subjectService.loadCategories().subscribe(data => {
       this.subjects = data;
+      if(this.questionForm.value.subjectId) {
+        this.onSubjectChange();
+      }
     });
   }
 
   onSubjectChange() {
-    const selectedSubjectId = this.questionForm.value.subjectId;
-    this.subjectService.getTopicsBySubject(selectedSubjectId).subscribe(data => this.topics = data);
+    if(this.questionForm.value.subjectId) {
+      this.subjectService.getTopicsBySubject(this.questionForm.value.subjectId).
+        subscribe(data => {
+          this.topics = data
+          if(this.questionForm.value.topicId) {
+            this.onTopicChange();
+          }
+        } );
+    } 
+    
     this.subTopics = []; // Konu değişince alt konuları sıfırla
   }
   
   onTopicChange() {
-    const selectedTopicId = this.questionForm.value.topicId;
-    this.subjectService.getSubTopicsByTopic(selectedTopicId).subscribe(data => this.subTopics = data);
+    if(this.questionForm.value.topicId) {
+      this.subjectService.getSubTopicsByTopic(this.questionForm.value.topicId).subscribe(data => this.subTopics = data);
+    }
   }
 
   getFormControl(control: any): FormControl {
@@ -172,7 +229,15 @@ export class QuestionComponent implements OnInit {
     return `Şık ${String.fromCharCode(65 + index)}`; // 65 = 'A', 66 = 'B' ...
   }
 
+  onSaveAndNew() {
+    this.onSave(true);
+  }
+
   onSubmit() {
+    this.onSave()
+  }
+
+  onSave(navigateNewQuestion: boolean = false) {
     const formData = this.questionForm.value;
 
     if (!formData.text && !formData.image) {
@@ -208,6 +273,7 @@ export class QuestionComponent implements OnInit {
           subjectId : formData.subjectId,
           isExample: formData.isExample,
           practiceCorrectAnswer: formData.practiceCorrectAnswer,
+          answerColCount: formData.answerColCount,  
           answers: formData.answers.map((answer: any) => ({
             text: answer.text,
             image: answer.image
@@ -219,6 +285,15 @@ export class QuestionComponent implements OnInit {
           next: (response) => {
             console.log('Soru Kaydedildi:', response);
             alert('Soru başarıyla kaydedildi!');            
+            if (navigateNewQuestion) {
+              this.resetFormWithDefaultValues({
+                subjectId: questionPayload.subjectId,
+                topicId: questionPayload.topicId,
+                subtopicId: questionPayload.subtopicId             
+              });              
+            } else {
+              //);
+            }
           },
           error: (err) => {
             console.error('Hata oluştu:', err);

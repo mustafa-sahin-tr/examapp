@@ -29,7 +29,7 @@ export class TestService {
   }
 
   startTest( testInstanceId: number ): Observable<any> {
-    return this.http.put<any>(`/api/exam/start-test/${testInstanceId}`, null);
+    return this.http.post<any>(`/api/exam/start-test/${testInstanceId}`, null);
   }
 
   loadTest() {

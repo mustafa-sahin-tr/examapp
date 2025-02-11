@@ -27,7 +27,7 @@
   
   .answers-lite-container {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    // grid-template-columns: repeat(3, 1fr);
     gap: 10px;
     justify-content: center;
     align-items: stretch;
@@ -38,7 +38,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 10px;
+    // gap: 10px;
     text-align: left;
     border: 1px solid #ccc;
     border-radius: 8px;
@@ -75,6 +75,25 @@
     overflow-wrap: break-word;
     word-break: break-word;
     white-space: normal;
+    align-items: center;
+  }
+  
+
+  .answer-image {
+    width: 100%;
+    height: 100%;
+    max-width: 75px; /* 🔥 Resmin buton içindeki maksimum genişliği */
+    max-height: 75px; /* 🔥 Resmin buton içindeki maksimum yüksekliği */
+    object-fit: contain; /* 🔥 Resim tamamen butona sığsın */
+    border-radius: 4px;
+    display: block;
+  }
+
+  .question-number {
+    font-size: 18px;
+    font-weight: bold;
+    color: #d32f2f; /* Kırmızı renk */
+    margin-bottom: 8px;
   }
   
   

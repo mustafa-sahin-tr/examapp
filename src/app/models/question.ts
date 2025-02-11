@@ -23,4 +23,5 @@ export interface Question {
     topicId: number,
     subtTopicId: number,
     correctAnswer: number,
+    answerColCount: number
 }

@@ -1,9 +1,16 @@
 <mat-card class="question-lite-card" *ngIf="question">
     <div class="question-lite-container">
+
+      <!-- Soru Numarası -->
+      <div class="question-number">
+        {{ question.order }}.
+      </div>
+
       <!-- 🟢 Soru Başlığı ve Resmi -->
       <div class="question-lite-content">
         <div class="question-lite-text" [innerHTML]="question.text"></div>
         <img *ngIf="question.imageUrl" [src]="question.imageUrl" class="question-lite-image" />
+        <p *ngIf="question.subText" class="question-alt-text" [innerHTML]="question.subText"></p>
       </div>
   
       <!-- 🟢 Eğer Practice Test ise, cevabı otomatik göster -->
@@ -15,13 +22,13 @@
       </div>
   
       <!-- 🟢 Cevap Şıkları -->
-      <div *ngIf="!isPracticeTest" class="answers-lite-container">
+      <div *ngIf="!isPracticeTest" class="answers-lite-container" [ngStyle]="{'grid-template-columns': 'repeat('+ question.answerColCount +', 1fr)'}">
         <div *ngFor="let answer of question.answers; let i = index" class="answer-lite-box"
             [ngClass]="{ 'selected-answer': selectedAnswerIndex === i }"
             (click)="selectAnswer(i)">
-         <span class="answer-label">{{ getAnswerLabel(i) }}</span>
+              <span class="answer-label">{{ getAnswerLabel(i) }}</span>
                 <span class="answer-text">{{ answer.text }}</span>
-          
+                <img *ngIf="answer.imageUrl" [src]="answer.imageUrl" class="answer-image" />
         </div>
       </div>
     </div>

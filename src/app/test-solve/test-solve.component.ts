@@ -16,7 +16,7 @@ import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-v
   standalone: true,
   templateUrl: './test-solve.component.html',
   styleUrls: ['./test-solve.component.scss'],
-  imports: [QuestionViewComponent, CommonModule, MatToolbarModule, MatButtonModule, MatCardModule /* , QuestionLiteViewComponent */]
+  imports: [QuestionViewComponent, CommonModule, MatToolbarModule, MatButtonModule, MatCardModule , QuestionLiteViewComponent ]
 })
 export class TestSolveComponent implements OnInit, AfterViewInit {
   testInstanceId!: number;

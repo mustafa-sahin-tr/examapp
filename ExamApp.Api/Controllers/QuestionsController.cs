@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 [ApiController]
@@ -51,7 +52,8 @@ public class QuestionsController : ControllerBase
                     q.Passage.Text, 
                     q.Passage.ImageUrl
                 } : null,
-                q.CorrectAnswer
+                q.CorrectAnswer,
+                q.AnswerColCount
             })
             .FirstOrDefaultAsync();
 
@@ -61,6 +63,24 @@ public class QuestionsController : ControllerBase
         }
 
         return Ok(question);
+    }
+
+    bool IsBase64String(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return false;
+
+        // Base64 formatını tespit etmek için regex
+        string base64Pattern = @"^data:image\/(png|jpeg|jpg|gif|bmp|webp);base64,[A-Za-z0-9+/=]+$";
+        return Regex.IsMatch(input, base64Pattern);
+    }
+
+     bool IsValidImageUrl(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return false;
+
+        // URL olup olmadığını anlamak için regex
+        string urlPattern = @"^(http|https):\/\/.*\.(jpeg|jpg|png|gif|bmp|webp)(\?.*)?$";
+        return Regex.IsMatch(input, urlPattern, RegexOptions.IgnoreCase);
     }
 
     [HttpPost]
@@ -88,9 +108,10 @@ public class QuestionsController : ControllerBase
                 question.SubjectId = questionDto.SubjectId;
                 question.TopicId = questionDto.TopicId;
                 question.SubTopicId = questionDto.SubTopicId;
+                question.AnswerColCount = questionDto.AnswerColCount;
 
                 // 📌 Eğer yeni resim varsa, güncelle
-                if (!string.IsNullOrEmpty(questionDto.Image))
+                if (!string.IsNullOrEmpty(questionDto.Image) && IsBase64String(questionDto.Image)) 
                 {
                     byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
@@ -106,14 +127,14 @@ public class QuestionsController : ControllerBase
                     question.CorrectAnswer = 0;
                 }
                 else {
-                    foreach (var answerDto in questionDto.Answers)
+                    foreach (var answerDto in questionDto.Answers.Where(a => !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
                     {
                         var answer = new Answer
                         {
                             Text = answerDto.Text
                         };
 
-                        if (!string.IsNullOrEmpty(answerDto.Image))
+                        if (!string.IsNullOrEmpty(answerDto.Image)  && IsBase64String(answerDto.Image))
                         {
                             byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
                             await using var imageStream = new MemoryStream(imageBytes);
@@ -139,10 +160,11 @@ public class QuestionsController : ControllerBase
                     SubjectId = questionDto.SubjectId,
                     TopicId = questionDto.TopicId,
                     SubTopicId = questionDto.SubTopicId,
+                    AnswerColCount = questionDto.AnswerColCount
                 };
 
                 // 📌 Eğer resim varsa, MinIO'ya yükleyelim
-                if (!string.IsNullOrEmpty(questionDto.Image))
+                if (!string.IsNullOrEmpty(questionDto.Image) && IsBase64String(questionDto.Image))
                 {
                     byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
@@ -157,14 +179,15 @@ public class QuestionsController : ControllerBase
                     question.CorrectAnswer = 0;
                 }
                 else {
-                    foreach (var answerDto in questionDto.Answers)
+                    foreach (var answerDto in questionDto.Answers.Where(a => 
+                                !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
                     {
                         var answer = new Answer
                         {
                             Text = answerDto.Text
                         };
 
-                        if (!string.IsNullOrEmpty(answerDto.Image))
+                        if (!string.IsNullOrEmpty(answerDto.Image) && IsBase64String(answerDto.Image))
                         {
                             byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
                             await using var imageStream = new MemoryStream(imageBytes);

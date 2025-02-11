@@ -12,6 +12,7 @@ public class QuestionDto
     public List<AnswerDto>? Answers { get; set; }
     public bool IsExample { get; set; } = false;
     public string? PracticeCorrectAnswer { get; set; }    
+    public int AnswerColCount { get; set; } = 3;
 }
 
 public class AnswerDto

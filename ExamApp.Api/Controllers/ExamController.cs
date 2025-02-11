@@ -256,6 +256,7 @@ public class ExamController : ControllerBase
                         tiq.TestQuestion.Question.Passage?.ImageUrl
                     } : null,
                     tiq.TestQuestion.Question.PracticeCorrectAnswer,
+                    tiq.TestQuestion.Question.AnswerColCount,
                     Answers = tiq.TestQuestion.Question.Answers.Select(a => new
                     {
                         a.Id,

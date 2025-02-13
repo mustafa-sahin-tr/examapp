@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using ExamApp.Api.Data;
 
 
-public enum TestInstanceStatus
+public enum WorksheetInstanceStatus
 {
     Started = 0,   // 🟢 Test başladı
     Completed = 1, // ✅ Test tamamlandı
@@ -12,7 +12,7 @@ public enum TestInstanceStatus
 }
 
 
-public class TestInstance
+public class WorksheetInstance
 {
     [Key]
     public int Id { get; set; }
@@ -24,15 +24,15 @@ public class TestInstance
     public Student Student { get; set; }
 
     [Required]
-    public int TestId { get; set; }
+    public int WorksheetId { get; set; }
 
-    [ForeignKey("TestId")]
-    public Test Test { get; set; }
+    [ForeignKey("WorksheetId")]
+    public Worksheet Worksheet { get; set; }
 
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }
 
-    public ICollection<TestInstanceQuestion> TestInstanceQuestions { get; set; }
+    public ICollection<WorksheetInstanceQuestion> WorksheetInstanceQuestions { get; set; }
 
-    public TestInstanceStatus Status { get; set; } // 🟢 Test durumu
+    public WorksheetInstanceStatus Status { get; set; } // 🟢 Test durumu
 }

@@ -65,6 +65,56 @@ public class QuestionsController : ControllerBase
         return Ok(question);
     }
 
+    // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
+    [HttpGet("bytest/{testid}")]
+    public async Task<IActionResult> GetQuestionByTestId(int testid)
+    {
+        var questionList = await _context.TestQuestions
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.Answers)
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.Subject)
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.Passage)                        
+            .Where(tq => tq.TestId == testid)
+            .Select(tq => new
+            {                
+                tq.Question.Id,
+                tq.Question.Text,
+                tq.Question.SubText,
+                tq.Question.ImageUrl,
+                tq.Question.SubjectId,
+                tq.Question.TopicId,
+                tq.Question.SubTopicId,
+                CategoryName = tq.Question.Subject.Name,
+                tq.Question.Point,
+                Answers = tq.Question.Answers.Select(a => new
+                {
+                    a.Id,
+                    a.Text,
+                    a.ImageUrl
+                }).ToList(),
+                tq.Question.IsExample,
+                tq.Question.PracticeCorrectAnswer,
+                Passage = tq.Question.PassageId.HasValue ? new {
+                    tq.Question.Passage.Id,
+                    tq.Question.Passage.Title,
+                    tq.Question.Passage.Text, 
+                    tq.Question.Passage.ImageUrl
+                } : null,
+                tq.Question.CorrectAnswer,
+                tq.Question.AnswerColCount
+            })
+            .ToListAsync();
+
+        if (questionList == null)
+        {
+            return NotFound(new { message = "Soru bulunamadı!" });
+        }
+
+        return Ok(questionList);
+    }
+
     bool IsBase64String(string input)
     {
         if (string.IsNullOrEmpty(input)) return false;
@@ -144,7 +194,16 @@ public class QuestionsController : ControllerBase
                         question.Answers.Add(answer);
                     }
                 }
-                
+
+                if(questionDto.TestId.HasValue) {
+                    var questionExists = await _context.TestQuestions.FirstOrDefaultAsync(tq => tq.TestId == questionDto.TestId && tq.QuestionId == questionDto.Id);
+                    if(questionExists == null) {
+                        _context.TestQuestions.Add(new WorksheetQuestion {
+                            TestId = questionDto.TestId.Value,
+                            QuestionId = questionDto.Id.Value
+                        });
+                    }
+                }
 
                 _context.Questions.Update(question);
             }
@@ -198,6 +257,13 @@ public class QuestionsController : ControllerBase
                     }
                 }
                 _context.Questions.Add(question);
+
+                if(questionDto.TestId.HasValue) {
+                    _context.TestQuestions.Add(new WorksheetQuestion {
+                        TestId = questionDto.TestId.Value,
+                        Question = question
+                    });
+                }
             }
 
             // 📌 Değişiklikleri Kaydet

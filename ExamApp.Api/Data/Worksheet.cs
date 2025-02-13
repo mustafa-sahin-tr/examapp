@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using ExamApp.Api.Data;
 
 
-public class Test
+public class Worksheet
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -20,7 +20,7 @@ public class Test
     [ForeignKey("SubjectId")]
     public Subject Subject { get; set; }
     // Test içindeki sorular (Ara tablo ile ilişkilendirilecek)
-    public ICollection<TestQuestion> TestQuestions { get; set; } = new List<TestQuestion>();
+    public ICollection<WorksheetQuestion> WorksheetQuestions { get; set; } = new List<WorksheetQuestion>();
     public int MaxDurationSeconds { get; set; } // 🕒 Maksimum test süresi (saniye)
     public bool IsPracticeTest { get; set; } // True ise Çalışma Testi, False ise Normal Test
 

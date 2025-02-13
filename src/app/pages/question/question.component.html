@@ -1,0 +1,138 @@
+<div class="form-container">
+  <div class="form-column">
+    <mat-card class="question-card">
+      <mat-card-title>Soru Oluştur</mat-card-title>
+      <mat-card-content>
+        <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
+          <div class="form-container">
+
+            <!-- 🟢 Konu Seçimi (Ders seçilmeden disabled olacak) -->
+            <label for="test">Test</label>
+            <select id="test" formControlName="testId">
+              @for ( t of testList ; track t.id ) {
+                <option [value]="t.id">{{ t.name }}</option>
+              }
+            </select>
+             
+            <div class="form-column">
+              <!-- 🟢 Ders Seçimi -->
+              <label for="subject">Ders</label>
+              <select id="subject" formControlName="subjectId" (change)="onSubjectChange()">
+                @for ( subject of subjects ; track subject.id ) {
+                  <option [value]="subject.id">{{ subject.name }}</option>
+                }
+              </select>
+  
+              <!-- 🟢 Konu Seçimi (Ders seçilmeden disabled olacak) -->
+              <label for="topic">Konu</label>
+              <select id="topic" formControlName="topicId" (change)="onTopicChange()">
+                  @for ( topic of topics ; track topic.id ) {
+                    <option [value]="topic.id">{{ topic.name }}</option>
+                  }
+              </select>
+  
+              <!-- 🟢 Alt Konu Seçimi (Konu seçilmeden disabled olacak) -->
+              <label for="subTopic">Alt Konu</label>
+              <select id="subTopic" formControlName="subtopicId">
+                  @for ( subTopic of subTopics ; track subTopic.id ) {
+                    <option [value]="subTopic.id">{{ subTopic.name }}</option>
+                  }
+              </select>
+  
+              <!-- 🟢 Puan Belirleme -->
+              <label for="point">Puan</label>
+              <input type="number" id="point" formControlName="point" min="1" max="20" />
+  
+            </div>
+            <!-- 🟢 Sol Sütun -->
+            <div class="form-column">
+              <!-- 🟢 Soru Metni -->
+              <label for="text">Soru Metni</label>
+              <!-- <textarea id="text" formControlName="text"></textarea> -->
+              <quill-editor   id="text" formControlName="text" theme="snow"></quill-editor>
+  
+              <!-- 🟢 Soru Resmi -->
+              <label for="questionImage">Soru Resmi</label>
+              <input type="file" id="questionImage" (change)="onImageUploadForQuestion($event)" />
+              @if (questionForm.value.image) {
+                <img [src]="questionForm.value.image" class="preview-image" />
+              }
+  
+              <!-- 🟢 Soru Metni -->
+              <label for="subText">Soru Alt Metni</label>
+              <quill-editor   id="text" formControlName="subText" theme="snow"></quill-editor>
+              
+            </div>
+          </div>
+          <!-- 🟢 Örnek Soru Modu -->
+          <div class="example-checkbox">
+            <input type="checkbox" id="isExample" formControlName="isExample" />
+            <label for="isExample">Bu bir örnek soru mu?</label>
+          </div>
+          <!-- 🟢 Örnek Soru Cevabı -->
+           @if (questionForm.value.isExample) {
+            <label for="practiceCorrectAnswer">Doğru Cevap</label>
+            <quill-editor id="text" formControlName="practiceCorrectAnswer" theme="snow"></quill-editor>
+          }
+          
+    
+          <!-- 🟢 Cevap Şıkları -->
+           @if(!questionForm.value.isExample) {           
+            <div >
+              <h3>Cevap Şıkları</h3>
+              <label for="answerCol">Şıklar Kaç Kolonda Gösterilmeli</label>
+              <input type="number" id="answerCol" formControlName="answerColCount" min="1" max="5" />
+              
+              @for (answer of answers.controls ; track answer.value; let i = $index) 
+              {
+                <div>
+                  <div class="answer-row">
+                    <span class="answer-label">{{ getAnswerLabel(i) }}</span>
+                  
+                    <div class="correct-answer-container">
+                      <input type="radio" formControlName="correctAnswer" [value]="i" id="correctAnswer-{{i}}" />
+                      <label for="correctAnswer-{{i}}">Doğru Cevap</label>  
+                    </div>
+                    
+                    @if (answers.length > 2) {
+                      <button mat-icon-button color="warn" (click)="removeAnswer(i)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    }
+                  
+                    <div class="answer-content">
+                      <input id="answer-{{i}}" type="text" [formControl]="getFormControl(answer.get('text'))" />
+                      <div class="image-upload">
+                        <input type="file" (change)="onImageUpload($event,'image', i)" />
+                        @if (answer.value.image) {
+                          <img [src]="answer.value.image" class="preview-image" />
+                        }
+                      </div>
+                    </div>                  
+                  </div>
+                </div>  
+                } 
+                <!-- 🟢 Şık Ekle Butonu -->
+              <button mat-icon-button color="primary" (click)="addAnswer()">
+                <mat-icon>add</mat-icon>Ekle
+              </button>        
+            </div>
+            <!-- Navigasyon Butonları -->
+        }
+      <div class="navigation-buttons">
+        <button mat-raised-button color="primary" class="full-width" type="submit">
+          Kaydet
+        </button>
+  
+        <button mat-raised-button color="primary" class="full-width" type="button" (click)="onSaveAndNew()">
+          Kaydet ve Yeni Soru
+        </button>
+      </div>
+        </form>
+      </mat-card-content>
+    </mat-card>  
+  </div>
+  <div class="form-column-2">
+    <app-question-list [questions]="testInstance.testInstanceQuestions" [testId]="questionForm.value.testId"></app-question-list>    
+  </div>
+</div>

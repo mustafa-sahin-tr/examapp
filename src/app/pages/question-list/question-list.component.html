@@ -1,0 +1,15 @@
+<div class="question-lite-container">    
+    @for (q of questions; track q.id; let i = $index) {
+    <div> 
+        <div class="question-container">
+            <div class="question-number">
+                {{ q.order }}.
+            </div>
+            <app-question-lite-view class="question-lite-card"
+                [question]="q.question" 
+                [isPracticeTest]="isPracticeTest">
+            </app-question-lite-view>
+        </div> 
+    </div>
+    }
+</div>

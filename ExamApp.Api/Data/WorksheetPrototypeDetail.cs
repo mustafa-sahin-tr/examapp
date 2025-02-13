@@ -1,16 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-public class TestPrototypeDetail
+public class WorksheetPrototypeDetail
 {
     [Key]
     public int Id { get; set; }
 
     [Required]
-    public int TestPrototypeId { get; set; }
+    public int WorksheetPrototypeId { get; set; }
 
-    [ForeignKey("TestPrototypeId")]
-    public TestPrototype TestPrototype { get; set; }
+    [ForeignKey("WorksheetPrototypeId")]
+    public WorksheetPrototype WorksheetPrototype { get; set; }
 
     [Required]
     public int SubjectId { get; set; }

@@ -32,7 +32,7 @@ public class Question
     public int DifficultyLevel { get; set; } = 1; // 1-10 arasında zorluk seviyesi
 
     // Bir soru birçok teste ait olabilir
-    public ICollection<TestQuestion> TestQuestions { get; set; } = new List<TestQuestion>();
+    public ICollection<WorksheetQuestion> WorksheetQuestions { get; set; } = new List<WorksheetQuestion>();
 
     public ICollection<Answer> Answers { get; set; } = new List<Answer>();  // Şıklar
 

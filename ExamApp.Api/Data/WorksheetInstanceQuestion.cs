@@ -2,22 +2,22 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ExamApp.Api.Data;
 
-public class TestInstanceQuestion
+public class WorksheetInstanceQuestion
 {
     [Key]
     public int Id { get; set; }
 
     [Required]
-    public int TestInstanceId { get; set; }
+    public int WorksheetInstanceId { get; set; }
 
-    [ForeignKey("TestInstanceId")]
-    public TestInstance TestInstance { get; set; }
+    [ForeignKey("WorksheetInstanceId")]
+    public WorksheetInstance WorksheetInstance { get; set; }
 
     [Required]
-    public int TestQuestionId { get; set; }
+    public int WorksheetQuestionId { get; set; }
 
-    [ForeignKey("TestQuestionId")]
-    public TestQuestion TestQuestion { get; set; }
+    [ForeignKey("WorksheetQuestionId")]
+    public WorksheetQuestion WorksheetQuestion { get; set; }
 
     public int? SelectedAnswerId { get; set; }
 

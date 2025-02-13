@@ -166,10 +166,10 @@ namespace ExamApp.Api.Controllers
                         .Take(5)
                         .Select(ti => new
                         {
-                            ti.Test.Name,
+                            ti.Worksheet.Name,
                             ti.StartTime,
-                            Score = ti.TestInstanceQuestions.Count(tiq => tiq.IsCorrect) * 10, // 10 puan üzerinden hesaplama
-                            TotalQuestions = ti.TestInstanceQuestions.Count()
+                            Score = ti.WorksheetInstanceQuestions.Count(tiq => tiq.IsCorrect) * 10, // 10 puan üzerinden hesaplama
+                            TotalQuestions = ti.WorksheetInstanceQuestions.Count()
                         })
                         .ToList()
                 })

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-public class TestPrototype
+public class WorksheetPrototype
 {
     [Key]
     public int Id { get; set; }
@@ -19,5 +19,5 @@ public class TestPrototype
     [Required]
     public int DifficultyLevel { get; set; } // 1-10 arasında zorluk seviyesi
 
-    public ICollection<TestPrototypeDetail> TestPrototypeDetails { get; set; }
+    public ICollection<WorksheetPrototypeDetail> WorksheetPrototypeDetails { get; set; }
 }

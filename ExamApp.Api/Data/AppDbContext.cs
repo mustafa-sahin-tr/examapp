@@ -10,19 +10,19 @@ public class AppDbContext : DbContext
     public DbSet<Student> Students { get; set; } // Öğrenci tablosu
     public DbSet<Teacher> Teachers { get; set; } // Öğretmen tablosu
     public DbSet<Parent> Parents { get; set; } // Veli tablosu
-    public DbSet<Test> Tests { get; set; }
+    public DbSet<Worksheet> Worksheets { get; set; }
     public DbSet<Question> Questions { get; set; }
     public DbSet<Answer> Answers { get; set; }
-    public DbSet<TestQuestion> TestQuestions { get; set; }
+    public DbSet<WorksheetQuestion> TestQuestions { get; set; }
     public DbSet<Grade> Grades { get; set; }
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<GradeSubject> GradeSubjects { get; set; }
     public DbSet<Topic> Topics { get; set; }
     public DbSet<SubTopic> SubTopics { get; set; }
-    public DbSet<TestInstance> TestInstances { get; set; }
-    public DbSet<TestInstanceQuestion> TestInstanceQuestions { get; set; }
-    public DbSet<TestPrototype> TestPrototypes { get; set; }
-    public DbSet<TestPrototypeDetail> TestPrototypeDetail { get; set; }
+    public DbSet<WorksheetInstance> TestInstances { get; set; }
+    public DbSet<WorksheetInstanceQuestion> TestInstanceQuestions { get; set; }
+    public DbSet<WorksheetPrototype> TestPrototypes { get; set; }
+    public DbSet<WorksheetPrototypeDetail> TestPrototypeDetail { get; set; }
 
     public DbSet<StudentPoint> StudentPoints { get; set; }
     public DbSet<StudentPointHistory> StudentPointHistories { get; set; }
@@ -141,14 +141,14 @@ public class AppDbContext : DbContext
             .WithMany(q => q.Answers)
             .HasForeignKey(a => a.QuestionId);
 
-        modelBuilder.Entity<TestQuestion>()
-            .HasOne(tq => tq.Test)
-            .WithMany(t => t.TestQuestions)
+        modelBuilder.Entity<WorksheetQuestion>()
+            .HasOne(tq => tq.Worksheet)
+            .WithMany(t => t.WorksheetQuestions)
             .HasForeignKey(tq => tq.TestId);
 
-        modelBuilder.Entity<TestQuestion>()
+        modelBuilder.Entity<WorksheetQuestion>()
             .HasOne(tq => tq.Question)
-            .WithMany(q => q.TestQuestions)
+            .WithMany(q => q.WorksheetQuestions)
             .HasForeignKey(tq => tq.QuestionId);
 
 

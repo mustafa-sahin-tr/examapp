@@ -8,8 +8,8 @@ import { provideStore } from '@ngrx/store';
 import { reducers } from './state/app.state';
 import { ReactiveFormsModule } from '@angular/forms';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { authInterceptor } from './interceptors/auth.interceptor';
-import { authErrorInterceptor } from './interceptors/auth-error.interceptor';
+import { authInterceptor } from './shared/interceptors/auth.interceptor';
+import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
 
 
 export const appConfig: ApplicationConfig = {

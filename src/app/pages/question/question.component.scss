@@ -1,0 +1,191 @@
+.question-card {
+    max-width: 960px;
+    margin: 40px auto;
+    padding: 20px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: white;
+  }
+  
+  mat-card-title {
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+    padding-bottom: 10px;
+    color: #1976d2; // Material Blue
+  }
+
+  .form-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  .form-column {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .form-column-2 {
+    flex: 2;
+    min-width: 250px;
+  }
+  
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  
+  textarea,
+  input[type="text"],
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+  }
+  
+  textarea:focus,
+  input:focus,
+  select:focus {
+    border-color: #1976d2;
+    outline: none;
+    box-shadow: 0px 0px 5px rgba(25, 118, 210, 0.5);
+  }
+  
+  h3 {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    color: #444;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 5px;
+  }
+  
+  /* 🟢 Resim Yükleme Alanı */
+  .file-upload-container {
+    border: 2px dashed #1976d2;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  .file-upload-container:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+  }
+  
+  .file-upload-container input {
+    display: none;
+  }
+  
+  .file-upload-container p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #1976d2;
+  }
+  
+  /* 🟢 Resim Önizleme */
+  .preview-image {
+    max-width: 100px;
+    max-height: 100px;
+    display: block;
+    margin-top: 10px;
+    border-radius: 4px;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  }
+
+  .navigation-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+  }
+  
+  /* 🟢 Buton */
+  button {
+    padding: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 4px;
+    border: none;
+    background-color: #1976d2;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  
+  button:hover {
+    background-color: #135ba1;
+  }
+  
+  button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+  .answer-row {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between elements */
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap; /* Allows elements to wrap to the next line */
+  }
+  
+  .answer-label {
+    font-weight: bold;
+    min-width: 30px; /* Ensures it stays in place */
+    text-align: left;
+  }
+  
+  .correct-answer-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center; /* Centers the "Correct Answer" label */
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .answer-content {
+    display: flex;
+    flex-direction: column; /* Puts input and image upload on a new line */
+    width: 100%;
+  }
+  
+  .answer-content input[type="text"] {
+    width: 100%; /* Kenarlardan taşmayı önler */
+    max-width: 100%; /* Çok genişlemeyi önler */
+    box-sizing: border-box; /* Border ve padding’in genişliği artırmasını engeller */
+    padding: 6px;
+    font-size: 14px;
+  }
+
+  .image-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .preview-image {
+    max-width: 50px;
+    max-height: 50px;
+    border-radius: 4px;
+  }
+  
+  button {
+    margin-left: auto; /* Pushes the delete button to the far right */
+  }
+  

@@ -1,21 +1,20 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({providedIn: 'root'})
+
 export class AuthService {
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private tokenKey = 'auth_token';
   private roleKey = 'user_role';
   private avatarKey = 'user_avatar';
-  private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
+
+  isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable(); // 🟢 Diğer bileşenler bunu subscribe edebilir
-
-  constructor(private http: HttpClient, private router: Router) {}
-
   
 
   register(userData: any): Observable<any> {

@@ -22,4 +22,8 @@ export class QuestionService {
   get(questionId: number): Observable<Question> {
     return this.http.get<Question>(`${this.apiUrl}/${questionId}`);
   }
+
+  getAll(testId: number | undefined ): Observable<Question[]> {
+    return this.http.get<Question[]>(`${this.apiUrl}/bytest/${testId}`);
+  }
 }

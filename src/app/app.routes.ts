@@ -1,25 +1,29 @@
 import { Routes } from '@angular/router';
+import { RegisterComponent } from './pages/register/register.component';
+import { LoginComponent } from './pages/login/login.component';
+import { StudentRegisterComponent } from './pages/student-register/student-register.component';
+import { authGuard } from './shared/guards/auth.guard';
+import { QuestionComponent } from './pages/question/question.component';
+import { QuestionViewComponent } from './pages/question-view/question-view.component';
+import { TestSolveComponent } from './pages/test-solve/test-solve.component';
+import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
+import { TestListComponent } from './pages/test-list/test-list.component';
+import { TestCreateComponent } from './pages/test-create/test-create.component';
 import { HomeComponent } from './home/home.component';
-import { RegisterComponent } from './register/register.component';
-import { LoginComponent } from './login/login.component';
-import { StudentRegisterComponent } from './student-register/student-register.component';
-import { AuthGuard } from './guards/auth.guard';
-import { QuestionComponent } from './question/question.component';
-import { QuestionViewComponent } from './question-view/question-view.component';
-import { TestSolveComponent } from './test-solve/test-solve.component';
-import { StudentProfileComponent } from './student-profile/student-profile.component';
-import { TestListComponent } from './test-list/test-list.component';
 
 export const routes: Routes = [
   { path: 'register', component: RegisterComponent },
   { path: 'login', component: LoginComponent },
-  { path: 'home', component: HomeComponent , canActivate: [AuthGuard]},
-  { path: 'student-register', component: StudentRegisterComponent, canActivate: [AuthGuard] },
-  { path: 'question/:id', component: QuestionComponent, canActivate: [AuthGuard] },
-  { path: 'question', component: QuestionComponent, canActivate: [AuthGuard] },
-  { path: 'tests', component: TestListComponent, canActivate: [AuthGuard] },
-  { path: 'questions/view', component: QuestionViewComponent, canActivate: [AuthGuard] },
-  { path: 'test/:testInstanceId', component: TestSolveComponent, canActivate: [AuthGuard] },  // 🆕 Test çözme sayfası
-  { path: 'student-profile', component: StudentProfileComponent, canActivate: [AuthGuard] },  // 🆕 Test çözme sayfası
+  { path: 'home', component: HomeComponent , canActivate: [authGuard]},
+
+  { path: 'student-register', component: StudentRegisterComponent, canActivate: [authGuard] },
+  { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard] },
+  { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
+  { path: 'tests', component: TestListComponent, canActivate: [authGuard] },
+  { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
+  { path: 'test/:testInstanceId', component: TestSolveComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'exam', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'exam/:id', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: '**', redirectTo: 'login' }
 ];

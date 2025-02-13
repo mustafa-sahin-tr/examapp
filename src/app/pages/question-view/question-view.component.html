@@ -1,0 +1,53 @@
+@if(question) {
+<mat-card class="question-card">
+    <div class="question-container">
+     <!-- 🟢 Soru Resmi ve Metni -->
+      @if(question.passage && question.passage.text) {
+        <h2>{{ question.passage.text }}</h2>
+        @if(question.passage.imageUrl) {
+          <img [src]="question.passage.imageUrl" class="question-image" />
+        }
+        @if(question.passage.title) {
+          <p class="question-alt-text">{{ question.passage.title }}</p> <!-- Alt Text için özel stil -->
+        }
+      }
+     
+      <!-- 🟢 Soru Resmi ve Metni -->
+      <div class="question-content">
+        <div class="question-text" [innerHTML]="question.text"></div>
+        @if(question.imageUrl) {
+          <img [src]="question.imageUrl" class="question-image" />
+        }
+        @if(question.subText && !question.passage) {
+          <p class="question-alt-text" [innerHTML]="question.subText"></p> <!-- Alt Text için özel stil -->
+        }
+      </div>
+  
+      @if(isPracticeTest) {
+        <div>        
+          <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>   
+          @if(correctAnswerVisible || question.isExample) {
+            <div class="correct-answer" [innerHTML]="question.practiceCorrectAnswer"></div>
+          } 
+        </div>
+      } @else {
+        <div class="answers-container">
+          @for ( answer of question.answers; track answer.id; let i = $index) {
+          <div class="answer-box" (click)="selectAnswer(i)"
+                  [ngClass]="{ 'selected-answer': selectedAnswerIndex === i }">
+            <span class="answer-label">{{ getAnswerLabel(i) }}</span>
+            <button mat-raised-button class="answer-btn"
+              [ngClass]="{ 'correct': isCorrect(i), 'wrong': isWrong(i) }">
+              @if(answer.imageUrl) {
+                <img [src]="answer.imageUrl" class="answer-image" />
+              }
+              <span>{{ answer.text }}</span>
+            </button>
+          </div>
+          }
+        </div>
+       }
+      
+    </div> 
+  </mat-card>
+}

@@ -34,3 +34,12 @@ export interface Exam {
     instanceStatus : TestStatus;
     testInstanceId: number;
 }
+
+export interface   Test {
+    id: number | null;
+    name: string;
+    description: string;
+    gradeId: number;
+    maxDurationSeconds: number;
+    isPracticeTest: boolean;    
+}

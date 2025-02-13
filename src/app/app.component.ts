@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { AppHeaderComponent } from './app-header/app-header.component';
+import { AppHeaderComponent } from './shared/components/app-header/app-header.component';
 import { CommonModule } from '@angular/common';
 
 @Component({

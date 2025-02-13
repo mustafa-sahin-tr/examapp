@@ -1,0 +1,48 @@
+<mat-card class="test-create-card">
+    <mat-card-title>Yeni Test Oluştur</mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="testForm" (ngSubmit)="onSubmit()">
+  
+        <!-- Test Adı -->
+        <mat-form-field appearance="outline">
+          <mat-label>Test Adı</mat-label>
+          <input matInput formControlName="name" required />
+        </mat-form-field>
+  
+        <!-- Test Açıklaması -->
+        <mat-form-field appearance="outline">
+          <mat-label>Açıklama</mat-label>
+          <textarea matInput formControlName="description"></textarea>
+        </mat-form-field>
+  
+        <!-- Sınıf Seçimi -->
+        <mat-form-field appearance="outline">
+          <mat-label>Sınıf</mat-label>
+          <mat-select formControlName="gradeId" required>
+            @for (grade of grades; track grade.id) {
+              <mat-option [value]="grade.id">
+                {{ grade.name }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+  
+        <!-- Süre Seçimi -->
+        <mat-form-field appearance="outline">
+          <mat-label>Test Süresi (Dakika)</mat-label>
+          <input matInput type="number" formControlName="maxDurationMinutes" min="1" />
+        </mat-form-field>
+  
+        <!-- Çalışma Testi Mi? -->
+        <mat-checkbox formControlName="isPracticeTest">Bu bir çalışma testi mi?</mat-checkbox>
+  
+        <!-- Butonlar -->
+        <div class="button-group">
+          <button mat-raised-button color="primary" type="submit" [disabled]="testForm.invalid">Kaydet</button>
+          <button mat-raised-button color="warn" type="button" (click)="navigateToTestList()">İptal</button>
+        </div>
+  
+      </form>
+    </mat-card-content>
+  </mat-card>
+  

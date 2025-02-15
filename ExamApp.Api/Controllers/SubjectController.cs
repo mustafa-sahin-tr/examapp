@@ -1,3 +1,4 @@
+using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,13 +7,13 @@ using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/subject")]
-public class SubjectController : ControllerBase
+public class SubjectController : BaseController
 {
-    private readonly AppDbContext _context;
 
     public SubjectController(AppDbContext context)
+        : base(context)
     {
-        _context = context;
+        
     }
 
     [HttpGet]

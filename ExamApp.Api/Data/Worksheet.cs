@@ -24,5 +24,11 @@ public class Worksheet
     public int MaxDurationSeconds { get; set; } // 🕒 Maksimum test süresi (saniye)
     public bool IsPracticeTest { get; set; } // True ise Çalışma Testi, False ise Normal Test
 
+    public string? Subtitle { get; set; }
+
+    public string? ImageUrl { get; set; }
+
+    public string? BadgeText { get; set; }
+
     
 }

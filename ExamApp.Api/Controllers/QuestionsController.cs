@@ -1,4 +1,7 @@
+using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -8,15 +11,17 @@ using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/questions")]
-public class QuestionsController : ControllerBase
+public class QuestionsController : BaseController
 {
-    private readonly AppDbContext _context;
     private readonly IMinIoService _minioService;
 
-    public QuestionsController(AppDbContext context, IMinIoService minioService)
-    {
-        _context = context;
+    private readonly ImageHelper _imageHelper;  
+
+    public QuestionsController(AppDbContext context, IMinIoService minioService, ImageHelper imageHelper)
+        : base(context)
+    {        
         _minioService = minioService;
+        _imageHelper = imageHelper;
     }
 
     // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
@@ -115,25 +120,10 @@ public class QuestionsController : ControllerBase
         return Ok(questionList);
     }
 
-    bool IsBase64String(string input)
-    {
-        if (string.IsNullOrEmpty(input)) return false;
 
-        // Base64 formatını tespit etmek için regex
-        string base64Pattern = @"^data:image\/(png|jpeg|jpg|gif|bmp|webp);base64,[A-Za-z0-9+/=]+$";
-        return Regex.IsMatch(input, base64Pattern);
-    }
-
-     bool IsValidImageUrl(string input)
-    {
-        if (string.IsNullOrEmpty(input)) return false;
-
-        // URL olup olmadığını anlamak için regex
-        string urlPattern = @"^(http|https):\/\/.*\.(jpeg|jpg|png|gif|bmp|webp)(\?.*)?$";
-        return Regex.IsMatch(input, urlPattern, RegexOptions.IgnoreCase);
-    }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] QuestionDto questionDto)
     {
         try
@@ -153,15 +143,15 @@ public class QuestionsController : ControllerBase
 
                 question.Text = questionDto.Text;
                 question.SubText = questionDto.SubText;
-                question.Point = questionDto.Point;
-                question.CorrectAnswer = questionDto.CorrectAnswer;
+                question.Point = questionDto.Point;                
                 question.SubjectId = questionDto.SubjectId;
                 question.TopicId = questionDto.TopicId;
                 question.SubTopicId = questionDto.SubTopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
 
                 // 📌 Eğer yeni resim varsa, güncelle
-                if (!string.IsNullOrEmpty(questionDto.Image) && IsBase64String(questionDto.Image)) 
+                if (!string.IsNullOrEmpty(questionDto.Image) && 
+                    _imageHelper.IsBase64String(questionDto.Image)) 
                 {
                     byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
@@ -173,8 +163,7 @@ public class QuestionsController : ControllerBase
                 if(questionDto.IsExample) // eğer is Example ise answer olmasına gerek yok 
                 {
                     question.IsExample = true;
-                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;
-                    question.CorrectAnswer = 0;
+                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;                    
                 }
                 else {
                     foreach (var answerDto in questionDto.Answers.Where(a => !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
@@ -184,7 +173,8 @@ public class QuestionsController : ControllerBase
                             Text = answerDto.Text
                         };
 
-                        if (!string.IsNullOrEmpty(answerDto.Image)  && IsBase64String(answerDto.Image))
+                        if (!string.IsNullOrEmpty(answerDto.Image)  && 
+                            _imageHelper.IsBase64String(answerDto.Image))
                         {
                             byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
                             await using var imageStream = new MemoryStream(imageBytes);
@@ -192,6 +182,10 @@ public class QuestionsController : ControllerBase
                         }
 
                         question.Answers.Add(answer);
+                        if(answerDto.IsCorrect) {
+                            question.CorrectAnswer = answer;
+                        }
+                        
                     }
                 }
 
@@ -214,8 +208,7 @@ public class QuestionsController : ControllerBase
                 {
                     Text = questionDto.Text,
                     SubText = questionDto.SubText,
-                    Point = questionDto.Point,
-                    CorrectAnswer = questionDto.CorrectAnswer,
+                    Point = questionDto.Point,                    
                     SubjectId = questionDto.SubjectId,
                     TopicId = questionDto.TopicId,
                     SubTopicId = questionDto.SubTopicId,
@@ -223,7 +216,8 @@ public class QuestionsController : ControllerBase
                 };
 
                 // 📌 Eğer resim varsa, MinIO'ya yükleyelim
-                if (!string.IsNullOrEmpty(questionDto.Image) && IsBase64String(questionDto.Image))
+                if (!string.IsNullOrEmpty(questionDto.Image) &&
+                    _imageHelper.IsBase64String(questionDto.Image))
                 {
                     byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
@@ -235,7 +229,6 @@ public class QuestionsController : ControllerBase
                 {
                     question.IsExample = true;
                     question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;
-                    question.CorrectAnswer = 0;
                 }
                 else {
                     foreach (var answerDto in questionDto.Answers.Where(a => 
@@ -246,7 +239,8 @@ public class QuestionsController : ControllerBase
                             Text = answerDto.Text
                         };
 
-                        if (!string.IsNullOrEmpty(answerDto.Image) && IsBase64String(answerDto.Image))
+                        if (!string.IsNullOrEmpty(answerDto.Image) && 
+                               _imageHelper.IsBase64String(answerDto.Image))
                         {
                             byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
                             await using var imageStream = new MemoryStream(imageBytes);
@@ -254,6 +248,10 @@ public class QuestionsController : ControllerBase
                         }
 
                         question.Answers.Add(answer);
+                        question.Answers.Add(answer);
+                        if(answerDto.IsCorrect) {
+                            question.CorrectAnswer = answer;
+                        }
                     }
                 }
                 _context.Questions.Add(question);

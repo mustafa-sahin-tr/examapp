@@ -9,15 +9,14 @@ namespace ExamApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController : BaseController
     {
-        private readonly AppDbContext _context;
         private readonly IJwtService _jwtService;
 
 
         public AuthController(AppDbContext context, IJwtService jwtService)
+            : base(context)
         {
-            _context = context;
             _jwtService = jwtService;
         }
 
@@ -50,7 +49,11 @@ namespace ExamApp.Api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto request)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var user = await _context.Users
+                .Include(u => u.Student)
+                .Include(u => u.Teacher)
+                .Include(u => u.Parent)
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
                 return Unauthorized("Invalid email or password.");

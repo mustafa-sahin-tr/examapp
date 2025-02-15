@@ -16,4 +16,10 @@ public class ExamDto
     public required int MaxDurationSeconds { get; set; }
 
     public bool IsPracticeTest { get; set; }
+
+    public string? Subtitle { get; set; }
+
+    public string? ImageUrl { get; set; }
+
+    public string? BadgeText { get; set; }
 }

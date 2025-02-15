@@ -7,32 +7,30 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.Globalization;
+using ExamApp.Api.Helpers;
+using ExamApp.Api.Controllers;
 
 [Route("api/worksheet")]
 [ApiController]
-public class ExamController : ControllerBase
+public class ExamController : BaseController
 {
-    private readonly AppDbContext _context;
+    private readonly ImageHelper _imageHelper;
 
-    public ExamController(AppDbContext context)
+    private readonly IMinIoService _minioService;
+    public ExamController(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService)
+        : base(context)
     {
-        _context = context;
+        _imageHelper = imageHelper;
+        _minioService = minioService;
     }
+    
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetWorksheet(int id)
     {
         var test = await _context.Worksheets  
-            .Where(t => t.Id == id)          
-            .Select(t => new
-            {
-                t.Id,
-                t.Name,
-                t.Description,
-                t.IsPracticeTest,
-                t.MaxDurationSeconds,
-                t.GradeId                
-            })
+            .Where(t => t.Id == id)                      
             .FirstOrDefaultAsync();
 
         if (test == null) return NotFound();
@@ -44,18 +42,19 @@ public class ExamController : ControllerBase
     [HttpGet]    
     public async Task<IActionResult> GetWorksheetAndInstancessAsync(int gradeId)
     {
-         // 🔹 Token’dan UserId'yi al
+         // 🔹 Get UserId from the token"
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userIdClaim == null)
         {
-            return BadRequest("User ID claim not found.");
+            return Unauthorized();
         }
-        var userId = int.Parse(userIdClaim);
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
+        if (!int.TryParse(userIdClaim, out var userId))
         {
-            return BadRequest("Invalid User ID or User is not a Student.");
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return BadRequest("Invalid User ID or User is not a Student.");
+            }
         }
 
         var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
@@ -72,12 +71,16 @@ public class ExamController : ControllerBase
                 join testInstance in _context.TestInstances
                 on test.Id equals testInstance.WorksheetId into testGroup
                 from tg in testGroup.DefaultIfEmpty()
+                join tiq in _context.TestInstanceQuestions on tg.Id equals tiq.WorksheetInstanceId 
                 where test.GradeId == student.GradeId
                 select new
                 {
                     test.Id,
                     test.Name,
                     test.Description,
+                    test.ImageUrl,
+                    tg.EndTime,
+                    
                     test.MaxDurationSeconds,
                     TotalQuestions = test.WorksheetQuestions.Count,
                     InstanceStatus = tg != null ? (int?)tg.Status : -1,
@@ -88,25 +91,158 @@ public class ExamController : ControllerBase
         return Ok(response);
     }
 
-    // 🟢 GET /api/exam/tests - Sınıfa ait sınavları getir
-    [Authorize]
-    [HttpGet("list")]    
-    public async Task<IActionResult> GetWorksheetsAsync(int gradeId)
+    [HttpGet("CompletedTests")]    
+    [AuthorizeRole(UserRole.Student)]
+    public async Task<IActionResult> GetCompletedTests(int pageNumber = 1, int pageSize = 10)
     {
-        var tests = await _context.Worksheets  
-            .Select(t => new
+        var query = await _context.TestInstances
+            .Where(wi => wi.StudentId == AuthenticatedStudentId && wi.Status == WorksheetInstanceStatus.Completed)
+            .Select(wi => new
             {
-                t.Id,
-                t.Name,
-                t.Description,
-                t.IsPracticeTest,
-                t.MaxDurationSeconds,
-                t.GradeId                
-            })          
+                wi.Id,
+                wi.Worksheet.Name,
+                wi.Worksheet.ImageUrl,
+                wi.EndTime,
+                wi.StartTime,
+                TotalQuestions = wi.WorksheetInstanceQuestions.Count(),
+
+                // Doğru cevapları hesapla (SelectedAnswerId == CorrectAnswerId)
+                CorrectAnswers = wi.WorksheetInstanceQuestions.Count(wiq =>
+                    wiq.SelectedAnswerId != null &&
+                    wi.Worksheet.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                        && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId)
+                ),
+
+                // Yanlış cevapları hesapla
+                WrongAnswers = wi.WorksheetInstanceQuestions.Count(wiq =>
+                    wiq.SelectedAnswerId != null &&
+                    wi.Worksheet.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                        && wq.Question.CorrectAnswerId != wiq.SelectedAnswerId)
+                )
+            })
+            .ToListAsync(); // 🔥 Burada `ToListAsync()` çağırarak veriyi hafızaya alıyoruz.
+
+        // 🔥 EF Core ile `DurationMinutes` hesaplaması yapılmadığı için C# tarafında işliyoruz.
+        var results = query.Select(wi => new CompletedTestDto
+        {
+            Id = wi.Id,
+            Name = wi.Name,
+            ImageUrl = wi.ImageUrl,
+            CompletedDate = wi.EndTime ?? DateTime.UtcNow,
+
+            // ✅ C# tarafında farkı hesaplıyoruz.
+            DurationMinutes = wi.EndTime.HasValue ? 
+                (int)(wi.EndTime.Value - wi.StartTime).TotalMinutes : 0,
+
+            TotalQuestions = wi.TotalQuestions,
+            CorrectAnswers = wi.CorrectAnswers,
+            WrongAnswers = wi.WrongAnswers,
+            Score = (wi.CorrectAnswers * 100) / (wi.TotalQuestions > 0 ? wi.TotalQuestions : 1) // Bölme hatası olmaması için
+        }).OrderByDescending(wi => wi.CompletedDate)
+        .Skip((pageNumber - 1) * pageSize)
+        .Take(pageSize)
+        .ToList();
+
+        return Ok(new { totalCount = results.Count, items = results, pageNumber, pageSize });
+    }
+
+
+
+    [HttpGet("list")]    
+    public async Task<IActionResult> GetWorksheetsAsync(string? search = null, int pageNumber = 1, int pageSize = 10)
+    {
+         // 🔹 Token’dan UserId'yi al
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return Unauthorized();
+        }
+        var userId = int.Parse(userIdClaim);
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null || user.Role != UserRole.Student)
+        {
+            return BadRequest("Invalid User ID or User is not a Student.");
+        }
+
+        var query = _context.Worksheets.AsQueryable();
+        if (!string.IsNullOrEmpty(search))
+        {
+            string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));
+            query = query.Where(t => 
+                EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
+                EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%")
+            );
+        }
+
+        var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
+
+        var tests = await query
+            .OrderBy(t => t.Name) // Sıralama için
+            .Skip((pageNumber - 1) * pageSize) // Sayfalama için
+            .Take(pageSize)            
             .ToListAsync();
 
-        return Ok(tests);
+        return Ok(new Paged<Worksheet>
+        {
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            Items = tests
+        });
     }
+
+
+
+    // [HttpGet("list")]
+    // public async Task<IActionResult> GetWorksheetsAsync(string? search = null)
+    // {
+    //     var query = _context.Worksheets.AsQueryable();            
+
+    //     if (!string.IsNullOrEmpty(search))
+    //     {
+    //         string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));
+    //         query = query.Where(t => 
+    //             EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
+    //             EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%")
+    //         );
+    //     }
+
+    //     var tests = await query
+    //         .Select(t => new
+    //         {
+    //             t.Id,
+    //             t.Name,
+    //             t.Description,
+    //             t.IsPracticeTest,
+    //             t.MaxDurationSeconds,
+    //             t.GradeId
+    //         })
+    //         .ToListAsync();
+
+    //     return Ok(tests);
+    // }
+
+
+    // // 🟢 GET /api/exam/tests - Sınıfa ait sınavları getir
+    // [Authorize]
+    // [HttpGet("list")]    
+    // public async Task<IActionResult> GetWorksheetsAsync(int gradeId)
+    // {
+    //     var tests = await _context.Worksheets  
+    //         .Select(t => new
+    //         {
+    //             t.Id,
+    //             t.Name,
+    //             t.Description,
+    //             t.IsPracticeTest,
+    //             t.MaxDurationSeconds,
+    //             t.GradeId                
+    //         })          
+    //         .ToListAsync();
+
+    //     return Ok(tests);
+    // }
 
 
     // 🟢 GET /api/exam/questions - Sınav için soruları getir
@@ -155,7 +291,7 @@ public class ExamController : ControllerBase
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userIdClaim == null)
         {
-            return BadRequest("User ID claim not found.");
+            return Unauthorized();
         }
         var userId = int.Parse(userIdClaim);
 
@@ -180,7 +316,7 @@ public class ExamController : ControllerBase
 
         if (existingInstance != null)
         {
-            return BadRequest(new { message = "Bu testi zaten başlattınız ve devam ediyorsunuz!" });
+            return Ok(new { testInstanceId = existingInstance.Id, message = "Bu testi zaten başlattınız ve devam ediyorsunuz!" });
         }
 
         var testInstance = new WorksheetInstance
@@ -357,7 +493,7 @@ public class ExamController : ControllerBase
 
 
     [HttpPost]
-    public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] ExamDto examDto)
+    public async Task<IActionResult> CreateOrUpdateAsync([FromBody] ExamDto examDto)
     {
         try
         {
@@ -378,6 +514,17 @@ public class ExamController : ControllerBase
                 examination.GradeId = examDto.GradeId;
                 examination.MaxDurationSeconds = examDto.MaxDurationSeconds;
                 examination.IsPracticeTest = examDto.IsPracticeTest;
+                examination.Subtitle = examDto.Subtitle;
+
+                // 📌 Eğer yeni resim varsa, güncelle
+                if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
+                    _imageHelper.IsBase64String(examDto.ImageUrl)) 
+                {
+                    byte[] imageBytes = Convert.FromBase64String(examDto.ImageUrl.Split(',')[1]);
+                    await using var imageStream = new MemoryStream(imageBytes);
+                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg","exams");
+                }
+
                 _context.Worksheets.Update(examination);                
             }
             else
@@ -389,8 +536,18 @@ public class ExamController : ControllerBase
                     Description = examDto.Description,
                     GradeId = examDto.GradeId,
                     MaxDurationSeconds = examDto.MaxDurationSeconds,
-                    IsPracticeTest = examDto.IsPracticeTest
+                    IsPracticeTest = examDto.IsPracticeTest,
+                    Subtitle = examDto.Subtitle
                 };
+
+                // 📌 Eğer yeni resim varsa, güncelle
+                if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
+                    _imageHelper.IsBase64String(examDto.ImageUrl)) 
+                {
+                    byte[] imageBytes = Convert.FromBase64String(examDto.ImageUrl.Split(',')[1]);
+                    await using var imageStream = new MemoryStream(imageBytes);
+                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg","exams");
+                }
 
                 _context.Worksheets.Add(examination);
             }

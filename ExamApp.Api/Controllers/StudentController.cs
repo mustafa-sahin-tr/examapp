@@ -9,14 +9,13 @@ namespace ExamApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class StudentController : ControllerBase
+    public class StudentController : BaseController
     {
-        private readonly AppDbContext _context;
         private readonly IMinIoService _minioService;
 
         public StudentController(AppDbContext context, IMinIoService minioService)
+            : base(context)
         {
-            _context = context;
             _minioService = minioService;
         }
 

@@ -23,6 +23,28 @@ public class JwtService : IJwtService
             new Claim(ClaimTypes.Role, user.Role.ToString())
         };
 
+        switch (user.Role)
+        {
+            case UserRole.Student:
+                if (user.Student != null)
+                {
+                    claims = claims.Append(new Claim("StudentId", user.Student.Id.ToString())).ToArray();
+                }
+                break;
+            case UserRole.Teacher:
+                if (user.Teacher != null)
+                {
+                    claims = claims.Append(new Claim("TeacherId", user.Teacher.Id.ToString())).ToArray();
+                }
+                break;
+            case UserRole.Parent:
+                if (user.Parent != null)
+                {
+                    claims = claims.Append(new Claim("ParentId", user.Parent.Id.ToString())).ToArray();
+                }
+                break;
+        }
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         

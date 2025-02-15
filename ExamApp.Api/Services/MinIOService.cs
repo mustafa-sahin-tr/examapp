@@ -51,7 +51,7 @@ public class MinIoService : IMinIoService
                 .WithObjectSize(fileStream.Length)
                 .WithContentType("image/jpeg"));
 
-            return $"{_baseUrl}/{_bucketName}/{fileName}";
+            return $"{_baseUrl}/{bucketName}/{fileName}";
         }
         catch (MinioException e)
         {

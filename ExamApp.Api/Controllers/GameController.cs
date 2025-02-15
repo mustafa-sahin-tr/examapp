@@ -22,12 +22,11 @@ namespace ExamApp.Api.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class GameController : ControllerBase
+    public class GameController : BaseController
     {
-        private readonly AppDbContext _context;
         public GameController(AppDbContext context)
+            : base(context)
         {
-            _context = context;
         }
 
 

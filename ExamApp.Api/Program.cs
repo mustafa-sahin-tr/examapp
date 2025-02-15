@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ExamApp.Api.Services;
+using ExamApp.Api.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<IJwtService,JwtService>();
 builder.Services.AddSingleton<IMinIoService, MinIoService>();
+builder.Services.AddSingleton<ImageHelper>();
 
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>

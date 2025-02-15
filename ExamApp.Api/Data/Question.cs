@@ -14,7 +14,6 @@ public class Question
     public int SubjectId { get; set; }  // Soru hangi derse ait
     public Subject Subject { get; set; }
 
-    public int CorrectAnswer { get;set;}
 
     public int Point { get; set; }  // Sorunun puan değeri (1, 5, 10 vb.)
 
@@ -35,6 +34,11 @@ public class Question
     public ICollection<WorksheetQuestion> WorksheetQuestions { get; set; } = new List<WorksheetQuestion>();
 
     public ICollection<Answer> Answers { get; set; } = new List<Answer>();  // Şıklar
+
+    public int? CorrectAnswerId { get; set; }
+
+    [ForeignKey("CorrectAnswerId")]
+    public Answer CorrectAnswer { get; set; }   
 
     public int? PassageId { get; set; } // 🟢 Kapsam ID (Opsiyonel)
 

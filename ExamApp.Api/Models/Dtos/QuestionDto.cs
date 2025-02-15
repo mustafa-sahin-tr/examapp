@@ -21,4 +21,5 @@ public class AnswerDto
 {
     public string? Text { get; set; }
     public string? Image { get; set; } // Base64 formatında geliyor
+    public bool IsCorrect { get; set; }
 }

@@ -35,11 +35,33 @@ export interface Exam {
     testInstanceId: number;
 }
 
+export interface Paged<T> {
+    pageNumber: number;
+    pageSize: number;
+    totalCount: number; 
+    items: T[];
+}
+
 export interface   Test {
     id: number | null;
     name: string;
-    description: string;
-    gradeId: number;
+    description?: string;
+    gradeId?: number;
     maxDurationSeconds: number;
     isPracticeTest: boolean;    
+    imageUrl?: string;
+    subtitle?: string;
+    badgeText?: string;
+}
+
+export interface CompletedTest {
+    id: number;
+    name: string;
+    imageUrl?: string;
+    completedDate: Date;
+    score: number;
+    durationMinutes: number;
+    correctAnswers: number;
+    wrongAnswers: number;
+    totalQuestions: number;
 }

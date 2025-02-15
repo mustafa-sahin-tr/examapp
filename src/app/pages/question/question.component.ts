@@ -126,23 +126,25 @@ export class QuestionComponent implements OnInit {
         subjectId: question.subjectId,
         topicId: question.topicId,
         subtopicId: question.subjectId,
-        point: 10,
-        correctAnswer: question.correctAnswer,
+        point: 10,        
         isExample: question.isExample,
         practiceCorrectAnswer: question.practiceCorrectAnswer,
-        answerColCount: question.answerColCount
+        answerColCount: question.answerColCount,        
       });
 
       const answerArray = this.questionForm.get('answers') as FormArray;
       answerArray.clear();
-      question.answers.forEach((answer: any) => {
+      for(let i = 0; i < question.answers.length; i++) {
         answerArray.push(
           new FormGroup({
-            text: new FormControl(answer.text),
-            image: new FormControl(answer.imageUrl)            
+            text: new FormControl(question.answers[i].text),
+            image: new FormControl(question.answers[i].imageUrl),
           })
         );
-      });
+        if(question.answers[i].id === question.correctAnswerId) {
+          this.questionForm.patchValue({ correctAnswer: i });
+        }
+      }
 
       this.onSubjectChange();
       this.onTopicChange();
@@ -180,8 +182,8 @@ export class QuestionComponent implements OnInit {
   }
 
   loadTests() {
-    this.testService.loadOnlyTest().subscribe(data => {
-      this.testList = data;
+    this.testService.search('').subscribe(data => {
+      this.testList = data.items;
     });
   }
   
@@ -266,7 +268,7 @@ export class QuestionComponent implements OnInit {
 
     console.log('Gönderilen Form:', formData);
 
-    
+        
         // ✅ Base64'ten Temizlenmiş Bir Soru Nesnesi Hazırlıyoruz
         const questionPayload = {
           id: this.id,
@@ -283,9 +285,10 @@ export class QuestionComponent implements OnInit {
           isExample: formData.isExample,
           practiceCorrectAnswer: formData.practiceCorrectAnswer,
           answerColCount: formData.answerColCount,  
-          answers: formData.answers.map((answer: any) => ({
+          answers: formData.answers.map((answer: any, index: number) => ({
             text: answer.text,
-            image: answer.image
+            image: answer.image,
+            isCorrect: index == formData.correctAnswer
           }))
         };
   
@@ -307,8 +310,7 @@ export class QuestionComponent implements OnInit {
                   isExample: questionPayload.isExample,
                   subjectId: questionPayload.subjectId,
                   topicId: questionPayload.topicId,
-                  subtTopicId: questionPayload.subtopicId,
-                  correctAnswer: questionPayload.correctAnswer,
+                  subtTopicId: questionPayload.subtopicId,                  
                   answerColCount: questionPayload.answerColCount
                 },
                 order: this.testInstance.testInstanceQuestions.length + 1,

@@ -9,7 +9,7 @@
           <img [src]="question.imageUrl" class="question-lite-image" />
         }
         @if(question.subText) {
-          <div [innerHTML]="question.subText | safeHtml"></div>
+          <div class="question-lite-text" [innerHTML]="question.subText | safeHtml"></div>
         }
       </div>
   

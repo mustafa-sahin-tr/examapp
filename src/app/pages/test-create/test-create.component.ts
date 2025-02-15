@@ -11,13 +11,14 @@ import { Exam, Test } from '../../models/test-instance';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TestService } from '../../services/test.service';
+import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
   standalone: true,
   imports: [ CommonModule, MatCardModule , FormsModule, MatFormFieldModule, MatOptionModule,
     MatInputModule, MatSelectModule, MatCheckboxModule,
-    ReactiveFormsModule, MatToolbarModule,MatLabel],
+    ReactiveFormsModule, MatToolbarModule,MatLabel, WorksheetCardComponent],
   styleUrls: ['./test-create.component.scss']
 })
 export class TestCreateComponent implements OnInit {
@@ -36,7 +37,9 @@ export class TestCreateComponent implements OnInit {
       description: [''],
       gradeId: ['', Validators.required],
       maxDurationMinutes: [600, [Validators.required, Validators.min(10)]], // Varsayılan 10 dakika
-      isPracticeTest: [false] // Çalışma testi mi?
+      isPracticeTest: [false], // Çalışma testi mi?
+      subtitle: [''],
+      imageUrl: [''],      
     });
   }
 
@@ -57,7 +60,9 @@ export class TestCreateComponent implements OnInit {
           description: exam.description,
           gradeId: exam.gradeId,
           maxDurationMinutes: exam.maxDurationSeconds / 60,
-          isPracticeTest: exam.isPracticeTest
+          isPracticeTest: exam.isPracticeTest,
+          subtitle: exam.subtitle,
+          imageUrl: exam.imageUrl
         });
       });
     }
@@ -74,16 +79,29 @@ export class TestCreateComponent implements OnInit {
         description: this.testForm.value.description,
         gradeId: this.testForm.value.gradeId,
         maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
-        isPracticeTest: this.testForm.value.isPracticeTest        
+        isPracticeTest: this.testForm.value.isPracticeTest,
+        imageUrl: this.testForm.value.imageUrl,
+        subtitle: this.testForm.value.subtitle       
       };
 
       this.testService.create(testPayload).subscribe(response => {
-        this.router.navigate(['/test-list']);
+        this.router.navigate(['/tests']);
       });
     }
   }
 
   navigateToTestList() {
     this.router.navigate(['/test-list']); // Yeni test oluşturma sayfasına yönlendir
+  }
+
+  onImageUploadForTest(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.testForm.patchValue({ imageUrl: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   }
 }

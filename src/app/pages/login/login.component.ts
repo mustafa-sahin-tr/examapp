@@ -53,7 +53,7 @@ export class LoginComponent implements OnInit {
         next: (studentRes) => {
           if (studentRes.hasStudentRecord) {
             localStorage.setItem('student', JSON.stringify(studentRes.student));
-            this.router.navigate([`/student-profile/${studentRes.student?.id}`]);  // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
+            this.router.navigate([`/student-profile`]);  // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
           } else {
             this.router.navigate(['/student-register']);  // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
           }

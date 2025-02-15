@@ -1,0 +1,46 @@
+// worksheet-list.component.scss
+.search-container {
+    display: flex;
+    justify-content: flex-start;
+    width: 50%;
+    margin-bottom: 16px;
+    margin-left: 48px; /* Kart başlangıcına hizalama */
+  }
+
+.search-box {
+    width: 100%;
+    margin-bottom: 16px;
+  }
+  
+  .search-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .search-img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+  }
+
+.list-container {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    gap: 16px;
+  }
+  
+  .cards {
+    display: flex;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    gap: 16px;
+  }
+  
+  .nav-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+  }

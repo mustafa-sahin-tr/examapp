@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import { Subject } from '../models/subject';
 import { Topic } from '../models/topic';
 import { SubTopic } from '../models/subtopic';
-import { Exam, Test, TestInstance } from '../models/test-instance';
+import { CompletedTest, Exam, Paged, Test, TestInstance } from '../models/test-instance';
 import { StudentAnswer } from '../models/student-answer';
 
 @Injectable({
@@ -36,8 +36,12 @@ export class TestService {
     return this.http.get<Exam[]>(`/api/worksheet`);
   }
 
-  loadOnlyTest() {
-    return this.http.get<Test[]>(`/api/worksheet/list`);
+  search(query: string | undefined, pageNumber: number = 1): Observable<Paged<Test>> {
+    return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=10`);
+  }
+
+  getCompleted(pageNumber: number = 1): Observable<Paged<CompletedTest>> {
+    return this.http.get<Paged<CompletedTest>>(`/api/worksheet/CompletedTests?pageNumber=${pageNumber}&pageSize=10`);
   }
   
   create(test: Test): Observable<{message:string, examId: number}> {

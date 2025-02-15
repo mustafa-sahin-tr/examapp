@@ -15,7 +15,7 @@ import { QuestionViewComponent } from '../question-view/question-view.component'
   standalone: true,
   templateUrl: './test-solve.component.html',
   styleUrls: ['./test-solve.component.scss'],
-  imports: [  QuestionViewComponent, QuestionLiteViewComponent,
+  imports: [  QuestionLiteViewComponent,
       CommonModule, MatToolbarModule, MatButtonModule, MatCardModule  ] 
 })
 export class TestSolveComponent implements OnInit, AfterViewInit {

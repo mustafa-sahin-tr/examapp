@@ -1,5 +1,5 @@
 <div class="form-container">
-  <div class="form-column">
+  <div class="form-column-2">
     <mat-card class="question-card">
       <mat-card-title>Soru Oluştur</mat-card-title>
       <mat-card-content>
@@ -15,6 +15,9 @@
             </select>
              
             <div class="form-column">
+
+              
+
               <!-- 🟢 Ders Seçimi -->
               <label for="subject">Ders</label>
               <select id="subject" formControlName="subjectId" (change)="onSubjectChange()">
@@ -132,7 +135,7 @@
       </mat-card-content>
     </mat-card>  
   </div>
-  <div class="form-column-2">
+  <div class="form-column">
     <app-question-list [questions]="testInstance.testInstanceQuestions" [testId]="questionForm.value.testId"></app-question-list>    
   </div>
 </div>

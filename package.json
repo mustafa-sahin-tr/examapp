@@ -25,6 +25,7 @@
     "@ngrx/entity": "^19.0.1",
     "@ngrx/store": "^19.0.1",
     "@ngrx/store-devtools": "^19.0.1",
+    "@swimlane/ngx-charts": "^22.0.0-alpha.0",
     "ngx-quill": "^27.0.0",
     "quill": "^2.0.3",
     "rxjs": "^7.8.1",

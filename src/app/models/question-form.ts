@@ -3,7 +3,7 @@ import { FormArray, FormControl } from "@angular/forms"
 export type QuestionForm = {
     text: FormControl<string | null>,
     subText: FormControl<string | null>,
-    image: FormControl<string | null>,
+    image: FormControl<string | null>,    
     subjectId: FormControl<number>,
     topicId: FormControl<number>,
     subtopicId: FormControl<number>,

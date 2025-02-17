@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatOptionModule } from '@angular/material/core';
@@ -12,6 +12,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TestService } from '../../services/test.service';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
+import { BookService } from '../../services/book.service';
+import { Book, BookTest } from '../../models/book';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
@@ -27,7 +29,9 @@ export class TestCreateComponent implements OnInit {
   isEditMode: boolean = false;
   testForm!: FormGroup;
   gradeId: number = 1;
-  
+  books: Book[] = [];
+  bookTests: BookTest[] = [];
+  bookService = inject(BookService);
   grades = [{ id: 1, name: '1. Sınıf' }, { id: 2, name: '2. Sınıf' }, { id: 3, name: '3. Sınıf' }];
   
   constructor(private fb: FormBuilder, private router: Router, private route: ActivatedRoute,
@@ -39,7 +43,9 @@ export class TestCreateComponent implements OnInit {
       maxDurationMinutes: [600, [Validators.required, Validators.min(10)]], // Varsayılan 10 dakika
       isPracticeTest: [false], // Çalışma testi mi?
       subtitle: [''],
-      imageUrl: [''],      
+      imageUrl: [''],     
+      bookTestId: ['', Validators.required],
+      bookId: ['', Validators.required],
     });
   }
 
@@ -47,7 +53,7 @@ export class TestCreateComponent implements OnInit {
 
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;  
-
+    this.loadBooks();
     if(this.isEditMode) {
       this.loadTest();
     }
@@ -62,9 +68,29 @@ export class TestCreateComponent implements OnInit {
           maxDurationMinutes: exam.maxDurationSeconds / 60,
           isPracticeTest: exam.isPracticeTest,
           subtitle: exam.subtitle,
-          imageUrl: exam.imageUrl
+          imageUrl: exam.imageUrl,
+          bookTestId: exam.bookTestId,
+          bookId: exam.bookId
         });
       });
+    }
+
+    loadBooks() {
+      this.bookService.getAll().subscribe(data => {
+        this.books = data;
+        if(this.testForm.value.bookId) {
+          this.onBookChange();
+        }
+      });
+    }
+  
+    onBookChange() {
+      if(this.testForm.value.bookId) {
+        this.bookService.getTestsByBook(this.testForm.value.bookId).
+          subscribe(data => {
+            this.bookTests = data          
+          });
+      }     
     }
 
   onSubmit() {
@@ -81,7 +107,9 @@ export class TestCreateComponent implements OnInit {
         maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
         isPracticeTest: this.testForm.value.isPracticeTest,
         imageUrl: this.testForm.value.imageUrl,
-        subtitle: this.testForm.value.subtitle       
+        subtitle: this.testForm.value.subtitle   ,
+        bookTestId: this.testForm.value.bookTestId,
+        bookId: this.testForm.value.bookId
       };
 
       this.testService.create(testPayload).subscribe(response => {

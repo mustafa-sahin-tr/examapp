@@ -22,6 +22,8 @@ import { Test, TestInstance } from '../../models/test-instance';
 import { QuestionListComponent } from '../question-list/question-list.component';
 import { TestService } from '../../services/test.service';
 import { QuestionForm } from '../../models/question-form';
+import { Book, BookTest } from '../../models/book';
+import { BookService } from '../../services/book.service';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -75,13 +77,14 @@ export class QuestionComponent implements OnInit {
   subjectService = inject(SubjectService);
   snackBar = inject(MatSnackBar);
   questionForm!: FormGroup;
+  bookService = inject(BookService);
   
 
   resetFormWithDefaultValues(state: any) {
     this.questionForm = new FormGroup<QuestionForm>({
       text: new FormControl(''),
       subText: new FormControl(''),
-      image: new FormControl(''),
+      image: new FormControl(''),    
       subjectId: new FormControl(state?.subjectId || 0, { nonNullable: true, validators: [Validators.required] }),
       topicId: new FormControl(state?.topicId || 0, { nonNullable: true, validators: [Validators.required] }),
       subtopicId: new FormControl(state?.subtopicId || 0, { nonNullable: true, validators: [Validators.required] }),
@@ -196,6 +199,8 @@ export class QuestionComponent implements OnInit {
     });
   }
 
+
+
   onSubjectChange() {
     if(this.questionForm.value.subjectId) {
       this.subjectService.getTopicsBySubject(this.questionForm.value.subjectId).
@@ -215,6 +220,8 @@ export class QuestionComponent implements OnInit {
       this.subjectService.getSubTopicsByTopic(this.questionForm.value.topicId).subscribe(data => this.subTopics = data);
     }
   }
+
+
 
   getFormControl(control: any): FormControl {
     return control as FormControl;
@@ -310,7 +317,7 @@ export class QuestionComponent implements OnInit {
                   isExample: questionPayload.isExample,
                   subjectId: questionPayload.subjectId,
                   topicId: questionPayload.topicId,
-                  subtTopicId: questionPayload.subtopicId,                  
+                  subtTopicId: questionPayload.subtopicId,              
                   answerColCount: questionPayload.answerColCount
                 },
                 order: this.testInstance.testInstanceQuestions.length + 1,
@@ -324,7 +331,7 @@ export class QuestionComponent implements OnInit {
                 subjectId: questionPayload.subjectId,
                 topicId: questionPayload.topicId,
                 subtopicId: questionPayload.subtopicId,
-                testId: questionPayload.testId             
+                testId: questionPayload.testId,    
               });              
             } else {
               //);

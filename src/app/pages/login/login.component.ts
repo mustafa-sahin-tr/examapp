@@ -80,7 +80,7 @@ export class LoginComponent implements OnInit {
             this.authService.checkStudentProfile().subscribe({
               next: (studentRes) => {
                 if (studentRes.hasStudentRecord && studentRes.student) {
-                  this.router.navigate(['/home']); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
+                  this.router.navigate(['/student-profile']); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
                 } else {
                   this.router.navigate(['/student-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
                 }

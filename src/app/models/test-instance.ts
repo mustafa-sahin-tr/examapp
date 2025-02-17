@@ -33,6 +33,8 @@ export interface Exam {
     totalQuestions: number;    
     instanceStatus : TestStatus;
     testInstanceId: number;
+    bookId?: number;
+    bookTestId?: number;
 }
 
 export interface Paged<T> {
@@ -52,6 +54,8 @@ export interface   Test {
     imageUrl?: string;
     subtitle?: string;
     badgeText?: string;
+    bookId?: number;
+    bookTestId?: number;
 }
 
 export interface CompletedTest {

@@ -90,3 +90,78 @@ mat-select {
     }
   }
 
+  // .points-container {
+  //   display: flex;
+  //   justify-content: space-around;
+  //   gap: 15px;
+  //   margin-bottom: 20px;
+  // }
+
+
+  .points-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(200px, 1fr)); /* 3 EŞİT SÜTUN */
+    gap: 20px;
+    width: 100%;
+  }
+  
+  // .badges-container {
+  //   display: flex;
+  //   gap: 15px;
+  //   justify-content: space-around;
+  //   flex-wrap: wrap;
+  //   margin-bottom: 20px;
+  // }
+
+  .badges-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Dinamik Grid */
+    gap: 20px;
+    width: 100%;
+  }
+
+  // .leaderboards-container {
+  //   display: flex;
+  //   gap: 20px;
+  //   justify-content: space-around;
+  //   flex-wrap: wrap;
+  //   margin-bottom: 20px;
+  // }
+
+  .leaderboards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Dinamik Grid */
+    gap: 20px;
+    width: 100%;
+  }
+
+
+  mat-tab-group {
+    margin-top: 20px;
+  }
+  
+  // .badges-container, .leaderboards-container {
+  //   display: flex;
+  //   gap: 15px;
+  //   justify-content: space-around;
+  //   flex-wrap: wrap;
+  //   margin-bottom: 20px;
+  // }
+  
+  .heatmap-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: white;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+  }
+  
+  // h2 {
+  //   font-size: 18px;
+  //   color: #333;
+  //   margin-bottom: 10px;
+  // }
+

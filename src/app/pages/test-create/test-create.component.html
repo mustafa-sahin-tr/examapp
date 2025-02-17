@@ -5,7 +5,33 @@
         <mat-card-title>Yeni Test Oluştur</mat-card-title>
         <mat-card-content>
           <form [formGroup]="testForm" (ngSubmit)="onSubmit()">
-      
+
+
+            <!-- Sınıf Seçimi -->
+            <mat-form-field appearance="outline">
+              <mat-label>Kitap</mat-label>
+              <mat-select formControlName="bookId" required>
+                @for ( book of books ; track book.id ) {
+                  <mat-option [value]="book.id">
+                    {{ book.name }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <!-- 🟢 Kitap Testi -->
+            <mat-form-field appearance="outline">
+              <mat-label>Kitap Testi</mat-label>
+              <mat-select formControlName="bookTestId" required>
+                @for ( bt of bookTests ; track bt.id ) {
+                  <mat-option [value]="bt.id">
+                    {{ bt.name }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+          
             <!-- 🟢 Soru Resmi -->
             <label for="testImage">Soru Resmi</label>
             <input type="file" id="testImage" (change)="onImageUploadForTest($event)" />

@@ -515,6 +515,7 @@ public class ExamController : BaseController
                 examination.MaxDurationSeconds = examDto.MaxDurationSeconds;
                 examination.IsPracticeTest = examDto.IsPracticeTest;
                 examination.Subtitle = examDto.Subtitle;
+                examination.BookTestId = examDto.BookTestId;
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
@@ -537,7 +538,8 @@ public class ExamController : BaseController
                     GradeId = examDto.GradeId,
                     MaxDurationSeconds = examDto.MaxDurationSeconds,
                     IsPracticeTest = examDto.IsPracticeTest,
-                    Subtitle = examDto.Subtitle
+                    Subtitle = examDto.Subtitle,
+                    BookTestId = examDto.BookTestId
                 };
 
                 // 📌 Eğer yeni resim varsa, güncelle

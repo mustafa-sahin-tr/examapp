@@ -22,4 +22,7 @@ public class ExamDto
     public string? ImageUrl { get; set; }
 
     public string? BadgeText { get; set; }
+
+    public int? BookTestId { get; set; }
+
 }

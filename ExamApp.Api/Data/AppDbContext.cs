@@ -34,6 +34,10 @@ public class AppDbContext : DbContext
 
     public DbSet<StudentBadge> StudentBadges { get; set; }
 
+    public DbSet<Book> Books { get; set; }
+    public DbSet<BookTest> BookTests { get; set; }
+
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -212,6 +216,30 @@ public class AppDbContext : DbContext
             .HasMany(p => p.Questions)
             .WithOne(q => q.Passage)
             .HasForeignKey(q => q.PassageId);
+
+        modelBuilder.Entity<Question>()
+            .HasMany(q => q.Answers)
+            .WithOne(a => a.Question)
+            .HasForeignKey(a => a.QuestionId)
+            .OnDelete(DeleteBehavior.Cascade); // Eğer soru silinirse cevaplar da silinsin
+
+        modelBuilder.Entity<Question>()
+            .HasOne(q => q.CorrectAnswer)  // Doğru cevap için ayrı ilişki
+            .WithMany() // Burada WithMany() ile ilişkiyi tek yönlü yapıyoruz!
+            .HasForeignKey(q => q.CorrectAnswerId)
+            .OnDelete(DeleteBehavior.Restrict); // Döngüsel bağımlılığı önlemek için
+
+        modelBuilder.Entity<Worksheet>()
+            .HasOne(q => q.BookTest)
+            .WithMany()
+            .HasForeignKey(q => q.BookTestId)
+            .OnDelete(DeleteBehavior.Restrict);  // Silme işlemi sırasında bağımsız kalmasını sağlıyoruz
+
+        modelBuilder.Entity<BookTest>()
+            .HasOne(bt => bt.Book)
+            .WithMany(b => b.BookTests)
+            .HasForeignKey(bt => bt.BookId)
+            .OnDelete(DeleteBehavior.Cascade); // Eğer bir kitap silinirse, testleri de silinsin.
             
     }
 }

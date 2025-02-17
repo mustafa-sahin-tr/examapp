@@ -125,155 +125,161 @@ public class QuestionsController : BaseController
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> CreateOrUpdateQuestion([FromBody] QuestionDto questionDto)
+{
+    try
     {
-        try
+        Question question;
+
+        // 📌 Eğer ID varsa, veritabanından o soruyu bulup güncelle
+        if (questionDto.Id > 0)
         {
-            Question question;
+            question = await _context.Questions.Include(q => q.Answers)
+                                            .FirstOrDefaultAsync(q => q.Id == questionDto.Id) ?? throw new InvalidOperationException("Soru bulunamadı!");
 
-            // 📌 Eğer ID varsa, veritabanından o soruyu bulup güncelle
-            if (questionDto.Id > 0)
+            if (question == null)
             {
-                question = await _context.Questions.Include(q => q.Answers)
-                                                .FirstOrDefaultAsync(q => q.Id == questionDto.Id) ?? throw new InvalidOperationException("Soru bulunamadı!");
-
-                if (question == null)
-                {
-                    return NotFound(new { error = "Soru bulunamadı!" });
-                }                
-
-                question.Text = questionDto.Text;
-                question.SubText = questionDto.SubText;
-                question.Point = questionDto.Point;                
-                question.SubjectId = questionDto.SubjectId;
-                question.TopicId = questionDto.TopicId;
-                question.SubTopicId = questionDto.SubTopicId;
-                question.AnswerColCount = questionDto.AnswerColCount;
-
-                // 📌 Eğer yeni resim varsa, güncelle
-                if (!string.IsNullOrEmpty(questionDto.Image) && 
-                    _imageHelper.IsBase64String(questionDto.Image)) 
-                {
-                    byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
-                    await using var imageStream = new MemoryStream(imageBytes);
-                    question.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{Guid.NewGuid()}.jpg");
-                }
-
-                // 📌 Cevapları Güncelle
-                question.Answers.Clear(); // Önce mevcut şıkları temizle
-                if(questionDto.IsExample) // eğer is Example ise answer olmasına gerek yok 
-                {
-                    question.IsExample = true;
-                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;                    
-                }
-                else {
-                    foreach (var answerDto in questionDto.Answers.Where(a => !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
-                    {
-                        var answer = new Answer
-                        {
-                            Text = answerDto.Text
-                        };
-
-                        if (!string.IsNullOrEmpty(answerDto.Image)  && 
-                            _imageHelper.IsBase64String(answerDto.Image))
-                        {
-                            byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
-                            await using var imageStream = new MemoryStream(imageBytes);
-                            answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{Guid.NewGuid()}.jpg");
-                        }
-
-                        question.Answers.Add(answer);
-                        if(answerDto.IsCorrect) {
-                            question.CorrectAnswer = answer;
-                        }
-                        
-                    }
-                }
-
-                if(questionDto.TestId.HasValue) {
-                    var questionExists = await _context.TestQuestions.FirstOrDefaultAsync(tq => tq.TestId == questionDto.TestId && tq.QuestionId == questionDto.Id);
-                    if(questionExists == null) {
-                        _context.TestQuestions.Add(new WorksheetQuestion {
-                            TestId = questionDto.TestId.Value,
-                            QuestionId = questionDto.Id.Value
-                        });
-                    }
-                }
-
-                _context.Questions.Update(question);
-            }
-            else
-            {
-                // 📌 Yeni Soru Oluştur (INSERT)
-                question = new Question
-                {
-                    Text = questionDto.Text,
-                    SubText = questionDto.SubText,
-                    Point = questionDto.Point,                    
-                    SubjectId = questionDto.SubjectId,
-                    TopicId = questionDto.TopicId,
-                    SubTopicId = questionDto.SubTopicId,
-                    AnswerColCount = questionDto.AnswerColCount
-                };
-
-                // 📌 Eğer resim varsa, MinIO'ya yükleyelim
-                if (!string.IsNullOrEmpty(questionDto.Image) &&
-                    _imageHelper.IsBase64String(questionDto.Image))
-                {
-                    byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
-                    await using var imageStream = new MemoryStream(imageBytes);
-                    question.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{Guid.NewGuid()}.jpg");
-                }
-
-                // 📌 Şıkları ekleyelim
-                if(questionDto.IsExample) // eğer is Example ise answer olmasına gerek yok 
-                {
-                    question.IsExample = true;
-                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;
-                }
-                else {
-                    foreach (var answerDto in questionDto.Answers.Where(a => 
-                                !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
-                    {
-                        var answer = new Answer
-                        {
-                            Text = answerDto.Text
-                        };
-
-                        if (!string.IsNullOrEmpty(answerDto.Image) && 
-                               _imageHelper.IsBase64String(answerDto.Image))
-                        {
-                            byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
-                            await using var imageStream = new MemoryStream(imageBytes);
-                            answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{Guid.NewGuid()}.jpg");
-                        }
-
-                        question.Answers.Add(answer);
-                        question.Answers.Add(answer);
-                        if(answerDto.IsCorrect) {
-                            question.CorrectAnswer = answer;
-                        }
-                    }
-                }
-                _context.Questions.Add(question);
-
-                if(questionDto.TestId.HasValue) {
-                    _context.TestQuestions.Add(new WorksheetQuestion {
-                        TestId = questionDto.TestId.Value,
-                        Question = question
-                    });
-                }
+                return NotFound(new { error = "Soru bulunamadı!" });
             }
 
-            // 📌 Değişiklikleri Kaydet
+            question.Text = questionDto.Text;
+            question.SubText = questionDto.SubText;
+            question.Point = questionDto.Point;                
+            question.SubjectId = questionDto.SubjectId;
+            question.TopicId = questionDto.TopicId;
+            question.SubTopicId = questionDto.SubTopicId;
+            question.AnswerColCount = questionDto.AnswerColCount;
+
+            // 📌 Eğer yeni resim varsa, güncelle
+            if (!string.IsNullOrEmpty(questionDto.Image) && 
+                _imageHelper.IsBase64String(questionDto.Image)) 
+            {
+                byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
+                await using var imageStream = new MemoryStream(imageBytes);
+                question.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{questionDto.TestId}/{Guid.NewGuid()}.jpg");
+            }
+
+            // 📌 Cevapları Güncelle
+            question.Answers.Clear(); // Önce mevcut şıkları temizle
+            if (questionDto.IsExample) 
+            {
+                question.IsExample = true;
+                question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;                    
+            }
+            else 
+            {
+                List<Answer> answers = new();
+                Answer? correctAnswer = null;
+
+                foreach (var answerDto in questionDto.Answers.Where(a => !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
+                {
+                    var answer = new Answer
+                    {
+                        Text = answerDto.Text,
+                        QuestionId = question.Id // Foreign Key Set
+                    };
+
+                    if (!string.IsNullOrEmpty(answerDto.Image) && 
+                        _imageHelper.IsBase64String(answerDto.Image))
+                    {
+                        byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
+                        await using var imageStream = new MemoryStream(imageBytes);
+                        answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{questionDto.Id}/{Guid.NewGuid()}.jpg");
+                    }
+
+                    answers.Add(answer);
+                    if (answerDto.IsCorrect)
+                    {
+                        correctAnswer = answer;
+                    }
+                }
+
+                _context.Answers.AddRange(answers);
+                await _context.SaveChangesAsync(); // 📌 Önce Answer'ları kaydet!
+
+                if (correctAnswer != null)
+                {
+                    question.CorrectAnswerId = correctAnswer.Id;
+                }
+            }            
+
+            _context.Questions.Update(question);
+        }
+        else
+        {
+            // 📌 Yeni Soru Oluştur (INSERT)
+            question = new Question
+            {
+                Text = questionDto.Text,
+                SubText = questionDto.SubText,
+                Point = questionDto.Point,                    
+                SubjectId = questionDto.SubjectId,
+                TopicId = questionDto.TopicId,
+                SubTopicId = questionDto.SubTopicId,
+                AnswerColCount = questionDto.AnswerColCount
+            };
+
+            if (!string.IsNullOrEmpty(questionDto.Image) &&
+                _imageHelper.IsBase64String(questionDto.Image))
+            {
+                byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
+                await using var imageStream = new MemoryStream(imageBytes);
+                question.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{questionDto.TestId}/{Guid.NewGuid()}.jpg");
+            }
+
+
+            _context.Questions.Add(question);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = questionDto.Id > 0 ? "Soru başarıyla güncellendi!" : "Soru başarıyla kaydedildi!", questionId = question.Id });
+            List<Answer> answers = new();
+            Answer? correctAnswer = null;
+
+            foreach (var answerDto in questionDto.Answers.Where(a => 
+                        !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
+            {
+                var answer = new Answer
+                {
+                    Text = answerDto.Text
+                };
+
+                if (!string.IsNullOrEmpty(answerDto.Image) && 
+                       _imageHelper.IsBase64String(answerDto.Image))
+                {
+                    byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
+                    await using var imageStream = new MemoryStream(imageBytes);
+                    answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{questionDto.Id}/{Guid.NewGuid()}.jpg");
+                }
+
+                answers.Add(answer);
+                if (answerDto.IsCorrect)
+                {
+                    correctAnswer = answer;
+                }
+            }
+
+            foreach (var answer in answers)
+            {
+                answer.QuestionId = question.Id;
+            }
+
+            _context.Answers.AddRange(answers);
+            await _context.SaveChangesAsync();
+
+            if (correctAnswer != null)
+            {
+                question.CorrectAnswerId = correctAnswer.Id;
+                _context.Questions.Update(question);
+                await _context.SaveChangesAsync();
+            }
         }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        return Ok(new { message = questionDto.Id > 0 ? "Soru başarıyla güncellendi!" : "Soru başarıyla kaydedildi!", questionId = question.Id });
     }
+    catch (Exception ex)
+    {
+        return BadRequest(new { error = ex.Message });
+    }
+}
+
 
     // [HttpPost]
     // public async Task<IActionResult> CreateQuestion([FromBody] QuestionDto questionDto)

@@ -30,5 +30,9 @@ public class Worksheet
 
     public string? BadgeText { get; set; }
 
+    public int? BookTestId { get; set; }  // Kitap-Test ilişkisi için
+
+    [ForeignKey("BookTestId")]
+    public BookTest? BookTest { get; set; }  // Navigation Property
     
 }

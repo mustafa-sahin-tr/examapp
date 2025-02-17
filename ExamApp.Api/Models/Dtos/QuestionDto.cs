@@ -13,7 +13,6 @@ public class QuestionDto
     public bool IsExample { get; set; } = false;
     public string? PracticeCorrectAnswer { get; set; }    
     public int AnswerColCount { get; set; } = 3;
-
     public int? TestId { get; set; }
 }
 

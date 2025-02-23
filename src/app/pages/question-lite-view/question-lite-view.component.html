@@ -1,10 +1,11 @@
 @if(question) {
 <mat-card class="question-lite-card">
     <div class="question-lite-container">
-
       <!-- 🟢 Soru Başlığı ve Resmi -->
       <div class="question-lite-content">
+        @if(question.text) {
         <div class="question-lite-text" [innerHTML]="question.text | safeHtml"></div>
+        }
         @if(question.imageUrl) {
           <img [src]="question.imageUrl" class="question-lite-image" />
         }
@@ -16,9 +17,10 @@
       <!-- 🟢 Eğer Practice Test ise, cevabı otomatik göster -->
       @if(isPracticeTest) {
         <div>
-          @if(question.isExample || correctAnswerVisible) {
+          @if(question.isExample && correctAnswerVisible) {
           <div class="correct-answer">
-              Doğru Cevap: <b>{{ question.practiceCorrectAnswer }}</b>
+              Doğru Cevap: 
+              <div class="question-lite-text" [innerHTML]="question.practiceCorrectAnswer | safeHtml"></div>
             </div>
           }
           <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>

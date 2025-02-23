@@ -1,6 +1,6 @@
 <div class="card" >
   <div *ngIf="test.badgeText" class="badge">{{ test.badgeText }}</div>
-  <img [src]="test.imageUrl || '' " alt="Card Image">
+  <img [src]="test.imageUrl" alt="Card Image">
   <h3>{{ test.name }}</h3>
   <p *ngIf="test.subtitle">{{ test.subtitle }}</p>
 
@@ -8,4 +8,4 @@
     <button class="action-button" (click)="onClick()">Başlat</button>
   </div>
   
-</div>
+</div>  

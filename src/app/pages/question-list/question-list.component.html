@@ -1,7 +1,11 @@
 <div class="question-lite-container">    
     @for (q of questions; track q.id; let i = $index) {
     <div> 
+        <app-passage-card 
+            *ngIf="showPassage(q.question)"
+        class="question-lite-card" [passage]="q.question.passage"></app-passage-card>
         <div class="question-container">
+            
             <div class="question-number">
                 {{ q.order }}.
             </div>

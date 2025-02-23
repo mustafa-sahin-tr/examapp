@@ -10,7 +10,7 @@
             <!-- Sınıf Seçimi -->
             <mat-form-field appearance="outline">
               <mat-label>Kitap</mat-label>
-              <mat-select formControlName="bookId" required>
+              <mat-select formControlName="bookId" required (selectionChange)="onBookChange($event.value)">
                 @for ( book of books ; track book.id ) {
                   <mat-option [value]="book.id">
                     {{ book.name }}

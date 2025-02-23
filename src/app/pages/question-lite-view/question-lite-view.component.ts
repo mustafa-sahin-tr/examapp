@@ -2,9 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { SafeHtmlPipe } from '../../services/safehtml';
-import { TestInstanceQuestion } from '../../models/test-instance';
 import { Question } from '../../models/question';
+import { SafeHtmlPipe } from '../../services/safehtml';
 
 @Component({
   selector: 'app-question-lite-view',

@@ -7,7 +7,6 @@ import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
 import { TestSolveComponent } from './pages/test-solve/test-solve.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
-import { TestListComponent } from './pages/test-list/test-list.component';
 import { TestCreateComponent } from './pages/test-create/test-create.component';
 import { HomeComponent } from './home/home.component';
 import { WorksheetListComponent } from './pages/worksheet-list/worksheet-list.component';

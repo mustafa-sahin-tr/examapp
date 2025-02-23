@@ -144,7 +144,7 @@ export class QuestionComponent implements OnInit {
             image: new FormControl(question.answers[i].imageUrl),
           })
         );
-        if(question.answers[i].id === question.correctAnswerId) {
+        if(question.answers[i].id === question.correctAnswer?.id) {
           this.questionForm.patchValue({ correctAnswer: i });
         }
       }
@@ -262,16 +262,27 @@ export class QuestionComponent implements OnInit {
       return;
     }
 
-    const validAnswers = formData.answers.filter((ans: any) => ans.text || ans.image);
-    if (validAnswers.length < 3) {
-      this.snackBar.open('Lütfen en az 3 cevap şıkkını doldurun!', 'Tamam', { duration: 3000 });
-      return;
+    if(formData.isExample) {
+      if(!formData.practiceCorrectAnswer) {
+        this.snackBar.open('Lütfen örnek soru için doğru cevabı seçin!', 'Tamam', { duration: 3000 });
+        return
+      }
+    }
+    else 
+    {
+      const validAnswers = formData.answers.filter((ans: any) => ans.text || ans.image);
+      if (validAnswers.length < 3) {
+        this.snackBar.open('Lütfen en az 3 cevap şıkkını doldurun!', 'Tamam', { duration: 3000 });
+        return;
+      }
+
+      if (formData.correctAnswer === null) {
+        this.snackBar.open('Lütfen doğru cevabı seçin!', 'Tamam', { duration: 3000 });
+        return;
+      }
     }
 
-    if (formData.correctAnswer === null) {
-      this.snackBar.open('Lütfen doğru cevabı seçin!', 'Tamam', { duration: 3000 });
-      return;
-    }
+    
 
     console.log('Gönderilen Form:', formData);
 

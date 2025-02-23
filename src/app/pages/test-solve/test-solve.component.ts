@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Input, OnInit, QueryList, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, Input, OnInit, QueryList, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
@@ -8,7 +8,11 @@ import { MatButtonModule } from '@angular/material/button';
 import {  MatCardModule } from '@angular/material/card';
 import { interval, Subscription } from 'rxjs';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
-import { QuestionViewComponent } from '../question-view/question-view.component';
+import { Passage } from '../../models/question';
+import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
+import { ConfettiService } from '../../services/confetti.service';
+import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-wheel.component';
+import { MatDialog } from '@angular/material/dialog';
 
 @Component({
   selector: 'app-test-solve',
@@ -16,9 +20,14 @@ import { QuestionViewComponent } from '../question-view/question-view.component'
   templateUrl: './test-solve.component.html',
   styleUrls: ['./test-solve.component.scss'],
   imports: [  QuestionLiteViewComponent,
-      CommonModule, MatToolbarModule, MatButtonModule, MatCardModule  ] 
+      CommonModule, MatToolbarModule, MatButtonModule, MatCardModule, PassageCardComponent,
+    SpinWheelComponent
+    ] 
 })
 export class TestSolveComponent implements OnInit, AfterViewInit {
+  @ViewChild(SpinWheelComponent) spinWheelComp!: SpinWheelComponent;
+  @ViewChild('spinWheelDialog') spinWheelDialog!: TemplateRef<any>; // 📌 Modal Şablonunu Yakala
+
   testInstanceId!: number;
   @Input() testInstance!: TestInstance; // Test bilgisi ve sorular
   currentQuestionIndex:number = 0; // Şu anki soru index'i
@@ -31,13 +40,21 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   passageGroups: { [key: number]: number[] } = {};
   leftColumn: any[] = [];
   rightColumn: any[] = [];
+  confettiService = inject(ConfettiService);
+
   @ViewChildren('questionCard') questionCards!: QueryList<ElementRef>;
   constructor(private route: ActivatedRoute,
     private testService: TestService,
-    private router: Router) {}
+    private router: Router,
+    private dialog: MatDialog
+  ) {}
 
   ngAfterViewInit() {
-    
+    }
+
+  // 📌 Dışarıdan spin başlatma
+  triggerSpin() {
+    this.spinWheelComp.spinWheel();
   }
 
 
@@ -80,12 +97,39 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
     });
   }
 
+  getPassage(questionIndex: number) : Passage | undefined{
+    return this.testInstance.testInstanceQuestions[questionIndex].question.passage;
+  }
+
+  getPassageText(questionIndex: number) {
+    return this.testInstance.testInstanceQuestions[questionIndex].question.passage?.text || '';
+  }
+
+  getPassageTitle(questionIndex: number) {
+    return this.testInstance.testInstanceQuestions[questionIndex].question.passage?.title || '';
+  }
+
+  getPassageImage(questionIndex: number) {
+    return this.testInstance.testInstanceQuestions[questionIndex].question.passage?.imageUrl || '';
+  }
+
+  
+  
+
   // Test ve daha önceki cevapları yükle
   loadTest(testId: number) {
     this.testService.getTestWithAnswers(testId).subscribe(data => {
       console.log('Test loaded', data);
 
       this.testInstance = data;
+
+      let lastAnsweredQuestionIndex = this.testInstance.testInstanceQuestions.findIndex(q => q.selectedAnswerId);
+      if(lastAnsweredQuestionIndex === -1) {
+        this.currentQuestionIndex = 0;
+      }
+      if(lastAnsweredQuestionIndex < this.testInstance.testInstanceQuestions.length - 1) {
+        this.currentQuestionIndex = lastAnsweredQuestionIndex + 1;
+      }
       // check passages 
       this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
         if (q.question.passage && q.question.passage.id) {
@@ -102,6 +146,8 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       });
 
       console.log('TestInstance', this.testInstance.testInstanceQuestions);
+
+
 
       if(this.testInstance.status === TestStatus.Completed) {
         this.router.navigate(['/student-profile']);
@@ -165,13 +211,43 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
   }
+
+  createDialogTemplate() {
+    return {
+      template: `
+        <h2>🎡 Ödül Çarkı! Çevirmek İçin Butona Bas!</h2>
+        <app-spin-wheel></app-spin-wheel>
+        <button mat-button (click)="closeDialog()">Kapat</button>
+      `
+    };
+  }
+
+  closeDialog() {
+    this.dialog.closeAll();
+  }
   
   openAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
     if(this.questionTimerSubscription)
       this.questionTimerSubscription.unsubscribe();
+    //  this.confettiService.celebrate(); // Basit konfeti efekti
+    this.confettiService.launchConfetti(); // Gelişmiş konfeti efekti
+    //  this.confettiService.fireworks();
+    // this.confettiService.rainbowConfetti();
+    // this.confettiService.centerBurst();
+    // this.confettiService.cannonShot();
+    // this.triggerSpin();
+    setTimeout(() => {
+      this.dialog.open(this.spinWheelDialog, {
+        width: '400px',
+        disableClose: true
+      });
+    }, 2000); // 2 saniye sonra modalı aç
+
   }
+
+
 
   persistPracticetime() {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = 0;
@@ -192,12 +268,12 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
     })
   }
 
-  persistAnswer(selectedIndex: number) {
-    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
+  persistAnswer(selectedAnswerId: number) {
+    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedAnswerId;
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
     this.testService.saveAnswer({
       testQuestionId: this.testInstance.testInstanceQuestions[this.currentQuestionIndex].id,
-      selectedAnswerId: selectedIndex,
+      selectedAnswerId: selectedAnswerId,
       testInstanceId: this.testInstance.id,
       timeTaken: this.questionDuration
     }).subscribe({
@@ -218,7 +294,9 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       this.persistPracticetime();
     }
     else {
-      this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);      
+      if(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId) {
+        this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);      
+      }
     }
     if (this.currentQuestionIndex > 0) {
       this.currentQuestionIndex--;
@@ -232,7 +310,9 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
 
     }
     else {
-      this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);
+      if(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId) {
+        this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId);
+      }
     }    
     if (this.currentQuestionIndex < this.testInstance.testInstanceQuestions.length - 1) {
       this.currentQuestionIndex++;

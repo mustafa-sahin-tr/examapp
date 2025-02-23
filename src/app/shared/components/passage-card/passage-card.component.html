@@ -1,0 +1,16 @@
+@if(passage) 
+{
+    <div class="question-lite-container">
+        <div class="question-lite-content">
+            @if(passage.text) {
+            <div class="question-lite-text" [innerHTML]="passage.text | safeHtml"></div>
+            }
+            @if(passage.imageUrl) {
+              <img [src]="passage.imageUrl" class="question-lite-image" />
+            }
+            @if(passage.title) {
+              <div class="question-lite-text" [innerHTML]="passage.title | safeHtml"></div>
+            }          
+        </div>
+      </div>
+}

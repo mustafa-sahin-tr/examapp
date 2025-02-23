@@ -79,14 +79,14 @@ export class TestCreateComponent implements OnInit {
       this.bookService.getAll().subscribe(data => {
         this.books = data;
         if(this.testForm.value.bookId) {
-          this.onBookChange();
+          this.onBookChange(this.testForm.value.bookId);
         }
       });
     }
   
-    onBookChange() {
-      if(this.testForm.value.bookId) {
-        this.bookService.getTestsByBook(this.testForm.value.bookId).
+    onBookChange($event : any) {
+      if($event) {
+        this.bookService.getTestsByBook($event).
           subscribe(data => {
             this.bookTests = data          
           });

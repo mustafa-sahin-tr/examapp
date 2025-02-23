@@ -126,15 +126,16 @@
     <div class="heatmap-container">
       <h2>Activity Heatmap</h2>
       <ngx-charts-heat-map
-        [view]="[1200, 200]"
+        [view]="[1200, 210]"
         [scheme]="colorScheme"
         [results]="activityData"
-        [xAxis]="false"
+        [xAxis]="true"
         [yAxis]="true"
         [legend]="false"
         [showXAxisLabel]="true"
         [showYAxisLabel]="true"
-        [gradient]="true">
+        [gradient]="true"
+        [xAxisTickFormatting]="xAxisTickFormatting">
       </ngx-charts-heat-map>
     
       

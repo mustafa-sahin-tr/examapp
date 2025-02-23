@@ -10,6 +10,7 @@ import { TestService } from '../../services/test.service';
 import { CompletedTest, Paged, Test } from '../../models/test-instance';
 import { CompletedWorksheetCardComponent } from '../completed-worksheet/completed-worksheet-card.component';
 import { ActivatedRoute, Router } from '@angular/router';
+import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -17,7 +18,7 @@ import { ActivatedRoute, Router } from '@angular/router';
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent]
+      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);

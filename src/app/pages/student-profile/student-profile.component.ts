@@ -58,9 +58,9 @@ export class StudentProfileComponent implements OnInit {
 
   colorScheme: Color = {
     name: 'heatmapScheme',
-    selectable: true,
+    selectable: false,
     group: ScaleType.Quantile,
-    domain: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39']
+    domain: ['#f5f7f5', '#d3f5d3', '#a6f7a6', '#74fc74', '#4bfa4b', '#26fc26', '#03fc03']
   };
 
   // Günlük veriyi haftalara bölüp heatmap formatına uygun hale getiriyoruz
@@ -70,27 +70,58 @@ export class StudentProfileComponent implements OnInit {
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     let startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 1); // 1 yıl geriye git
-
+  
     let heatmapData = [];
-
+  
     for (let week = 0; week < 52; week++) {
-      let weekData = { name: `Week ${week + 1}`, series: [] as { name: string; value: number }[] };
-
+      let currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + week * 7);
+  
+      let year = currentDate.getFullYear();
+      let month = currentDate.toLocaleString('en-US', { month: 'short' }); // "Jan", "Feb" gibi
+  
+      let weekData = {
+        name: `${year} - ${month} - Week ${week + 1}`,
+        series: [] as { name: string; value: number }[]
+      };
+  
       daysOfWeek.forEach((day, index) => {
         let date = new Date(startDate);
         date.setDate(startDate.getDate() + week * 7 + index);
-
+  
         weekData.series.push({
           name: day, // Y ekseni (Pazartesi - Pazar)
-          value: Math.floor(Math.random() * 10) // 0 ile 10 arasında rastgele aktivite
+          value: Math.floor(Math.random() * 10) // 0-10 arasında rastgele aktivite
         });
       });
-
+  
       heatmapData.push(weekData);
     }
-
+  
     return heatmapData;
   }
+  
+
+  lastMonthDisplayed: string = ''; // En son gösterilen ayı takip etmek için
+
+  xAxisTickFormatting(val: string): string {
+    // "2024 - Feb - Week 1" formatındaki değerden ayı al
+    const monthMatch = val.match(/- (\w{3}) -/);
+    if (!monthMatch) return ''; // Eğer ay bilgisi bulunamazsa boş döndür
+  
+    const monthName = monthMatch[1]; // "Jan", "Feb", "Mar" gibi
+  
+    // Eğer bu ay daha önce gösterildiyse tekrar gösterme
+    if (this.lastMonthDisplayed === monthName) {
+      return ''; // Aynı ay içindeki diğer haftalar boş olsun
+    }
+  
+    this.lastMonthDisplayed = monthName; // Yeni ayı güncelle
+    return monthName; // Sadece ilk hafta için ay ismini göster
+  }
+  
+  
+  
   
 
   constructor(private studentService: StudentService, private route: ActivatedRoute,

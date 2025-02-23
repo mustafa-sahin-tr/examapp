@@ -8,7 +8,6 @@ public class QuestionDto
     public int TopicId { get; set; }
     public int SubTopicId { get; set; }
     public int Point { get; set; }
-    public int CorrectAnswer { get; set; }
     public List<AnswerDto>? Answers { get; set; }
     public bool IsExample { get; set; } = false;
     public string? PracticeCorrectAnswer { get; set; }    

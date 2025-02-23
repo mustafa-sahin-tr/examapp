@@ -133,8 +133,9 @@ public class QuestionsController : BaseController
         // 📌 Eğer ID varsa, veritabanından o soruyu bulup güncelle
         if (questionDto.Id > 0)
         {
-            question = await _context.Questions.Include(q => q.Answers)
-                                            .FirstOrDefaultAsync(q => q.Id == questionDto.Id) ?? throw new InvalidOperationException("Soru bulunamadı!");
+            question = await _context.Questions
+                    .Include(q => q.Answers)
+                    .FirstOrDefaultAsync(q => q.Id == questionDto.Id) ?? throw new InvalidOperationException("Soru bulunamadı!");
 
             if (question == null)
             {
@@ -200,9 +201,10 @@ public class QuestionsController : BaseController
                 {
                     question.CorrectAnswerId = correctAnswer.Id;
                 }
-            }            
-
+            }                        
+                    
             _context.Questions.Update(question);
+            await _context.SaveChangesAsync();
         }
         else
         {
@@ -233,41 +235,67 @@ public class QuestionsController : BaseController
             List<Answer> answers = new();
             Answer? correctAnswer = null;
 
-            foreach (var answerDto in questionDto.Answers.Where(a => 
-                        !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
+            if (questionDto.IsExample) 
             {
-                var answer = new Answer
-                {
-                    Text = answerDto.Text
-                };
+                question.IsExample = true;
+                question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;                    
+            }
+            else 
+            {
 
-                if (!string.IsNullOrEmpty(answerDto.Image) && 
-                       _imageHelper.IsBase64String(answerDto.Image))
+                foreach (var answerDto in questionDto.Answers.Where(a => 
+                            !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
                 {
-                    byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
-                    await using var imageStream = new MemoryStream(imageBytes);
-                    answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{questionDto.Id}/{Guid.NewGuid()}.jpg");
+                    var answer = new Answer
+                    {
+                        Text = answerDto.Text
+                    };
+
+                    if (!string.IsNullOrEmpty(answerDto.Image) && 
+                        _imageHelper.IsBase64String(answerDto.Image))
+                    {
+                        byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
+                        await using var imageStream = new MemoryStream(imageBytes);
+                        answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{questionDto.Id}/{Guid.NewGuid()}.jpg");
+                    }
+
+                    answers.Add(answer);
+                    if (answerDto.IsCorrect)
+                    {
+                        correctAnswer = answer;
+                    }
                 }
 
-                answers.Add(answer);
-                if (answerDto.IsCorrect)
+                foreach (var answer in answers)
                 {
-                    correctAnswer = answer;
+                    answer.QuestionId = question.Id;
                 }
-            }
 
-            foreach (var answer in answers)
-            {
-                answer.QuestionId = question.Id;
+                _context.Answers.AddRange(answers);
+                await _context.SaveChangesAsync();
             }
-
-            _context.Answers.AddRange(answers);
-            await _context.SaveChangesAsync();
 
             if (correctAnswer != null)
             {
                 question.CorrectAnswerId = correctAnswer.Id;
                 _context.Questions.Update(question);
+                await _context.SaveChangesAsync();
+            }
+
+            if (questionDto.TestId.HasValue)
+            {
+                var orderCount = await _context.TestQuestions
+                    .Where(tq => tq.TestId == questionDto.TestId.Value)
+                    .CountAsync();
+                // ** WorksheetQuestions tablosuna ekleme **
+                var worksheetQuestion = new WorksheetQuestion
+                {
+                    TestId = questionDto.TestId.Value,
+                    QuestionId = question.Id,
+                    Order = orderCount + 1 // Varsayılan sıralama
+                };
+
+                _context.TestQuestions.Add(worksheetQuestion);
                 await _context.SaveChangesAsync();
             }
         }

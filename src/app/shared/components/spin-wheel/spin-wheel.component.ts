@@ -12,7 +12,7 @@ export class SpinWheelComponent implements AfterViewInit {
   wheelCanvas!: HTMLCanvasElement;
   wheelCtx!: CanvasRenderingContext2D;
   isSpinning = false; // Tekrar tıklamayı önlemek için
-  finalRotation = 0; // Kazananı belirlemek için
+  finalRotation = 0; // Ka  zananı belirlemek için
   prize!: string;
   ngAfterViewInit() {
     this.wheelCanvas = document.getElementById('wheelCanvas') as HTMLCanvasElement;

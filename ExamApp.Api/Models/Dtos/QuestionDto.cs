@@ -13,6 +13,15 @@ public class QuestionDto
     public string? PracticeCorrectAnswer { get; set; }    
     public int AnswerColCount { get; set; } = 3;
     public int? TestId { get; set; }
+    public PassageDto? Passage { get; set; }
+}
+
+public class PassageDto
+{
+    public int? Id { get; set; }
+    public string? Title { get; set; }
+    public string? Text { get; set; }
+    public string? ImageUrl { get; set; }    
 }
 
 public class AnswerDto

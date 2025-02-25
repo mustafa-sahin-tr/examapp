@@ -23,7 +23,6 @@ public class AppDbContext : DbContext
     public DbSet<WorksheetInstanceQuestion> TestInstanceQuestions { get; set; }
     public DbSet<WorksheetPrototype> TestPrototypes { get; set; }
     public DbSet<WorksheetPrototypeDetail> TestPrototypeDetail { get; set; }
-
     public DbSet<StudentPoint> StudentPoints { get; set; }
     public DbSet<StudentPointHistory> StudentPointHistories { get; set; }
     public DbSet<Reward> Rewards { get; set; }
@@ -31,13 +30,10 @@ public class AppDbContext : DbContext
     public DbSet<Leaderboard> Leaderboards { get; set; }
     public DbSet<SpecialEvent> SpecialEvents { get; set; }
     public DbSet<StudentSpecialEvent> StudentSpecialEvents { get; set; }
-
     public DbSet<StudentBadge> StudentBadges { get; set; }
-
     public DbSet<Book> Books { get; set; }
     public DbSet<BookTest> BookTests { get; set; }
-
-
+    public DbSet<Passage> Passage { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

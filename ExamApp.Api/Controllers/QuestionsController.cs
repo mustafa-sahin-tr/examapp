@@ -70,6 +70,22 @@ public class QuestionsController : BaseController
         return Ok(question);
     }
 
+    [HttpGet("passages")]
+    public async Task<IActionResult> GetLastTenPassages() {
+        var passages = await _context.Passage
+            .OrderByDescending(p => p.Id)
+            .Take(10)
+            .Select(p => new {
+                p.Id,
+                p.Title,
+                p.Text,
+                p.ImageUrl
+            })
+            .ToListAsync();
+
+        return Ok(passages);
+    }
+
     // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
     [HttpGet("bytest/{testid}")]
     public async Task<IActionResult> GetQuestionByTestId(int testid)
@@ -201,7 +217,23 @@ public class QuestionsController : BaseController
                 {
                     question.CorrectAnswerId = correctAnswer.Id;
                 }
-            }                        
+            }            
+
+            if(questionDto.Passage != null) {
+                if(questionDto.Passage.Id > 0) {
+                    var passage = await _context.Passage
+                    .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException("Kapsam bulunamadı!");
+                } 
+                else {
+                    var passage = new Passage {
+                        Title = questionDto.Passage.Title,
+                        Text = questionDto.Passage.Text,
+                        ImageUrl = questionDto.Passage.ImageUrl
+                    };
+                    _context.Passage.Add(passage);                    
+                    question.PassageId = passage.Id;
+                }
+            }            
                     
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();
@@ -298,6 +330,40 @@ public class QuestionsController : BaseController
                 _context.TestQuestions.Add(worksheetQuestion);
                 await _context.SaveChangesAsync();
             }
+
+            if(questionDto.Passage != null) {
+                if(questionDto.Passage.Id > 0) {
+                    var passage = await _context.Passage
+                    .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException("Kapsam bulunamadı!");
+
+                    question.PassageId = passage.Id;
+                    _context.Questions.Update(question);
+                    await _context.SaveChangesAsync();
+
+                } 
+                else {
+
+                    var passage = new Passage {
+                        Title = questionDto.Passage.Title,
+                        Text = questionDto.Passage.Text
+                    };
+                    // 📌 Eğer yeni resim varsa, güncelle
+                    if (!string.IsNullOrEmpty(questionDto.Passage.ImageUrl) && 
+                        _imageHelper.IsBase64String(questionDto.Passage.ImageUrl)) 
+                    {
+                        byte[] imageBytes = Convert.FromBase64String(questionDto.Passage.ImageUrl.Split(',')[1]);
+                        await using var imageStream = new MemoryStream(imageBytes);
+                        passage.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"passages/{questionDto.TestId}/{Guid.NewGuid()}.jpg");
+                    }
+
+                    _context.Passage.Add(passage);
+                    await _context.SaveChangesAsync();
+
+                    question.PassageId = passage.Id;
+                    _context.Questions.Update(question);
+                    await _context.SaveChangesAsync();
+                }
+            }
         }
 
         return Ok(new { message = questionDto.Id > 0 ? "Soru başarıyla güncellendi!" : "Soru başarıyla kaydedildi!", questionId = question.Id });
@@ -309,57 +375,5 @@ public class QuestionsController : BaseController
 }
 
 
-    // [HttpPost]
-    // public async Task<IActionResult> CreateQuestion([FromBody] QuestionDto questionDto)
-    // {
-    //     try
-    //     {
-    //         var question = new Question
-    //         {
-    //             Text = questionDto.Text,
-    //             SubText = questionDto.SubText,
-    //             // Category = questionDto.Category,
-    //             Point = questionDto.Point,
-    //             CorrectAnswer = questionDto.CorrectAnswer,
-    //             SubjectId = questionDto.SubjectId,
-    //             TopicId = questionDto.TopicId,
-    //             SubTopicId = questionDto.SubTopicId,
-    //         };
-
-    //         // Soru Resmini MinIO'ya yükleyelim
-    //         if (!string.IsNullOrEmpty(questionDto.Image))
-    //         {
-    //             byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
-    //             await using var imageStream = new MemoryStream(imageBytes);
-    //             question.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{Guid.NewGuid()}.jpg");
-    //         }
-
-    //         // Şıkların Resimlerini MinIO'ya Yükleyelim
-    //         foreach (var answerDto in questionDto.Answers)
-    //         {
-    //             var answer = new Answer
-    //             {
-    //                 Text = answerDto.Text
-    //             };
-
-    //             if (!string.IsNullOrEmpty(answerDto.Image))
-    //             {
-    //                 byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
-    //                 await using var imageStream = new MemoryStream(imageBytes);
-    //                 answer.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"answers/{Guid.NewGuid()}.jpg");
-    //             }
-
-    //             question.Answers.Add(answer);
-    //         }
-
-    //         _context.Questions.Add(question);
-    //         await _context.SaveChangesAsync();
-
-    //         return Ok(new { message = "Soru başarıyla kaydedildi!", questionId = question.Id });
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         return BadRequest(new { error = ex.Message });
-    //     }
-    // }
+    
 }

@@ -24,6 +24,8 @@ import { TestService } from '../../services/test.service';
 import { QuestionForm } from '../../models/question-form';
 import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
+import { Passage } from '../../models/question';
+import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -39,14 +41,18 @@ import { BookService } from '../../services/book.service';
             FormsModule,
             ReactiveFormsModule,
             CommonModule,
-            MatCardModule,MatIconModule,
+            MatCardModule,
+            MatIconModule,
             QuestionListComponent,
-            QuillModule]
+            QuillModule,
+            PassageCardComponent
+          ]
 })
 export class QuestionComponent implements OnInit {
 
   testList: Test[] = [];
   subjects: Subject[] = [];
+  passages: Passage[] = []; 
   topics: Topic[] = [];
   subTopics: SubTopic[] = [];
   id: number | null = null;
@@ -91,8 +97,13 @@ export class QuestionComponent implements OnInit {
       point: new FormControl(5, { nonNullable: true, validators: [Validators.required] }),
       correctAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
+      hasPassage: new FormControl(false, { nonNullable: true }), 
       practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       answerColCount: new FormControl(3, { nonNullable: true, validators: [Validators.required] }),
+      passageId: new FormControl(0, { nonNullable: false }),
+      passageText: new FormControl(''),
+      passageImage: new FormControl(''),
+      passageTitle: new FormControl(''),
       testId: new FormControl(state?.testId || 0, { nonNullable: true, validators: [Validators.required] }),
       answers: new FormArray(
           Array(4).fill(0).map(() => new FormGroup({
@@ -106,10 +117,7 @@ export class QuestionComponent implements OnInit {
 
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state as { subjectId?: number; topicId?: number, subtopicId?: number, testId?: number };
-
     this.resetFormWithDefaultValues(state);
-    
-
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;  
     this.loadCategories();
@@ -133,6 +141,11 @@ export class QuestionComponent implements OnInit {
         isExample: question.isExample,
         practiceCorrectAnswer: question.practiceCorrectAnswer,
         answerColCount: question.answerColCount,        
+        hasPassage: question.passage && question.passage.id > 0,
+        passageId: question.passage?.id || 0,  
+        passageText: question.passage?.text,
+        passageImage: question.passage?.imageUrl,
+        passageTitle: question.passage?.title,  
       });
 
       const answerArray = this.questionForm.get('answers') as FormArray;
@@ -184,6 +197,17 @@ export class QuestionComponent implements OnInit {
     }
   }
 
+  onImageUploadForPassage(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.questionForm.patchValue({ passageImage: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   loadTests() {
     this.testService.search('').subscribe(data => {
       this.testList = data.items;
@@ -196,6 +220,10 @@ export class QuestionComponent implements OnInit {
       if(this.questionForm.value.subjectId) {
         this.onSubjectChange();
       }
+    });
+
+    this.questionService.loadPassages().subscribe(data => {
+      this.passages = data;
     });
   }
 
@@ -257,6 +285,13 @@ export class QuestionComponent implements OnInit {
   onSave(navigateNewQuestion: boolean = false) {
     const formData = this.questionForm.value;
 
+    if(formData.hasPassage && formData.passageId <= 0) {      
+      if(!formData.passageText && !formData.passageImage) {
+        this.snackBar.open('Lütfen metin veya resim içeren bir pasaj ekleyin!', 'Tamam', { duration: 3000 });
+        return;
+      }
+    }
+
     if (!formData.text && !formData.image) {
       this.snackBar.open('Lütfen soruya metin veya resim ekleyin!', 'Tamam', { duration: 3000 });
       return;
@@ -283,6 +318,7 @@ export class QuestionComponent implements OnInit {
     }
 
     
+    
 
     console.log('Gönderilen Form:', formData);
 
@@ -303,6 +339,12 @@ export class QuestionComponent implements OnInit {
           isExample: formData.isExample,
           practiceCorrectAnswer: formData.practiceCorrectAnswer,
           answerColCount: formData.answerColCount,  
+          passage: {
+            id: formData.passageId,
+            title: formData.passageTitle,
+            text: formData.passageText,
+            imageUrl: formData.passageImage
+          },
           answers: formData.answers.map((answer: any, index: number) => ({
             text: answer.text,
             image: answer.image,

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Question } from '../models/question';
+import { Passage, Question } from '../models/question';
 
 @Injectable({
   providedIn: 'root'
@@ -25,5 +25,9 @@ export class QuestionService {
 
   getAll(testId: number | undefined ): Observable<Question[]> {
     return this.http.get<Question[]>(`${this.apiUrl}/bytest/${testId}`);
+  }
+
+  loadPassages(): Observable<Passage[]> {
+    return this.http.get<Passage[]>(`${this.apiUrl}/passages`);
   }
 }

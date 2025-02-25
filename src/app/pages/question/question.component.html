@@ -10,7 +10,7 @@
             <label for="test">Test</label>
             <select id="test" formControlName="testId">
               @for ( t of testList ; track t.id ) {
-                <option [value]="t.id">{{ t.name }}</option>
+                <option [value]="t.id">{{ t.name }} - {{ t.subtitle }} - {{ t.description }}</option>
               }
             </select>
              
@@ -45,10 +45,51 @@
               <!-- 🟢 Puan Belirleme -->
               <label for="point">Puan</label>
               <input type="number" id="point" formControlName="point" min="1" max="20" />
+
+              <!-- 🟢 Örnek Soru Modu -->
+              <div class="example-checkbox">
+                <input type="checkbox" id="hasPassage" formControlName="hasPassage" />
+                <label for="hasPassage">Passage Var Mı?</label>
+              </div>
+              <!-- 🟢 Örnek Soru Cevabı -->
+              <!-- 🟢 Ders Seçimi -->
+               @if(questionForm.value.hasPassage) {
+                <label for="passage">Pasaj</label>
+                <select id="passage" formControlName="passageId">
+                  @for ( ps of passages ; track ps.id ) {
+                    <option [value]="ps.id">
+                      <div>
+                        <app-passage-card [passage]="ps"></app-passage-card>
+                      </div>
+                    </option>
+                  }
+                </select>
+              }
+              @if(questionForm.value.hasPassage && !questionForm.value.passageId) {
+                  <!-- 🟢 Soru Metni -->
+                <label for="passageText">Passage Metni</label>
+                <!-- <textarea id="text" formControlName="text"></textarea> -->
+                <quill-editor   id="passageText" formControlName="passageText" theme="snow"></quill-editor>
+
+                <!-- 🟢 Soru Resmi -->
+                <label for="passageImage">Passage Resmi</label>
+                <input type="file" id="passageImage" (change)="onImageUploadForPassage($event)" />
+                @if (questionForm.value.passageImage) {
+                  <img [src]="questionForm.value.passageImage" class="preview-image" />
+                }
+
+                <label for="passageTitle">Passage Title</label>
+                <!-- <textarea id="text" formControlName="text"></textarea> -->
+                <quill-editor   id="passageTitle" formControlName="passageTitle" theme="snow"></quill-editor>
+                
+              }
+
   
             </div>
             <!-- 🟢 Sol Sütun -->
             <div class="form-column">
+              
+              
               <!-- 🟢 Soru Metni -->
               <label for="text">Soru Metni</label>
               <!-- <textarea id="text" formControlName="text"></textarea> -->

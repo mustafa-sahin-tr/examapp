@@ -13,5 +13,10 @@ export type QuestionForm = {
     practiceCorrectAnswer: FormControl<string>,
     answerColCount: FormControl<number>,
     testId:  FormControl<number | null>,
+    hasPassage: FormControl<boolean>,
+    passageId: FormControl<number | null>,
+    passageText: FormControl<string | null>,
+    passageImage: FormControl<string | null>,
+    passageTitle: FormControl<string | null>,
     answers: FormArray
 }

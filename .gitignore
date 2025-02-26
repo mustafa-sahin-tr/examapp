@@ -1,0 +1,40 @@
+# Visual Studio & Rider
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sln.cache
+
+# Build Output
+bin/
+obj/
+out/
+
+# Packages
+*.nupkg
+packages/
+!packages/repositories.config
+
+# Logs
+*.log
+logs/
+
+# User Secrets (Local Configurations)
+secrets.json
+appsettings.Development.json
+
+# Database & Migrations
+*.db
+*.sqlite
+migrations/
+
+# Docker & Kubernetes
+.dockerignore
+docker-compose.override.yml
+
+# .NET Debugging
+*.pdb
+*.lock.json
+.DS_Store

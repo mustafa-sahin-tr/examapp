@@ -1,0 +1,54 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { CheckStudentResponse } from '../models/check-student-response';
+import { Router } from '@angular/router';
+import { Subject } from '../models/subject';
+import { Topic } from '../models/topic';
+import { SubTopic } from '../models/subtopic';
+import { CompletedTest, Exam, Paged, Test, TestInstance } from '../models/test-instance';
+import { StudentAnswer } from '../models/student-answer';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TestService {
+
+  constructor(private http: HttpClient, private router: Router) {}
+
+  getTestWithAnswers(testInstanceId: number): Observable<TestInstance> {
+    return this.http.get<TestInstance>(`/api/worksheet/test-instance/${testInstanceId}`);
+  }
+
+  saveAnswer( studentAnswer: StudentAnswer ): Observable<any> {
+    return this.http.post<any>(`/api/worksheet/save-answer`,  studentAnswer );
+  }
+
+  completeTest( testInstanceId: number ): Observable<any> {
+    return this.http.put<any>(`/api/worksheet/end-test/${testInstanceId}`, null);
+  }
+
+  startTest( testInstanceId: number ): Observable<any> {
+    return this.http.post<any>(`/api/worksheet/start-test/${testInstanceId}`, null);
+  }
+
+  loadTest() {
+    return this.http.get<Exam[]>(`/api/worksheet`);
+  }
+
+  search(query: string | undefined, pageNumber: number = 1): Observable<Paged<Test>> {
+    return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=10`);
+  }
+
+  getCompleted(pageNumber: number = 1): Observable<Paged<CompletedTest>> {
+    return this.http.get<Paged<CompletedTest>>(`/api/worksheet/CompletedTests?pageNumber=${pageNumber}&pageSize=10`);
+  }
+  
+  create(test: Test): Observable<{message:string, examId: number}> {
+    return this.http.post<any>('/api/worksheet', test);
+  }
+
+  get(id: number): Observable<Test> {
+    return this.http.get<Test>(`/api/worksheet/${id}`);
+  }
+}

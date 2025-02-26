@@ -1,0 +1,154 @@
+@if(student) 
+{
+ 
+  <mat-tab-group [(selectedIndex)]="activeTab">
+    <mat-tab label="Info">
+      <mat-card class="profile-card">
+        <mat-card-header>
+          <div class="profile-header stats-container">
+            <div class="avatar-container">
+              <img [src]="student.avatarUrl || 'assets/default-avatar.png'" class="avatar" />
+              <div class="avatar-overlay" (click)="avatarInput.click()">
+                <span>Change</span>
+              </div>
+              <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
+            </div>
+            <div class="stat">
+              <h2>{{ student.fullName }}</h2>        
+            </div>
+            
+            <div class="stat">
+              <mat-select [(value)]="student.gradeId" (selectionChange)="changeGrade()">
+                  @for ( grade of grades ; track grade.id ) 
+                  {
+                    <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
+                  }
+                </mat-select>
+            </div>
+            <div class="stat"><p>Seviye: {{ student.level }} ({{ student.xp }} XP)</p></div>
+            
+          </div>
+        </mat-card-header>
+          <mat-card-content >
+            
+            <div class="stats-container">
+              <div class="stat">
+                <mat-icon>question_answer</mat-icon>
+                <span>{{ student.totalQuestionsSolved }} Soru Çözüldü</span>
+              </div>
+              <div class="stat">
+                <mat-icon>check_circle</mat-icon>
+                <span>{{ student.correctAnswers }} Doğru Cevap</span>
+              </div>
+              <div class="stat">
+                <mat-icon>highlight_off</mat-icon>
+                <span>{{ student.wrongAnswers }} Yanlış Cevap</span>
+              </div>
+              <div class="stat">
+                <mat-icon>assignment_turned_in</mat-icon>
+                <span>{{ student.testsCompleted }} Tamamlanan Test</span>
+              </div>
+              <div class="stat">
+                <mat-icon>emoji_events</mat-icon>
+                <span>{{ student.totalRewards }} Kazanılan Ödül</span>
+              </div>
+              <div class="stat">
+                <mat-icon>leaderboard</mat-icon>
+                <span>Liderlik Sıralaması: {{ student.leaderboardRank || '-' }}</span>
+              </div>
+            </div>
+      
+            <h3>🎖 Kazanılan Rozetler</h3>
+            <div class="badges-container">
+              @for ( badge of student.badges ; track badge.name ) 
+              {
+                <img [src]="badge.imageUrl" [matTooltip]="badge.name" class="badge" />
+              }
+            </div>
+      
+            <!-- <h3>📌 Son Çözülen Testler</h3>
+            <mat-list>
+              @for (test of student.recentTests ; track test.name) 
+              {
+                <mat-list-item>
+                  <span>{{ test.name }}</span>
+                  <span class="test-score">{{ test.score }}/{{ test.totalQuestions * 10 }} Puan</span>
+                </mat-list-item>
+              }
+             
+            </mat-list> -->
+          </mat-card-content>
+        </mat-card>
+    </mat-tab>
+    <mat-tab label="Badges">
+        <div class="points-container">
+          <app-point-card title="My Points" value="2,500" icon="whatshot"></app-point-card>
+          <app-point-card title="Class Rank" value="3rd" icon="terrain"></app-point-card>
+          <app-point-card title="Year 12 Rank" value="128" icon="flag"></app-point-card>
+        </div>
+        <app-section-header title="My Badges" icon="assets/icons/badge.png"></app-section-header>
+      
+        <div class="badges-container">
+          <app-badge-box 
+            *ngFor="let badge of badges" 
+            [badgeTitle]="badge.title"
+            [badgeLevel]="badge.level"
+            [badgeIcon]="badge.icon">
+          </app-badge-box>
+        </div>
+      
+        <app-section-header title="Leaderboards" icon="assets/icons/leaderboard.png"></app-section-header>
+      
+      
+        <div class="leaderboards-container">
+          <app-leaderboard 
+            leaderboardTitle="Class Leaderboard"
+            [leaderboardData]="classLeaderboard">
+          </app-leaderboard>
+        
+          <app-leaderboard 
+            leaderboardTitle="Group Level Leaderboard"
+            [leaderboardData]="groupLeaderboard"
+            [showDetails]="true">
+          </app-leaderboard>
+        </div>
+    </mat-tab>
+     <!-- Info Tab (Gelecekte Kullanılabilir) -->
+  
+
+  <!-- Assignments and Exams Tab -->
+  <mat-tab label="Assignments and Exams">
+    <p>Assignments and Exams content will go here...</p>
+  </mat-tab>
+
+  <!-- Weekly Calendar Tab -->
+  <mat-tab label="Weekly Calendar">
+    <div class="heatmap-container">
+      <h2>Activity Heatmap</h2>
+      <ngx-charts-heat-map
+        [view]="[1200, 210]"
+        [scheme]="colorScheme"
+        [results]="activityData"
+        [xAxis]="true"
+        [yAxis]="true"
+        [legend]="false"
+        [showXAxisLabel]="true"
+        [showYAxisLabel]="true"
+        [gradient]="true"
+        [xAxisTickFormatting]="xAxisTickFormatting">
+      </ngx-charts-heat-map>
+    
+      
+    </div>
+    
+    
+  </mat-tab>
+  </mat-tab-group>
+
+  
+  
+  
+
+
+
+}

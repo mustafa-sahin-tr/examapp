@@ -1,0 +1,8 @@
+<div class="completed-card">
+  <img [src]="completedTest.imageUrl" alt="Test Image" class="card-image">
+  <h3>{{ completedTest.name }}</h3>
+  <!-- <p class="date">Tamamlandı: {{ completedTest.completedDate | date:'dd/MM/yyyy' }}</p> -->
+  <p>Puan: {{ completedTest.score }}/100</p>
+  <p>Süre: {{ completedTest.durationMinutes }} dk</p>
+  <p>Doğru: {{ completedTest.correctAnswers }} / Yanlış: {{ completedTest.wrongAnswers }} / Toplam: {{ completedTest.totalQuestions }}</p>
+</div>

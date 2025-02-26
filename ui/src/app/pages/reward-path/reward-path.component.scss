@@ -1,0 +1,43 @@
+.reward-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px; /* Ödüller arasındaki boşluk */
+}
+
+.reward-box {
+    position: relative;
+    width: 150px;
+    height: 150px;
+}
+
+.reward-connection {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
+
+.connection-image {
+    width: 50px; /* Bağlantı okunun boyutu */
+    height: auto;
+    transform: rotate(90deg); /* İstediğiniz yönde döndürebilirsiniz */
+}
+
+.reward-box .badge-wrap .box {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+    border-radius: 50%;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+}
+
+.reward-box .badge-wrap .box .badge {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}

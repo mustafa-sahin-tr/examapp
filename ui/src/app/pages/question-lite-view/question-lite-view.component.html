@@ -1,0 +1,46 @@
+@if(question) {
+<mat-card class="question-lite-card">
+    <div class="question-lite-container">
+      <!-- 🟢 Soru Başlığı ve Resmi -->
+      <div class="question-lite-content">
+        @if(question.text) {
+        <div class="question-lite-text" [innerHTML]="question.text | safeHtml"></div>
+        }
+        @if(question.imageUrl) {
+          <img [src]="question.imageUrl" class="question-lite-image" />
+        }
+        @if(question.subText) {
+          <div class="question-lite-text" [innerHTML]="question.subText | safeHtml"></div>
+        }
+      </div>
+  
+      <!-- 🟢 Eğer Practice Test ise, cevabı otomatik göster -->
+      @if(isPracticeTest) {
+        <div>
+          @if(question.isExample && correctAnswerVisible) {
+          <div class="correct-answer">
+              Doğru Cevap: 
+              <div class="question-lite-text" [innerHTML]="question.practiceCorrectAnswer | safeHtml"></div>
+            </div>
+          }
+          <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+        </div>         
+      } @else {
+        <div class="answers-lite-container" [ngStyle]="{'grid-template-columns': 'repeat('+ question.answerColCount +', 1fr)'}">
+          @for ( answer of question.answers; track answer.id; let i = $index) {
+          <div class="answer-lite-box"
+              [ngClass]="{ 'selected-answer': selectedAnswerId === answer.id }"
+              (click)="selectAnswer(answer.id)">
+                <span class="answer-label">{{ getAnswerLabel(i) }}</span>
+                  <span class="answer-text">{{ answer.text }}</span>
+                  @if(answer.imageUrl) {
+                    <img [src]="answer.imageUrl" class="answer-image" />
+                  }
+          </div>
+          }
+        </div>
+       }
+      
+    </div>
+  </mat-card>
+}

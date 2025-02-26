@@ -1,0 +1,187 @@
+mat-select {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+  }
+
+.profile-card {
+    max-width: 760px;
+    margin: auto;
+    padding: 20px;
+  }
+
+  .profile-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #2196f3;
+  }
+
+  .stats-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin: 20px 0;
+  }
+
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 1rem;
+    color: #555;
+  }
+
+  .badges-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+  }
+
+  .badge {
+    width: 50px;
+    height: 50px;
+  }
+
+  .test-score {
+    font-weight: bold;
+    color: #4caf50;
+    margin-left: auto;
+  }
+
+  .avatar-container {
+    position: relative;
+    display: inline-block;
+
+    .avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+    }
+
+    .avatar-overlay {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: 14px;
+      padding: 5px;
+      cursor: pointer;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    &:hover .avatar-overlay {
+      opacity: 1;
+    }
+  }
+
+  // .points-container {
+  //   display: flex;
+  //   justify-content: space-around;
+  //   gap: 15px;
+  //   margin-bottom: 20px;
+  // }
+
+
+  .points-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(200px, 1fr)); /* 3 EŞİT SÜTUN */
+    gap: 20px;
+    width: 100%;
+  }
+  
+  // .badges-container {
+  //   display: flex;
+  //   gap: 15px;
+  //   justify-content: space-around;
+  //   flex-wrap: wrap;
+  //   margin-bottom: 20px;
+  // }
+
+  .badges-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Dinamik Grid */
+    gap: 20px;
+    width: 100%;
+  }
+
+  // .leaderboards-container {
+  //   display: flex;
+  //   gap: 20px;
+  //   justify-content: space-around;
+  //   flex-wrap: wrap;
+  //   margin-bottom: 20px;
+  // }
+
+  .leaderboards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Dinamik Grid */
+    gap: 20px;
+    width: 100%;
+  }
+
+
+  mat-tab-group {
+    margin-top: 20px;
+  }
+  
+  // .badges-container, .leaderboards-container {
+  //   display: flex;
+  //   gap: 15px;
+  //   justify-content: space-around;
+  //   flex-wrap: wrap;
+  //   margin-bottom: 20px;
+  // }
+  
+  .heatmap-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: white;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+  }
+  
+  :host ::ng-deep rect {
+    width: 18px !important;
+    height: 18px !important;
+    rx: 3;
+  }
+  
+  // .heatmap-container {
+  //   display: flex;
+  //   flex-direction: column;
+  //   align-items: center;
+  //   justify-content: center;
+  //   padding: 20px;
+  //   background: #0f172a;
+  //   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  //   border-radius: 8px;
+  // }
+  
+  .months-container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 900px;
+    margin-top: 5px;
+    font-size: 14px;
+    color: white;
+  }

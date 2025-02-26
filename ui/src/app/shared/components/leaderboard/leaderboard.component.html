@@ -1,0 +1,14 @@
+<mat-card class="leaderboard">
+    <mat-card-title class="leaderboard-title">{{ leaderboardTitle }}</mat-card-title>
+    <mat-card-content>
+      <div *ngFor="let user of leaderboardData; let i = index" class="leaderboard-item"
+           [class.highlight]="i === 3"> 
+        <span class="rank">{{ i + 1 }}</span>
+        <img [src]="user.icon" class="user-icon" *ngIf="user.icon">
+        <span class="user-name">{{ user.name }}</span>
+        <span *ngIf="showDetails" class="user-grade">{{ user.grade }}</span>
+        <span class="user-score">{{ user.score  }}</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+  

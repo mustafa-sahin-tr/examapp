@@ -1,0 +1,44 @@
+<div class="search-container">    
+    <mat-form-field appearance="outline" class="search-box">
+        <mat-label>Ara</mat-label>
+        <input matInput [formControl]="searchControl" [matAutocomplete]="auto" (keyup.enter)="onEnter()">
+        <mat-autocomplete #auto="matAutocomplete">
+            <mat-option *ngFor="let worksheet of filteredWorksheets" [value]="worksheet.name" (onSelectionChange)="onAutocompleteSelect(worksheet.name)">
+                <div class="search-item">
+                <img [src]="worksheet.imageUrl" alt="" class="search-img" />
+                <span>{{ worksheet.name }}</span>
+                </div>
+            </mat-option>
+        </mat-autocomplete>
+    </mat-form-field>
+</div>
+
+<app-section-header title="Testler" icon="/icons/18.svg"></app-section-header>
+
+<div class="list-container">
+    <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
+    <div class="cards" #cardContainer>
+    <app-worksheet-card *ngFor="let worksheet of pagedWorksheets.items"
+      [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)">
+    </app-worksheet-card>
+  </div>
+  <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
+</div>
+
+<app-section-header title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
+
+<div class="list-container">       
+    @if (completedTestWorksheets.length > 0) {
+        <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
+    <div class="cards" #cardContainer2>
+    <app-completed-worksheet-card *ngFor="let cws of completedTestWorksheets"
+      [completedTest]="cws">
+    </app-completed-worksheet-card>
+  </div>
+  <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
+    }
+    <p> Henüz bir test tamamlanadınız! </p>
+    
+</div>
+
+

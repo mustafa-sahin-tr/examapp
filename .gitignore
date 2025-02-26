@@ -29,7 +29,6 @@ appsettings.Development.json
 # Database & Migrations
 *.db
 *.sqlite
-migrations/
 
 # Docker & Kubernetes
 .dockerignore
@@ -83,3 +82,12 @@ testem.log
 .DS_Store
 Thumbs.db
 
+/postgres/examdata
+
+/ui/node_modules
+/ui/dist
+/ui/.angular/cache
+/ui/.vscode
+/ui/.idea
+
+minio-data/

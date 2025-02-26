@@ -1,0 +1,32 @@
+# Use the Node.js image for building Angular
+FROM node:20 AS build
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Install Angular CLI
+RUN npm set strict-ssl false
+RUN npm install -g @angular/cli
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        nano \
+        git \
+        net-tools \
+    && rm -rf /var/lib/apt/lists/*
+# RUN ng analytics disable --global
+# RUN ng completion script
+# # Create a new Angular project
+# RUN ng new client --skip-install --routing=false --style=scss --ssr=false
+
+# Change directory to the project folder
+# WORKDIR /app/client
+# apt-get install -y iptools-ping
+# apt-get install net-tools
+# Expose port 4200 for the Angular development server
+EXPOSE 4200
+
+# Command to start the Angular development server
+# CMD ["ng", "serve", "--host", "0.0.0.0"]
+CMD ["sleep", "infinity"]

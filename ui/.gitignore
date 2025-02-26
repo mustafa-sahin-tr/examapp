@@ -1,0 +1,52 @@
+# Compiled output
+dist/
+out-tsc/
+coverage/
+
+# Node modules
+node_modules/
+
+
+.angular/cache/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Angular specific
+.angular/
+
+# Environment files
+src/environments/environment*.ts
+
+# Package lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Cypress
+cypress/screenshots/
+cypress/videos/
+
+# Firebase
+.firebase/
+firestore.indexes.json
+firestore.rules
+storage.rules
+.firebasehosting.*

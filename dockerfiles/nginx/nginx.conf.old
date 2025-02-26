@@ -1,0 +1,36 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+  upstream angular-app {
+    # These are references to our backend containers, facilitated by
+    # Compose, as defined in docker-compose.yml
+    server angular-app:4200;
+  } 
+  upstream dotnet-api {
+    # These are references to our backend containers, facilitated by
+    # Compose, as defined in docker-compose.yml
+    server dotnet-api:8002;
+  }
+  
+   server {
+    listen 80;
+    server_name angular-app;
+    server_name dotnet-api;
+
+    location / {
+       resolver 127.0.0.11 valid=30s;
+       proxy_pass http://angular-app/;
+       proxy_set_header Host $host;
+    }
+
+    location /api/ {
+       resolver 127.0.0.11 valid=30s;
+       proxy_pass http://dotnet-api/;
+       proxy_set_header Host $host;
+    }
+
+  }
+
+}

@@ -36,4 +36,8 @@ export class StudentService {
     return this.http.get<Grade[]>(`/api/student/grades`);
   }
 
+  register(student: any): Observable<any> {
+    return this.http.post<any>(`/api/student/register`, student);
+  }
+
 }

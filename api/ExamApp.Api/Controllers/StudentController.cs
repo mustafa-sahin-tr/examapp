@@ -22,14 +22,8 @@ namespace ExamApp.Api.Controllers
         [HttpPost("update-grade")]
         public async Task<IActionResult> UpdateStudentGrade([FromBody] int newGradeId)
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null || user.Role != UserRole.Student)
-            {
-                return BadRequest("Invalid User ID or User is not a Student.");
-            }
-            var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+           var user = await GetAuthenticatedUserAsync();
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
             if (student == null)
                 return NotFound(new { message = "Öğrenci bulunamadı." });
 
@@ -71,20 +65,14 @@ namespace ExamApp.Api.Controllers
 
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
-        [HttpPost("register-student")]
+        [HttpPost("register")]
         public async Task<IActionResult> RegisterStudent(RegisterStudentDto request)
         {
             // 🔹 Token’dan UserId'yi al
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null || user.Role != UserRole.Student)
-            {
-                return BadRequest("Invalid User ID or User is not a Student.");
-            }
+            var user = await GetAuthenticatedUserAsync();
 
             // 🔹 Öğrenci zaten var mı?
-            var existingStudent = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+            var existingStudent = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
             if (existingStudent != null)
             {
                 return BadRequest("Student record already exists.");
@@ -93,9 +81,10 @@ namespace ExamApp.Api.Controllers
             // 🔹 Yeni öğrenci kaydını ekle
             var student = new Student
             {
-                UserId = userId,
+                UserId = user.Id,
                 StudentNumber = request.StudentNumber,
-                SchoolName = request.SchoolName
+                SchoolName = request.SchoolName,
+                GradeId = request.GradeId
             };
 
             _context.Students.Add(student);

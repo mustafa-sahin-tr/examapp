@@ -5,14 +5,14 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
 # Run dotnet new to create a new API project
-# RUN dotnet new webapi -n BooksApi -o . 
+# RUN dotnet new webapi -n BooksApi -o .
 
 # Expose the default ASP.NET Core port for development
 RUN apt-get update && apt-get install -y ca-certificates
 
 # Install required tools for development (e.g., curl, nano, git)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \        
+    && apt-get install -y --no-install-recommends \
         curl \
         nano \
         git \
@@ -21,11 +21,16 @@ RUN apt-get update \
 
 RUN dotnet tool install -g microsoft.sqlpackage
 
+# Install dotnet-ef tool globally
+RUN dotnet tool install -g dotnet-ef
+
+# Ensure global tools are available in the PATH
+ENV PATH="$PATH:/root/.dotnet/tools"
+
 # RUN cat << \EOF >> ~/.bashrc  \
 #     # Add .NET Core SDK tools
 #     export PATH="$PATH:/root/.dotnet/tools" \
 #     EOF
-
 
 # Set the ASP.NET Core environment to Development
 ENV ASPNETCORE_ENVIRONMENT Development
@@ -41,5 +46,5 @@ ENV ASPNETCORE_URLS http://+:8005
 EXPOSE 8004
 
 # Set up the entry point for Visual Studio Code remote development
-# ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:8002"]
+# ENTRYPOINT ["dotnet", "watch", "run", "--urls", "http://0.0.0.0:8005"]
 CMD ["sleep", "infinity"]

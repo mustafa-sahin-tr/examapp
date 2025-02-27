@@ -86,6 +86,33 @@ public class QuestionsController : BaseController
         return Ok(passages);
     }
 
+    [HttpDelete("{id}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteQuestion(int id)
+    {
+        try
+        {
+            var question = await _context.Questions
+                .Include(q => q.Answers)
+                .FirstOrDefaultAsync(q => q.Id == id);
+
+            if (question == null)
+            {
+                return NotFound(new { message = "Soru bulunamadı!" });
+            }
+
+            _context.Answers.RemoveRange(question.Answers);
+            _context.Questions.Remove(question);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Soru başarıyla silindi!" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
     [HttpGet("bytest/{testid}")]
     public async Task<IActionResult> GetQuestionByTestId(int testid)

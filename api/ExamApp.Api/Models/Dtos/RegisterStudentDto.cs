@@ -9,4 +9,7 @@ public class RegisterStudentDto
     [Required]
     [MaxLength(100)]
     public string SchoolName { get; set; }
+
+    [Required] 
+    public int GradeId { get; set; }
 }

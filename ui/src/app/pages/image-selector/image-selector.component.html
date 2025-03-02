@@ -1,0 +1,19 @@
+<div class="container">
+    <input type="file" (change)="handleFileInput($event)" accept="image/*">
+    <button (click)="toggleSelectionMode()">Bölge Seçimini {{ selectionMode() ? 'Durdur' : 'Başlat' }}</button>
+    <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button>
+  
+    <div *ngIf="imageSrc()" class="canvas-container">
+      <canvas #canvas (mousedown)="startSelection($event)" (mouseup)="endSelection($event)"></canvas>
+    </div>
+  
+    <div class="regions-list">
+      <h3>Seçilen Bölgeler:</h3>
+      <ul>
+        <li *ngFor="let region of regions()">
+          {{ region.name }} - X: {{ region.x }}, Y: {{ region.y }}, Genişlik: {{ region.width }}, Yükseklik: {{ region.height }}
+        </li>
+      </ul>
+    </div>
+  </div>
+  

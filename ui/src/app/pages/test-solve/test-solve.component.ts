@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnInit, QueryList, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, Input, OnInit, QueryList, signal, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
@@ -13,6 +13,14 @@ import { PassageCardComponent } from '../../shared/components/passage-card/passa
 import { ConfettiService } from '../../services/confetti.service';
 import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-wheel.component';
 import { MatDialog } from '@angular/material/dialog';
+
+export interface QuestionRegion {
+    name: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+}
 
 @Component({
   selector: 'app-test-solve',
@@ -44,14 +52,28 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   correctAnswerVisible = false;
 
   @ViewChildren('questionCard') questionCards!: QueryList<ElementRef>;
+
+  /* Image Selector */
+  @ViewChild('canvas', { static: false }) canvas!: ElementRef<HTMLCanvasElement>;
+  private ctx!: CanvasRenderingContext2D | null;
+  private img = new Image();
+  public imageSrc = signal<string>('test5.png'); // Saklanan resmin yolu
+  public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
+  public currentIndex = signal(0);
+  public isImageLoaded = signal(false);  // Resim yüklendi mi?
+
   constructor(private route: ActivatedRoute,
     private testService: TestService,
     private router: Router,
     private dialog: MatDialog
-  ) {}
+  ) {
+    // this.loadQuestions();
+  }
+
 
   ngAfterViewInit() {
-    }
+    //this.loadQuestions();
+  }
 
   // 📌 Dışarıdan spin başlatma
   triggerSpin() {
@@ -96,6 +118,7 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
         this.router.navigate(['/']); // Geçersiz ID varsa anasayfaya yönlendir
       }
     });
+
   }
 
   getPassage(questionIndex: number) : Passage | undefined{
@@ -123,6 +146,7 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       console.log('Test loaded', data);
 
       this.testInstance = data;
+      this.loadQuestions();
 
       let lastAnsweredQuestionIndex = this.testInstance.testInstanceQuestions.findIndex(q => q.selectedAnswerId);
       if(lastAnsweredQuestionIndex === -1) {
@@ -306,6 +330,10 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       this.currentQuestionIndex--;
       this.startQuestionTimer(); 
     }
+    if (this.currentIndex() > 0) {
+      this.currentIndex.set(this.currentIndex() - 1);
+      this.drawImageSection();
+    }
   }
 
   // Sonraki soruya git
@@ -324,6 +352,11 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       this.currentQuestionIndex++;
       this.startQuestionTimer(); 
     }
+
+    if (this.currentIndex() < this.regions().length - 1) {
+      this.currentIndex.set(this.currentIndex() + 1);
+      this.drawImageSection();
+    }
   }
 
   // Testi durdur (opsiyonel)
@@ -333,4 +366,52 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
     if(this.questionTimerSubscription)
       this.questionTimerSubscription.unsubscribe();
   }
+
+
+  /* Image Selector */
+  async loadQuestions() {
+    try {
+      const response = await fetch('questions.json'); // JSON dosyasını oku
+      const data: QuestionRegion[] = await response.json();
+      this.regions.set(data);
+      await this.loadImage();  // Resim yüklenmesini bekle
+      this.isImageLoaded.set(true);
+      this.drawImageSection();
+    } catch (error) {
+      console.error('Koordinatlar yüklenirken hata oluştu:', error);
+    }
+  }
+
+  loadImage(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.img.src = this.imageSrc();
+      this.img.onload = () => resolve();
+      this.img.onerror = reject;
+    });
+  }
+  drawImageSection() {
+    console.log('this.canvas:',this.canvas);
+    console.log('this.regions().length:',this.regions().length);
+    console.log('this.isImageLoaded():',this.isImageLoaded());
+    if (!this.canvas || this.regions().length === 0 || !this.isImageLoaded()) return;
+    const canvasEl = this.canvas.nativeElement;
+    this.ctx = canvasEl.getContext('2d');
+
+    if (this.ctx) {
+      const region = this.regions()[this.currentIndex()];
+      canvasEl.width = region.width;
+      canvasEl.height = region.height;
+
+      this.ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+      this.ctx.drawImage(
+        this.img,
+        region.x, region.y, region.width, region.height, // Kaynak bölge
+        0, 0, region.width, region.height // Canvas üzerine çizme bölgesi
+      );
+    }
+  }
+
+
+
+
 }

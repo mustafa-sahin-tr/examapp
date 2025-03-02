@@ -11,6 +11,7 @@ import { TestCreateComponent } from './pages/test-create/test-create.component';
 import { HomeComponent } from './home/home.component';
 import { WorksheetListComponent } from './pages/worksheet-list/worksheet-list.component';
 import { worksheetListResolver } from './shared/resolvers/worksheet-resolver';
+import { ImageSelectorComponent } from './pages/image-selector/image-selector.component';
 
 export const routes: Routes = [
   { path: 'register', component: RegisterComponent },
@@ -24,6 +25,7 @@ export const routes: Routes = [
   { path: 'student-register', component: StudentRegisterComponent, canActivate: [authGuard] },
   { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard] },
   { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
+  { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
   { path: 'tests', component: WorksheetListComponent , 
     canActivate: [authGuard],
     resolve: { worksheets : worksheetListResolver } },

@@ -86,6 +86,21 @@
     margin: 10px 0;
   }
 
+  h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  
+  .canvas-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  
+  canvas {
+    border: 2px solid #ddd;
+  }
+
   @media (max-width: 768px) {
     .question-lite-container {
       grid-template-columns: repeat(1, 1fr); /* Mobilde tek sütun */

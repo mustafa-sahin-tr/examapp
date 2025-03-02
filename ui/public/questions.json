@@ -1,58 +1,68 @@
 [
     {
       "name": "Soru 1",
-      "x": 89,
-      "y": 6,
-      "width": 505,
-      "height": 342
+      "x": 91.5,
+      "y": 9,
+      "width": 504,
+      "height": 332,
+      "answers": [
+        {
+          "label": "Şık 1",
+          "x": 92.5,
+          "y": 275,
+          "width": 118,
+          "height": 67,
+          "isCorrect": true
+        },
+        {
+          "label": "Şık 2",
+          "x": 247.5,
+          "y": 275,
+          "width": 126,
+          "height": 67,
+          "isCorrect": false
+        },
+        {
+          "label": "Şık 3",
+          "x": 417.5,
+          "y": 276,
+          "width": 121,
+          "height": 65,
+          "isCorrect": false
+        }
+      ]
     },
     {
       "name": "Soru 2",
-      "x": 87,
-      "y": 391,
-      "width": 512,
-      "height": 367
-    },
-    {
-      "name": "Soru 3",
-      "x": 89,
-      "y": 801,
-      "width": 508,
-      "height": 302
-    },
-    {
-      "name": "Soru 4",
-      "x": 89,
-      "y": 1146,
-      "width": 510,
-      "height": 391
-    },
-    {
-      "name": "Soru 5",
-      "x": 681,
-      "y": 7,
-      "width": 516,
-      "height": 447
-    },
-    {
-      "name": "Soru 6",
-      "x": 683,
-      "y": 484,
-      "width": 532,
-      "height": 556
-    },
-    {
-      "name": "Soru 7",
-      "x": 688,
-      "y": 1066,
-      "width": 527,
-      "height": 198
-    },
-    {
-      "name": "Soru 8",
-      "x": 685,
-      "y": 1282,
-      "width": 538,
-      "height": 256
+      "x": 92.5,
+      "y": 393.5,
+      "width": 511,
+      "height": 341,
+      "answers": [
+        {
+          "label": "Şık 1",
+          "x": 95.5,
+          "y": 665.5,
+          "width": 129,
+          "height": 71,
+          "isCorrect": false
+        },
+        {
+          "label": "Şık 2",
+          "x": 252.5,
+          "y": 667.5,
+          "width": 143,
+          "height": 66,
+          "isCorrect": true
+        },
+        {
+          "label": "Şık 3",
+          "x": 421.5,
+          "y": 664.5,
+          "width": 131,
+          "height": 72,
+          "isCorrect": false
+        }
+      ]
     }
   ]

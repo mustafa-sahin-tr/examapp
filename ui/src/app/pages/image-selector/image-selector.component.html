@@ -1,6 +1,7 @@
 <div class="container">
     <input type="file" (change)="handleFileInput($event)" accept="image/*">
-    <button (click)="toggleSelectionMode()">Bölge Seçimini {{ selectionMode() ? 'Durdur' : 'Başlat' }}</button>
+    <button (click)="toggleSelectionMode('question')">Soru Seç</button>
+    <button (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button>
     <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button>
   
     <div *ngIf="imageSrc()" class="canvas-container">
@@ -10,8 +11,17 @@
     <div class="regions-list">
       <h3>Seçilen Bölgeler:</h3>
       <ul>
-        <li *ngFor="let region of regions()">
-          {{ region.name }} - X: {{ region.x }}, Y: {{ region.y }}, Genişlik: {{ region.width }}, Yükseklik: {{ region.height }}
+        <li *ngFor="let region of regions(); let i = index">
+          {{ region.name }} - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }}
+          <button (click)="selectQuestion(i)">Şıkları Seç</button>
+          <ul>
+            <li *ngFor="let answer of region.answers; let j = index">
+              {{ answer.label }} - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }}
+              <button (click)="setCorrectAnswer(i, j)">
+                {{ answer.isCorrect ? "✅ Doğru Cevap" : "Doğru Olarak İşaretle" }}
+              </button>
+            </li>
+          </ul>
         </li>
       </ul>
     </div>

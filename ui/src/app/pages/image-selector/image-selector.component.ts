@@ -1,5 +1,8 @@
 import { Component, ElementRef, ViewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { QuestionRegion,AnswerChoice } from '../../models/draws';
+
+
 
 @Component({
   selector: 'app-image-selector',
@@ -15,11 +18,12 @@ export class ImageSelectorComponent {
   private ctx!: CanvasRenderingContext2D | null;
   public imageSrc = signal<string | null>(null);
   private img = new Image();
-  public selectionMode = signal(false);
-  public regions = signal<{ name: string, x: number, y: number, width: number, height: number }[]>([]);
+  public selectionMode = signal<'question' | 'answer' | null>(null);
+  public regions = signal<QuestionRegion[]>([]);
   private startX = 0;
   private startY = 0;
   private isDrawing = false;
+  private selectedQuestionIndex = -1;
 
   handleFileInput(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
@@ -42,6 +46,29 @@ export class ImageSelectorComponent {
       canvasEl.width = this.img.width;
       canvasEl.height = this.img.height;
       this.ctx.drawImage(this.img, 0, 0);
+
+      // Tüm bölgeleri tekrar çiz
+      this.drawRegions();
+    }
+  }
+
+  drawRegions() {
+    if (!this.ctx) return;
+
+    // 🟥 **Soru bölgelerini kırmızı çerçeve ile göster**
+    for (const region of this.regions()) {
+      this.ctx.strokeStyle = 'red';
+      this.ctx.lineWidth = 2;
+      this.ctx.strokeRect(region.x, region.y, region.width, region.height);
+    }
+
+    // 🟦 **Şık bölgelerini mavi çerçeve ile göster**
+    for (const region of this.regions()) {
+      for (const answer of region.answers) {
+        this.ctx.strokeStyle = 'blue';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
+      }
     }
   }
 
@@ -61,19 +88,28 @@ export class ImageSelectorComponent {
     const width = endX - this.startX;
     const height = endY - this.startY;
 
-    const name = `Soru ${this.regions().length + 1}`;
-    this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height }]);
-
-    // Çerçeveyi çiz
-    this.ctx.strokeStyle = 'red';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(this.startX, this.startY, width, height);
+    if (this.selectionMode() === 'question') {
+      const name = `Soru ${this.regions().length + 1}`;
+      this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [] }]);
+    } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
+      const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
+      this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false });
+    }
 
     this.isDrawing = false;
+    this.drawImage(); // **Seçimi çizmek için tekrar çağır**
   }
 
-  toggleSelectionMode() {
-    this.selectionMode.set(!this.selectionMode());
+  toggleSelectionMode(mode: 'question' | 'answer') {
+    this.selectionMode.set(mode);
+    if (mode === 'answer') {
+      alert("Lütfen önce bir soru seçin ve ardından şıkları ekleyin.");
+    }
+  }
+
+  selectQuestion(index: number) {
+    this.selectedQuestionIndex = index;
+    this.selectionMode.set('answer');
   }
 
   downloadRegions() {
@@ -84,5 +120,17 @@ export class ImageSelectorComponent {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     document.body.removeChild(downloadAnchor);
+  }
+
+  setCorrectAnswer(questionIndex: number, answerIndex: number) {
+    const region = this.regions()[questionIndex];
+  
+    // Tüm cevapları yanlış yap
+    region.answers.forEach(a => a.isCorrect = false);
+  
+    // Seçilen cevabı doğru yap
+    region.answers[answerIndex].isCorrect = true;
+  
+    this.regions.set([...this.regions()]); // UI güncelleme
   }
 }

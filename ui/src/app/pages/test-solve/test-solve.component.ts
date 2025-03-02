@@ -13,14 +13,7 @@ import { PassageCardComponent } from '../../shared/components/passage-card/passa
 import { ConfettiService } from '../../services/confetti.service';
 import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-wheel.component';
 import { MatDialog } from '@angular/material/dialog';
-
-export interface QuestionRegion {
-    name: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number
-}
+import { AnswerChoice, QuestionRegion } from '../../models/draws';
 
 @Component({
   selector: 'app-test-solve',
@@ -61,6 +54,13 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
   public currentIndex = signal(0);
   public isImageLoaded = signal(false);  // Resim yüklendi mi?
+  public hoveredRegion = signal<QuestionRegion | null>(null); // Mouse'un üzerinde olduğu soru veya şık
+  public selectedRegion = signal<QuestionRegion | null>(null); // Kullanıcının seçtiği soru veya şık
+
+  public hoveredChoice = signal<AnswerChoice | null>(null); // 🟦 Hangi şık üzerinde geziliyorsa
+  public selectedChoice = signal<AnswerChoice | null>(null); // ✅ Hangi şık seçiliyse
+
+
 
   constructor(private route: ActivatedRoute,
     private testService: TestService,
@@ -79,6 +79,8 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   triggerSpin() {
     this.spinWheelComp.spinWheel();
   }
+
+  
 
 
   distributeQuestions() {
@@ -389,29 +391,101 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       this.img.onerror = reject;
     });
   }
+  
   drawImageSection() {
-    console.log('this.canvas:',this.canvas);
-    console.log('this.regions().length:',this.regions().length);
-    console.log('this.isImageLoaded():',this.isImageLoaded());
-    if (!this.canvas || this.regions().length === 0 || !this.isImageLoaded()) return;
+    if (!this.canvas?.nativeElement || this.regions().length === 0 || !this.isImageLoaded()) return;
+    
     const canvasEl = this.canvas.nativeElement;
     this.ctx = canvasEl.getContext('2d');
-
+  
     if (this.ctx) {
       const region = this.regions()[this.currentIndex()];
       canvasEl.width = region.width;
       canvasEl.height = region.height;
-
+  
       this.ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
       this.ctx.drawImage(
         this.img,
-        region.x, region.y, region.width, region.height, // Kaynak bölge
-        0, 0, region.width, region.height // Canvas üzerine çizme bölgesi
+        region.x, region.y, region.width, region.height, 
+        0, 0, region.width, region.height 
       );
+  
+      // **Sadece belirli şıklar için hover veya seçili vurgusu yap**
+      for (const answer of region.answers) {
+        if (this.selectedChoice() === answer) {
+          this.ctx.fillStyle = 'rgba(0, 255, 0, 0.5)'; // ✅ Yeşil seçili arka plan
+        } else if (this.hoveredChoice() === answer) {
+          this.ctx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
+        } else {
+          this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Şık arka planını transparan yap
+        }
+  
+        this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+        this.ctx.strokeStyle = 'black'; // Çerçeve siyah
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+      }
     }
   }
+  
+  
+  onMouseMove(event: MouseEvent) {
+    if (!this.canvas?.nativeElement) return;
+  
+    const region = this.regions()[this.currentIndex()];
+    const rect = this.canvas.nativeElement.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+  
+    let found = false;
+  
+    for (const answer of region.answers) {
+      if (
+        mouseX >= answer.x - region.x &&
+        mouseX <= answer.x - region.x + answer.width &&
+        mouseY >= answer.y - region.y &&
+        mouseY <= answer.y - region.y + answer.height
+      ) {
+        this.hoveredChoice.set(answer);
+        this.canvas.nativeElement.style.cursor = 'pointer'; // 🖱️ Mouse pointer değiştirildi
+        found = true;
+        break;
+      }
+    }
+  
+    if (!found) {
+      this.hoveredChoice.set(null);
+      this.canvas.nativeElement.style.cursor = 'auto'; // Geri varsayılana döndür
+    }
+  
+    this.drawImageSection(); // UI'yı güncelle
+  }
+  
+  
 
-
+  selectChoice(event: MouseEvent) {
+    if (!this.canvas?.nativeElement) return;
+  
+    const region = this.regions()[this.currentIndex()];
+    const rect = this.canvas.nativeElement.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+  
+    for (const answer of region.answers) {
+      if (
+        mouseX >= answer.x - region.x &&
+        mouseX <= answer.x - region.x + answer.width &&
+        mouseY >= answer.y - region.y &&
+        mouseY <= answer.y - region.y + answer.height
+      ) {
+        this.selectedChoice.set(answer);
+        break;
+      }
+    }
+  
+    this.drawImageSection(); // UI'yı güncelle
+  }
+  
 
 
 }

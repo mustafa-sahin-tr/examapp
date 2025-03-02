@@ -410,14 +410,14 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
         0, 0, region.width, region.height 
       );
   
-      // **Sadece belirli şıklar için hover veya seçili vurgusu yap**
+      // **Seçili ve hover edilen şıkları farklı renklerde göster**
       for (const answer of region.answers) {
         if (this.selectedChoice() === answer) {
-          this.ctx.fillStyle = 'rgba(0, 255, 0, 0.5)'; // ✅ Yeşil seçili arka plan
+          this.ctx.fillStyle = 'rgba(0, 255, 0, 0.4)'; // ✅ Yeşil arka plan (transparan)
         } else if (this.hoveredChoice() === answer) {
           this.ctx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
         } else {
-          this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Şık arka planını transparan yap
+          this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Varsayılan şeffaf
         }
   
         this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
@@ -485,6 +485,8 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   
     this.drawImageSection(); // UI'yı güncelle
   }
+
+ 
   
 
 

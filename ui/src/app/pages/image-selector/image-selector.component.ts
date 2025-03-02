@@ -133,4 +133,49 @@ export class ImageSelectorComponent {
   
     this.regions.set([...this.regions()]); // UI güncelleme
   }
+
+  removeAnswer(questionIndex: number, answerIndex: number) {
+    const region = this.regions()[questionIndex];
+  
+    // Seçilen şıkkı listeden kaldır
+    region.answers.splice(answerIndex, 1);
+  
+    // UI'yi güncelle
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+  }
+
+  alignAnswers(questionIndex: number) {
+    const region = this.regions()[questionIndex];
+    if (region.answers.length === 0) return;
+  
+    // Tüm şıklar için X ve Y değerlerini kontrol et
+    const minX = Math.min(...region.answers.map(a => a.x));
+    const minY = Math.min(...region.answers.map(a => a.y));
+    const maxWidth = Math.max(...region.answers.map(a => a.width));
+    const maxHeight = Math.max(...region.answers.map(a => a.height));
+  
+    // **Dikey hizalama mı, yatay hizalama mı?**
+    const isVertical = region.answers.every(a => Math.abs(a.x - minX) < 10); // X'ler yakınsa dikey
+  
+    if (isVertical) {
+      // **Dikey Hizalama**
+      region.answers.forEach(a => {
+        a.x = minX;
+        a.width = maxWidth;
+      });
+    } else {
+      // **Yatay Hizalama**
+      region.answers.forEach(a => {
+        a.y = minY;
+        a.height = maxHeight;
+      });
+    }
+  
+    // Güncellenmiş şık listesini kaydet
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+  }
+  
+  
 }

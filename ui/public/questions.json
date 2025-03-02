@@ -1,65 +1,98 @@
 [
     {
       "name": "Soru 1",
-      "x": 91.5,
-      "y": 9,
-      "width": 504,
-      "height": 332,
+      "x": 681,
+      "y": 7,
+      "width": 538,
+      "height": 444,
       "answers": [
         {
           "label": "Şık 1",
-          "x": 92.5,
-          "y": 275,
-          "width": 118,
-          "height": 67,
-          "isCorrect": true
+          "x": 687,
+          "y": 260,
+          "width": 516,
+          "height": 43,
+          "isCorrect": false
         },
         {
           "label": "Şık 2",
-          "x": 247.5,
-          "y": 275,
-          "width": 126,
-          "height": 67,
+          "x": 687,
+          "y": 307,
+          "width": 516,
+          "height": 43,
           "isCorrect": false
         },
         {
           "label": "Şık 3",
-          "x": 417.5,
-          "y": 276,
-          "width": 121,
-          "height": 65,
+          "x": 687,
+          "y": 353,
+          "width": 516,
+          "height": 89,
           "isCorrect": false
         }
       ]
     },
     {
       "name": "Soru 2",
-      "x": 92.5,
-      "y": 393.5,
-      "width": 511,
-      "height": 341,
+      "x": 88,
+      "y": 10,
+      "width": 512,
+      "height": 326,
       "answers": [
         {
           "label": "Şık 1",
-          "x": 95.5,
-          "y": 665.5,
-          "width": 129,
-          "height": 71,
+          "x": 93,
+          "y": 270,
+          "width": 116,
+          "height": 62,
           "isCorrect": false
         },
         {
           "label": "Şık 2",
-          "x": 252.5,
-          "y": 667.5,
-          "width": 143,
-          "height": 66,
-          "isCorrect": true
+          "x": 248,
+          "y": 270,
+          "width": 128,
+          "height": 62,
+          "isCorrect": false
         },
         {
           "label": "Şık 3",
-          "x": 421.5,
-          "y": 664.5,
+          "x": 417,
+          "y": 270,
           "width": 131,
+          "height": 62,
+          "isCorrect": false
+        }
+      ]
+    },
+    {
+      "name": "Soru 3",
+      "x": 90,
+      "y": 388,
+      "width": 509,
+      "height": 354,
+      "answers": [
+        {
+          "label": "Şık 1",
+          "x": 94,
+          "y": 665.5,
+          "width": 124,
+          "height": 72,
+          "isCorrect": false
+        },
+        {
+          "label": "Şık 2",
+          "x": 248,
+          "y": 665.5,
+          "width": 146,
+          "height": 72,
+          "isCorrect": false
+        },
+        {
+          "label": "Şık 3",
+          "x": 416,
+          "y": 665.5,
+          "width": 121,
           "height": 72,
           "isCorrect": false
         }

@@ -17,11 +17,16 @@
           <ul>
             <li *ngFor="let answer of region.answers; let j = index">
               {{ answer.label }} - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }}
+              
               <button (click)="setCorrectAnswer(i, j)">
                 {{ answer.isCorrect ? "✅ Doğru Cevap" : "Doğru Olarak İşaretle" }}
               </button>
+          
+              <button (click)="removeAnswer(i, j)">❌ Şıkkı Temizle</button>
             </li>
           </ul>
+          <!-- 🔹 Yeni Hizalama Butonu -->
+            <button (click)="alignAnswers(i)" [disabled]="region.answers.length < 2">🔄 Şıkları Hizala</button>
         </li>
       </ul>
     </div>

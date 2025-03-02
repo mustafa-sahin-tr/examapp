@@ -41,6 +41,7 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   leftColumn: any[] = [];
   rightColumn: any[] = [];
   confettiService = inject(ConfettiService);
+  correctAnswerVisible = false;
 
   @ViewChildren('questionCard') questionCards!: QueryList<ElementRef>;
   constructor(private route: ActivatedRoute,
@@ -229,13 +230,14 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   openAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedIndex;
+    this.correctAnswerVisible = true;
     if(this.questionTimerSubscription)
       this.questionTimerSubscription.unsubscribe();
     //  this.confettiService.celebrate(); // Basit konfeti efekti
     this.confettiService.launchConfetti(); // Gelişmiş konfeti efekti
     //  this.confettiService.fireworks();
     // this.confettiService.rainbowConfetti();
-    // this.confettiService.centerBurst();
+    // this.confettiService.centerBurst();  
     // this.confettiService.cannonShot();
     // this.triggerSpin();
     setTimeout(() => {
@@ -270,7 +272,7 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
 
   persistAnswer(selectedAnswerId: number) {
     this.testInstance.testInstanceQuestions[this.currentQuestionIndex].selectedAnswerId = selectedAnswerId;
-    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
+    
     this.testService.saveAnswer({
       testQuestionId: this.testInstance.testInstanceQuestions[this.currentQuestionIndex].id,
       selectedAnswerId: selectedAnswerId,
@@ -290,6 +292,8 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   
   // Önceki soruya git
   prevQuestion() {
+    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
+    this.correctAnswerVisible = false;
     if(this.testInstance.isPracticeTest) {
       this.persistPracticetime();
     }
@@ -306,6 +310,8 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
 
   // Sonraki soruya git
   nextQuestion() {
+    this.testInstance.testInstanceQuestions[this.currentQuestionIndex].timeTaken = this.questionDuration;
+    this.correctAnswerVisible = false;
     if(this.testInstance.isPracticeTest) {
 
     }

@@ -21,7 +21,8 @@
         [selectedAnswerId]="testInstance.testInstanceQuestions[currentQuestionIndex].selectedAnswerId"    
         [isPracticeTest]="testInstance.isPracticeTest"   
         (answerSelected)="selectAnswer($event)"
-        (answerOpened)="openAnswer($event)">
+        (answerOpened)="openAnswer($event)"
+        [correctAnswerVisible]="correctAnswerVisible">
       </app-question-lite-view>
 
       

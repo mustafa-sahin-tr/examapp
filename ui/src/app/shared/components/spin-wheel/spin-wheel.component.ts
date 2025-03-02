@@ -18,6 +18,7 @@ export class SpinWheelComponent implements AfterViewInit {
     this.wheelCanvas = document.getElementById('wheelCanvas') as HTMLCanvasElement;
     this.wheelCtx = this.wheelCanvas.getContext('2d')!;
     this.drawWheel();
+    this.spinWheel();
   }
 
   // drawWheel() {

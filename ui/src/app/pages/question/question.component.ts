@@ -26,6 +26,7 @@ import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
 import { Passage } from '../../models/question';
 import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
+import { ImageSelectorComponent } from '../image-selector/image-selector.component';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -45,7 +46,7 @@ import { PassageCardComponent } from '../../shared/components/passage-card/passa
             MatIconModule,
             QuestionListComponent,
             QuillModule,
-            PassageCardComponent
+            PassageCardComponent,ImageSelectorComponent
           ]
 })
 export class QuestionComponent implements OnInit {
@@ -371,7 +372,12 @@ export class QuestionComponent implements OnInit {
                   subjectId: questionPayload.subjectId,
                   topicId: questionPayload.topicId,
                   subtTopicId: questionPayload.subtopicId,              
-                  answerColCount: questionPayload.answerColCount
+                  answerColCount: questionPayload.answerColCount,
+                  x: 0,
+                  y: 0,
+                  width: 0,
+                  height: 0,
+                  isCanvasQuestion: false
                 },
                 order: this.testInstance.testInstanceQuestions.length + 1,
                 selectedAnswerId: 0,

@@ -30,4 +30,8 @@ export class QuestionService {
   loadPassages(): Observable<Passage[]> {
     return this.http.get<Passage[]>(`${this.apiUrl}/passages`);
   }
+
+  saveBulk(bulkDto: any) : Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/save`, bulkDto);
+  }
 }

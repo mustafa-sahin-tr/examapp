@@ -30,8 +30,14 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsCanvasQuestion")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("QuestionId")
                         .HasColumnType("integer");
@@ -39,6 +45,15 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("double precision");
 
                     b.HasKey("Id");
 
@@ -175,14 +190,29 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsCanvasQuestion")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Text")
                         .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .HasColumnType("text");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("double precision");
 
                     b.HasKey("Id");
 
@@ -206,8 +236,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("DifficultyLevel")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsCanvasQuestion")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsExample")
                         .HasColumnType("boolean");
@@ -235,6 +271,15 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("TopicId")
                         .HasColumnType("integer");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("X")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Y")
+                        .HasColumnType("double precision");
 
                     b.HasKey("Id");
 

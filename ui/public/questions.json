@@ -1,101 +1,74 @@
 [
     {
       "name": "Soru 1",
-      "x": 681,
-      "y": 7,
-      "width": 538,
-      "height": 444,
+      "x": 89,
+      "y": 4.5,
+      "width": 508,
+      "height": 338,
       "answers": [
         {
-          "label": "Şık 1",
-          "x": 687,
-          "y": 260,
-          "width": 516,
-          "height": 43,
+          "label": "A",
+          "x": 89,
+          "y": 270.5,
+          "width": 114,
+          "height": 63,
           "isCorrect": false
         },
         {
-          "label": "Şık 2",
-          "x": 687,
-          "y": 307,
-          "width": 516,
-          "height": 43,
+          "label": "B",
+          "x": 245,
+          "y": 270.5,
+          "width": 157,
+          "height": 63,
           "isCorrect": false
         },
         {
-          "label": "Şık 3",
-          "x": 687,
-          "y": 353,
-          "width": 516,
-          "height": 89,
-          "isCorrect": false
-        }
-      ]
-    },
-    {
-      "name": "Soru 2",
-      "x": 88,
-      "y": 10,
-      "width": 512,
-      "height": 326,
-      "answers": [
-        {
-          "label": "Şık 1",
-          "x": 93,
-          "y": 270,
-          "width": 116,
-          "height": 62,
-          "isCorrect": false
-        },
-        {
-          "label": "Şık 2",
-          "x": 248,
-          "y": 270,
-          "width": 128,
-          "height": 62,
-          "isCorrect": false
-        },
-        {
-          "label": "Şık 3",
-          "x": 417,
-          "y": 270,
-          "width": 131,
-          "height": 62,
-          "isCorrect": false
-        }
-      ]
-    },
-    {
-      "name": "Soru 3",
-      "x": 90,
-      "y": 388,
-      "width": 509,
-      "height": 354,
-      "answers": [
-        {
-          "label": "Şık 1",
-          "x": 94,
-          "y": 665.5,
-          "width": 124,
-          "height": 72,
-          "isCorrect": false
-        },
-        {
-          "label": "Şık 2",
-          "x": 248,
-          "y": 665.5,
-          "width": 146,
-          "height": 72,
-          "isCorrect": false
-        },
-        {
-          "label": "Şık 3",
-          "x": 416,
-          "y": 665.5,
+          "label": "C",
+          "x": 424,
+          "y": 270.5,
           "width": 121,
-          "height": 72,
+          "height": 63,
           "isCorrect": false
         }
-      ]
+      ],
+      "passageId": "0",
+      "imageId": "img_002",
+      "imageUrl": "test5.png"
+    },
+    {
+      "name": "Soru 2",      
+      "x": 73,
+      "y": 210.5,
+      "width": 511,
+      "height": 405,
+      "answers": [
+        {
+          "label": "A",
+          "x": 77,
+          "y": 532.5,
+          "width": 131,
+          "height": 68,
+          "isCorrect": false
+        },
+        {
+          "label": "B",
+          "x": 239,
+          "y": 532.5,
+          "width": 139,
+          "height": 68,
+          "isCorrect": false
+        },
+        {
+          "label": "C",
+          "x": 398,
+          "y": 532.5,
+          "width": 157,
+          "height": 68,
+          "isCorrect": false
+        }
+      ],
+      "passageId": "0",
+      "imageId": "img_001",
+      "imageUrl": "test6.png"
     }
   ]

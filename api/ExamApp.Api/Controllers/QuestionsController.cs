@@ -1,6 +1,7 @@
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
+using ExamApp.Api.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -400,6 +401,122 @@ public class QuestionsController : BaseController
         return BadRequest(new { error = ex.Message });
     }
 }
+
+
+    [HttpPost("save")]
+    public async Task<IActionResult> KaydetSoruSeti([FromBody] BulkQuestionCreateDto soruDto)
+    {
+        if (soruDto == null)
+        {
+            return BadRequest("Geçersiz veri.");
+        }
+
+        using (var transaction = await _context.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                string imageUrl = string.Empty;
+                // 🔹 1. Resmi MinIO'ya kaydet ve ImageUrl olarak kaydet
+                if (!string.IsNullOrEmpty(soruDto.ImageData) && 
+                        _imageHelper.IsBase64String(soruDto.ImageData))
+                {
+                    byte[] imageBytes = Convert.FromBase64String(soruDto.ImageData.Split(',')[1]);
+                    await using var imageStream = new MemoryStream(imageBytes);
+                    imageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{Guid.NewGuid()}.jpg");
+                }
+                
+                // 🔹 2. Passage'ları kaydet
+                var passages = soruDto.Passages.Select(p => new Passage
+                {
+                    X = p.X,
+                    Y = p.Y,
+                    Width = p.Width,
+                    Height = p.Height,
+                    Title = p.Id,
+                    IsCanvasQuestion = true
+                }).ToList();
+
+                _context.Passage.AddRange(passages);
+                await _context.SaveChangesAsync();
+
+                // 🔹 3. Soruları kaydet
+                foreach (var questionDto in soruDto.Questions)
+                {
+                    var question = new Question
+                    {
+                        // Text = questionDto.Name,
+                        ImageUrl = imageUrl,
+                        X = questionDto.X,
+                        Y = questionDto.Y,
+                        Width = questionDto.Width,
+                        Height = questionDto.Height,
+                        IsExample = questionDto.IsExample,
+                        PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
+                        IsCanvasQuestion = true,
+                        SubjectId = soruDto.Header.SubjectId ?? 0,
+                        TopicId = soruDto.Header.TopicId ?? 0,
+                        SubTopicId = soruDto.Header.SubtopicId ?? 0
+                    };
+
+                    _context.Questions.Add(question);
+                    await _context.SaveChangesAsync();
+
+                    // 🔹 4. Şıkları kaydet
+                    if (!questionDto.IsExample)
+                    {
+                        var answers = questionDto.Answers.Select(a => new Answer
+                        {
+                            QuestionId = question.Id,
+                            Text = a.Label,
+                            X = a.X,
+                            Y = a.Y,
+                            Width = a.Width,
+                            Height = a.Height,        
+                            IsCanvasQuestion = true                    
+                        }).ToList();
+
+                        var correctLabel = questionDto.Answers.FirstOrDefault(a => a.IsCorrect)?.Label;
+
+                        if(correctLabel == null) {
+                            throw new InvalidOperationException("Doğru cevap belirtilmemiş." + questionDto.Name);
+                        }
+
+                        _context.Answers.AddRange(answers);
+                        await _context.SaveChangesAsync();
+
+                        // 🔹 Doğru cevabı kaydet (ilk doğru olanı seç)
+                        question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
+                        await _context.SaveChangesAsync();
+                    }
+
+                    if (soruDto.Header.TestId.HasValue)
+                    {
+                        var orderCount = await _context.TestQuestions
+                            .Where(tq => tq.TestId == soruDto.Header.TestId.Value)
+                            .CountAsync();
+                        // ** WorksheetQuestions tablosuna ekleme **
+                        var worksheetQuestion = new WorksheetQuestion
+                        {
+                            TestId = soruDto.Header.TestId.Value,
+                            QuestionId = question.Id,
+                            Order = orderCount + 1 // Varsayılan sıralama
+                        };
+
+                        _context.TestQuestions.Add(worksheetQuestion);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
+                await transaction.CommitAsync();
+                return Ok(new { message = "Sorular başarıyla kaydedildi!" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { error = "Veri kaydedilirken hata oluştu.", details = ex.Message });
+            }
+        }
+    }
 
 
     

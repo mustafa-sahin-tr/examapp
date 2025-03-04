@@ -11,5 +11,16 @@ public class Answer
     public int QuestionId { get; set; }
     public Question Question { get; set; }
 
+    public double? X { get; set; }
+
+    public double? Y { get; set; }
+
+    public int? Width { get; set; }
+
+    public int? Height { get; set; }
+
+    public bool IsCanvasQuestion { get; set; } = false;
+
+
 }
 

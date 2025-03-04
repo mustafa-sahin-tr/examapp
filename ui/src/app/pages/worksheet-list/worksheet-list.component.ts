@@ -62,7 +62,7 @@ export class WorksheetListComponent {
 
       onCardClick(id: number) {
         this.testService.startTest(id).subscribe(response => {
-          this.router.navigate(['/test', id]);
+          this.router.navigate(['/test', response.testInstanceId]);
         });   
       }
 

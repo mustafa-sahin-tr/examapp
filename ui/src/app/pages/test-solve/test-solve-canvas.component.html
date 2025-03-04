@@ -1,0 +1,61 @@
+@if(testInstance) {
+<mat-card class="test-container">
+    <!-- Header: Test Bilgileri -->
+    <mat-toolbar class="test-header" >  
+      <span class="test-title">{{ testInstance.testName }}</span>
+      <span class="test-progress">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+      <span class="test-timer">Geçen Süre : {{ formattedTime }}</span>
+      <span class="test-timer">Soru Süresi : {{ formattedQuestionTime }}</span>
+      @if(showStopButton) {
+        <button  mat-button color="warn" (click)="pauseTest()">Durdur</button>
+      }
+      
+    </mat-toolbar>
+
+
+  
+    <!-- Soru Gösterimi -->
+    <div class="question-container">     
+      <!-- 🟢 Soru Başlığı ve Resmi -->
+      <!-- <app-passage-card [passage]="testInstance.testInstanceQuestions[currentQuestionIndex].question.passage"></app-passage-card>
+      <app-question-lite-view
+        [question]="testInstance.testInstanceQuestions[currentQuestionIndex].question" 
+        [selectedAnswerId]="testInstance.testInstanceQuestions[currentQuestionIndex].selectedAnswerId"    
+        [isPracticeTest]="testInstance.isPracticeTest"   
+        (answerSelected)="selectAnswer($event)"
+        (answerOpened)="openAnswer($event)"
+        [correctAnswerVisible]="correctAnswerVisible">
+      </app-question-lite-view> -->
+
+      
+      <h2>{{ regions().length > 0 ? regions()[currentIndex()].name : 'Soru Yükleniyor...' }}</h2>
+  
+      <div class="canvas-container">
+        <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
+      </div>
+      
+    </div>
+  
+    <!-- Navigasyon Butonları -->
+    <div class="navigation-buttons">
+      <button mat-raised-button color="primary" (click)="prevQuestion()" [disabled]="currentIndex() === 0">
+        Geri
+      </button>
+      <button mat-raised-button color="accent" (click)="nextQuestion()" [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1">
+        İleri - {{currentIndex()}} -- {{testInstance.testInstanceQuestions.length}}
+      </button>
+      @if(currentIndex() === testInstance.testInstanceQuestions.length - 1) {
+        <button mat-raised-button color="accent" (click)="completeTest()">
+          Sınavı Bitir
+        </button>
+      }
+    </div>
+  </mat-card>
+}
+<!-- Confetti Butonu -->
+
+<!-- Modal İçin Şablon -->
+<ng-template #spinWheelDialog>  
+  <app-spin-wheel></app-spin-wheel>
+  <button mat-button (click)="closeDialog()">Kapat</button>
+</ng-template>

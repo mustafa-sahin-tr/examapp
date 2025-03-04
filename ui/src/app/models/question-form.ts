@@ -20,3 +20,12 @@ export type QuestionForm = {
     passageTitle: FormControl<string | null>,
     answers: FormArray
 }
+
+export type QuestionCanvasForm = {
+    subjectId: FormControl<number>,
+    topicId: FormControl<number>,
+    subtopicId: FormControl<number>,
+    isExample: FormControl<boolean>,
+    practiceCorrectAnswer: FormControl<string>,
+    testId:  FormControl<number | null>
+}

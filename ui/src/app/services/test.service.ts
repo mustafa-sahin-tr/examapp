@@ -8,6 +8,7 @@ import { Topic } from '../models/topic';
 import { SubTopic } from '../models/subtopic';
 import { CompletedTest, Exam, Paged, Test, TestInstance } from '../models/test-instance';
 import { StudentAnswer } from '../models/student-answer';
+import { QuestionRegion } from '../models/draws';
 
 @Injectable({
   providedIn: 'root'
@@ -18,6 +19,10 @@ export class TestService {
 
   getTestWithAnswers(testInstanceId: number): Observable<TestInstance> {
     return this.http.get<TestInstance>(`/api/worksheet/test-instance/${testInstanceId}`);
+  }
+
+  getCanvasTestWithAnswers(testInstanceId: number): Observable<TestInstance> {
+    return this.http.get<TestInstance>(`/api/worksheet/test-canvas-instance/${testInstanceId}`);
   }
 
   saveAnswer( studentAnswer: StudentAnswer ): Observable<any> {
@@ -51,4 +56,49 @@ export class TestService {
   get(id: number): Observable<Test> {
     return this.http.get<Test>(`/api/worksheet/${id}`);
   }
+
+  convertTestInstanceToRegions(testInstance: TestInstance): QuestionRegion[] 
+  {
+      if (!testInstance || !testInstance.testInstanceQuestions || testInstance.testInstanceQuestions.length === 0) {
+          return [];
+      }
+
+      const imageSrc = testInstance.testInstanceQuestions[0].question.imageUrl;
+
+      const regions: QuestionRegion[] = testInstance.testInstanceQuestions.map(qInstance => {
+          const question = qInstance.question;
+          return {
+              id: question.id,
+              name: `Soru ${qInstance.order}`,
+              x: question.x,
+              y: question.y,
+              width: question.width,
+              height: question.height,
+              isExample: question.isExample,
+              passageId: question.passage ? question.passage.id.toString() : '',
+              imageId: question.imageUrl,
+              imageUrl: question.imageUrl,
+              exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+              answers: question.answers.map(answer => ({
+                  id: answer.id,
+                  label: answer.text,
+                  x: answer.x,
+                  y: answer.y,
+                  width: answer.width,
+                  height: answer.height
+              })),
+              passage: question.passage ? {
+                  id: question.passage.id,
+                  title: question.passage.title,
+                  x: question.passage.x,
+                  y: question.passage.y,
+                  width: question.passage.width,
+                  height: question.passage.height
+              } : undefined
+          };
+      });
+
+      return regions;
+  }
+
 }

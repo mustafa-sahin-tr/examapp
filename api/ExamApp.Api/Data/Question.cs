@@ -52,5 +52,15 @@ public class Question
     // 3 demek yan yana 3 şık olacak demektir.
     // 1 demek cevaplar alt alta sıralanacak demektir.
 
+    public double? X { get; set; }
+
+    public double? Y { get; set; }
+
+    public int? Width { get; set; }
+
+    public int? Height { get; set; }
+
+    public bool IsCanvasQuestion { get; set; } = false;
+
 }
 

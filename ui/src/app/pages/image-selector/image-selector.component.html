@@ -1,8 +1,9 @@
 <div class="container">
     <input type="file" (change)="handleFileInput($event)" accept="image/*">
+    <button (click)="selectionMode.set('passage')">📜 Passage Seç</button>
     <button (click)="toggleSelectionMode('question')">Soru Seç</button>
     <button (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button>
-    <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button>
+    <!-- <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
   
     <div *ngIf="imageSrc()" class="canvas-container">
       <canvas #canvas (mousedown)="startSelection($event)" (mouseup)="endSelection($event)"></canvas>
@@ -13,7 +14,14 @@
       <ul>
         <li *ngFor="let region of regions(); let i = index">
           {{ region.name }} - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }}
-          <button (click)="selectQuestion(i)">Şıkları Seç</button>
+          <!-- ✅ Örnek soru checkbox -->
+            <label>
+                <input type="checkbox" [checked]="isExample(region.name)" (change)="toggleExampleMode(region.name)"> Örnek Soru
+            </label>
+          <button (click)="selectQuestion(i)" [disabled]="isExample(region.name)">Şıkları Seç</button>
+          <!-- 📝 Quill Editörü (Sadece Örnek Soru Seçiliyse Açılacak) -->
+            <quill-editor *ngIf="isExample(region.name)" [ngModel]="exampleAnswers.get(region.name)" (ngModelChange)="onTextChanged(region.name, $event)">
+            </quill-editor>
           <ul>
             <li *ngFor="let answer of region.answers; let j = index">
               {{ answer.label }} - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }}
@@ -27,6 +35,20 @@
           </ul>
           <!-- 🔹 Yeni Hizalama Butonu -->
             <button (click)="alignAnswers(i)" [disabled]="region.answers.length < 2">🔄 Şıkları Hizala</button>
+        </li>
+      </ul>
+
+      <ul>
+        <li *ngFor="let region of regions(); let i = index">
+          <strong>{{ region.name }}</strong>
+          <label for="passageSelect">Passage Seç:</label>
+          <select id="passageSelect" (change)="onPassageChange($event, region.name)">
+            <option value="0" [selected]="!selectedPassageMap.has(region.name)">🔹 Passage Seçiniz</option>
+            <option *ngFor="let passage of passages()" [value]="passage.id" [selected]="selectedPassageMap.get(region.name) === passage.id">
+              Passage {{ passage.id }}
+            </option>
+          </select>
+                
         </li>
       </ul>
     </div>

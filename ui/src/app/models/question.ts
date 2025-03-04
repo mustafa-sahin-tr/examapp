@@ -7,6 +7,11 @@ export interface Passage {
     title: string,
     text: string,
     imageUrl: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    isCanvasQuestion: boolean
 }
 
 export interface Question {
@@ -23,5 +28,10 @@ export interface Question {
     topicId: number,
     subtTopicId: number,
     correctAnswer?: Answer,
-    answerColCount: number
+    answerColCount: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    isCanvasQuestion: boolean
 }

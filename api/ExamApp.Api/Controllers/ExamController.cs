@@ -425,6 +425,93 @@ public class ExamController : BaseController
         return Ok(response);
     }    
 
+    [HttpGet("test-canvas-instance/{testInstanceId}")]
+    public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
+    {
+        // 🔹 Token’dan UserId'yi al
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+        {
+            return Unauthorized();
+        }        
+        // 🔹 Token’dan UserId'yi al
+        var userId = int.Parse(userIdClaim);
+        
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null || user.Role != UserRole.Student)
+        {
+            return BadRequest("Invalid User ID or User is not a Student.");
+        }
+
+        var testInstance = await _context.TestInstances
+            .Include(ti => ti.Worksheet)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Answers)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Passage)
+            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == userId);
+
+        if (testInstance == null)
+        {
+            return NotFound(new { message = "Test bulunamadı!" });
+        }        
+
+        var response = new
+        {
+            Id = testInstance.Id,
+            TestName = testInstance.Worksheet.Name,            
+            Status = testInstance.Status,
+            MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
+            testInstance.Worksheet.IsPracticeTest,
+            TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq => new
+            {
+                Id = tiq.Id,
+                Order = tiq.WorksheetQuestion.Order,                
+                Question = new {
+                    tiq.WorksheetQuestion.Question.Id,
+                    tiq.WorksheetQuestion.Question.Text,
+                    tiq.WorksheetQuestion.Question.SubText,
+                    tiq.WorksheetQuestion.Question.ImageUrl,
+                    tiq.WorksheetQuestion.Question.IsExample,
+                    Passage = tiq.WorksheetQuestion.Question.PassageId.HasValue ? new {
+                        tiq.WorksheetQuestion.Question.Passage?.Id,
+                        tiq.WorksheetQuestion.Question.Passage?.Title,
+                        tiq.WorksheetQuestion.Question.Passage?.Text,
+                        tiq.WorksheetQuestion.Question.Passage?.ImageUrl,
+                        tiq.WorksheetQuestion.Question.Passage?.X,
+                        tiq.WorksheetQuestion.Question.Passage?.Y,
+                        tiq.WorksheetQuestion.Question.Passage?.Width,
+                        tiq.WorksheetQuestion.Question.Passage?.Height
+                    } : null,
+                    tiq.WorksheetQuestion.Question.PracticeCorrectAnswer,
+                    tiq.WorksheetQuestion.Question.AnswerColCount,
+                    tiq.WorksheetQuestion.Question.IsCanvasQuestion,
+                    tiq.WorksheetQuestion.Question.X,
+                    tiq.WorksheetQuestion.Question.Y,
+                    tiq.WorksheetQuestion.Question.Width,
+                    tiq.WorksheetQuestion.Question.Height,
+                    Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new
+                    {
+                        a.Id,
+                        a.Text,                        
+                        a.ImageUrl,
+                        a.X,
+                        a.Y,
+                        a.Width,
+                        a.Height
+                    }).ToList() 
+                } ,
+                SelectedAnswerId = tiq.SelectedAnswerId // Önceden seçilen cevap
+            }).ToList()
+        };
+
+        return Ok(response);
+    }    
+
     [Authorize]
     [HttpPost("save-answer")]
     public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto)

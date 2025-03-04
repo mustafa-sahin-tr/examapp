@@ -12,6 +12,8 @@ import { HomeComponent } from './home/home.component';
 import { WorksheetListComponent } from './pages/worksheet-list/worksheet-list.component';
 import { worksheetListResolver } from './shared/resolvers/worksheet-resolver';
 import { ImageSelectorComponent } from './pages/image-selector/image-selector.component';
+import { QuestionCanvasComponent } from './pages/question/question-canvas.component';
+import { TestSolveCanvasComponent } from './pages/test-solve/test-solve-canvas.component';
 
 export const routes: Routes = [
   { path: 'register', component: RegisterComponent },
@@ -24,6 +26,8 @@ export const routes: Routes = [
 
   { path: 'student-register', component: StudentRegisterComponent, canActivate: [authGuard] },
   { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard] },
+  { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard] },
+  { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard] },
   { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
   { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
   { path: 'tests', component: WorksheetListComponent , 
@@ -31,6 +35,7 @@ export const routes: Routes = [
     resolve: { worksheets : worksheetListResolver } },
   { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
   { path: 'test/:testInstanceId', component: TestSolveComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'testcanvas/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam/:id', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası

@@ -14,6 +14,7 @@ import { ConfettiService } from '../../services/confetti.service';
 import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-wheel.component';
 import { MatDialog } from '@angular/material/dialog';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-test-solve',
@@ -59,6 +60,9 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
 
   public hoveredChoice = signal<AnswerChoice | null>(null); // 🟦 Hangi şık üzerinde geziliyorsa
   public selectedChoice = signal<AnswerChoice | null>(null); // ✅ Hangi şık seçiliyse
+
+  public imageCache = new Map<string, HTMLImageElement>(); // 📂 Resimleri önbellekte sakla
+  public currentImageId = signal<string | null>(null); // 🔄 Mevcut resmin ID'sini takip et
 
 
 
@@ -140,50 +144,55 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   }
 
   
-  
 
-  // Test ve daha önceki cevapları yükle
-  loadTest(testId: number) {
-    this.testService.getTestWithAnswers(testId).subscribe(data => {
-      console.log('Test loaded', data);
+async loadTest(testId: number) {
+  try {
+    // 📥 Test verisini asenkron olarak al
+    this.testInstance = await lastValueFrom(this.testService.getTestWithAnswers(testId));
+    console.log('Test loaded', this.testInstance);
 
-      this.testInstance = data;
-      this.loadQuestions();
+    // 📥 Soruları yükle ve resimleri bekle
+    await this.loadQuestions();
 
-      let lastAnsweredQuestionIndex = this.testInstance.testInstanceQuestions.findIndex(q => q.selectedAnswerId);
-      if(lastAnsweredQuestionIndex === -1) {
-        this.currentQuestionIndex = 0;
-      }
-      if(lastAnsweredQuestionIndex < this.testInstance.testInstanceQuestions.length - 1) {
-        this.currentQuestionIndex = lastAnsweredQuestionIndex + 1;
-      }
-      // check passages 
-      this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
-        if (q.question.passage && q.question.passage.id) {
-          if(!this.passageGroups[q.question.passage.id])
-            this.passageGroups[q.question.passage.id] = [];
-          this.passageGroups[q.question.passage.id].push(q.order);
+    let lastAnsweredQuestionIndex = this.testInstance.testInstanceQuestions.findIndex(q => q.selectedAnswerId);
+    if (lastAnsweredQuestionIndex === -1) {
+      this.currentQuestionIndex = 0;
+    }
+    if (lastAnsweredQuestionIndex < this.testInstance.testInstanceQuestions.length - 1) {
+      this.currentQuestionIndex = lastAnsweredQuestionIndex + 1;
+    }
+
+    // 📜 Passage gruplarını oluştur
+    this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
+      if (q.question.passage && q.question.passage.id) {
+        if (!this.passageGroups[q.question.passage.id]) {
+          this.passageGroups[q.question.passage.id] = [];
         }
-      });
-
-      this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
-        if (q.question.passage && q.question.passage.id) {
-          q.question.passage.title = this.formatString(q.question.passage.title, this.passageGroups[q.question.passage.id]);
-        }
-      });
-
-      console.log('TestInstance', this.testInstance.testInstanceQuestions);
-
-
-
-      if(this.testInstance.status === TestStatus.Completed) {
-        this.router.navigate(['/student-profile']);
+        this.passageGroups[q.question.passage.id].push(q.order);
       }
-      
-      this.startTimer();
-      this.startQuestionTimer();
     });
+
+    this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
+      if (q.question.passage && q.question.passage.id) {
+        q.question.passage.title = this.formatString(q.question.passage.title, this.passageGroups[q.question.passage.id]);
+      }
+    });
+
+    console.log('TestInstance', this.testInstance.testInstanceQuestions);
+
+    // 🚀 Eğer test tamamlandıysa, öğrenci profiline yönlendir
+    if (this.testInstance.status === TestStatus.Completed) {
+      this.router.navigate(['/student-profile']);
+    }
+
+    // ⏳ Sayaçları başlat
+    this.startTimer();
+    this.startQuestionTimer();
+
+  } catch (error) {
+    console.error('Test yüklenirken hata oluştu:', error);
   }
+}
 
    formatString(format: string, args: number[]): string {
     return format.replace(/{(\d+)}/g, (match, index) => "" + args[index]);
@@ -333,7 +342,15 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       this.startQuestionTimer(); 
     }
     if (this.currentIndex() > 0) {
-      this.currentIndex.set(this.currentIndex() - 1);
+      const newIndex = this.currentIndex() - 1;
+      this.currentIndex.set(newIndex);
+
+      // 🔄 Yeni soru için resim yükle
+      const question = this.regions()[newIndex];
+      if (question.imageId !== this.currentImageId()) {
+        this.loadImageForQuestion(question.imageId, question.imageUrl);
+      }
+
       this.drawImageSection();
     }
   }
@@ -356,7 +373,15 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
     }
 
     if (this.currentIndex() < this.regions().length - 1) {
-      this.currentIndex.set(this.currentIndex() + 1);
+      const newIndex = this.currentIndex() + 1;
+      this.currentIndex.set(newIndex);
+
+      // 🔄 Yeni soru için resim yükle
+      const question = this.regions()[newIndex];
+      if (question.imageId !== this.currentImageId()) {
+        this.loadImageForQuestion(question.imageId, question.imageUrl);
+      }
+
       this.drawImageSection();
     }
   }
@@ -370,15 +395,20 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
   }
 
 
-  /* Image Selector */
+ 
+
   async loadQuestions() {
     try {
-      const response = await fetch('questions.json'); // JSON dosyasını oku
+      const response = await fetch('questions.json'); // 📥 JSON'u yükle
       const data: QuestionRegion[] = await response.json();
       this.regions.set(data);
-      await this.loadImage();  // Resim yüklenmesini bekle
-      this.isImageLoaded.set(true);
-      this.drawImageSection();
+  
+      // 🔄 İlk sorunun resmini yükle
+      if (data.length > 0) {
+        await this.loadImageForQuestion(data[0].imageId, data[0].imageUrl);        
+      }
+  
+      this.drawImageSection(); // 🎨 UI'yi güncelle
     } catch (error) {
       console.error('Koordinatlar yüklenirken hata oluştu:', error);
     }
@@ -391,6 +421,31 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
       this.img.onerror = reject;
     });
   }
+
+  async loadImageForQuestion(imageId: string, imageUrl: string) {
+    if (this.currentImageId() === imageId) return; // ✅ Zaten bu resim yüklüyse, tekrar yükleme
+  
+    if (this.imageCache.has(imageId)) {
+      // 🔄 Önbellekte varsa, direkt kullan
+      this.img = this.imageCache.get(imageId)!;
+    } else {
+      // 📥 Yeni resmi yükle
+      this.img = new Image();
+      this.img.src = imageUrl;
+      await new Promise((resolve, reject) => {
+        this.img.onload = () => {
+          this.imageCache.set(imageId, this.img); // 📂 Önbelleğe kaydet
+          this.isImageLoaded.set(true);
+          resolve(true);
+        };
+        this.img.onerror = reject;
+      });
+    }
+  
+    this.currentImageId.set(imageId);
+    this.drawImageSection();
+  }
+  
   
   drawImageSection() {
     if (!this.canvas?.nativeElement || this.regions().length === 0 || !this.isImageLoaded()) return;
@@ -479,6 +534,7 @@ export class TestSolveComponent implements OnInit, AfterViewInit {
         mouseY <= answer.y - region.y + answer.height
       ) {
         this.selectedChoice.set(answer);
+        console.log('Seçilen şık:', answer);
         break;
       }
     }

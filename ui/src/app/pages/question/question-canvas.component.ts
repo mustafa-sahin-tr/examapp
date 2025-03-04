@@ -1,5 +1,5 @@
 import { Component, ElementRef, inject, OnInit, ViewChild } from '@angular/core';
-import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -27,6 +27,8 @@ import { BookService } from '../../services/book.service';
 import { Passage } from '../../models/question';
 import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
+import { debounceTime, map, Observable, startWith, switchMap, tap } from 'rxjs';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -46,7 +48,7 @@ import { ImageSelectorComponent } from '../image-selector/image-selector.compone
             MatIconModule,
             QuestionListComponent,
             QuillModule,
-            PassageCardComponent,ImageSelectorComponent
+            PassageCardComponent,ImageSelectorComponent, MatAutocompleteModule
           ]
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -86,6 +88,17 @@ export class QuestionCanvasComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   questionForm!: FormGroup;
   bookService = inject(BookService);
+
+  // 🟢 Form Kontrolleri
+
+
+  // 🟢 Filtrelenmiş listeler
+
+  constructor() {
+    
+  }
+
+
   
 
   resetFormWithDefaultValues(state: any) {
@@ -99,7 +112,16 @@ export class QuestionCanvasComponent implements OnInit {
     });
   }
 
+   
+
   ngOnInit() {
+
+    // 🟢 Backend'den test listesini getir
+    this.testService.search('').subscribe(data => {
+      this.testList = data.items;
+
+      
+    });
 
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state as { subjectId?: number; topicId?: number, subtopicId?: number, testId?: number };

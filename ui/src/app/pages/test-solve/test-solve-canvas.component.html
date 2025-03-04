@@ -17,26 +17,23 @@
     <!-- Soru Gösterimi -->
     <div class="question-container">     
       <!-- 🟢 Soru Başlığı ve Resmi -->
-      <!-- <app-passage-card [passage]="testInstance.testInstanceQuestions[currentQuestionIndex].question.passage"></app-passage-card>
-      <app-question-lite-view
-        [question]="testInstance.testInstanceQuestions[currentQuestionIndex].question" 
-        [selectedAnswerId]="testInstance.testInstanceQuestions[currentQuestionIndex].selectedAnswerId"    
-        [isPracticeTest]="testInstance.isPracticeTest"   
-        (answerSelected)="selectAnswer($event)"
-        (answerOpened)="openAnswer($event)"
-        [correctAnswerVisible]="correctAnswerVisible">
-      </app-question-lite-view> -->
-
-      
-      <h2>{{ regions().length > 0 ? regions()[currentIndex()].name : 'Soru Yükleniyor...' }}</h2>
-  
-      <div class="canvas-container">
-        @if(regions()[currentIndex()].passage) {
+       @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
+        <h2>{{ regions().length > 0 ? regions()[currentIndex()].name : 'Soru Yükleniyor...' }}</h2>
+        <div class="canvas-container">
           <canvas #passagecanvas></canvas>
-        }
-        <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
-      </div>
-      
+          <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
+        </div>
+       } @else {
+          <app-passage-card [passage]="testInstance.testInstanceQuestions[currentIndex()].question.passage"></app-passage-card>
+          <app-question-lite-view
+            [question]="testInstance.testInstanceQuestions[currentIndex()].question" 
+            [selectedAnswerId]="testInstance.testInstanceQuestions[currentIndex()].selectedAnswerId"    
+            [isPracticeTest]="testInstance.isPracticeTest"   
+            (answerSelected)="selectAnswer($event)"
+            (answerOpened)="openAnswer($event)"
+            [correctAnswerVisible]="correctAnswerVisible">
+          </app-question-lite-view>
+       }
     </div>
   
     <!-- Navigasyon Butonları -->

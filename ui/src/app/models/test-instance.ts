@@ -56,6 +56,7 @@ export interface   Test {
     badgeText?: string;
     bookId?: number;
     bookTestId?: number;
+    questionCount?: number;
 }
 
 export interface CompletedTest {

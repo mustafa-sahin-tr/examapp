@@ -1,8 +1,13 @@
 <div class="card" >
-  <div *ngIf="test.badgeText" class="badge">{{ test.badgeText }}</div>
+  <div *ngIf="test.badgeText" class="badge badge-top-left">{{ test.badgeText }}</div>
   <img [src]="test.imageUrl" alt="Card Image">
   <h3>{{ test.name }}</h3>
-  <p *ngIf="test.subtitle">{{ test.subtitle }}</p>
+  <p *ngIf="test.subtitle">{{ test.description }}</p>
+
+  <!-- 🏷️ Sağ alt köşe badge (Soru Sayısı) -->
+  <div *ngIf="test.questionCount" class="badge badge-bottom-right">
+    {{ test.questionCount }} Soru
+  </div>
 
   <div class="button-container">
     <button class="action-button" (click)="onClick()">Başlat</button>

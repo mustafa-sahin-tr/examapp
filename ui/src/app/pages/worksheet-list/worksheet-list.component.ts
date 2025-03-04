@@ -44,6 +44,7 @@ export class WorksheetListComponent {
           }),
           tap(results => {
             this.pagedWorksheets = results;
+            this.filteredWorksheets = results.items;
             this.pageNumber = 1;            
           })
         ).subscribe();

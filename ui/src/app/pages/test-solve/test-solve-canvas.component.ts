@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, Input, OnInit, QueryList, signal, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, Input, OnDestroy, OnInit, QueryList, signal, TemplateRef, ViewChild, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TestService } from '../../services/test.service';
 import { TestInstance, TestInstanceQuestion, TestStatus } from '../../models/test-instance';
@@ -26,7 +26,7 @@ import { lastValueFrom } from 'rxjs';
     SpinWheelComponent
     ] 
 })
-export class TestSolveCanvasComponent implements OnInit, AfterViewInit {
+export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(SpinWheelComponent) spinWheelComp!: SpinWheelComponent;
   @ViewChild('spinWheelDialog') spinWheelDialog!: TemplateRef<any>; // 📌 Modal Şablonunu Yakala
 
@@ -85,8 +85,14 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit {
     this.spinWheelComp.spinWheel();
   }
 
+  ngOnDestroy(): void {
+    if(this.testTimerSubscription)
+      this.testTimerSubscription.unsubscribe();
+    if(this.questionTimerSubscription)
+      this.questionTimerSubscription
+  }
   
-
+   
 
   distributeQuestions() {
     const questions = [...this.testInstance.testInstanceQuestions]; // Soruların kopyasını al
@@ -489,21 +495,52 @@ async loadTest(testId: number) {
   
       // **Seçili ve hover edilen şıkları farklı renklerde göster**
       for (const answer of region.answers) {
-        if (this.selectedChoices().get(this.regions()[this.currentIndex()].id) === answer) {
-          this.ctx.fillStyle = 'rgba(0, 255, 0, 0.4)'; // ✅ Yeşil arka plan (transparan)
-        } else if (this.hoveredChoice() === answer) {
+        const isSelected = this.selectedChoices().get(this.regions()[this.currentIndex()].id) === answer;
+        const isHovered = this.hoveredChoice() === answer;
+
+        const borderRadius = Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
+
+            this.ctx.beginPath();
+            this.ctx.roundRect(
+                answer.x - region.x, 
+                answer.y - region.y, 
+                answer.width, 
+                answer.height, 
+                borderRadius
+            );
+            this.ctx.closePath();
+
+        if (isSelected) {
+          this.applyGradientBackground(answer, region); // ✅ Özel arka plan
+        } else if (isHovered) {
           this.ctx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
+          this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
         } else {
           this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Varsayılan şeffaf
         }
-  
-        this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+
+        // this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+        this.ctx.fill();
         this.ctx.strokeStyle = 'black'; // Çerçeve siyah
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+        // this.ctx.strokeRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+        this.ctx.stroke();
+        
       }
     }
   }
+
+  applyGradientBackground(answer: AnswerChoice, region: QuestionRegion) {
+    if (!this.ctx) return;
+
+    const gradient = this.ctx.createLinearGradient(answer.x, answer.y, answer.x + answer.width, answer.y + answer.height);
+    gradient.addColorStop(0, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç
+    gradient.addColorStop(1, 'rgba(34, 139, 34, 0.2)'); // ✅ Koyu yeşil bitiş
+
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
+}
+
   
   
   onMouseMove(event: MouseEvent) {

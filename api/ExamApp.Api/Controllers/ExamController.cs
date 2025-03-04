@@ -181,9 +181,24 @@ public class ExamController : BaseController
             .OrderBy(t => t.Name) // Sıralama için
             .Skip((pageNumber - 1) * pageSize) // Sayfalama için
             .Take(pageSize)            
+            .Select(t => new WorksheetDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                GradeId = t.GradeId,
+                SubjectId = t.SubjectId,
+                MaxDurationSeconds = t.MaxDurationSeconds,
+                IsPracticeTest = t.IsPracticeTest,
+                Subtitle = t.Subtitle,
+                ImageUrl = t.ImageUrl,
+                BadgeText = t.BadgeText,
+                BookTestId = t.BookTestId,
+                QuestionCount = t.WorksheetQuestions.Count() // ✅ Soru sayısını ekledik
+            })
             .ToListAsync();
 
-        return Ok(new Paged<Worksheet>
+        return Ok(new Paged<WorksheetDto>
         {
             PageNumber = pageNumber,
             PageSize = pageSize,

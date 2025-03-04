@@ -1,3 +1,28 @@
+.search-container {
+  display: flex;
+  justify-content: flex-start;
+  width: 50%;
+  margin-bottom: 16px;
+  margin-left: 48px; /* Kart başlangıcına hizalama */
+}
+
+.search-box {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.search-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
 .question-card {
     max-width: 960px;
     margin: 40px auto;

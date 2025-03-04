@@ -96,9 +96,17 @@ export class ImageSelectorComponent {
       // 🟦 **Şık alanlarını mavi renkte çiz**
       for (const region of this.regions()) {
         for (const answer of region.answers) {
-          this.ctx.strokeStyle = 'blue';
+          // this.ctx.strokeStyle = 'blue';
+          // this.ctx.lineWidth = 2;
+          // this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
+          const borderRadius = Math.min(answer.width, answer.height) * 0.3; // ✅ Yuvarlak köşe oranı
+          this.ctx.beginPath();
+          this.ctx.roundRect(answer.x, answer.y, answer.width, answer.height, borderRadius);
+          this.ctx.closePath();
+          
+          this.ctx.strokeStyle = 'blue'; // ✅ Mavi Kenarlık
           this.ctx.lineWidth = 2;
-          this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
+          this.ctx.stroke(); 
         }
       }
     }
@@ -306,6 +314,7 @@ export class ImageSelectorComponent {
     this.regions.set([...this.regions()]);
     this.drawImage();
   }
+
   
 
   renameAnswers(questionIndex: number) {

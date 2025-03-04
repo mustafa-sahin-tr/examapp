@@ -93,13 +93,15 @@
   
   .canvas-container {
     display: flex;
-    justify-content: center;
-    margin-top: 20px;
+    flex-direction: column; // ✅ Canvas'ları dikey hizala
+    align-items: center; // ✅ Ortaya hizala
+    gap: 10px; // ✅ Passage ve soru arasında boşluk bırak
   }
   
   canvas {
-    border: 2px solid #ddd;
+    border: 2px solid #ddd;    
   }
+
 
   @media (max-width: 768px) {
     .question-lite-container {

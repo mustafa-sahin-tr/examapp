@@ -31,6 +31,9 @@
       <h2>{{ regions().length > 0 ? regions()[currentIndex()].name : 'Soru Yükleniyor...' }}</h2>
   
       <div class="canvas-container">
+        @if(regions()[currentIndex()].passage) {
+          <canvas #passagecanvas></canvas>
+        }
         <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
       </div>
       

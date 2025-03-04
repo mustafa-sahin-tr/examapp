@@ -455,7 +455,8 @@ public class QuestionsController : BaseController
                         IsCanvasQuestion = true,
                         SubjectId = soruDto.Header.SubjectId ?? 0,
                         TopicId = soruDto.Header.TopicId ?? 0,
-                        SubTopicId = soruDto.Header.SubtopicId ?? 0
+                        SubTopicId = soruDto.Header.SubtopicId ?? 0,
+                        PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
                     };
 
                     _context.Questions.Add(question);

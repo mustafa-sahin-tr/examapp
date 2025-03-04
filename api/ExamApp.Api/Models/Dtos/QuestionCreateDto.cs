@@ -29,6 +29,7 @@ public class BulkQuestionDto
     public bool IsExample { get; set; } // EF'de `IsExample`
     public string? ExampleAnswer { get; set; } // EF'de `PracticeCorrectAnswer`
     public List<BulkAnswerDto> Answers { get; set; } = new List<BulkAnswerDto>();
+    public string PassageId { get; set; }
 }
 
 public class BulkAnswerDto

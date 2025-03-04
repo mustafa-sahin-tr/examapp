@@ -48,7 +48,9 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit {
 
   /* Image Selector */
   @ViewChild('canvas', { static: false }) canvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('passagecanvas', { static: false }) passagecanvas!: ElementRef<HTMLCanvasElement>;
   private ctx!: CanvasRenderingContext2D | null;
+  private psgctx!: CanvasRenderingContext2D | null;
   private img = new Image();
   public imageSrc = signal<string>('test5.png'); // Saklanan resmin yolu
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
@@ -442,11 +444,34 @@ async loadTest(testId: number) {
     this.currentImageId.set(imageId);
     this.drawImageSection();
   }
+
+
+  drawPassageSection() {    
+    if (!this.passagecanvas?.nativeElement || this.regions().length === 0 || !this.isImageLoaded()
+      && !this.regions()[this.currentIndex()].passage ) return;
+    
+    const passageCanvasEl = this.passagecanvas.nativeElement;
+    this.psgctx = passageCanvasEl.getContext('2d');
+  
+    if (this.psgctx) {
+      const region = this.regions()[this.currentIndex()];
+      passageCanvasEl.width = region.passage?.width || 0;
+      passageCanvasEl.height = region.passage?.height || 0;
+  
+      this.psgctx.clearRect(0, 0, passageCanvasEl.width, passageCanvasEl.height);
+      this.psgctx.drawImage(
+        this.img,
+        region.passage?.x || 0, region.passage?.y || 0, region.passage?.width || 0, region.passage?.height || 0, 
+        0, 0, region.passage?.width || 0, region.passage?.height || 0
+      );      
+    }
+  }
   
   
   drawImageSection() {
     if (!this.canvas?.nativeElement || this.regions().length === 0 || !this.isImageLoaded()) return;
-    
+    this.drawPassageSection();
+
     const canvasEl = this.canvas.nativeElement;
     this.ctx = canvasEl.getContext('2d');
   

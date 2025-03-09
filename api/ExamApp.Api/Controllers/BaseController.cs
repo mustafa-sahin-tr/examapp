@@ -37,7 +37,7 @@ public class BaseController : ControllerBase
         return user ?? throw new UnauthorizedAccessException("Authenticated user not found.");
     }    
 
-    protected async Task<Student> GetAuthenticatedStudentIdAsync()
+    protected async Task<Student> GetAuthenticatedStudentAsync()
     {
         
         var student = await _context.Students.FindAsync(AuthenticatedStudentId);

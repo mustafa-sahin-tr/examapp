@@ -172,7 +172,8 @@ export class ImageSelectorComponent {
 
     if (this.selectionMode() === 'question') {
       const name = `Soru ${this.regions().length + 1}`;
-      this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [], passageId:"0",imageId: "",imageUrl:"",id:0}]);
+      this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [], passageId:"0",
+              imageId: "",imageUrl:"",id:0, isExample: false, exampleAnswer: null}]);
     } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
       const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
       this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });
@@ -196,7 +197,8 @@ export class ImageSelectorComponent {
       this.passages.set([...this.passages(), { id, x: this.startX, y: this.startY, width, height }]);
     } else if (this.selectionMode() === 'question') {      
       const name = `Soru ${this.regions().length + 1}`;
-      this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [],passageId:"0",imageId: "",imageUrl:"", id:0 }]);
+      this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [],passageId:"0",
+              imageId: "",imageUrl:"", id:0, isExample: false, exampleAnswer: null }]);
     } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
       const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
       this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });

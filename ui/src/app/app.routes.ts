@@ -5,7 +5,6 @@ import { StudentRegisterComponent } from './pages/student-register/student-regis
 import { authGuard } from './shared/guards/auth.guard';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
-import { TestSolveComponent } from './pages/test-solve/test-solve.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
 import { TestCreateComponent } from './pages/test-create/test-create.component';
 import { HomeComponent } from './home/home.component';
@@ -34,8 +33,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     resolve: { worksheets : worksheetListResolver } },
   { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
-  { path: 'test/:testInstanceId', component: TestSolveComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
-  { path: 'testcanvas/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'test/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam/:id', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası

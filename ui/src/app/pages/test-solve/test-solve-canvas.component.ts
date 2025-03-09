@@ -15,6 +15,7 @@ import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-whee
 import { MatDialog } from '@angular/material/dialog';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { lastValueFrom } from 'rxjs';
+import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 
 @Component({
   selector: 'app-test-solve',
@@ -23,7 +24,7 @@ import { lastValueFrom } from 'rxjs';
   styleUrls: ['./test-solve-canvas.component.scss'],
   imports: [  QuestionLiteViewComponent,
       CommonModule, MatToolbarModule, MatButtonModule, MatCardModule, PassageCardComponent,
-    SpinWheelComponent
+    SpinWheelComponent, QuestionCanvasViewComponent
     ] 
 })
 export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -316,6 +317,7 @@ async loadTest(testId: number) {
   }
 
   persistAnswer(selectedAnswerId: number) {
+    if(this.testInstance.testInstanceQuestions[this.currentIndex()].question.isExample) return;
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedAnswerId;
     
     this.testService.saveAnswer({
@@ -353,12 +355,7 @@ async loadTest(testId: number) {
       this.currentIndex.set(newIndex);
       this.startQuestionTimer(); 
       // 🔄 Yeni soru için resim yükle
-      const question = this.regions()[newIndex];
-      if (question.imageId !== this.currentImageId()) {
-        this.loadImageForQuestion(question.imageId, question.imageUrl);
-      }
-
-      this.drawImageSection();
+      
     }
   }
 
@@ -380,13 +377,6 @@ async loadTest(testId: number) {
       const newIndex = this.currentIndex() + 1;
       this.currentIndex.set(newIndex);
       this.startQuestionTimer(); 
-      // 🔄 Yeni soru için resim yükle
-      const question = this.regions()[newIndex];
-      if (question.imageId !== this.currentImageId()) {
-        this.loadImageForQuestion(question.imageId, question.imageUrl);
-      }
-
-      this.drawImageSection();
     }
   }
 
@@ -406,206 +396,31 @@ async loadTest(testId: number) {
       // const response = await fetch('questions.json'); // 📥 JSON'u yükle
       const data: QuestionRegion[] = this.testService.convertTestInstanceToRegions(this.testInstance);
       this.regions.set(data);
-  
-      // 🔄 İlk sorunun resmini yükle
-      if (data.length > 0 && data.length > this.currentIndex()) {
+      this.testInstance.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
+        if (q.selectedAnswerId) {          
+          const selectedChoice = this.regions().find(a => a.id == q.question.id )?.answers.find(a => a.id === q.selectedAnswerId);
+          if (selectedChoice) {
+            const updatedChoices = new Map(this.selectedChoices());
+            updatedChoices.set(q.question.id, selectedChoice);
+            this.selectedChoices.set(updatedChoices);
+          }
+        }
+      });
 
-        await this.loadImageForQuestion(data[this.currentIndex()].imageId, data[this.currentIndex()].imageUrl);        
-      }
-  
-      this.drawImageSection(); // 🎨 UI'yi güncelle
     } catch (error) {
       console.error('Koordinatlar yüklenirken hata oluştu:', error);
     }
   }
 
-  loadImage(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.img.src = this.imageSrc();
-      this.img.onload = () => resolve();
-      this.img.onerror = reject;
-    });
-  }
-
-  async loadImageForQuestion(imageId: string, imageUrl: string) {
-    if (this.currentImageId() === imageId) return; // ✅ Zaten bu resim yüklüyse, tekrar yükleme
   
-    if (this.imageCache.has(imageId)) {
-      // 🔄 Önbellekte varsa, direkt kullan
-      this.img = this.imageCache.get(imageId)!;
-    } else {
-      // 📥 Yeni resmi yükle
-      this.img = new Image();
-      this.img.src = imageUrl;
-      await new Promise((resolve, reject) => {
-        this.img.onload = () => {
-          this.imageCache.set(imageId, this.img); // 📂 Önbelleğe kaydet
-          this.isImageLoaded.set(true);
-          resolve(true);
-        };
-        this.img.onerror = reject;
-      });
-    }
-  
-    this.currentImageId.set(imageId);
-    this.drawImageSection();
-  }
 
-
-  drawPassageSection() {    
-    if (!this.passagecanvas?.nativeElement || this.regions().length === 0 || !this.isImageLoaded()
-      && !this.regions()[this.currentIndex()].passage ) return;
-    
-    const passageCanvasEl = this.passagecanvas.nativeElement;
-    this.psgctx = passageCanvasEl.getContext('2d');
-  
-    if (this.psgctx) {
-      const region = this.regions()[this.currentIndex()];
-      passageCanvasEl.width = region.passage?.width || 0;
-      passageCanvasEl.height = region.passage?.height || 0;
-  
-      this.psgctx.clearRect(0, 0, passageCanvasEl.width, passageCanvasEl.height);
-      this.psgctx.drawImage(
-        this.img,
-        region.passage?.x || 0, region.passage?.y || 0, region.passage?.width || 0, region.passage?.height || 0, 
-        0, 0, region.passage?.width || 0, region.passage?.height || 0
-      );      
-    }
-  }
-  
-  
-  drawImageSection() {
-    if (!this.canvas?.nativeElement || this.regions().length === 0 || !this.isImageLoaded()) return;
-    this.drawPassageSection();
-
-    const canvasEl = this.canvas.nativeElement;
-    this.ctx = canvasEl.getContext('2d');
-  
-    if (this.ctx) {
-      const region = this.regions()[this.currentIndex()];
-      canvasEl.width = region.width;
-      canvasEl.height = region.height;
-  
-      this.ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-      this.ctx.drawImage(
-        this.img,
-        region.x, region.y, region.width, region.height, 
-        0, 0, region.width, region.height 
-      );
-  
-      // **Seçili ve hover edilen şıkları farklı renklerde göster**
-      for (const answer of region.answers) {
-        const isSelected = this.selectedChoices().get(this.regions()[this.currentIndex()].id) === answer;
-        const isHovered = this.hoveredChoice() === answer;
-
-        const borderRadius = Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
-
-            this.ctx.beginPath();
-            this.ctx.roundRect(
-                answer.x - region.x, 
-                answer.y - region.y, 
-                answer.width, 
-                answer.height, 
-                borderRadius
-            );
-            this.ctx.closePath();
-
-        if (isSelected) {
-          this.applyGradientBackground(answer, region); // ✅ Özel arka plan
-        } else if (isHovered) {
-          this.ctx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
-          this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-        } else {
-          this.ctx.fillStyle = 'rgba(255, 255, 255, 0)'; // Varsayılan şeffaf
-        }
-
-        // this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-        this.ctx.fill();
-        this.ctx.strokeStyle = 'black'; // Çerçeve siyah
-        this.ctx.lineWidth = 2;
-        // this.ctx.strokeRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-        this.ctx.stroke();
-        
-      }
-    }
-  }
-
-  applyGradientBackground(answer: AnswerChoice, region: QuestionRegion) {
-    if (!this.ctx) return;
-
-    const gradient = this.ctx.createLinearGradient(answer.x, answer.y, answer.x + answer.width, answer.y + answer.height);
-    gradient.addColorStop(0, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç
-    gradient.addColorStop(1, 'rgba(34, 139, 34, 0.2)'); // ✅ Koyu yeşil bitiş
-
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-}
-
-  
-  
-  onMouseMove(event: MouseEvent) {
-    if (!this.canvas?.nativeElement) return;
-  
+  selectChoice(answer: AnswerChoice) {
     const region = this.regions()[this.currentIndex()];
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-  
-    let found = false;
-  
-    for (const answer of region.answers) {
-      if (
-        mouseX >= answer.x - region.x &&
-        mouseX <= answer.x - region.x + answer.width &&
-        mouseY >= answer.y - region.y &&
-        mouseY <= answer.y - region.y + answer.height
-      ) {
-        this.hoveredChoice.set(answer);
-        this.canvas.nativeElement.style.cursor = 'pointer'; // 🖱️ Mouse pointer değiştirildi
-        found = true;
-        break;
-      }
-    }
-  
-    if (!found) {
-      this.hoveredChoice.set(null);
-      this.canvas.nativeElement.style.cursor = 'auto'; // Geri varsayılana döndür
-    }
-  
-    this.drawImageSection(); // UI'yı güncelle
+    const updatedChoices = new Map(this.selectedChoices());
+    updatedChoices.set(region.id, answer);
+    this.selectedChoices.set(updatedChoices);
+    //this.selectedChoice.set(answer);
+    this.selectAnswer(answer.id);
   }
-  
-  
-
-  selectChoice(event: MouseEvent) {
-    if (!this.canvas?.nativeElement) return;
-  
-    const region = this.regions()[this.currentIndex()];
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-  
-    for (const answer of region.answers) {
-      if (
-        mouseX >= answer.x - region.x &&
-        mouseX <= answer.x - region.x + answer.width &&
-        mouseY >= answer.y - region.y &&
-        mouseY <= answer.y - region.y + answer.height
-      ) {
-        const updatedChoices = new Map(this.selectedChoices());
-        updatedChoices.set(region.id, answer);
-        this.selectedChoices.set(updatedChoices);
-        //this.selectedChoice.set(answer);
-        this.selectAnswer(answer.id);
-        break;
-      }
-    }
-  
-    this.drawImageSection(); // UI'yı güncelle       
-  }
-
- 
-  
-
 
 }

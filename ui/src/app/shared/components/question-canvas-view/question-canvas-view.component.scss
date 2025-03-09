@@ -1,0 +1,10 @@
+.canvas-container {
+    display: flex;
+    flex-direction: column; // ✅ Canvas'ları dikey hizala
+    align-items: center; // ✅ Ortaya hizala
+    gap: 10px; // ✅ Passage ve soru arasında boşluk bırak
+  }
+  
+  canvas {
+    border: 2px solid #ddd;    
+  }

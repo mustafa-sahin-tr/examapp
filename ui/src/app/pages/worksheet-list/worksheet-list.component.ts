@@ -11,6 +11,7 @@ import { CompletedTest, Paged, Test } from '../../models/test-instance';
 import { CompletedWorksheetCardComponent } from '../completed-worksheet/completed-worksheet-card.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
+import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge/worksheet-badge.component';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -18,7 +19,7 @@ import { SectionHeaderComponent } from '../../shared/components/section-header/s
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent]
+      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent, WorksheetBadgeComponent]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);

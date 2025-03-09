@@ -85,3 +85,14 @@
     right: 10px;
     background: #4caf50; // Yeşil renk (soru sayısı için)
   }
+
+  .svg-container {
+    position: relative;
+    display: inline-block;
+  }
+  .label {
+    position: absolute;
+    font-weight: bold;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+  }

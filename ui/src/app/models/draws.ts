@@ -29,4 +29,6 @@ export interface QuestionRegion {
   passage?: PassageRegion;
   imageId: string;
   imageUrl: string;
+  exampleAnswer: string | null | undefined;
+  isExample: boolean;
 }

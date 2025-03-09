@@ -5,13 +5,16 @@
         <mat-autocomplete #auto="matAutocomplete">
             <mat-option *ngFor="let worksheet of filteredWorksheets" [value]="worksheet.name" (onSelectionChange)="onAutocompleteSelect(worksheet.name)">
                 <div class="search-item">
-                <img [src]="worksheet.imageUrl" alt="" class="search-img" />
+                  <!-- <img [src]="worksheet.imageUrl" alt="" class="search-img" /> -->
+                <app-worksheet-badge [size]="'50px'" [color]="'#ff0000'"></app-worksheet-badge>
                 <span>{{ worksheet.name }}</span>
                 </div>
             </mat-option>
         </mat-autocomplete>
     </mat-form-field>
 </div>
+
+
 
 <app-section-header title="Testler" icon="/icons/18.svg"></app-section-header>
 

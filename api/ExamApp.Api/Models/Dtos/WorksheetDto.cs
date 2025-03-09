@@ -15,5 +15,6 @@ public class WorksheetDto
     public string? ImageUrl { get; set; }
     public string? BadgeText { get; set; }
     public int? BookTestId { get; set; }
+    public int? BookId { get; set; }
     public int QuestionCount { get; set; } // ✅ Eklenen alan
 }

@@ -1,0 +1,15 @@
+:host {
+    display: inline-block;
+  }
+
+
+  .svg-container {
+    position: relative;
+    display: inline-block;
+  }
+  .label {
+    position: absolute;
+    font-weight: bold;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+  }

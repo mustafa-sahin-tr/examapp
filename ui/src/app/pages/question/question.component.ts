@@ -46,7 +46,7 @@ import { ImageSelectorComponent } from '../image-selector/image-selector.compone
             MatIconModule,
             QuestionListComponent,
             QuillModule,
-            PassageCardComponent,ImageSelectorComponent
+            PassageCardComponent
           ]
 })
 export class QuestionComponent implements OnInit {

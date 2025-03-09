@@ -61,6 +61,11 @@ export class AuthService {
     return localStorage.getItem(this.roleKey);
   }
 
+  hasRole(role: string): boolean {
+    console.log(this.getUserRole(), role);
+    return this.getUserRole() === role;
+  }
+
   getUserAvatar(): string | null {
     return localStorage.getItem(this.avatarKey);
   }

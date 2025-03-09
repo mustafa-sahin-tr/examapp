@@ -1,0 +1,16 @@
+<div class="canvas-container">
+    <canvas #passagecanvas></canvas>
+    <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>    
+  </div>
+  <div>
+    @if(_questionRegion().isExample) {
+        @if(correctAnswerVisible) {
+            <div class="correct-answer">
+                Doğru Cevap: 
+                <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>
+              </div>   
+        }
+      <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+    }
+    
+  </div>   

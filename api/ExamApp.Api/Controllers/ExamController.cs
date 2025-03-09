@@ -30,7 +30,23 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetWorksheet(int id)
     {
         var test = await _context.Worksheets  
-            .Where(t => t.Id == id)                      
+            .Where(t => t.Id == id)
+            .Select(t => new WorksheetDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                GradeId = t.GradeId,
+                SubjectId = t.SubjectId,
+                MaxDurationSeconds = t.MaxDurationSeconds,
+                IsPracticeTest = t.IsPracticeTest,
+                Subtitle = t.Subtitle,
+                ImageUrl = t.ImageUrl,
+                BadgeText = t.BadgeText,
+                BookTestId = t.BookTestId,
+                BookId = t.BookTest != null ? t.BookTest.BookId : null,
+                QuestionCount = t.WorksheetQuestions.Count() // ✅ Soru sayısını ekledik
+            })  
             .FirstOrDefaultAsync();
 
         if (test == null) return NotFound();
@@ -42,23 +58,7 @@ public class ExamController : BaseController
     [HttpGet]    
     public async Task<IActionResult> GetWorksheetAndInstancessAsync(int gradeId)
     {
-         // 🔹 Get UserId from the token"
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
-        if (!int.TryParse(userIdClaim, out var userId))
-        {
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null)
-            {
-                return BadRequest("Invalid User ID or User is not a Student.");
-            }
-        }
-
-        var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
-
+        var student = await GetAuthenticatedStudentAsync();
         var tests = await _context.Worksheets
             .Where(t => t.GradeId == student.GradeId)
             .ToListAsync();
@@ -152,18 +152,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetWorksheetsAsync(string? search = null, int pageNumber = 1, int pageSize = 10)
     {
          // 🔹 Token’dan UserId'yi al
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
-        var userId = int.Parse(userIdClaim);
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
-        {
-            return BadRequest("Invalid User ID or User is not a Student.");
-        }
+        var user = await GetAuthenticatedUserAsync();
 
         var query = _context.Worksheets.AsQueryable();
         if (!string.IsNullOrEmpty(search))
@@ -194,6 +183,7 @@ public class ExamController : BaseController
                 ImageUrl = t.ImageUrl,
                 BadgeText = t.BadgeText,
                 BookTestId = t.BookTestId,
+                BookId = t.BookTest != null ? t.BookTest.BookId : null,
                 QuestionCount = t.WorksheetQuestions.Count() // ✅ Soru sayısını ekledik
             })
             .ToListAsync();
@@ -206,59 +196,6 @@ public class ExamController : BaseController
             Items = tests
         });
     }
-
-
-
-    // [HttpGet("list")]
-    // public async Task<IActionResult> GetWorksheetsAsync(string? search = null)
-    // {
-    //     var query = _context.Worksheets.AsQueryable();            
-
-    //     if (!string.IsNullOrEmpty(search))
-    //     {
-    //         string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));
-    //         query = query.Where(t => 
-    //             EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
-    //             EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%")
-    //         );
-    //     }
-
-    //     var tests = await query
-    //         .Select(t => new
-    //         {
-    //             t.Id,
-    //             t.Name,
-    //             t.Description,
-    //             t.IsPracticeTest,
-    //             t.MaxDurationSeconds,
-    //             t.GradeId
-    //         })
-    //         .ToListAsync();
-
-    //     return Ok(tests);
-    // }
-
-
-    // // 🟢 GET /api/exam/tests - Sınıfa ait sınavları getir
-    // [Authorize]
-    // [HttpGet("list")]    
-    // public async Task<IActionResult> GetWorksheetsAsync(int gradeId)
-    // {
-    //     var tests = await _context.Worksheets  
-    //         .Select(t => new
-    //         {
-    //             t.Id,
-    //             t.Name,
-    //             t.Description,
-    //             t.IsPracticeTest,
-    //             t.MaxDurationSeconds,
-    //             t.GradeId                
-    //         })          
-    //         .ToListAsync();
-
-    //     return Ok(tests);
-    // }
-
 
     // 🟢 GET /api/exam/questions - Sınav için soruları getir
     [HttpGet("questions")]
@@ -283,16 +220,6 @@ public class ExamController : BaseController
     [HttpPost("submit-answer")]
     public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerDto dto)
     {
-        // var answer = new AnswerRecord
-        // {
-        //     QuestionId = dto.QuestionId,
-        //     UserId = 1,  // TODO: Auth'dan al
-        //     SelectedAnswer = dto.SelectedAnswer,
-        //     TimeSpent = dto.TimeSpent,
-        //     CreatedAt = DateTime.UtcNow
-        // };
-
-        // _context.AnswerRecords.Add(answer);
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Cevap başarıyla kaydedildi." });
@@ -302,32 +229,13 @@ public class ExamController : BaseController
     [HttpPost("start-test/{testId}")]
     public async Task<IActionResult> StartTest(int testId)
     {
-        // 🔹 Token’dan UserId'yi al
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }
-        var userId = int.Parse(userIdClaim);
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
-        {
-            return BadRequest("Invalid User ID or User is not a Student.");
-        }
-
-        var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
-
-        if (student == null)
-        {
-            return BadRequest("Öğrenci bulunamadı!");
-        }
+        var student = await GetAuthenticatedStudentAsync();
 
         // Öğrenci bu testi daha önce başlatmış mı kontrol et
         var existingInstance = await _context.TestInstances
             .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
                 && ti.EndTime == null
-                && ti.Student.UserId == userId );
+                && ti.Student.UserId == student.UserId );
 
         if (existingInstance != null)
         {
@@ -369,20 +277,7 @@ public class ExamController : BaseController
     [HttpGet("test-instance/{testInstanceId}")]
     public async Task<IActionResult> GetTestInstanceQuestions(int testInstanceId)
     {
-        // 🔹 Token’dan UserId'yi al
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }        
-        // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(userIdClaim);
-        
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
-        {
-            return BadRequest("Invalid User ID or User is not a Student.");
-        }
+        var user = await GetAuthenticatedUserAsync();
 
         var testInstance = await _context.TestInstances
             .Include(ti => ti.Worksheet)
@@ -394,7 +289,7 @@ public class ExamController : BaseController
                 .ThenInclude(tiq => tiq.WorksheetQuestion)
                 .ThenInclude(tq => tq.Question)
                 .ThenInclude(q => q.Passage)
-            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == userId);
+            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == user.Id);
 
         if (testInstance == null)
         {
@@ -443,20 +338,7 @@ public class ExamController : BaseController
     [HttpGet("test-canvas-instance/{testInstanceId}")]
     public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
     {
-        // 🔹 Token’dan UserId'yi al
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
-        {
-            return Unauthorized();
-        }        
-        // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(userIdClaim);
-        
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
-        {
-            return BadRequest("Invalid User ID or User is not a Student.");
-        }
+        var user = await GetAuthenticatedUserAsync();
 
         var testInstance = await _context.TestInstances
             .Include(ti => ti.Worksheet)
@@ -468,7 +350,7 @@ public class ExamController : BaseController
                 .ThenInclude(tiq => tiq.WorksheetQuestion)
                 .ThenInclude(tq => tq.Question)
                 .ThenInclude(q => q.Passage)
-            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == userId);
+            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == user.Id);
 
         if (testInstance == null)
         {
@@ -531,19 +413,12 @@ public class ExamController : BaseController
     [HttpPost("save-answer")]
     public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto)
     {
-        // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
-        {
-            return BadRequest("Invalid User ID or User is not a Student.");
-        }
+        var user = await GetAuthenticatedUserAsync();
 
         var testInstanceQuestion = await _context.TestInstanceQuestions
             .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId && 
                 tiq.Id == dto.TestQuestionId
-                && tiq.WorksheetInstance.Student.UserId == userId);
+                && tiq.WorksheetInstance.Student.UserId == user.Id);
 
         if (testInstanceQuestion == null)
         {
@@ -568,17 +443,10 @@ public class ExamController : BaseController
     [HttpPut("end-test/{testInstanceId}")]
     public async Task<IActionResult> EndTest(int testInstanceId)
     {
-        // 🔹 Token’dan UserId'yi al
-        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null || user.Role != UserRole.Student)
-        {
-            return BadRequest("Invalid User ID or User is not a Student.");
-        }
+        var user = await GetAuthenticatedUserAsync();
 
         var testInstance = await _context.TestInstances
-            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == userId);
+            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == user.Id);
 
         if (testInstance == null)
             return NotFound(new { message = "Test bulunamadı." });

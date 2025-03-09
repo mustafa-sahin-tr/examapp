@@ -46,9 +46,8 @@ import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/ma
             CommonModule,
             MatCardModule,
             MatIconModule,
-            QuestionListComponent,
             QuillModule,
-            PassageCardComponent,ImageSelectorComponent, MatAutocompleteModule
+            ImageSelectorComponent, MatAutocompleteModule
           ]
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -108,19 +107,38 @@ export class QuestionCanvasComponent implements OnInit {
       subtopicId: new FormControl(state?.subtopicId || 0, { nonNullable: true, validators: [Validators.required] }),
       isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
       practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-      testId: new FormControl(state?.testId || 0, { nonNullable: true, validators: [Validators.required] })      
+      testId: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })      
     });
+
+    this.questionForm.get('testId')?.valueChanges.pipe(
+      debounceTime(300),
+      switchMap(value => {
+        console.log('Search value:', value); // Gelen değeri kontrol et
+        return this.testService.search(value || '',1)
+      }),
+      tap(results => {
+        this.testList = results.items;  
+      })
+    ).subscribe();
+
   }
 
    
+  displayFn = (selectedoption: any): string => {    
+    return selectedoption ? selectedoption.name : '';
+  };
+
+  // Kullanıcı seçim yaptığında `FormControl` içine nesneyi set et
+  onOptionSelected(event: any) {
+    console.log(event);
+    this.questionForm.get('testId')?.setValue(event.option.value);
+  }
 
   ngOnInit() {
 
     // 🟢 Backend'den test listesini getir
     this.testService.search('').subscribe(data => {
       this.testList = data.items;
-
-      
     });
 
     const navigation = this.router.getCurrentNavigation();
@@ -130,6 +148,7 @@ export class QuestionCanvasComponent implements OnInit {
     this.isEditMode = this.id !== null;  
     this.loadTests();
     this.loadCategories();
+
   }
 
   loadTests() {
@@ -201,7 +220,7 @@ export class QuestionCanvasComponent implements OnInit {
    
 
     const questionPayload = {            
-      testId: formData.testId,
+      testId: formData.testId ? formData.testId.id : 0,
       topicId: formData.topicId,
       subtopicId: formData.subtopicId,
       subjectId : formData.subjectId,

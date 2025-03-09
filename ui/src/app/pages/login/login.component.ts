@@ -42,12 +42,12 @@ export class LoginComponent implements OnInit {
 
     if (token && role) {
       this.isLoading = true;
-      this.checkUserSession(parseInt(role, 10));
+      this.checkUserSession(role);
     }
   }
 
-  checkUserSession(role: number) {
-    if (role === 0) {
+  checkUserSession(role: string) {
+    if (role === 'Student') {
       // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
       this.authService.checkStudentProfile().subscribe({
         next: (studentRes) => {

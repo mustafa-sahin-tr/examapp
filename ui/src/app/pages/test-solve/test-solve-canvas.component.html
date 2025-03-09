@@ -18,11 +18,12 @@
     <div class="question-container">     
       <!-- 🟢 Soru Başlığı ve Resmi -->
        @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
-        <h2>{{ regions().length > 0 ? regions()[currentIndex()].name : 'Soru Yükleniyor...' }}</h2>
-        <div class="canvas-container">
-          <canvas #passagecanvas></canvas>
-          <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
-        </div>
+        <app-question-canvas-view [questionRegion]="regions()[currentIndex()]" 
+        [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"        
+        (choiceSelected)="selectChoice($event)"
+        (answerOpened)="openAnswer($event)"
+        [correctAnswerVisible]="correctAnswerVisible"
+        ></app-question-canvas-view>
        } @else {
           <app-passage-card [passage]="testInstance.testInstanceQuestions[currentIndex()].question.passage"></app-passage-card>
           <app-question-lite-view

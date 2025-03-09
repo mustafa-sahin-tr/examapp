@@ -10,13 +10,21 @@
              
             <div class="form-column">
 
-              <!-- 🟢 Konu Seçimi (Ders seçilmeden disabled olacak) -->
-            <label for="test">Test</label>
-            <select id="test" formControlName="testId">
-              @for ( t of testList ; track t.id ) {
-                <option [value]="t.id">{{ t.name }} - {{ t.subtitle }} - {{ t.description }}</option>
-              }
-            </select>
+              <div class="search-container">    
+                <mat-form-field appearance="outline" class="search-box">
+                    <mat-label>Test</mat-label>
+                    <input matInput formControlName="testId" [matAutocomplete]="auto">
+                    <mat-autocomplete #auto="matAutocomplete"  [displayWith]="displayFn" (optionSelected)="onOptionSelected($event)">
+                        <mat-option *ngFor="let worksheet of testList" [value]="worksheet">
+                            <div class="search-item">
+                            <img [src]="worksheet.imageUrl" alt="" class="search-img" />
+                            <span>{{ worksheet.name }}</span>
+                            </div>
+                        </mat-option>
+                    </mat-autocomplete>
+                </mat-form-field>
+            </div>
+
               <!-- 🟢 Ders Seçimi -->
               <label for="subject">Ders</label>
               <select id="subject" formControlName="subjectId" (change)="onSubjectChange()">

@@ -61,6 +61,7 @@ export class TestCreateComponent implements OnInit {
 
   loadTest() {
       this.testService.get(this.id!).subscribe(exam => {
+        this.onBookChange(exam.bookId);
         this.testForm.patchValue({
           name: exam.name,
           description: exam.description,

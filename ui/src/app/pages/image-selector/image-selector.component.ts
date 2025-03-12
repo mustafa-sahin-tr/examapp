@@ -39,6 +39,8 @@ export class ImageSelectorComponent {
   public exampleAnswers = new Map<string, string>(); // 📜 Her soru için örnek cevapları sakla
   public exampleFlags = new Map<string, boolean>();  // ✅ Her soru için "isExample" flag'ini sakla
 
+  private currentX = 0;
+  private currentY = 0;
 
   handleFileInput(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
@@ -70,6 +72,42 @@ export class ImageSelectorComponent {
     }
   }
 
+  onMouseMove(event: MouseEvent) {
+    if (!this.isDrawing) return;
+  
+    this.currentX = event.offsetX;
+    this.currentY = event.offsetY;
+  
+    this.drawTemporaryRectangle();
+  }
+
+  drawTemporaryRectangle() {
+    if (!this.ctx) return;
+    const canvas = this.canvas.nativeElement;
+  
+    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Tüm çizimleri tekrar çiz (önceden çizilen dikdörtgenler kaybolmasın)
+    this.drawImage();
+  
+    const width = this.currentX - this.startX;
+    const height = this.currentY - this.startY;
+  
+    this.ctx.strokeStyle = this.getStrokeStyle();
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(this.startX, this.startY, width, height);
+  }
+
+  getStrokeStyle() { 
+    switch (this.selectionMode()) {
+      case 'passage': return 'purple';
+      case 'question': return 'red';
+      case 'answer': return 'blue';
+      default: return 'black';  
+    } 
+  }
+  
+
   drawImage() {
     if (!this.canvas) return;
     const canvasEl = this.canvas.nativeElement;
@@ -99,7 +137,7 @@ export class ImageSelectorComponent {
           // this.ctx.strokeStyle = 'blue';
           // this.ctx.lineWidth = 2;
           // this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
-          const borderRadius = Math.min(answer.width, answer.height) * 0.3; // ✅ Yuvarlak köşe oranı
+          const borderRadius = 0; // Math.min(answer.width, answer.height) * 0.3; // ✅ Yuvarlak köşe oranı
           this.ctx.beginPath();
           this.ctx.roundRect(answer.x, answer.y, answer.width, answer.height, borderRadius);
           this.ctx.closePath();
@@ -162,28 +200,6 @@ export class ImageSelectorComponent {
     this.isDrawing = true;
   }
 
-  endSelection2(event: MouseEvent) {
-    if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const endX = event.clientX - rect.left;
-    const endY = event.clientY - rect.top;
-    const width = endX - this.startX;
-    const height = endY - this.startY;
-
-    if (this.selectionMode() === 'question') {
-      const name = `Soru ${this.regions().length + 1}`;
-      this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [], passageId:"0",
-              imageId: "",imageUrl:"",id:0, isExample: false, exampleAnswer: null}]);
-    } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
-      const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
-      this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });
-    }
-
-    this.isDrawing = false;
-    this.drawImage(); // **Seçimi çizmek için tekrar çağır**
-  }
-
-
   endSelection(event: MouseEvent) {
     if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;
     const rect = this.canvas.nativeElement.getBoundingClientRect();
@@ -199,9 +215,14 @@ export class ImageSelectorComponent {
       const name = `Soru ${this.regions().length + 1}`;
       this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [],passageId:"0",
               imageId: "",imageUrl:"", id:0, isExample: false, exampleAnswer: null }]);
+      this.selectQuestion(this.regions().length - 1);
     } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
       const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
       this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });
+      if(this.regions()[this.selectedQuestionIndex].answers.length === 3) {
+        this.alignAnswers(this.selectedQuestionIndex);
+        this.toggleSelectionMode('question');
+      }
     }
     
   
@@ -209,7 +230,7 @@ export class ImageSelectorComponent {
     this.drawImage();
   }
 
-  toggleSelectionMode(mode: 'question' | 'answer') {
+  toggleSelectionMode(mode: 'question' | 'answer' | 'passage') {
     this.selectionMode.set(mode);
     if (mode === 'answer') {
       alert("Lütfen önce bir soru seçin ve ardından şıkları ekleyin.");
@@ -273,6 +294,11 @@ export class ImageSelectorComponent {
     region.answers[answerIndex].isCorrect = true;
   
     this.regions.set([...this.regions()]); // UI güncelleme
+  }
+
+  removeQuestion(questionIndex: number) {
+    this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
+    this.drawImage (); 
   }
 
   removeAnswer(questionIndex: number, answerIndex: number) {

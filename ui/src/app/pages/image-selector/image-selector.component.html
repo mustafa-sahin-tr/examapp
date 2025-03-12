@@ -1,40 +1,42 @@
-<div class="container">
+<div class="container" [ngClass]="selectionMode()">
     <input type="file" (change)="handleFileInput($event)" accept="image/*">
-    <button (click)="selectionMode.set('passage')">📜 Passage Seç</button>
+    <button (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
     <button (click)="toggleSelectionMode('question')">Soru Seç</button>
     <button (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button>
     <!-- <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
   
     <div *ngIf="imageSrc()" class="canvas-container">
-      <canvas #canvas (mousedown)="startSelection($event)" (mouseup)="endSelection($event)"></canvas>
+      <canvas #canvas (mousedown)="startSelection($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
     </div>
   
     <div class="regions-list">
       <h3>Seçilen Bölgeler:</h3>
-      <ul>
+      <ul class="regions">
         <li *ngFor="let region of regions(); let i = index">
-          {{ region.name }} - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }}
+          {{ region.name }} 
+          <!-- - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }} -->
           <!-- ✅ Örnek soru checkbox -->
             <label>
                 <input type="checkbox" [checked]="isExample(region.name)" (change)="toggleExampleMode(region.name)"> Örnek Soru
             </label>
-          <button (click)="selectQuestion(i)" [disabled]="isExample(region.name)">Şıkları Seç</button>
+             
           <!-- 📝 Quill Editörü (Sadece Örnek Soru Seçiliyse Açılacak) -->
             <quill-editor *ngIf="isExample(region.name)" [ngModel]="exampleAnswers.get(region.name)" (ngModelChange)="onTextChanged(region.name, $event)">
             </quill-editor>
           <ul>
-            <li *ngFor="let answer of region.answers; let j = index">
-              {{ answer.label }} - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }}
-              
-              <button (click)="setCorrectAnswer(i, j)">
-                {{ answer.isCorrect ? "✅ Doğru Cevap" : "Doğru Olarak İşaretle" }}
-              </button>
-          
-              <button (click)="removeAnswer(i, j)">❌ Şıkkı Temizle</button>
+            <li *ngFor="let answer of region.answers; let j = index">              
+              <!-- - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }} -->              
+              <button class="choice-btn" (click)="setCorrectAnswer(i, j)">
+                {{ answer.label }}  {{ answer.isCorrect ? "✅" : "" }}
+              </button>          
+              <!-- <button (click)="removeAnswer(i, j)">❌ Sil</button> -->
             </li>
           </ul>
           <!-- 🔹 Yeni Hizalama Butonu -->
             <button (click)="alignAnswers(i)" [disabled]="region.answers.length < 2">🔄 Şıkları Hizala</button>
+
+            <button  (click)="removeQuestion(i)">❌ Soruyu Sil</button>
+             <button (click)="selectQuestion(i)" [disabled]="isExample(region.name)">Şıkları Seç</button>
         </li>
       </ul>
 

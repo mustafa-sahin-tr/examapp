@@ -1,6 +1,6 @@
 .container {
     text-align: center;
-    margin: 20px;
+    // margin: 20px;
   }
   
   button {
@@ -12,6 +12,18 @@
     border-radius: 5px;
     background-color: #007bff;
     color: white;
+  }
+
+  .question {
+    background-color: red;
+  }
+
+  .answer {
+    background-color: blue;
+  }
+
+  .passage {
+    background-color: purple;
   }
   
   button:disabled {
@@ -49,5 +61,25 @@
     padding: 5px;
     font-size: 14px;
     border-bottom: 1px solid #ddd;
+  }
+
+  .regions ul {
+    display: flex;
+    flex-wrap: wrap; // Elemanlar sığmazsa alt satıra geçer
+    gap: 10px; // Elemanlar arasına boşluk ekler
+    list-style: none; // Liste işaretlerini kaldırır
+    padding: 0; // Varsayılan padding'i kaldırır
+    
+  }
+  
+  .regions li {
+    display: flex;
+    align-items: center; // Dikeyde hizalama
+    gap: 5px; // İçerideki öğeler arasına boşluk ekler
+  }
+
+  .choice-btn {
+    min-width: 50px;
+    min-height: 30px;
   }
   

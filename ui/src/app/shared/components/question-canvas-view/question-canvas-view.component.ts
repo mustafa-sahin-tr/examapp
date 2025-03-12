@@ -134,7 +134,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
         const isSelected = this._selectedChoice() === answer;
         const isHovered = this.hoveredChoice() === answer;
 
-        const borderRadius = Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
+        const borderRadius = 0 ; // Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
 
             this.canvasCtx.beginPath();
             this.canvasCtx.roundRect(

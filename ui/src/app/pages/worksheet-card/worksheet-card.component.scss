@@ -1,14 +1,14 @@
 // worksheet-card.component.scss
 .card {
-    position: relative;
-    width: 220px;
-    padding: 16px;
-    border-radius: 8px;
+  position: relative;
+    /* width: 220px; */
+    padding: 2px;
+    /* border-radius: 8px; */
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
     background: white;
     text-align: center;
-    margin: 12px;
-    transition: box-shadow 0.3s ease-in-out;
+    /* margin: 12px; */
+    transition: box-shadow 0.3sease-in-out;
     cursor: pointer;
   }
 

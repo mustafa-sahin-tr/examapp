@@ -29,6 +29,7 @@ import { PassageCardComponent } from '../../shared/components/passage-card/passa
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
 import { debounceTime, map, Observable, startWith, switchMap, tap } from 'rxjs';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -47,7 +48,7 @@ import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/ma
             MatCardModule,
             MatIconModule,
             QuillModule,
-            ImageSelectorComponent, MatAutocompleteModule
+            ImageSelectorComponent, MatAutocompleteModule,WorksheetCardComponent
           ]
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -125,7 +126,7 @@ export class QuestionCanvasComponent implements OnInit {
 
    
   displayFn = (selectedoption: any): string => {    
-    return selectedoption ? selectedoption.name : '';
+    return selectedoption ? selectedoption.name + '-' + selectedoption.subtitle + '-' +  selectedoption.description : '';
   };
 
   // Kullanıcı seçim yaptığında `FormControl` içine nesneyi set et

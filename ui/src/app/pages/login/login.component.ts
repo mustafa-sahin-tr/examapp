@@ -10,6 +10,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
 
+
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -74,8 +75,8 @@ export class LoginComponent implements OnInit {
       this.authService.login(this.loginForm.value).subscribe({
         next: (res) => {
           this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
-          const role = +res.role; // 0 = Student, 1 = Teacher, 2 = Parent
-          if (role === 0) {
+          const role = res.role; // 0 = Student, 1 = Teacher, 2 = Parent
+          if (role === 'Student') {
             // Eğer Student ise, Student kaydı olup olmadığını kontrol et
             this.authService.checkStudentProfile().subscribe({
               next: (studentRes) => {

@@ -17,8 +17,8 @@
                     <mat-autocomplete #auto="matAutocomplete"  [displayWith]="displayFn" (optionSelected)="onOptionSelected($event)">
                         <mat-option *ngFor="let worksheet of testList" [value]="worksheet">
                             <div class="search-item">
-                            <img [src]="worksheet.imageUrl" alt="" class="search-img" />
-                            <span>{{ worksheet.name }}</span>
+                              <app-worksheet-card [size]="'25px'" [test]="worksheet"> </app-worksheet-card>
+                            <span>{{ worksheet.name }} - {{ worksheet.subtitle }} - {{ worksheet.description }}</span>
                             </div>
                         </mat-option>
                     </mat-autocomplete>

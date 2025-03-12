@@ -7,7 +7,7 @@
         <mat-card-header>
           <div class="profile-header stats-container">
             <div class="avatar-container">
-              <img [src]="student.avatarUrl || 'assets/default-avatar.png'" class="avatar" />
+              <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" />
               <div class="avatar-overlay" (click)="avatarInput.click()">
                 <span>Change</span>
               </div>
@@ -118,7 +118,51 @@
 
   <!-- Assignments and Exams Tab -->
   <mat-tab label="Assignments and Exams">
-    <p>Assignments and Exams content will go here...</p>
+    <!-- <canvas
+    baseChart
+    [data]="bubbleChartData"
+    [options]="bubbleChartOptions2"
+    [legend]="true"
+    [type]="bubbleChartType"    
+    (chartClick)="chartClicked($event)"
+  >
+  </canvas> -->
+
+
+  <div class="bubble-chart-container">
+    <!-- <ngx-charts-bubble-chart
+  [view]="[700, 200]"
+  [scheme]="colorScheme"
+  [results]="bubbleData"
+  [xAxis]="showXAxis"
+  [yAxis]="showYAxis"
+  [legend]="showLegend"
+  [showXAxisLabel]="showXAxisLabel"
+  [showYAxisLabel]="showYAxisLabel"
+  [xAxisLabel]="xAxisLabel"
+  [yAxisLabel]="yAxisLabel"
+  [xScaleMin]="yScaleMin"
+  [xScaleMax]="yScaleMax"
+  [yScaleMin]="yScaleMin"
+  [yScaleMax]="yScaleMax"
+  [minRadius]="minRadius"
+  [maxRadius]="maxRadius">
+</ngx-charts-bubble-chart> -->
+
+<app-bubble-chart></app-bubble-chart>
+
+  </div>
+
+  <div class="number-card-container">
+  <ngx-charts-number-card
+  [view]="[700, 200]"
+  [scheme]="colorScheme2"
+  [results]="single"
+  [cardColor]="cardColor"
+  (select)="onSelect($event)">
+</ngx-charts-number-card>
+  </div>
+
   </mat-tab>
 
   <!-- Weekly Calendar Tab -->

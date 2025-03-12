@@ -10,6 +10,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 
 export const appConfig: ApplicationConfig = {
@@ -19,6 +20,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withRouterConfig({onSameUrlNavigation: 'reload'})), 
     provideAnimationsAsync(),
     provideStore(reducers),
-    importProvidersFrom(ReactiveFormsModule)    
+    importProvidersFrom(ReactiveFormsModule), provideCharts(withDefaultRegisterables())    ,
+    provideCharts(withDefaultRegisterables())
+
    ]
 };

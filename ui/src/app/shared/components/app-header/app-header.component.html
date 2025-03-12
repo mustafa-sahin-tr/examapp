@@ -12,8 +12,9 @@
     </button>
     @if( $isAuthenticated | async) 
     {
+      
     <div class="profile-menu" mat-button [matMenuTriggerFor]="menu" (click)="navigateTo('/student-profile')">
-      <img ngSrc="userAvatarUrl" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
+      <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
       <span class="username">Mustafa</span>
     </div>
         <mat-menu #menu="matMenu">

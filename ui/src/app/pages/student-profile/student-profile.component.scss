@@ -159,7 +159,19 @@ mat-select {
     border-radius: 8px;
   }
   
-  :host ::ng-deep rect {
+  .number-card-container ::ng-deep .ngx-charts-outer {
+    background: #1b1e27;
+  }
+
+  .heatmap-container ::ng-deep .ngx-charts-outer {
+    background: #323930;    
+  }
+
+  .heatmap-container ::ng-deep .tick {
+    fill: wheat;
+  }
+
+  :host ::ng-deep .heatmap-container rect {
     width: 18px !important;
     height: 18px !important;
     rx: 3;

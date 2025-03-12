@@ -160,6 +160,7 @@ public class ExamController : BaseController
             string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));
             query = query.Where(t => 
                 EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
+                (t.Subtitle != null && EF.Functions.Like(t.Subtitle.ToLower(), $"%{normalizedSearch}%")) ||
                 EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%")
             );
         }

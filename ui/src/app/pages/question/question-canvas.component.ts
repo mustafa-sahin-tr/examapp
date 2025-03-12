@@ -231,6 +231,7 @@ export class QuestionCanvasComponent implements OnInit {
     this.questionService.saveBulk(payload).subscribe({
        next: (data) => {
         console.log('Soru Kaydedildi:', data);
+        this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
        },
         error: (err) => {
           console.log(err);

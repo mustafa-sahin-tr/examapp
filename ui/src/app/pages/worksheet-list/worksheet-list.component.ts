@@ -19,7 +19,7 @@ import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent, WorksheetBadgeComponent]
+      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);
@@ -50,7 +50,7 @@ export class WorksheetListComponent {
           tap(results => {
             this.pagedWorksheets = results;
             this.filteredWorksheets = results.items;
-            this.pageNumber = 1;            
+            this.pageNumber = 1;                        
           })
         ).subscribe();
 
@@ -73,7 +73,7 @@ export class WorksheetListComponent {
       }
 
       nextPage() {
-        if (this.pageNumber * this.pageSize < this.totalCount) {
+        if (this.pageNumber * this.pageSize < this.pagedWorksheets.totalCount) {
           this.pageNumber++;
           this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
             this.pagedWorksheets = response;
@@ -114,7 +114,7 @@ export class WorksheetListComponent {
           const container = this.cardContainer.nativeElement;
           if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
             container.scrollBy({ left: 300, behavior: 'smooth' });
-          } else if (this.pageNumber * this.pageSize < this.totalCount) {
+          } else if (this.pageNumber * this.pageSize < this.pagedWorksheets.totalCount) {
             this.pageNumber++;
             this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
               this.pagedWorksheets = response;

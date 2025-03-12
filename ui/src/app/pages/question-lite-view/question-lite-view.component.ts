@@ -50,4 +50,8 @@ export class QuestionLiteViewComponent implements OnInit {
     return this.showFeedback && index === this.selectedAnswerId && index !== this.correctAnswerIndex;
   }
 
+  public getCorrectAnswerId(question: Question, answerId: number) {
+    return question.correctAnswer?.id == answerId;
+  }
+
 }

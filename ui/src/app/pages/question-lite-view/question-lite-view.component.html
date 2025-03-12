@@ -29,7 +29,7 @@
         <div class="answers-lite-container" [ngStyle]="{'grid-template-columns': 'repeat('+ question.answerColCount +', 1fr)'}">
           @for ( answer of question.answers; track answer.id; let i = $index) {
           <div class="answer-lite-box"
-              [ngClass]="{ 'selected-answer': selectedAnswerId === answer.id }"
+              [ngClass]="{ 'selected-answer': getCorrectAnswerId(question, answer.id) }"
               (click)="selectAnswer(answer.id)">
                 <span class="answer-label">{{ getAnswerLabel(i) }}</span>
                   <span class="answer-text">{{ answer.text }}</span>

@@ -11,7 +11,6 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Grade } from '../../models/student';
-import { RewardPathComponent } from '../reward-path/reward-path.component';
 import { PointCardComponent } from '../../shared/components/point-card/point-card.component';
 import { BadgeBoxComponent } from '../../shared/components/badge-box/badge-box.component';
 import { LeaderboardComponent } from '../../shared/components/leaderboard/leaderboard.component';
@@ -19,9 +18,6 @@ import { SectionHeaderComponent } from '../../shared/components/section-header/s
 import { MatTabsModule } from '@angular/material/tabs';
 import { NgxChartsModule, Color, ScaleType, LegendPosition } from '@swimlane/ngx-charts';
 import { StudentTimeChartComponent } from '../../shared/components/student-time-chart/student-time-chart.component';
-import { bubble } from '../../shared/components/student-time-chart/data';
-import { ChartConfiguration, ChartData, ChartType } from 'chart.js'
-import { BaseChartDirective } from 'ng2-charts';
 
 @Component({
   selector: 'app-student-profile',
@@ -30,7 +26,7 @@ import { BaseChartDirective } from 'ng2-charts';
   styleUrls: ['./student-profile.component.scss'],
   imports: [CommonModule, MatCardModule, MatIconModule, MatListModule, MatTooltipModule,
     MatSnackBarModule, MatSelectModule, PointCardComponent, BadgeBoxComponent,
-    LeaderboardComponent, SectionHeaderComponent, MatTabsModule, NgxChartsModule, StudentTimeChartComponent, BaseChartDirective,
+    LeaderboardComponent, SectionHeaderComponent, MatTabsModule, NgxChartsModule, StudentTimeChartComponent,
 
   ]
 })
@@ -224,6 +220,34 @@ export class StudentProfileComponent implements OnInit {
 
   lastMonthDisplayed: string = ''; // En son gösterilen ayı takip etmek için
 
+  colorScheme2: Color = {
+    name: 'cool',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: ['#5AA454', '#E44D25', '#CFC0BB', '#7aa3e5', '#a8385d', '#aae3f5']
+  };
+  cardColor: string = '#232837';
+
+
+  single: any[] = [
+    {
+      "name": "Çözülen Soru",
+      "value": 8940
+    },
+    {
+      "name": "Çalışma Süresi (dk)",
+      "value": 500
+    },
+    {
+      "name": "Doğru Cevap",
+      "value": 7200
+    },
+    {
+      "name": "Çözülen Test",
+      "value": 5
+    }
+  ];
+
   xAxisTickFormatting(val: string): string {
     // "2024 - Feb - Week 1" formatındaki değerden ayı al
     const monthMatch = val.match(/- (\w{3}) -/);
@@ -240,102 +264,6 @@ export class StudentProfileComponent implements OnInit {
     return monthName; // Sadece ilk hafta için ay ismini göster
   }
 
-   times = [
-    "12:00 am", "1:00 am", "2:00 am", "3:00 am", "4:00 am", "5:00 am", "6:00 am",
-    "7:00 am", "8:00 am", "9:00 am", "10:00 am", "11:00 am",
-    "12:00 pm", "1:00 pm", "2:00 pm", "3:00 pm", "4:00 pm", "5:00 pm", "6:00 pm",
-    "7:00 pm", "8:00 pm", "9:00 pm", "10:00 pm", "11:00 pm"
-  ];
-
-  public bubbleChartOptions2: any = {
-    responsive: true,
-    scales: {
-      x: { min: 2000, max: 2025, ticks: {  } },
-      y: { min: 0,
-          max: 11,
-        ticks: {          
-          callback: (value: number) => this.times[value]
-        }      
-      }
-  }
-};
-
-
-  public bubbleChartOptions: ChartConfiguration['options'] = {
-    scales: {
-      x: {
-        min: 2000,
-        max: 2025,
-        ticks: {},
-      },
-      y: {
-        min: 0,
-        max: 7,
-        ticks: {},
-      },
-    },
-  };
-  public bubbleChartType: ChartType = 'bubble';
-  public bubbleChartLegend = true;
-
-  public bubbleChartData: ChartData<'bubble'> = {
-    labels: [],
-    "datasets": [
-    {
-      "data": [
-        { "x": 2000, "y": 0, "r": 10 },
-        { "x": 2001, "y": 1, "r": 10 },
-        { "x": 2002, "y": 2, "r": 10 },
-        { "x": 2003, "y": 3, "r": 10 },
-        { "x": 2004, "y": 4, "r": 10 },     
-        { "x": 2005, "y": 5, "r": 10 },
-        { "x": 2006, "y": 6, "r": 10 }     
-      ],
-      "label": "Germany",
-      "backgroundColor": [
-        "red", "rgb(255,226,158)", "blue", "purple", "yellow", 
-        "brown", "magenta", "cyan", "orange", "pink",
-        "red", "green", "blue", "purple", "yellow", 
-        "brown", "magenta", "cyan", "orange", "pink",
-        "red", "green", "blue", "purple", "yellow"
-      ],
-      // "borderColor": "blue",
-      // "hoverBackgroundColor": "purple",
-      "hoverBorderColor": "red"
-    }
-  ]
-  };
-
-  single: any[] = [
-  {
-    "name": "Çözülen Soru",
-    "value": 8940
-  },
-  {
-    "name": "Çalışma Süresi (dk)",
-    "value": 500
-  },
-  {
-    "name": "Doğru Cevap",
-    "value": 7200
-  },
-  {
-    "name": "Çözülen Test",
-    "value": 5
-  }
-];
-
-
-  colorScheme2: Color = {
-    name: 'cool',
-    selectable: false,
-    group: ScaleType.Linear,
-    domain: ['#5AA454', '#E44D25', '#CFC0BB', '#7aa3e5', '#a8385d', '#aae3f5']
-  };
-  cardColor: string = '#232837';
-
-
-
   constructor(private studentService: StudentService, private route: ActivatedRoute,
       private router: Router, private snackBar: MatSnackBar ) {
 
@@ -349,11 +277,6 @@ export class StudentProfileComponent implements OnInit {
       public chartClicked(e: any): void {
         console.log(e);
       }
-      // public chartHovered(e: any): void {
-      //   console.log(e);
-      // }
-    
-
 
   ngOnInit() {
     this.studentService.loadGrades().subscribe(response => {

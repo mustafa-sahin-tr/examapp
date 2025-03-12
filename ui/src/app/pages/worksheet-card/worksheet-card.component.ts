@@ -6,7 +6,6 @@ import { HasRoleDirective } from '../../shared/directives/has-role.directive';
 import { IsStudentDirective } from '../../shared/directives/is-student.directive';
 import { Router } from '@angular/router';
 import { CARDSTYLES, StyleConfig } from './worksheet-card-styles';
-import { ThemeService } from 'ng2-charts';
 
 
 

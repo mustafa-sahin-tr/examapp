@@ -6,6 +6,7 @@ import { HasRoleDirective } from '../../shared/directives/has-role.directive';
 import { IsStudentDirective } from '../../shared/directives/is-student.directive';
 import { Router } from '@angular/router';
 import { CARDSTYLES, StyleConfig } from './worksheet-card-styles';
+import { MatCardModule } from '@angular/material/card';
 
 
 
@@ -14,20 +15,29 @@ import { CARDSTYLES, StyleConfig } from './worksheet-card-styles';
   templateUrl: './worksheet-card.component.html',
   styleUrls: ['./worksheet-card.component.scss'],
   standalone: true,
-  imports: [CommonModule, IsStudentDirective]
+  imports: [CommonModule, IsStudentDirective, MatCardModule]
 })
 export class WorksheetCardComponent implements OnInit {
   @Input() test!: Test;
-  @Output() cardClick = new EventEmitter<void>();
+  @Output() cardClick = new EventEmitter<number>();
   @Input() size: string = '225px'; // Default size
   @Input() color: string = 'purple'; // Default color
   @Input() transform: string = 'scale(1)'; // Default transform
   @Input() centerLabel: string = 'center'; // Default center label  
   @Input() styleConfig: StyleConfig = CARDSTYLES['default'];
 
+  @Input() type: string = 'pscard';
   router = inject(Router);
+
+  images = ['honey-back.png','rect-back.png','triangle-back.png','diamond-back.png'];
+    public getBackgroundImage() {
+      const randomIndex = (this.test.id || 0) % this.images.length;
+      return this.images[randomIndex];
+    }
+
+
   onClick() {
-    this.cardClick.emit();
+    this.cardClick.emit(this.test.id || 0);
   }
 
   public getTestColor(test: Test): string {

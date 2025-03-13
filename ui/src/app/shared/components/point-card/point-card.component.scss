@@ -1,51 +1,51 @@
-.point-card {
-    // width: 250px;
-    // text-align: center;
-    // background: white;
-    // box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    // border-radius: 8px;
-    // padding: 15px;
-    // display: flex;
-    // justify-content: center;
-    // align-items: center;
+// .point-card {
+//     // width: 250px;
+//     // text-align: center;
+//     // background: white;
+//     // box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+//     // border-radius: 8px;
+//     // padding: 15px;
+//     // display: flex;
+//     // justify-content: center;
+//     // align-items: center;
 
-    width: 100%; /* Otomatik olarak genişlemesini sağla */
-    min-width: 200px; /* Minimum genişlik belirle */
-    text-align: center;
-    background: white;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
+//     width: 100%; /* Otomatik olarak genişlemesini sağla */
+//     min-width: 200px; /* Minimum genişlik belirle */
+//     text-align: center;
+//     background: white;
+//     box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+//     border-radius: 8px;
+//     padding: 15px;
+//     display: flex;
+//     justify-content: center;
+//     align-items: center;
+//     flex-direction: column;
   
-    .card-content {
-      display: flex;
-      align-items: center;
-    }
+//     .card-content {
+//       display: flex;
+//       align-items: center;
+//     }
   
-    .card-icon {
-      font-size: 32px;
-      color: #ff9800;
-      margin-right: 10px;
-    }
+//     .card-icon {
+//       font-size: 32px;
+//       color: #ff9800;
+//       margin-right: 10px;
+//     }
   
-    .card-text {
-      text-align: left;
+//     .card-text {
+//       text-align: left;
   
-      .card-title {
-        font-size: 14px;
-        font-weight: bold;
-        color: #666;
-      }
+//       .card-title {
+//         font-size: 14px;
+//         font-weight: bold;
+//         color: #666;
+//       }
   
-      .card-value {
-        font-size: 20px;
-        font-weight: bold;
-        color: green;
-      }
-    }
-  }
+//       .card-value {
+//         font-size: 20px;
+//         font-weight: bold;
+//         color: green;
+//       }  
+//     }
+//   }
   

@@ -1,85 +1,85 @@
-.container {
-    text-align: center;
-    // margin: 20px;
-  }
+// .container {
+//     text-align: center;
+//     // margin: 20px;
+//   }
   
-  button {
-    margin: 5px;
-    padding: 5px;
-    font-size: 14px;
-    cursor: pointer;
-    border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
-  }
+//   button {
+//     margin: 5px;
+//     padding: 5px;
+//     font-size: 14px;
+//     cursor: pointer;
+//     border: none;
+//     border-radius: 5px;
+//     background-color: #007bff;
+//     color: white;
+//   }
 
-  .question {
-    background-color: red;
-  }
+//   .question {
+//     background-color: red;
+//   }
 
-  .answer {
-    background-color: blue;
-  }
+//   .answer {
+//     background-color: blue;
+//   }
 
-  .passage {
-    background-color: purple;
-  }
+//   .passage {
+//     background-color: purple;
+//   }
   
-  button:disabled {
-    background-color: #ccc;
-  }
+//   button:disabled {
+//     background-color: #ccc;
+//   }
   
-  .canvas-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-  }
+//   .canvas-container {
+//     display: flex;
+//     justify-content: center;
+//     margin-top: 20px;
+//   }
   
-  canvas {
-    border: 2px solid #ddd;
-    cursor: crosshair;
-  }
+//   canvas {
+//     border: 2px solid #ddd;
+//     cursor: crosshair;
+//   }
   
-  .regions-list {
-    margin-top: 20px;
-    text-align: left;
-    // max-width: 500px;
-    // margin-left: auto;
-    // margin-right: auto;
-    background: #f9f9f9;
-    padding: 10px;
-    border-radius: 8px;
-  }
+//   .regions-list {
+//     margin-top: 20px;
+//     text-align: left;
+//     // max-width: 500px;
+//     // margin-left: auto;
+//     // margin-right: auto;
+//     background: #f9f9f9;
+//     padding: 10px;
+//     border-radius: 8px;
+//   }
   
-  ul {
-    list-style: none;
-    padding: 0;
-  }
+//   ul {
+//     list-style: none;
+//     padding: 0;
+//   }
   
-  li {
-    padding: 5px;
-    font-size: 14px;
-    border-bottom: 1px solid #ddd;
-  }
+//   li {
+//     padding: 5px;
+//     font-size: 14px;
+//     border-bottom: 1px solid #ddd;
+//   }
 
-  .regions ul {
-    display: flex;
-    flex-wrap: wrap; // Elemanlar sığmazsa alt satıra geçer
-    gap: 10px; // Elemanlar arasına boşluk ekler
-    list-style: none; // Liste işaretlerini kaldırır
-    padding: 0; // Varsayılan padding'i kaldırır
+//   .regions ul {
+//     display: flex;
+//     flex-wrap: wrap; // Elemanlar sığmazsa alt satıra geçer
+//     gap: 10px; // Elemanlar arasına boşluk ekler
+//     list-style: none; // Liste işaretlerini kaldırır
+//     padding: 0; // Varsayılan padding'i kaldırır
     
-  }
+//   }
   
-  .regions li {
-    display: flex;
-    align-items: center; // Dikeyde hizalama
-    gap: 5px; // İçerideki öğeler arasına boşluk ekler
-  }
+//   .regions li {
+//     display: flex;
+//     align-items: center; // Dikeyde hizalama
+//     gap: 5px; // İçerideki öğeler arasına boşluk ekler
+//   }
 
-  .choice-btn {
-    min-width: 50px;
-    min-height: 30px;
-  }
+//   .choice-btn {
+//     min-width: 50px;
+//     min-height: 30px;
+//   }
   

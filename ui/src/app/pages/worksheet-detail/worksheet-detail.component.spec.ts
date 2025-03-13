@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { RewardPathComponent } from './reward-path.component';
+import { WorksheetDetailComponent } from './worksheet-detail.component';
 
-describe('RewardPathComponent', () => {
-  let component: RewardPathComponent;
-  let fixture: ComponentFixture<RewardPathComponent>;
+describe('WorksheetDetailComponent', () => {
+  let component: WorksheetDetailComponent;
+  let fixture: ComponentFixture<WorksheetDetailComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RewardPathComponent]
+      imports: [WorksheetDetailComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(RewardPathComponent);
+    fixture = TestBed.createComponent(WorksheetDetailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

@@ -13,6 +13,7 @@ import { worksheetListResolver } from './shared/resolvers/worksheet-resolver';
 import { ImageSelectorComponent } from './pages/image-selector/image-selector.component';
 import { QuestionCanvasComponent } from './pages/question/question-canvas.component';
 import { TestSolveCanvasComponent } from './pages/test-solve/test-solve-canvas.component';
+import { WorksheetDetailComponent } from './pages/worksheet-detail/worksheet-detail.component';
 
 export const routes: Routes = [
   { path: 'register', component: RegisterComponent },
@@ -33,7 +34,8 @@ export const routes: Routes = [
     canActivate: [authGuard],
     resolve: { worksheets : worksheetListResolver } },
   { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
-  { path: 'test/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  // { path: 'test/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam/:id', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası

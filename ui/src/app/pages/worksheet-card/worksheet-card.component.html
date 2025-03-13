@@ -1,6 +1,60 @@
-<div class="card" >
-  <div *ngIf="test.badgeText" class="badge badge-top-left">{{ test.badgeText }}</div>
-  <div class="svg-container">
+<div *ngIf="type === 'pscard'" class="card">
+  <div>
+  <mat-card class="course-card" (click)="onClick()">
+    <div class="course-info" [style.background-image]="'url(' + getBackgroundImage() + ')'" >
+      
+      <h4 class="course-type">{{test.name}}<span class="new-badge">{{ test.questionCount }} Soru</span></h4>
+      
+      <ul class="course-meta">
+        <li class="course-title" style="color: chocolate;" >{{test.name}}</li>        
+        <li class="course-title">
+          <a>{{test.subtitle}}</a>
+        </li>
+      </ul>
+    </div>
+    <div class="course-title">
+      <h4 class="course-type"><span class="course-badge">Test</span></h4>
+      <h3 class="course-title">
+        <a>{{test.description}}</a>
+      </h3>
+    </div>
+    <!-- <div class="course-thumbnail">
+      <div class="thumbnail-overlay">
+        <div class="thumbnail-background"></div>
+        <div class="thumbnail-content">
+          <a href="/library/courses/generative-ai-foundations-in-action" class="play-button">
+            <svg aria-label="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" fill="currentColor" height="24px" width="24px">
+              <path d="m15.688 12.208-5.3 3.533a.25.25 0 0 1-.388-.208V8.467a.25.25 0 0 1 .389-.208l5.299 3.533a.25.25 0 0 1 0 .416Z"></path>
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8Z"></path>
+            </svg>
+          </a>
+          <div class="course-duration">39m</div>
+        </div>
+      </div>
+    </div> -->
+    <!-- <div class="course-actions">
+      <button class="add-to-channel" aria-label="Add to Channel">
+        <svg aria-label="icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" fill="currentColor" height="20px" width="20px">
+          <path d="M21.5 10.5a9.5 9.5 0 1 0-19 0 9.5 9.5 0 0 0 19 0Zm-8.5 10h-1v-8.645A3.5 3.5 0 1 1 12 7a3.5 3.5 0 0 1 1 6.855V22.5Zm-6.485-19.378a9.5 9.5 0 0 0 0 18.756l-.605.797a.5.5 0 0 1-.701.096A10 10 0 0 1 .5 10.5a10 10 0 0 1 4.321-8.985.272.272 0 0 1 .383.043l.863 1.135ZM19.5 10.5a7.5 7.5 0 0 1-2.55 5.634l-.609-.802a.5.5 0 0 1 .068-.678c.1-.088.18-.164.243-.227A5.5 5.5 0 0 0 17.5 10.5a5.5 5.5 0 0 0-1.539-3.815l-.28-.264.608-.801a.5.5 0 0 1 .724-.077A7.5 7.5 0 0 1 19.5 10.5Z"></path>
+        </svg>
+      </button>
+    </div> -->
+  </mat-card>
+
+</div>
+<!-- <div *ngIf="test.questionCount" class="badge badge-top-right">
+  {{ test.questionCount }} Soru
+</div> -->
+
+<!-- <div class="button-container">
+  <button class="action-button" (click)="onClick()">Başlat</button>
+  <button *appIsStudent class="action-button" (click)="edit()">Düzenle</button>
+</div> -->
+</div>
+
+<div *ngIf="type === 'badge'" class="card" >
+  <!-- <div *ngIf="test.badgeText" class="badge badge-top-left">{{ test.badgeText }}</div> -->
+  <div  class="svg-container">
     <svg [attr.width]="size"
     [attr.height]="size"
     [attr.viewBox]="'0 0 400 400'"

@@ -42,7 +42,7 @@ export class TestService {
   }
 
   search(query: string | undefined, pageNumber: number = 1): Observable<Paged<Test>> {
-    return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=10`);
+    return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=5`);
   }
 
   getCompleted(pageNumber: number = 1): Observable<Paged<CompletedTest>> {

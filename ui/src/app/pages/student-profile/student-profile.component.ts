@@ -18,6 +18,7 @@ import { SectionHeaderComponent } from '../../shared/components/section-header/s
 import { MatTabsModule } from '@angular/material/tabs';
 import { NgxChartsModule, Color, ScaleType, LegendPosition } from '@swimlane/ngx-charts';
 import { StudentTimeChartComponent } from '../../shared/components/student-time-chart/student-time-chart.component';
+import { FormsModule, NgModel } from '@angular/forms';
 
 @Component({
   selector: 'app-student-profile',
@@ -25,16 +26,28 @@ import { StudentTimeChartComponent } from '../../shared/components/student-time-
   standalone: true,
   styleUrls: ['./student-profile.component.scss'],
   imports: [CommonModule, MatCardModule, MatIconModule, MatListModule, MatTooltipModule,
-    MatSnackBarModule, MatSelectModule, PointCardComponent, BadgeBoxComponent,
+    MatSnackBarModule, MatSelectModule, PointCardComponent, BadgeBoxComponent, FormsModule,
     LeaderboardComponent, SectionHeaderComponent, MatTabsModule, NgxChartsModule, StudentTimeChartComponent,
 
   ]
 })
 export class StudentProfileComponent implements OnInit {
+  industry: {name: string, value: number} = {name:'Software Development', value: 100};
+  yearsOfExperience: number = 0
+  avatarUrl: string = 'http://localhost/minio-api/avatars/avatar.png';
+  industries = [
+    { name: 'Software Development', value: 100 },
+    { name: 'Healthcare', value: 75 },
+    { name: 'Finance', value: 60 },
+    { name: 'Education', value: 40 },
+    { name: 'Retail', value: 30 }
+  ];
+
   student: StudentProfile | null = null;
   studentId: number = 0;
   grades: Grade[] = [];
   activeTab = 2;  // Varsayılan olarak ilk sekme açık
+  activeTab2 = 1;
   badges = [
     { title: "Activity", level: 1, icon: "http://localhost/minio-api/avatars/activity-badge.png" },
     { title: "Assignments", level: 2, icon: "http://localhost/minio-api/avatars/activity-badge.png" },

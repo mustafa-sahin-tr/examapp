@@ -1,7 +1,13 @@
 <mat-toolbar color="primary">
+    
+  <button mat-button (click)="navigateTo('/tests')">
+    <mat-icon>list</mat-icon>
+  </button>
+
     <span class="app-title">Sınav Yönetimi</span>
   
     <span class="spacer"></span>
+
   
     <button mat-button (click)="navigateTo('/questioncanvas')">
       <mat-icon>add_circle</mat-icon> Soru Ekle

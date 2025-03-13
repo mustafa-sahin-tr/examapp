@@ -28,7 +28,7 @@ export class WorksheetListComponent {
   pagedWorksheets!: Paged<Test>;
   completedTestWorksheets: CompletedTest[] = [];
   totalCount = 0;
-  pageSize = 10;
+  pageSize = 5;
   pageNumber = 1;
   route = inject(ActivatedRoute);
   router = inject(Router);
@@ -67,9 +67,11 @@ export class WorksheetListComponent {
       }
 
       onCardClick(id: number) {
-        this.testService.startTest(id).subscribe(response => {
-          this.router.navigate(['/test', response.testInstanceId]);
-        });   
+        console.log('Card clicked:', id);
+        this.router.navigate(['/test', id]);
+        // this.testService.startTest(id).subscribe(response => {
+        //   this.router.navigate(['/test', response.testInstanceId]);
+        // });   
       }
 
       nextPage() {

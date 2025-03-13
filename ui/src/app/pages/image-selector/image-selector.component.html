@@ -1,10 +1,10 @@
 <div class="container" [ngClass]="selectionMode()">
     <input type="file" (change)="handleFileInput($event)" accept="image/*">
-    <button (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
-    <button (click)="toggleSelectionMode('question')">Soru Seç</button>
-    <button (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button>
+    <button mat-raised-button color="primary" (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
+    <button mat-raised-button color="primary" (click)="toggleSelectionMode('question')">Soru Seç</button>
+    <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
     <!-- <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
-  
+    
     <div *ngIf="imageSrc()" class="canvas-container">
       <canvas #canvas (mousedown)="startSelection($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
     </div>

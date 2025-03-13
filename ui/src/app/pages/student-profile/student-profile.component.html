@@ -1,8 +1,12 @@
 @if(student) 
 {
  
+   <!-- Avatar Component (avatar.component.html) -->
+
+
   <mat-tab-group [(selectedIndex)]="activeTab">
     <mat-tab label="Info">
+       
       <mat-card class="profile-card">
         <mat-card-header>
           <div class="profile-header stats-container">
@@ -161,6 +165,26 @@
   [cardColor]="cardColor"
   (select)="onSelect($event)">
 </ngx-charts-number-card>
+  </div>
+
+
+  <div class="goal-container">
+    <div class="goal-header">
+      <h2>Weekly Goal</h2>
+      <mat-icon>visibility</mat-icon>
+    </div>    
+    <mat-tab-group [(selectedIndex)]="activeTab2">
+      <mat-tab label="Monthly">
+        <div class="goal-stats">0 weeks</div>
+          <p class="goal-subtext">Longest weekly goal streak</p>
+          <div class="goal-divider"></div>
+          <h4>March 2025</h4>
+          <p class="goal-subtext">No activity</p>
+      </mat-tab>
+      <mat-tab label="Current">
+      </mat-tab>
+    </mat-tab-group>
+    
   </div>
 
   </mat-tab>

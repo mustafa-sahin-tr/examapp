@@ -11,10 +11,12 @@ public class BaseController : ControllerBase
 
     protected int AuthenticatedUserId
     {
+        
         get
-        {
+        {            
             var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            return userIdValue != null ? int.Parse(userIdValue) : throw new UnauthorizedAccessException("User ID not found.");
+               return userIdValue != null ? int.Parse(userIdValue) :
+                 throw new UnauthorizedAccessException("User ID not found.");
         }
     }
 
@@ -32,20 +34,18 @@ public class BaseController : ControllerBase
     }
     
     protected async Task<User> GetAuthenticatedUserAsync()
-    {        
+    {                
         var user = await _context.Users.FindAsync(AuthenticatedUserId);
         return user ?? throw new UnauthorizedAccessException("Authenticated user not found.");
     }    
 
     protected async Task<Student> GetAuthenticatedStudentAsync()
     {
-        
         var student = await _context.Students.FindAsync(AuthenticatedStudentId);
         if (student == null)
         {
             throw new UnauthorizedAccessException("Student not found.");
         }
-
         return student;
     }
 }

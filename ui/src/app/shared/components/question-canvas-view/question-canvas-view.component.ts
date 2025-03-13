@@ -136,15 +136,15 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
 
         const borderRadius = 0 ; // Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
 
-            this.canvasCtx.beginPath();
-            this.canvasCtx.roundRect(
-                answer.x - this._questionRegion().x, 
-                answer.y - this._questionRegion().y, 
-                answer.width, 
-                answer.height, 
-                borderRadius
-            );
-            this.canvasCtx.closePath();
+            // this.canvasCtx.beginPath();
+            // this.canvasCtx.roundRect(
+            //     answer.x - this._questionRegion().x, 
+            //     answer.y - this._questionRegion().y, 
+            //     answer.width, 
+            //     answer.height, 
+            //     borderRadius
+            // );
+            // this.canvasCtx.closePath();
 
         if (isSelected) {
           this.applyGradientBackground(answer); // ✅ Özel arka plan

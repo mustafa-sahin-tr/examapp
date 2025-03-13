@@ -4,13 +4,14 @@ import { QuestionRegion,AnswerChoice } from '../../models/draws';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule, NgModel } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 
 
 
 @Component({
   selector: 'app-image-selector',
   standalone: true,
-  imports: [CommonModule, QuillModule, FormsModule],
+  imports: [CommonModule, QuillModule, FormsModule, MatButtonModule],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss']
 })

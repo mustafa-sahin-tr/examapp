@@ -1,132 +1,132 @@
-.question-card {
-    max-width: 960px;
-    margin: auto;
-    padding: 20px;
-  }
+// .question-card {
+//     max-width: 960px;
+//     margin: auto;
+//     padding: 20px;
+//   }
   
-  .question-container {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+//   .question-container {
+//     display: flex;
+//     flex-direction: column;
+//     gap: 16px;
+//   }
   
-  .question-content {
-    // text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+//   .question-content {
+//     // text-align: center;
+//     display: flex;
+//     flex-direction: column;
+//     align-items: center;
+//   }
   
-  .question-image {
-    width: 100%;
-    max-height: 300px;
-    object-fit: contain;
-    border-radius: 8px;
-  }
+//   .question-image {
+//     width: 100%;
+//     max-height: 300px;
+//     object-fit: contain;
+//     border-radius: 8px;
+//   }
   
-  /* 🟢 Şıklar Container */
-  .answers-container {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    justify-content: center;
-    align-items: stretch;
-    max-width: 100%;
-  }
+//   /* 🟢 Şıklar Container */
+//   .answers-container {
+//     display: grid;
+//     grid-template-columns: repeat(4, 1fr);
+//     gap: 10px;
+//     justify-content: center;
+//     align-items: stretch;
+//     max-width: 100%;
+//   }
   
-  /* 🟢 Şıkların Kutusu */
-  .answer-box {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-    text-align: left;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    transition: background 0.3s ease;
-    width: 100%;
-    overflow: hidden;
-    cursor: pointer;
-  }
+//   /* 🟢 Şıkların Kutusu */
+//   .answer-box {
+//     display: flex;
+//     align-items: center;
+//     justify-content: flex-start;
+//     gap: 10px;
+//     text-align: left;
+//     border: 1px solid #ccc;
+//     border-radius: 8px;
+//     transition: background 0.3s ease;
+//     width: 100%;
+//     overflow: hidden;
+//     cursor: pointer;
+//   }
   
-  /* 🟢 Şık Harfleri (A, B, C, D) */
-  .answer-label {
-    font-weight: bold;
-    font-size: 18px;
-    padding: 10px;
-    border-radius: 50%;
-    background-color: #e0e0e0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 5px;
-    width: 36px;
-    height: 36px;
-  }
+//   /* 🟢 Şık Harfleri (A, B, C, D) */
+//   .answer-label {
+//     font-weight: bold;
+//     font-size: 18px;
+//     padding: 10px;
+//     border-radius: 50%;
+//     background-color: #e0e0e0;
+//     display: flex;
+//     justify-content: center;
+//     align-items: center;
+//     margin: 5px;
+//     width: 36px;
+//     height: 36px;
+//   }
   
-  /* 🟢 Mat Button İçin Maksimum Genişlik ve Yükseklik */
-  .answer-btn {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    max-width: 150px; /* 🔥 Maksimum genişlik */
-    max-height: 150px; /* 🔥 Maksimum yükseklik */
-    width: auto;
-    height: auto;
-    padding: 0;
-    border-radius: 8px;
-    font-size: 16px;
-    transition: background 0.3s ease;
-  }
+//   /* 🟢 Mat Button İçin Maksimum Genişlik ve Yükseklik */
+//   .answer-btn {
+//     flex: 1;
+//     display: flex;
+//     flex-direction: column;
+//     align-items: center;
+//     justify-content: center;
+//     text-align: center;
+//     max-width: 150px; /* 🔥 Maksimum genişlik */
+//     max-height: 150px; /* 🔥 Maksimum yükseklik */
+//     width: auto;
+//     height: auto;
+//     padding: 0;
+//     border-radius: 8px;
+//     font-size: 16px;
+//     transition: background 0.3s ease;
+//   }
   
-  /* 🟢 Resmin Buton İçine Tam Oturması */
-  .answer-image {
-    width: 100%;
-    height: 100%;
-    max-width: 150px; /* 🔥 Resmin buton içindeki maksimum genişliği */
-    max-height: 150px; /* 🔥 Resmin buton içindeki maksimum yüksekliği */
-    object-fit: contain; /* 🔥 Resim tamamen butona sığsın */
-    border-radius: 4px;
-    display: block;
-  }
+//   /* 🟢 Resmin Buton İçine Tam Oturması */
+//   .answer-image {
+//     width: 100%;
+//     height: 100%;
+//     max-width: 150px; /* 🔥 Resmin buton içindeki maksimum genişliği */
+//     max-height: 150px; /* 🔥 Resmin buton içindeki maksimum yüksekliği */
+//     object-fit: contain; /* 🔥 Resim tamamen butona sığsın */
+//     border-radius: 4px;
+//     display: block;
+//   }
   
-  /* 🟢 Doğru ve Yanlış Seçimler */
-  .correct {
-    background-color: #4caf50 !important; // Yeşil
-    color: white;
-  }
+//   /* 🟢 Doğru ve Yanlış Seçimler */
+//   .correct {
+//     background-color: #4caf50 !important; // Yeşil
+//     color: white;
+//   }
   
-  .wrong {
-    background-color: #f44336 !important; // Kırmızı
-    color: white;
-  }
+//   .wrong {
+//     background-color: #f44336 !important; // Kırmızı
+//     color: white;
+//   }
 
-  .selected-answer .answer-label {
-    background-color: #2196f3; /* Mavi */
-    color: white;
-  }
+//   .selected-answer .answer-label {
+//     background-color: #2196f3; /* Mavi */
+//     color: white;
+//   }
 
-  .selected-answer {
-    border: 2px solid #2196f3 !important;
-  }
+//   .selected-answer {
+//     border: 2px solid #2196f3 !important;
+//   }
 
-  .question-alt-text {
-    font-weight: bold;
-    color: #2f7ed3; /* Kırmızı bir renk */
-    font-size: 1.2rem;
-    text-align: center;
-    margin-top: 10px;
-}
+//   .question-alt-text {
+//     font-weight: bold;
+//     color: #2f7ed3; /* Kırmızı bir renk */
+//     font-size: 1.2rem;
+//     text-align: center;
+//     margin-top: 10px;
+// }
   
   
   
-  /* 🟢 Responsive Düzen */
-  @media (max-width: 600px) {
-    .answers-container {
-      grid-template-columns: repeat(1, 1fr);
-    }
-  }
+//   /* 🟢 Responsive Düzen */
+//   @media (max-width: 600px) {
+//     .answers-container {
+//       grid-template-columns: repeat(1, 1fr);
+//     }
+//   }
   

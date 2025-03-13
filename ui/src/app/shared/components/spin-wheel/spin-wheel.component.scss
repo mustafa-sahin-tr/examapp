@@ -1,57 +1,57 @@
-.wheel-container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 20px;
-  }
-  
-  /* Çark */
-  canvas {
-    border-radius: 50%;
-    border: 5px solid #333;
-    background: #fff;
-  }
-  
-  /* Ok (Gösterge) */
-//   .arrow {
-//     position: absolute;
-//     top: 20px;
-//     left: 50%;
-//     transform: translateX(-50%);
-//     width: 0;
-//     height: 0;
-//     border-left: 15px solid transparent;
-//     border-right: 15px solid transparent;
-//     border-bottom: 30px solid red; /* Üçgen ok */
-//     z-index: 10;
+// .wheel-container {
+//     position: relative;
+//     display: flex;
+//     flex-direction: column;
+//     align-items: center;
+//     margin-top: 20px;
 //   }
+  
+//   /* Çark */
+//   canvas {
+//     border-radius: 50%;
+//     border: 5px solid #333;
+//     background: #fff;
+//   }
+  
+//   /* Ok (Gösterge) */
+// //   .arrow {
+// //     position: absolute;
+// //     top: 20px;
+// //     left: 50%;
+// //     transform: translateX(-50%);
+// //     width: 0;
+// //     height: 0;
+// //     border-left: 15px solid transparent;
+// //     border-right: 15px solid transparent;
+// //     border-bottom: 30px solid red; /* Üçgen ok */
+// //     z-index: 10;
+// //   }
+
+// // .arrow {
+// //     position: absolute;
+// //     top: -20px; /* 📌 Oku yukarı taşıyoruz */
+// //     left: 50%;
+// //     transform: translateX(-50%);
+// //     width: 0;
+// //     height: 0;
+// //     border-left: 20px solid transparent;
+// //     border-right: 20px solid transparent;
+// //     border-bottom: 40px solid red; /* 🔥 Okun ucunu büyüttük */
+// //     z-index: 10;
+// //   }
 
 // .arrow {
 //     position: absolute;
-//     top: -20px; /* 📌 Oku yukarı taşıyoruz */
+//     top: -10px;
 //     left: 50%;
 //     transform: translateX(-50%);
 //     width: 0;
 //     height: 0;
-//     border-left: 20px solid transparent;
-//     border-right: 20px solid transparent;
-//     border-bottom: 40px solid red; /* 🔥 Okun ucunu büyüttük */
+//     border-left: 10px solid transparent;
+//     border-right: 10px solid transparent;
+//     border-top: 20px solid red;
 //     z-index: 10;
-//   }
-
-.arrow {
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 20px solid red;
-    z-index: 10;
-}
+// }
 
   
   

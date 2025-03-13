@@ -1,46 +1,67 @@
-// worksheet-list.component.scss
-.search-container {
-    display: flex;
-    justify-content: flex-start;
-    width: 50%;
-    margin-bottom: 16px;
-    margin-left: 48px; /* Kart başlangıcına hizalama */
-  }
+// // worksheet-list.component.scss
+// .search-container {
+//     display: flex;
+//     justify-content: flex-start;
+//     width: 50%;
+//     margin-bottom: 16px;
+//     margin-left: 48px; /* Kart başlangıcına hizalama */
+//   }
 
-.search-box {
-    width: 100%;
-    margin-bottom: 16px;
-  }
+// .search-box {
+//     width: 100%;
+//     margin-bottom: 16px;
+//   }
   
-  .search-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+//   .search-item {
+//     display: flex;
+//     align-items: center;
+//     gap: 8px;
+//   }
 
-  .search-img {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-  }
+//   .search-img {
+//     width: 30px;
+//     height: 30px;
+//     border-radius: 50%;
+//   }
 
-.list-container {
-    display: flex;
-    align-items: center;
-    overflow: hidden;
-    gap: 16px;
-  }
+// .list-container {
+//     display: flex;
+//     align-items: center;
+//     overflow: hidden;
+//     gap: 16px;
+//   }
   
-  .cards {
-    display: flex;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    gap: 16px;
-  }
+//   .cards {
+//     display: flex;
+//     overflow-x: auto;
+//     scroll-behavior: smooth;
+//     gap: 16px;
+//   }
   
-  .nav-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-  }
+//   .nav-btn {
+//     background: none;
+//     border: none;
+//     font-size: 24px;
+//     cursor: pointer;
+//   }
+
+.psds-carousel__track {
+  line-height: normal;
+  line-height: initial;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-flex: 1;
+  -ms-flex-positive: 1;
+  flex-grow: 1;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -ms-flex-direction: row;
+  flex-direction: row;
+  -webkit-transition: left 0.4s;
+  transition: left 0.4s;
+}

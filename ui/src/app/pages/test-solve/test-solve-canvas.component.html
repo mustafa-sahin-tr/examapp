@@ -40,10 +40,10 @@
     <!-- Navigasyon Butonları -->
     <div class="navigation-buttons">
       <button mat-raised-button color="primary" (click)="prevQuestion()" [disabled]="currentIndex() === 0">
-        Geri
+       {{ currentIndex() === 0 ? '' : '(' + (currentIndex()) + '. Soru )'}} Geri
       </button>
       <button mat-raised-button color="accent" (click)="nextQuestion()" [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1">
-        İleri - {{currentIndex()}} -- {{testInstance.testInstanceQuestions.length}}
+        İleri  ({{currentIndex() + 2}}. Soru)
       </button>
       @if(currentIndex() === testInstance.testInstanceQuestions.length - 1) {
         <button mat-raised-button color="accent" (click)="completeTest()">

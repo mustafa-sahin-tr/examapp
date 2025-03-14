@@ -34,7 +34,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     resolve: { worksheets : worksheetListResolver } },
   { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
-  // { path: 'test/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
+  { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
   { path: 'exam', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası

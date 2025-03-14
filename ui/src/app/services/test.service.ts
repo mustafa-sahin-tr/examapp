@@ -41,8 +41,8 @@ export class TestService {
     return this.http.get<Exam[]>(`/api/worksheet`);
   }
 
-  search(query: string | undefined, pageNumber: number = 1): Observable<Paged<Test>> {
-    return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=5`);
+  search(query: string | undefined, pageNumber: number = 1, pageSize= 10): Observable<Paged<Test>> {
+    return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}`);
   }
 
   getCompleted(pageNumber: number = 1): Observable<Paged<CompletedTest>> {

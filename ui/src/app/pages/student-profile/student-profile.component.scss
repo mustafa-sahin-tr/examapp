@@ -262,3 +262,62 @@
   background: #333;
   margin: 15px 0;
 }
+
+.learning-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f5f7fa;
+  padding: 40px;
+  border-radius: 12px;
+}
+.learning-text {
+  flex: 1;
+  padding-right: 40px;
+}
+.learning-text h5 {
+  color: #e6007a;
+  font-weight: bold;
+}
+.learning-text h3 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+.learning-text p {
+  color: #3e5674;
+  font-size: 16px;
+}
+.learning-image img {
+  max-height: 450px;
+  border-radius: 10px;
+}
+.features-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 40px;
+  gap: 20px;
+}
+.feature-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  flex: 1;
+}
+.feature-card img {
+  max-width: 60px;
+}
+.feature-card h3 {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 15px 0;
+}
+.feature-card p {
+  color: #3e5674;
+}
+.feature-card a {
+  color: #e6007a;
+  font-weight: bold;
+  text-decoration: none;
+}

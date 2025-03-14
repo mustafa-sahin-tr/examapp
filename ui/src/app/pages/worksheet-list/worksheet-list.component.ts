@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, inject, Input, ViewChild } from '@angular/core';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, map, Observable, startWith, switchMap, tap } from 'rxjs';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -19,7 +19,7 @@ import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent]
+      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent, FormsModule]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);
@@ -28,7 +28,7 @@ export class WorksheetListComponent {
   pagedWorksheets!: Paged<Test>;
   completedTestWorksheets: CompletedTest[] = [];
   totalCount = 0;
-  pageSize = 5;
+  pageSize = 10;
   pageNumber = 1;
   route = inject(ActivatedRoute);
   router = inject(Router);
@@ -70,7 +70,7 @@ export class WorksheetListComponent {
         console.log('Card clicked:', id);
         this.router.navigate(['/test', id]);
         // this.testService.startTest(id).subscribe(response => {
-        //   this.router.navigate(['/test', response.testInstanceId]);
+        //   this.router.navigate(['/testsolve', response.testInstanceId]);
         // });   
       }
 
@@ -92,8 +92,8 @@ export class WorksheetListComponent {
         }
       }
 
-      onAutocompleteSelect(value: string) {
-        this.searchControl.setValue(value, { emitEvent: false });
+      onAutocompleteSelect(worksheetName: string) {
+        this.searchControl.setValue(worksheetName, { emitEvent: false });
         this.onEnter();
       }
 
@@ -123,6 +123,65 @@ export class WorksheetListComponent {
             });
           }
         }
+      }
+
+      searchQuery = 'dotnet';
+      totalResults = 288;
+      showRetiredResults = false;
+      sortOptions = ['Newest', 'Relevance', 'Popularity'];
+      selectedSort = 'Relevance';
+      
+      filters = {
+        category: [
+          { name: 'Artificial Intelligence', count: 2, selected: false },
+          { name: 'Business', count: 2, selected: false },
+          { name: 'Cloud', count: 34, selected: false },
+          { name: 'Data', count: 2, selected: false },
+          { name: 'IT Ops', count: 19, selected: false },
+          { name: 'Security', count: 7, selected: false },
+          { name: 'Software Development', count: 230, selected: true }
+        ],
+        topics: [
+          { name: 'ASP.NET Core', count: 57, selected: false },
+          { name: 'C#', count: 48, selected: false },
+          { name: '.NET', count: 48, selected: false },
+          { name: 'Microsoft Azure', count: 29, selected: false }
+        ]
+      };
+      
+      courses = [
+        {
+          title: "What's New in .NET 9",
+          author: 'Gill Cleeren',
+          date: 'Jan 2025',
+          level: 'Intermediate',
+          rating: 4.8,
+          duration: '1h 58m',
+          isNew: true,
+          topics: [
+            { title: 'Using .NET Aspire in .NET 9', duration: '2m' },
+            { title: 'Introducing .NET 9', duration: '15m' },
+            { title: 'Understanding .NET Aspire', duration: '8m' }
+          ]
+        },
+        {
+          title: '.NET MAUI Fundamentals',
+          author: 'Chris Miller',
+          date: 'Apr 2024',
+          level: 'Beginner',
+          rating: 3.8,
+          duration: '4h 48m',
+          isNew: false,
+          topics: [
+            { title: 'What Is .NET MAUI', duration: '2m' },
+            { title: 'Demo - Running a .NET MAUI App', duration: '4m' },
+            { title: 'What Makes up a .NET MAUI Application', duration: '2m' }
+          ]
+        }
+      ];
+
+      toggleRetiredResults() {
+        this.showRetiredResults = !this.showRetiredResults;
       }
       
 

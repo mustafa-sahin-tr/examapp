@@ -88,17 +88,13 @@
               <h3>
                 {{ course.name }}
                 <span class="new-badge">NEW & POPULAR</span>
-                <span class="new-badge"><strong>{{ course.questionCount }} Soru</strong></span>
+                <span class="new-badge"><strong> 0 Soru</strong></span>
+                <span class="new-badge"><strong> {{ course.gradeId }}.Sınıf</strong></span>
+                <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
+                <span class="new-badge"><strong>{{ course.maxDurationSeconds }}</strong>m</span>
               </h3>
-              <p>By {{ course.subtitle }}</p>
-              <p>{{ course.description }}</p>
-              <p> • {{ course.gradeId }}.Sınıf</p>
-              <p> •  ⭐  {{ 4.8 }}  •  {{ course.maxDurationSeconds/60 }}m</p>
-              <!-- <ul class="course-topics">
-                <li *ngFor="let topic of course.topics">
-                  <span>▶ {{ topic.title }} - {{ topic.duration }}</span>
-                </li>
-              </ul> -->
+              <span>{{ course.subtitle }}</span>
+              <p>{{ course.description }}</p>             
             </div>
           </li>
         </ul>

@@ -93,5 +93,26 @@
   <div class="form-column">
     <h2>Kart Ön İzleme</h2>
     <app-worksheet-card [color]="'red'" [test]="testForm.value"> </app-worksheet-card>
+    <div class="list-container">
+      <div class="search-results">
+        <ul class="course-list">
+          <li class="course-item">
+            <div class="course-info">
+              <h3>
+                {{ testForm.value.name }}
+                <span class="new-badge">NEW & POPULAR</span>
+                <span class="new-badge"><strong> 0 Soru</strong></span>
+                <span class="new-badge"><strong> {{ testForm.value.gradeId }}.Sınıf</strong></span>
+                <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
+                <span class="new-badge"><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span>
+              </h3>
+              <span>{{ testForm.value.subtitle }}</span>
+              <p>{{ testForm.value.description }}</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
   </div>
 </div>

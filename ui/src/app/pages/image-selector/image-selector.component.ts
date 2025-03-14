@@ -22,6 +22,7 @@ export class ImageSelectorComponent {
   private ctx!: CanvasRenderingContext2D | null;
   public imageSrc = signal<string | null>(null);
   private img = new Image();
+  public autoAlign = signal<boolean>(true);
 
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
@@ -71,6 +72,10 @@ export class ImageSelectorComponent {
       // Tüm bölgeleri tekrar çiz
       this.drawRegions();
     }
+  }
+
+  toggleAlignMode() {
+    this.autoAlign.set(!this.autoAlign());
   }
 
   onMouseMove(event: MouseEvent) {
@@ -221,7 +226,9 @@ export class ImageSelectorComponent {
       const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
       this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });
       if(this.regions()[this.selectedQuestionIndex].answers.length === 3) {
-        this.alignAnswers(this.selectedQuestionIndex);
+        if(this.autoAlign()) {
+          this.alignAnswers(this.selectedQuestionIndex);
+        }
         this.toggleSelectionMode('question');
       }
     }

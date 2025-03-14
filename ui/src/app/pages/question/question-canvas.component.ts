@@ -126,7 +126,7 @@ export class QuestionCanvasComponent implements OnInit {
 
    
   displayFn = (selectedoption: any): string => {    
-    return selectedoption ? selectedoption.name + '-' + selectedoption.subtitle + '-' +  selectedoption.description : '';
+    return selectedoption ? selectedoption.name + '-' + selectedoption.subtitle  : '';
   };
 
   // Kullanıcı seçim yaptığında `FormControl` içine nesneyi set et

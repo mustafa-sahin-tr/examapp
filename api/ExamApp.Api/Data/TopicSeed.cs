@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 public static class TopicSeed
 {
-
+    
     public static void SeedData(ModelBuilder modelBuilder){
         //SeedGrade1(modelBuilder);
         //SeedGrade2(modelBuilder);
@@ -387,7 +387,9 @@ public static class TopicSeed
             new Topic { Id = 10, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Kesirler" },
             new Topic { Id = 11, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Zaman Ölçme" },
             new Topic { Id = 12, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Geometrik Cisimler ve Örüntüler" },
-            new Topic { Id = 13, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Uzunluk, Alan ve Çevre Ölçme" }
+            new Topic { Id = 13, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Uzunluk, Alan ve Çevre Ölçme" },
+            new Topic { Id = 211, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Paralarımız" },
+            new Topic { Id = 212, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Tartma" }
         };
 
         var grade1MatematikSubTopics = new List<SubTopic>
@@ -423,7 +425,10 @@ public static class TopicSeed
 
             new SubTopic { Id = 47, TopicId = 13, Name = "Uzunluk Ölçme" },
             new SubTopic { Id = 48, TopicId = 13, Name = "Alan Ölçme" },
-            new SubTopic { Id = 49, TopicId = 13, Name = "Çevre Ölçme" }
+            new SubTopic { Id = 49, TopicId = 13, Name = "Çevre Ölçme" },
+
+            new SubTopic { Id = 230, TopicId = 211, Name = "Paralarımız" },
+            new SubTopic { Id = 231, TopicId = 212, Name = "Tartma" }
         };
 
         // Verileri tekrar eklemeyi önlemek için HasData kullanıyoruz

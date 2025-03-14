@@ -1166,6 +1166,18 @@ namespace ExamApp.Api.Migrations
                         },
                         new
                         {
+                            Id = 230,
+                            Name = "Paralarımız",
+                            TopicId = 211
+                        },
+                        new
+                        {
+                            Id = 231,
+                            Name = "Tartma",
+                            TopicId = 212
+                        },
+                        new
+                        {
                             Id = 1,
                             Name = "Harf, Hece, Sözcük 1",
                             TopicId = 1
@@ -2259,6 +2271,20 @@ namespace ExamApp.Api.Migrations
                             Id = 13,
                             GradeId = 3,
                             Name = "Uzunluk, Alan ve Çevre Ölçme",
+                            SubjectId = 2
+                        },
+                        new
+                        {
+                            Id = 211,
+                            GradeId = 3,
+                            Name = "Paralarımız",
+                            SubjectId = 2
+                        },
+                        new
+                        {
+                            Id = 212,
+                            GradeId = 3,
+                            Name = "Tartma",
                             SubjectId = 2
                         },
                         new

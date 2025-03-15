@@ -1,16 +1,15 @@
 <div class="search-container">    
     <mat-form-field appearance="outline" class="search-box">
         <mat-label>Ara</mat-label>
-        <input matInput [formControl]="searchControl" [matAutocomplete]="auto" (keyup.enter)="onEnter()">
-        <mat-autocomplete #auto="matAutocomplete">
+        <input matInput [formControl]="searchControl" (keyup.enter)="onEnter()">
+        <!-- <input matInput [formControl]="searchControl" [matAutocomplete]="auto" (keyup.enter)="onEnter()"> -->
+        <!-- <mat-autocomplete #auto="matAutocomplete">
             <mat-option *ngFor="let worksheet of filteredWorksheets" [value]="worksheet.name" (onSelectionChange)="onAutocompleteSelect(worksheet.name)">
                 <div class="search-item">
-                  <!-- <img [src]="worksheet.imageUrl" alt="" class="search-img" /> -->
-                  <!-- <app-worksheet-card [size]="'25px'" [test]="worksheet"> </app-worksheet-card> -->
                 <span>{{ worksheet.name }} - {{ worksheet.subtitle }} - {{ worksheet.description }}</span>
                 </div>
             </mat-option>
-        </mat-autocomplete>
+        </mat-autocomplete> -->
     </mat-form-field>
 </div>
 
@@ -35,7 +34,7 @@
 
     <div class="list-container">
       <div class="search-results">
-        <h2>Showing search results for: <strong>{{ searchQuery }}</strong></h2>
+        <h2>Showing search results for: <strong>{{ searchControl.value }}</strong></h2>
       
         <!-- <div class="filters-container">
           <div class="filters">
@@ -91,7 +90,7 @@
                 <span class="new-badge"><strong> 0 Soru</strong></span>
                 <span class="new-badge"><strong> {{ course.gradeId }}.Sınıf</strong></span>
                 <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
-                <span class="new-badge"><strong>{{ course.maxDurationSeconds }}</strong>m</span>
+                <span class="new-badge"><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika</span>
               </h3>
               <span>{{ course.subtitle }}</span>
               <p>{{ course.description }}</p>             

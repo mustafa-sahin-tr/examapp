@@ -1,10 +1,11 @@
 import { AfterViewInit, Component, computed, effect, ElementRef, EventEmitter, Input, Output, signal, ViewChild } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { SafeHtmlPipe } from '../../../services/safehtml';
+import { NgIf } from '@angular/common';
 
 @Component({
   selector: 'app-question-canvas-view',
-  imports: [SafeHtmlPipe],
+  imports: [SafeHtmlPipe, NgIf],
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss'
 })
@@ -58,7 +59,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
 
   drawPassageSection() {    
     if (!this.isImageLoaded()) return;
-    
+    if(!this.passageCanvas) return;
     const passageCanvasEl = this.passageCanvas.nativeElement;
     this.psgctx = passageCanvasEl.getContext('2d');
   

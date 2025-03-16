@@ -16,6 +16,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { lastValueFrom } from 'rxjs';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { SidenavService } from '../../services/sidenav.service';
 
 @Component({
   selector: 'app-test-solve',
@@ -66,14 +67,14 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestro
   public imageCache = new Map<string, HTMLImageElement>(); // 📂 Resimleri önbellekte sakla
   public currentImageId = signal<string | null>(null); // 🔄 Mevcut resmin ID'sini takip et
 
-
+  sidenavService = inject(SidenavService);
 
   constructor(private route: ActivatedRoute,
     private testService: TestService,
     private router: Router,
     private dialog: MatDialog
   ) {
-    // this.loadQuestions();
+    this.sidenavService.setSidenavState(false);
   }
 
 

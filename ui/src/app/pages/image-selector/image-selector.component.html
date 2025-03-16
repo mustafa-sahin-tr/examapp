@@ -2,7 +2,7 @@
     <input type="file" (change)="handleFileInput($event)" accept="image/*">
     <button mat-raised-button color="primary" (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
     <button mat-raised-button color="primary" (click)="toggleSelectionMode('question')">Soru Seç</button>
-    <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizamala {{autoAlign() ? 'Açık' : 'Kapalı'}}</button>
+    <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizalamayı {{!autoAlign() ? 'Aç' : 'Kapat'}}</button>
     <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
     <!-- <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
     

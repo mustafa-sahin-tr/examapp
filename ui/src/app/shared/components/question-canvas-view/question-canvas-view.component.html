@@ -1,5 +1,5 @@
 <div class="canvas-container">
-    <canvas #passagecanvas></canvas>
+    <canvas #passagecanvas *ngIf="_questionRegion().passage"></canvas>
     <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>    
   </div>
   <div>

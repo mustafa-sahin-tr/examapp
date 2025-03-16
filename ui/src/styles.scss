@@ -851,6 +851,7 @@ img {
   max-width: 960px;
   margin: auto;
   padding: 16px;
+  position: relative;
 }
 
 .test-header {
@@ -880,6 +881,123 @@ img {
   margin-top: 16px;
 }
 
+// .navigation-buttons {
+//   position: absolute;
+//   top: 50%;
+//   transform: translateY(-50%);
+//   width: calc(50vw - 480px); /* Butonları container'ın dışına taşı */
+//   // display: flex;
+//   // justify-content: space-between;
+//   // padding: 0 20px;
+// }
+
+// /* Ensure buttons have a minimum width */
+// .navigation-buttons button {
+//   min-width: 100px;
+// }
+
+// .navigation-buttons .prev-button {
+//   left: 0;
+//   text-align: left;
+// }
+
+// /* Sağ butonu sağa taşır */
+// .navigation-buttons .next-button {
+//   right: 0;
+//   text-align: right;
+// }
+
+// /* If screen width is too small, keep buttons at the bottom */
+// /* Eğer ekran genişliği yeterli değilse butonları alta al */
+// @media (max-width: 1100px) {
+//   .navigation-buttons {
+//     position: static;
+//     top: auto;
+//     transform: none;
+//     justify-content: center;
+//     width: 100%;
+//     margin-top: 16px;
+//   }
+
+//   .navigation-buttons button {
+//     margin: 0 10px;
+//   }
+// }
+
+/* Butonları test-container'ın margin boşluğuna taşı */
+.navigation-buttons {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 100vw; /* Butonları tüm ekran genişliğinde konumlandır */
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none; /* Buton dışındaki alan tıklanamaz olsun */
+  height: 100%;
+}
+
+/* Butonların doğru yerde görünmesini sağla */
+.navigation-buttons button {
+  pointer-events: auto; /* Sadece butonlar tıklanabilir olsun */
+  min-width: 100px;
+  position: absolute;
+  height: 100%;
+  border-radius: 0px;
+  background-color: transparent !important;
+  color: var(--mat-toolbar-container-text-color, var(--mat-sys-on-surface)) !important;
+  font-size: medium;
+}
+
+.navigation-buttons button:disabled {
+  display: none;
+}
+
+.navigation-buttons button img {
+  max-width: 50%;
+
+}
+
+/* Sol butonu ekranın sol margin boşluğuna taşı */
+.navigation-buttons .prev-button {
+  // left: calc(-1*((100vw - 960px) / 2 - 100px)); /* Margin'in içine konumlandır */
+  left: -116px; //calc(-1*((100vw - 960px) / 2));  
+  max-width: calc(((100vw - 960px) / 2));  
+  color: var(--mat-sys-on-surface);
+  
+}
+
+.navigation-buttons .finish-button {
+  left: calc(-1*((100vw - 960px) / 2 - 100px)); /* Margin'in içine konumlandır */
+  max-width: calc(((100vw - 960px) / 2));  
+  color: var(--mat-sys-on-surface);
+  
+}
+
+/* Sağ butonu ekranın sağ margin boşluğuna taşı */
+.navigation-buttons .next-button {
+  right: calc((100vw - 960px) - 116px); /* Margin'in içine konumlandır */
+  max-width: calc(((100vw - 960px) / 2));
+  color: var(--mat-sys-on-surface);
+}
+
+/* Eğer ekran genişliği 1100px’den küçükse, butonları alta koy */
+@media (max-width: 1132px) {
+  .navigation-buttons {
+    position: static;
+    top: auto;
+    transform: none;
+    justify-content: center;
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .navigation-buttons button {
+    margin: 0 10px;
+    position: static;
+  }
+}
 
 
 // .question-lite-container {
@@ -1308,11 +1426,15 @@ h3 {
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.navigation-buttons {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 16px;
-}
+// .navigation-buttons {
+//   display: flex;
+//   justify-content: space-between;
+//   margin-top: 16px;
+// }
+
+
+
+
 /* 🟢 Buton */
 // button {
 //   padding: 10px;
@@ -2206,6 +2328,11 @@ h4 {
 
 .mat-toolbar-single-row {
   background-color: var(--main-foreground-color) !important;
+  border-bottom: var(--border-input);
+}
+
+.bt-1 {
+  // background-color: var(--main-foreground-color) !important;
   border-bottom: var(--border-input);
 }
 

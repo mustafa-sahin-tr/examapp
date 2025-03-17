@@ -708,11 +708,7 @@ img {
   padding: 20px;
 }
 
-.question-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+
 
 .question-content {
   // text-align: center;
@@ -852,6 +848,7 @@ img {
   margin: auto;
   padding: 16px;
   position: relative;
+  min-height: 640px;
 }
 
 .test-header {
@@ -1101,14 +1098,13 @@ canvas {
   }
 }
 
-
-
 /* ---- Styles from /mnt/data/app_extracted/app/pages/question-list/question-list.component.scss ---- */
 .question-container {
   display: flex; /* Yatay hizalama sağlar */
   // align-items: center; /* Dikey ortalamayı sağlar */
   gap: 10px; /* Numarayla kart arasındaki boşluğu ayarlar */
   // margin-bottom: 16px; /* Sorular arasında boşluk bırakır */
+  margin: auto;
 }
 
 .question-number {

@@ -59,8 +59,8 @@
     </mat-sidenav>
 
     <!-- İçerik Alanı -->
-    <mat-sidenav-content class="content">
-        <mat-toolbar  color="primary">
+    <mat-sidenav-content class="content" >
+        <mat-toolbar  color="primary" *ngIf="!isFullScreen()">
     
             <button  mat-button (click)="toggleSidenav()">
               <mat-icon>list</mat-icon>

@@ -5,7 +5,7 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Özel yarışmalar, günlük/haftalık görevler ve büyük ödüller için etkinlik yapısını sağlar.
 /// </summary>
-public class SpecialEvent
+public class SpecialEvent : BaseEntity
 {
     public int Id { get; set; }
     public string Name { get; set; } // Etkinlik Adı

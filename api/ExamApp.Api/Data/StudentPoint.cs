@@ -4,7 +4,7 @@ using ExamApp.Api.Data;
 /// <summary>
 /// Her öğrencinin toplam XP (deneyim puanı) ve seviyesini tutar.
 /// </summary>
-public class StudentPoint
+public class StudentPoint : BaseEntity
 {
     public int Id { get; set; }
     public int StudentId { get; set; } // Öğrenci FK

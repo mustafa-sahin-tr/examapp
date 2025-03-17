@@ -30,6 +30,18 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("Height")
                         .HasColumnType("integer");
 
@@ -39,12 +51,21 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsCanvasQuestion")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("QuestionId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("Width")
                         .HasColumnType("integer");
@@ -70,6 +91,18 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
@@ -77,6 +110,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -86,6 +122,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("RequiredXP")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -101,9 +143,30 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -121,9 +184,30 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("BookId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -139,6 +223,21 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Rank")
                         .HasColumnType("integer");
@@ -156,6 +255,12 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("TotalPoints")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("StudentId");
@@ -170,6 +275,27 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -190,6 +316,18 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("Height")
                         .HasColumnType("integer");
 
@@ -199,11 +337,20 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsCanvasQuestion")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Text")
                         .HasColumnType("text");
 
                     b.Property<string>("Title")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("Width")
                         .HasColumnType("integer");
@@ -233,6 +380,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("CorrectAnswerId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DifficultyLevel")
                         .HasColumnType("integer");
 
@@ -243,6 +402,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("IsCanvasQuestion")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsExample")
@@ -270,6 +432,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("Width")
@@ -304,6 +472,21 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -312,6 +495,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("Stock")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -327,12 +516,27 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -343,6 +547,12 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -357,8 +567,23 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("GradeId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int?>("ParentId")
                         .HasColumnType("integer");
@@ -372,6 +597,12 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -399,10 +630,31 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("BadgeId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("EarnedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -422,8 +674,23 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("EarnedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Points")
                         .HasColumnType("integer");
@@ -433,6 +700,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -450,6 +723,21 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("PointsSpent")
                         .HasColumnType("integer");
 
@@ -460,6 +748,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -485,10 +779,31 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("SpecialEventId")
                         .HasColumnType("integer");
 
                     b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -508,10 +823,31 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -535,6 +871,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("AvatarUrl")
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -545,11 +893,20 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("Role")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -565,6 +922,21 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Order")
                         .HasColumnType("integer");
 
@@ -572,6 +944,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("TestId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -591,10 +969,31 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -604,61 +1003,85 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "1. Sınıf"
                         },
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "2. Sınıf"
                         },
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "3. Sınıf"
                         },
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "4. Sınıf"
                         },
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "5. Sınıf"
                         },
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "6. Sınıf"
                         },
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "7. Sınıf"
                         },
                         new
                         {
                             Id = 8,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "8. Sınıf"
                         },
                         new
                         {
                             Id = 9,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "9. Sınıf"
                         },
                         new
                         {
                             Id = 10,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "10. Sınıf"
                         },
                         new
                         {
                             Id = 11,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "11. Sınıf"
                         },
                         new
                         {
                             Id = 12,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "12. Sınıf"
                         });
                 });
@@ -671,10 +1094,31 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("GradeId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -689,271 +1133,361 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 1,
+                            IsDeleted = false,
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 1,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 1,
+                            IsDeleted = false,
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 2,
+                            IsDeleted = false,
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 2,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 2,
+                            IsDeleted = false,
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 8,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 9,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 10,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 11,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 12,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 13,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 14,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 15,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 5,
+                            IsDeleted = false,
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 16,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 5,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 17,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 5,
+                            IsDeleted = false,
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 18,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 5,
+                            IsDeleted = false,
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 19,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 5,
+                            IsDeleted = false,
                             SubjectId = 7
                         },
                         new
                         {
                             Id = 20,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 6,
+                            IsDeleted = false,
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 21,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 6,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 22,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 6,
+                            IsDeleted = false,
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 23,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 6,
+                            IsDeleted = false,
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 24,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 9
                         },
                         new
                         {
                             Id = 25,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 10
                         },
                         new
                         {
                             Id = 26,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 11
                         },
                         new
                         {
                             Id = 27,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 28,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 12
                         },
                         new
                         {
                             Id = 29,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 13
                         },
                         new
                         {
                             Id = 30,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 14
                         },
                         new
                         {
                             Id = 31,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 9,
+                            IsDeleted = false,
                             SubjectId = 7
                         },
                         new
                         {
                             Id = 32,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 9
                         },
                         new
                         {
                             Id = 33,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 10
                         },
                         new
                         {
                             Id = 34,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 11
                         },
                         new
                         {
                             Id = 35,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 36,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 12
                         },
                         new
                         {
                             Id = 37,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 13
                         },
                         new
                         {
                             Id = 38,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 14
                         },
                         new
                         {
                             Id = 39,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 10,
+                            IsDeleted = false,
                             SubjectId = 7
                         },
                         new
                         {
                             Id = 40,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 11,
+                            IsDeleted = false,
                             SubjectId = 9
                         },
                         new
                         {
                             Id = 41,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 11,
+                            IsDeleted = false,
                             SubjectId = 10
                         },
                         new
                         {
                             Id = 42,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 11,
+                            IsDeleted = false,
                             SubjectId = 12
                         },
                         new
                         {
                             Id = 43,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 11,
+                            IsDeleted = false,
                             SubjectId = 13
                         },
                         new
                         {
                             Id = 44,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 11,
+                            IsDeleted = false,
                             SubjectId = 14
                         },
                         new
                         {
                             Id = 45,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 11,
+                            IsDeleted = false,
                             SubjectId = 15
                         });
                 });
@@ -966,6 +1500,21 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp with time zone");
 
@@ -973,6 +1522,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.Property<int>("XP")
@@ -994,11 +1549,32 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -1011,1092 +1587,1456 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 24,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Üç Basamaklı Doğal Sayılar",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 25,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Birer, Onar ve Yüzer Ritmik Sayma",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 26,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Basamak Adları ve Basamak Değerleri",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 27,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "En Yakın Onluk ve Yüzlük",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 28,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Doğal Sayıları Karşılaştırma ve Sıralama",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 29,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ritmik Saymalar",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 30,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sayı Örüntüleri",
                             TopicId = 7
                         },
                         new
                         {
                             Id = 31,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Eldeli ve Eldesiz Toplama İşlemi",
                             TopicId = 8
                         },
                         new
                         {
                             Id = 32,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Toplananların Yer Değiştirmesi",
                             TopicId = 8
                         },
                         new
                         {
                             Id = 33,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Onluk Bozmadan ve Bozarak Çıkarma İşlemi",
                             TopicId = 8
                         },
                         new
                         {
                             Id = 34,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "10’un ve 100’ün Katlarıyla Zihinden Çıkarma İşlemi",
                             TopicId = 8
                         },
                         new
                         {
                             Id = 35,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çarpım Tablosu",
                             TopicId = 9
                         },
                         new
                         {
                             Id = 36,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çarpma İşlemi",
                             TopicId = 9
                         },
                         new
                         {
                             Id = 37,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "10 ve 100 ile Kısa Yoldan Çarpma İşlemi",
                             TopicId = 9
                         },
                         new
                         {
                             Id = 38,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çarpma İşlemi ile İlgili Problemler",
                             TopicId = 9
                         },
                         new
                         {
                             Id = 39,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "İki Basamaklı Doğal Sayılarla Bölme İşlemi",
                             TopicId = 9
                         },
                         new
                         {
                             Id = 40,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Bölme İşlemi ile İlgili Problemler",
                             TopicId = 9
                         },
                         new
                         {
                             Id = 41,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kesirler",
                             TopicId = 10
                         },
                         new
                         {
                             Id = 42,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Bir Çokluğun Belirtilen Kesir Kadarı",
                             TopicId = 10
                         },
                         new
                         {
                             Id = 43,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Zaman Ölçme",
                             TopicId = 11
                         },
                         new
                         {
                             Id = 44,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Zaman Ölçme ile İlgili Problemler",
                             TopicId = 11
                         },
                         new
                         {
                             Id = 45,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Geometrik Cisimler",
                             TopicId = 12
                         },
                         new
                         {
                             Id = 46,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Örüntüler",
                             TopicId = 12
                         },
                         new
                         {
                             Id = 47,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Uzunluk Ölçme",
                             TopicId = 13
                         },
                         new
                         {
                             Id = 48,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Alan Ölçme",
                             TopicId = 13
                         },
                         new
                         {
                             Id = 49,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çevre Ölçme",
                             TopicId = 13
                         },
                         new
                         {
                             Id = 230,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Paralarımız",
                             TopicId = 211
                         },
                         new
                         {
                             Id = 231,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Tartma",
                             TopicId = 212
                         },
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Harf, Hece, Sözcük 1",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Harf, Hece, Sözcük 2",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Eş Anlamlı (Anlamdaş) Sözcükler",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Zıt (Karşıt) Anlamlı Sözcükler",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Eş Sesli (Sesteş) Sözcükler",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sözcük Türetme - Ekler",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sözcükte Anlam",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 8,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Cümle Türleri",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 9,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Cümlede Anlam",
                             TopicId = 1
                         },
                         new
                         {
                             Id = 10,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sebep-Sonuç İlişkileri",
                             TopicId = 2
                         },
                         new
                         {
                             Id = 11,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Karşılaştırmalar",
                             TopicId = 2
                         },
                         new
                         {
                             Id = 12,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Betimlemeler",
                             TopicId = 2
                         },
                         new
                         {
                             Id = 13,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "5N 1K",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 14,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Olayların Oluş Sırası",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 15,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Öykü Unsurları",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 16,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Başlık Konu İlişkisi",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 17,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ana Duygu",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 18,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ana Düşünce",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 19,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okuma Anlama 1",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 20,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okuma Anlama 2",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 21,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okuma Anlama 3",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 22,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Görsel Yorumlama 1",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 23,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Görsel Yorumlama 2",
                             TopicId = 3
                         },
                         new
                         {
                             Id = 57,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Dünya’nın Şekli",
                             TopicId = 50
                         },
                         new
                         {
                             Id = 58,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Dünya’nın Yapısı",
                             TopicId = 50
                         },
                         new
                         {
                             Id = 59,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Duyu Organları ve Önemi",
                             TopicId = 51
                         },
                         new
                         {
                             Id = 60,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Duyu Organlarının Temel Görevleri",
                             TopicId = 51
                         },
                         new
                         {
                             Id = 61,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Duyu Organlarının Sağlığı",
                             TopicId = 51
                         },
                         new
                         {
                             Id = 62,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Varlıkların Hareket Özellikleri",
                             TopicId = 52
                         },
                         new
                         {
                             Id = 63,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Cisimleri Hareket Ettirme ve Durdurma",
                             TopicId = 52
                         },
                         new
                         {
                             Id = 64,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Hareketli Cisimlerin Sebep Olabileceği Tehlikeler",
                             TopicId = 52
                         },
                         new
                         {
                             Id = 65,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddeyi Niteleyen Özellikler 1",
                             TopicId = 53
                         },
                         new
                         {
                             Id = 66,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddeyi Niteleyen Özellikler 2",
                             TopicId = 53
                         },
                         new
                         {
                             Id = 67,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddenin Halleri",
                             TopicId = 53
                         },
                         new
                         {
                             Id = 68,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Işığın Görmedeki Rolü",
                             TopicId = 54
                         },
                         new
                         {
                             Id = 69,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Işık Kaynakları",
                             TopicId = 54
                         },
                         new
                         {
                             Id = 70,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sesin İşitmedeki Rolü",
                             TopicId = 54
                         },
                         new
                         {
                             Id = 71,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çevremizdeki Sesler",
                             TopicId = 54
                         },
                         new
                         {
                             Id = 72,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çevremizdeki Varlıkları Tanıyalım",
                             TopicId = 55
                         },
                         new
                         {
                             Id = 73,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ben ve Çevrem",
                             TopicId = 55
                         },
                         new
                         {
                             Id = 74,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Doğal ve Yapay Çevre",
                             TopicId = 55
                         },
                         new
                         {
                             Id = 75,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Elektrikli Araç-Gereçler",
                             TopicId = 56
                         },
                         new
                         {
                             Id = 76,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Elektrik Kaynakları",
                             TopicId = 56
                         },
                         new
                         {
                             Id = 77,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Elektriğin Güvenli Kullanımı",
                             TopicId = 56
                         },
                         new
                         {
                             Id = 84,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okulumuzda Hayat 1",
                             TopicId = 78
                         },
                         new
                         {
                             Id = 85,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okulumuzda Hayat 2",
                             TopicId = 78
                         },
                         new
                         {
                             Id = 86,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okulumuzda Hayat 3",
                             TopicId = 78
                         },
                         new
                         {
                             Id = 87,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Evimizde Hayat 1",
                             TopicId = 79
                         },
                         new
                         {
                             Id = 88,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Evimizde Hayat 2",
                             TopicId = 79
                         },
                         new
                         {
                             Id = 89,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Evimizde Hayat 3",
                             TopicId = 79
                         },
                         new
                         {
                             Id = 90,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sağlıklı Hayat 1",
                             TopicId = 80
                         },
                         new
                         {
                             Id = 91,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sağlıklı Hayat 2",
                             TopicId = 80
                         },
                         new
                         {
                             Id = 92,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Güvenli Hayat 1",
                             TopicId = 81
                         },
                         new
                         {
                             Id = 93,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Güvenli Hayat 2",
                             TopicId = 81
                         },
                         new
                         {
                             Id = 94,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ülkemizde Hayat 1",
                             TopicId = 82
                         },
                         new
                         {
                             Id = 95,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ülkemizde Hayat 2",
                             TopicId = 82
                         },
                         new
                         {
                             Id = 96,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ülkemizde Hayat 3",
                             TopicId = 82
                         },
                         new
                         {
                             Id = 97,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Doğada Hayat 1",
                             TopicId = 83
                         },
                         new
                         {
                             Id = 98,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Doğada Hayat 2",
                             TopicId = 83
                         },
                         new
                         {
                             Id = 105,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Harf, Hece, Sözcük",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 106,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Eş Anlamlı (Anlamdaş) Sözcükler",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 107,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Zıt (Karşıt) Anlamlı Sözcükler",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 108,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Eş Sesli (Sesteş) Sözcükler",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 109,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Gerçek, Mecaz ve Terim Anlam",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 110,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sözcük Türetme - Ekler",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 111,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sözcükte Anlam",
                             TopicId = 99
                         },
                         new
                         {
                             Id = 112,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Cümle",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 113,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sebep - Sonuç İlişkileri",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 114,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Karşılaştırmalar",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 115,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Öznel - Nesnel Yargılar",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 116,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Duygusal ve Abartılı İfadeler",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 117,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Atasözü, Deyim, Özdeyiş",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 118,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Dil, İfade ve Bilgi Yanlışları",
                             TopicId = 100
                         },
                         new
                         {
                             Id = 119,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "5N 1K",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 120,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Öykü Unsurları",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 121,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Oluş Sırası",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 122,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Başlık - Konu İlişkisi",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 123,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ana Düşünce",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 124,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Okuma Anlama",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 125,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Paragrafta Anlam",
                             TopicId = 101
                         },
                         new
                         {
                             Id = 126,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Adlar",
                             TopicId = 102
                         },
                         new
                         {
                             Id = 127,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Varlıkların Özelliklerini Belirten Sözcükler",
                             TopicId = 102
                         },
                         new
                         {
                             Id = 128,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Adın Yerine Kullanılan Sözcükler",
                             TopicId = 102
                         },
                         new
                         {
                             Id = 129,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Eylem Bildiren Sözcükler",
                             TopicId = 102
                         },
                         new
                         {
                             Id = 130,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Noktalama İşaretleri",
                             TopicId = 103
                         },
                         new
                         {
                             Id = 131,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Yazım Kuralları",
                             TopicId = 104
                         },
                         new
                         {
                             Id = 138,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Milyonlar",
                             TopicId = 132
                         },
                         new
                         {
                             Id = 139,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sayı ve Şekil Örüntüleri",
                             TopicId = 132
                         },
                         new
                         {
                             Id = 140,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Doğal Sayılarla Toplama ve Çıkarma İşlemleri",
                             TopicId = 132
                         },
                         new
                         {
                             Id = 141,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Doğal Sayılarla Çarpma ve Bölme İşlemleri",
                             TopicId = 132
                         },
                         new
                         {
                             Id = 142,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Bir Doğal Sayının Karesi ve Küpü",
                             TopicId = 132
                         },
                         new
                         {
                             Id = 143,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Birim Kesirler",
                             TopicId = 133
                         },
                         new
                         {
                             Id = 144,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Denk Kesirler",
                             TopicId = 133
                         },
                         new
                         {
                             Id = 145,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kesirlerde Sıralama",
                             TopicId = 133
                         },
                         new
                         {
                             Id = 146,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Basit Kesirlerde İşlemler",
                             TopicId = 133
                         },
                         new
                         {
                             Id = 147,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kesirlerde Problemler",
                             TopicId = 133
                         },
                         new
                         {
                             Id = 148,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ondalık Gösterim",
                             TopicId = 134
                         },
                         new
                         {
                             Id = 149,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Yüzdeler",
                             TopicId = 134
                         },
                         new
                         {
                             Id = 150,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Temel Geometrik Kavramlar ve Çizimler",
                             TopicId = 135
                         },
                         new
                         {
                             Id = 151,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Üçgenler ve Dörtgenler",
                             TopicId = 135
                         },
                         new
                         {
                             Id = 152,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Veri Toplama ve Değerlendirme",
                             TopicId = 136
                         },
                         new
                         {
                             Id = 153,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Uzunluk Ölçüleri",
                             TopicId = 136
                         },
                         new
                         {
                             Id = 154,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Çevre Uzunluğu",
                             TopicId = 136
                         },
                         new
                         {
                             Id = 155,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Zaman Ölçüleri",
                             TopicId = 136
                         },
                         new
                         {
                             Id = 156,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Alan Ölçme",
                             TopicId = 137
                         },
                         new
                         {
                             Id = 157,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Geometrik Cisimler",
                             TopicId = 137
                         },
                         new
                         {
                             Id = 165,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Yer Kabuğunun Yapısı",
                             TopicId = 158
                         },
                         new
                         {
                             Id = 166,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Dünyamızın Hareketleri",
                             TopicId = 158
                         },
                         new
                         {
                             Id = 167,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Besinler ve Özellikleri",
                             TopicId = 159
                         },
                         new
                         {
                             Id = 168,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "İnsan Sağlığı ve Zararlı Maddeler",
                             TopicId = 159
                         },
                         new
                         {
                             Id = 169,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kuvvetin Cisimler Üzerindeki Etkileri",
                             TopicId = 160
                         },
                         new
                         {
                             Id = 170,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Mıknatısın Çekme Kuvveti",
                             TopicId = 160
                         },
                         new
                         {
                             Id = 171,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddeyi Niteleyen Özellikler",
                             TopicId = 161
                         },
                         new
                         {
                             Id = 172,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddenin Ölçülebilir Özellikleri",
                             TopicId = 161
                         },
                         new
                         {
                             Id = 173,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddenin Halleri",
                             TopicId = 161
                         },
                         new
                         {
                             Id = 174,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Maddenin Isı Etkisiyle Değişimi",
                             TopicId = 161
                         },
                         new
                         {
                             Id = 175,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Aydınlatma Teknolojileri",
                             TopicId = 162
                         },
                         new
                         {
                             Id = 176,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Uygun Aydınlatma - Işık Kirliliği",
                             TopicId = 162
                         },
                         new
                         {
                             Id = 177,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Geçmişten Günümüze Ses Teknolojileri",
                             TopicId = 162
                         },
                         new
                         {
                             Id = 178,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Bilinçli Tüketici - Tasarruf",
                             TopicId = 163
                         },
                         new
                         {
                             Id = 179,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Geri Dönüşümün Önemi",
                             TopicId = 163
                         },
                         new
                         {
                             Id = 180,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Basit Elektrik Devreleri",
                             TopicId = 164
                         },
                         new
                         {
                             Id = 188,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Birey ve Toplum 1",
                             TopicId = 181
                         },
                         new
                         {
                             Id = 189,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Birey ve Toplum 2",
                             TopicId = 181
                         },
                         new
                         {
                             Id = 190,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kültür ve Miras 1",
                             TopicId = 182
                         },
                         new
                         {
                             Id = 191,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kültür ve Miras 2",
                             TopicId = 182
                         },
                         new
                         {
                             Id = 192,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "İnsanlar, Yerler ve Çevre 1",
                             TopicId = 183
                         },
                         new
                         {
                             Id = 193,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "İnsanlar, Yerler ve Çevre 2",
                             TopicId = 183
                         },
                         new
                         {
                             Id = 194,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Bilim, Teknoloji ve Toplum 1",
                             TopicId = 184
                         },
                         new
                         {
                             Id = 195,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Bilim, Teknoloji ve Toplum 2",
                             TopicId = 184
                         },
                         new
                         {
                             Id = 196,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Üretim, Dağıtım ve Tüketim 1",
                             TopicId = 185
                         },
                         new
                         {
                             Id = 197,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Üretim, Dağıtım ve Tüketim 2",
                             TopicId = 185
                         },
                         new
                         {
                             Id = 198,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Etkin Vatandaşlık 1",
                             TopicId = 186
                         },
                         new
                         {
                             Id = 199,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Etkin Vatandaşlık 2",
                             TopicId = 186
                         },
                         new
                         {
                             Id = 200,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Küresel Bağlantılar 1",
                             TopicId = 187
                         },
                         new
                         {
                             Id = 201,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Küresel Bağlantılar 2",
                             TopicId = 187
                         },
                         new
                         {
                             Id = 211,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Introducing Yourself",
                             TopicId = 202
                         },
                         new
                         {
                             Id = 212,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Common Greetings and Responses",
                             TopicId = 202
                         },
                         new
                         {
                             Id = 213,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Classroom Instructions",
                             TopicId = 203
                         },
                         new
                         {
                             Id = 214,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Polite Expressions",
                             TopicId = 203
                         },
                         new
                         {
                             Id = 215,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Counting to 100",
                             TopicId = 204
                         },
                         new
                         {
                             Id = 216,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Ordinal Numbers",
                             TopicId = 204
                         },
                         new
                         {
                             Id = 217,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Basic Colors",
                             TopicId = 205
                         },
                         new
                         {
                             Id = 218,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Shapes and Their Properties",
                             TopicId = 205
                         },
                         new
                         {
                             Id = 219,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Family Members",
                             TopicId = 206
                         },
                         new
                         {
                             Id = 220,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Describing My Family",
                             TopicId = 206
                         },
                         new
                         {
                             Id = 221,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Daily Activities",
                             TopicId = 207
                         },
                         new
                         {
                             Id = 222,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Telling the Time",
                             TopicId = 207
                         },
                         new
                         {
                             Id = 223,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Rooms in the House",
                             TopicId = 208
                         },
                         new
                         {
                             Id = 224,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Furniture and Objects",
                             TopicId = 208
                         },
                         new
                         {
                             Id = 225,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Common Foods",
                             TopicId = 209
                         },
                         new
                         {
                             Id = 226,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Healthy Eating",
                             TopicId = 209
                         },
                         new
                         {
                             Id = 227,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Domestic Animals",
                             TopicId = 210
                         },
                         new
                         {
                             Id = 228,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Wild Animals",
                             TopicId = 210
                         });
@@ -2110,10 +3050,31 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -2123,76 +3084,106 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Türkçe"
                         },
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Matematik"
                         },
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Hayat Bilgisi"
                         },
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Fen Bilimleri"
                         },
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Sosyal Bilgiler"
                         },
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "T.C. İnkılâp Tarihi ve Atatürkçülük"
                         },
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Yabancı Dil"
                         },
                         new
                         {
                             Id = 8,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Din Kültürü ve Ahlak Bilgisi"
                         },
                         new
                         {
                             Id = 9,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Türk Dili ve Edebiyatı"
                         },
                         new
                         {
                             Id = 10,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Tarih"
                         },
                         new
                         {
                             Id = 11,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Coğrafya"
                         },
                         new
                         {
                             Id = 12,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Fizik"
                         },
                         new
                         {
                             Id = 13,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Kimya"
                         },
                         new
                         {
                             Id = 14,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Biyoloji"
                         },
                         new
                         {
                             Id = 15,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsDeleted = false,
                             Name = "Felsefe"
                         });
                 });
@@ -2205,14 +3196,35 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("GradeId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -2227,441 +3239,567 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Doğal Sayılar ve Ritmik Saymalar",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 8,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Toplama ve Çıkarma İşlemi",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 9,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Çarpma ve Bölme İşlemi",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 10,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Kesirler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 11,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Zaman Ölçme",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 12,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Geometrik Cisimler ve Örüntüler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 13,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Uzunluk, Alan ve Çevre Ölçme",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 211,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Paralarımız",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 212,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Tartma",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Harf, Hece, Sözcük ve Cümle Bilgisi",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Söz Varlığını Geliştirme",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Okuduğunu Anlama",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Sözcük Türleri",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Noktalama İşaretleri",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Yazım Kuralları",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 50,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Gezegenimizi Tanıyalım",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 51,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Beş Duyumuz",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 52,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Kuvveti Tanıyalım",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 53,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Maddeyi Tanıyalım",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 54,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Çevremizdeki Işık ve Sesler",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 55,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Canlılar Dünyasına Yolculuk",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 56,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Elektrikli Araçlar",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 78,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Okulumuzda Hayat",
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 79,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Evimizde Hayat",
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 80,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Sağlıklı Hayat",
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 81,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Güvenli Hayat",
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 82,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Ülkemizde Hayat",
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 83,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 3,
+                            IsDeleted = false,
                             Name = "Doğada Hayat",
                             SubjectId = 3
                         },
                         new
                         {
                             Id = 99,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Harf, Hece ve Sözcük Bilgisi",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 100,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Cümle Bilgisi",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 101,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Okuma Anlama",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 102,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Sözcük Türleri",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 103,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Noktalama İşaretleri",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 104,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Yazım Kuralları",
                             SubjectId = 1
                         },
                         new
                         {
                             Id = 132,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Doğal Sayılar ve İşlemler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 133,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Kesirler ve Kesirlerle İşlemler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 134,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Ondalık Gösterim ve Yüzdeler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 135,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Temel Geometrik Kavramlar ve Çizimler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 136,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Veri Toplama ve Değerlendirme / Uzunluk ve Zaman Ölçme",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 137,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Alan Ölçme ve Geometrik Cisimler",
                             SubjectId = 2
                         },
                         new
                         {
                             Id = 158,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Yer Kabuğu ve Dünyamızın Hareketleri",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 159,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Besinlerimiz",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 160,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Kuvvetin Etkileri",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 161,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Maddenin Özellikleri",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 162,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Aydınlatma ve Ses Teknolojileri",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 163,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "İnsan ve Çevre / Canlılar ve Yaşam",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 164,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Basit Elektrik Devreleri",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 181,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Birey ve Toplum",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 182,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Kültür ve Miras",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 183,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "İnsanlar, Yerler ve Çevreler",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 184,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Bilim, Teknoloji ve Toplum",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 185,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Üretim, Dağıtım ve Tüketim",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 186,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Etkin Vatandaşlık",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 187,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Küresel Bağlantılar",
                             SubjectId = 4
                         },
                         new
                         {
                             Id = 202,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Greetings",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 203,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Classroom Rules",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 204,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Numbers and Counting",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 205,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Colors and Shapes",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 206,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "My Family",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 207,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Daily Routines",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 208,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "My House",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 209,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Food and Drinks",
                             SubjectId = 5
                         },
                         new
                         {
                             Id = 210,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             GradeId = 4,
+                            IsDeleted = false,
                             Name = "Animals",
                             SubjectId = 5
                         });
@@ -2681,6 +3819,18 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("BookTestId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
@@ -2690,6 +3840,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsPracticeTest")
                         .HasColumnType("boolean");
@@ -2706,6 +3859,12 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<string>("Subtitle")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -2726,8 +3885,23 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("timestamp with time zone");
@@ -2736,6 +3910,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.Property<int>("WorksheetId")
@@ -2758,7 +3938,22 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("SelectedAnswerId")
@@ -2768,6 +3963,12 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<int>("TimeTaken")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.Property<int>("WorksheetInstanceId")
@@ -2795,15 +3996,36 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DifficultyLevel")
                         .HasColumnType("integer");
 
                     b.Property<int>("GradeId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -2820,10 +4042,31 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("QuestionCount")
                         .HasColumnType("integer");
 
                     b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.Property<int>("WorksheetPrototypeId")

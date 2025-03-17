@@ -2,7 +2,7 @@ using System;
 
 namespace ExamApp.Api.Data;
 
-public class Answer
+public class Answer : BaseEntity
 {
     public int Id { get; set; }
     public string Text { get; set; } = string.Empty;  // Şık metni

@@ -1,11 +1,59 @@
 using System;
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
+    private int? _currentUserId = 0;  // Varsayılan olarak 0
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) 
+    {
+    }
+
+    // BaseController'dan çağrılacak metod
+    public void SetCurrentUser(int userId)
+    {
+        _currentUserId = userId;
+    }
+
+    public override int SaveChanges()
+    {
+        ApplyAuditInfo();
+        return base.SaveChanges();
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditInfo();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyAuditInfo()
+    {
+        var entries = ChangeTracker.Entries<BaseEntity>();
+
+        foreach (var entry in entries)
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.Entity.CreateTime = DateTime.UtcNow;
+                entry.Entity.CreateUserId = _currentUserId;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdateTime = DateTime.UtcNow;
+                entry.Entity.UpdateUserId = _currentUserId;
+            }
+            else if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified; // Soft delete yap
+                entry.Entity.IsDeleted = true;
+                entry.Entity.DeleteTime = DateTime.UtcNow;
+                entry.Entity.DeleteUserId = _currentUserId;
+            }
+        }
+    }
     public DbSet<User> Users { get; set; } // Kullanıcı tablosu
     public DbSet<Student> Students { get; set; } // Öğrenci tablosu
     public DbSet<Teacher> Teachers { get; set; } // Öğretmen tablosu
@@ -236,7 +284,31 @@ public class AppDbContext : DbContext
             .WithMany(b => b.BookTests)
             .HasForeignKey(bt => bt.BookId)
             .OnDelete(DeleteBehavior.Cascade); // Eğer bir kitap silinirse, testleri de silinsin.
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            // Eğer entity BaseEntity sınıfından türemişse
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                // Doğru tür dönüşümüyle HasQueryFilter ekle
+                var method = typeof(AppDbContext).GetMethod(nameof(SetGlobalQueryFilter),
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                    ?.MakeGenericMethod(entityType.ClrType);
+
+                method?.Invoke(null, new object[] { modelBuilder });
+            }
+        }
             
+    }
+
+    private static LambdaExpression ConvertFilter<T>(Expression<Func<T, bool>> filter)
+    {
+        return filter;
+    }
+
+    private static void SetGlobalQueryFilter<T>(ModelBuilder modelBuilder) where T : BaseEntity
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
     }
 }
 

@@ -1,17 +1,19 @@
 using System;
 using System.Security.Claims;
 using ExamApp.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace ExamApp.Api.Controllers;
 
+[ExamAuthorize]
 public class BaseController : ControllerBase
-{
+{    
     protected readonly AppDbContext _context;
 
     protected int AuthenticatedUserId
     {
-        
         get
         {            
             var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -19,6 +21,24 @@ public class BaseController : ControllerBase
                  throw new UnauthorizedAccessException("User ID not found.");
         }
     }
+
+    /// <summary>
+    /// Read user Id without throwing exception if not found.
+    /// </summary>
+    private int UserId {
+        get
+        {                        
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    return userId;
+                }
+            }
+            return 0;  // Kullanıcı yoksa veya kimliği çözülemiyorsa 0 döndür                
+                }
+    } 
 
     protected int AuthenticatedStudentId
     {
@@ -30,8 +50,16 @@ public class BaseController : ControllerBase
     }
     public BaseController(AppDbContext context)
     {
-        _context = context;
+        _context = context;    
     }
+
+    // public override void OnActionExecuting(ActionExecutingContext context)
+    // {
+    //     base.OnActionExecuting(context);
+        
+    //     CurrentUserId = GetCurrentUserId();
+    //     _dbContext.SetCurrentUser(CurrentUserId ?? 0);  // DbContext içine UserId'yi set et
+    // }
     
     protected async Task<User> GetAuthenticatedUserAsync()
     {                

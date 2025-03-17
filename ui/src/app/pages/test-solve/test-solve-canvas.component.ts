@@ -17,6 +17,7 @@ import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { lastValueFrom } from 'rxjs';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { SidenavService } from '../../services/sidenav.service';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-test-solve',
@@ -25,7 +26,7 @@ import { SidenavService } from '../../services/sidenav.service';
   styleUrls: ['./test-solve-canvas.component.scss'],
   imports: [  QuestionLiteViewComponent,
       CommonModule, MatToolbarModule, MatButtonModule, MatCardModule, PassageCardComponent,
-    SpinWheelComponent, QuestionCanvasViewComponent
+    SpinWheelComponent, QuestionCanvasViewComponent, MatIconModule
     ] 
 })
 export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -75,6 +76,7 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestro
     private dialog: MatDialog
   ) {
     this.sidenavService.setSidenavState(false);
+    this.sidenavService.setFullScreen(true);
   }
 
 
@@ -91,7 +93,8 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestro
     if(this.testTimerSubscription)
       this.testTimerSubscription.unsubscribe();
     if(this.questionTimerSubscription)
-      this.questionTimerSubscription
+      this.questionTimerSubscription.unsubscribe();
+    this.sidenavService.toggleFullScreen();
   }
   
    
@@ -387,6 +390,7 @@ async loadTest(testId: number) {
       this.testTimerSubscription.unsubscribe();
     if(this.questionTimerSubscription)
       this.questionTimerSubscription.unsubscribe();
+    this.sidenavService.toggleFullScreen();
   }
 
 

@@ -39,12 +39,17 @@ export class AppComponent {
     this.sidenavService.toggleSidenav();
   }
 
+  toggleFullScreen() {
+    this.sidenavService.toggleFullScreen();
+  }
+
   isLoginPage(): boolean {
     return this.router.url === '/login';
   }
 
   sidenavService = inject(SidenavService);
   isSidenavOpen = this.sidenavService.isSidenavOpen; // Servisten değer alıyoruz
+  isFullScreen = this.sidenavService.isFullScreen; // Servisten değer alıyoruz
 
   constructor(private router: Router) {
     this.router.events.subscribe(event => {

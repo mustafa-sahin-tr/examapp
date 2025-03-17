@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
 using ExamApp.Api.Data;
 
-public class Subject
+public class Subject : BaseEntity
 {
     [Key]
     public int Id { get; set; }

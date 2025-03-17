@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using ExamApp.Api.Data;
 
 
-public class Worksheet
+public class Worksheet : BaseEntity
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

@@ -1,7 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
+using ExamApp.Api.Data;
 
-public class Grade
+public class Grade : BaseEntity
 {
     [Key]
     public int Id { get; set; }

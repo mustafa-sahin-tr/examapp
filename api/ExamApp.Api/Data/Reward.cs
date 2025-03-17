@@ -6,7 +6,7 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Öğrencilerin puanlarını kullanarak alabilecekleri ödüller.
 /// </summary>
-public class Reward
+public class Reward : BaseEntity
 {
     public int Id { get; set; }
     public string Name { get; set; } // Ödül Adı (Örn: "30 Dakika Tablet", "Oyuncak")

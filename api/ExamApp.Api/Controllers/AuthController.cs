@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,18 +10,20 @@ namespace ExamApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController : BaseController
+    public class AuthController : ControllerBase
     {
         private readonly IJwtService _jwtService;
-
-
+        
+        protected readonly AppDbContext _context;
         public AuthController(AppDbContext context, IJwtService jwtService)
-            : base(context)
+            : base()
         {
             _jwtService = jwtService;
+            _context = context;
         }
 
 
+        [Authorize]
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto request)
         {

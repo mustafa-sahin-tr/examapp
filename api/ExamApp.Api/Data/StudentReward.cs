@@ -5,7 +5,7 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Öğrencinin aldığı ödülleri saklar.
 /// </summary>
-public class StudentReward
+public class StudentReward : BaseEntity
 {
     public int Id { get; set; }
     public int StudentId { get; set; } // Öğrenci FK

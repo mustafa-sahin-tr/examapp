@@ -5,7 +5,7 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Hangi öğrencinin hangi özel etkinlikten puan kazandığını takip eder.
 /// </summary>
-public class StudentSpecialEvent
+public class StudentSpecialEvent : BaseEntity
 {
     public int Id { get; set; }
     public int StudentId { get; set; } // Öğrenci FK

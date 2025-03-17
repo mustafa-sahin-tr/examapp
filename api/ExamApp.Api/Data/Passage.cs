@@ -2,7 +2,7 @@ using System;
 
 namespace ExamApp.Api.Data;
 
-public class Passage
+public class Passage : BaseEntity
 {
     public int Id { get; set; }
     public string? Title { get; set; } // Kapsam başlığı (isteğe bağlı)

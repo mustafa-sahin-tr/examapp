@@ -2,7 +2,22 @@
 <mat-card class="test-container">
     <!-- Header: Test Bilgileri -->
     
+    <mat-toolbar class="test-header bt-1 m-5" >  
+      <span class="test-title">{{ testInstance.testName }}</span>
+      <span class="test-progress">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+      <span class="test-timer">Geçen Süre : {{ formattedTime }}</span>
+      <span class="test-timer">Soru Süresi : {{ formattedQuestionTime }}</span>
+      @if(showStopButton) {
+        <button  mat-button color="warn" (click)="pauseTest()">Durdur</button>
+      }
+      <!-- Butonu sağa yaslamak için boş bir alan ekliyoruz -->
+      <span class="spacer"></span>
 
+      <!-- Sınavı Bitir Butonu -->
+      <button mat-raised-button color="accent" (click)="completeTest()">
+        <mat-icon>done</mat-icon> Sınavı Bitir
+      </button>
+    </mat-toolbar>
 
   
     <!-- Soru Gösterimi -->
@@ -30,32 +45,23 @@
   
     <!-- Navigasyon Butonları -->
     <div class="navigation-buttons">
-      <button mat-button color="primary" class="prev-button" (click)="prevQuestion()" [disabled]="currentIndex() === 0">
+      <button mat-fab-button color="primary" class="prev-button" (click)="prevQuestion()" [disabled]="currentIndex() === 0">
         <img src="previousPage.svg" width="24" height="24" alt="icon">
       </button>
-      <button mat-button color="accent" class="next-button"  (click)="nextQuestion()" [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1">
+      <button mat-fab-button color="accent" class="next-button"  (click)="nextQuestion()" [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1">
         <img src="nextPage.svg" width="24" height="24" alt="icon">
       </button>
       
     </div>
-    <mat-toolbar class="test-header bt-1 m-5" >  
-      <span class="test-title">{{ testInstance.testName }}</span>
-      <span class="test-progress">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
-      <span class="test-timer">Geçen Süre : {{ formattedTime }}</span>
-      <span class="test-timer">Soru Süresi : {{ formattedQuestionTime }}</span>
-      @if(showStopButton) {
-        <button  mat-button color="warn" (click)="pauseTest()">Durdur</button>
-      }
-      
-    </mat-toolbar>
+   
   </mat-card>
-  @if(currentIndex() === testInstance.testInstanceQuestions.length - 1) {
-    <div class="m-5">
-        <button mat-raised-button color="accent" class="finish-button" (click)="completeTest()">
-          Sınavı Bitir
-        </button>
-    </div>
-    }
+  <!-- @if(currentIndex() === testInstance.testInstanceQuestions.length - 1) {
+  <mat-toolbar class="test-header bt-1 m-5" >      
+    <button mat-raised-button color="accent" (click)="completeTest()">
+      <mat-icon>done</mat-icon> Sınavı Bitir
+    </button>
+  </mat-toolbar>
+    } -->
 
    
 }

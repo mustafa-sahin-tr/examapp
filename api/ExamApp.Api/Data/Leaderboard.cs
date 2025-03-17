@@ -6,7 +6,7 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Her hafta ve her ayın en iyi öğrencilerini sıralamak için oluşturulmuştur.
 /// </summary>
-public class Leaderboard
+public class Leaderboard : BaseEntity
 {
     public int Id { get; set; }
     public int StudentId { get; set; } // Öğrenci FK

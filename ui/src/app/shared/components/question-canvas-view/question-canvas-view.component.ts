@@ -52,7 +52,9 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
 
 
   ngAfterViewInit() {
-    this.psgctx = this.passageCanvas.nativeElement.getContext('2d');
+    if(this.passageCanvas) {
+      this.psgctx = this.passageCanvas.nativeElement.getContext('2d');
+    }
     this.canvasCtx = this.canvas.nativeElement.getContext('2d');
     this.loadImageForQuestion();
   }

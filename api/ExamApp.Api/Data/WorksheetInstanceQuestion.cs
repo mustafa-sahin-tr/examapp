@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ExamApp.Api.Data;
 
-public class WorksheetInstanceQuestion
+public class WorksheetInstanceQuestion : BaseEntity
 {
     [Key]
     public int Id { get; set; }

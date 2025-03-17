@@ -2,7 +2,7 @@ using System;
 
 namespace ExamApp.Api.Data;
 
-public class Badge
+public class Badge : BaseEntity
 {
     public int Id { get; set; }
     public string Name { get; set; } // Rozet Adı (Örn: "100 Soru Çözdü")

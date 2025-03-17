@@ -4,7 +4,7 @@ namespace ExamApp.Api.Data;
 
 using System.ComponentModel.DataAnnotations;
 
-public class User
+public class User : BaseEntity
 {
     [Key]
     public int Id { get; set; }

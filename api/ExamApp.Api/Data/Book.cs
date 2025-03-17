@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ExamApp.Api.Data
 {
-    public class Book
+    public class Book : BaseEntity
     {
         public int Id { get; set; }
 
@@ -14,7 +14,7 @@ namespace ExamApp.Api.Data
         public ICollection<BookTest> BookTests { get; set; } = new List<BookTest>();
     }
 
-    public class BookTest
+    public class BookTest : BaseEntity
     {
         public int Id { get; set; }
 

@@ -1,7 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ExamApp.Api.Data;
 
-public class WorksheetPrototypeDetail
+public class WorksheetPrototypeDetail : BaseEntity
 {
     [Key]
     public int Id { get; set; }

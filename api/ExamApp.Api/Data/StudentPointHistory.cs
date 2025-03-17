@@ -6,7 +6,7 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Öğrencilerin hangi etkinliklerden puan kazandığını takip eder.
 /// </summary>
-public class StudentPointHistory
+public class StudentPointHistory : BaseEntity
 {
     public int Id { get; set; }
 

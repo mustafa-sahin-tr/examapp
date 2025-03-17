@@ -275,6 +275,7 @@ export class StudentProfileComponent implements OnInit {
 
     this.lastMonthDisplayed = monthName; // Yeni ayı güncelle
     return monthName; // Sadece ilk hafta için ay ismini göster
+    // return `<span style="fill: red;">${monthName}</span>`; // Kırmızı renkte gösterir
   }
 
   constructor(private studentService: StudentService, private route: ActivatedRoute,

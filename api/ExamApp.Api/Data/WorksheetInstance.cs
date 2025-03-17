@@ -12,7 +12,7 @@ public enum WorksheetInstanceStatus
 }
 
 
-public class WorksheetInstance
+public class WorksheetInstance : BaseEntity
 {
     [Key]
     public int Id { get; set; }

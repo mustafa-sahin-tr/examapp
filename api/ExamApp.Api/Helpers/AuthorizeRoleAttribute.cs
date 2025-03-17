@@ -46,6 +46,54 @@ public class AuthorizeRoleAttribute : Attribute, IAsyncActionFilter
             return;
         }
 
+        // **DbContext'i Dependency Injection ile al**
+        var dbContext = httpContext.RequestServices.GetRequiredService<AppDbContext>();
+
+        // **UserId'yi al ve DbContext içine set et**
+        var userIdClaim = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(userIdClaim, out int userId))
+        {
+            dbContext.SetCurrentUser(userId);
+        }
+        else
+        {
+            dbContext.SetCurrentUser(0); // Kullanıcı yoksa 0 ata
+        }
+
+        await next();
+    }
+}
+
+
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public class ExamAuthorizeAttribute : Attribute, IAsyncActionFilter
+{
+   
+
+    public ExamAuthorizeAttribute()
+    {
+        
+    }
+
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+
+        var httpContext = context.HttpContext;
+
+        if (httpContext.User == null || !httpContext.User.Identity.IsAuthenticated)
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.HttpContext.Response.WriteAsync("Unauthorized");
+            return;
+        }
+
+        var dbContext = httpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var userIdClaim = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(userIdClaim, out int userId))
+        {
+            dbContext.SetCurrentUser(userId);
+        }
+
         await next();
     }
 }

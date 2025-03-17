@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ExamApp.Api.Data;
 
-public class Question
+public class Question : BaseEntity
 {
     public int Id { get; set; }
     public string? Text { get; set; } = string.Empty;  // Soru metni

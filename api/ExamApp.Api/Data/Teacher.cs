@@ -3,7 +3,7 @@ using System;
 namespace ExamApp.Api.Data;
 using System.ComponentModel.DataAnnotations;
 
-public class Teacher
+public class Teacher : BaseEntity
 {
     [Key]
     public int Id { get; set; }

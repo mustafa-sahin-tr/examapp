@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,7 +46,6 @@ builder.Services.AddSingleton<ImageHelper>();
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
 
 var app = builder.Build();
 

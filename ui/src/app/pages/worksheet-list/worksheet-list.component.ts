@@ -12,6 +12,9 @@ import { CompletedWorksheetCardComponent } from '../completed-worksheet/complete
 import { ActivatedRoute, Router } from '@angular/router';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge/worksheet-badge.component';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { SubjectService } from '../../services/subject.service';
+import { Subject } from '../../models/subject';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -19,12 +22,12 @@ import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent, FormsModule]
+      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent, FormsModule ,PaginationComponent]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);
   searchControl = new FormControl('');  
-  
+  newestWorksheets!: Test[];
   pagedWorksheets!: Paged<Test>;
   completedTestWorksheets: CompletedTest[] = [];
   totalCount = 0;
@@ -32,10 +35,16 @@ export class WorksheetListComponent {
   pageNumber = 1;
   route = inject(ActivatedRoute);
   router = inject(Router);
+  subjectService = inject(SubjectService);
+
+    $subjects: Observable<Subject[]> = this.subjectService.loadCategories();
+
      filteredWorksheets!: Test[];
      @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;    
 
-
+     get totalPages(): number {
+      return Math.ceil(this.pagedWorksheets.totalCount / this.pageSize); // Sayfa sayısını hesapla
+    }
 
     
 
@@ -57,6 +66,11 @@ export class WorksheetListComponent {
         this.testService.getCompleted(1).subscribe(response => {
             this.completedTestWorksheets = response.items;
         });
+
+        this.testService.getLatest(1).subscribe(response => {
+          this.newestWorksheets = response;
+        }
+        );
       }
 
       onEnter() {
@@ -74,7 +88,17 @@ export class WorksheetListComponent {
         // });   
       }
 
+      changePage(page: any) {
+        console.log('Page changed:', page); 
+        // this.nextPage();
+        this.pageNumber = page;
+        this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
+          this.pagedWorksheets = response;
+        });
+      }
+
       nextPage() {
+        console.log('Next page');
         if (this.pageNumber * this.pageSize < this.pagedWorksheets.totalCount) {
           this.pageNumber++;
           this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
@@ -84,6 +108,7 @@ export class WorksheetListComponent {
       }
     
       prevPage() {
+        console.log('Prev page');
         if (this.pageNumber > 1) {
           this.pageNumber--;
           this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
@@ -101,12 +126,9 @@ export class WorksheetListComponent {
         if (this.cardContainer) {
           const container = this.cardContainer.nativeElement;
           if (container.scrollLeft > 0) {
-            container.scrollBy({ left: -300, behavior: 'smooth' });
+            container.scrollBy({ left: -600, behavior: 'smooth' });
           } else if (this.pageNumber > 1) {
-            this.pageNumber--;
-            this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
-              this.pagedWorksheets = response;
-            });
+            // this.prevPage();
           }
         }
       }
@@ -115,12 +137,9 @@ export class WorksheetListComponent {
         if (this.cardContainer) {
           const container = this.cardContainer.nativeElement;
           if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
-            container.scrollBy({ left: 300, behavior: 'smooth' });
-          } else if (this.pageNumber * this.pageSize < this.pagedWorksheets.totalCount) {
-            this.pageNumber++;
-            this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
-              this.pagedWorksheets = response;
-            });
+            container.scrollBy({ left: 600, behavior: 'smooth' });
+          } else if (this.pageNumber * this.pageSize < this.pagedWorksheets.totalCount) {            
+            // this.nextPage();
           }
         }
       }

@@ -5,8 +5,9 @@
     <mat-toolbar class="test-header bt-1 m-5" >  
       <span class="test-title">{{ testInstance.testName }}</span>
       <span class="test-progress">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
-      <span class="test-timer">Geçen Süre : {{ formattedTime }}</span>
-      <span class="test-timer">Soru Süresi : {{ formattedQuestionTime }}</span>
+      <!-- <span class="test-timer">Geçen Süre : {{ formattedTime }}</span> -->
+      <app-countdown [durationInSeconds]="testDuration" [label]="'Toplam Süre'" ></app-countdown>
+      <app-countdown [durationInSeconds]="questionDuration" [label]="'Soru İçin Geçen Süre'"></app-countdown>
       @if(showStopButton) {
         <button  mat-button color="warn" (click)="pauseTest()">Durdur</button>
       }

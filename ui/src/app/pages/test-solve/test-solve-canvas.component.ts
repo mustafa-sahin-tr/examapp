@@ -18,6 +18,7 @@ import { lastValueFrom } from 'rxjs';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatIconModule } from '@angular/material/icon';
+import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 
 @Component({
   selector: 'app-test-solve',
@@ -26,7 +27,7 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrls: ['./test-solve-canvas.component.scss'],
   imports: [  QuestionLiteViewComponent,
       CommonModule, MatToolbarModule, MatButtonModule, MatCardModule, PassageCardComponent,
-    SpinWheelComponent, QuestionCanvasViewComponent, MatIconModule
+    SpinWheelComponent, QuestionCanvasViewComponent, MatIconModule, CountdownComponent
     ] 
 })
 export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestroy {

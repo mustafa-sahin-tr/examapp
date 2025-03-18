@@ -1,17 +1,4 @@
-<div class="search-container">    
-    <mat-form-field appearance="outline" class="search-box">
-        <mat-label>Ara</mat-label>
-        <input matInput [formControl]="searchControl" (keyup.enter)="onEnter()">
-        <!-- <input matInput [formControl]="searchControl" [matAutocomplete]="auto" (keyup.enter)="onEnter()"> -->
-        <!-- <mat-autocomplete #auto="matAutocomplete">
-            <mat-option *ngFor="let worksheet of filteredWorksheets" [value]="worksheet.name" (onSelectionChange)="onAutocompleteSelect(worksheet.name)">
-                <div class="search-item">
-                <span>{{ worksheet.name }} - {{ worksheet.subtitle }} - {{ worksheet.description }}</span>
-                </div>
-            </mat-option>
-        </mat-autocomplete> -->
-    </mat-form-field>
-</div>
+
 
   <app-section-header class="section-container" title="Senin İçin Yeni Testler" icon="/icons/18.svg"></app-section-header>
     <div class="list-container">
@@ -19,7 +6,7 @@
         <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
         <div class="cards" #cardContainer>
           <ul class="psds-carousel__track">
-            <li class="psds-carousel__item" class="m-5" style="flex-basis: 377.305px;" *ngFor="let worksheet of pagedWorksheets.items">
+            <li class="psds-carousel__item" class="m-5" style="flex-basis: 377.305px;" *ngFor="let worksheet of newestWorksheets">
               <app-worksheet-card
                 [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)">
             </app-worksheet-card>
@@ -30,76 +17,111 @@
       <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
     </div>
 
-    <app-section-header class="section-container" title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
-
+    
     <div class="list-container">
       <div class="search-results">
-        <h2><strong>"{{ searchControl.value }}"</strong> için sonuçlar gösteriliyor </h2>
-      
-        <!-- <div class="filters-container">
-          <div class="filters">
-            <h3>Filters (1)</h3>
-            <button class="clear-btn" (click)="toggleRetiredResults()">Clear all</button>
-      
-            <div class="filter-category">
-              <h4>Category</h4>
-              <ul>
-                
-
-                  <li *ngFor="let category of filters.category" class="search-result-item">
-                      <label class="check-box-container filter-checkbox">
-                        <input type="checkbox" class="checkbox-input" [value]="category.name">
-                        <span class="check-box-container checkbox-span"></span>
-                        <span  class="check-box-form-label">{{category.name}} ({{category.count}})</span>
-                      </label>
-                    </li>
-
-                
-              </ul>
+        <div class="form-container">
+            <div class="form-column-2">
+              <div class="search-container">    
+                <mat-form-field appearance="outline" class="search-box">
+                    <mat-label>Ara</mat-label>
+                    <input matInput [formControl]="searchControl" (keyup.enter)="onEnter()">
+                    <!-- <input matInput [formControl]="searchControl" [matAutocomplete]="auto" (keyup.enter)="onEnter()"> -->
+                    <!-- <mat-autocomplete #auto="matAutocomplete">
+                        <mat-option *ngFor="let worksheet of filteredWorksheets" [value]="worksheet.name" (onSelectionChange)="onAutocompleteSelect(worksheet.name)">
+                            <div class="search-item">
+                            <span>{{ worksheet.name }} - {{ worksheet.subtitle }} - {{ worksheet.description }}</span>
+                            </div>
+                        </mat-option>
+                    </mat-autocomplete> -->
+                </mat-form-field>
             </div>
-      
-            <div class="filter-topic">
-              <h4>Topic</h4>
-              <ul>
-                <li *ngFor="let topic of filters.topics">
-                  <input type="checkbox" [(ngModel)]="topic.selected" />
-                  <label>{{ topic.name }} ({{ topic.count }})</label>
-                </li>
-              </ul>
             </div>
+            <div class="form-column">
+              <app-pagination
+              [currentPage]="pageNumber"
+              [totalItems]="pagedWorksheets.totalCount"
+              (pageChange)="changePage($event)"></app-pagination>          
+                <h2>{{searchControl.value ? searchControl.value + ' için ' : '' }} <strong>{{ pagedWorksheets.totalCount }}</strong> test bulundu </h2>
+            </div>
+        </div>
+        
+      
+        
+      
+        <div class="form-container">
+         <div class="form-column">
+          <div class="filters-container">
+            <div class="filters">
+              <button class="clear-btn" (click)="toggleRetiredResults()">Temizle</button>
+        
+              <div class="filter-category">
+                <h4>Dersler</h4>
+                <ul>
+                    <li *ngFor="let category of $subjects | async" class="search-result-item">
+                        <label class="check-box-container filter-checkbox">
+                          <input type="checkbox" class="checkbox-input" [value]="category.name">
+                          <span class="check-box-container checkbox-span"></span>
+                          <span  class="check-box-form-label">{{category.name}} ()</span>
+                        </label>
+                      </li>
+  
+                  
+                </ul>
+              </div>
+        
+              <!-- <div class="filter-topic">
+                <h4>Topic</h4>
+                <ul>
+                  <li *ngFor="let topic of filters.topics">
+                    <input type="checkbox" [(ngModel)]="topic.selected" />
+                    <label>{{ topic.name }} ({{ topic.count }})</label>
+                  </li>
+                </ul>
+              </div> -->
+            </div>
+        
+            <!-- <div class="results-header">
+              <h3>{{ totalResults }} Results</h3>
+              <label>
+                Show {{ showRetiredResults ? 'active' : 'retired' }} results
+                <input type="checkbox" [(ngModel)]="showRetiredResults" />
+              </label>
+              <select [(ngModel)]="selectedSort">
+                <option *ngFor="let option of sortOptions">{{ option }}</option>
+              </select>
+            </div> -->
           </div>
-      
-          <div class="results-header">
-            <h3>{{ totalResults }} Results</h3>
-            <label>
-              Show {{ showRetiredResults ? 'active' : 'retired' }} results
-              <input type="checkbox" [(ngModel)]="showRetiredResults" />
-            </label>
-            <select [(ngModel)]="selectedSort">
-              <option *ngFor="let option of sortOptions">{{ option }}</option>
-            </select>
-          </div>
-        </div> -->
-      
-        <ul class="course-list">
-          <li *ngFor="let course of pagedWorksheets.items" class="course-item">
-            <div class="course-info">
-              <h3>
-                {{ course.name }}
-                <span class="new-badge">NEW & POPULAR</span>
-                <span class="new-badge"><strong> 0 Soru</strong></span>
-                <span class="new-badge"><strong> {{ course.gradeId }}.Sınıf</strong></span>
-                <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
-                <span class="new-badge"><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika</span>
-              </h3>
-              <span>{{ course.subtitle }}</span>
-              <p>{{ course.description }}</p>             
-            </div>
-          </li>
-        </ul>
+         </div>
+         <div class="form-column-3">
+          <ul class="course-list">
+            <li *ngFor="let course of pagedWorksheets.items" class="course-item">
+              <div class="course-info">
+                <h3>
+                  {{ course.name }}
+                  <span class="new-badge">NEW & POPULAR</span>
+                  <span class="new-badge"><strong> 0 Soru</strong></span>
+                  <span class="new-badge"><strong> {{ course.gradeId }}.Sınıf</strong></span>
+                  <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
+                  <span class="new-badge"><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika</span>
+                </h3>
+                <span>{{ course.subtitle }}</span>
+                <p>{{ course.description }}</p>             
+              </div>
+            </li>
+          </ul>
+         </div>
+        </div>
+        
+
+        <app-pagination
+          [currentPage]="pageNumber"
+          [totalItems]="pagedWorksheets.totalCount"
+          (pageChange)="changePage($event)"></app-pagination>
       </div>
   
 </div>
+<app-section-header class="section-container" title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
 
 <div class="list-container">       
     @if (completedTestWorksheets.length > 0) {

@@ -146,6 +146,38 @@ public class ExamController : BaseController
         return Ok(new { totalCount = results.Count, items = results, pageNumber, pageSize });
     }
 
+    [HttpGet("latest")]    
+    public async Task<IActionResult> GetLatestWorksheetsAsync(int pageNumber = 1, int pageSize = 10)
+    {
+         // 🔹 Token’dan UserId'yi al
+        var user = await GetAuthenticatedUserAsync();
+
+        var query = _context.Worksheets.AsQueryable();
+
+        var tests = await query
+            .OrderByDescending(t => t.CreateTime) // Sıralama için
+            .Skip((pageNumber - 1) * pageSize) // Sayfalama için
+            .Take(pageSize)            
+            .Select(t => new WorksheetDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                GradeId = t.GradeId,
+                SubjectId = t.SubjectId,
+                MaxDurationSeconds = t.MaxDurationSeconds,
+                IsPracticeTest = t.IsPracticeTest,
+                Subtitle = t.Subtitle,
+                ImageUrl = t.ImageUrl,
+                BadgeText = t.BadgeText,
+                BookTestId = t.BookTestId,
+                BookId = t.BookTest != null ? t.BookTest.BookId : null,
+                QuestionCount = t.WorksheetQuestions.Count() // ✅ Soru sayısını ekledik
+            })
+            .ToListAsync();      
+
+        return Ok(tests);  
+    }
 
 
     [HttpGet("list")]    

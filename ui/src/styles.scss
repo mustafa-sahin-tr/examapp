@@ -650,7 +650,7 @@ img {
 .search-container {
   display: flex;
   justify-content: flex-start;
-  width: 50%;
+  width: 85%;
   // margin-bottom: 16px;
   margin-left: 48px; /* Kart başlangıcına hizalama */
 }
@@ -2245,7 +2245,7 @@ h4 {
   .filters-container {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-top: 20px;
 
     .filters {
       width: 250px;
@@ -2341,6 +2341,142 @@ h4 {
     }
   }
 }
+
+
+/*PAGINATION*/
+.pagination-number {
+  padding: 0px 9px;
+  margin: 0px 6px;
+  color: rgb(165, 170, 207);
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+}
+
+.pagination-number.active {
+  border-bottom: 3px solid rgb(43, 178, 255);
+  color: rgb(243, 243, 248);
+}
+
+.pagination-next {
+  padding: 0px 15px;
+  
+  a {
+    text-decoration: none;
+    color: rgb(165, 170, 207);
+  }
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 35px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.pagination-button {
+  background: none;
+  border: none;
+  color: rgb(165, 170, 207);
+  padding: 5px 15px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s, border-bottom 0.2s;
+  background-color: transparent;
+}
+
+.pagination-button:hover {
+  color: white;
+}
+
+.pagination-button.active {
+  border-bottom: 3px solid rgb(43, 178, 255);
+  color: rgb(243, 243, 248);
+  font-weight: bold;
+}
+
+.pagination-button.next {
+  margin-left: 10px;
+}
+
+.pagination-button:disabled {
+  color: gray;
+  cursor: not-allowed;
+  background-color: transparent !important;
+}
+
+
+/*COUNT DOWN*/
+.timer-container {
+  display: flex;  
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  background-color: var(--ps-background, #2a2a5e);
+  color: white;
+
+  &.small {
+    // width: 80px;
+    // height: 80px;
+    font-size: 0.8rem;
+  }
+
+  &.medium {
+    // width: 120px;
+    // height: 120px;
+    font-size: 1.5rem;
+  }
+
+  &.large {
+    // width: 160px;
+    // height: 160px;
+    font-size: 2rem;
+  }
+}
+
+.time-display {
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+}
+
+.colon {
+  margin: 0 5px;
+}
+
+.timer-status {
+  margin-top: 5px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.time-out {
+  // background-color: #900c3f;
+}
+
+/* Timer statüsü için konumlandırma */
+.status-right {
+  flex-direction: row-reverse;
+}
+
+.status-left {
+  flex-direction: row;
+}
+
+.status-top {
+  flex-direction: column-reverse;
+}
+
+.status-bottom {
+  flex-direction: column;
+}
+
+
 
 
 /* bunlar her zaman en altta kalsın*/

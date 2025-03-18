@@ -45,6 +45,10 @@ export class TestService {
     return this.http.get<Paged<Test>>(`/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}`);
   }
 
+  getLatest(pageNumber: number = 1, pageSize= 10): Observable<Test[]> {
+    return this.http.get<Test[]>(`/api/worksheet/latest?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+  }
+
   getCompleted(pageNumber: number = 1): Observable<Paged<CompletedTest>> {
     return this.http.get<Paged<CompletedTest>>(`/api/worksheet/CompletedTests?pageNumber=${pageNumber}&pageSize=10`);
   }

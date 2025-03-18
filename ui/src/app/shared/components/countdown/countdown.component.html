@@ -1,0 +1,22 @@
+<div class="timer-container" [ngClass]="{
+    'time-out': isTimeUp,
+    'small': size === 'small',
+    'medium': size === 'medium',
+    'large': size === 'large',
+    'status-right': timerStatusPosition === 'right',
+    'status-left': timerStatusPosition === 'left',
+    'status-top': timerStatusPosition === 'top',
+    'status-bottom': timerStatusPosition === 'bottom'
+  }"
+  [style.maxHeight]="'100%'"
+>
+    <div class="timer-display">
+      <span class="timer-value">{{ minutes }}</span>
+      <span class="colon">:</span>
+      <span class="timer-value">{{ formattedSeconds }}</span>
+    </div>
+    <div *ngIf="showLabel" class="timer-status">
+        {{ timerStatusPosition === 'left' ? '' : '&nbsp;' }} {{ isTimeUp ? '' : label }} {{ timerStatusPosition === 'right' ? '&nbsp;' : '' }}
+    </div>
+  </div>
+  

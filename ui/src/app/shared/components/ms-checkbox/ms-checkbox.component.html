@@ -1,0 +1,12 @@
+<label class="ms-checkbox-container">
+    <input type="checkbox" [checked]="checked"
+    (change)="toggleCheckbox()"
+    class="ms-hidden-checkbox">
+    <span class="ms-custom-checkbox" [class.ms-checked]="checked">
+      <svg *ngIf="checked" viewBox="0 0 24 24" class="ms-checkmark-icon">
+        <path d="M9 16.2l-4.2-4.2-1.4 1.4L9 19 21 7l-1.4-1.4z"></path>
+      </svg>
+    </span>
+    <span class="ms-checkbox-label">{{ label }}</span>
+  </label>
+  

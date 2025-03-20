@@ -48,7 +48,7 @@ import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.compone
             MatCardModule,
             MatIconModule,
             QuillModule,
-            ImageSelectorComponent, MatAutocompleteModule,WorksheetCardComponent
+            ImageSelectorComponent, MatAutocompleteModule
           ]
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -115,7 +115,7 @@ export class QuestionCanvasComponent implements OnInit {
       debounceTime(300),
       switchMap(value => {
         console.log('Search value:', value); // Gelen değeri kontrol et
-        return this.testService.search(value || '',1)
+        return this.testService.search(value || '',[],undefined,1)
       }),
       tap(results => {
         this.testList = results.items;  
@@ -138,7 +138,7 @@ export class QuestionCanvasComponent implements OnInit {
   ngOnInit() {
 
     // 🟢 Backend'den test listesini getir
-    this.testService.search('').subscribe(data => {
+    this.testService.search('',[]).subscribe(data => {
       this.testList = data.items;
     });
 
@@ -153,7 +153,7 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   loadTests() {
-    this.testService.search('').subscribe(data => {
+    this.testService.search('', []).subscribe(data => {
       this.testList = data.items;
     });
   }

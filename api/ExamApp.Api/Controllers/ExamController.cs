@@ -181,12 +181,32 @@ public class ExamController : BaseController
 
 
     [HttpGet("list")]    
-    public async Task<IActionResult> GetWorksheetsAsync(string? search = null, int pageNumber = 1, int pageSize = 10)
+    public async Task<IActionResult> GetWorksheetsAsync(string? search = null, [FromQuery] List<int>? subjectIds = null, int? gradeId = null,
+     int pageNumber = 1, int pageSize = 10)
     {
-         // 🔹 Token’dan UserId'yi al
+        // 🔹 Token’dan UserId'yi al
         var user = await GetAuthenticatedUserAsync();
+        var student = await GetAuthenticatedStudentAsync();
 
         var query = _context.Worksheets.AsQueryable();
+
+        // GradeId filtresi
+        if (gradeId.HasValue)
+        {
+            query = query.Where(t => t.GradeId == gradeId.Value);
+        }
+        else
+        {
+            query = query.Where(t => t.GradeId == student.GradeId);
+        }
+
+        // SubjectId filtresi
+        if (subjectIds != null && subjectIds.Any())
+        {
+            query = query.Where(t => t.SubjectId.HasValue && subjectIds.Contains(t.SubjectId.Value));
+        }
+
+        // Search filtresi
         if (!string.IsNullOrEmpty(search))
         {
             string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));

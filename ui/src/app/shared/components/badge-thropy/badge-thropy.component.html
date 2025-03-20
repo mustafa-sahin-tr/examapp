@@ -1,0 +1,36 @@
+<div class="ms-badge-list-container">
+    <div class="ms-badge-header">
+        <h2 class="ms-badge-title">{{ title }}</h2>
+        <p class="ms-badge-subtitle">{{ subtitle }}</p>
+    </div>
+    <div class="ms-badge-list">
+        <div
+        *ngFor="let badge of badges"
+        class="ms-badge-item"
+        [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
+        (click)="selectBadge(badge)"
+        >
+        <img [src]="badge.icon" [alt]="badge.name" class="ms-badge-icon">
+        <h3 class="ms-badge-name">{{ badge.name }}</h3>
+        <p class="ms-badge-time">{{ badge.time }}</p>
+    
+        <!-- Üçgen sadece seçili badge için gösterilecek -->
+        <div *ngIf="badge.id === selectedBadge()?.id" class="ms-badge-arrow"></div>
+        </div>
+    </div>
+    
+    <!-- Seçili badge için detay paneli -->
+    <div *ngIf="selectedBadge()" class="ms-badge-detail">
+        <div class="ms-badge-content">
+        <img [src]="selectedBadge()?.icon" class="ms-badge-large-icon">
+        <h1 class="ms-badge-title">{{ selectedBadge()?.name }}</h1>
+        <p class="ms-badge-description">{{ selectedBadge()?.description }}</p>
+        <span>{{ selectedBadge()?.completed }} of {{ selectedBadge()?.total }} completed</span>
+        <div class="ms-badge-progress">
+            <div class="ms-badge-progress-bar" [style.width.%]="selectedBadge()?.progress"></div>
+            
+        </div>
+        </div>
+    </div>
+</div>
+  

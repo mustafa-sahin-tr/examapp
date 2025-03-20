@@ -14,30 +14,37 @@ import { ImageSelectorComponent } from './pages/image-selector/image-selector.co
 import { QuestionCanvasComponent } from './pages/question/question-canvas.component';
 import { TestSolveCanvasComponent } from './pages/test-solve/test-solve-canvas.component';
 import { WorksheetDetailComponent } from './pages/worksheet-detail/worksheet-detail.component';
+import { AppComponent } from './app.component';
+import { PublicLayoutComponent } from './pages/public/public-layout/public-layout.component';
+import { LayoutComponent } from './pages/layout/layout.component';
 
 export const routes: Routes = [
-  { path: 'register', component: RegisterComponent },
-  { path: 'login', component: LoginComponent },
-  // { path: 'home', 
-  //   component: WorksheetListComponent , 
-  //   canActivate: [authGuard],
-  //   resolve: { worksheets : worksheetListResolver }
-  // },
-
-  { path: 'student-register', component: StudentRegisterComponent, canActivate: [authGuard] },
-  { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard] },
-  { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard] },
-  { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard] },
-  { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
-  { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
-  { path: 'tests', component: WorksheetListComponent , 
+  { path: '', 
+    component: LayoutComponent,
     canActivate: [authGuard],
-    resolve: { worksheets : worksheetListResolver } },
-  { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
-  { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
-  { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
-  { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
-  { path: 'exam', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
-  { path: 'exam/:id', component: TestCreateComponent, canActivate: [authGuard] },  // 🆕 Test çözme sayfası
-  { path: '**', redirectTo: 'login' }
+    children: [
+      { path: 'student-register', component: StudentRegisterComponent },
+      { path: 'question/:id', component: QuestionComponent },
+      { path: 'questioncanvas', component: QuestionCanvasComponent },
+      { path: 'questioncanvas/:id', component: QuestionCanvasComponent },
+      { path: 'question', component: QuestionComponent},
+      { path: 'imageselect', component: ImageSelectorComponent},
+      { path: 'tests', component: WorksheetListComponent , resolve: { worksheets : worksheetListResolver } },
+      { path: 'questions/view', component: QuestionViewComponent },
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent },  // 🆕 Test çözme sayfası
+      { path: 'test/:testId', component: WorksheetDetailComponent },  // 🆕 Test çözme sayfası
+      { path: 'student-profile', component: StudentProfileComponent },  // 🆕 Test çözme sayfası
+      { path: 'exam', component: TestCreateComponent},  // 🆕 Test çözme sayfası
+      { path: 'exam/:id', component: TestCreateComponent },  // 🆕 Test çözme sayfası      
+    ],
+  },
+  { path: '', 
+    component: PublicLayoutComponent,
+    children: [
+      { path: 'register', component: RegisterComponent },
+      { path: 'login', component: LoginComponent }      
+    ],
+  },
+  { path: '**', redirectTo: 'tests' }
+  
 ];

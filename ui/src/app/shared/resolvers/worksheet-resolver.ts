@@ -6,5 +6,5 @@ import { Paged, Test } from '../../models/test-instance';
 
 export const worksheetListResolver: ResolveFn<Paged<Test>> = (route: ActivatedRouteSnapshot) => {
     const testService = inject(TestService);    
-    return testService.search('', 1)
+    return testService.search('', [], undefined, 1)
 } 

@@ -19,6 +19,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { NgxChartsModule, Color, ScaleType, LegendPosition } from '@swimlane/ngx-charts';
 import { StudentTimeChartComponent } from '../../shared/components/student-time-chart/student-time-chart.component';
 import { FormsModule, NgModel } from '@angular/forms';
+import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
+import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 
 @Component({
   selector: 'app-student-profile',
@@ -28,7 +30,7 @@ import { FormsModule, NgModel } from '@angular/forms';
   imports: [CommonModule, MatCardModule, MatIconModule, MatListModule, MatTooltipModule,
     MatSnackBarModule, MatSelectModule, PointCardComponent, BadgeBoxComponent, FormsModule,
     LeaderboardComponent, SectionHeaderComponent, MatTabsModule, NgxChartsModule, StudentTimeChartComponent,
-
+    BadgeThropyComponent, QuestionNavigatorComponent
   ]
 })
 export class StudentProfileComponent implements OnInit {
@@ -46,7 +48,7 @@ export class StudentProfileComponent implements OnInit {
   student: StudentProfile | null = null;
   studentId: number = 0;
   grades: Grade[] = [];
-  activeTab = 2;  // Varsayılan olarak ilk sekme açık
+  activeTab = 0;  // Varsayılan olarak ilk sekme açık
   activeTab2 = 1;
   badges = [
     { title: "Activity", level: 1, icon: "http://localhost/minio-api/avatars/activity-badge.png" },

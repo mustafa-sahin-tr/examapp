@@ -210,7 +210,7 @@ export class QuestionComponent implements OnInit {
   }
 
   loadTests() {
-    this.testService.search('').subscribe(data => {
+    this.testService.search('', []).subscribe(data => {
       this.testList = data.items;
     });
   }

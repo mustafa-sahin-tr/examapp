@@ -15,6 +15,7 @@ import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { SubjectService } from '../../services/subject.service';
 import { Subject } from '../../models/subject';
+import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -22,7 +23,9 @@ import { Subject } from '../../models/subject';
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, SectionHeaderComponent, FormsModule ,PaginationComponent]
+      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, 
+      CustomCheckboxComponent,
+      SectionHeaderComponent, FormsModule ,PaginationComponent]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);
@@ -36,6 +39,8 @@ export class WorksheetListComponent {
   route = inject(ActivatedRoute);
   router = inject(Router);
   subjectService = inject(SubjectService);
+  selectedSubjectIds: number[] = [];
+  selectedGradeId: number | undefined;
 
     $subjects: Observable<Subject[]> = this.subjectService.loadCategories();
 
@@ -54,7 +59,7 @@ export class WorksheetListComponent {
           debounceTime(300),
           switchMap(value => {
             console.log('Search value:', value); // Gelen değeri kontrol et
-            return this.testService.search(value || '',1)
+            return this.testService.search(value || '',this.selectedSubjectIds, this.selectedGradeId, 1)
           }),
           tap(results => {
             this.pagedWorksheets = results;
@@ -74,7 +79,11 @@ export class WorksheetListComponent {
       }
 
       onEnter() {
-        this.testService.search(this.searchControl.value || '',1).subscribe(results => {
+        this.makeNewSearch();
+      }
+
+      makeNewSearch() {
+        this.testService.search(this.searchControl.value || '',this.selectedSubjectIds, this.selectedGradeId,1).subscribe(results => {
           this.pagedWorksheets = results;
           this.pageNumber = 1;
         });
@@ -92,7 +101,7 @@ export class WorksheetListComponent {
         console.log('Page changed:', page); 
         // this.nextPage();
         this.pageNumber = page;
-        this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
+        this.testService.search(this.searchControl.value || '',this.selectedSubjectIds, this.selectedGradeId, this.pageNumber).subscribe(response => {
           this.pagedWorksheets = response;
         });
       }
@@ -101,7 +110,7 @@ export class WorksheetListComponent {
         console.log('Next page');
         if (this.pageNumber * this.pageSize < this.pagedWorksheets.totalCount) {
           this.pageNumber++;
-          this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
+          this.testService.search(this.searchControl.value || '',this.selectedSubjectIds, this.selectedGradeId, this.pageNumber).subscribe(response => {
             this.pagedWorksheets = response;
           });
         }
@@ -111,7 +120,7 @@ export class WorksheetListComponent {
         console.log('Prev page');
         if (this.pageNumber > 1) {
           this.pageNumber--;
-          this.testService.search(this.searchControl.value || '', this.pageNumber).subscribe(response => {
+          this.testService.search(this.searchControl.value || '',this.selectedSubjectIds, this.selectedGradeId, this.pageNumber).subscribe(response => {
             this.pagedWorksheets = response;
           });
         }
@@ -120,6 +129,23 @@ export class WorksheetListComponent {
       onAutocompleteSelect(worksheetName: string) {
         this.searchControl.setValue(worksheetName, { emitEvent: false });
         this.onEnter();
+      }
+
+      onCheckboxChange(event: { checked: boolean; value: any }) {
+        const subjectId = event.value.id;
+        if (event.checked) {
+          if (!this.selectedSubjectIds.includes(subjectId)) {
+            this.selectedSubjectIds.push(subjectId);
+            this.makeNewSearch();
+          }
+        } else {
+          const index = this.selectedSubjectIds.indexOf(subjectId);
+          if (index > -1) {
+            this.selectedSubjectIds.splice(index, 1);
+            this.makeNewSearch();
+          }
+        }
+        console.log('Checkbox State:', event.checked, 'Value:', event.value);
       }
 
       handleLeftNavigation() {

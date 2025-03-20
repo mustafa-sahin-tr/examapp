@@ -53,20 +53,23 @@
          <div class="form-column">
           <div class="filters-container">
             <div class="filters">
-              <button class="clear-btn" (click)="toggleRetiredResults()">Temizle</button>
-        
+              <button class="clear-btn" (click)="toggleRetiredResults()">Temizle</button>        
               <div class="filter-category">
                 <h4>Dersler</h4>
                 <ul>
                     <li *ngFor="let category of $subjects | async" class="search-result-item">
-                        <label class="check-box-container filter-checkbox">
+                        <!-- <label class="check-box-container filter-checkbox">
                           <input type="checkbox" class="checkbox-input" [value]="category.name">
                           <span class="check-box-container checkbox-span"></span>
                           <span  class="check-box-form-label">{{category.name}} ()</span>
-                        </label>
-                      </li>
-  
-                  
+                        </label> -->
+                        <app-custom-checkbox
+                          [label]="category.name"
+                          [checked]="false"                          
+                          [value]="category"
+                          (checkedChange)="onCheckboxChange($event)">
+                        </app-custom-checkbox>                        
+                      </li>                      
                 </ul>
               </div>
         

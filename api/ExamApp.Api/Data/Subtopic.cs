@@ -15,4 +15,6 @@ public class SubTopic : BaseEntity
 
     [ForeignKey("TopicId")]
     public Topic Topic { get; set; }
+
+    public ICollection<QuestionSubTopic> QuestionSubTopics { get; set; } = new List<QuestionSubTopic>(); // New collection for many-to-many relationship
 }

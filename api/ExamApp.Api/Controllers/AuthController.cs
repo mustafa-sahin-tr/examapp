@@ -22,8 +22,7 @@ namespace ExamApp.Api.Controllers
             _context = context;
         }
 
-
-        [Authorize]
+        
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto request)
         {

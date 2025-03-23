@@ -1,5 +1,6 @@
 import { Answer } from "./answer";
 import { Subject } from "./subject";
+import { SubTopic } from "./subtopic";
 
 
 export interface Passage {
@@ -25,8 +26,8 @@ export interface Question {
     practiceCorrectAnswer?: string,
     isExample: boolean,
     subjectId: number,
-    topicId: number,
-    subtTopicId: number,
+    topicId: number,  
+    subTopics?: SubTopic[],  
     correctAnswer?: Answer,
     answerColCount: number,
     x: number,

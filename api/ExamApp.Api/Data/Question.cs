@@ -14,7 +14,6 @@ public class Question : BaseEntity
     public int SubjectId { get; set; }  // Soru hangi derse ait
     public Subject Subject { get; set; }
 
-
     public int Point { get; set; }  // Sorunun puan değeri (1, 5, 10 vb.)
 
     public int? TopicId { get; set; } // Ana Konu (Opsiyonel)
@@ -22,16 +21,13 @@ public class Question : BaseEntity
     [ForeignKey("TopicId")]
     public Topic Topic { get; set; }
 
-    public int? SubTopicId { get; set; } // Alt Konu (Opsiyonel)
-
-    [ForeignKey("SubTopicId")]
-    public SubTopic SubTopic { get; set; }
-
     [Required]
     public int DifficultyLevel { get; set; } = 1; // 1-10 arasında zorluk seviyesi
 
     // Bir soru birçok teste ait olabilir
     public ICollection<WorksheetQuestion> WorksheetQuestions { get; set; } = new List<WorksheetQuestion>();
+
+    public ICollection<QuestionSubTopic> QuestionSubTopics { get; set; } = new List<QuestionSubTopic>(); // New collection for many-to-many relationship
 
     public ICollection<Answer> Answers { get; set; } = new List<Answer>();  // Şıklar
 

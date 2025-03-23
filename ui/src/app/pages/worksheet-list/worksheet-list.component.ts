@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TestService } from '../../services/test.service';
 import { CompletedTest, Paged, Test } from '../../models/test-instance';
 import { CompletedWorksheetCardComponent } from '../completed-worksheet/completed-worksheet-card.component';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { WorksheetBadgeComponent } from '../../shared/components/worksheet-badge/worksheet-badge.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
@@ -24,7 +24,7 @@ import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-
   standalone: true,
   imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
       MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, 
-      CustomCheckboxComponent,
+      CustomCheckboxComponent, RouterModule,
       SectionHeaderComponent, FormsModule ,PaginationComponent]
 })
 export class WorksheetListComponent {

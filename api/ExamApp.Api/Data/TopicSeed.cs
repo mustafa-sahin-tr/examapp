@@ -8,13 +8,13 @@ public static class TopicSeed
         //SeedGrade1(modelBuilder);
         //SeedGrade2(modelBuilder);
         SeedGrade3(modelBuilder);
-        SeedGrade4(modelBuilder);
+        // SeedGrade4(modelBuilder);
     }
     public static void SeedGrade3(ModelBuilder modelBuilder) {
         SeedGrade3Math(modelBuilder);
         SeedGrade3Turkce(modelBuilder);
-        SeedGrade3FenBilimleri(modelBuilder);
-        SeedGrade3HayatBilgisi(modelBuilder);
+        // SeedGrade3FenBilimleri(modelBuilder);
+        // SeedGrade3HayatBilgisi(modelBuilder);
     }
 
     public static void SeedGrade4(ModelBuilder modelBuilder)
@@ -376,64 +376,71 @@ public static class TopicSeed
     
     public static void SeedGrade3Math(ModelBuilder modelBuilder) 
     {
-        var gradeId = 3; // 3. sınıf
-        var matematikSubjectId = 2;
+        int gradeId = 3;
+        int subjectId = 2;
 
-        var grade1MatematikTopics = new List<Topic>
+        // Topics
+        var topics = new List<Topic>
         {
-            new Topic { Id = 7, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Doğal Sayılar ve Ritmik Saymalar" },
-            new Topic { Id = 8, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Toplama ve Çıkarma İşlemi" },
-            new Topic { Id = 9, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Çarpma ve Bölme İşlemi" },
-            new Topic { Id = 10, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Kesirler" },
-            new Topic { Id = 11, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Zaman Ölçme" },
-            new Topic { Id = 12, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Geometrik Cisimler ve Örüntüler" },
-            new Topic { Id = 13, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Uzunluk, Alan ve Çevre Ölçme" },
-            new Topic { Id = 211, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Paralarımız" },
-            new Topic { Id = 212, GradeId = gradeId, SubjectId = matematikSubjectId, Name = "Tartma" }
+            new Topic { Id = 1, Name = "DOĞAL SAYILAR", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 2, Name = "DOĞAL SAYILARLA TOPLAMA İŞLEMİ", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 3, Name = "DOĞAL SAYILARLA ÇIKARMA İŞLEMİ", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 4, Name = "DOĞAL SAYILARLA ÇARPMA İŞLEMİ", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 5, Name = "DOĞAL SAYILARLA BÖLME İŞLEMİ", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 6, Name = "KESİRLER", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 7, Name = "ZAMAN ÖLÇME", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 8, Name = "PARALARIMIZ", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 9, Name = "TARTMA", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 10, Name = "GEOMETRİK ŞEKİLLER VE CİSİMLER", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 11, Name = "GEOMETRİDE TEMEL KAVRAMLAR", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 12, Name = "UZAMSAL İLİŞKİLER", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 13, Name = "UZUNLUK ÖLÇME", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 14, Name = "ÇEVRE ÖLÇME", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 15, Name = "ALAN ÖLÇME", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 16, Name = "SIVI ÖLÇME", GradeId = gradeId, SubjectId = subjectId },
+            new Topic { Id = 17, Name = "VERİ TOPLAMA VE DEĞERLENDİRME", GradeId = gradeId, SubjectId = subjectId },
         };
+        modelBuilder.Entity<Topic>().HasData(topics);
 
-        var grade1MatematikSubTopics = new List<SubTopic>
+        // SubTopics
+        var subTopics = new List<SubTopic>
         {
-            new SubTopic { Id = 24, TopicId = 7, Name = "Üç Basamaklı Doğal Sayılar" },
-            new SubTopic { Id = 25, TopicId = 7, Name = "Birer, Onar ve Yüzer Ritmik Sayma" },
-            new SubTopic { Id = 26, TopicId = 7, Name = "Basamak Adları ve Basamak Değerleri" },
-            new SubTopic { Id = 27, TopicId = 7, Name = "En Yakın Onluk ve Yüzlük" },
-            new SubTopic { Id = 28, TopicId = 7, Name = "Doğal Sayıları Karşılaştırma ve Sıralama" },
-            new SubTopic { Id = 29, TopicId = 7, Name = "Ritmik Saymalar" },
-            new SubTopic { Id = 30, TopicId = 7, Name = "Sayı Örüntüleri" },
-
-            new SubTopic { Id = 31, TopicId = 8, Name = "Eldeli ve Eldesiz Toplama İşlemi" },
-            new SubTopic { Id = 32, TopicId = 8, Name = "Toplananların Yer Değiştirmesi" },
-            new SubTopic { Id = 33, TopicId = 8, Name = "Onluk Bozmadan ve Bozarak Çıkarma İşlemi" },
-            new SubTopic { Id = 34, TopicId = 8, Name = "10’un ve 100’ün Katlarıyla Zihinden Çıkarma İşlemi" },
-
-            new SubTopic { Id = 35, TopicId = 9, Name = "Çarpım Tablosu" },
-            new SubTopic { Id = 36, TopicId = 9, Name = "Çarpma İşlemi" },
-            new SubTopic { Id = 37, TopicId = 9, Name = "10 ve 100 ile Kısa Yoldan Çarpma İşlemi" },
-            new SubTopic { Id = 38, TopicId = 9, Name = "Çarpma İşlemi ile İlgili Problemler" },
-            new SubTopic { Id = 39, TopicId = 9, Name = "İki Basamaklı Doğal Sayılarla Bölme İşlemi" },
-            new SubTopic { Id = 40, TopicId = 9, Name = "Bölme İşlemi ile İlgili Problemler" },
-
-            new SubTopic { Id = 41, TopicId = 10, Name = "Kesirler" },
-            new SubTopic { Id = 42, TopicId = 10, Name = "Bir Çokluğun Belirtilen Kesir Kadarı" },
-
-            new SubTopic { Id = 43, TopicId = 11, Name = "Zaman Ölçme" },
-            new SubTopic { Id = 44, TopicId = 11, Name = "Zaman Ölçme ile İlgili Problemler" },
-
-            new SubTopic { Id = 45, TopicId = 12, Name = "Geometrik Cisimler" },
-            new SubTopic { Id = 46, TopicId = 12, Name = "Örüntüler" },
-
-            new SubTopic { Id = 47, TopicId = 13, Name = "Uzunluk Ölçme" },
-            new SubTopic { Id = 48, TopicId = 13, Name = "Alan Ölçme" },
-            new SubTopic { Id = 49, TopicId = 13, Name = "Çevre Ölçme" },
-
-            new SubTopic { Id = 230, TopicId = 211, Name = "Paralarımız" },
-            new SubTopic { Id = 231, TopicId = 212, Name = "Tartma" }
+            // DOĞAL SAYILAR
+            new SubTopic { Id = 1, Name = "Üç Basamaklı Doğal Sayılar", TopicId = 1 },
+            new SubTopic { Id = 2, Name = "Birer, Onar, Yüzer Ritmik Sayma", TopicId = 1 },
+            // new SubTopic { Id = 3, Name = "Onar Ritmik Sayma", TopicId = 1 },
+            // new SubTopic { Id = 4, Name = "Yüzer Ritmik Sayma", TopicId = 1 },
+            new SubTopic { Id = 5, Name = "Basamak Adları ve Değerleri", TopicId = 1 },
+            // new SubTopic { Id = 6, Name = "Basamak Değerleri", TopicId = 1 },
+            new SubTopic { Id = 7, Name = "Yüzlük, Onluk ve Birlik", TopicId = 1 },
+            new SubTopic { Id = 8, Name = "Doğal Sayıları En Yakın Onluğa ve Yüzlüğe Yuvarlama", TopicId = 1 },
+            // new SubTopic { Id = 9, Name = "Doğal Sayıları En Yakın Yüzlüğe Yuvarlama", TopicId = 1 },
+            new SubTopic { Id = 10, Name = "Doğal Sayıları Sıralama ve Karşılaştırma", TopicId = 1 },
+            // new SubTopic { Id = 11, Name = "Doğal Sayıları Sıralama", TopicId = 1 },
+            new SubTopic { Id = 12, Name = "Altışar,Yedişer,Sekizer,Dokuzar  Ritmik Sayma", TopicId = 1 },
+            // new SubTopic { Id = 13, Name = "Yedişer Ritmik Sayma", TopicId = 1 },
+            // new SubTopic { Id = 14, Name = "Sekizer Ritmik Sayma", TopicId = 1 },
+            // new SubTopic { Id = 15, Name = "Dokuzar Ritmik Sayma", TopicId = 1 },
+            new SubTopic { Id = 16, Name = "Sayı Örüntüleri", TopicId = 1 },
+            new SubTopic { Id = 17, Name = "Tek ve Çift Doğal Sayılar", TopicId = 1 },
+            // new SubTopic { Id = 18, Name = "Toplamı Tek mi Çift mi?", TopicId = 1 },
+            new SubTopic { Id = 19, Name = "Romen Rakamları", TopicId = 1 },
+            
+            // DOĞAL SAYILARLA TOPLAMA İŞLEMİ
+            new SubTopic { Id = 20, Name = "Eldeli ve Eldesiz Toplama İşlemi", TopicId = 2 },
+            // new SubTopic { Id = 21, Name = "Eldeli Toplama İşlemi", TopicId = 2 },
+            new SubTopic { Id = 22, Name = "Üç Toplananlı İşlemler", TopicId = 2 },
+            new SubTopic { Id = 23, Name = "Toplananların Yerini Değiştirme", TopicId = 2 },
+            
+            // DOĞAL SAYILARLA ÇIKARMA İŞLEMİ
+            // new SubTopic { Id = 24, Name = "Çıkaralım Bulalım", TopicId = 3 },
+            new SubTopic { Id = 25, Name = "Onluk ve Yüzlük Bozmadan Çıkarma İşlemi", TopicId = 3 },
+            // new SubTopic { Id = 26, Name = "Onluk Bozarak Çıkarma İşlemi", TopicId = 3 },
+            new SubTopic { Id = 27, Name = "Onluk ve Yüzlük Bozarak Çıkarma İşlemi", TopicId = 3 },
+            new SubTopic { Id = 28, Name = "İki Basamaklı Sayılarla Zihinden Çıkarma İşlemi", TopicId = 3 },
+            new SubTopic { Id = 29, Name = "10’un Katı Olan Sayılarla Zihinden Çıkarma İşlemi", TopicId = 3 }
         };
-
-        // Verileri tekrar eklemeyi önlemek için HasData kullanıyoruz
-        modelBuilder.Entity<Topic>().HasData(grade1MatematikTopics);
-        modelBuilder.Entity<SubTopic>().HasData(grade1MatematikSubTopics);
+        modelBuilder.Entity<SubTopic>().HasData(subTopics);
 
     }
     public static void SeedGrade3Turkce(ModelBuilder modelBuilder)
@@ -443,45 +450,47 @@ public static class TopicSeed
 
         var grade1TurkceTopics = new List<Topic>
         {
-            new Topic { Id = 1, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "Harf, Hece, Sözcük ve Cümle Bilgisi" },
-            new Topic { Id = 2, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "Söz Varlığını Geliştirme" },
-            new Topic { Id = 3, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "Okuduğunu Anlama" },
-            new Topic { Id = 4, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "Sözcük Türleri" },
-            new Topic { Id = 5, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "Noktalama İşaretleri" },
-            new Topic { Id = 6, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "Yazım Kuralları" }
+            new Topic { Id = 18, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "HARF VE HECE BİLGİSİ" },
+            new Topic { Id = 19, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "SÖZCÜK BİLGİSİ" },
+            new Topic { Id = 20, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "CÜMLE BİLGİSİ" },
+            new Topic { Id = 21, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "SÖZ VARLIĞI" },
+            new Topic { Id = 22, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "OKUMA ANLAMA" },
+            new Topic { Id = 23, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "SÖZCÜK TÜRLERİ" },
+            new Topic { Id = 24, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "NOKTALAMA İŞARETLERİ" },
+            new Topic { Id = 25, GradeId = gradeId, SubjectId = turkcesubjectId, Name = "YAZIM KURALLARI" }
         };
 
-        var grade1TurkceSubTopics = new List<SubTopic>
-        {
-            new SubTopic { Id = 1, TopicId = 1, Name = "Harf, Hece, Sözcük 1" },
-            new SubTopic { Id = 2, TopicId = 1, Name = "Harf, Hece, Sözcük 2" },
-            new SubTopic { Id = 3, TopicId = 1, Name = "Eş Anlamlı (Anlamdaş) Sözcükler" },
-            new SubTopic { Id = 4, TopicId = 1, Name = "Zıt (Karşıt) Anlamlı Sözcükler" },
-            new SubTopic { Id = 5, TopicId = 1, Name = "Eş Sesli (Sesteş) Sözcükler" },
-            new SubTopic { Id = 6, TopicId = 1, Name = "Sözcük Türetme - Ekler" },
-            new SubTopic { Id = 7, TopicId = 1, Name = "Sözcükte Anlam" },
-            new SubTopic { Id = 8, TopicId = 1, Name = "Cümle Türleri" },
-            new SubTopic { Id = 9, TopicId = 1, Name = "Cümlede Anlam" },
+        // var grade1TurkceSubTopics = new List<SubTopic>
+        // {
+        //     new SubTopic { Id = 1, TopicId = 1, Name = "Harf, Hece, Sözcük 1" },
+        //     new SubTopic { Id = 2, TopicId = 1, Name = "Harf, Hece, Sözcük 2" },
+        //     new SubTopic { Id = 3, TopicId = 1, Name = "Eş Anlamlı (Anlamdaş) Sözcükler" },
+        //     new SubTopic { Id = 4, TopicId = 1, Name = "Zıt (Karşıt) Anlamlı Sözcükler" },
+        //     new SubTopic { Id = 5, TopicId = 1, Name = "Eş Sesli (Sesteş) Sözcükler" },
+        //     new SubTopic { Id = 6, TopicId = 1, Name = "Sözcük Türetme - Ekler" },
+        //     new SubTopic { Id = 7, TopicId = 1, Name = "Sözcükte Anlam" },
+        //     new SubTopic { Id = 8, TopicId = 1, Name = "Cümle Türleri" },
+        //     new SubTopic { Id = 9, TopicId = 1, Name = "Cümlede Anlam" },
 
-            new SubTopic { Id = 10, TopicId = 2, Name = "Sebep-Sonuç İlişkileri" },
-            new SubTopic { Id = 11, TopicId = 2, Name = "Karşılaştırmalar" },
-            new SubTopic { Id = 12, TopicId = 2, Name = "Betimlemeler" },
+        //     new SubTopic { Id = 10, TopicId = 2, Name = "Sebep-Sonuç İlişkileri" },
+        //     new SubTopic { Id = 11, TopicId = 2, Name = "Karşılaştırmalar" },
+        //     new SubTopic { Id = 12, TopicId = 2, Name = "Betimlemeler" },
 
-            new SubTopic { Id = 13, TopicId = 3, Name = "5N 1K" },
-            new SubTopic { Id = 14, TopicId = 3, Name = "Olayların Oluş Sırası" },
-            new SubTopic { Id = 15, TopicId = 3, Name = "Öykü Unsurları" },
-            new SubTopic { Id = 16, TopicId = 3, Name = "Başlık Konu İlişkisi" },
-            new SubTopic { Id = 17, TopicId = 3, Name = "Ana Duygu" },
-            new SubTopic { Id = 18, TopicId = 3, Name = "Ana Düşünce" },
-            new SubTopic { Id = 19, TopicId = 3, Name = "Okuma Anlama 1" },
-            new SubTopic { Id = 20, TopicId = 3, Name = "Okuma Anlama 2" },
-            new SubTopic { Id = 21, TopicId = 3, Name = "Okuma Anlama 3" },
-            new SubTopic { Id = 22, TopicId = 3, Name = "Görsel Yorumlama 1" },
-            new SubTopic { Id = 23, TopicId = 3, Name = "Görsel Yorumlama 2" }
-        };
+        //     new SubTopic { Id = 13, TopicId = 3, Name = "5N 1K" },
+        //     new SubTopic { Id = 14, TopicId = 3, Name = "Olayların Oluş Sırası" },
+        //     new SubTopic { Id = 15, TopicId = 3, Name = "Öykü Unsurları" },
+        //     new SubTopic { Id = 16, TopicId = 3, Name = "Başlık Konu İlişkisi" },
+        //     new SubTopic { Id = 17, TopicId = 3, Name = "Ana Duygu" },
+        //     new SubTopic { Id = 18, TopicId = 3, Name = "Ana Düşünce" },
+        //     new SubTopic { Id = 19, TopicId = 3, Name = "Okuma Anlama 1" },
+        //     new SubTopic { Id = 20, TopicId = 3, Name = "Okuma Anlama 2" },
+        //     new SubTopic { Id = 21, TopicId = 3, Name = "Okuma Anlama 3" },
+        //     new SubTopic { Id = 22, TopicId = 3, Name = "Görsel Yorumlama 1" },
+        //     new SubTopic { Id = 23, TopicId = 3, Name = "Görsel Yorumlama 2" }
+        // };
 
         // Verileri tekrar eklemeyi önlemek için HasData kullanıyoruz
         modelBuilder.Entity<Topic>().HasData(grade1TurkceTopics);
-        modelBuilder.Entity<SubTopic>().HasData(grade1TurkceSubTopics);
+        // modelBuilder.Entity<SubTopic>().HasData(grade1TurkceSubTopics);
     }
 }

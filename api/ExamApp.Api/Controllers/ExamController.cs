@@ -388,6 +388,71 @@ public class ExamController : BaseController
         return Ok(response);
     }    
 
+    [HttpGet("test-canvas-instances")]
+    public async Task<IActionResult> GetAllCanvasInstanceQuestions(bool includeAnswers = false)
+    {
+        var user = await GetAuthenticatedUserAsync();
+
+        var testInstance = await _context.TestInstances
+            .Include(ti => ti.Worksheet)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Answers)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Passage)
+            .ToListAsync();            
+
+        if (testInstance == null)
+        {
+            return NotFound(new { message = "Test bulunamadı!" });
+        }        
+
+        if (includeAnswers)
+        {
+            var responseWithAnswers = new
+            {            
+                TestInstanceQuestions = testInstance.SelectMany(tiq => tiq.WorksheetInstanceQuestions.Select(tiq => new
+                {                
+                    Question = new {                    
+                        tiq.WorksheetQuestion.Question.ImageUrl,
+                        tiq.WorksheetQuestion.Question.X,
+                        tiq.WorksheetQuestion.Question.Y,
+                        tiq.WorksheetQuestion.Question.Width,
+                        tiq.WorksheetQuestion.Question.Height,
+                        Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new
+                        {                        
+                            a.X,
+                            a.Y,
+                            a.Width,
+                            a.Height
+                        }).ToList() 
+                    }
+                })).ToList()
+            };
+            return Ok(responseWithAnswers);
+        }
+        else 
+        {
+            var responseWithoutAnswers = new
+            {            
+                TestInstanceQuestions = testInstance.SelectMany(tiq => tiq.WorksheetInstanceQuestions.Select(tiq => new
+                {                
+                    Question = new {                    
+                        tiq.WorksheetQuestion.Question.ImageUrl,
+                        tiq.WorksheetQuestion.Question.X,
+                        tiq.WorksheetQuestion.Question.Y,
+                        tiq.WorksheetQuestion.Question.Width,
+                        tiq.WorksheetQuestion.Question.Height
+                    }
+                })).ToList()
+            };
+            return Ok(responseWithoutAnswers);
+        }
+    }
+
     [HttpGet("test-canvas-instance/{testInstanceId}")]
     public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
     {

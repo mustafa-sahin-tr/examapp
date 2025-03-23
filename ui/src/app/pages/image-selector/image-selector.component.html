@@ -4,7 +4,7 @@
     <button mat-raised-button color="primary" (click)="toggleSelectionMode('question')">Soru Seç</button>
     <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizalamayı {{!autoAlign() ? 'Aç' : 'Kapat'}}</button>
     <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
-    <!-- <button (click)="downloadRegions()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
+    <button (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button>
     
     <div *ngIf="imageSrc()" class="canvas-container">
       <canvas #canvas (mousedown)="startSelection($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
@@ -15,7 +15,7 @@
       <ul class="regions">
         <li *ngFor="let region of regions(); let i = index">
           {{ region.name }} 
-          <!-- - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }} -->
+          - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }}
           <!-- ✅ Örnek soru checkbox -->
             <label>
                 <input type="checkbox" [checked]="isExample(region.name)" (change)="toggleExampleMode(region.name)"> Örnek Soru
@@ -26,7 +26,7 @@
             </quill-editor>
           <ul>
             <li *ngFor="let answer of region.answers; let j = index">              
-              <!-- - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }} -->              
+              - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }}              
               <button class="choice-btn" (click)="setCorrectAnswer(i, j)">
                 {{ answer.label }}  {{ answer.isCorrect ? "✅" : "" }}
               </button>          
@@ -38,13 +38,23 @@
 
             <button  (click)="removeQuestion(i)">❌ Soruyu Sil</button>
              <button (click)="selectQuestion(i)" [disabled]="isExample(region.name)">Şıkları Seç</button>
+
+             <ng-container>
+                  <!-- <label for="passageSelect">Passage Seç:</label> -->
+                  <select id="passageSelect" class="passage-select" (change)="onPassageChange($event, region.name)">
+                    <option value="0" [selected]="!selectedPassageMap.has(region.name)">🔹 Passage Seçiniz</option>
+                    <option *ngFor="let passage of passages()" [value]="passage.id" [selected]="selectedPassageMap.get(region.name) === passage.id">
+                      Passage {{ passage.id }}
+                    </option>
+              </select>
+            </ng-container>
+             
         </li>
       </ul>
 
-      <ul>
+      <!-- <ul>
         <li *ngFor="let region of regions(); let i = index">
           <strong>{{ region.name }}</strong>
-          <label for="passageSelect">Passage Seç:</label>
           <select id="passageSelect" (change)="onPassageChange($event, region.name)">
             <option value="0" [selected]="!selectedPassageMap.has(region.name)">🔹 Passage Seçiniz</option>
             <option *ngFor="let passage of passages()" [value]="passage.id" [selected]="selectedPassageMap.get(region.name) === passage.id">
@@ -53,7 +63,7 @@
           </select>
                 
         </li>
-      </ul>
+      </ul> -->
     </div>
   </div>
   

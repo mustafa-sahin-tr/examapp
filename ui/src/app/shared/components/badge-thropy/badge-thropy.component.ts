@@ -28,7 +28,7 @@ export class BadgeThropyComponent {
       "icon": "achievements/disabled-dark.230c05.svg",
       "time": "30 min",
       "description": "Watch 30 minutes of content to unlock this badge.",
-      "progress": 0,
+      "progress": 45,
       "completed": "0 min",
       "total": "30 min"
     },

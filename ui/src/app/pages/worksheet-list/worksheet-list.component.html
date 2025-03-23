@@ -103,12 +103,12 @@
                 <h3>
                   {{ course.name }}
                   <span class="new-badge">NEW & POPULAR</span>
-                  <span class="new-badge"><strong> 0 Soru</strong></span>
+                  <span class="new-badge"><strong> {{course.questionCount}} Soru</strong></span>
                   <span class="new-badge"><strong> {{ course.gradeId }}.Sınıf</strong></span>
                   <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
                   <span class="new-badge"><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika</span>
                 </h3>
-                <span>{{ course.subtitle }}</span>
+                <a [routerLink]="['/test', course.id]"><span>{{ course.subtitle }}</span></a>
                 <p>{{ course.description }}</p>             
               </div>
             </li>

@@ -30,6 +30,7 @@ import { ImageSelectorComponent } from '../image-selector/image-selector.compone
 import { debounceTime, map, Observable, startWith, switchMap, tap } from 'rxjs';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
+import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -48,7 +49,7 @@ import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.compone
             MatCardModule,
             MatIconModule,
             QuillModule,
-            ImageSelectorComponent, MatAutocompleteModule
+            ImageSelectorComponent, MatAutocompleteModule, CustomCheckboxComponent
           ]
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -88,6 +89,7 @@ export class QuestionCanvasComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   questionForm!: FormGroup;
   bookService = inject(BookService);
+  selectedSubtopicsId: number[] = [];
 
   // 🟢 Form Kontrolleri
 
@@ -98,6 +100,20 @@ export class QuestionCanvasComponent implements OnInit {
     
   }
 
+  onCheckboxChange(event: { checked: boolean; value: any }) {
+    const subjectId = event.value.id;
+    if (event.checked) {
+      if (!this.selectedSubtopicsId.includes(subjectId)) {
+        this.selectedSubtopicsId.push(subjectId);        
+      }
+    } else {
+      const index = this.selectedSubtopicsId.indexOf(subjectId);
+      if (index > -1) {
+        this.selectedSubtopicsId.splice(index, 1);        
+      }
+    }
+    console.log('Checkbox State:', event.checked, 'Value:', event.value);
+  }
 
   
 
@@ -223,7 +239,7 @@ export class QuestionCanvasComponent implements OnInit {
     const questionPayload = {            
       testId: formData.testId ? formData.testId.id : 0,
       topicId: formData.topicId,
-      subtopicId: formData.subtopicId,
+      subTopics: this.selectedSubtopicsId,
       subjectId : formData.subjectId,
     }
 
@@ -232,6 +248,7 @@ export class QuestionCanvasComponent implements OnInit {
        next: (data) => {
         console.log('Soru Kaydedildi:', data);
         this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
+        this.imageSelector.resetRegions();
        },
         error: (err) => {
           console.log(err);

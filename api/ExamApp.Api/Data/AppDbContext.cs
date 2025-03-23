@@ -82,6 +82,7 @@ public class AppDbContext : DbContext
     public DbSet<Book> Books { get; set; }
     public DbSet<BookTest> BookTests { get; set; }
     public DbSet<Passage> Passage { get; set; }
+    public DbSet<QuestionSubTopic> QuestionSubTopics { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -284,6 +285,18 @@ public class AppDbContext : DbContext
             .WithMany(b => b.BookTests)
             .HasForeignKey(bt => bt.BookId)
             .OnDelete(DeleteBehavior.Cascade); // Eğer bir kitap silinirse, testleri de silinsin.
+
+        modelBuilder.Entity<QuestionSubTopic>()
+            .HasOne(qst => qst.Question)
+            .WithMany(q => q.QuestionSubTopics)
+            .HasForeignKey(qst => qst.QuestionId);
+
+        modelBuilder.Entity<QuestionSubTopic>()
+            .HasOne(qst => qst.SubTopic) 
+            .WithMany(st => st.QuestionSubTopics)
+            .HasForeignKey(qst => qst.SubTopicId);
+
+
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {

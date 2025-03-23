@@ -48,6 +48,6 @@ public class HeaderInfo {
     public int? TopicId { get; set; }
 
     public int? SubjectId { get; set; }
-    public int? SubtopicId { get; set; }
+    public List<int>? Subtopics { get; set; }
 
 }

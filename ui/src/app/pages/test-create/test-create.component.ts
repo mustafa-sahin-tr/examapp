@@ -14,6 +14,8 @@ import { TestService } from '../../services/test.service';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { BookService } from '../../services/book.service';
 import { Book, BookTest } from '../../models/book';
+import { QuillEditorComponent } from 'ngx-quill';
+import { SafeHtmlPipe } from '../../services/safehtml';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',

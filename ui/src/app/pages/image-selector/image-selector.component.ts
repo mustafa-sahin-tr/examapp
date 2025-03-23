@@ -20,23 +20,23 @@ export class ImageSelectorComponent {
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;  
 
   private ctx!: CanvasRenderingContext2D | null;
-  public imageSrc = signal<string | null>(null);
   private img = new Image();
-  public autoAlign = signal<boolean>(true);
 
+  public autoAlign = signal<boolean>(true);
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
-
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
-
-
+  public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
   public regions = signal<QuestionRegion[]>([]);
+  public imageSrc = signal<string | null>(null);
+  public imagName = signal<string | null>(null);
+
+
   private startX = 0;
   private startY = 0;
   private isDrawing = false;
   private selectedQuestionIndex = -1;
 
-  public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
 
   public exampleAnswers = new Map<string, string>(); // 📜 Her soru için örnek cevapları sakla
   public exampleFlags = new Map<string, boolean>();  // ✅ Her soru için "isExample" flag'ini sakla
@@ -44,11 +44,13 @@ export class ImageSelectorComponent {
   private currentX = 0;
   private currentY = 0;
 
+
+
   handleFileInput(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
       const reader = new FileReader();
-      
+      this.imagName.set(file.name);
       reader.onload = (e: ProgressEvent<FileReader>) => {
         this.imageSrc.set(e.target?.result as string);
         this.imageData.set(e.target?.result as string); // 📂 Resmi base64 olarak sakla
@@ -257,6 +259,31 @@ export class ImageSelectorComponent {
   //     questions: this.regions()
   //   };
   // }
+
+  public downloadRegionsLite() {
+    // const jsonData = {
+    //   questions: this.regions().map(region => ({
+    //     ...region,
+    //     imageUrl: '../data/' + this.imagName()
+    //     // name: '../data/' + this.imagName(),      
+    //   })),
+    // }
+
+    const jsonData = this.regions().map(region => ({
+      questions: {
+        ...region,
+        imageUrl: '../data/' + this.imagName()
+      }
+    }));
+
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(jsonData, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', 'soru_koordinatlar.json');
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+  }
   
 
   public downloadRegions(header: any) {
@@ -291,6 +318,17 @@ export class ImageSelectorComponent {
       header: header
     }
   }
+
+  public resetRegions() {
+    this.passages.set([]);
+    this.regions.set([]);
+    this.imageData.set(null);
+    this.imageSrc.set(null);
+    this.exampleAnswers.clear();
+    this.exampleFlags.clear();
+    this.selectedPassageMap.clear();    
+  }
+
 
   setCorrectAnswer(questionIndex: number, answerIndex: number) {
     const region = this.regions()[questionIndex];

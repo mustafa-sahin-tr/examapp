@@ -1383,7 +1383,7 @@ form {
 label {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #333;
+  color: var(--mat-sys-on-surface);
   margin-bottom: 5px;
 }
 
@@ -2089,6 +2089,7 @@ h4 {
   font-size: 16px;
   line-height: 22px;
   min-height: 24px;
+  color: var(--mat-sys-on-surface);
 }
 
 .course-type {
@@ -2783,3 +2784,40 @@ g.y.axis text {
     width: 155px;
   }
  
+  .mdc-text-field--outlined:not(.mdc-text-field--disabled) .mdc-floating-label {
+    color: var(--mat-sys-on-surface)  !important;
+} 
+
+.ql-editor.ql-blank::before {
+  color: var(--mat-sys-on-surface)  !important;
+}
+
+.ql-snow .ql-stroke {
+  stroke: var(--mat-sys-on-surface)  !important;
+}
+
+.ql-snow .ql-picker-label {
+  color: var(--mat-sys-on-surface)  !important;
+}
+
+.ql-snow.ql-toolbar button, .ql-snow .ql-toolbar button {
+  color: var(--mat-sys-on-surface)  !important;
+}
+
+.ql-snow .ql-fill {
+  fill: var(--mat-sys-on-surface)  !important;
+}
+
+a {
+    color: rgb(243, 243, 248);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+a:hover {
+  text-decoration: underline;
+}

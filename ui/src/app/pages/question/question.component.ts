@@ -371,7 +371,7 @@ export class QuestionComponent implements OnInit {
                   isExample: questionPayload.isExample,
                   subjectId: questionPayload.subjectId,
                   topicId: questionPayload.topicId,
-                  subtTopicId: questionPayload.subtopicId,              
+                  // subtTopicId: questionPayload.subtopicId,              
                   answerColCount: questionPayload.answerColCount,
                   x: 0,
                   y: 0,

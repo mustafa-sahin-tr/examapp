@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, computed, effect, ElementRef, EventEmitter, Input, Output, signal, ViewChild } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, computed, effect, ElementRef, EventEmitter, Input, Output, signal, ViewChild } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { SafeHtmlPipe } from '../../../services/safehtml';
 import { NgIf } from '@angular/common';
@@ -9,8 +9,8 @@ import { NgIf } from '@angular/common';
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss'
 })
-export class QuestionCanvasViewComponent implements AfterViewInit {
-  @ViewChild('passagecanvas', { static: true }) passageCanvas!: ElementRef<HTMLCanvasElement>;
+export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChecked{
+  @ViewChild('passagecanvas', { static: false }) passageCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvas', { static: true }) canvas!: ElementRef<HTMLCanvasElement>;
 
   private psgctx!: CanvasRenderingContext2D | null;
@@ -21,9 +21,14 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
 
   public _questionRegion = signal<QuestionRegion>({} as QuestionRegion);
   public isImageLoaded = signal(false);  // Resim yüklendi mi?
+
+  private shouldInitCanvas = false;
   
-  @Input({ required: true }) set questionRegion(value: QuestionRegion) {
+  @Input({ required: true }) set questionRegion(value: QuestionRegion) {    
     this._questionRegion.set(value);  
+    if (value?.passage) {
+      this.shouldInitCanvas = true;
+    }
   }
 
   @Input() correctAnswerVisible: boolean = false;
@@ -49,7 +54,14 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
   }
 
   
-
+  ngAfterViewChecked() {
+    if (this.shouldInitCanvas) {
+      this.shouldInitCanvas = false;
+      this.psgctx = this.passageCanvas.nativeElement.getContext('2d');
+      // canvas işlemi burada
+      this.loadImageForQuestion();
+    }
+  }
 
   ngAfterViewInit() {
     if(this.passageCanvas) {
@@ -61,7 +73,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit {
 
   drawPassageSection() {    
     if (!this.isImageLoaded()) return;
-    if(!this.passageCanvas) return;
+    if(!this.psgctx) return;
     const passageCanvasEl = this.passageCanvas.nativeElement;
     this.psgctx = passageCanvasEl.getContext('2d');
   

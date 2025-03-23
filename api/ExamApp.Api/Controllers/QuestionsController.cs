@@ -32,6 +32,8 @@ public class QuestionsController : BaseController
         var question = await _context.Questions
             .Include(q => q.Answers)
             .Include(q => q.Subject)
+            .Include(q => q.QuestionSubTopics)
+                .ThenInclude(qst => qst.SubTopic)
             .Where(q => q.Id == id)
             .Select(q => new
             {
@@ -40,8 +42,7 @@ public class QuestionsController : BaseController
                 q.SubText,
                 q.ImageUrl,
                 q.SubjectId,
-                q.TopicId,
-                q.SubTopicId,
+                q.TopicId,                
                 CategoryName = q.Subject.Name,
                 q.Point,
                 Answers = q.Answers.Select(a => new
@@ -59,7 +60,12 @@ public class QuestionsController : BaseController
                     q.Passage.ImageUrl
                 } : null,
                 q.CorrectAnswer,
-                q.AnswerColCount
+                q.AnswerColCount,
+                Subtopics = q.QuestionSubTopics.Select(qst => new
+                {
+                    qst.SubTopicId,
+                    qst.SubTopic.Name
+                }).ToList()
             })
             .FirstOrDefaultAsync();
 
@@ -124,7 +130,10 @@ public class QuestionsController : BaseController
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.Subject)
             .Include(tq => tq.Question)
-                .ThenInclude(q => q.Passage)                        
+                .ThenInclude(q => q.Passage)      
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.QuestionSubTopics)
+                    .ThenInclude(qst => qst.SubTopic)
             .Where(tq => tq.TestId == testid)
             .Select(tq => new
             {                
@@ -134,7 +143,6 @@ public class QuestionsController : BaseController
                 tq.Question.ImageUrl,
                 tq.Question.SubjectId,
                 tq.Question.TopicId,
-                tq.Question.SubTopicId,
                 CategoryName = tq.Question.Subject.Name,
                 tq.Question.Point,
                 Answers = tq.Question.Answers.Select(a => new
@@ -152,7 +160,12 @@ public class QuestionsController : BaseController
                     tq.Question.Passage.ImageUrl
                 } : null,
                 tq.Question.CorrectAnswer,
-                tq.Question.AnswerColCount
+                tq.Question.AnswerColCount,
+                SubTopics = tq.Question.QuestionSubTopics.Select(qst => new
+                {
+                    qst.SubTopicId,
+                    qst.SubTopic.Name
+                }).ToList()
             })
             .ToListAsync();
 
@@ -191,7 +204,6 @@ public class QuestionsController : BaseController
             question.Point = questionDto.Point;                
             question.SubjectId = questionDto.SubjectId;
             question.TopicId = questionDto.TopicId;
-            question.SubTopicId = questionDto.SubTopicId;
             question.AnswerColCount = questionDto.AnswerColCount;
 
             // 📌 Eğer yeni resim varsa, güncelle
@@ -264,6 +276,20 @@ public class QuestionsController : BaseController
             }            
                     
             _context.Questions.Update(question);
+
+            // Update QuestionSubTopics
+            var existingSubTopics = await _context.QuestionSubTopics
+                .Where(qst => qst.QuestionId == questionDto.Id)
+                .ToListAsync();
+            _context.QuestionSubTopics.RemoveRange(existingSubTopics);
+
+            // var newSubTopics = questionDto.QuestionSubTopics.Select(qst => new QuestionSubTopic
+            // {
+            //     QuestionId = questionDto.Id.Value,
+            //     SubTopicId = qst.SubtopicId
+            // }).ToList();
+            // _context.QuestionSubTopics.AddRange(newSubTopics);
+
             await _context.SaveChangesAsync();
         }
         else
@@ -276,7 +302,6 @@ public class QuestionsController : BaseController
                 Point = questionDto.Point,                    
                 SubjectId = questionDto.SubjectId,
                 TopicId = questionDto.TopicId,
-                SubTopicId = questionDto.SubTopicId,
                 AnswerColCount = questionDto.AnswerColCount
             };
 
@@ -392,6 +417,16 @@ public class QuestionsController : BaseController
                     await _context.SaveChangesAsync();
                 }
             }
+
+            // Add QuestionSubTopics
+            // var newSubTopics = .Select(qst => new QuestionSubTopic
+            // {
+            //     QuestionId = question.Id,
+            //     SubTopicId = qst.SubtopicId
+            // }).ToList();
+            // _context.QuestionSubTopics.AddRange(newSubTopics);
+
+            await _context.SaveChangesAsync();
         }
 
         return Ok(new { message = questionDto.Id > 0 ? "Soru başarıyla güncellendi!" : "Soru başarıyla kaydedildi!", questionId = question.Id });
@@ -455,9 +490,17 @@ public class QuestionsController : BaseController
                         IsCanvasQuestion = true,
                         SubjectId = soruDto.Header.SubjectId ?? 0,
                         TopicId = soruDto.Header.TopicId ?? 0,
-                        SubTopicId = soruDto.Header.SubtopicId ?? 0,
                         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
                     };
+
+                    if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
+                    {
+                        question.QuestionSubTopics = soruDto.Header.Subtopics.Select(subTopicId => new QuestionSubTopic
+                        {
+                            SubTopicId = subTopicId
+                            // QuestionId will be set automatically when the question is saved
+                        }).ToList();
+                    }
 
                     _context.Questions.Add(question);
                     await _context.SaveChangesAsync();

@@ -5,6 +5,7 @@
     <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizalamayı {{!autoAlign() ? 'Aç' : 'Kapat'}}</button>
     <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
     <button (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button>
+    <button (click)="predict()">Predict</button>
     
     <div *ngIf="imageSrc()" class="canvas-container">
       <canvas #canvas (mousedown)="startSelection($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>

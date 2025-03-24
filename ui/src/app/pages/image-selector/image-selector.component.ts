@@ -1,10 +1,11 @@
-import { Component, ElementRef, EventEmitter, Output, ViewChild, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Output, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion,AnswerChoice } from '../../models/draws';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule, NgModel } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { QuestionDetectorService } from '../../services/question-detector.service';
 
 
 
@@ -31,6 +32,7 @@ export class ImageSelectorComponent {
   public imageSrc = signal<string | null>(null);
   public imagName = signal<string | null>(null);
 
+  questionDetectorService = inject(QuestionDetectorService);
 
   private startX = 0;
   private startY = 0;
@@ -59,6 +61,7 @@ export class ImageSelectorComponent {
       };
   
       reader.readAsDataURL(file); // ✅ Resmi base64 formatına çevir
+      this.regions.set([]);
     }
   }
 
@@ -259,6 +262,29 @@ export class ImageSelectorComponent {
   //     questions: this.regions()
   //   };
   // }
+
+  public predict() {
+    const imageData = { "image_base64" :  this.imageData() };
+    if (!imageData) return;
+  
+    this.questionDetectorService.predict(imageData).subscribe((questions) => {
+      console.log(questions);
+      this.regions.set(questions.predictions
+        .filter((q: any) => q.class_id === 0)
+        .map((q, index) => ({
+        ...q,
+        name: `Soru ${index + 1}`,
+        answers: [],
+        isExample: false,
+        exampleAnswer: null,
+        id: index,
+        passageId: "",
+        imageId: "",
+        imageUrl: ""
+      })));
+      this.drawImage();
+    });
+  }
 
   public downloadRegionsLite() {
     // const jsonData = {

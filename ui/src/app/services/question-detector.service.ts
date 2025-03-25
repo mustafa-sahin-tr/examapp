@@ -9,8 +9,12 @@ import { PredictionList } from "../models/prediction";
 export class QuestionDetectorService {
       constructor(private http: HttpClient) {}
 
-      predict(bulkDto: any) : Observable<PredictionList> {
-          return this.http.post<PredictionList>(`http://localhost/question-detector-dev/predict`, bulkDto);
+    predict(bulkDto: any) : Observable<PredictionList> {
+        return this.http.post<PredictionList>(`http://localhost/question-detector-dev/predict`, bulkDto);
+    }
+
+    sendtoFix(fixData: any) : Observable<any> {
+        return this.http.post<any>(`http://localhost/question-detector-dev/send-to-fix`, fixData);
     }
  // http://localhost/minio-api/exam-questions/questions/04a3609b-8a98-4849-949d-32c14a6d72c1.jpg   
 }

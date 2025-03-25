@@ -388,8 +388,36 @@ public class ExamController : BaseController
         return Ok(response);
     }    
 
+    [HttpGet("test-canvas-questions")]
+    public async Task<IActionResult> GetAllCanvasQuestions(bool includeAnswers = false, int maxId = 0)
+    {
+        var questions = await _context.Questions
+            .Include(q => q.Answers)
+            .Where(q => q.IsCanvasQuestion && q.Id > maxId)
+            .Select(q => new
+            {
+                Question = new {
+                q.X,
+                q.Y,
+                q.Width,
+                q.Height,
+                q.ImageUrl,
+                Answers = includeAnswers ? q.Answers.Select(a => new
+                {
+                    a.X,
+                    a.Y,
+                    a.Width,
+                    a.Height
+                }).ToList() : null
+            }}
+            )
+            .ToListAsync();
+
+        return Ok(questions);
+    }
+
     [HttpGet("test-canvas-instances")]
-    public async Task<IActionResult> GetAllCanvasInstanceQuestions(bool includeAnswers = false)
+    public async Task<IActionResult> GetAllCanvasInstanceQuestions(bool includeAnswers = false, int maxId = 0)
     {
         var user = await GetAuthenticatedUserAsync();
 
@@ -403,6 +431,7 @@ public class ExamController : BaseController
                 .ThenInclude(tiq => tiq.WorksheetQuestion)
                 .ThenInclude(tq => tq.Question)
                 .ThenInclude(q => q.Passage)
+            .Where(ti => ti.WorksheetInstanceQuestions.Any(tiq => tiq.WorksheetQuestion.Question.Id > maxId))
             .ToListAsync();            
 
         if (testInstance == null)
@@ -414,23 +443,25 @@ public class ExamController : BaseController
         {
             var responseWithAnswers = new
             {            
-                TestInstanceQuestions = testInstance.SelectMany(tiq => tiq.WorksheetInstanceQuestions.Select(tiq => new
-                {                
-                    Question = new {                    
-                        tiq.WorksheetQuestion.Question.ImageUrl,
-                        tiq.WorksheetQuestion.Question.X,
-                        tiq.WorksheetQuestion.Question.Y,
-                        tiq.WorksheetQuestion.Question.Width,
-                        tiq.WorksheetQuestion.Question.Height,
-                        Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new
-                        {                        
-                            a.X,
-                            a.Y,
-                            a.Width,
-                            a.Height
-                        }).ToList() 
-                    }
-                })).ToList()
+                TestInstanceQuestions = testInstance.SelectMany(tiq => tiq.WorksheetInstanceQuestions
+                    .Where(tiq => tiq.WorksheetQuestion.Question.Id > maxId)
+                    .Select(tiq => new
+                    {                
+                        Question = new {                    
+                            tiq.WorksheetQuestion.Question.ImageUrl,
+                            tiq.WorksheetQuestion.Question.X,
+                            tiq.WorksheetQuestion.Question.Y,
+                            tiq.WorksheetQuestion.Question.Width,
+                            tiq.WorksheetQuestion.Question.Height,
+                            Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new
+                            {                        
+                                a.X,
+                                a.Y,
+                                a.Width,
+                                a.Height
+                            }).ToList() 
+                        }
+                    })).ToList()
             };
             return Ok(responseWithAnswers);
         }
@@ -438,16 +469,18 @@ public class ExamController : BaseController
         {
             var responseWithoutAnswers = new
             {            
-                TestInstanceQuestions = testInstance.SelectMany(tiq => tiq.WorksheetInstanceQuestions.Select(tiq => new
-                {                
-                    Question = new {                    
-                        tiq.WorksheetQuestion.Question.ImageUrl,
-                        tiq.WorksheetQuestion.Question.X,
-                        tiq.WorksheetQuestion.Question.Y,
-                        tiq.WorksheetQuestion.Question.Width,
-                        tiq.WorksheetQuestion.Question.Height
-                    }
-                })).ToList()
+                TestInstanceQuestions = testInstance.SelectMany(tiq => tiq.WorksheetInstanceQuestions
+                    .Where(tiq => tiq.WorksheetQuestion.Question.Id > maxId)
+                    .Select(tiq => new
+                    {                
+                        Question = new {                    
+                            tiq.WorksheetQuestion.Question.ImageUrl,
+                            tiq.WorksheetQuestion.Question.X,
+                            tiq.WorksheetQuestion.Question.Y,
+                            tiq.WorksheetQuestion.Question.Width,
+                            tiq.WorksheetQuestion.Question.Height
+                        }
+                    })).ToList()
             };
             return Ok(responseWithoutAnswers);
         }

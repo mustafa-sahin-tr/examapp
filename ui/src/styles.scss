@@ -1211,6 +1211,11 @@ mat-card-title {
   min-width: 250px;
 }
 
+.form-column-4 {
+  flex: 4;
+  min-width: 250px;
+}
+
 form {
   display: flex;
   flex-direction: column;

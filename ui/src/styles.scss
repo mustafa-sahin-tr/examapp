@@ -2718,6 +2718,56 @@ h4 {
 
 
 
+.ms-option-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 0;
+  padding: 2rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  color: #9086ca;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.ms-option-button:hover {
+  box-shadow: 0 0 0 2px rgba(144, 134, 202, 0.3);
+}
+
+.ms-option-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  fill: #9086CA;
+}
+
+.ms-option-label {
+  margin-top: 0.75rem;
+  color: #000;
+  text-align: center;
+  font-size: large;
+}
+
+.ms-options-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.d-flex {
+  display: flex !important;
+  justify-content: center !important;
+}
+
+.ml-2, .mx-2 {
+  margin-left: .5rem !important;
+}
+.mr-2, .mx-2 {
+  margin-right: .5rem !important;
+}
+
 
 /* bunlar her zaman en altta kalsın*/
 .mat-drawer.mat-drawer-opened {

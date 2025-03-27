@@ -17,6 +17,7 @@ import { WorksheetDetailComponent } from './pages/worksheet-detail/worksheet-det
 import { AppComponent } from './app.component';
 import { PublicLayoutComponent } from './pages/public/public-layout/public-layout.component';
 import { LayoutComponent } from './pages/layout/layout.component';
+import { ProgramCreateComponent } from './pages/program-create/program-create.component';
 
 export const routes: Routes = [
   { path: '', 
@@ -35,7 +36,8 @@ export const routes: Routes = [
       { path: 'test/:testId', component: WorksheetDetailComponent },  // 🆕 Test çözme sayfası
       { path: 'student-profile', component: StudentProfileComponent },  // 🆕 Test çözme sayfası
       { path: 'exam', component: TestCreateComponent},  // 🆕 Test çözme sayfası
-      { path: 'exam/:id', component: TestCreateComponent },  // 🆕 Test çözme sayfası      
+      { path: 'exam/:id', component: TestCreateComponent },  // 🆕 Test çözme sayfası    
+      { path: 'program-create', component: ProgramCreateComponent },  
     ],
   },
   { path: '', 

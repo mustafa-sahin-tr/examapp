@@ -101,6 +101,26 @@ services:
     networks:
       - mynetwork
 
+  question-detector-dev:
+    container_name: question-detector-dev
+    build:
+      context: .
+      dockerfile: question-detector/Dockerfile
+    volumes:
+      - ./question-detector/app:/app
+    working_dir: /app
+    tty: true
+    stdin_open: true
+    ports:
+      - "8888:8888"  # Jupyter Notebook veya diğer servisler için hazır
+      - "8080:8080"  # FastAPI veya diğer servisler için hazır
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    networks:
+      - mynetwork
+
+
 networks:   
   mynetwork:
     driver: bridge

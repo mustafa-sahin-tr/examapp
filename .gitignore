@@ -91,3 +91,7 @@ Thumbs.db
 /ui/.idea
 
 minio-data/
+
+/question-detector/app/data/labels
+/question-detector/app/venv/
+/question-detector/app/venv/lib/python3.8/site-packages

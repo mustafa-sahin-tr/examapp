@@ -1,10 +1,13 @@
-import { Component, ElementRef, EventEmitter, Output, ViewChild, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Output, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion,AnswerChoice } from '../../models/draws';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule, NgModel } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { QuestionDetectorService } from '../../services/question-detector.service';
+import { Prediction } from '../../models/prediction';
 
 
 
@@ -30,7 +33,8 @@ export class ImageSelectorComponent {
   public regions = signal<QuestionRegion[]>([]);
   public imageSrc = signal<string | null>(null);
   public imagName = signal<string | null>(null);
-
+  questionDetectorService = inject(QuestionDetectorService);
+  private snackBar = inject(MatSnackBar);
 
   private startX = 0;
   private startY = 0;
@@ -59,6 +63,7 @@ export class ImageSelectorComponent {
       };
   
       reader.readAsDataURL(file); // ✅ Resmi base64 formatına çevir
+      this.regions.set([]);
     }
   }
 
@@ -259,6 +264,108 @@ export class ImageSelectorComponent {
   //     questions: this.regions()
   //   };
   // }
+
+  public sendToFix() {
+    const imageData = { "image_base64" :  this.imageData() };
+    const regionData = { "question" : this.regions() };  
+    var data = { "imageData" : imageData, "questions" : regionData.question.map((q: any) => ({
+      x: q.x,
+      y: q.y,
+      width: q.width,
+      height: q.height
+    }))};
+    console.log(data);
+    this.questionDetectorService.sendtoFix(data).subscribe((data) => {
+      if(data.success) {-        
+        this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', { duration: 3000 });
+      }      
+    });
+  }
+
+  public predict() {
+    const imageData = { "image_base64" :  this.imageData() };
+    if (!imageData) return;
+  
+    this.questionDetectorService.predict(imageData).subscribe((questions) => {
+      console.log(questions);
+      
+      // default olarak tüm soruları ekle
+      // this.regions.set(questions.predictions
+      //   .filter((q: any) => q.class_id === 0)
+      //   .map((q, index) => ({
+      //   ...q,
+      //   name: `Soru ${index + 1}`,
+      //   answers: [],
+      //   isExample: false,
+      //   exampleAnswer: null,
+      //   id: index,
+      //   passageId: "",
+      //   imageId: "",
+      //   imageUrl: ""
+      // })));
+      const imageWidth = Math.max(...questions.predictions.map(q => q.x + q.width));
+
+      // soruları sırala
+      this.regions.set(
+        questions.predictions
+          .filter((q: any) => q.class_id === 0)
+          .sort((a, b) => {
+            // Sayfanın ortasını bulmak için tahmini bir sınır (örneğin width / 2)
+            const middleX = imageWidth / 2;
+      
+            // Sol sütunları önce al (a ve b'nin sol sütun mu sağ sütun mu olduğunu kontrol et)
+            const aIsLeft = a.x < middleX;
+            const bIsLeft = b.x < middleX;
+      
+            if (aIsLeft !== bIsLeft) {
+              return aIsLeft ? -1 : 1; // Sol sütun önde gelir
+            }
+      
+            // Aynı sütundalarsa yukarıdan aşağıya (y koordinatına göre) sıralama yap
+            return a.y - b.y;
+          })
+          .map((q, index) => ({
+            ...q,
+            name: `Soru ${index + 1}`,
+            answers: [],
+            // this.getAnswers(questions.predictions, q).map((a, index) => ({
+            //   label: `Şık ${index + 1}`,
+            //   ...a,
+            //   isCorrect: false,
+            //   id: index
+            // })),
+            isExample: false,
+            exampleAnswer: null,
+            id: index,
+            passageId: "",
+            imageId: "",
+            imageUrl: ""
+          }))
+      );
+
+      this.drawImage();
+    });
+  }
+
+  public getAnswers(predictions: Prediction[], question: Prediction) : Prediction[] {
+     const answers = predictions.filter((a: any) => a.class_id === 1);
+     const result : Prediction[] = [];
+    // Şimdi her cevabı ilgili soruya ekle
+    for (const answer of answers) {
+      const centerX = answer.x + answer.width / 2;
+      const centerY = answer.y + answer.height / 2;
+
+      
+      const withinX = centerX >= question.x && centerX <= question.x + question.width;
+      const withinY = centerY >= question.y && centerY <= question.y + question.height;
+
+      if (withinX && withinY) {
+          result.push(answer);
+          break; // Bir cevap yalnızca bir soruya ait olabilir
+        }
+      }
+    return result;  
+  }
 
   public downloadRegionsLite() {
     // const jsonData = {

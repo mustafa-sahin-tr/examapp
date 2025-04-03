@@ -336,7 +336,7 @@ export class ImageSelectorComponent {
 
     this.selectionMode.set(mode); // TODO: Seçim modunu ayarla
     
-    if (mode === 'answer') {
+    if (mode === 'answer' && this.selectedQuestionIndex < 0) {
       alert("Lütfen önce bir soru seçin ve ardından şıkları ekleyin.");
     }
   }
@@ -361,7 +361,13 @@ export class ImageSelectorComponent {
       x: q.x,
       y: q.y,
       width: q.width,
-      height: q.height
+      height: q.height,
+      answers : q.answers.map((a: any) => ({
+        x: a.x,
+        y: a.y,
+        width: a.width,
+        height: a.height
+      }))
     }))};
     console.log(data);
     this.questionDetectorService.sendtoFix(data).subscribe((data) => {
@@ -391,6 +397,7 @@ export class ImageSelectorComponent {
   }
 
   public predict() {
+    this.snackBar.open('Resim analizi başlatılıyor...', 'Tamam', { duration: 2000 });
     const imageData = { "image_base64" :  this.imageData() };
     if (!imageData) return;
   
@@ -435,7 +442,14 @@ export class ImageSelectorComponent {
           .map((q, index) => ({
             ...q,
             name: `Soru ${index + 1}`,
-            answers: [],
+            answers: q.subpredictions
+            .filter((a: any) => a.class_id === 0)
+            .map((a: any, index: number) => ({
+              label: `Şık ${index + 1}`,
+              ...a,
+              isCorrect: false,
+              id: index
+            })),
             // this.getAnswers(questions.predictions, q).map((a, index) => ({
             //   label: `Şık ${index + 1}`,
             //   ...a,
@@ -451,7 +465,14 @@ export class ImageSelectorComponent {
           }))
       );
 
+      const questionCount = this.regions().length;
+
+      // for(let i = 0; i < questionCount; i++) {
+      //   this.alignAnswers(i);
+      // }
+
       this.drawImage();
+      this.snackBar.open('Resim analizi tamamlandı.', 'Tamam', { duration: 2000 });
     });
   }
 
@@ -571,10 +592,14 @@ export class ImageSelectorComponent {
   
     // UI'yi güncelle
     this.regions.set([...this.regions()]);
+
+    this.alignAnswers(questionIndex); // 🔄 Şıkları hizala
+
     this.drawImage();
   }
 
   alignAnswers(questionIndex: number) {
+    if(!this.autoAlign()) return;
     const region = this.regions()[questionIndex];
     if (region.answers.length === 0) return;
   
@@ -629,7 +654,8 @@ export class ImageSelectorComponent {
         answer.label = labels[index]; // Yeni isimleri ata
       }
     });
-  
+    // 🔁 region.answers'ı yeniden sırala
+    region.answers = sortedAnswers;
   }
 
   toggleExampleMode(questionId: string) {

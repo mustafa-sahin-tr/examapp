@@ -4,6 +4,7 @@ export interface Prediction {
     y: number;
     width: number;
     height: number;
+    subpredictions: Prediction[];
 }
 
 export interface PredictionList {

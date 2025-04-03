@@ -27,6 +27,7 @@ export class ImageSelectorComponent {
 
   public autoAlign = signal<boolean>(true);
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
+  public selectionModeLocked = signal<'passage' | 'question' | 'answer' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
   public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
@@ -48,18 +49,94 @@ export class ImageSelectorComponent {
   private currentX = 0;
   private currentY = 0;
 
+  imageFiles: File[] = [];
+  currentImageIndex = 0;
+  currentImageSrc: string | null = null;
+  
+  handleFilesInput2(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.imageFiles = Array.from(input.files)
+        .filter(file => file.type.startsWith('image/'));
+      this.currentImageIndex = 0;
+      this.loadCurrentImage();
+    }
+  }
 
+  loadCurrentImage() {
+    const file = this.imageFiles[this.currentImageIndex];
+    if (!file) return;
+    const reader = new FileReader();
+    this.imagName.set(file.name);
+    this.regions.set([]);
+    
+    
+    reader.onload = () => {
+        //this.currentImageSrc = reader.result as string;
+        this.imageSrc.set(reader.result as string);
+        this.imageData.set(reader.result as string); // 📂 Resmi base64 olarak sakla
+        this.img.src = this.imageSrc()!;
+        
+        this.img.onload = () => {
+          if(this.selectionModeLocked() !== 'answer') {
+            this.predict();
+          } else {
+            this.regions.set([]);
+            const region = { name: "Soru", x: 0, y: 0, width: this.img.width -1, height: this.img.height -1, answers: [],passageId:"0",
+              imageId: "", imageUrl:"", id:0, isExample: false, exampleAnswer: null }    
+            this.regions.set([...this.regions(),region]);
+            this.selectQuestion(0);
+          }
+          this.drawImage(); 
+        }
+    };
+    reader.readAsDataURL(file); // 📦 Sadece o anki resmi belleğe yükle
+    
+  }
+
+  nextImage() {
+    if (this.imageFiles.length === 0) return;
+  
+    this.currentImageIndex++;
+    if (this.currentImageIndex >= this.imageFiles.length) {
+      this.currentImageIndex = 0; // döngüsel olarak başa sar
+    }
+    this.loadCurrentImage();
+  }
+  
+  previousImage() {
+    if (this.imageFiles.length === 0) return;
+  
+    this.currentImageIndex--;
+    if (this.currentImageIndex < 0) {
+      this.currentImageIndex = this.imageFiles.length - 1; // döngüsel olarak sona sar
+    }
+    this.loadCurrentImage();
+  }
 
   handleFileInput(event: Event) {
+    
     const file = (event.target as HTMLInputElement).files?.[0];
+
     if (file) {
       const reader = new FileReader();
       this.imagName.set(file.name);
       reader.onload = (e: ProgressEvent<FileReader>) => {
         this.imageSrc.set(e.target?.result as string);
         this.imageData.set(e.target?.result as string); // 📂 Resmi base64 olarak sakla
-        this.img.src = this.imageSrc()!;
-        this.img.onload = () => this.drawImage();
+        this.img.src = this.imageSrc()!;        
+        this.img.onload = () => {
+          if(this.selectionModeLocked() !== 'answer') {
+            this.predict();
+          } else {
+            this.regions.set([]);
+            const region = { name: "Soru", x: 0, y: 0, width: this.img.width -1, height: this.img.height -1, answers: [],passageId:"0",
+              imageId: "", imageUrl:"", id:0, isExample: false, exampleAnswer: null }    
+            this.regions.set([...this.regions(),region]);
+            this.selectQuestion(0);
+          }
+          this.drawImage();
+        }
       };
   
       reader.readAsDataURL(file); // ✅ Resmi base64 formatına çevir
@@ -83,6 +160,11 @@ export class ImageSelectorComponent {
 
   toggleAlignMode() {
     this.autoAlign.set(!this.autoAlign());
+  }
+
+  lockSelectionMode(mode: 'passage' | 'question' | 'answer') {
+    this.selectionModeLocked.set(mode);    
+    this.toggleSelectionMode(mode);
   }
 
   onMouseMove(event: MouseEvent) {
@@ -246,7 +328,14 @@ export class ImageSelectorComponent {
   }
 
   toggleSelectionMode(mode: 'question' | 'answer' | 'passage') {
-    this.selectionMode.set(mode);
+    if(this.selectionModeLocked()) 
+    {
+      this.selectionMode.set(this.selectionModeLocked());
+      return;
+    }
+
+    this.selectionMode.set(mode); // TODO: Seçim modunu ayarla
+    
     if (mode === 'answer') {
       alert("Lütfen önce bir soru seçin ve ardından şıkları ekleyin.");
     }
@@ -254,7 +343,7 @@ export class ImageSelectorComponent {
 
   selectQuestion(index: number) {
     this.selectedQuestionIndex = index;
-    this.selectionMode.set('answer');
+    this.toggleSelectionMode('answer');    
   }
 
   // getJsonData() {
@@ -276,8 +365,27 @@ export class ImageSelectorComponent {
     }))};
     console.log(data);
     this.questionDetectorService.sendtoFix(data).subscribe((data) => {
-      if(data.success) {-        
+      if(data.success) {
         this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', { duration: 3000 });
+        this.nextImage();
+      }      
+    });
+  }
+
+  public sendToFixForAnswer() {
+    const imageData = { "image_base64" :  this.imageData() };
+    const regionData = { "question" : this.regions() };  
+    var data = { "imageData" : imageData, "questions" : regionData.question[0].answers.map((q: any) => ({
+      x: q.x,
+      y: q.y,
+      width: q.width,
+      height: q.height
+    }))};
+    console.log(data);
+    this.questionDetectorService.sendtoFixForAnswer(data).subscribe((data) => {
+      if(data.success) {
+        this.snackBar.open(`Successfully appended ${data.added} questions with ${data.imageFile}`, 'Tamam', { duration: 3000 });
+        this.nextImage();
       }      
     });
   }
@@ -452,6 +560,7 @@ export class ImageSelectorComponent {
   removeQuestion(questionIndex: number) {
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
     this.drawImage (); 
+    this.toggleSelectionMode('question');
   }
 
   removeAnswer(questionIndex: number, answerIndex: number) {

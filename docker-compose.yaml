@@ -45,7 +45,7 @@ services:
       POSTGRES_PASSWORD: exampass
       POSTGRES_DB: worksheet
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
      - ./postgres/examdata:/var/lib/postgresql/data
      - ./postgres/init-scripts:/docker-entrypoint-initdb.d
@@ -65,7 +65,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@exam.com
       PGADMIN_DEFAULT_PASSWORD: adminpass
     ports:
-      - "5050:80"
+      - "5051:80"
     depends_on:
       exam-pg-container:
         condition: service_healthy

@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { Prediction } from '../../models/prediction';
+import { HttpStatusCode } from '@angular/common/http';
 
 
 
@@ -26,6 +27,8 @@ export class ImageSelectorComponent {
   private img = new Image();
 
   public autoAlign = signal<boolean>(true);
+  public autoMode = signal<boolean>(false);
+  public onlyQuestionMode = signal<boolean>(true);
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
@@ -167,6 +170,10 @@ export class ImageSelectorComponent {
     this.toggleSelectionMode(mode);
   }
 
+  toggleOnlyQuestionMode() {
+    this.onlyQuestionMode.set(!this.onlyQuestionMode());
+  }
+
   onMouseMove(event: MouseEvent) {
     if (!this.isDrawing) return;
   
@@ -227,19 +234,21 @@ export class ImageSelectorComponent {
       }
   
       // 🟦 **Şık alanlarını mavi renkte çiz**
-      for (const region of this.regions()) {
-        for (const answer of region.answers) {
-          // this.ctx.strokeStyle = 'blue';
-          // this.ctx.lineWidth = 2;
-          // this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
-          const borderRadius = 0; // Math.min(answer.width, answer.height) * 0.3; // ✅ Yuvarlak köşe oranı
-          this.ctx.beginPath();
-          this.ctx.roundRect(answer.x, answer.y, answer.width, answer.height, borderRadius);
-          this.ctx.closePath();
-          
-          this.ctx.strokeStyle = 'blue'; // ✅ Mavi Kenarlık
-          this.ctx.lineWidth = 2;
-          this.ctx.stroke(); 
+      if(!this.onlyQuestionMode()) {
+        for (const region of this.regions()) {
+          for (const answer of region.answers) {
+            // this.ctx.strokeStyle = 'blue';
+            // this.ctx.lineWidth = 2;
+            // this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
+            const borderRadius = 0; // Math.min(answer.width, answer.height) * 0.3; // ✅ Yuvarlak köşe oranı
+            this.ctx.beginPath();
+            this.ctx.roundRect(answer.x, answer.y, answer.width, answer.height, borderRadius);
+            this.ctx.closePath();
+            
+            this.ctx.strokeStyle = 'blue'; // ✅ Mavi Kenarlık
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke(); 
+          }
         }
       }
     }
@@ -354,6 +363,10 @@ export class ImageSelectorComponent {
   //   };
   // }
 
+  public toggleAutoMode() {
+      this.autoMode.set(!this.autoMode());
+  }
+
   public sendToFix() {
     const imageData = { "image_base64" :  this.imageData() };
     const regionData = { "question" : this.regions() };  
@@ -396,30 +409,22 @@ export class ImageSelectorComponent {
     });
   }
 
+
+
   public predict() {
     this.snackBar.open('Resim analizi başlatılıyor...', 'Tamam', { duration: 2000 });
     const imageData = { "image_base64" :  this.imageData() };
     if (!imageData) return;
-  
-    this.questionDetectorService.predict(imageData).subscribe((questions) => {
-      console.log(questions);
-      
-      // default olarak tüm soruları ekle
-      // this.regions.set(questions.predictions
-      //   .filter((q: any) => q.class_id === 0)
-      //   .map((q, index) => ({
-      //   ...q,
-      //   name: `Soru ${index + 1}`,
-      //   answers: [],
-      //   isExample: false,
-      //   exampleAnswer: null,
-      //   id: index,
-      //   passageId: "",
-      //   imageId: "",
-      //   imageUrl: ""
-      // })));
-      const imageWidth = Math.max(...questions.predictions.map(q => q.x + q.width));
+    
 
+    this.questionDetectorService.readQrData(imageData).subscribe(
+      (data) => {
+        console.log(data);
+      });
+
+    this.questionDetectorService.predict(imageData).subscribe((questions) => {
+      console.log(questions);      
+      const imageWidth = Math.max(...questions.predictions.map(q => q.x + q.width));
       // soruları sırala
       this.regions.set(
         questions.predictions
@@ -470,10 +475,22 @@ export class ImageSelectorComponent {
       // for(let i = 0; i < questionCount; i++) {
       //   this.alignAnswers(i);
       // }
-
-      this.drawImage();
       this.snackBar.open('Resim analizi tamamlandı.', 'Tamam', { duration: 2000 });
-    });
+      if(
+        !this.autoMode() 
+        || (
+          this.regions().length > 2 &&
+          this.onlyQuestionMode() && 
+          this.regions().every(region => region.answers && region.answers.length >= 3)
+        )
+      ) 
+      {
+        this.drawImage();
+      }else{
+        this.nextImage();
+      }
+    }
+  );
   }
 
   public getAnswers(predictions: Prediction[], question: Prediction) : Prediction[] {

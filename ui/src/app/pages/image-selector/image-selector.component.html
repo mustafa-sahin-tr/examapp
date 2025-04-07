@@ -8,9 +8,12 @@
     <button mat-raised-button color="primary" (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button>
     <button mat-raised-button color="primary" (click)="predict()">Predict</button>
     <button mat-raised-button color="primary" (click)="sendToFix()">Sent To Fix</button>
-    <button mat-raised-button color="primary" (click)="sendToFixForAnswer()">Sent To Fix For Answer</button>
+    <!-- <button mat-raised-button color="primary" (click)="sendToFixForAnswer()">Sent To Fix For Answer</button> -->
+    <button mat-raised-button color="primary" (click)="toggleAutoMode()">{{autoMode() ? 'Manuel' : 'Auto'}}</button>
+    <button mat-raised-button color="primary" (click)="toggleOnlyQuestionMode()">{{onlyQuestionMode() ? 'Soru-Cevap Modu' : 'Soru Modu'}}</button>
     <button mat-raised-button color="primary" (click)="nextImage()">Next Image</button>
     
+    {{this.imagName()}}
     <div *ngIf="imageSrc()" class="canvas-container">
       <canvas #canvas (mousedown)="startSelection($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
     </div>
@@ -29,7 +32,7 @@
           <!-- 📝 Quill Editörü (Sadece Örnek Soru Seçiliyse Açılacak) -->
             <quill-editor *ngIf="isExample(region.name)" [ngModel]="exampleAnswers.get(region.name)" (ngModelChange)="onTextChanged(region.name, $event)">
             </quill-editor>
-          <ul>
+          <ul *ngIf="!onlyQuestionMode()">
             <li *ngFor="let answer of region.answers; let j = index">              
               <!-- - X: {{ answer.x }}, Y: {{ answer.y }}, G: {{ answer.width }}, Y: {{ answer.height }}               -->
               <button class="choice-btn" (click)="setCorrectAnswer(i, j)">

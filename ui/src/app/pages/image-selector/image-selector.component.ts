@@ -26,9 +26,10 @@ export class ImageSelectorComponent {
   private ctx!: CanvasRenderingContext2D | null;
   private img = new Image();
 
-  public autoAlign = signal<boolean>(true);
+  public autoAlign = signal<boolean>(false);
   public autoMode = signal<boolean>(false);
-  public onlyQuestionMode = signal<boolean>(true);
+  public inProgress = signal<boolean>(false);
+  public onlyQuestionMode = signal<boolean>(false);
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
@@ -67,6 +68,7 @@ export class ImageSelectorComponent {
   }
 
   loadCurrentImage() {
+    this.resetRegions();
     const file = this.imageFiles[this.currentImageIndex];
     if (!file) return;
     const reader = new FileReader();
@@ -84,7 +86,7 @@ export class ImageSelectorComponent {
           if(this.selectionModeLocked() !== 'answer') {
             this.predict();
           } else {
-            this.regions.set([]);
+            this.regions.set([]);            
             const region = { name: "Soru", x: 0, y: 0, width: this.img.width -1, height: this.img.height -1, answers: [],passageId:"0",
               imageId: "", imageUrl:"", id:0, isExample: false, exampleAnswer: null }    
             this.regions.set([...this.regions(),region]);
@@ -103,7 +105,7 @@ export class ImageSelectorComponent {
     this.currentImageIndex++;
     if (this.currentImageIndex >= this.imageFiles.length) {
       this.currentImageIndex = 0; // döngüsel olarak başa sar
-    }
+    }    
     this.loadCurrentImage();
   }
   
@@ -165,7 +167,7 @@ export class ImageSelectorComponent {
     this.autoAlign.set(!this.autoAlign());
   }
 
-  lockSelectionMode(mode: 'passage' | 'question' | 'answer') {
+  lockSelectionMode(mode: 'passage' | 'question' | 'answer' | null) {
     this.selectionModeLocked.set(mode);    
     this.toggleSelectionMode(mode);
   }
@@ -174,8 +176,57 @@ export class ImageSelectorComponent {
     this.onlyQuestionMode.set(!this.onlyQuestionMode());
   }
 
+  tapCorrectAnswer(event: MouseEvent) {
+    if (this.isDrawing) return;
+
+    const mouseX = event.offsetX;
+    const mouseY = event.offsetY;
+
+    for (const region of this.regions()) {
+      for (const answer of region.answers) {
+        if (
+          mouseX >= answer.x &&
+          mouseX <= answer.x + answer.width &&
+          mouseY >= answer.y &&
+          mouseY <= answer.y + answer.height
+        ) {
+          const questionIndex = this.regions().findIndex(q => q.name === region.name);
+          const answerIndex = region.answers.findIndex(a => a.label === answer.label);
+          this.setCorrectAnswer(questionIndex, answerIndex);
+        }
+      }
+    }
+  } 
+
   onMouseMove(event: MouseEvent) {
-    if (!this.isDrawing) return;
+    if (!this.isDrawing) {
+      const canvas = this.canvas.nativeElement;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+    
+      // Tüm resmi yeniden çiz
+      this.drawImage();
+    
+      const mouseX = event.offsetX;
+      const mouseY = event.offsetY;
+    
+      for (const question of this.regions()) {
+        for (const answer of question.answers) {
+          if (
+            mouseX >= answer.x &&
+            mouseX <= answer.x + answer.width &&
+            mouseY >= answer.y &&
+            mouseY <= answer.y + answer.height
+          ) {
+            // Transparan yeşil ile dikdörtgeni doldur
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+            ctx.fillRect(answer.x, answer.y, answer.width, answer.height);
+            break;
+          }
+        }
+      }
+      return;
+    }
   
     this.currentX = event.offsetX;
     this.currentY = event.offsetY;
@@ -237,6 +288,11 @@ export class ImageSelectorComponent {
       if(!this.onlyQuestionMode()) {
         for (const region of this.regions()) {
           for (const answer of region.answers) {
+
+            if (answer.isCorrect) {
+              this.ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+              this.ctx.fillRect(answer.x, answer.y, answer.width, answer.height);
+            }
             // this.ctx.strokeStyle = 'blue';
             // this.ctx.lineWidth = 2;
             // this.ctx.strokeRect(answer.x, answer.y, answer.width, answer.height);
@@ -304,6 +360,29 @@ export class ImageSelectorComponent {
     this.isDrawing = true;
   }
 
+  generateFirstAvailableName() {
+    const prefix = "Soru ";
+  
+    const usedNumbers = this.regions()
+      .map(r => r.name)
+      .filter(name => name.startsWith(prefix))
+      .map(name => parseInt(name.replace(prefix, ""), 10))
+      .filter(num => !isNaN(num))
+      .sort((a, b) => a - b);
+  
+    // 1'den başlayarak ilk boş olan numarayı bul
+    let candidate = 1;
+    for (let i = 0; i < usedNumbers.length; i++) {
+      if (usedNumbers[i] !== candidate) {
+        break;
+      }
+      candidate++;
+    }
+  
+    return `${prefix}${candidate}`;
+  }
+  
+
   endSelection(event: MouseEvent) {
     if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;
     const rect = this.canvas.nativeElement.getBoundingClientRect();
@@ -316,10 +395,14 @@ export class ImageSelectorComponent {
       const id = `p${this.passages().length + 1}`;
       this.passages.set([...this.passages(), { id, x: this.startX, y: this.startY, width, height }]);
     } else if (this.selectionMode() === 'question') {      
-      const name = `Soru ${this.regions().length + 1}`;
+      const name = this.generateFirstAvailableName();
+      
       this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [],passageId:"0",
               imageId: "",imageUrl:"", id:0, isExample: false, exampleAnswer: null }]);
-      this.selectQuestion(this.regions().length - 1);
+      this.sortRegionsByName();
+      this.selectQuestionByName(name);
+      /// this.selectQuestion(this.regions().length - 1);
+
     } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
       const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
       this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });
@@ -336,7 +419,7 @@ export class ImageSelectorComponent {
     this.drawImage();
   }
 
-  toggleSelectionMode(mode: 'question' | 'answer' | 'passage') {
+  toggleSelectionMode(mode: 'question' | 'answer' | 'passage' | null) {
     if(this.selectionModeLocked()) 
     {
       this.selectionMode.set(this.selectionModeLocked());
@@ -353,6 +436,13 @@ export class ImageSelectorComponent {
   selectQuestion(index: number) {
     this.selectedQuestionIndex = index;
     this.toggleSelectionMode('answer');    
+  }
+
+  selectQuestionByName(name: string) {
+    const index = this.regions().findIndex(region => region.name === name);
+    if (index !== -1) {
+      this.selectQuestion(index);
+    } 
   }
 
   // getJsonData() {
@@ -413,6 +503,7 @@ export class ImageSelectorComponent {
 
   public predict() {
     this.snackBar.open('Resim analizi başlatılıyor...', 'Tamam', { duration: 2000 });
+    this.inProgress.set(true);
     const imageData = { "image_base64" :  this.imageData() };
     if (!imageData) return;
     
@@ -472,23 +563,54 @@ export class ImageSelectorComponent {
 
       const questionCount = this.regions().length;
 
-      // for(let i = 0; i < questionCount; i++) {
-      //   this.alignAnswers(i);
-      // }
-      this.snackBar.open('Resim analizi tamamlandı.', 'Tamam', { duration: 2000 });
-      if(
-        !this.autoMode() 
-        || (
-          this.regions().length > 2 &&
-          this.onlyQuestionMode() && 
-          this.regions().every(region => region.answers && region.answers.length >= 3)
-        )
-      ) 
-      {
-        this.drawImage();
-      }else{
-        this.nextImage();
+      for(let i = 0; i < questionCount; i++) {
+        this.alignAnswers(i);
       }
+
+      console.log(`${this.regions().length} Adet Soru bulundu`);
+      console.log(`Auto Mode: ${this.autoMode()}`);
+      console.log(`Q Mode:  ${this.onlyQuestionMode()}`);
+      
+      if(
+        this.autoMode() 
+        && 
+        (
+          this.regions().length > 2 && 
+          (this.onlyQuestionMode() || this.regions().every(region => region.answers && region.answers.length >= 3))
+        )
+      ) {
+        console.log(`Condition: true`);
+      }else{
+        console.log(`Condition: false`);
+      }
+
+      this.snackBar.open('Resim analizi tamamlandı.', 'Tamam', { duration: 2000 });
+      if( !this.autoMode() ) {
+        // resmi çiz ve dur
+        this.drawImage();
+      }
+      else {
+        // auto mode ise question sayısını kontrol et
+        if( this.regions().length > 2 ) {
+          // ikiden çok fazla soru varsa durabiliriz.
+          if( this.onlyQuestionMode()) {
+            // ikiden fazla soru var ve sadece soru modundayız dur!
+            this.drawImage();
+          } else {
+            // ikiden fazla soru var ve soru cevap modundayız.
+            if(this.regions().every(region => region.answers && region.answers.length >= 2)) {
+              // ikiden fazla soru var soru cevap modundayız ve her soruda en az 2 şık var.
+              this.drawImage();
+            }else{
+              this.nextImage();
+            }
+          }
+        }else{
+          this.nextImage();
+        }
+      }
+
+      this.inProgress.set(false);
     }
   );
   }
@@ -573,6 +695,7 @@ export class ImageSelectorComponent {
   }
 
   public resetRegions() {
+    
     this.passages.set([]);
     this.regions.set([]);
     this.imageData.set(null);
@@ -580,6 +703,19 @@ export class ImageSelectorComponent {
     this.exampleAnswers.clear();
     this.exampleFlags.clear();
     this.selectedPassageMap.clear();    
+    
+  }
+
+  setCorrectAnswerTap(questionId: number, answerIndex: number) {
+    // const region = this.regions()[questionIndex];
+  
+    // // Tüm cevapları yanlış yap
+    // region.answers.forEach(a => a.isCorrect = false);
+  
+    // // Seçilen cevabı doğru yap
+    // region.answers[answerIndex].isCorrect = true;
+  
+    // this.regions.set([...this.regions()]); // UI güncelleme
   }
 
 
@@ -593,10 +729,33 @@ export class ImageSelectorComponent {
     region.answers[answerIndex].isCorrect = true;
   
     this.regions.set([...this.regions()]); // UI güncelleme
+
+    this.drawImage();
+  }
+
+  sortRegionsByName() {
+    const prefix = "Soru ";
+    const regions = this.regions();
+    const sortedRegions = regions.slice().sort((a, b) => {
+      const aNum = parseInt(a.name.replace(prefix, ""), 10);
+      const bNum = parseInt(b.name.replace(prefix, ""), 10);
+  
+      return aNum - bNum;
+    });
+
+    this.regions.set(sortedRegions);
   }
 
   removeQuestion(questionIndex: number) {
+    
+    const regionName = this.regions()[questionIndex].name;    
+    this.exampleAnswers.delete(regionName);
+    this.exampleFlags.delete(regionName);
+    this.selectedPassageMap.delete(regionName);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
+
+
+    this.sortRegionsByName();
     this.drawImage (); 
     this.toggleSelectionMode('question');
   }

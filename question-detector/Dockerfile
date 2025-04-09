@@ -9,7 +9,8 @@ RUN apt update && apt install -y \
     libxext6 \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    libxrender-dev \
+    libxrender-dev \    
+    libzbar0 \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
 # Çalışma dizinine geç

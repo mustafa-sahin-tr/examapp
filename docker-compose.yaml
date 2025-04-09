@@ -83,6 +83,8 @@ services:
       - angular-app
     networks:
       - mynetwork
+    volumes:
+      - ./dockerfiles/nginx/nginx.conf:/etc/nginx/nginx.conf
 
 
   minio:

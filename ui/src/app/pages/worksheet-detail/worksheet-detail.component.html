@@ -5,9 +5,9 @@
       <p>{{exam.description}}</p>
       <div class="course-actions">
         <button mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
-        <button mat-icon-button><mat-icon>bookmark</mat-icon></button>
+        <button mat-icon-button ><mat-icon>bookmark</mat-icon></button>
         <button mat-icon-button><mat-icon>playlist_add</mat-icon></button>
-        <button mat-icon-button><mat-icon>download</mat-icon></button>
+        <button mat-icon-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
       </div>
     </div>
     <div class="course-info">

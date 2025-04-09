@@ -248,7 +248,8 @@ export class QuestionCanvasComponent implements OnInit {
        next: (data) => {
         console.log('Soru Kaydedildi:', data);
         this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
-        this.imageSelector.resetRegions();
+        this.imageSelector.sendToFix();
+        // this.imageSelector.resetRegions();
        },
         error: (err) => {
           console.log(err);

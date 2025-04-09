@@ -29,6 +29,12 @@ export class WorksheetDetailComponent implements OnInit {
       }
   }
 
+  editWorksheet(id: number | null) {
+    if (id) {
+      this.router.navigate(['/exam', id]);
+    }
+  }
+
   ngOnInit() {
     this.route.paramMap.subscribe(async params => {
       this.testId = Number(params.get('testId'));

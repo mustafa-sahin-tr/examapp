@@ -1,8 +1,10 @@
 <div class="container" [ngClass]="selectionMode()">
     <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*">
+    <button mat-raised-button color="primary" (click)="previousImage()">Prev</button>
     <button mat-raised-button color="primary" (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
     <button mat-raised-button color="primary" (click)="toggleSelectionMode('question')">Soru Seç</button>
-    <button mat-raised-button color="primary" (click)="lockSelectionMode('answer')">Disable Modes</button>
+    <!-- <button mat-raised-button color="primary" (click)="lockSelectionMode('answer')">Disable Modes</button> -->
+    <button mat-raised-button color="primary" (click)="lockSelectionMode(null)">Disable Modes</button>
     <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizalamayı {{!autoAlign() ? 'Aç' : 'Kapat'}}</button>
     <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
     <button mat-raised-button color="primary" (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button>
@@ -11,22 +13,22 @@
     <!-- <button mat-raised-button color="primary" (click)="sendToFixForAnswer()">Sent To Fix For Answer</button> -->
     <button mat-raised-button color="primary" (click)="toggleAutoMode()">{{autoMode() ? 'Manuel' : 'Auto'}}</button>
     <button mat-raised-button color="primary" (click)="toggleOnlyQuestionMode()">{{onlyQuestionMode() ? 'Soru-Cevap Modu' : 'Soru Modu'}}</button>
-    <button mat-raised-button color="primary" (click)="nextImage()">Next Image</button>
+    <button mat-raised-button color="primary" (click)="nextImage()" [disabled]="inProgress()">Next</button>
     
     {{this.imagName()}}
     <div *ngIf="imageSrc()" class="canvas-container">
-      <canvas #canvas (mousedown)="startSelection($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
+      <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)" (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
     </div>
   
     <div class="regions-list">
       <h3>Seçilen Bölgeler:</h3>
       <ul class="regions">
         <li *ngFor="let region of regions(); let i = index">
-          {{ region.name }} 
+          {{ region.name }} Soru : {{ i }}
           <!-- - X: {{ region.x }}, Y: {{ region.y }}, G: {{ region.width }}, Y: {{ region.height }} -->
           <!-- ✅ Örnek soru checkbox -->
             <label>
-                <input type="checkbox" [checked]="isExample(region.name)" (change)="toggleExampleMode(region.name)"> Örnek Soru
+                <input type="checkbox" [checked]="isExample(region.name)" (change)="toggleExampleMode(region.name)"> Örnek Soru {{i}}
             </label>
              
           <!-- 📝 Quill Editörü (Sadece Örnek Soru Seçiliyse Açılacak) -->

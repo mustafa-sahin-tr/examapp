@@ -8,7 +8,8 @@ import { Topic } from '../models/topic';
 import { SubTopic } from '../models/subtopic';
 import { CompletedTest, Exam, Paged, Test, TestInstance } from '../models/test-instance';
 import { StudentAnswer } from '../models/student-answer';
-import { QuestionRegion } from '../models/draws';
+import { AnswerChoice, QuestionRegion } from '../models/draws';
+import { Answer } from '../models/answer';
 
 @Injectable({
   providedIn: 'root'
@@ -64,6 +65,17 @@ export class TestService {
 
   get(id: number): Observable<Test> {
     return this.http.get<Test>(`/api/worksheet/${id}`);
+  }
+
+  convertAnswerToAnswerChoice(answer: Answer) : AnswerChoice {
+    return {
+          id: answer.id,
+          label: answer.text,
+          x: answer.x,
+          y: answer.y,
+          width: answer.width,
+          height: answer.height
+    }
   }
 
   convertTestInstanceToRegions(testInstance: TestInstance): QuestionRegion[] 

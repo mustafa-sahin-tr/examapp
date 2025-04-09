@@ -603,6 +603,7 @@ ul {
   display: flex;
   align-items: center; // Dikeyde hizalama
   gap: 5px; // İçerideki öğeler arasına boşluk ekler
+  color: var(--main-bg-color);
 }
 
 .choice-btn {
@@ -2771,6 +2772,36 @@ h4 {
 }
 .mr-2, .mx-2 {
   margin-right: .5rem !important;
+}
+
+.options-container {
+  margin-top: 60px;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+.qs-option-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  color: #2b294a;
+  font-size: 20px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.qs-option-button:hover {
+  background-color: #a29bfe;
+  color: white;
+}
+
+.qs-option-button.selected {
+  background-color: #6c5ce7;
+  color: white;
 }
 
 

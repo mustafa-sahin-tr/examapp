@@ -19,6 +19,7 @@ import { QuestionCanvasViewComponent } from '../../shared/components/question-ca
 import { SidenavService } from '../../services/sidenav.service';
 import { MatIconModule } from '@angular/material/icon';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
+import { Answer } from '../../models/answer';
 
 @Component({
   selector: 'app-test-solve',
@@ -427,6 +428,10 @@ async loadTest(testId: number) {
     this.selectedChoices.set(updatedChoices);
     //this.selectedChoice.set(answer);
     this.selectAnswer(answer.id);
+  }
+
+  selectAnswerChoice(answer: Answer) {
+     this.selectChoice(this.testService.convertAnswerToAnswerChoice(answer));
   }
 
 }

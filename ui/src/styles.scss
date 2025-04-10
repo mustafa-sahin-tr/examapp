@@ -1705,7 +1705,7 @@ position: relative;
   /* margin: 12px; */
   transition: box-shadow 0.3sease-in-out;
   cursor: pointer;
-  width: 250px;
+  width: 400px;
 }
 
 .card:hover {
@@ -1720,8 +1720,8 @@ position: relative;
 }
 
 .card h3 {
-  height: 40px;
-  display: flex;
+  height: 110px;
+  // display: flex;
   align-items: center;
   // justify-content: center;
 }
@@ -2052,9 +2052,10 @@ h4 {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   text-align: left;
+  
 }
 
 
@@ -2094,7 +2095,7 @@ h4 {
 .course-title {
   font-size: 16px;
   line-height: 22px;
-  min-height: 24px;
+  min-height: 75px;
   color: var(--mat-sys-on-surface);
 }
 
@@ -2256,7 +2257,7 @@ h4 {
     margin-top: 20px;
 
     .filters {
-      width: 250px;
+      width: 100%;
       padding: 15px;
       background-color: #282832;
       border-radius: 8px;

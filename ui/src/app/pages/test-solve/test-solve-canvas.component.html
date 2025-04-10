@@ -44,13 +44,13 @@
        }
        
     </div>
-    <div class="options-container">
+    <!-- <div class="options-container">
       <button *ngFor="let answer of testInstance.testInstanceQuestions[currentIndex()].question.answers; let i = index" class="qs-option-button"
         [ngClass]="{
           'selected': testInstance.testInstanceQuestions[currentIndex()].selectedAnswerId === answer.id
         }"          
       (click)="selectAnswerChoice(answer)">{{answer.text}}</button>      
-    </div>
+    </div> -->
     <!-- Navigasyon Butonları -->
     <div class="navigation-buttons">
       <button mat-fab-button color="primary" class="prev-button" (click)="prevQuestion()" [disabled]="currentIndex() === 0">

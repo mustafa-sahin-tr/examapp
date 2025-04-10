@@ -8,6 +8,28 @@
             <div class="form-column">
               <div>    
                 <mat-form-field appearance="outline" class="search-box">
+                  <mat-label>Kitap</mat-label>
+                  <mat-select formControlName="bookId" required (selectionChange)="onBookChange($event.value)">
+                    @for ( book of books ; track book.id ) {
+                      <mat-option [value]="book.id">
+                        {{ book.name }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="search-box">
+                  <mat-label>Kitap Testi</mat-label>
+                  <mat-select formControlName="bookTestId" required>
+                    @for ( bt of bookTests ; track bt.id ) {
+                      <mat-option [value]="bt.id">
+                        {{ bt.name }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                  
+                <mat-form-field appearance="outline" class="search-box">
                     <mat-label>Test</mat-label>
                     <input matInput formControlName="testId" [matAutocomplete]="auto">
                     <mat-autocomplete #auto="matAutocomplete"  [displayWith]="displayFn" (optionSelected)="onOptionSelected($event)">

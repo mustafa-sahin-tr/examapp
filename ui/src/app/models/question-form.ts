@@ -27,5 +27,7 @@ export type QuestionCanvasForm = {
     subtopicId: FormControl<number>,
     isExample: FormControl<boolean>,
     practiceCorrectAnswer: FormControl<string>,
-    testId:  FormControl<number | null>
+    testId:  FormControl<number | null>,
+    bookId:  FormControl<number | null>,
+    bookTestId :  FormControl<number | null>,
 }

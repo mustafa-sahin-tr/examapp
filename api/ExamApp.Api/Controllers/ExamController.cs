@@ -182,7 +182,7 @@ public class ExamController : BaseController
 
     [HttpGet("list")]    
     public async Task<IActionResult> GetWorksheetsAsync(string? search = null, [FromQuery] List<int>? subjectIds = null, int? gradeId = null,
-     int pageNumber = 1, int pageSize = 10)
+     int pageNumber = 1, int pageSize = 10, int bookTestId = 0)
     {
         // 🔹 Token’dan UserId'yi al
         var user = await GetAuthenticatedUserAsync();
@@ -204,6 +204,11 @@ public class ExamController : BaseController
         if (subjectIds != null && subjectIds.Any())
         {
             query = query.Where(t => t.SubjectId.HasValue && subjectIds.Contains(t.SubjectId.Value));
+        }
+
+        if(bookTestId > 0)
+        {
+            query = query.Where(t => t.BookTestId == bookTestId);
         }
 
         // Search filtresi

@@ -90,6 +90,9 @@ export class QuestionCanvasComponent implements OnInit {
   questionForm!: FormGroup;
   bookService = inject(BookService);
   selectedSubtopicsId: number[] = [];
+  bookTests: BookTest[] = [];
+  books: Book[] = [];
+  
 
   // 🟢 Form Kontrolleri
 
@@ -124,20 +127,40 @@ export class QuestionCanvasComponent implements OnInit {
       subtopicId: new FormControl(state?.subtopicId || 0, { nonNullable: true, validators: [Validators.required] }),
       isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
       practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-      testId: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })      
+      testId: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })   ,   
+      bookId: new FormControl(state?.bookId || '', { nonNullable: true, validators: [Validators.required] }),
+      bookTestId: new FormControl(state?.bookTestId || '', { nonNullable: true, validators: [Validators.required] }),      
     });
 
     this.questionForm.get('testId')?.valueChanges.pipe(
       debounceTime(300),
       switchMap(value => {
         console.log('Search value:', value); // Gelen değeri kontrol et
-        return this.testService.search(value || '',[],undefined,1)
+        return this.testService.search(value || '',[],undefined,1,1000)
       }),
       tap(results => {
-        this.testList = results.items;  
+        this.testList = results.items.filter(test => test.bookTestId === this.questionForm.value.bookTestId);
       })
     ).subscribe();
 
+  }
+
+  loadBooks() {
+    this.bookService.getAll().subscribe(data => {
+      this.books = data;
+      if(this.questionForm.value.bookId) {
+        this.onBookChange(this.questionForm.value.bookId);
+      }
+    });
+  }
+
+  onBookChange($event : any) {
+    if($event) {
+      this.bookService.getTestsByBook($event).
+        subscribe(data => {
+          this.bookTests = data          
+        });
+    }     
   }
 
    
@@ -152,14 +175,15 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   ngOnInit() {
-
+    this.loadBooks();
     // 🟢 Backend'den test listesini getir
-    this.testService.search('',[]).subscribe(data => {
+    this.testService.search('',[],undefined,1,1000).subscribe(data => {
       this.testList = data.items;
     });
 
     const navigation = this.router.getCurrentNavigation();
-    const state = navigation?.extras.state as { subjectId?: number; topicId?: number, subtopicId?: number, testId?: number };
+    const state = navigation?.extras.state as { 
+        subjectId?: number; topicId?: number, subtopicId?: number, testId?: number, bookId?: number, bookTestId?: number};
     this.resetFormWithDefaultValues(state);
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;  
@@ -169,8 +193,8 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   loadTests() {
-    this.testService.search('', []).subscribe(data => {
-      this.testList = data.items;
+    this.testService.search('', [],undefined,1,1000).subscribe(data => {
+      this.testList = data.items.filter(test => test.bookTestId === this.questionForm.value.bookTestId);
     });
   }
 

@@ -42,11 +42,12 @@ export class TestService {
     return this.http.get<Exam[]>(`/api/worksheet`);
   }
 
-  search(query: string | undefined, subjectIds: number[], gradeId?: number, pageNumber: number = 1, pageSize= 10): 
+  search(query: string | undefined, subjectIds: number[], gradeId?: number, pageNumber: number = 1, pageSize= 10, booktestId=0): 
     Observable<Paged<Test>> {
     const subjectIdsParam = subjectIds && subjectIds.length > 0 ? '&subjectIds=' + subjectIds.join(`&subjectIds=`) : '';
     const gradeIdParam = gradeId ? `&gradeId=${gradeId}` : '';
-    var reqUrl = `/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}`;
+    const bookTestIdParam = booktestId ? `&bookTestId=${booktestId}` : '';
+    var reqUrl = `/api/worksheet/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
     console.log(reqUrl);
     return this.http.get<Paged<Test>>(reqUrl);
   }

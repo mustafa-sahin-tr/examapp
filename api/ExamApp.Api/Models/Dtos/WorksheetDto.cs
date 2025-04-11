@@ -17,4 +17,7 @@ public class WorksheetDto
     public int? BookTestId { get; set; }
     public int? BookId { get; set; }
     public int QuestionCount { get; set; } // ✅ Eklenen alan
+
+    public InstanceSummaryDto? Instance { get; set; }
+
 }

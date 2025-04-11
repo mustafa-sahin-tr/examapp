@@ -123,7 +123,7 @@ public class ExamController : BaseController
             .ToListAsync(); // 🔥 Burada `ToListAsync()` çağırarak veriyi hafızaya alıyoruz.
 
         // 🔥 EF Core ile `DurationMinutes` hesaplaması yapılmadığı için C# tarafında işliyoruz.
-        var results = query.Select(wi => new CompletedTestDto
+        var results = query.Select(wi => new InstanceSummaryDto
         {
             Id = wi.Id,
             Name = wi.Name,
@@ -188,6 +188,13 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         var student = await GetAuthenticatedStudentAsync();
 
+
+        var instances = await _context.TestInstances
+            .Where(ti => ti.StudentId == student.Id)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+            .Include(ti => ti.Worksheet)
+            .ToListAsync();
+
         var query = _context.Worksheets.AsQueryable();
 
         // GradeId filtresi
@@ -227,8 +234,44 @@ public class ExamController : BaseController
         var tests = await query
             .OrderBy(t => t.Name) // Sıralama için
             .Skip((pageNumber - 1) * pageSize) // Sayfalama için
-            .Take(pageSize)            
-            .Select(t => new WorksheetDto
+            .Take(pageSize)
+            .ToListAsync();
+
+
+        var worksheetDtos = tests.Select(t =>
+        {
+            var instance = instances.FirstOrDefault(i => i.WorksheetId == t.Id);
+            
+            InstanceSummaryDto? instanceDto = null;
+            if (instance != null)
+            {
+                var correct = instance.WorksheetInstanceQuestions.Count(wiq =>
+                    wiq.SelectedAnswerId != null &&
+                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                        && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId));
+
+                var wrong = instance.WorksheetInstanceQuestions.Count(wiq =>
+                    wiq.SelectedAnswerId != null &&
+                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                        && wq.Question.CorrectAnswerId != wiq.SelectedAnswerId));
+
+                instanceDto = new InstanceSummaryDto
+                {
+                    Id = instance.Id,
+                    Name = t.Name,
+                    Status = (int)instance.Status,
+                    ImageUrl = t.ImageUrl,
+                    CompletedDate = instance.EndTime ?? DateTime.UtcNow,
+                    DurationMinutes = instance.EndTime.HasValue ? 
+                        (int)(instance.EndTime.Value - instance.StartTime).TotalMinutes : 0,
+                    TotalQuestions = instance.WorksheetInstanceQuestions.Count,
+                    CorrectAnswers = correct,
+                    WrongAnswers = wrong,
+                    Score = (correct * 100) / (instance.WorksheetInstanceQuestions.Count > 0 ? instance.WorksheetInstanceQuestions.Count : 1)
+                };
+            }
+
+            return new WorksheetDto
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -241,17 +284,18 @@ public class ExamController : BaseController
                 ImageUrl = t.ImageUrl,
                 BadgeText = t.BadgeText,
                 BookTestId = t.BookTestId,
-                BookId = t.BookTest != null ? t.BookTest.BookId : null,
-                QuestionCount = t.WorksheetQuestions.Count() // ✅ Soru sayısını ekledik
-            })
-            .ToListAsync();
+                BookId = t.BookTest?.BookId,
+                QuestionCount = t.WorksheetQuestions.Count,
+                Instance = instanceDto // 💡 Eklenen alan
+            };
+        }).ToList();
 
         return Ok(new Paged<WorksheetDto>
         {
             PageNumber = pageNumber,
             PageSize = pageSize,
             TotalCount = totalCount,
-            Items = tests
+            Items = worksheetDtos
         });
     }
 

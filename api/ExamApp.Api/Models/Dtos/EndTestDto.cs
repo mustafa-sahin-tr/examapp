@@ -10,7 +10,7 @@ public class EndTestInstanceDto
 
 }
 
-public class CompletedTestDto
+public class InstanceSummaryDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -21,4 +21,6 @@ public class CompletedTestDto
     public int CorrectAnswers { get; set; }
     public int WrongAnswers { get; set; }
     public int TotalQuestions { get; set; }
+
+    public int Status { get; set; } // 0: In Progress, 1: Completed, 2: Canceled
 }

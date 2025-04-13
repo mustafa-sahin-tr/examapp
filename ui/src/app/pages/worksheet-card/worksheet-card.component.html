@@ -1,4 +1,4 @@
-<div *ngIf="type === 'pscard'" class="card">
+<div *ngIf="type === 'pscard'" class="ms-card">
   <div>
   <mat-card class="course-card" (click)="onClick()">
     <div class="course-info" [style.background-image]="'url(' + getBackgroundImage() + ')'" >
@@ -52,7 +52,7 @@
 </div> -->
 </div>
 
-<div *ngIf="type === 'badge'" class="card" >
+<div *ngIf="type === 'badge'" class="ms-card" >
   <!-- <div *ngIf="test.badgeText" class="badge badge-top-left">{{ test.badgeText }}</div> -->
   <div  class="svg-container">
     <svg [attr.width]="size"

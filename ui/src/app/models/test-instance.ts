@@ -9,6 +9,13 @@ export enum TestStatus {
     Expired = 2
 }
 
+// public enum WorksheetInstanceStatus
+// {
+//     Started = 0,   // 🟢 Test başladı
+//     Completed = 1, // ✅ Test tamamlandı
+//     Expired = 2    // ⏳ Süre doldu
+// }
+
 export interface TestInstanceQuestion {
     id: number;
     question: Question;
@@ -57,9 +64,10 @@ export interface   Test {
     bookId?: number;
     bookTestId?: number;
     questionCount?: number;
+    instance?: InstanceSummary;
 }
 
-export interface CompletedTest {
+export interface InstanceSummary {
     id: number;
     name: string;
     imageUrl?: string;
@@ -69,4 +77,5 @@ export interface CompletedTest {
     correctAnswers: number;
     wrongAnswers: number;
     totalQuestions: number;
+    status: number;
 }

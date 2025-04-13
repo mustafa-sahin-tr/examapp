@@ -1,4 +1,3 @@
-// worksheet-card.component.ts
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { Test } from '../../models/test-instance';

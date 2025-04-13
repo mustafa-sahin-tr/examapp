@@ -200,6 +200,10 @@ public class AppDbContext : DbContext
             .WithMany(q => q.WorksheetQuestions)
             .HasForeignKey(tq => tq.QuestionId);
 
+        modelBuilder.Entity<Worksheet>()
+            .HasMany(w => w.WorksheetQuestions)
+            .WithOne(wq => wq.Worksheet)
+            .HasForeignKey(wq => wq.TestId);
 
             // 📌 Grade - Subject İlişkisi
         modelBuilder.Entity<GradeSubject>()

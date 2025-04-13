@@ -1,13 +1,22 @@
 <div class="container">
-    <div class="course-container">
+    <div class="course-container" *ngIf="exam">
       <h1 class="course-title">{{exam.name}} - {{exam.subtitle}}</h1>
       <p class="course-subtitle">{{exam.gradeId}}. Sınıf</p>
       <p>{{exam.description}}</p>
       <div class="course-actions">
-        <button mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
+        <button *ngIf="!instanceCompleted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
         <button mat-icon-button ><mat-icon>bookmark</mat-icon></button>
         <button mat-icon-button><mat-icon>playlist_add</mat-icon></button>
         <button mat-icon-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
+      </div>
+      <div *ngIf="instanceCompleted" >
+        <h1 class="course-title">Sonuç</h1>
+        <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)"></app-question-navigator>  
+        <app-question-canvas-view [questionRegion]="regions()[currentIndex()]" 
+          [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
+          [mode]="'result'"  
+          [correctChoice]="correctChoices().get(regions()[currentIndex()].id)"
+        ></app-question-canvas-view>
       </div>
     </div>
     <div class="course-info">

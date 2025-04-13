@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { StudentProfile } from '../../models/student-profile';
 import { StudentService } from '../../services/student.service';
@@ -20,7 +20,7 @@ import { NgxChartsModule, Color, ScaleType, LegendPosition } from '@swimlane/ngx
 import { StudentTimeChartComponent } from '../../shared/components/student-time-chart/student-time-chart.component';
 import { FormsModule, NgModel } from '@angular/forms';
 import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
-import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
+import { TestService } from '../../services/test.service';
 
 @Component({
   selector: 'app-student-profile',
@@ -30,10 +30,11 @@ import { QuestionNavigatorComponent } from '../../shared/components/question-nav
   imports: [CommonModule, MatCardModule, MatIconModule, MatListModule, MatTooltipModule,
     MatSnackBarModule, MatSelectModule, PointCardComponent, BadgeBoxComponent, FormsModule,
     LeaderboardComponent, SectionHeaderComponent, MatTabsModule, NgxChartsModule, StudentTimeChartComponent,
-    BadgeThropyComponent, QuestionNavigatorComponent
+    BadgeThropyComponent
   ]
 })
 export class StudentProfileComponent implements OnInit {
+  testService = inject(TestService);
   industry: {name: string, value: number} = {name:'Software Development', value: 100};
   yearsOfExperience: number = 0
   avatarUrl: string = 'http://localhost/minio-api/avatars/avatar.png';
@@ -244,24 +245,7 @@ export class StudentProfileComponent implements OnInit {
   cardColor: string = '#232837';
 
 
-  single: any[] = [
-    {
-      "name": "Çözülen Soru",
-      "value": 8940
-    },
-    {
-      "name": "Çalışma Süresi (dk)",
-      "value": 500
-    },
-    {
-      "name": "Doğru Cevap",
-      "value": 7200
-    },
-    {
-      "name": "Çözülen Test",
-      "value": 5
-    }
-  ];
+  single: any[] = [];
 
   xAxisTickFormatting(val: string): string {
     // "2024 - Feb - Week 1" formatındaki değerden ayı al
@@ -301,6 +285,30 @@ export class StudentProfileComponent implements OnInit {
 
     this.studentService.getProfile().subscribe(response => {
       this.student = response;
+    });
+
+    this.testService.studentStatistics().subscribe(response => {
+      this.single = [];
+      this.single = this.single.concat( [
+        {
+          "name": "Çözülen Test",
+          "value": response.total.completedTests
+        },
+        {
+          "name": "Çalışma Süresi (dk)",
+          "value": response.total.totalTimeSpentMinutes
+        },        
+        {
+          "name": "Çözülen Soru",
+          "value": response.total.totalCorrectAnswers + response.total.totalWrongAnswers
+        },            
+        {
+          "name": "Doğru Cevap",
+          "value": response.total.totalCorrectAnswers
+        }
+      ]);
+
+      console.log('Student Statistics:', this.single);
     });
   }
 

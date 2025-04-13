@@ -1,5 +1,5 @@
 
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { CommonModule } from '@angular/common';
@@ -28,6 +28,19 @@ import { SidenavService } from '../../services/sidenav.service';
 export class LayoutComponent {
   // isSidenavOpen = signal(true);
   showHeader = signal(true);
+
+  menuItems = [
+    { name: 'Ana Sayfa', icon: 'home', route: '/home' },
+    { name: 'Sınavlar', icon: 'folder', route: '/tests' },
+    { name: 'Role IQ', icon: 'assignment_ind', route: '/program-create' },
+    { name: 'Sertifikalar', icon: 'verified' },
+    { name: 'Parkur', icon: 'timeline' },
+    { name: 'Sonuçlar', icon: 'track_changes'},
+    { name: 'Destek', icon: 'help' },
+    { name: 'Geri Bildirim', icon: 'feedback' }
+  ];  
+
+  activeMenuItem: WritableSignal<string | null> = signal('/home');
 
   authService = inject(AuthService);
   profileImage = 'assets/profile.png';  
@@ -63,7 +76,13 @@ export class LayoutComponent {
       return this.authService.getUserAvatar() || this.profileImage;
     }
   
-    navigateTo(path: string) {
+    navigateTo(path: string | undefined) {
+      if (!path) {
+        return;
+      }
+
+      this.activeMenuItem.set(path);
+
       this.router.navigate([path]);
     }
   

@@ -2,6 +2,7 @@ import { AfterViewChecked, AfterViewInit, Component, computed, effect, ElementRe
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { SafeHtmlPipe } from '../../../services/safehtml';
 import { NgIf } from '@angular/common';
+import { throwToolbarMixedModesError } from '@angular/material/toolbar';
 
 @Component({
   selector: 'app-question-canvas-view',
@@ -37,6 +38,14 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     this._selectedChoice.set(choice);
   }
 
+  @Input() set correctChoice(choice: AnswerChoice | undefined) {
+    this._correctChoice.set(choice);
+  }
+
+  @Input() set mode(m: 'exam' | 'result' | null) {
+    this._mode.set(m || 'exam');
+  }
+
   @Output() hoverRegion = new EventEmitter<MouseEvent>();
   @Output() selectRegion = new EventEmitter<MouseEvent>();
   @Output() choiceSelected = new EventEmitter<AnswerChoice>();
@@ -44,7 +53,8 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
 
   public hoveredChoice = signal<AnswerChoice | null>(null); // 🟦 Hangi şık üzerinde geziliyorsa
   private _selectedChoice = signal<AnswerChoice | undefined>(undefined); // 🔄 Her soru için seçilen şıkkı sakla
-
+  private _correctChoice = signal<AnswerChoice | undefined>(undefined); // 🔄 Her soru için seçilen şıkkı sakla
+  private _mode = signal<'exam' | 'result'>('exam'); // Sınav modu
   constructor() {
     effect(() => {
       if (this._questionRegion()) {
@@ -115,16 +125,24 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     this.drawImageSection();
   }
 
-  applyGradientBackground(answer: AnswerChoice) {
+  
+
+  drawAnswer(answer: AnswerChoice, color: string) {
     if (!this.canvasCtx) return;
 
-    const gradient = this.canvasCtx.createLinearGradient(answer.x, answer.y, answer.x + answer.width, answer.y + answer.height);
-    gradient.addColorStop(0, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç
-    gradient.addColorStop(1, 'rgba(34, 139, 34, 0.2)'); // ✅ Koyu yeşil bitiş
+      const gradient = this.canvasCtx.createLinearGradient(answer.x, answer.y, answer.x + answer.width, answer.y + answer.height);
+      gradient.addColorStop(0, color); // ✅ Yeşil başlangıç
+      gradient.addColorStop(1, color); // ✅ Koyu yeşil bitiş
 
-    this.canvasCtx.fillStyle = gradient;
-    this.canvasCtx.fillRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, answer.width, answer.height);
-}
+      this.canvasCtx.fillStyle = gradient;
+      this.canvasCtx.fillRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, answer.width, answer.height);
+
+      this.canvasCtx.fill();
+      this.canvasCtx.strokeStyle = 'black'; // Çerçeve siyah
+      this.canvasCtx.lineWidth = 2;
+      this.canvasCtx.strokeRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, answer.width, answer.height);
+      this.canvasCtx.stroke();
+  }
 
   drawImageSection() {
     if (!this.isImageLoaded()) return;
@@ -148,35 +166,42 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
       for (const answer of this._questionRegion().answers) {
         const isSelected = this._selectedChoice() === answer;
         const isHovered = this.hoveredChoice() === answer;
+        const isCorrect = this._correctChoice() === answer;
 
         const borderRadius = 0 ; // Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
-
-            // this.canvasCtx.beginPath();
-            // this.canvasCtx.roundRect(
-            //     answer.x - this._questionRegion().x, 
-            //     answer.y - this._questionRegion().y, 
-            //     answer.width, 
-            //     answer.height, 
-            //     borderRadius
-            // );
-            // this.canvasCtx.closePath();
-
-        if (isSelected) {
-          this.applyGradientBackground(answer); // ✅ Özel arka plan
-        } else if (isHovered) {
-          this.canvasCtx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
-          this.canvasCtx.fillRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, 
-                answer.width, answer.height);
-        } else {
-          this.canvasCtx.fillStyle = 'rgba(255, 255, 255, 0)'; // Varsayılan şeffaf
+        if(this._mode() === 'exam') {
+          if (isSelected) {
+            this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç);
+          } else if (isHovered) {
+            this.canvasCtx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
+            this.canvasCtx.fillRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, 
+                  answer.width, answer.height);
+          } else {
+            this.canvasCtx.fillStyle = 'rgba(255, 255, 255, 0)'; // Varsayılan şeffaf
+          }
+        } else if (this._mode() === 'result') {
+          console.log('regions:', this._questionRegion());
+          console.log('selected answer:', this._selectedChoice());
+          
+          if(isCorrect) {
+            this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç);            
+          }
+          if (isSelected) { 
+            if(isCorrect) {
+                this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç);
+            }
+            else {
+              this.drawAnswer(answer, 'rgba(234, 21, 21, 0.46)'); // ✅ Yeşil başlangıç);
+            }
+          }
         }
 
         // this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-        this.canvasCtx.fill();
-        this.canvasCtx.strokeStyle = 'black'; // Çerçeve siyah
-        this.canvasCtx.lineWidth = 2;
-        // this.ctx.strokeRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-        this.canvasCtx.stroke();
+        // this.canvasCtx.fill();
+        // this.canvasCtx.strokeStyle = 'black'; // Çerçeve siyah
+        // this.canvasCtx.lineWidth = 2;
+        // this.canvasCtx.strokeRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, answer.width, answer.height);
+        // this.canvasCtx.stroke();
         
       }
     }

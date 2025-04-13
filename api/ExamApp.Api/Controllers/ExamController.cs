@@ -181,8 +181,11 @@ public class ExamController : BaseController
 
 
     [HttpGet("list")]    
-    public async Task<IActionResult> GetWorksheetsAsync(string? search = null, [FromQuery] List<int>? subjectIds = null, int? gradeId = null,
-     int pageNumber = 1, int pageSize = 10, int bookTestId = 0)
+    public async Task<IActionResult> GetWorksheetsAsync(
+                int? id = 0,
+                string? search = null, [FromQuery] List<int>? subjectIds = null, 
+                int? gradeId = null,
+                int pageNumber = 1, int pageSize = 10, int bookTestId = 0)
     {
         // 🔹 Token’dan UserId'yi al
         var user = await GetAuthenticatedUserAsync();
@@ -193,45 +196,51 @@ public class ExamController : BaseController
             .Where(ti => ti.StudentId == student.Id)
             .Include(ti => ti.WorksheetInstanceQuestions)
             .Include(ti => ti.Worksheet)
-            .ToListAsync();
+            .ToListAsync();        
 
         var query = _context.Worksheets.AsQueryable();
 
-        // GradeId filtresi
-        if (gradeId.HasValue)
+        if(id > 0)
         {
-            query = query.Where(t => t.GradeId == gradeId.Value);
-        }
-        else
-        {
-            query = query.Where(t => t.GradeId == student.GradeId);
-        }
+            query = query.Where(t => t.Id == id);
+        } else {
+            // GradeId filtresi
+            if (gradeId.HasValue)
+            {
+                query = query.Where(t => t.GradeId == gradeId.Value);
+            }
+            else
+            {
+                query = query.Where(t => t.GradeId == student.GradeId);
+            }
 
-        // SubjectId filtresi
-        if (subjectIds != null && subjectIds.Any())
-        {
-            query = query.Where(t => t.SubjectId.HasValue && subjectIds.Contains(t.SubjectId.Value));
-        }
+            // SubjectId filtresi
+            if (subjectIds != null && subjectIds.Any())
+            {
+                query = query.Where(t => t.SubjectId.HasValue && subjectIds.Contains(t.SubjectId.Value));
+            }
 
-        if(bookTestId > 0)
-        {
-            query = query.Where(t => t.BookTestId == bookTestId);
-        }
+            if(bookTestId > 0)
+            {
+                query = query.Where(t => t.BookTestId == bookTestId);
+            }
 
-        // Search filtresi
-        if (!string.IsNullOrEmpty(search))
-        {
-            string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));
-            query = query.Where(t => 
-                EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
-                (t.Subtitle != null && EF.Functions.Like(t.Subtitle.ToLower(), $"%{normalizedSearch}%")) ||
-                EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%")
-            );
+            // Search filtresi
+            if (!string.IsNullOrEmpty(search))
+            {
+                string normalizedSearch = search.ToLower(new CultureInfo("tr-TR"));
+                query = query.Where(t => 
+                    EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
+                    (t.Subtitle != null && EF.Functions.Like(t.Subtitle.ToLower(), $"%{normalizedSearch}%")) ||
+                    EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%")
+                );
+            }
         }
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
-
-        var tests = await query
+        var tests = await query            
+            .Include(t => t.WorksheetQuestions)
+                .ThenInclude(tq => tq.Question)
             .OrderBy(t => t.Name) // Sıralama için
             .Skip((pageNumber - 1) * pageSize) // Sayfalama için
             .Take(pageSize)
@@ -285,7 +294,7 @@ public class ExamController : BaseController
                 BadgeText = t.BadgeText,
                 BookTestId = t.BookTestId,
                 BookId = t.BookTest?.BookId,
-                QuestionCount = t.WorksheetQuestions.Count,
+                QuestionCount = t.WorksheetQuestions.Count(),
                 Instance = instanceDto // 💡 Eklenen alan
             };
         }).ToList();
@@ -535,6 +544,87 @@ public class ExamController : BaseController
         }
     }
 
+    [HttpGet("test-canvas-instance-result/{testInstanceId}")]
+    public async Task<IActionResult> GetTestCanvasInstanceResults(int testInstanceId)
+    {
+        var user = await GetAuthenticatedUserAsync();
+
+        var testInstance = await _context.TestInstances
+            .Include(ti => ti.Worksheet)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Answers)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Passage)
+            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && 
+                    ti.Student.UserId == user.Id);
+
+        if (testInstance == null)
+        {
+            return NotFound(new { message = "Test bulunamadı!" });
+        }        
+
+        if(testInstance.Status != WorksheetInstanceStatus.Completed)
+        {
+            return BadRequest(new { message = "Test tamamlanmadı!" });
+        }
+
+        var response = new
+        {
+            Id = testInstance.Id,
+            TestName = testInstance.Worksheet.Name,            
+            Status = testInstance.Status,
+            MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
+            testInstance.Worksheet.IsPracticeTest,
+            TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq => new
+            {
+                Id = tiq.Id,
+                Order = tiq.WorksheetQuestion.Order,                
+                Question = new {
+                    tiq.WorksheetQuestion.Question.Id,
+                    tiq.WorksheetQuestion.Question.Text,
+                    tiq.WorksheetQuestion.Question.SubText,
+                    tiq.WorksheetQuestion.Question.ImageUrl,
+                    tiq.WorksheetQuestion.Question.IsExample,
+                    tiq.WorksheetQuestion.Question.CorrectAnswerId,
+                    Passage = tiq.WorksheetQuestion.Question.PassageId.HasValue ? new {
+                        tiq.WorksheetQuestion.Question.Passage?.Id,
+                        tiq.WorksheetQuestion.Question.Passage?.Title,
+                        tiq.WorksheetQuestion.Question.Passage?.Text,
+                        tiq.WorksheetQuestion.Question.Passage?.ImageUrl,
+                        tiq.WorksheetQuestion.Question.Passage?.X,
+                        tiq.WorksheetQuestion.Question.Passage?.Y,
+                        tiq.WorksheetQuestion.Question.Passage?.Width,
+                        tiq.WorksheetQuestion.Question.Passage?.Height
+                    } : null,
+                    tiq.WorksheetQuestion.Question.PracticeCorrectAnswer,
+                    tiq.WorksheetQuestion.Question.AnswerColCount,
+                    tiq.WorksheetQuestion.Question.IsCanvasQuestion,
+                    tiq.WorksheetQuestion.Question.X,
+                    tiq.WorksheetQuestion.Question.Y,
+                    tiq.WorksheetQuestion.Question.Width,
+                    tiq.WorksheetQuestion.Question.Height,                    
+                    Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new
+                    {
+                        a.Id,
+                        a.Text,                        
+                        a.ImageUrl,
+                        a.X,
+                        a.Y,
+                        a.Width,
+                        a.Height
+                    }).ToList() 
+                } ,
+                SelectedAnswerId = tiq.SelectedAnswerId // Önceden seçilen cevap
+            }).ToList()
+        };
+
+        return Ok(response);
+    }
+
     [HttpGet("test-canvas-instance/{testInstanceId}")]
     public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
     {
@@ -590,7 +680,7 @@ public class ExamController : BaseController
                     tiq.WorksheetQuestion.Question.X,
                     tiq.WorksheetQuestion.Question.Y,
                     tiq.WorksheetQuestion.Question.Width,
-                    tiq.WorksheetQuestion.Question.Height,
+                    tiq.WorksheetQuestion.Question.Height,                    
                     Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new
                     {
                         a.Id,
@@ -607,7 +697,7 @@ public class ExamController : BaseController
         };
 
         return Ok(response);
-    }    
+    }
 
     [Authorize]
     [HttpPost("save-answer")]
@@ -733,6 +823,107 @@ public class ExamController : BaseController
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+    
+    [HttpGet("student/statistics")]
+    public async Task<IActionResult> GetGroupedStudentStatistics()
+    {
+        var student = await GetAuthenticatedStudentAsync();
+
+        var testInstances = await _context.TestInstances
+            .Where(ti => ti.StudentId == student.Id)
+            .Include(ti => ti.Worksheet)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(wiq => wiq.WorksheetQuestion)
+                    .ThenInclude(wq => wq.Question)
+            .ToListAsync();
+
+        // 🔹 Total verileri için
+        int totalSolved = testInstances.Count;
+        var completedTests = testInstances.Where(ti => ti.Status == WorksheetInstanceStatus.Completed).ToList();
+        int completedCount = completedTests.Count;
+        int totalCorrect = 0;
+        int totalWrong = 0;
+        int totalTimeTaken = 0;
+
+        foreach (var instance in completedTests)
+        {
+            foreach (var question in instance.WorksheetInstanceQuestions)
+            {
+                totalTimeTaken += question.TimeTaken / 60;
+
+                if (question.SelectedAnswerId.HasValue)
+                {
+                    var correctAnswerId = question.WorksheetQuestion.Question.CorrectAnswerId;
+                    if (correctAnswerId.HasValue)
+                    {
+                        if (question.SelectedAnswerId == correctAnswerId)
+                            totalCorrect++;
+                        else
+                            totalWrong++;
+                    }
+                }
+            }
+        }
+
+        // 🔹 Gruplama verileri
+        var grouped = testInstances
+            .GroupBy(ti => new { ti.Worksheet.GradeId, ti.Worksheet.Name })
+            .Select(group =>
+            {
+                var allTests = group.ToList();
+                var completed = allTests.Where(ti => ti.Status == WorksheetInstanceStatus.Completed).ToList();
+
+                int groupCorrect = 0;
+                int groupWrong = 0;
+                int groupTimeTaken = 0;
+
+                foreach (var instance in completed)
+                {
+                    foreach (var question in instance.WorksheetInstanceQuestions)
+                    {
+                        groupTimeTaken += question.TimeTaken / 60;
+
+                        if (question.SelectedAnswerId.HasValue)
+                        {
+                            var correctAnswerId = question.WorksheetQuestion.Question.CorrectAnswerId;
+                            if (correctAnswerId.HasValue)
+                            {
+                                if (question.SelectedAnswerId == correctAnswerId)
+                                    groupCorrect++;
+                                else
+                                    groupWrong++;
+                            }
+                        }
+                    }
+                }
+
+                return new
+                {
+                    GradeId = group.Key.GradeId,
+                    TestName = group.Key.Name,
+                    TotalSolvedTests = allTests.Count,
+                    CompletedTests = completed.Count,
+                    TotalTimeSpentMinutes = groupTimeTaken,
+                    TotalCorrectAnswers = groupCorrect,
+                    TotalWrongAnswers = groupWrong
+                };
+            })
+            .ToList();
+
+        // 🔹 Response
+        return Ok(new
+        {
+            total = new
+            {
+                TotalSolvedTests = totalSolved,
+                CompletedTests = completedCount,
+                TotalTimeSpentMinutes = totalTimeTaken,
+                TotalCorrectAnswers = totalCorrect,
+                TotalWrongAnswers = totalWrong
+            },
+            grouped = grouped
+        });
     }
 
 }

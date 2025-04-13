@@ -1,6 +1,6 @@
 // completed-worksheet-card.component.ts
 import { Component, Input, OnInit } from '@angular/core';
-import { CompletedTest } from '../../models/test-instance';
+import { InstanceSummary } from '../../models/test-instance';
 
 @Component({
   selector: 'app-completed-worksheet-card',
@@ -8,7 +8,7 @@ import { CompletedTest } from '../../models/test-instance';
   styleUrls: ['./completed-worksheet-card.component.scss']
 })
 export class CompletedWorksheetCardComponent implements OnInit {
-  @Input() completedTest!: CompletedTest;
+  @Input() completedTest!: InstanceSummary;
 
   ngOnInit(): void {
     console.log('completedTest:', this.completedTest);

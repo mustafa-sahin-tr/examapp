@@ -34,5 +34,6 @@ export interface Question {
     y: number,
     width: number,
     height: number,
-    isCanvasQuestion: boolean
+    isCanvasQuestion: boolean,
+    correctAnswerId?: number
 }

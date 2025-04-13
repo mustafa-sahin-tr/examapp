@@ -7,14 +7,10 @@
         <a mat-list-item routerLink="/help">Help & Support</a>
         <a mat-list-item routerLink="/feedback">Send Feedback</a> -->
         <div class="sidenav">
-            <div class="sidenav-item active" (click)="navigateTo('/home')">
-              <mat-icon>home</mat-icon>
-              <span>Ana Sayfa</span>
-            </div>
-            <div class="sidenav-item" (click)="navigateTo('/tests')">
-              <mat-icon>folder</mat-icon>
-              <span>Sınavlar</span>
-            </div>
+          <div *ngFor="let menuItem of menuItems" class="sidenav-item" [class.active]="menuItem.route === activeMenuItem()" (click)="navigateTo(menuItem.route)">
+            <mat-icon>{{ menuItem.icon }}</mat-icon>
+            <span>{{ menuItem.name }}</span>
+          </div>
             <!-- <div class="sidenav-divider"></div> -->
             <!-- <div class="sidenav-item">
               <mat-icon>stars</mat-icon>
@@ -28,32 +24,7 @@
               <mat-icon>rss_feed</mat-icon>
               <span>Channels</span>
             </div>-->
-            <div class="sidenav-item" (click)="navigateTo('/program-create')">
-              <mat-icon>assignment_ind</mat-icon>
-              <span>Role IQ</span>
-            </div> 
-            <div class="sidenav-divider"></div>
-            <div class="sidenav-item">
-              <mat-icon>verified</mat-icon>
-              <span>Sertifikalar</span>
-            </div>
-            <div class="sidenav-item">
-              <mat-icon>timeline</mat-icon>
-              <span>Parkur</span>
-            </div>
-            <div class="sidenav-item">
-              <mat-icon>track_changes</mat-icon>
-              <span>Sonuçlar</span>
-            </div>
-            <div class="sidenav-divider"></div>
-            <div class="sidenav-item">
-              <mat-icon>help</mat-icon>
-              <span>Destek</span>
-            </div>
-            <div class="sidenav-item">
-              <mat-icon>feedback</mat-icon>
-              <span>Geri Bildirim</span>
-            </div>
+            
           </div>
       </mat-nav-list>
     </mat-sidenav>

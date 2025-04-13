@@ -41,7 +41,7 @@
               <app-pagination
               [currentPage]="pageNumber"
               [totalItems]="pagedWorksheets.totalCount"
-              (pageChange)="changePage($event)"></app-pagination>          
+              (pageChanged)="changePage($event)"></app-pagination>          
                 <h2>{{searchControl.value ? searchControl.value + ' için ' : '' }} <strong>{{ pagedWorksheets.totalCount }}</strong> test bulundu </h2>
             </div>
         </div>
@@ -102,7 +102,7 @@
               <div class="course-info">
                 <h3>
                   {{ course.name }}
-                  <span class="new-badge">NEW & POPULAR</span>
+                  <span *ngIf="course.instance && course.instance.status === 1" class="new-badge">TAMAMLANDI</span>
                   <span class="new-badge"><strong> {{course.questionCount}} Soru</strong></span>
                   <span class="new-badge"><strong> {{ course.gradeId }}.Sınıf</strong></span>
                   <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
@@ -120,7 +120,7 @@
         <app-pagination
           [currentPage]="pageNumber"
           [totalItems]="pagedWorksheets.totalCount"
-          (pageChange)="changePage($event)"></app-pagination>
+          (pageChanged)="changePage($event)"></app-pagination>
       </div>
   
 </div>
@@ -130,6 +130,7 @@
     @if (completedTestWorksheets.length > 0) {
         <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
     <div class="cards" #cardContainer2>
+      
     <app-completed-worksheet-card *ngFor="let cws of completedTestWorksheets"
       [completedTest]="cws">
     </app-completed-worksheet-card>

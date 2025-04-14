@@ -32,7 +32,7 @@ appsettings.Development.json
 
 # Docker & Kubernetes
 .dockerignore
-docker-compose.override.yml
+# docker-compose.override.yml
 
 # .NET Debugging
 *.pdb

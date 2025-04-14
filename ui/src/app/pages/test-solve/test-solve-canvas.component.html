@@ -1,10 +1,10 @@
 @if(testInstance) {
 <mat-card class="test-container">
     <mat-toolbar class="test-header bt-1 m-5" >  
+      <app-countdown [durationInSeconds]="testDuration" [totalDurationInSeconds]="testInstance.maxDurationSeconds" [showProgressBar]="true" [size]="'large'" [label]="'Süre'" ></app-countdown>
       <span class="test-title">{{ testInstance.testName }}</span>
       <span class="test-progress">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
-      <app-countdown [durationInSeconds]="testDuration" [label]="'Toplam Süre'" ></app-countdown>
-      <app-countdown [durationInSeconds]="questionDuration" [label]="'Soru İçin Geçen Süre'"></app-countdown>
+      
       @if(showStopButton) {
         <button  mat-button color="warn" (click)="pauseTest()">Durdur</button>
       }
@@ -38,6 +38,7 @@
     </div>
     
     <div class="navigation-buttons">
+
       <button mat-fab-button color="primary" class="prev-button" (click)="prevQuestion()" [disabled]="currentIndex() === 0">
         <img src="previousPage.svg" width="24" height="24" alt="icon">
       </button>

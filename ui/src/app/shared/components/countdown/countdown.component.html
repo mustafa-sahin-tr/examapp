@@ -8,15 +8,50 @@
     'status-top': timerStatusPosition === 'top',
     'status-bottom': timerStatusPosition === 'bottom'
   }"
-  [style.maxHeight]="'100%'"
->
+  
+  [style.maxHeight]="'100%'">
+    <div *ngIf="showProgressBar" [ngStyle]="{ 'width': progressPercentageTop , 'background': borderColor}" style="
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 5px;
+      transition: width 0.5s linear;
+    "></div>
+  
+    <div *ngIf="showProgressBar" [ngStyle]="{ 'height': progressPercentageRight , 'background': borderColor}" style="
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 5px;
+      transition: height 0.5s linear;
+    "></div>
+    <div *ngIf="showProgressBar" [ngStyle]="{ 'width': progressPercentageBottom , 'background': borderColor}" style="
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      height: 5px;
+      transition: width 0.5s linear;
+    "></div> 
+  
+    <div *ngIf="showProgressBar" [ngStyle]="{  'height': progressPercentageLeft, 'background': borderColor }" style="
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 5px;
+      height: 0%;
+      transition: height 0.5s linear;
+    "></div>
+
     <div class="timer-display">
       <span class="timer-value">{{ minutes }}</span>
       <span class="colon">:</span>
       <span class="timer-value">{{ formattedSeconds }}</span>
     </div>
     <div *ngIf="showLabel" class="timer-status">
-        {{ timerStatusPosition === 'left' ? '' : '&nbsp;' }} {{ isTimeUp ? '' : label }} {{ timerStatusPosition === 'right' ? '&nbsp;' : '' }}
+        {{ timerStatusPosition === 'left' ? '' : '&nbsp;' }} {{ isTimeUp ? timeUpMessage : label }} {{ timerStatusPosition === 'right' ? '&nbsp;' : '' }}
     </div>
   </div>
+  
+
+ 
   

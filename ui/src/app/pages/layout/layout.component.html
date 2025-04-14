@@ -40,9 +40,24 @@
               <mat-icon>list</mat-icon>
             </button>
           
-              <div class="search-box">       
+              <div class="search-box" (focusin)="onFocus()" (focusout)="onBlur()">      
                 <mat-icon class="search-icon">search</mat-icon> 
                 <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()" placeholder="Ara ...">                    
+
+                <div class="ms-search-dropdown" *ngIf="isInputFocused && filteredSuggestions.length">
+                  <p class="ms-recent-title" *ngIf="!globalSearchControl.value">Recent Searches</p>
+                  <ul class="ms-dropdown-list">
+                    <li *ngFor="let item of filteredSuggestions" (click)="onSelectSuggestion(item)" class="ms-dropdown-item">
+                      <div class="ms-item-content" >
+                        <mat-icon class="ms-history-icon" *ngIf="!globalSearchControl.value">history</mat-icon>
+                        <span class="ms-item-text">{{ item }}</span>
+                      </div>
+                      <button class="ms-delete-btn" (click)="onDelete(item)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
             </div>
 
               @if( $isAuthenticated | async) 

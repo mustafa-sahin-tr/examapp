@@ -21,8 +21,8 @@ import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-
   templateUrl: './worksheet-list.component.html',
   styleUrls: ['./worksheet-list.component.scss'],
   standalone: true,
-  imports: [CommonModule, WorksheetCardComponent, MatFormField ,MatAutocompleteModule, MatInputModule,
-      MatLabel, ReactiveFormsModule, CompletedWorksheetCardComponent, 
+  imports: [CommonModule, WorksheetCardComponent ,MatAutocompleteModule, MatInputModule,
+      ReactiveFormsModule, CompletedWorksheetCardComponent, 
       CustomCheckboxComponent, RouterModule,
       SectionHeaderComponent, FormsModule ,PaginationComponent]
 })

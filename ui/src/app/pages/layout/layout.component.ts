@@ -1,5 +1,5 @@
 
-import { Component, inject, signal, WritableSignal } from '@angular/core';
+import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { CommonModule } from '@angular/common';
@@ -26,16 +26,33 @@ import { MatInputModule } from '@angular/material/input';
     RouterModule,
     MatMenuModule,
     FormsModule,
-    ReactiveFormsModule,
-     MatFormField ,MatAutocompleteModule, MatInputModule
+    ReactiveFormsModule,MatAutocompleteModule, MatInputModule
   ],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnInit {
   // isSidenavOpen = signal(true);
   showHeader = signal(true);
   globalSearchControl = new FormControl('');
+  // Örnek geçmiş aramalar
+  searchHistory: string[] = ['Angular', 'TypeScript', 'RxJS'];
+  
+  // Örnek öneri listesi (tüm öneriler)
+  allSuggestions: string[] = [
+    'Angular Material', 
+    'Angular Animations', 
+    'Angular Universal',
+    'Angular CLI',
+    'TypeScript Tutorial',
+    'RxJS Operators'
+  ];
+  // Filtrelenmiş öneriler ya da geçmiş arama listesi için liste
+  filteredSuggestions: string[] = [];
+  
+  // Input aktif mi? (focus durumunu takip etmek için)
+  isInputFocused: boolean = false;
+
   menuItems = [
     { type:"menu", name: 'Ana Sayfa', icon: 'home', route: '/home' },
     { type:"menu", name: 'Sınavlar', icon: 'folder', route: '/tests' },
@@ -69,9 +86,57 @@ export class LayoutComponent {
     return this.router.url === '/login';
   }
 
+  ngOnInit(): void {
+    // Abone olarak değer değişimini takip et
+    this.globalSearchControl.valueChanges.subscribe(value => {
+      // Eğer input boşsa, geçmiş aramalar gösterilsin
+      if (!value || !value.trim()) {
+        this.filteredSuggestions = [...this.searchHistory];
+      } else {
+        // Girilen değere göre öneriler filtrelensin (küçük/büyük harf duyarsız)
+        const filterValue = value.toLowerCase();
+        this.filteredSuggestions = this.allSuggestions.filter(item =>
+          item.toLowerCase().includes(filterValue)
+        );
+      }
+    });
+  }
+
   onGlobalSearch() {
     const query = this.globalSearchControl.value?.trim() || '';
     this.router.navigate(['/tests'], { queryParams: { search: query } });
+
+    // Aramayı search history'e ekle (varsa yinelenmeyen)
+    if (query && !this.searchHistory.includes(query)) {
+      this.searchHistory.unshift(query);
+    }
+  }
+
+  // Input focus olduğunda geçmiş veya öneri listesini göster
+  onFocus() {
+    this.isInputFocused = true;
+    const value = this.globalSearchControl.value;
+    if (!value || !value.trim()) {
+      this.filteredSuggestions = [...this.searchHistory];
+    }
+  }
+
+  onDelete(item: string) {
+    this.searchHistory = this.searchHistory.filter(i => i !== item);
+    this.filteredSuggestions = this.filteredSuggestions.filter(i => i !== item);
+  }
+  
+  // Blur olduğunda belirli bir gecikme sonrası listeyi kapat (click eventi için)
+  onBlur() {
+    setTimeout(() => {
+      this.isInputFocused = false;
+    }, 150);
+  }
+
+  // Kullanıcı öneriden bir öğeye tıkladığında
+  onSelectSuggestion(suggestion: string) {
+    this.globalSearchControl.setValue(suggestion);
+    this.onGlobalSearch();
   }
 
   

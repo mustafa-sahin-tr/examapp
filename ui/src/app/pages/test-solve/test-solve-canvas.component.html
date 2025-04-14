@@ -1,29 +1,21 @@
 @if(testInstance) {
 <mat-card class="test-container">
-    <!-- Header: Test Bilgileri -->
-    
     <mat-toolbar class="test-header bt-1 m-5" >  
       <span class="test-title">{{ testInstance.testName }}</span>
       <span class="test-progress">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
-      <!-- <span class="test-timer">Geçen Süre : {{ formattedTime }}</span> -->
       <app-countdown [durationInSeconds]="testDuration" [label]="'Toplam Süre'" ></app-countdown>
       <app-countdown [durationInSeconds]="questionDuration" [label]="'Soru İçin Geçen Süre'"></app-countdown>
       @if(showStopButton) {
         <button  mat-button color="warn" (click)="pauseTest()">Durdur</button>
       }
-      <!-- Butonu sağa yaslamak için boş bir alan ekliyoruz -->
       <span class="spacer"></span>
 
-      <!-- Sınavı Bitir Butonu -->
       <button mat-raised-button color="accent" (click)="completeTest()">
         <mat-icon>done</mat-icon> Sınavı Bitir
       </button>
     </mat-toolbar>
-
   
-    <!-- Soru Gösterimi -->
     <div class="question-container">     
-      <!-- 🟢 Soru Başlığı ve Resmi -->
        @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
         <app-question-canvas-view [questionRegion]="regions()[currentIndex()]" 
         [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"        
@@ -44,14 +36,7 @@
        }
        
     </div>
-    <!-- <div class="options-container">
-      <button *ngFor="let answer of testInstance.testInstanceQuestions[currentIndex()].question.answers; let i = index" class="qs-option-button"
-        [ngClass]="{
-          'selected': testInstance.testInstanceQuestions[currentIndex()].selectedAnswerId === answer.id
-        }"          
-      (click)="selectAnswerChoice(answer)">{{answer.text}}</button>      
-    </div> -->
-    <!-- Navigasyon Butonları -->
+    
     <div class="navigation-buttons">
       <button mat-fab-button color="primary" class="prev-button" (click)="prevQuestion()" [disabled]="currentIndex() === 0">
         <img src="previousPage.svg" width="24" height="24" alt="icon">
@@ -63,13 +48,6 @@
     </div>
    
   </mat-card>
-  <!-- @if(currentIndex() === testInstance.testInstanceQuestions.length - 1) {
-  <mat-toolbar class="test-header bt-1 m-5" >      
-    <button mat-raised-button color="accent" (click)="completeTest()">
-      <mat-icon>done</mat-icon> Sınavı Bitir
-    </button>
-  </mat-toolbar>
-    } -->
 
    
 }

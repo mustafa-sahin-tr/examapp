@@ -7,10 +7,13 @@
         <a mat-list-item routerLink="/help">Help & Support</a>
         <a mat-list-item routerLink="/feedback">Send Feedback</a> -->
         <div class="sidenav">
-          <div *ngFor="let menuItem of menuItems" class="sidenav-item" [class.active]="menuItem.route === activeMenuItem()" (click)="navigateTo(menuItem.route)">
+          <ng-container *ngFor="let menuItem of menuItems" >
+          <div *ngIf="menuItem.type == 'menu'" class="sidenav-item" [class.active]="menuItem.route === activeMenuItem()" (click)="navigateTo(menuItem.route)">
             <mat-icon>{{ menuItem.icon }}</mat-icon>
             <span>{{ menuItem.name }}</span>
           </div>
+          <div *ngIf="menuItem.type == 'divider'" class="sidenav-divider"></div>
+        </ng-container>
             <!-- <div class="sidenav-divider"></div> -->
             <!-- <div class="sidenav-item">
               <mat-icon>stars</mat-icon>
@@ -37,18 +40,11 @@
               <mat-icon>list</mat-icon>
             </button>
           
-              <span class="app-title">Sınav Yönetimi</span>
-            
-              <span class="spacer"></span>
-          
-            
-              <button mat-button (click)="navigateTo('/questioncanvas')">
-                <mat-icon>add_circle</mat-icon> Soru Ekle
-              </button>
-            
-              <button mat-button (click)="navigateTo('/tests')">
-                <mat-icon>list</mat-icon> Testler
-              </button>
+              <div class="search-box">       
+                <mat-icon class="search-icon">search</mat-icon> 
+                <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()" placeholder="Ara ...">                    
+            </div>
+
               @if( $isAuthenticated | async) 
               {
                 

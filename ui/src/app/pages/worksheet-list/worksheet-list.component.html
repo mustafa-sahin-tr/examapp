@@ -21,22 +21,14 @@
     <div class="list-container">
       <div class="search-results">
         <div class="form-container">
-            <div class="form-column-2">
+            <!-- <div class="form-column-2">
               <div class="search-container">    
                 <mat-form-field appearance="outline" class="search-box">
                     <mat-label>Ara</mat-label>
-                    <input matInput [formControl]="searchControl" (keyup.enter)="onEnter()">
-                    <!-- <input matInput [formControl]="searchControl" [matAutocomplete]="auto" (keyup.enter)="onEnter()"> -->
-                    <!-- <mat-autocomplete #auto="matAutocomplete">
-                        <mat-option *ngFor="let worksheet of filteredWorksheets" [value]="worksheet.name" (onSelectionChange)="onAutocompleteSelect(worksheet.name)">
-                            <div class="search-item">
-                            <span>{{ worksheet.name }} - {{ worksheet.subtitle }} - {{ worksheet.description }}</span>
-                            </div>
-                        </mat-option>
-                    </mat-autocomplete> -->
+                    <input matInput [formControl]="searchControl" (keyup.enter)="onEnter()">                    
                 </mat-form-field>
             </div>
-            </div>
+            </div> -->
             <div class="form-column">
               <app-pagination
               [currentPage]="pageNumber"

@@ -54,18 +54,11 @@ export class WorksheetListComponent {
 
       ngOnInit() {
         this.pagedWorksheets = this.route.snapshot.data['worksheets'] as Paged<Test>;
-        this.searchControl.valueChanges.pipe(
-          debounceTime(300),
-          switchMap(value => {
-            console.log('Search value:', value); // Gelen değeri kontrol et
-            return this.testService.search(value || '',this.selectedSubjectIds, this.selectedGradeId, 1)
-          }),
-          tap(results => {
-            this.pagedWorksheets = results;
-            this.filteredWorksheets = results.items;
-            this.pageNumber = 1;                        
-          })
-        ).subscribe();
+        this.route.queryParams.subscribe(params => {
+          const search = params['search'] ?? '';
+          this.searchControl.setValue(search);
+          this.makeNewSearch();
+        });
 
         this.testService.getCompleted(1).subscribe(response => {
             this.completedTestWorksheets = response.items;
@@ -91,14 +84,10 @@ export class WorksheetListComponent {
       onCardClick(id: number) {
         console.log('Card clicked:', id);
         this.router.navigate(['/test', id]);
-        // this.testService.startTest(id).subscribe(response => {
-        //   this.router.navigate(['/testsolve', response.testInstanceId]);
-        // });   
       }
 
       changePage(page: any) {
         console.log('Page changed:', page); 
-        // this.nextPage();
         this.pageNumber = page;
         this.testService.search(this.searchControl.value || '',this.selectedSubjectIds, this.selectedGradeId, this.pageNumber).subscribe(response => {
           this.pagedWorksheets = response;

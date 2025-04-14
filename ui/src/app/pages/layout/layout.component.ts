@@ -10,6 +10,10 @@ import {MatSidenavModule} from '@angular/material/sidenav';
 import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../../services/auth.service';
 import { SidenavService } from '../../services/sidenav.service';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { MatFormField, MatFormFieldModule } from '@angular/material/form-field';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatInputModule } from '@angular/material/input';
 
 @Component({
   selector: 'app-layout',
@@ -20,7 +24,10 @@ import { SidenavService } from '../../services/sidenav.service';
     MatIconModule,
     MatListModule,
     RouterModule,
-    MatMenuModule
+    MatMenuModule,
+    FormsModule,
+    ReactiveFormsModule,
+     MatFormField ,MatAutocompleteModule, MatInputModule
   ],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
@@ -28,16 +35,19 @@ import { SidenavService } from '../../services/sidenav.service';
 export class LayoutComponent {
   // isSidenavOpen = signal(true);
   showHeader = signal(true);
-
+  globalSearchControl = new FormControl('');
   menuItems = [
-    { name: 'Ana Sayfa', icon: 'home', route: '/home' },
-    { name: 'Sınavlar', icon: 'folder', route: '/tests' },
-    { name: 'Role IQ', icon: 'assignment_ind', route: '/program-create' },
-    { name: 'Sertifikalar', icon: 'verified' },
-    { name: 'Parkur', icon: 'timeline' },
-    { name: 'Sonuçlar', icon: 'track_changes'},
-    { name: 'Destek', icon: 'help' },
-    { name: 'Geri Bildirim', icon: 'feedback' }
+    { type:"menu", name: 'Ana Sayfa', icon: 'home', route: '/home' },
+    { type:"menu", name: 'Sınavlar', icon: 'folder', route: '/tests' },
+    { type:"menu", name: 'Role IQ', icon: 'assignment_ind', route: '/program-create' },
+    { type:"menu", name: 'Sertifikalar', icon: 'verified' },
+    { type:"menu", name: 'Parkur', icon: 'timeline' },
+    { type:"menu", name: 'Sonuçlar', icon: 'track_changes'},
+    { type:"divider"},
+    { type:"menu", name: 'Destek', icon: 'help' },
+    { type:"menu", name: 'Geri Bildirim', icon: 'feedback' },
+    { type:"divider"},
+    { type:"menu", name: 'Soru Ekleme', icon: 'add_circle' , route: '/questioncanvas'}
   ];  
 
   activeMenuItem: WritableSignal<string | null> = signal('/home');
@@ -57,6 +67,11 @@ export class LayoutComponent {
 
   isLoginPage(): boolean {
     return this.router.url === '/login';
+  }
+
+  onGlobalSearch() {
+    const query = this.globalSearchControl.value?.trim() || '';
+    this.router.navigate(['/tests'], { queryParams: { search: query } });
   }
 
   
@@ -80,9 +95,10 @@ export class LayoutComponent {
       if (!path) {
         return;
       }
-
+      if(path === '/tests') {
+         this.globalSearchControl.setValue(''); // Arama çubuğunu temizle
+      }
       this.activeMenuItem.set(path);
-
       this.router.navigate([path]);
     }
   

@@ -54,9 +54,8 @@ export class LayoutComponent implements OnInit {
   isInputFocused: boolean = false;
 
   menuItems = [
-    { type:"menu", name: 'Ana Sayfa', icon: 'home', route: '/home' },
     { type:"menu", name: 'Sınavlar', icon: 'folder', route: '/tests' },
-    { type:"menu", name: 'Role IQ', icon: 'assignment_ind', route: '/program-create' },
+    { type:"menu", name: 'Program', icon: 'assignment_ind', route: '/program-create' },
     { type:"menu", name: 'Sertifikalar', icon: 'verified' },
     { type:"menu", name: 'Parkur', icon: 'timeline' },
     { type:"menu", name: 'Sonuçlar', icon: 'track_changes'},

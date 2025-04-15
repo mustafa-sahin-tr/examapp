@@ -9,13 +9,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { Prediction } from '../../models/prediction';
 import { HttpStatusCode } from '@angular/common/http';
-
+import {MatSlideToggleModule} from '@angular/material/slide-toggle'
 
 
 @Component({
   selector: 'app-image-selector',
   standalone: true,
-  imports: [CommonModule, QuillModule, FormsModule, MatButtonModule],
+  imports: [CommonModule, QuillModule, FormsModule, MatButtonModule,MatSlideToggleModule],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss']
 })
@@ -591,7 +591,7 @@ export class ImageSelectorComponent {
       }
       else {
         // auto mode ise question sayısını kontrol et
-        if( this.regions().length > 2 ) {
+        if( this.regions().length > 1 ) {
           // ikiden çok fazla soru varsa durabiliriz.
           if( this.onlyQuestionMode()) {
             // ikiden fazla soru var ve sadece soru modundayız dur!
@@ -774,7 +774,220 @@ export class ImageSelectorComponent {
     this.drawImage();
   }
 
+  private removeDuplicateAnswers(answers: AnswerChoice[]): AnswerChoice[] {
+    const thresholdIntersection = 0.5;
+  
+    const isOverlappingEnough = (a: AnswerChoice, b: AnswerChoice): boolean => {
+      const x1 = Math.max(a.x, b.x);
+      const y1 = Math.max(a.y, b.y);
+      const x2 = Math.min(a.x + a.width, b.x + b.width);
+      const y2 = Math.min(a.y + a.height, b.y + b.height);
+  
+      const intersectionArea = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+      const aArea = a.width * a.height;
+      const bArea = b.width * b.height;
+  
+      const overlapRatio = intersectionArea / Math.min(aArea, bArea);
+      return overlapRatio >= thresholdIntersection;
+    };
+  
+    const keep: AnswerChoice[] = [];
+  
+    for (const current of answers) {
+      let shouldKeep = true;
+  
+      for (const existing of keep) {
+        if (isOverlappingEnough(existing, current)) {
+          const existingArea = existing.width * existing.height;
+          const currentArea = current.width * current.height;
+  
+          if (currentArea > existingArea) {
+            // Remove existing, keep current
+            const index = keep.indexOf(existing);
+            if (index !== -1) {
+              keep.splice(index, 1);
+            }
+            // Devam et, mevcut current eklenecek
+          } else {
+            shouldKeep = false;
+            break; // current küçüktü, ekleme
+          }
+        }
+      }
+  
+      if (shouldKeep) {
+        keep.push(current);
+      }
+    }
+  
+    return keep;
+  }
+  
+
+  private filterToMainAnswerGroup(answers: AnswerChoice[], thresholdY = 15): AnswerChoice[] {
+    const groups: AnswerChoice[][] = [];
+  
+    const sorted = [...answers].sort((a, b) => a.y - b.y);
+  
+    for (const answer of sorted) {
+      let matched = false;
+  
+      for (const group of groups) {
+        if (Math.abs(group[0].y - answer.y) <= thresholdY) {
+          group.push(answer);
+          matched = true;
+          break;
+        }
+      }
+  
+      if (!matched) {
+        groups.push([answer]);
+      }
+    }
+  
+    // En kalabalık grup = gerçek şıklar
+    const mainGroup = groups.reduce((prev, curr) =>
+      curr.length > prev.length ? curr : prev
+    );
+  
+    return mainGroup;
+  }
+  
+  private filterOutFarAnswersByRow(answers: AnswerChoice[], rowThresholdY = 15, rowDistanceFactor = 2): AnswerChoice[] {
+    if (answers.length <= 2) return answers;
+  
+    // 1. Satırları y koordinatına göre gruplandır
+    const sortedAnswers = [...answers].sort((a, b) => a.y - b.y);
+    const rows: AnswerChoice[][] = [];
+  
+    for (const answer of sortedAnswers) {
+      let added = false;
+      for (const row of rows) {
+        if (Math.abs(row[0].y - answer.y) <= rowThresholdY) {
+          row.push(answer);
+          added = true;
+          break;
+        }
+      }
+      if (!added) {
+        rows.push([answer]);
+      }
+    }
+  
+    // 2. Ortalama şık yüksekliğini hesapla
+    const averageHeight =
+      answers.reduce((sum, a) => sum + a.height, 0) / answers.length;
+  
+    // 3. Satırların y ortalamalarını al
+    const rowYValues = rows.map(
+      (row) => row.reduce((sum, a) => sum + a.y, 0) / row.length
+    );
+  
+    // 4. En yakın komşusuyla farkı çok büyük olanları filtrele
+    const validRowIndexes = rowYValues.map((y, i) => {
+      if (rowYValues.length === 1) return true; // Tek satır varsa koru ✅
+      // bir önceki veya sonraki row ile karşılaştır
+      const prevDiff = i > 0 ? Math.abs(y - rowYValues[i - 1]) : Infinity;
+      const nextDiff = i < rowYValues.length - 1 ? Math.abs(y - rowYValues[i + 1]) : Infinity;
+      const closestDiff = Math.min(prevDiff, nextDiff);
+      return closestDiff <= averageHeight * rowDistanceFactor;
+    });
+  
+    // 5. Valid olan satırları geri döndür
+    const validRows = rows.filter((_, i) => validRowIndexes[i]);
+    return validRows.flat();
+  }
+  
+  
+  
+
   alignAnswers(questionIndex: number) {
+    if(!this.autoAlign()) return;
+    const region = this.regions()[questionIndex];
+    if (region.answers.length === 0) return;
+
+    // 0.a Temizle: Üst üste binen benzer kutuları ayıkla
+    region.answers = this.removeDuplicateAnswers(region.answers);
+    console.log(JSON.stringify(region.answers));
+    // 0.b En yoğun y'ye sahip grubu al (dağılmışları at)
+    region.answers = this.filterOutFarAnswersByRow(region.answers);
+  
+    const thresholdY = 10; // Aynı satırda sayılmaları için y farkı eşiği
+    const thresholdX = 10; // Aynı kolonda sayılmaları için x farkı (şimdilik kullanılmıyor)
+  
+    // 1. Şıkları Y'ye göre satırlara ayır
+    const sortedAnswers = [...region.answers].sort((a, b) => a.y - b.y);
+  
+    const rows: AnswerChoice[][] = [];
+    for (const answer of sortedAnswers) {
+      let rowFound = false;
+      for (const row of rows) {
+        if (Math.abs(row[0].y - answer.y) <= thresholdY) {
+          row.push(answer);
+          rowFound = true;
+          break;
+        }
+      }
+      if (!rowFound) {
+        rows.push([answer]);
+      }
+    }
+  
+    // 2. Her satırı X'e göre sırala (soldan sağa)
+    for (const row of rows) {
+      row.sort((a, b) => a.x - b.x);
+    }
+  
+    // 1. Kolon sayısını belirle (en kısa satır kadar)
+    const minColumnCount = Math.min(...rows.map(r => r.length));
+
+    // 2. Her kolon için x ve width ortaklaştır
+    for (let col = 0; col < minColumnCount; col++) {
+      const columnAnswers = rows.map(row => row[col]); // her satırdan aynı sıradaki eleman
+
+      const minX = Math.min(...columnAnswers.map(a => a.x));
+      const maxX = Math.max(...columnAnswers.map(a => a.x + a.width));
+
+      for (const answer of columnAnswers) {
+        answer.x = minX;
+        answer.width = maxX - minX;
+      }
+    }
+
+    
+    // 3. Satırları tekrar birleştir
+    const aligned = rows.flat();    
+  
+    region.answers = aligned;
+
+    // // // 5. Şıkları normalize et
+    // if (rows.length === 1) {
+    //   // Tek satır: tüm şıkları yukarıdan hizala ve aynı yükseklik
+    //   const minY = Math.min(...region.answers.map(a => a.y));
+    //   const maxY = Math.max(...region.answers.map(a => a.y + a.height));
+    //   region.answers.forEach(a => {
+    //     a.y = minY;
+    //     a.height = maxY - minY;
+    //   });
+    // } else {
+    //   // Çok satır: tüm şıkları sola hizala ve aynı genişlik
+    //   const minX = Math.min(...region.answers.map(a => a.x));
+    //   const maxX = Math.max(...region.answers.map(a => a.x + a.width));
+    //   region.answers.forEach(a => {
+    //     a.x = minX;
+    //     a.width = maxX - minX;
+    //   });
+    // }
+
+    this.renameAnswers(questionIndex);
+  
+    // 🔥 Güncellenmiş şık listesini kaydet ve UI'yi güncelle
+    this.regions.set([...this.regions()]);
+    this.drawImage();
+  }
+  
+
+  alignAnswers_old(questionIndex: number) {
     if(!this.autoAlign()) return;
     const region = this.regions()[questionIndex];
     if (region.answers.length === 0) return;

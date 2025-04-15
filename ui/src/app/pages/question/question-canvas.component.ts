@@ -19,18 +19,16 @@ import { QuillModule } from 'ngx-quill';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { Test, TestInstance } from '../../models/test-instance';
-import { QuestionListComponent } from '../question-list/question-list.component';
 import { TestService } from '../../services/test.service';
-import { QuestionCanvasForm, QuestionForm } from '../../models/question-form';
+import { QuestionCanvasForm } from '../../models/question-form';
 import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
 import { Passage } from '../../models/question';
-import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
-import { debounceTime, map, Observable, startWith, switchMap, tap } from 'rxjs';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
-import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
+import { debounceTime, switchMap, tap } from 'rxjs';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
+import { SidenavService } from '../../services/sidenav.service';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -86,6 +84,7 @@ export class QuestionCanvasComponent implements OnInit {
   questionService = inject(QuestionService);
   testService = inject(TestService);
   subjectService = inject(SubjectService);
+  sidenavService = inject(SidenavService);
   snackBar = inject(MatSnackBar);
   questionForm!: FormGroup;
   bookService = inject(BookService);
@@ -100,7 +99,8 @@ export class QuestionCanvasComponent implements OnInit {
   // 🟢 Filtrelenmiş listeler
 
   constructor() {
-    
+    this.sidenavService.setSidenavState(false);
+    this.sidenavService.setFullScreen(true);
   }
 
   onCheckboxChange(event: { checked: boolean; value: any }) {

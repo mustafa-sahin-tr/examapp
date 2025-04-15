@@ -704,11 +704,9 @@ canvas {
 .regions-list {
   margin-top: 20px;
   text-align: left;
-  // max-width: 500px;
-  // margin-left: auto;
-  // margin-right: auto;
-  background: #f9f9f9;
-  padding: 10px;
+  // background: #f9f9f9;
+  padding-top: 10px;
+  
   border-radius: 8px;
 }
 
@@ -725,19 +723,33 @@ ul {
 
 .regions ul {
   display: flex;
-  flex-wrap: wrap; // Elemanlar sığmazsa alt satıra geçer
-  gap: 10px; // Elemanlar arasına boşluk ekler
+  
+  // gap: 10px; // Elemanlar arasına boşluk ekler
   list-style: none; // Liste işaretlerini kaldırır
   padding: 0; // Varsayılan padding'i kaldırır
+  
   
 }
 
 .regions li {
   display: flex;
   align-items: center; // Dikeyde hizalama
-  gap: 5px; // İçerideki öğeler arasına boşluk ekler
+  // gap: 5px; // İçerideki öğeler arasına boşluk ekler
   color: var(--main-bg-color);
+  border-bottom: var(--border-input);
+  flex-wrap: wrap; // Elemanlar sığmazsa alt satıra geçer
+  margin-right: 10px;
+  margin-bottom: 20px;
 }
+
+.flex-no-wrap {
+  flex-wrap: nowrap !important; // Elemanların alt satıra geçmesini engeller  
+}
+
+.border-none {
+  border: none !important; // Border'ı kaldırır
+}
+
 
 .choice-btn {
   min-width: 50px;
@@ -756,6 +768,22 @@ ul {
   display: flex;
   justify-content: space-between;
   margin-top: 16px;
+}
+
+.button-group-vertical {
+  display: flex;
+  flex-direction: column;
+  // gap: 12px;
+  
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom: var(--border-input);
 }
 
 .form-container {
@@ -953,6 +981,7 @@ img {
   border: none;
   font-size: 24px;
   cursor: pointer;
+  height: fit-content;
 }
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/question-view/question-view.component.scss ---- */
@@ -1396,6 +1425,16 @@ mat-card-title {
   gap: 20px;
 }
 
+.form-column-max-250
+{
+  flex: 1;
+  max-width: 250px;
+}
+
+.mh-50 {
+  max-height: 50px;
+}
+
 .form-column {
   flex: 1;
   min-width: 250px;
@@ -1416,10 +1455,19 @@ mat-card-title {
   min-width: 250px;
 }
 
+.form-column-5 {
+  flex: 5;
+  min-width: 250px;
+}
+
 form {
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+
+.flex-row {
+  flex-direction: row !important;
 }
 
 label {
@@ -1577,12 +1625,6 @@ mat-card-title {
 .form-column-3 {
   flex: 3;
   min-width: 250px;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
 }
 
 label {
@@ -2130,6 +2172,7 @@ mat-select {
   flex-direction: row;
   -webkit-transition: left 0.4s;
   transition: left 0.4s;
+  justify-content: center;
 }
 
 
@@ -3118,6 +3161,87 @@ h4 {
   text-decoration: none;
 }
 
+/* ***** PROGRAM CREATE START ****/
+ .ms-wizard-container {
+  border: var(--border-input);
+  padding: 2rem;
+  border-radius: 8px;
+  font-family: Arial, sans-serif;
+}
+
+.ms-wizard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.ms-wizard-title {
+  font-size: 1.2rem;
+}
+
+.ms-wizard-progress {
+  text-align: right;
+  width: 180px;
+}
+
+.ms-progress-text {
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.ms-progress-bar-bg {
+  background-color: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 5px;
+}
+
+.ms-progress-bar-fill {
+  background-color: green;
+  height: 100%;
+  width: 0%;
+}
+
+.ms-wizard-question {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.ms-wizard-required {
+  text-align: center;
+  color: red;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.ms-wizard-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.ms-wizard-step-item {
+  width: 15px; 
+  height: 8px; 
+  border-radius: 20px; 
+  background: rgb(217, 217, 217);
+}
+
+.ms-wizard-step-item-active {
+  width: 15px; 
+  height: 8px; 
+  border-radius: 100%; 
+  background: rgb(42, 141, 248);
+}
+/* ***** PROGRAM CREATE END ****/
+
+.w-100 {
+  width: 100% !important;
+}
 
 /* bunlar her zaman en altta kalsın*/
 
@@ -3230,4 +3354,12 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled):not(.mat-mdc-option-multiple) .mdc-list-item__primary-text {
+  color: var(--ms-action-navigation-visited) !important;
+}
+
+.mat-pseudo-checkbox-minimal.mat-pseudo-checkbox-checked::after {
+  color: var(--ms-action-navigation-visited) !important;
 }

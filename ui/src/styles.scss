@@ -833,7 +833,7 @@ img {
 
 .search-box input {
   width: 100%;
-  padding: 8px 12px 8px 32px; /* soldan ikon için boşluk */
+  padding: 0px 12px 0px 32px;; /* soldan ikon için boşluk */
   border: 1px solid #2d69ff;
   border-radius: 8px;
   background-color: transparent;
@@ -2122,6 +2122,10 @@ mat-select {
   margin-left: auto;
 }
 
+.ml-auto {
+  margin-left: auto !important;
+}
+
 .avatar-container {
   position: relative;
   display: inline-block;
@@ -3243,6 +3247,202 @@ h4 {
   width: 100% !important;
 }
 
+
+.button-type-1 {
+  min-height: 42px;
+  border-radius: 500px;
+  max-width: 135px;
+  background-color: var(--main-bg-color);
+  opacity: 0.9;
+  border: 1px solid #3333FF;
+  font-family: inherit;
+  text-align: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: filter 150ms, background-color 150ms;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.button-type-1:hover {
+  filter: brightness(110%);
+  background-color: #4A33D1;
+  color:  #fff;;
+}
+
+.button-type-2 {
+  background-color: #4A33D1; // ana mor renk
+  color: #E1DDF7;            // açık mor/beyaz metin
+  padding: 0.5rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.375rem;   // 6px köşe yuvarlaklığı
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease-in-out, color 150ms ease-in-out;
+}
+
+.button-type-2:hover {
+  background-color: #3C28B1; // hover rengi
+}
+
+.button-type-2:active {
+  background-color: #30208D; // basılı rengi
+}
+
+
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select-style-1 {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-color: inherit;
+  color: var(--ps-text-strong, #F3F3F8);
+  font-size: 0.875rem;
+  font-family: inherit;
+
+  padding: 8px 2.5rem 8px 1rem;
+  min-height: 48px;
+  width: 300px;
+  border: 1px solid var(--ps-action-border, #6855D9);
+  border-radius: 6px;
+
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+
+  transition: box-shadow 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.select-style-1:hover:not(:disabled):not([data-readonly="true"]) {
+  box-shadow: 0 0 0 1px var(--ps-border-strong, #585FA2);
+}
+
+.select-icon {
+  position: absolute;
+  top: 50%;
+  right: 0.8rem;
+  transform: translateY(-50%);
+  z-index: 50;
+  line-height: 0;
+  color: var(--ps-text-strong, #F3F3F8);
+  pointer-events: none;
+}
+
+.select-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-block;
+}
+
+.custom-context-menu {
+  position: fixed;
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 5px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* styles.css */
+/* 1) Canvas'ı saran kutu */
+.ms-canvas-wrapper {
+  position: relative;
+  display: inline-block;    /* canvas boyutuna göre otursun */
+}
+
+/* 2) Gezinme bölgeleri: sol & sağ */
+.ms-nav-area {
+  position: absolute;
+  top: 0;
+  width: 100px;             /* istediğiniz genişlik */
+  height: 100%;
+  cursor: pointer;
+  background: transparent;   /* başlangıçta görünmez */
+  transition: background 0.2s;
+}
+
+/* sol tarafta */
+.ms-nav-prev {
+  left: 0;
+}
+
+/* sağ tarafta */
+.ms-nav-next {
+  right: 0;
+}
+
+/* 3) Hover efektinde yarı saydam arkaplan */
+.ms-nav-area:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* 4) Ok ikonunu pseudo-element ile ekleme */
+.ms-nav-area::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+/* Sol ok ikonu */
+.ms-nav-prev:hover::after {
+  opacity: 0.8;
+  left: 50%; 
+  transform: translate(-50%, -50%);
+  background-image:
+    url('/previousPage.svg'),
+    url('/previousPage.svg'),
+    url('/previousPage.svg');
+  background-repeat: no-repeat;
+  /* İlk ok %20’lik düşeyde, ikincisi %50 (ortada), üçüncüsü %80’de */
+  background-position:
+    center 20%,
+    center 50%,
+    center 80%;
+  /* hepsi 24×24px */
+  background-size: 24px 24px;
+
+  
+}
+
+/* Sağ ok ikonu */
+.ms-nav-next:hover::after {
+  opacity: 0.8;
+  left: 50%;
+  // transform: translate(-50%, -50%);
+  background-image:
+    url('/nextPage.svg'),
+    url('/nextPage.svg'),
+    url('/nextPage.svg');
+  background-repeat: no-repeat;
+  /* İlk ok %20’lik düşeyde, ikincisi %50 (ortada), üçüncüsü %80’de */
+  background-position:
+    center 20%,
+    center 50%,
+    center 80%;
+  /* hepsi 24×24px */
+  background-size: 24px 24px;
+}
+
+
 /* bunlar her zaman en altta kalsın*/
 
 ::ng-deep .trimmed-label p {
@@ -3362,4 +3562,8 @@ a:hover {
 
 .mat-pseudo-checkbox-minimal.mat-pseudo-checkbox-checked::after {
   color: var(--ms-action-navigation-visited) !important;
+}
+
+.mdc-text-field--outlined .mat-mdc-form-field-infix, .mdc-text-field--no-label .mat-mdc-form-field-infix {
+  padding: 0 0 0 0 !important;
 }

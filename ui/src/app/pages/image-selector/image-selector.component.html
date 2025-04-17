@@ -1,27 +1,53 @@
 <div class="container" [ngClass]="selectionMode()">
   <div class="form-container">
     <div class="form-column-4" style="border: var(--border-input);">
-      <div *ngIf="imageSrc()" >
+      
+      <div *ngIf="imageSrc()" class="ms-canvas-wrapper">
         <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)" 
-        (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"></canvas>
+        (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)" (contextmenu)="onRightClick($event)"></canvas>
+        <!-- Sol bölge – Previous -->
+        <div class="ms-nav-area ms-nav-prev" (click)="previousImage()"></div>
+        <!-- Sağ bölge – Next -->
+        <div class="ms-nav-area ms-nav-next" (click)="nextImage()"></div>
       </div>
+      <div
+  *ngIf="contextMenuVisible"
+  class="custom-context-menu"
+  [ngStyle]="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
+>
+  <!-- Region için menü -->
+  <ng-container *ngIf="contextMenuType === 'region'">    
+    <button (click)="handleMenuAction('removeQuestion',$event)" >Soru Sil</button>
+  </ng-container>
+
+  <!-- Answer için menü -->
+  <ng-container *ngIf="contextMenuType === 'answer'">
+    <button (click)="handleMenuAction('removeAnswer',$event)">Seçeneği Sil</button>
+  </ng-container>
+
+  <!-- Answer için menü -->
+  <ng-container *ngIf="contextMenuType === 'worksheet'">
+    <button (click)="handleMenuAction('selectQuestion',$event)">Soru Seç</button>
+  </ng-container>
+</div>
+
     </div>
-    <div class="form-column">
+    <div style="max-width: 150px;">
     <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*">
-    {{this.imagName()}}
+    {{imagName()}}
     <div class="button-group-vertical">
       
-      <div class="button-row">
-        <button mat-raised-button color="primary" (click)="toggleSelectionMode('question')">Soru Seç</button>
-        <button mat-raised-button color="primary" (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
-      </div>
-      <div class="button-row">
+      <!-- <div class="button-row">
+        <button class="button-type-1" (click)="toggleSelectionMode('question')">Soru Seç</button>
+        <button class="button-type-2"  (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
+      </div> -->
+      
         <button mat-raised-button color="primary" (click)="toggleOnlyQuestionMode()">{{onlyQuestionMode() ? 'Soru-Cevap Modu' : 'Soru Modu'}}</button>
         <!-- <button mat-raised-button color="primary" (click)="lockSelectionMode('answer')">Disable Modes</button> -->
         <button mat-raised-button color="primary" (click)="lockSelectionMode(null)">Disable Modes</button>
         <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
         <button mat-raised-button color="primary" (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button>
-      </div>
+     
       <div class="button-row">
         <mat-slide-toggle
           class="example-margin" [checked]="autoAlign()" (change)="autoAlign.set($event.checked)">
@@ -29,29 +55,22 @@
         </mat-slide-toggle>
         <!-- <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizalamayı {{!autoAlign() ? 'Aç' : 'Kapat'}}</button> -->
       </div>
-      <div class="button-row">
-        <button mat-raised-button color="primary" (click)="predict()">Predict</button>
-        <button mat-raised-button color="primary" (click)="sendToFix()">Sent To Fix</button>
-      </div>
-      <div class="button-row">
+      
+      <button mat-raised-button color="primary" (click)="predict()">Predict</button>
+      <button mat-raised-button color="primary" (click)="sendToFix()">Sent To Fix</button>
+      <!-- <div class="button-row">
         <button mat-raised-button color="primary" (click)="previousImage()">❮ Önceki</button>
-        <!-- <button mat-raised-button color="primary" (click)="toggleAutoMode()">{{autoMode() ? 'Manuel' : 'Auto'}}</button> -->
         <mat-slide-toggle
           class="example-margin" [checked]="autoMode()" (change)="autoMode.set($event.checked)">
           Auto
         </mat-slide-toggle>
         <button mat-raised-button color="primary" (click)="nextImage()" [disabled]="inProgress()">Sonraki ❯</button>
-      </div>
+      </div> -->
     </div>
     
-   
     <!-- <button mat-raised-button color="primary" (click)="sendToFixForAnswer()">Sent To Fix For Answer</button> -->
-   
-    
-   
-    
   
-    <div class="regions-list">
+    <div *ngIf="showRegions()" class="regions-list">
       <h3>Seçilen Bölgeler:</h3>
       <ul class="regions">
         <li *ngFor="let region of regions(); let i = index">

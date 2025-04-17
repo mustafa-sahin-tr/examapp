@@ -32,3 +32,8 @@ export interface QuestionRegion {
   exampleAnswer: string | null | undefined;
   isExample: boolean;
 }
+
+export type RegionOrAnswerHit =
+  | { type: 'answer', value: { questionIndex: number, answerIndex: number } }
+  | { type: 'question', value: { questionIndex: number, answerIndex: null } }
+  | null;

@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
 import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatInputModule } from '@angular/material/input';
@@ -29,6 +29,7 @@ import { debounceTime, switchMap, tap } from 'rxjs';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
 import { SidenavService } from '../../services/sidenav.service';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -47,7 +48,7 @@ import { SidenavService } from '../../services/sidenav.service';
             MatCardModule,
             MatIconModule,
             QuillModule,
-            ImageSelectorComponent, MatAutocompleteModule, CustomCheckboxComponent
+            ImageSelectorComponent, MatAutocompleteModule, MatSlideToggleModule
           ]
 })
 export class QuestionCanvasComponent implements OnInit {
@@ -61,6 +62,9 @@ export class QuestionCanvasComponent implements OnInit {
   subTopics: SubTopic[] = [];
   id: number | null = null;
   isEditMode: boolean = false;
+  searchInProgress: boolean = false;
+  public autoMode = signal<boolean>(false);
+  public inProgress = signal<boolean>(false);
   testInstance: TestInstance = {
     id: 0,
     testName: 'DryRun',
@@ -128,40 +132,64 @@ export class QuestionCanvasComponent implements OnInit {
       isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
       practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       testId: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })   ,   
+      testValue: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })   ,   
       bookId: new FormControl(state?.bookId || '', { nonNullable: true, validators: [Validators.required] }),
       bookTestId: new FormControl(state?.bookTestId || '', { nonNullable: true, validators: [Validators.required] }),      
     });
 
-    this.questionForm.get('testId')?.valueChanges.pipe(
+    this.questionForm.get('testId')?.valueChanges.pipe(      
       debounceTime(300),
-      switchMap(value => {
+      switchMap(value => {        
         console.log('Search value:', value); // Gelen değeri kontrol et
         return this.testService.search(value || '',[],undefined,1,1000)
       }),
       tap(results => {
-        this.testList = results.items.filter(test => test.bookTestId === this.questionForm.value.bookTestId);
+        // this.searchInProgress = true;
+        console.log(results.items.filter(test => test.bookTestId === +this.questionForm.value.bookTestId)); // Gelen sonuçları kontrol et
+        this.testList = results.items.filter(test => test.bookTestId === +this.questionForm.value.bookTestId);
+        console.log(this.testList ); // Gelen sonuçları kontrol et
+
       })
     ).subscribe();
 
   }
 
+    // Input focus olduğunda geçmiş veya öneri listesini göster
+    onFocus() {
+      this.searchInProgress = true;
+    }
+
+    previousImage() {
+      this.imageSelector.previousImage();
+    }
+
+    nextImage() {
+      this.imageSelector.nextImage();
+    }
+
+    setAutoMode(checked: boolean) {      
+      this.imageSelector.autoMode.set(checked)
+    }
+    
+    
+    
+    // Blur olduğunda belirli bir gecikme sonrası listeyi kapat (click eventi için)
+    onBlur() {
+      setTimeout(() => {
+        this.searchInProgress = true;
+      }, 150);
+    }
+
   loadBooks() {
     this.bookService.getAll().subscribe(data => {
       this.books = data;
       if(this.questionForm.value.bookId) {
-        this.onBookChange(this.questionForm.value.bookId);
-      }
+        this.onBookChange();
+      } 
     });
   }
 
-  onBookChange($event : any) {
-    if($event) {
-      this.bookService.getTestsByBook($event).
-        subscribe(data => {
-          this.bookTests = data          
-        });
-    }     
-  }
+
 
    
   displayFn = (selectedoption: any): string => {    
@@ -170,16 +198,20 @@ export class QuestionCanvasComponent implements OnInit {
 
   // Kullanıcı seçim yaptığında `FormControl` içine nesneyi set et
   onOptionSelected(event: any) {
-    console.log(event);
-    this.questionForm.get('testId')?.setValue(event.option.value);
+    console.log(event);    
+    // this.searchInProgress = false;  
+    this.testList = [];
+    this.questionForm.get('testId')?.setValue(event.subtitle, { emitEvent: false });
+    this.questionForm.get('testValue')?.setValue(event.id);
+    
   }
 
   ngOnInit() {
     this.loadBooks();
     // 🟢 Backend'den test listesini getir
-    this.testService.search('',[],undefined,1,1000).subscribe(data => {
-      this.testList = data.items;
-    });
+    // this.testService.search('',[],undefined,1,1000).subscribe(data => {
+    //   this.testList = data.items;
+    // });
 
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state as { 
@@ -211,7 +243,15 @@ export class QuestionCanvasComponent implements OnInit {
     });
   }
 
-
+  onBookChange() {
+    if(this.questionForm.value.bookId) {
+      this.bookService.getTestsByBook(this.questionForm.value.bookId).
+        subscribe(data => {
+          this.bookTests = data          
+        });
+    }     
+  }
+  
 
   onSubjectChange() {
     if(this.questionForm.value.subjectId) {
@@ -261,7 +301,7 @@ export class QuestionCanvasComponent implements OnInit {
    
 
     const questionPayload = {            
-      testId: formData.testId ? formData.testId.id : 0,
+      testId: formData.testValue ? formData.testValue : 0,
       topicId: formData.topicId,
       subTopics: this.selectedSubtopicsId,
       subjectId : formData.subjectId,

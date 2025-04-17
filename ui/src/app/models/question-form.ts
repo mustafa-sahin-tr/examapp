@@ -28,6 +28,7 @@ export type QuestionCanvasForm = {
     isExample: FormControl<boolean>,
     practiceCorrectAnswer: FormControl<string>,
     testId:  FormControl<number | null>,
+    testValue:  FormControl<number | null>,
     bookId:  FormControl<number | null>,
     bookTestId :  FormControl<number | null>,
 }

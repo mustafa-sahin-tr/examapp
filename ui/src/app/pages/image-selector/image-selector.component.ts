@@ -1,6 +1,6 @@
-import { Component, ElementRef, EventEmitter, Output, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Output, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { QuestionRegion,AnswerChoice } from '../../models/draws';
+import { QuestionRegion,AnswerChoice, RegionOrAnswerHit } from '../../models/draws';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule, NgModel } from '@angular/forms';
@@ -29,6 +29,7 @@ export class ImageSelectorComponent {
   public autoAlign = signal<boolean>(false);
   public autoMode = signal<boolean>(false);
   public inProgress = signal<boolean>(false);
+  public showRegions = signal<boolean>(false);
   public onlyQuestionMode = signal<boolean>(false);
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | null>(null);
@@ -44,8 +45,12 @@ export class ImageSelectorComponent {
   private startX = 0;
   private startY = 0;
   private isDrawing = false;
+  private selectionStarted = false;
   private selectedQuestionIndex = -1;
 
+  contextMenuType: 'region' | 'answer' | 'worksheet' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  selectedRegion: number | null  = null;
+  selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
 
   public exampleAnswers = new Map<string, string>(); // 📜 Her soru için örnek cevapları sakla
   public exampleFlags = new Map<string, boolean>();  // ✅ Her soru için "isExample" flag'ini sakla
@@ -56,6 +61,134 @@ export class ImageSelectorComponent {
   imageFiles: File[] = [];
   currentImageIndex = 0;
   currentImageSrc: string | null = null;
+
+  contextMenuVisible = false;
+  contextMenuX = 0;
+  contextMenuY = 0;
+
+  // Sayfa içinde herhangi bir yere tıklandığında menüyü kapat
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    console.log('Entered onDocumentClick. IsDrawing :', this.isDrawing);
+    const target = event.target as HTMLElement;
+    // Eğer tıklanan yer menünün içi değilse menüyü kapat
+    if (!target.closest('.custom-context-menu')) {
+      this.contextMenuVisible = false;
+    }
+    console.log('Exited  onDocumentClick. IsDrawing :', this.isDrawing);
+  }
+
+  getRegionOrAnswerAtPosition(x: number, y: number): RegionOrAnswerHit {
+    const regions = this.regions();
+
+    for (let qi = 0; qi < regions.length; qi++) {
+      const region = regions[qi];
+
+      // Önce answer'ları kontrol edelim
+      for (let ai = 0; ai < region.answers.length; ai++) {
+        const answer = region.answers[ai];
+
+        const answerX = answer.x;
+        const answerY = answer.y;
+
+        // Eğer answer koordinatları region’a göre relative ise:
+        // const answerX = region.x + answer.x;
+        // const answerY = region.y + answer.y;
+
+        if (
+          x >= answerX &&
+          x <= answerX + answer.width &&
+          y >= answerY &&
+          y <= answerY + answer.height
+        ) {
+          return {
+            type: 'answer',
+            value: {
+              questionIndex: qi,
+              answerIndex: ai
+            }
+          };
+        }
+      }
+
+      // Answer yok ama region içindeyse
+      if (
+        x >= region.x &&
+        x <= region.x + region.width &&
+        y >= region.y &&
+        y <= region.y + region.height
+      ) {
+        return {
+          type: 'question',
+          value: {
+            questionIndex: qi,
+            answerIndex: null
+          }
+        };
+      }
+    }
+
+    return null;
+  }
+
+  onRightClick(event: MouseEvent) {
+    console.log('Entered onRightClick. IsDrawing :', this.isDrawing);
+    event.preventDefault();
+
+    const canvasRect = (event.target as HTMLCanvasElement).getBoundingClientRect();
+    const clickX = event.clientX - canvasRect.left;
+    const clickY = event.clientY - canvasRect.top;
+
+    const hit = this.getRegionOrAnswerAtPosition(clickX, clickY);
+    this.contextMenuX = event.clientX;
+    this.contextMenuY = event.clientY;
+    this.contextMenuVisible = true;
+
+    if (!hit) {
+      this.contextMenuType = 'worksheet';
+      this.selectedRegion = null;
+      this.selectedAnswer = null;
+      console.log('Exited  onRightClick hit === null. IsDrawing :', this.isDrawing);
+      return;
+    }
+    this.contextMenuVisible = true;
+
+    if (hit.type === 'answer') {
+      this.contextMenuType = 'answer';
+      this.selectedAnswer = hit.value.answerIndex;
+      this.selectedRegion = hit.value.questionIndex;
+    } else if(hit.type === 'question') {
+      this.contextMenuType = 'region';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+    }
+    console.log('Exited  onRightClick hit.type === question. IsDrawing :', this.isDrawing);
+  }
+
+  closeContextMenu() {
+    this.contextMenuVisible = false;
+    this.selectedRegion = null; // Seçili bölgeyi sıfırla
+    this.selectedAnswer = null; // Seçili cevabı sıfırla
+  }
+
+  stopEvent(event?: MouseEvent) {
+    event?.stopPropagation();
+    event?.preventDefault();
+  }
+
+  handleMenuAction(action: string,event?: MouseEvent) {
+    console.log('Selected action:', action);
+    this.stopEvent(event);
+    if(action === 'removeQuestion') {
+      this.removeQuestion(this.selectedRegion!);
+    }else if(action === 'removeAnswer') {
+      this.removeAnswer(this.selectedRegion!, this.selectedAnswer!);
+    }
+    else if(action === 'selectQuestion') {
+      this.selectionMode.set('question');
+    }
+    this.contextMenuVisible = false;
+  }
   
   handleFilesInput2(event: Event) {
     const input = event.target as HTMLInputElement;
@@ -177,8 +310,12 @@ export class ImageSelectorComponent {
   }
 
   tapCorrectAnswer(event: MouseEvent) {
-    if (this.isDrawing) return;
-
+    console.log('Entered tapCorrectAnswer.IsDrawing :', this.isDrawing);
+    if (this.isDrawing) {
+      console.log('Exited  tapCorrectAnswer isDrawing :', this.isDrawing);
+      return;
+    }
+    
     const mouseX = event.offsetX;
     const mouseY = event.offsetY;
 
@@ -196,13 +333,18 @@ export class ImageSelectorComponent {
         }
       }
     }
+    console.log('Exited  tapCorrectAnswer.IsDrawing :', this.isDrawing);
   } 
 
   onMouseMove(event: MouseEvent) {
+    
     if (!this.isDrawing) {
       const canvas = this.canvas.nativeElement;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!ctx) {
+        return;
+
+      }
     
       // Tüm resmi yeniden çiz
       this.drawImage();
@@ -225,13 +367,14 @@ export class ImageSelectorComponent {
           }
         }
       }
+      
       return;
     }
   
     this.currentX = event.offsetX;
     this.currentY = event.offsetY;
-  
     this.drawTemporaryRectangle();
+
   }
 
   drawTemporaryRectangle() {
@@ -353,11 +496,37 @@ export class ImageSelectorComponent {
 
 
   startSelection(event: MouseEvent) {
-    if (!this.selectionMode() || !this.ctx) return;
+    console.log('Entered startSelection.IsDrawing :', this.isDrawing);
+    // Sağ tık ise hiçbir şey yapma
+    if (event.button === 2) {
+      console.log('Exited startSelection event.button === 2 .IsDrawing :', this.isDrawing);
+      return;
+    }
+    if (!this.ctx || !this.selectionMode()) {
+      console.log('Exited startSelection ctx or selectionMode is null. IsDrawing :', this.isDrawing);
+      return;
+    }
+
     const rect = this.canvas.nativeElement.getBoundingClientRect();
     this.startX = event.clientX - rect.left;
     this.startY = event.clientY - rect.top;
+    var hit = this.getRegionOrAnswerAtPosition(this.startX, this.startY);
+    if(hit) {
+      if(hit.type === 'question' && this.selectionMode() === 'question') {
+        // bir sorunun içinde tıklanmışsa tekrar bir soru yapmasın.
+        console.log('Exited startSelection hit.type === question. IsDrawing :', this.isDrawing);
+        return;
+      } 
+    } else {
+      // bir hit yoksa cevap giremesin. Cevap girmen için hit olmalı ve question olmalı
+      if(this.selectionMode() === 'answer') {
+        console.log('Exited startSelection hit === null. IsDrawing :', this.isDrawing);
+        return;
+      }
+    }
+
     this.isDrawing = true;
+    console.log('Exited startSelection. IsDrawing :', this.isDrawing);
   }
 
   generateFirstAvailableName() {
@@ -384,19 +553,28 @@ export class ImageSelectorComponent {
   
 
   endSelection(event: MouseEvent) {
+    console.log('Entered EndSelection.IsDrawing :', this.isDrawing);
+    this.stopEvent(event);
+    const questionWidthThreshold = 250;
+    const questionHeightThreshold = 250;
     if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;
     const rect = this.canvas.nativeElement.getBoundingClientRect();
     const endX = event.clientX - rect.left;
     const endY = event.clientY - rect.top;
     const width = endX - this.startX;
     const height = endY - this.startY;
-  
+    
     if (this.selectionMode() === 'passage') {
       const id = `p${this.passages().length + 1}`;
       this.passages.set([...this.passages(), { id, x: this.startX, y: this.startY, width, height }]);
     } else if (this.selectionMode() === 'question') {      
       const name = this.generateFirstAvailableName();
-      
+      if(questionWidthThreshold > width || questionHeightThreshold > height) {
+        console.log('Exited  EndSelection questionWidthThreshold > width || questionHeightThreshold > height. IsDrawing :', this.isDrawing);
+        this.isDrawing = false;
+        this.drawImage();
+        return;
+      }
       this.regions.set([...this.regions(), { name, x: this.startX, y: this.startY, width, height, answers: [],passageId:"0",
               imageId: "",imageUrl:"", id:0, isExample: false, exampleAnswer: null }]);
       this.sortRegionsByName();
@@ -417,6 +595,8 @@ export class ImageSelectorComponent {
   
     this.isDrawing = false;
     this.drawImage();
+    
+    console.log('Exited  EndSelection. IsDrawing :', this.isDrawing);
   }
 
   toggleSelectionMode(mode: 'question' | 'answer' | 'passage' | null) {
@@ -706,17 +886,6 @@ export class ImageSelectorComponent {
     
   }
 
-  setCorrectAnswerTap(questionId: number, answerIndex: number) {
-    // const region = this.regions()[questionIndex];
-  
-    // // Tüm cevapları yanlış yap
-    // region.answers.forEach(a => a.isCorrect = false);
-  
-    // // Seçilen cevabı doğru yap
-    // region.answers[answerIndex].isCorrect = true;
-  
-    // this.regions.set([...this.regions()]); // UI güncelleme
-  }
 
 
   setCorrectAnswer(questionIndex: number, answerIndex: number) {
@@ -747,7 +916,10 @@ export class ImageSelectorComponent {
   }
 
   removeQuestion(questionIndex: number) {
-    
+    if(questionIndex < 0 || questionIndex >= this.regions().length) {
+      console.error("Invalid question index");
+      return;
+    }
     const regionName = this.regions()[questionIndex].name;    
     this.exampleAnswers.delete(regionName);
     this.exampleFlags.delete(regionName);
@@ -756,11 +928,27 @@ export class ImageSelectorComponent {
 
 
     this.sortRegionsByName();
+    this.removeContextMenu();
     this.drawImage (); 
-    this.toggleSelectionMode('question');
+    
+    
+  }
+
+  removeContextMenu() {
+    this.contextMenuVisible = false;
+    this.selectedRegion = -1;
+    this.selectedAnswer = -1;
   }
 
   removeAnswer(questionIndex: number, answerIndex: number) {
+    if(questionIndex < 0 || questionIndex >= this.regions().length) {
+      console.error("Invalid question index");
+      return;
+    }
+    if(answerIndex < 0 || answerIndex >= this.regions()[questionIndex].answers.length) {
+      console.error("Invalid answer index");
+      return;
+    }
     const region = this.regions()[questionIndex];
   
     // Seçilen şıkkı listeden kaldır
@@ -770,7 +958,7 @@ export class ImageSelectorComponent {
     this.regions.set([...this.regions()]);
 
     this.alignAnswers(questionIndex); // 🔄 Şıkları hizala
-
+    this.removeContextMenu();
     this.drawImage();
   }
 

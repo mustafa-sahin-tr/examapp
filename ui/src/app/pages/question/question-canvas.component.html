@@ -1,57 +1,104 @@
 
    
-        <form [formGroup]="questionForm" (ngSubmit)="onSubmit()" class="flex-row">
-          
-                <mat-form-field appearance="outline" >
-                  <mat-label>Kitap</mat-label>
-                  <mat-select formControlName="bookId" required (selectionChange)="onBookChange($event.value)">
+        <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
+          <div  style="display: flex; gap: 10px; margin-bottom: 10px;align-items: center;" class="flex-row">
+                <div class="select-wrapper">       
+                  <label for="subject">Kitap</label>         
+                  <select id="subject" formControlName="bookId" required (change)="onBookChange()"  class="select-style-1">
                     @for ( book of books ; track book.id ) {
-                      <mat-option [value]="book.id">
-                        {{ book.name }}
-                      </mat-option>
+                      <option [value]="book.id">{{ book.name }}</option>
                     }
-                  </mat-select>
-                </mat-form-field>
+                  </select>
+                  <span class="select-icon">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"></path>
+                    </svg>
+                  </span>
+                </div>
 
-                <mat-form-field appearance="outline" >
-                  <mat-label>Kitap Testi</mat-label>
-                  <mat-select formControlName="bookTestId" required>
+                <div class="select-wrapper">       
+                  <label for="subject">Kitap Testi</label>         
+                  <select id="subject" formControlName="bookTestId" required class="select-style-1">
                     @for ( bt of bookTests ; track bt.id ) {
-                      <mat-option [value]="bt.id">
-                        {{ bt.name }}
-                      </mat-option>
+                      <option [value]="bt.id">{{ bt.name }}</option>
                     }
-                  </mat-select>
-                </mat-form-field>
-                  
-                <mat-form-field appearance="outline">
-                    <mat-label>Test</mat-label>
+                  </select>
+                  <span class="select-icon">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"></path>
+                    </svg>
+                  </span>
+                </div>
+                <label for="subject">Test</label>      
+                <div class="search-box" style="max-width: 450px;" (focusin)="onFocus()" (focusout)="onBlur()">    
+                    
+                  <mat-icon class="search-icon">search</mat-icon> 
+                  <input matInput formControlName="testId"  style="max-width: 400px;" placeholder="Ara ...">                    
+  
+                  <div class="ms-search-dropdown" *ngIf="testList.length">
+                    <ul class="ms-dropdown-list">
+                      <li *ngFor="let worksheet of testList" (click)="onOptionSelected(worksheet)" class="ms-dropdown-item">
+                        <div class="ms-item-content" >
+                          <span class="ms-item-text">{{ worksheet.name }} - {{ worksheet.subtitle }} </span>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+              </div>
+              <mat-slide-toggle
+              class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
+              Auto Play
+            </mat-slide-toggle>
+
+
+            <div class="button-group ml-auto">
+              <button mat-raised-button color="primary" class="full-width" type="submit">
+                Kaydet
+              </button>
+        
+              <!-- <button mat-raised-button color="primary" class="full-width" type="button" (click)="onSaveAndNew()">
+                Kaydet ve Yeni Soru
+              </button> -->
+            </div>
+                <!-- <mat-form-field appearance="outline" style="width: 25%;">
                     <input matInput formControlName="testId" [matAutocomplete]="auto">
                     <mat-autocomplete #auto="matAutocomplete"  [displayWith]="displayFn" (optionSelected)="onOptionSelected($event)">
                         <mat-option *ngFor="let worksheet of testList" [value]="worksheet">
                             <div class="search-item">
-                              <!-- <app-worksheet-card [type]="'badge'" [size]="'25px'" [test]="worksheet"> </app-worksheet-card> -->
                             <span>{{ worksheet.name }} - {{ worksheet.subtitle }} </span>
                             </div>
                         </mat-option>
                     </mat-autocomplete>
-                </mat-form-field>
+                </mat-form-field> -->
               <!-- 🟢 Ders Seçimi -->
-              <label for="subject">Ders</label>
-              <select id="subject" formControlName="subjectId" (change)="onSubjectChange()" class="form-column-max-250 mh-50">
+              
+              <!-- <div class="select-wrapper">       
+              <label for="subject">Ders</label>         
+              <select id="subject" formControlName="subjectId" (change)="onSubjectChange()"  class="select-style-1">
                 @for ( subject of subjects ; track subject.id ) {
                   <option [value]="subject.id">{{ subject.name }}</option>
                 }
               </select>
+              <span class="select-icon">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"></path>
+                </svg>
+              </span>
+            </div>
   
-              <!-- 🟢 Konu Seçimi (Ders seçilmeden disabled olacak) -->
+            <div class="select-wrapper">    
               <label for="topic">Konu</label>
-              <select id="topic" formControlName="topicId" (change)="onTopicChange()"  class="form-column-max-250  mh-50">
+              <select id="topic" formControlName="topicId" (change)="onTopicChange()"  class="select-style-1">
                   @for ( topic of topics ; track topic.id ) {
                     <option [value]="topic.id">{{ topic.name }}</option>
                   }
               </select>
-  
+              <span class="select-icon">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"></path>
+                </svg>
+              </span>
+            </div> -->
               <!-- 🟢 Alt Konu Seçimi (Konu seçilmeden disabled olacak) -->
               <!-- <label for="subTopic">Alt Konu</label>
               <select id="subTopic" formControlName="subtopicId">
@@ -61,17 +108,13 @@
               </select> -->
   
           
-          
-          
-            <div class="button-group">
-              <button mat-raised-button color="primary" class="full-width" type="submit">
-                Kaydet
-              </button>
-        
-              <button mat-raised-button color="primary" class="full-width" type="button" (click)="onSaveAndNew()">
-                Kaydet ve Yeni Soru
-              </button>
-            </div>
+          </div>
+             
         </form>
-    <app-image-selector></app-image-selector>
+       
+      
+    <app-image-selector>
+
+    </app-image-selector>
+    
 

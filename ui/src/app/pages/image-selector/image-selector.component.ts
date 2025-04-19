@@ -187,6 +187,12 @@ export class ImageSelectorComponent {
     else if(action === 'selectQuestion') {
       this.selectionMode.set('question');
     }
+    else if(action === 'alignAnswers') {
+      this.alignAnswers(this.selectedRegion!, true);
+    }
+    else if(action === 'predict') {
+      this.predict();
+    }
     this.contextMenuVisible = false;
   }
   
@@ -502,21 +508,27 @@ export class ImageSelectorComponent {
       console.log('Exited startSelection event.button === 2 .IsDrawing :', this.isDrawing);
       return;
     }
-    if (!this.ctx || !this.selectionMode()) {
-      console.log('Exited startSelection ctx or selectionMode is null. IsDrawing :', this.isDrawing);
-      return;
-    }
-
     const rect = this.canvas.nativeElement.getBoundingClientRect();
     this.startX = event.clientX - rect.left;
     this.startY = event.clientY - rect.top;
     var hit = this.getRegionOrAnswerAtPosition(this.startX, this.startY);
+
+    // if (!this.ctx || !this.selectionMode()) {
+    //   console.log('Exited startSelection ctx or selectionMode is null. IsDrawing :', this.isDrawing);
+    //   return;
+    // }
+
+    
     if(hit) {
-      if(hit.type === 'question' && this.selectionMode() === 'question') {
-        // bir sorunun içinde tıklanmışsa tekrar bir soru yapmasın.
-        console.log('Exited startSelection hit.type === question. IsDrawing :', this.isDrawing);
-        return;
-      } 
+      // if(hit.type === 'question' && this.selectionMode() === 'question') {
+      //   // bir sorunun içinde tıklanmışsa tekrar bir soru yapmasın.
+      //   console.log('Exited startSelection hit.type === question. IsDrawing :', this.isDrawing);
+      //   return;
+      // } 
+      if(hit.type === 'question') {
+        this.selectedQuestionIndex = hit.value.questionIndex;
+        this.selectionMode.set('answer');
+      }
     } else {
       // bir hit yoksa cevap giremesin. Cevap girmen için hit olmalı ve question olmalı
       if(this.selectionMode() === 'answer') {
@@ -588,7 +600,7 @@ export class ImageSelectorComponent {
         if(this.autoAlign()) {
           this.alignAnswers(this.selectedQuestionIndex);
         }
-        this.toggleSelectionMode('question');
+        // this.toggleSelectionMode('question');
       }
     }
     
@@ -1011,35 +1023,6 @@ export class ImageSelectorComponent {
     return keep;
   }
   
-
-  private filterToMainAnswerGroup(answers: AnswerChoice[], thresholdY = 15): AnswerChoice[] {
-    const groups: AnswerChoice[][] = [];
-  
-    const sorted = [...answers].sort((a, b) => a.y - b.y);
-  
-    for (const answer of sorted) {
-      let matched = false;
-  
-      for (const group of groups) {
-        if (Math.abs(group[0].y - answer.y) <= thresholdY) {
-          group.push(answer);
-          matched = true;
-          break;
-        }
-      }
-  
-      if (!matched) {
-        groups.push([answer]);
-      }
-    }
-  
-    // En kalabalık grup = gerçek şıklar
-    const mainGroup = groups.reduce((prev, curr) =>
-      curr.length > prev.length ? curr : prev
-    );
-  
-    return mainGroup;
-  }
   
   private filterOutFarAnswersByRow(answers: AnswerChoice[], rowThresholdY = 15, rowDistanceFactor = 2): AnswerChoice[] {
     if (answers.length <= 2) return answers;
@@ -1089,8 +1072,8 @@ export class ImageSelectorComponent {
   
   
 
-  alignAnswers(questionIndex: number) {
-    if(!this.autoAlign()) return;
+  alignAnswers(questionIndex: number, force: boolean = false) {
+    if(!this.autoAlign() && !force) return;
     const region = this.regions()[questionIndex];
     if (region.answers.length === 0) return;
 
@@ -1100,76 +1083,96 @@ export class ImageSelectorComponent {
     // 0.b En yoğun y'ye sahip grubu al (dağılmışları at)
     region.answers = this.filterOutFarAnswersByRow(region.answers);
   
-    const thresholdY = 10; // Aynı satırda sayılmaları için y farkı eşiği
-    const thresholdX = 10; // Aynı kolonda sayılmaları için x farkı (şimdilik kullanılmıyor)
-  
-    // 1. Şıkları Y'ye göre satırlara ayır
+    const thresholdY = 10;
+
+    // 1. Satırları belirle (y farkına göre grupla)
     const sortedAnswers = [...region.answers].sort((a, b) => a.y - b.y);
-  
     const rows: AnswerChoice[][] = [];
+
     for (const answer of sortedAnswers) {
-      let rowFound = false;
+      let addedToRow = false;
       for (const row of rows) {
-        if (Math.abs(row[0].y - answer.y) <= thresholdY) {
+        const avgY = row.reduce((sum, a) => sum + ((a.y + a.height) / 2), 0) / row.length;
+        if (Math.abs(avgY - ((answer.y + answer.height)/2)) <= thresholdY) {
           row.push(answer);
-          rowFound = true;
+          addedToRow = true;
           break;
         }
       }
-      if (!rowFound) {
-        rows.push([answer]);
+      if (!addedToRow) rows.push([answer]);
+    }
+
+    // Row bilgisi çıktı: kaç row ve her birinde kaç şık var?
+    const rowLengths = rows.map(row => row.length);
+    const allSameLength = rowLengths.every(len => len === rowLengths[0]);
+
+    // Durum 1: Tek satır varsa, tüm şıkların y ve height değerini eşitle
+    if (rows.length === 1) {
+      const row = rows[0];
+      const minY = Math.min(...row.map(a => a.y));
+      const maxY = Math.max(...row.map(a => a.y + a.height));
+      const h = maxY - minY;
+      row.forEach(a => {
+        a.y = minY;
+        a.height = h;
+      });
+    }
+
+    // Durum 2: Tüm satırlarda yalnızca bir answer varsa → x ve width eşitle
+    else if (rowLengths.every(len => len === 1)) {
+      const allAnswers = rows.map(r => r[0]);
+      const minX = Math.min(...allAnswers.map(a => a.x));
+      const maxX = Math.max(...allAnswers.map(a => a.x + a.width));
+      const w = maxX - minX;
+      allAnswers.forEach(a => {
+        a.x = minX;
+        a.width = w;
+      });
+    }
+
+    // Durum 3: Birden fazla satır ve her satırda eşit sayıda şık varsa
+    else if (allSameLength && rowLengths[0] > 1) {
+      const columnCount = rowLengths[0];
+
+      // Kolon hizalama (x ve width)
+      for (let col = 0; col < columnCount; col++) {
+        const columnAnswers = rows.map(row => row[col]);
+        const minX = Math.min(...columnAnswers.map(a => a.x));
+        const maxX = Math.max(...columnAnswers.map(a => a.x + a.width));
+        const w = maxX - minX;
+        columnAnswers.forEach(a => {
+          a.x = minX;
+          a.width = w;
+        });
+      }
+
+      // Satır hizalama (y ve height)
+      for (const row of rows) {
+        const minY = Math.min(...row.map(a => a.y));
+        const maxY = Math.max(...row.map(a => a.y + a.height));
+        const h = maxY - minY;
+        row.forEach(a => {
+          a.y = minY;
+          a.height = h;
+        });
       }
     }
-  
-    // 2. Her satırı X'e göre sırala (soldan sağa)
-    for (const row of rows) {
-      row.sort((a, b) => a.x - b.x);
-    }
-  
-    // 1. Kolon sayısını belirle (en kısa satır kadar)
-    const minColumnCount = Math.min(...rows.map(r => r.length));
 
-    // 2. Her kolon için x ve width ortaklaştır
-    for (let col = 0; col < minColumnCount; col++) {
-      const columnAnswers = rows.map(row => row[col]); // her satırdan aynı sıradaki eleman
-
-      const minX = Math.min(...columnAnswers.map(a => a.x));
-      const maxX = Math.max(...columnAnswers.map(a => a.x + a.width));
-
-      for (const answer of columnAnswers) {
-        answer.x = minX;
-        answer.width = maxX - minX;
+    // Durum 4 ve 5: Satırlardaki şık sayıları farklıysa → sadece y ve height hizalama
+    else {
+      for (const row of rows) {
+        const minY = Math.min(...row.map(a => a.y));
+        const maxY = Math.max(...row.map(a => a.y + a.height));
+        const h = maxY - minY;
+        row.forEach(a => {
+          a.y = minY;
+          a.height = h;
+        });
       }
     }
 
-    
-    // 3. Satırları tekrar birleştir
-    const aligned = rows.flat();    
-  
-    region.answers = aligned;
-
-    // // // 5. Şıkları normalize et
-    // if (rows.length === 1) {
-    //   // Tek satır: tüm şıkları yukarıdan hizala ve aynı yükseklik
-    //   const minY = Math.min(...region.answers.map(a => a.y));
-    //   const maxY = Math.max(...region.answers.map(a => a.y + a.height));
-    //   region.answers.forEach(a => {
-    //     a.y = minY;
-    //     a.height = maxY - minY;
-    //   });
-    // } else {
-    //   // Çok satır: tüm şıkları sola hizala ve aynı genişlik
-    //   const minX = Math.min(...region.answers.map(a => a.x));
-    //   const maxX = Math.max(...region.answers.map(a => a.x + a.width));
-    //   region.answers.forEach(a => {
-    //     a.x = minX;
-    //     a.width = maxX - minX;
-    //   });
-    // }
-
+    region.answers = rows.flat();
     this.renameAnswers(questionIndex);
-  
-    // 🔥 Güncellenmiş şık listesini kaydet ve UI'yi güncelle
     this.regions.set([...this.regions()]);
     this.drawImage();
   }

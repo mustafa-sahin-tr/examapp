@@ -18,6 +18,7 @@
   <!-- Region için menü -->
   <ng-container *ngIf="contextMenuType === 'region'">    
     <button (click)="handleMenuAction('removeQuestion',$event)" >Soru Sil</button>
+    <button (click)="handleMenuAction('alignAnswers',$event)" >Cevapları Hizala</button>
   </ng-container>
 
   <!-- Answer için menü -->
@@ -28,12 +29,16 @@
   <!-- Answer için menü -->
   <ng-container *ngIf="contextMenuType === 'worksheet'">
     <button (click)="handleMenuAction('selectQuestion',$event)">Soru Seç</button>
+    <button (click)="handleMenuAction('predict',$event)">Yapay Zekaya Sor</button>
   </ng-container>
 </div>
 
     </div>
-    <div style="max-width: 150px;">
-    <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*">
+    <div style="max-width: 250px;">
+
+      
+
+    <!-- <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*"> -->
     {{imagName()}}
     <div class="button-group-vertical">
       
@@ -42,22 +47,16 @@
         <button class="button-type-2"  (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
       </div> -->
       
-        <button mat-raised-button color="primary" (click)="toggleOnlyQuestionMode()">{{onlyQuestionMode() ? 'Soru-Cevap Modu' : 'Soru Modu'}}</button>
+        <!-- <button mat-raised-button color="primary" (click)="toggleOnlyQuestionMode()">{{onlyQuestionMode() ? 'Soru-Cevap Modu' : 'Soru Modu'}}</button> -->
         <!-- <button mat-raised-button color="primary" (click)="lockSelectionMode('answer')">Disable Modes</button> -->
-        <button mat-raised-button color="primary" (click)="lockSelectionMode(null)">Disable Modes</button>
+        <!-- <button mat-raised-button color="primary" (click)="lockSelectionMode(null)">Disable Modes</button> -->
         <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
-        <button mat-raised-button color="primary" (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button>
+        <!-- <button mat-raised-button color="primary" (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
      
-      <div class="button-row">
-        <mat-slide-toggle
-          class="example-margin" [checked]="autoAlign()" (change)="autoAlign.set($event.checked)">
-          Hizalama
-        </mat-slide-toggle>
-        <!-- <button mat-raised-button color="primary" (click)="toggleAlignMode()">Hizalamayı {{!autoAlign() ? 'Aç' : 'Kapat'}}</button> -->
-      </div>
       
-      <button mat-raised-button color="primary" (click)="predict()">Predict</button>
-      <button mat-raised-button color="primary" (click)="sendToFix()">Sent To Fix</button>
+      
+      <!-- <button mat-raised-button color="primary" (click)="predict()">Predict</button> -->
+      <!-- <button mat-raised-button color="primary" (click)="sendToFix()">Sent To Fix</button> -->
       <!-- <div class="button-row">
         <button mat-raised-button color="primary" (click)="previousImage()">❮ Önceki</button>
         <mat-slide-toggle

@@ -30,6 +30,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatMenuModule } from '@angular/material/menu';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -44,7 +45,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
             MatSnackBarModule,
             FormsModule,
             ReactiveFormsModule,
-            CommonModule,
+            CommonModule, MatMenuModule,
             MatCardModule,
             MatIconModule,
             QuillModule,
@@ -64,6 +65,7 @@ export class QuestionCanvasComponent implements OnInit {
   isEditMode: boolean = false;
   searchInProgress: boolean = false;
   public autoMode = signal<boolean>(false);
+  public autoAlign = signal<boolean>(false);
   public inProgress = signal<boolean>(false);
   testInstance: TestInstance = {
     id: 0,
@@ -95,7 +97,7 @@ export class QuestionCanvasComponent implements OnInit {
   selectedSubtopicsId: number[] = [];
   bookTests: BookTest[] = [];
   books: Book[] = [];
-  
+  fullScreen = signal(false);
 
   // 🟢 Form Kontrolleri
 
@@ -103,9 +105,27 @@ export class QuestionCanvasComponent implements OnInit {
   // 🟢 Filtrelenmiş listeler
 
   constructor() {
-    this.sidenavService.setSidenavState(false);
-    this.sidenavService.setFullScreen(true);
+    this.setFullScreen(false);
   }
+
+  setFullScreen(fullScreen: boolean) {
+    this.fullScreen.set(fullScreen);
+    this.sidenavService.setSidenavState(!fullScreen);
+    this.sidenavService.setFullScreen(fullScreen);
+  }
+  
+  downloadRegionsLite() {
+    this.imageSelector.downloadRegionsLite();
+  }
+
+  toggleOnlyQuestionMode()  {
+    this.imageSelector.toggleOnlyQuestionMode();
+  }
+
+  handleFilesInput2(event: Event) {
+    this.imageSelector.handleFilesInput2(event);
+  }
+ 
 
   onCheckboxChange(event: { checked: boolean; value: any }) {
     const subjectId = event.value.id;
@@ -168,7 +188,16 @@ export class QuestionCanvasComponent implements OnInit {
     }
 
     setAutoMode(checked: boolean) {      
+      
       this.imageSelector.autoMode.set(checked)
+      if(checked){
+       this.nextImage(); 
+      }
+    }
+
+    setAutoAlign(checked: boolean) {
+      this.imageSelector.autoAlign.set(checked);
+      this.imageSelector.predict();
     }
     
     
@@ -279,7 +308,9 @@ export class QuestionCanvasComponent implements OnInit {
     return control as FormControl;
   }
 
-
+  sendToFix() {
+    this.imageSelector.sendToFix();
+  }
 
   onSaveAndNew() {
     this.onSave(true);

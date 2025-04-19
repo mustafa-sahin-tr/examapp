@@ -768,6 +768,7 @@ ul {
   display: flex;
   justify-content: space-between;
   margin-top: 16px;
+  gap: 10px;
 }
 
 .button-group-vertical {
@@ -844,6 +845,12 @@ img {
 
 .search-box input::placeholder {
   color: #888;
+}
+
+.fill-available {
+  width: -webkit-fill-available !important;
+  width: -moz-available !important;
+  width: fill-available !important;
 }
 
 .search-icon {
@@ -3315,7 +3322,7 @@ h4 {
 
   padding: 8px 2.5rem 8px 1rem;
   min-height: 48px;
-  width: 300px;
+  min-width: 100px;
   border: 1px solid var(--ps-action-border, #6855D9);
   border-radius: 6px;
 

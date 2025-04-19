@@ -15,6 +15,11 @@ export class SidenavService {
     this.isSidenavOpen.set(state);
   }
 
+  toggleSidenavState() {
+    this.isSidenavOpen.set(!this.isSidenavOpen());
+    console.log('sidenav state: ',this.isSidenavOpen());
+  }
+
   toggleFullScreen() {
     this.isFullScreen.set(!this.isFullScreen());
     console.log('full screen state: ',this.isFullScreen());

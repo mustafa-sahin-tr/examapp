@@ -2,6 +2,23 @@
    
         <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
           <div  style="display: flex; gap: 10px; margin-bottom: 10px;align-items: center;" class="flex-row">
+            <button
+            mat-stroked-button
+            color="primary"
+            class="upload-btn"
+            (click)="fileInput.click()">
+              <mat-icon>cloud_upload</mat-icon>
+              <span>Yükle</span>
+            </button>
+            <input
+              #fileInput
+              type="file"
+              (change)="handleFilesInput2($event)"
+              multiple
+              accept="image/*"
+              hidden
+            />
+            
                 <div class="select-wrapper">       
                   <label for="subject">Kitap</label>         
                   <select id="subject" formControlName="bookId" required (change)="onBookChange()"  class="select-style-1">
@@ -33,7 +50,7 @@
                 <div class="search-box" style="max-width: 450px;" (focusin)="onFocus()" (focusout)="onBlur()">    
                     
                   <mat-icon class="search-icon">search</mat-icon> 
-                  <input matInput formControlName="testId"  style="max-width: 400px;" placeholder="Ara ...">                    
+                  <input matInput formControlName="testId" class="fill-available" style="max-width: 400px;" placeholder="Test Seç ...">                    
   
                   <div class="ms-search-dropdown" *ngIf="testList.length">
                     <ul class="ms-dropdown-list">
@@ -50,12 +67,46 @@
               Auto Play
             </mat-slide-toggle>
 
+            <mat-slide-toggle
+              class="example-margin" [checked]="autoAlign()" (change)="setAutoAlign($event.checked)">
+              Hizalama
+            </mat-slide-toggle>
+
 
             <div class="button-group ml-auto">
-              <button mat-raised-button color="primary" class="full-width" type="submit">
+              <button mat-raised-button color="primary" (click)="sendToFix()" class="full-width" type="submit">
+                Eğit
+              </button>
+              <button mat-raised-button color="primary" (click)="onSaveAndNew()" class="full-width" type="submit">
                 Kaydet
               </button>
-        
+
+              <button mat-icon-button
+                  [matMenuTriggerFor]="actionMenu"
+                  aria-label="Open actions">
+            <mat-icon>more_vert</mat-icon></button>
+
+            <!-- Menü tanımı -->
+            <mat-menu #actionMenu="matMenu">
+              <button mat-menu-item >
+                <mat-icon>edit</mat-icon>
+                <span>Düzenle</span>
+              </button>
+              <button mat-menu-item (click)="downloadRegionsLite()">
+                <mat-icon>file_download</mat-icon>
+                <span>İndir</span>
+              </button>
+              <button mat-menu-item >
+                <mat-icon>share</mat-icon>
+                <span>Disable </span>
+              </button>
+            </mat-menu>
+
+              <button mat-icon-button
+                      aria-label="Enter Fullscreen" (click)="setFullScreen(!fullScreen())">
+                      <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+              </button>
+              
               <!-- <button mat-raised-button color="primary" class="full-width" type="button" (click)="onSaveAndNew()">
                 Kaydet ve Yeni Soru
               </button> -->

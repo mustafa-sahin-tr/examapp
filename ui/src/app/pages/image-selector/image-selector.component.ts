@@ -10,18 +10,22 @@ import { QuestionDetectorService } from '../../services/question-detector.servic
 import { Prediction } from '../../models/prediction';
 import { HttpStatusCode } from '@angular/common/http';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle'
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatIconModule } from '@angular/material/icon';
 
 
 @Component({
   selector: 'app-image-selector',
   standalone: true,
-  imports: [CommonModule, QuillModule, FormsModule, MatButtonModule,MatSlideToggleModule],
+  imports: [CommonModule, QuillModule, MatIconModule, FormsModule,MatMenuModule, MatButtonModule,MatSlideToggleModule],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss']
 })
 export class ImageSelectorComponent {
   @ViewChild('canvas', { static: false }) canvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;  
+  @ViewChild('menuTrigger') menuTrigger!: MatMenuTrigger;
+  @ViewChild('menuTrigger', { read: ElementRef }) triggerElementRef!: ElementRef;
 
   private ctx!: CanvasRenderingContext2D | null;
   private img = new Image();
@@ -142,16 +146,16 @@ export class ImageSelectorComponent {
     const hit = this.getRegionOrAnswerAtPosition(clickX, clickY);
     this.contextMenuX = event.clientX;
     this.contextMenuY = event.clientY;
-    this.contextMenuVisible = true;
 
     if (!hit) {
       this.contextMenuType = 'worksheet';
       this.selectedRegion = null;
       this.selectedAnswer = null;
       console.log('Exited  onRightClick hit === null. IsDrawing :', this.isDrawing);
+      this.contextMenuVisible = true;
       return;
     }
-    this.contextMenuVisible = true;
+    
 
     if (hit.type === 'answer') {
       this.contextMenuType = 'answer';
@@ -163,6 +167,8 @@ export class ImageSelectorComponent {
       this.selectedAnswer = null;
     }
     console.log('Exited  onRightClick hit.type === question. IsDrawing :', this.isDrawing);
+
+    this.contextMenuVisible = true;
   }
 
   closeContextMenu() {
@@ -192,6 +198,9 @@ export class ImageSelectorComponent {
     }
     else if(action === 'predict') {
       this.predict();
+    }
+    else if(action === 'selectPassage') {
+      this.selectionMode.set('passage');
     }
     this.contextMenuVisible = false;
   }

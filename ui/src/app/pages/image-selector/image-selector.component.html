@@ -1,5 +1,8 @@
 <div class="container" [ngClass]="selectionMode()">
   <div class="form-container">
+    
+
+
     <div class="form-column-4" style="border: var(--border-input);">
       
       <div *ngIf="imageSrc()" class="ms-canvas-wrapper">
@@ -9,27 +12,53 @@
         <div class="ms-nav-area ms-nav-prev" (click)="previousImage()"></div>
         <!-- Sağ bölge – Next -->
         <div class="ms-nav-area ms-nav-next" (click)="nextImage()"></div>
-      </div>
+      </div>  
+
+
+      
+
       <div
-  *ngIf="contextMenuVisible"
-  class="custom-context-menu"
+
+      
+  *ngIf="contextMenuVisible" (click)="$event.stopPropagation()"
+  class="ms-custom-context-menu"
   [ngStyle]="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
 >
   <!-- Region için menü -->
   <ng-container *ngIf="contextMenuType === 'region'">    
-    <button (click)="handleMenuAction('removeQuestion',$event)" >Soru Sil</button>
-    <button (click)="handleMenuAction('alignAnswers',$event)" >Cevapları Hizala</button>
+    <button (click)="handleMenuAction('removeQuestion',$event)" >
+      <mat-icon style="vertical-align: middle; margin-right: 8px;">delete</mat-icon>
+      Soru Sil</button>
+    <button (click)="handleMenuAction('alignAnswers',$event)" >
+      <mat-icon style="vertical-align: middle; margin-right: 8px;">format_align_center</mat-icon>
+      Cevapları Hizala</button>
+    <select *ngIf="selectedRegion! >= 0 && passages().length > 0" id="passageSelect" 
+        (change)="onPassageChange($event, regions()[(selectedRegion || 0)].name)"
+        (click)="$event.stopPropagation()">
+      <option value="0" [selected]="!selectedPassageMap.has(regions()[(selectedRegion || 0)].name)">🔹 Passage Seçiniz</option>
+      <option *ngFor="let passage of passages()" [value]="passage.id"
+           [selected]="selectedPassageMap.get(regions()[(selectedRegion || 0)].name) === passage.id">
+        Passage {{ passage.id }}
+      </option>
+    </select>
+
   </ng-container>
 
   <!-- Answer için menü -->
   <ng-container *ngIf="contextMenuType === 'answer'">
-    <button (click)="handleMenuAction('removeAnswer',$event)">Seçeneği Sil</button>
+    <button (click)="handleMenuAction('removeAnswer',$event)">
+      <mat-icon style="vertical-align: middle; margin-right: 8px;">delete</mat-icon>Seçeneği Sil</button>
   </ng-container>
 
   <!-- Answer için menü -->
   <ng-container *ngIf="contextMenuType === 'worksheet'">
-    <button (click)="handleMenuAction('selectQuestion',$event)">Soru Seç</button>
-    <button (click)="handleMenuAction('predict',$event)">Yapay Zekaya Sor</button>
+    <button (click)="handleMenuAction('selectQuestion',$event)">
+      <mat-icon style="vertical-align: middle; margin-right: 8px;">help_outline</mat-icon>
+      Soru Seç</button>
+    <button (click)="handleMenuAction('predict',$event)">  
+      <mat-icon style="vertical-align: middle; margin-right: 8px;">smart_toy</mat-icon>
+      Yapay Zekaya Sor</button>
+    <button (click)="handleMenuAction('selectPassage',$event)"><mat-icon style="vertical-align: middle; margin-right: 8px;">assignment</mat-icon>Pasaj Seç</button>
   </ng-container>
 </div>
 

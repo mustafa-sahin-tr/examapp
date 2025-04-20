@@ -77,9 +77,114 @@ export class StudentProfileComponent implements OnInit {
     name: 'heatmapScheme',
     selectable: false,
     group: ScaleType.Quantile,
-    domain: ['#f5f7f5', '#d3f5d3', '#a6f7a6', '#74fc74', '#4bfa4b', '#26fc26', '#03fc03']
+    domain: [ '#eff2f5', '#aceebb', '#4ac26b', '#2da44e', '#116329']
   };
 
+
+  colorScheme3 = {
+    name: 'viridis',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: [
+      '#440154', // çok düşük
+      '#3B528B',
+      '#21908C',
+      '#5DC863',
+      '#FDE725'  // çok yüksek
+    ]
+  };
+
+  plasmaSchema = {
+    name: 'plasma',
+    selectable: false,
+    group: ScaleType.Quantile,
+    domain: [
+      '#0D0887',
+      '#6A00A8',
+      '#B12A90',
+      '#E16462',
+      '#FCA636'
+    ]
+  };
+
+  neonSchema = {
+    name: 'neon',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: [
+      '#00FFC8',  // çok düşük
+      '#00E0B2',
+      '#00B38A',
+      '#007B56',
+      '#003F2D'   // çok yüksek
+    ]
+  };
+
+  infernoScheme = {
+    name: 'inferno',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: [
+      '#000004', // en düşük
+      '#420A68',
+      '#932667',
+      '#DD513A',
+      '#FE9F6D',
+      '#FDE725'  // en yüksek
+    ]
+  };
+
+  cividisScheme = {
+    name: 'cividis',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: [
+      '#00204C',
+      '#134E8C',
+      '#006F7D',
+      '#44AA6C',
+      '#FDAE50'
+    ]
+  };
+
+  sunsetScheme = {
+    name: 'sunset',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: [
+      '#FFE5B4', // soluk sarı
+      '#FFB370',
+      '#FF7F3F',
+      '#E84F3B',
+      '#A6282E'
+    ]
+  };
+
+  oceanScheme = {
+    name: 'ocean',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: [
+      '#A6FFEA',
+      '#4DFFDB',
+      '#00E3B7',
+      '#009780',
+      '#00554A'
+    ]
+  };
+
+    /*
+  domain: [
+    'var(--contribution-default-bgColor-0)', 
+    'var(--contribution-default-bgColor-0)',
+    'var(--contribution-default-bgColor-1)',
+    'var(--contribution-default-bgColor-1)',
+    'var(--contribution-default-bgColor-2)',
+    'var(--contribution-default-bgColor-3)',
+    'var(--contribution-default-bgColor-4)']
+  */
+  //          
+  
 
   /**  */
 
@@ -196,7 +301,302 @@ export class StudentProfileComponent implements OnInit {
 
 
   // Günlük veriyi haftalara bölüp heatmap formatına uygun hale getiriyoruz
-  activityData = this.generateHeatmapData();
+  activityData = this.generateHeatmapData3();
+
+
+  /**
+ * Statik “MUSTAFA” ısı haritası verisi üreten fonksiyon.
+ * Harf pikselleri value=10 (koyu), diğerleri value=0 (açık).
+ */
+generateHeatmapData3(): Array<{ name: string; series: Array<{ name: string; value: number }> }> {
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const totalWeeks = 53;
+
+  const letters: Record<string, number[][]> = {
+    Q: [
+      [0,0,0,0,0],
+      [0,1,0,1,0],
+      [1,0,1,0,1],
+      [1,0,0,0,1],
+      [0,1,0,1,0],
+      [0,0,1,0,0],
+      [0,0,0,0,0],
+    ],
+    M: [
+      [0,0,0,0,0],  // Row 0
+      [1,1,0,1,1],  // Row 1
+      [1,0,1,0,1],  // Row 2
+      [1,0,0,0,1],  // Row 3
+      [1,0,0,0,1],  // Row 4
+      [1,0,0,0,1],  // Row 5
+      [0,0,0,0,0],  // Row 6
+    ],
+    U: [
+      [0,0,0,0,0],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,1,1,1,1],
+      [0,0,0,0,0],
+    ],
+    S: [
+      [0,0,0,0,0],
+      [0,1,1,1,1],
+      [1,0,0,0,0],
+      [0,1,1,1,0],
+      [0,0,0,0,1],
+      [1,1,1,1,0],
+      [0,0,0,0,0],
+    ],
+    T: [
+      [0,0,0,0,0],
+      [1,1,1,1,1],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,0,0,0],
+    ],
+    A: [
+      [0,0,0,0,0],
+      [0,1,1,1,0],
+      [1,0,0,0,1],
+      [1,1,1,1,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [0,0,0,0,0],
+    ],
+    F: [
+      [0,0,0,0,0],
+      [1,1,1,1,1],
+      [1,0,0,0,0],
+      [1,1,1,1,0],
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+      [0,0,0,0,0],
+    ],
+  };
+  
+  // 5×7 piksel font desenleri
+  const lettersBig: Record<string, number[][]> = {
+    
+    M: [
+      [1,0,0,0,1],
+      [1,1,0,1,1],
+      [1,0,1,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+    ],
+    U: [
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [0,1,1,1,0],
+    ],
+    S: [
+      [0,1,1,1,1],
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+      [0,1,1,1,0],
+      [0,0,0,0,1],
+      [0,0,0,0,1],
+      [1,1,1,1,0],
+    ],
+    T: [
+      [1,1,1,1,1],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+      [0,0,1,0,0],
+    ],
+    A: [
+      [0,1,1,1,0],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,1,1,1,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+      [1,0,0,0,1],
+    ],
+    F: [
+      [1,1,1,1,1],
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+      [1,1,1,1,0],
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+      [1,0,0,0,0],
+    ],
+  };
+
+  // Yazdırmak istediğimiz kelime
+  const word = ['Q','M','U','S','T','A','F','A','Q'];
+
+  // 7 satır için başlangıç boş matris
+  const gridRows: number[][] = Array.from({ length: 7 }, () => []);
+
+  // Harf desenlerini yan yana ekle, harfler arası 1 sütun boşluk
+  word.forEach((ch, idx) => {
+    const pattern = letters[ch];
+    for (let r = 0; r < 7; r++) {
+      gridRows[r].push(...pattern[r]);
+    }
+    if (idx < word.length - 1) {
+      for (let r = 0; r < 7; r++) {
+        gridRows[r].push(0);
+      }
+    }
+  });
+
+  // Toplam 52 haftaya ortalamak için sola/sağa dolgu
+  const cols = gridRows[0].length;             // 41 olması beklenir
+  const padLeft  = Math.floor((totalWeeks - cols) / 2);
+  const padRight = totalWeeks - cols - padLeft;
+  for (let r = 0; r < 7; r++) {
+    gridRows[r] = [
+      ...Array(padLeft).fill(0),
+      ...gridRows[r],
+      ...Array(padRight).fill(0),
+    ];
+  }
+
+  // ngx‑charts ters çizdiği için satırları dikeyde çevir
+  const flippedRows = gridRows.slice().reverse();
+
+  // Son olarak heatmap verisini oluştur
+  const heatmapData: Array<{ name: string; series: Array<{ name: string; value: number }> }> = [];
+  for (let w = 0; w < totalWeeks; w++) {
+    heatmapData.push({
+      name: `Week ${w + 1}`,
+      series: daysOfWeek.map((day, rowIdx) => ({
+        name: day,
+        value: flippedRows[rowIdx][w] ? 10 : Math.floor(Math.random() * 3) + 1  // boşluklara 1–3 arası rastgele
+      }))
+    });
+  }
+  console.log('heatmapData:', JSON.stringify(heatmapData));
+  return heatmapData;
+
+
+}
+
+
+  generateHeatmapData2() {
+    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const totalWeeks = 52;
+  
+    // 5×7 piksel font desenleri:
+    const letters: { [char: string]: number[][] } = {
+      M: [
+        [1,0,0,0,1],
+        [1,1,0,1,1],
+        [1,0,1,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+      ],
+      U: [
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [0,1,1,1,0],
+      ],
+      S: [
+        [0,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [0,1,1,1,0],
+        [0,0,0,0,1],
+        [0,0,0,0,1],
+        [1,1,1,1,0],
+      ],
+      T: [
+        [1,1,1,1,1],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+        [0,0,1,0,0],
+      ],
+      A: [
+        [0,1,1,1,0],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+        [1,0,0,0,1],
+      ],
+      F: [
+        [1,1,1,1,1],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,1,1,1,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+        [1,0,0,0,0],
+      ]
+    };
+  
+    // Kelime ve harf arası 1 boşluk:
+    const word = ['M','U','S','T','A','F','A'];
+    // Önce 7×N’lik (N = 7×5 + 6×1 = 41) bir grid oluştur
+    const gridRows: number[][] = Array.from({length: 7}, () => []);
+  
+    word.forEach((ch, idx) => {
+      const pat = letters[ch];
+      for (let r=0; r<7; r++) {
+        gridRows[r].push(...pat[r]);
+      }
+      // son harften sonra boşluk koyma
+      if (idx < word.length - 1) {
+        for (let r=0; r<7; r++) gridRows[r].push(0);
+      }
+    });
+  
+    // 41 sütunu 52’ye tam ortala:
+    const currentCols = gridRows[0].length; // 41
+    const padLeft  = Math.floor((totalWeeks - currentCols)/2); // 5
+    const padRight = totalWeeks - currentCols - padLeft;      // 6
+  
+    for (let r=0; r<7; r++) {
+      gridRows[r] = [
+        ...Array(padLeft).fill(0),
+        ...gridRows[r],
+        ...Array(padRight).fill(0)
+      ];
+    }
+  
+    // Artık gridRows[r][c] = 1 ise piksel koyu, 0 ise açık
+    const heatmapData: any[] = [];
+    for (let c = 0; c < totalWeeks; c++) {
+      const weekData = {
+        name: `Week ${c+1}`,
+        series: daysOfWeek.map((d, r) => ({
+          name: d,
+          // 1 → koyu, 0 → açık
+          value: gridRows[r][c] ? 10 : 0
+        }))
+      };
+      heatmapData.push(weekData);
+    }
+  
+    return heatmapData;
+  }
+  
 
   generateHeatmapData() {
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

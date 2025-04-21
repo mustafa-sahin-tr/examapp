@@ -12,6 +12,31 @@
         <div class="ms-nav-area ms-nav-prev" (click)="previousImage()"></div>
         <!-- Sağ bölge – Next -->
         <div class="ms-nav-area ms-nav-next" (click)="nextImage()"></div>
+        <!-- Marker'lar -->
+        <div
+          *ngFor="let marker of warningMarkers"
+          [class.cs-warning-marker]="marker.type === 'warning'"
+          [class.cs-error-marker]="marker.type === 'error'"          
+          [ngStyle]="{ top: marker.y + 'px', left: marker.x + 'px' }"
+          (click)="openWarningContextMenu(marker, $event)">
+          <mat-icon [style.width]="warningIconHeight + 'px !important'" 
+          [style.height]="warningIconHeight + 'px !important'" 
+          [style.font-size]="warningIconHeight + 'px !important'" 
+           color="warn">warning</mat-icon>
+        </div>
+          <!-- Marker context menü -->
+        <div
+          *ngIf="warningMenuVisible"
+          class="wr-custom-context-menu"
+          [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px' }"
+          (click)="$event.stopPropagation()">
+          <div style="padding: 8px; max-width: 220px;">
+            <!-- <strong>Uyarı:</strong> -->
+            <div>{{ selectedWarning?.message }}</div>
+          </div>
+          <mat-divider></mat-divider>
+          <button (click)="dismissWarning($event)">Uyarıyı Kapat</button>
+        </div>
       </div>  
 
 

@@ -96,10 +96,14 @@
                 <mat-icon>file_download</mat-icon>
                 <span>İndir</span>
               </button>
-              <button mat-menu-item >
-                <mat-icon>share</mat-icon>
-                <span>Disable </span>
-              </button>
+              Şık Sayısı
+              <select 
+                (change)="onChangeQuestionCount($event)"
+                (click)="$event.stopPropagation()">              
+              <option [value]="3">3</option>
+              <option [value]="4">4</option>
+              <option [value]="5">5</option>
+            </select>
             </mat-menu>
 
               <button mat-icon-button

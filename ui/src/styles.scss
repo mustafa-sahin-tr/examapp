@@ -3369,6 +3369,18 @@ h4 {
   font-family: Roboto, Arial, sans-serif;
 }
 
+.wr-custom-context-menu {
+  position: absolute;
+  background-color: white;
+  min-width: 180px;
+  border-radius: 4px;
+  padding: 8px 0;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  font-family: Roboto, Arial, sans-serif;
+  color: var(--ms-colors-status-warning);
+}
+
 .ms-custom-context-menu button {
   background: none;
   border: none;
@@ -3410,6 +3422,32 @@ h4 {
 .ms-canvas-wrapper {
   position: relative;
   display: inline-block;    /* canvas boyutuna göre otursun */
+}
+
+.canvas-wrapper canvas {
+  display: block;
+}
+
+.cs-warning-marker {
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  // background-color: white;
+  border-radius: 50%;
+  padding: 2px;
+  // box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  color: var(--ms-colors-status-warning) !important;
+}
+
+.cs-error-marker {
+  position: absolute;
+  z-index: 10;
+  cursor: pointer;
+  // background-color: white;
+  border-radius: 50%;
+  padding: 2px;
+  // box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+  color: var(--ms-colors-status-error) !important;
 }
 
 /* 2) Gezinme bölgeleri: sol & sağ */

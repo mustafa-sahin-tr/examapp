@@ -12,12 +12,19 @@ import { HttpStatusCode } from '@angular/common/http';
 import {MatSlideToggleModule} from '@angular/material/slide-toggle'
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
 
-
+interface WarningMarker {
+  id: number;
+  x: number;
+  y: number;
+  message?: string;
+  type?: 'error' | 'warning' | 'info';
+}
 @Component({
   selector: 'app-image-selector',
   standalone: true,
-  imports: [CommonModule, QuillModule, MatIconModule, FormsModule,MatMenuModule, MatButtonModule,MatSlideToggleModule],
+  imports: [CommonModule, QuillModule, MatDividerModule, MatIconModule, FormsModule,MatMenuModule, MatButtonModule,MatSlideToggleModule],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss']
 })
@@ -35,6 +42,7 @@ export class ImageSelectorComponent {
   public inProgress = signal<boolean>(false);
   public showRegions = signal<boolean>(false);
   public onlyQuestionMode = signal<boolean>(false);
+  public answerCount = signal<number>(3);
   public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
@@ -62,6 +70,9 @@ export class ImageSelectorComponent {
   private currentX = 0;
   private currentY = 0;
 
+  warningIconHeight = 48;
+  
+
   imageFiles: File[] = [];
   currentImageIndex = 0;
   currentImageSrc: string | null = null;
@@ -69,6 +80,11 @@ export class ImageSelectorComponent {
   contextMenuVisible = false;
   contextMenuX = 0;
   contextMenuY = 0;
+  warningMarkers: WarningMarker[] = [];
+  selectedWarning: WarningMarker | null = null;
+  warningMenuVisible = false;
+  warningMenuX = 0;
+  warningMenuY = 0
 
   // Sayfa içinde herhangi bir yere tıklandığında menüyü kapat
   @HostListener('document:click', ['$event'])
@@ -79,7 +95,23 @@ export class ImageSelectorComponent {
     if (!target.closest('.custom-context-menu')) {
       this.contextMenuVisible = false;
     }
+
+    this.warningMenuVisible = false;
+    this.contextMenuVisible = false;
     console.log('Exited  onDocumentClick. IsDrawing :', this.isDrawing);
+  }
+
+  openWarningContextMenu(marker: WarningMarker, event: MouseEvent) {
+    event.stopPropagation();
+    this.selectedWarning = marker;
+    this.warningMenuVisible = true;
+    this.warningMenuX = marker.x + 20
+    this.warningMenuY = marker.y;
+  }
+
+  dismissWarning(event: MouseEvent) {
+    this.stopEvent(event);
+    this.warningMenuVisible = false;
   }
 
   getRegionOrAnswerAtPosition(x: number, y: number): RegionOrAnswerHit {
@@ -418,6 +450,21 @@ export class ImageSelectorComponent {
     } 
   }
   
+  checkRegionWarning(region: QuestionRegion) {
+    if(this.warningMarkers.find(w => w.id === region.id)) {
+      // remove warning
+      this.warningMarkers = this.warningMarkers.filter(w => w.id !== region.id);
+    }
+    if(region.answers.length != this.answerCount()) {
+      this.warningMarkers.push({
+        id: region.id,
+        x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
+        y: region.y - (this.warningIconHeight / 2) ,
+        message: `Şık sayısı ${this.answerCount()} olmalı`,
+        type: 'error'
+      });
+    }      
+  }
 
   drawImage() {
     if (!this.canvas) return;
@@ -440,6 +487,7 @@ export class ImageSelectorComponent {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(region.x, region.y, region.width, region.height);
+        this.checkRegionWarning(region);
       }
   
       // 🟦 **Şık alanlarını mavi renkte çiz**
@@ -945,6 +993,7 @@ export class ImageSelectorComponent {
     this.exampleAnswers.delete(regionName);
     this.exampleFlags.delete(regionName);
     this.selectedPassageMap.delete(regionName);
+    this.warningMarkers = this.warningMarkers.filter(w => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 
 

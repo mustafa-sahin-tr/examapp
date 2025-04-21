@@ -142,7 +142,10 @@ export class QuestionCanvasComponent implements OnInit {
     console.log('Checkbox State:', event.checked, 'Value:', event.value);
   }
 
-  
+  onChangeQuestionCount(event: any) {
+    const answerCount = event.target.value;
+    this.imageSelector.answerCount.set(answerCount);
+  }
 
   resetFormWithDefaultValues(state: any) {
     this.questionForm = new FormGroup<QuestionCanvasForm>({

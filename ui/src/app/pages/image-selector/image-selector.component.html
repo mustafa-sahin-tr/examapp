@@ -32,7 +32,12 @@
           (click)="$event.stopPropagation()">
           <div style="padding: 8px; max-width: 220px;">
             <!-- <strong>Uyarı:</strong> -->
-            <div>{{ selectedWarning?.message }}</div>
+             <ul>
+              <li *ngFor="let warningMessage of selectedWarning?.messages">
+                <div>{{ warningMessage }}</div>
+              </li>
+             </ul>
+            
           </div>
           <mat-divider></mat-divider>
           <button (click)="dismissWarning($event)">Uyarıyı Kapat</button>

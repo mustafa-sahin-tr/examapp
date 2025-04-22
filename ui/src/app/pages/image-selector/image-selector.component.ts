@@ -18,7 +18,7 @@ interface WarningMarker {
   id: number;
   x: number;
   y: number;
-  message?: string;
+  messages: string[];
   type?: 'error' | 'warning' | 'info';
 }
 @Component({
@@ -455,24 +455,21 @@ export class ImageSelectorComponent {
       // remove warning
       this.warningMarkers = this.warningMarkers.filter(w => w.id !== region.id);
     }
+    let messages: string[] = [];
+
     if(region.answers.length != this.answerCount()) {
-      this.warningMarkers.push({
-        id: region.id,
-        x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
-        y: region.y - (this.warningIconHeight / 2) ,
-        message: `Şık sayısı ${this.answerCount()} olmalı`,
-        type: 'error'
-      });
+      messages.push(`Şık sayısı ${this.answerCount()} olmalı`);
     }
     if(!region.answers.find(a => a.isCorrect)) {
-      this.warningMarkers.push({
-        id: region.id,
-        x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
-        y: region.y - (this.warningIconHeight / 2) ,
-        message: `Doğru cevap yok`,
-        type: 'error'
-      });
+      messages.push(`Doğru cevap yok`);
     }
+    this.warningMarkers.push({
+      id: region.id,
+      x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
+      y: region.y - (this.warningIconHeight / 2) ,
+      messages: messages,
+      type: 'error'
+    });
   }
 
   drawImage() {
@@ -602,8 +599,8 @@ export class ImageSelectorComponent {
         return;
       }
     }
-
-    this.isDrawing = true;
+    if( this.selectionMode())
+      this.isDrawing = true;
     console.log('Exited startSelection. IsDrawing :', this.isDrawing);
   }
 

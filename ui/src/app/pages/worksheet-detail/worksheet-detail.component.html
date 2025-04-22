@@ -5,9 +5,12 @@
       <p>{{exam.description}}</p>
       <div class="course-actions">
         <button *ngIf="!instanceCompleted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
-        <button mat-icon-button ><mat-icon>bookmark</mat-icon></button>
-        <button mat-icon-button><mat-icon>playlist_add</mat-icon></button>
-        <button mat-icon-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
+        <button mat-raised-button ><mat-icon>bookmark</mat-icon>Favori</button>
+        <button mat-raised-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
+        
+          <button mat-raised-button color="primary" type="button"
+          (click)="navigateToQuestionCanvas()"
+          ><mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç</button>
       </div>
       <div *ngIf="instanceCompleted" >
         <h1 class="course-title">Sonuç</h1>

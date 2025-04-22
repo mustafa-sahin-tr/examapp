@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,11 +13,13 @@ namespace ExamApp.Api.Controllers
     public class StudentController : BaseController
     {
         private readonly IMinIoService _minioService;
+        private readonly IJwtService _jwtService;
 
-        public StudentController(AppDbContext context, IMinIoService minioService)
+        public StudentController(AppDbContext context, IMinIoService minioService, IJwtService jwtService)
             : base(context)
         {
             _minioService = minioService;
+            _jwtService = jwtService;
         }
 
         [HttpPost("update-grade")]
@@ -90,7 +93,10 @@ namespace ExamApp.Api.Controllers
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
 
-            return Ok(new { Message = "Student registered successfully.", StudentId = student.Id });
+            return Ok(new { Message = "Student registered successfully.", 
+                StudentId = student.Id,
+                RefreshToken = _jwtService.GenerateToken(user) // Token'ı burada döndürüyoruz
+                 });
         }
 
 

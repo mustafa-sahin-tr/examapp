@@ -18,12 +18,13 @@ import { QuillEditorComponent } from 'ngx-quill';
 import { SafeHtmlPipe } from '../../services/safehtml';
 import { MatButtonModule } from '@angular/material/button';
 import { AutofocusDirective } from '../../shared/directives/auto-focus.directive';
+import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
   standalone: true,
   imports: [ CommonModule, MatCardModule , MatButtonModule, FormsModule, MatFormFieldModule, MatOptionModule,
-    MatInputModule, MatSelectModule, MatCheckboxModule, AutofocusDirective,
+    MatInputModule, MatSelectModule, MatCheckboxModule, AutofocusDirective, MatIconModule,
     ReactiveFormsModule, MatToolbarModule,MatLabel, WorksheetCardComponent],
   styleUrls: ['./test-create.component.scss']
 })

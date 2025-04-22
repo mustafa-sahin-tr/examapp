@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { Exam, Test, TestInstance, TestInstanceQuestion } from '../../models/test-instance';
 import { lastValueFrom } from 'rxjs';
 import { TestService } from '../../services/test.service';
@@ -9,10 +9,11 @@ import { QuestionNavigatorComponent } from '../../shared/components/question-nav
 import { TestSolveCanvasComponent } from '../test-solve/test-solve-canvas.component';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { MatButtonModule } from '@angular/material/button';
 
 @Component({
   selector: 'app-worksheet-detail',
-  imports: [CommonModule,MatIconModule,QuestionNavigatorComponent,QuestionCanvasViewComponent],
+  imports: [CommonModule,MatIconModule,QuestionNavigatorComponent,QuestionCanvasViewComponent, MatButtonModule],
   templateUrl: './worksheet-detail.component.html',
   styleUrl: './worksheet-detail.component.scss'
 })
@@ -50,6 +51,24 @@ export class WorksheetDetailComponent implements OnInit {
     if (id) {
       this.router.navigate(['/exam', id]);
     }
+  }
+
+  navigateToQuestionCanvas() {
+    const navigationExtras: NavigationExtras = {
+      state: {
+        subjectId: null,
+        topicId: null,
+        subtopicId: null,
+        testId: this.exam.subtitle,
+        bookId: this.exam.bookId,
+        bookTestId: this.exam.bookTestId,
+        testValue: this.exam.id
+      }
+    };
+
+    setTimeout(() => {  
+          this.router.navigate(['/questioncanvas'],navigationExtras);
+        }, 1000);
   }
 
   questionSelected(index: number) {

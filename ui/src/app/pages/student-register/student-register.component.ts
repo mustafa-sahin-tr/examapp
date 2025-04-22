@@ -44,8 +44,11 @@ export class StudentRegisterComponent {
     this.isSubmitting.set(true);
 
     this.studentService.register(this.studentForm.value).subscribe({
-      next: () => {
+      next: (val) => {
         this.isSubmitting.set(false);
+        if(val.refreshToken) {
+          localStorage.setItem('auth_token', val.refreshToken);
+        }
         this.snackBar.open('Öğrenci kaydı başarılı!', 'Tamam', { duration: 3000 });
         this.router.navigate(['/dashboard']); // Kayıt sonrası yönlendirme
       },

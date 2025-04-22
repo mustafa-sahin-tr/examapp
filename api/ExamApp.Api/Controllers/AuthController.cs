@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
@@ -22,6 +23,37 @@ namespace ExamApp.Api.Controllers
             _context = context;
         }
 
+        [Authorize]
+        [HttpPost("refresh")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            // 1) Token içindeki Sub claim (user.Id) alınır
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdString, out var userId))
+                return Unauthorized();
+
+            // 2) Veritabanından en güncel user + ilişkili Student/Teacher/Parent yüklenir
+            var user = await _context.Users
+                .Include(u => u.Student)
+                .Include(u => u.Teacher)
+                .Include(u => u.Parent)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return Unauthorized();
+
+            // 3) Yeni JWT oluşturulur (artık Student doluysa StudentId claim’i eklenecek)
+            var newToken = _jwtService.GenerateToken(user);
+
+            // 4) İsterseniz role ve avatar gibi bilgileri de dönersiniz
+            return Ok(new
+            {
+                Token  = newToken,
+                Role   = user.Role.ToString(),
+                Avatar = user.AvatarUrl
+            });
+        }
+        
         
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto request)

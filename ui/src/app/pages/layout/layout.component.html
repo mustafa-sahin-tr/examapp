@@ -65,7 +65,7 @@
                 
               <div class="profile-menu" mat-button [matMenuTriggerFor]="menu" (click)="navigateTo('/student-profile')">
                 <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
-                <span class="username">Mustafa</span>
+                <span class="username">{{userName}}</span>
               </div>
                   <mat-menu #menu="matMenu">
                   <button mat-menu-item (click)="logout()">Çıkış Yap</button>

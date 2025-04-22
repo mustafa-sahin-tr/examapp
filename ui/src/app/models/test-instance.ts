@@ -65,6 +65,7 @@ export interface   Test {
     bookTestId?: number;
     questionCount?: number;
     instance?: InstanceSummary;
+    instanceCount?: number;
 }
 
 export interface InstanceSummary {

@@ -33,6 +33,10 @@ export class AppHeaderComponent {
     return this.authService.getUserAvatar() || this.profileImage;
   }
 
+  get userName() {
+    return this.authService.getUser()?.fullName || 'Kullanıcı';
+  }
+
   navigateTo(path: string) {
     this.router.navigate([path]);
   }

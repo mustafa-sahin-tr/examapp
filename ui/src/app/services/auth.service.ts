@@ -26,11 +26,12 @@ export class AuthService {
   }
 
   login(credentials: any): Observable<{ token: string; role: string , avatar: string}> {
-    return this.http.post<{ token: string; role: string , avatar: string}>('/api/auth/login', credentials).pipe(
+    return this.http.post<{ token: string; role: string , avatar: string, user: any}>('/api/auth/login', credentials).pipe(
       tap(res => {
         localStorage.setItem(this.tokenKey, res.token);
         localStorage.setItem(this.roleKey, res.role);
         localStorage.setItem(this.avatarKey, res.avatar);
+        localStorage.setItem('user', JSON.stringify(res.user));
         this.isAuthenticatedSubject.next(true);
       })
     );
@@ -44,6 +45,7 @@ export class AuthService {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.roleKey);
     localStorage.removeItem(this.avatarKey);
+    localStorage.removeItem('user');
     localStorage.removeItem('student');
     this.isAuthenticatedSubject.next(false);
     this.router.navigate(['/login']);
@@ -68,6 +70,11 @@ export class AuthService {
 
   getUserAvatar(): string | null {
     return localStorage.getItem(this.avatarKey);
+  }
+
+  getUser(): any {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   }
 
   hasToken(): boolean {

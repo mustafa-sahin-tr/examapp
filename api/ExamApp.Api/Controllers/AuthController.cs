@@ -94,7 +94,10 @@ namespace ExamApp.Api.Controllers
             }
 
             var token = _jwtService.GenerateToken(user);
-            return Ok(new { Token = token, Role = user.Role.ToString() , Avatar = user.AvatarUrl });
+            return Ok(new { Token = token,
+                Role = user.Role.ToString() ,
+                User = new { user.Id, user.FullName, user.Email },
+                Avatar = user.AvatarUrl });
         }
 
     }

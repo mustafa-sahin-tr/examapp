@@ -56,7 +56,7 @@ export class LayoutComponent implements OnInit {
   menuItems = [
     { type:"menu", name: 'Sınavlar', icon: 'folder', route: '/tests' },
     { type:"menu", name: 'Program', icon: 'assignment_ind', route: '/program-create' },
-    { type:"menu", name: 'Sertifikalar', icon: 'verified' },
+    { type:"menu", name: 'Sertifikalar', icon: 'verified', route: '/certificates' },
     { type:"menu", name: 'Parkur', icon: 'timeline' },
     { type:"menu", name: 'Sonuçlar', icon: 'track_changes'},
     { type:"divider"},
@@ -153,6 +153,10 @@ export class LayoutComponent implements OnInit {
   title = 'exam-app';
     get userAvatarUrl () {
       return this.authService.getUserAvatar() || this.profileImage;
+    }
+
+    get userName() {
+      return this.authService.getUser()?.fullName || 'Kullanıcı';
     }
   
     navigateTo(path: string | undefined) {

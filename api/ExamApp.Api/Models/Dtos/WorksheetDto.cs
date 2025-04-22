@@ -20,4 +20,6 @@ public class WorksheetDto
 
     public InstanceSummaryDto? Instance { get; set; }
 
+    public int InstanceCount { get; set; } = 0;// ✅ Eklenen alan = 0
+
 }

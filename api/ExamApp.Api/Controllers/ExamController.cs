@@ -187,22 +187,24 @@ public class ExamController : BaseController
                 int? gradeId = null,
                 int pageNumber = 1, int pageSize = 10, int bookTestId = 0)
     {
-        // 🔹 Token’dan UserId'yi al
+        // 🔹 Token'dan UserId'yi al
         var user = await GetAuthenticatedUserAsync();
         var student = await GetAuthenticatedStudentAsync();
 
 
-        var instances = await _context.TestInstances
-            .Where(ti => ti.StudentId == student.Id)
+        var instanceQuery = _context.TestInstances
+            .Where(ti => ti.StudentId == student.Id)            
             .Include(ti => ti.WorksheetInstanceQuestions)
             .Include(ti => ti.Worksheet)
-            .ToListAsync();        
+            .AsQueryable();
+
 
         var query = _context.Worksheets.AsQueryable();
 
         if(id > 0)
         {
             query = query.Where(t => t.Id == id);
+            instanceQuery = instanceQuery.Where(ti => ti.WorksheetId == id);
         } else {
             // GradeId filtresi
             if (gradeId.HasValue)
@@ -236,7 +238,18 @@ public class ExamController : BaseController
                 );
             }
         }
-
+        
+        // Her worksheet için kaç benzersiz öğrenci instance oluşturmuş
+        var worksheetStudentCounts = await _context.TestInstances
+            .GroupBy(ti => ti.WorksheetId)
+            .Select(g => new {
+                WorksheetId = g.Key,
+                UniqueStudentCount = g.Select(ti => ti.StudentId).Distinct().Count()
+            })
+            .ToDictionaryAsync(x => x.WorksheetId, x => x.UniqueStudentCount);
+        
+        var instances = await instanceQuery.ToListAsync(); // 🔥 Burada `ToListAsync()` çağırarak veriyi hafızaya alıyoruz
+        
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
         var tests = await query
             .Include(t => t.BookTest)
@@ -297,7 +310,8 @@ public class ExamController : BaseController
                 BookTestId = t.BookTestId,
                 BookId = t.BookTest?.BookId,
                 QuestionCount = t.WorksheetQuestions.Count(),
-                Instance = instanceDto // 💡 Eklenen alan
+                Instance = instanceDto, // 💡 Eklenen alan
+                InstanceCount = worksheetStudentCounts.TryGetValue(t.Id, out var count) ? count : 0 // 💡 Yeni eklenen alan
             };
         }).ToList();
 

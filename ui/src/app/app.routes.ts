@@ -18,6 +18,7 @@ import { AppComponent } from './app.component';
 import { PublicLayoutComponent } from './pages/public/public-layout/public-layout.component';
 import { LayoutComponent } from './pages/layout/layout.component';
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
+import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
 
 export const routes: Routes = [
   { path: '', 
@@ -38,6 +39,7 @@ export const routes: Routes = [
       { path: 'exam', component: TestCreateComponent},  // 🆕 Test çözme sayfası
       { path: 'exam/:id', component: TestCreateComponent },  // 🆕 Test çözme sayfası    
       { path: 'program-create', component: ProgramCreateComponent },  
+      { path: 'certificates', component: BadgeThropyComponent },  //
     ],
   },
   { path: '', 

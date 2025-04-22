@@ -40,7 +40,7 @@ export class LoginComponent implements OnInit {
   ngOnInit() {
     const token = localStorage.getItem('auth_token');
     const role = localStorage.getItem('user_role');
-
+    const user = localStorage.getItem('user');
     if (token && role) {
       this.isLoading = true;
       this.checkUserSession(role);

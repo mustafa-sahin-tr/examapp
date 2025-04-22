@@ -35,7 +35,7 @@
 
                 <div class="select-wrapper">       
                   <label for="subject">Kitap Testi</label>         
-                  <select id="subject" formControlName="bookTestId" required class="select-style-1">
+                  <select id="subject" formControlName="bookTestId" required (change)="onBookTestChange()" class="select-style-1">
                     @for ( bt of bookTests ; track bt.id ) {
                       <option [value]="bt.id">{{ bt.name }}</option>
                     }

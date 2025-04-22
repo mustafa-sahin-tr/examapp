@@ -155,7 +155,7 @@ export class QuestionCanvasComponent implements OnInit {
       isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
       practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
       testId: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })   ,   
-      testValue: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })   ,   
+      testValue: new FormControl(state?.testValue || '', { nonNullable: true, validators: [Validators.required] })   ,   
       bookId: new FormControl(state?.bookId || '', { nonNullable: true, validators: [Validators.required] }),
       bookTestId: new FormControl(state?.bookTestId || '', { nonNullable: true, validators: [Validators.required] }),      
     });
@@ -247,18 +247,18 @@ export class QuestionCanvasComponent implements OnInit {
 
     const navigation = this.router.getCurrentNavigation();
     const state = navigation?.extras.state as { 
-        subjectId?: number; topicId?: number, subtopicId?: number, testId?: number, bookId?: number, bookTestId?: number};
-    this.resetFormWithDefaultValues(state);
+        subjectId?: number; topicId?: number, subtopicId?: number, testId?: number, bookId?: number, 
+          bookTestId?: number,  testValue?: string};
+    this.resetFormWithDefaultValues(history.state);
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;  
-    this.loadTests();
+    // this.loadTests();
     this.loadCategories();
-
   }
 
   loadTests() {
     this.testService.search('', [],undefined,1,1000).subscribe(data => {
-      this.testList = data.items.filter(test => test.bookTestId === this.questionForm.value.bookTestId);
+      this.testList = data.items.filter(test => test.bookTestId === this.questionForm.value.bookTestId)
     });
   }
 
@@ -273,6 +273,14 @@ export class QuestionCanvasComponent implements OnInit {
     this.questionService.loadPassages().subscribe(data => {
       this.passages = data;
     });
+  }
+
+
+  onBookTestChange() {
+    if(this.questionForm.value.bookTestId) {
+        this.questionForm.get('testId')?.setValue(null);
+        this.questionForm.get('testValue')?.setValue(null);        
+    }
   }
 
   onBookChange() {

@@ -13,6 +13,10 @@ export class QuestionDetectorService {
         return this.http.post<PredictionList>(`http://localhost/question-detector-dev/predict`, bulkDto);
     }
 
+    getContents(imageData: any) : Observable<PredictionList> {
+      return this.http.post<PredictionList>(`http://localhost/question-detector-dev/headerlist`, imageData);
+    }
+
     readQrData(imageData: any) : Observable<PredictionList> {
       return this.http.post<PredictionList>(`http://localhost/question-detector-dev/read-qr`, imageData);
     }

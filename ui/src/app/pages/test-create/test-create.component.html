@@ -1,5 +1,5 @@
 
-<div class="form-container">
+<div class="form-container ta-left" >
   <div class="form-column">
     <mat-card class="test-create-card">
         <mat-card-title>Yeni Test Oluştur</mat-card-title>
@@ -7,8 +7,11 @@
           <form [formGroup]="testForm" (ngSubmit)="onSubmit()">
 
             <!-- Sınıf Seçimi -->
-            <mat-form-field appearance="outline">
-              <mat-label>Kitap</mat-label>
+             
+              
+              @if (!showAddBookInput) {
+            <mat-form-field appearance="outline" class="hide-subscript">
+              <mat-label>Kitap Seç</mat-label>
               <mat-select formControlName="bookId" required (selectionChange)="onBookChange($event.value)">
                 @for ( book of books ; track book.id ) {
                   <mat-option [value]="book.id">
@@ -17,9 +20,21 @@
                 }
               </mat-select>
             </mat-form-field>
+            <a class="ta-left c-ptr" (click)="openNewBookAdd()"> Yeni Kitap Ekle</a>
+               
+              } @else {
+                <mat-form-field appearance="outline">
+                  <mat-label>Yeni Kitap Adı</mat-label>
+                  <input matInput formControlName="newBookName"
+                  appAutofocus
+                  (blur)="onNewBookBlur()"/>                 
+                </mat-form-field>
+              }
+           
 
             <!-- 🟢 Kitap Testi -->
-            <mat-form-field appearance="outline">
+            @if (!showAddBookTestInput) {
+            <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Kitap Testi</mat-label>
               <mat-select formControlName="bookTestId" required>
                 @for ( bt of bookTests ; track bt.id ) {
@@ -30,36 +45,49 @@
               </mat-select>
             </mat-form-field>
 
+
+           
+              <a class="ta-left c-ptr" (click)="openNewBookTestAdd()">Yeni Kitap Testi Ekle</a>
+            } @else {
+              <mat-form-field appearance="outline">
+                <mat-label>Yeni Kitap Testi Adı</mat-label>
+                <input matInput formControlName="newBookTestName" />
+                <!-- <div class="new-book-actions">
+                  <button mat-button type="button" (click)="addNewBook()">Ekle</button>
+                  <button mat-button type="button" (click)="showAddBookInput = false">İptal</button>
+                </div> -->
+              </mat-form-field>
+            }
           
             <!-- 🟢 Soru Resmi -->
-            <label for="testImage">Soru Resmi</label>
+            <!-- <label for="testImage">Soru Resmi</label>
             <input type="file" id="testImage" (change)="onImageUploadForTest($event)" />
             @if (testForm.value.imageUrl) {
               <img [src]="testForm.value.imageUrl" class="preview-image" />
-            }
+            } -->
 
             <!-- Test Adı -->
-            <mat-form-field appearance="outline">
-              <mat-label>Test Adı</mat-label>
+            <mat-form-field appearance="outline" class="hide-subscript">
+              <mat-label>Ders Adı</mat-label>
               <input matInput formControlName="name" required />
             </mat-form-field>
 
             
       
             <!-- Test Açıklaması -->
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Açıklama</mat-label>
               <textarea matInput formControlName="description"></textarea>
             </mat-form-field>
 
             <!-- Test Açıklaması -->
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Alt İsim</mat-label>
               <input matInput formControlName="subtitle" required />
             </mat-form-field>
       
             <!-- Sınıf Seçimi -->
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Sınıf</mat-label>
               <mat-select formControlName="gradeId" required>
                 @for (grade of grades; track grade.id) {
@@ -100,7 +128,7 @@
               <h3>
                 {{ testForm.value.name }}
                 <span class="new-badge">NEW & POPULAR</span>
-                <span class="new-badge"><strong> 0 Soru</strong></span>
+                <span class="new-badge"><strong> {{ testForm.value.questionCount }} Soru</strong></span>
                 <span class="new-badge"><strong> {{ testForm.value.gradeId }}.Sınıf</strong></span>
                 <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
                 <span class="new-badge"><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span>
@@ -112,6 +140,11 @@
         </ul>
       </div>
     </div>
-    
+    <!-- Butonlar -->
+    <div class="button-group">
+      <button mat-raised-button color="primary" type="button" [disabled]="testForm.invalid"
+      (click)="navigateToQuestionCanvas()"
+      >Soru Ekleme Adımına Geç</button>
+    </div>
   </div>
 </div>

@@ -11,6 +11,8 @@ RUN apt update && apt install -y \
     libglib2.0-0 \
     libxrender-dev \    
     libzbar0 \
+    tesseract-ocr \
+    tesseract-ocr-tur \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
 # Çalışma dizinine geç

@@ -383,7 +383,7 @@ body {
 label {
   font-weight: bold;
   display: block;
-  margin-top: 10px;
+  // margin-top: 10px;
 }
 
 textarea, input, select {
@@ -3530,6 +3530,18 @@ h4 {
   background-size: 24px 24px;
 }
 
+.ta-left {
+  text-align: left !important;
+}
+
+.ta-center {
+  text-align: center !important;
+}
+
+.c-ptr {
+  cursor: pointer !important;
+}
+
 
 /* bunlar her zaman en altta kalsın*/
 
@@ -3655,3 +3667,19 @@ a:hover {
 .mdc-text-field--outlined .mat-mdc-form-field-infix, .mdc-text-field--no-label .mat-mdc-form-field-infix {
   padding: 0 0 0 0 !important;
 }
+
+/* if you put this in styles.scss */
+mat-form-field.hide-subscript 
+  .mat-mdc-form-field-subscript-wrapper {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+// .mat-mdc-form-field-subscript-wrapper {
+//   display: none !important;
+//   height: 0 !important;
+//   margin: 0 !important;
+//   padding: 0 !important;
+// }

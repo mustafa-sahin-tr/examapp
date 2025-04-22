@@ -48,7 +48,7 @@ export class WorksheetDetailComponent implements OnInit {
 
   editWorksheet(id: number | null) {
     if (id) {
-      this.router.navigate(['/worksheet', id]);
+      this.router.navigate(['/exam', id]);
     }
   }
 

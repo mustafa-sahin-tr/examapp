@@ -63,7 +63,7 @@ export class LayoutComponent implements OnInit {
     { type:"menu", name: 'Destek', icon: 'help' },
     { type:"menu", name: 'Geri Bildirim', icon: 'feedback' },
     { type:"divider"},
-    { type:"menu", name: 'Soru Ekleme', icon: 'add_circle' , route: '/questioncanvas'}
+    { type:"menu", name: 'Test Ekleme', icon: 'add_circle' , route: '/exam'}
   ];  
 
   activeMenuItem: WritableSignal<string | null> = signal('/home');

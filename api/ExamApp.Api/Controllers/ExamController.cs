@@ -238,7 +238,9 @@ public class ExamController : BaseController
         }
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
-        var tests = await query            
+        var tests = await query
+            .Include(t => t.BookTest)
+                .ThenInclude(bt => bt.Book)      
             .Include(t => t.WorksheetQuestions)
                 .ThenInclude(tq => tq.Question)
             .OrderBy(t => t.Name) // Sıralama için

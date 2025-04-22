@@ -202,8 +202,8 @@ public class QuestionsController : BaseController
             question.Text = questionDto.Text;
             question.SubText = questionDto.SubText;
             question.Point = questionDto.Point;                
-            question.SubjectId = questionDto.SubjectId;
-            question.TopicId = questionDto.TopicId;
+            // question.SubjectId = questionDto.SubjectId;
+            // question.TopicId = questionDto.TopicId;
             question.AnswerColCount = questionDto.AnswerColCount;
 
             // 📌 Eğer yeni resim varsa, güncelle
@@ -300,8 +300,8 @@ public class QuestionsController : BaseController
                 Text = questionDto.Text,
                 SubText = questionDto.SubText,
                 Point = questionDto.Point,                    
-                SubjectId = questionDto.SubjectId,
-                TopicId = questionDto.TopicId,
+                // SubjectId = questionDto.SubjectId,
+                // TopicId = questionDto.TopicId,
                 AnswerColCount = questionDto.AnswerColCount
             };
 
@@ -488,8 +488,8 @@ public class QuestionsController : BaseController
                         IsExample = questionDto.IsExample,
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,
-                        SubjectId = soruDto.Header.SubjectId ?? 0,
-                        TopicId = soruDto.Header.TopicId ?? 0,
+                        // SubjectId = soruDto.Header.SubjectId ?? 0,
+                        // TopicId = soruDto.Header.TopicId ?? 0,
                         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
                     };
 

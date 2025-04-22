@@ -422,7 +422,7 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("SubText")
                         .HasColumnType("text");
 
-                    b.Property<int>("SubjectId")
+                    b.Property<int?>("SubjectId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Text")
@@ -2515,9 +2515,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasOne("Subject", "Subject")
                         .WithMany("Questions")
-                        .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("SubjectId");
 
                     b.HasOne("Topic", "Topic")
                         .WithMany()

@@ -11,14 +11,13 @@ public class Question : BaseEntity
     public string? SubText { get; set; } = string.Empty;  // Soru metni
     public string? ImageUrl { get; set; }  // Eğer soru resimli ise
 
-    public int SubjectId { get; set; }  // Soru hangi derse ait
+    public int? SubjectId { get; set; }  // Soru hangi derse ait
     public Subject Subject { get; set; }
 
     public int Point { get; set; }  // Sorunun puan değeri (1, 5, 10 vb.)
 
     public int? TopicId { get; set; } // Ana Konu (Opsiyonel)
 
-    [ForeignKey("TopicId")]
     public Topic Topic { get; set; }
 
     [Required]

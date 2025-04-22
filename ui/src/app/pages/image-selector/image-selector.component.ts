@@ -463,7 +463,16 @@ export class ImageSelectorComponent {
         message: `Şık sayısı ${this.answerCount()} olmalı`,
         type: 'error'
       });
-    }      
+    }
+    if(!region.answers.find(a => a.isCorrect)) {
+      this.warningMarkers.push({
+        id: region.id,
+        x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
+        y: region.y - (this.warningIconHeight / 2) ,
+        message: `Doğru cevap yok`,
+        type: 'error'
+      });
+    }
   }
 
   drawImage() {
@@ -626,6 +635,8 @@ export class ImageSelectorComponent {
     this.stopEvent(event);
     const questionWidthThreshold = 250;
     const questionHeightThreshold = 250;
+    const answerHeightThreshold = 20;
+    const answerWidthThreshold = 20;
     if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;
     const rect = this.canvas.nativeElement.getBoundingClientRect();
     const endX = event.clientX - rect.left;
@@ -651,6 +662,12 @@ export class ImageSelectorComponent {
       /// this.selectQuestion(this.regions().length - 1);
 
     } else if (this.selectionMode() === 'answer' && this.selectedQuestionIndex !== -1) {
+      if(answerWidthThreshold > width || answerHeightThreshold > height) {
+        console.log('Exited  EndSelection questionWidthThreshold > width || questionHeightThreshold > height. IsDrawing :', this.isDrawing);
+        this.isDrawing = false;
+        this.drawImage();
+        return;
+      }
       const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
       this.regions()[this.selectedQuestionIndex].answers.push({ label, x: this.startX, y: this.startY, width, height, isCorrect: false, id: 0 });
       if(this.regions()[this.selectedQuestionIndex].answers.length === 3) {

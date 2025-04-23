@@ -65,7 +65,7 @@ export class LoginComponent implements OnInit {
         }
       });
     } else {
-      this.router.navigate(['/home']); // ✅ Öğretmen veya Veli ise Home sayfasına git
+      this.router.navigate(['/tests']); // ✅ Öğretmen veya Veli ise Home sayfasına git
     }
   }
 

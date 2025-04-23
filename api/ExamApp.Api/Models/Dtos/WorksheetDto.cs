@@ -23,3 +23,38 @@ public class WorksheetDto
     public int InstanceCount { get; set; } = 0;// ✅ Eklenen alan = 0
 
 }
+
+public class WorksheetWithInstanceDto
+{
+    public WorksheetDto Worksheet { get; set; } = default!;
+    public WorksheetInstance? Instance { get; set; }
+}
+
+public class WorksheetInstanceDto
+{
+    public int Id { get; set; }
+    public string TestName { get; set; } = default!;
+    public WorksheetInstanceStatus Status { get; set; }
+    public int MaxDurationSeconds { get; set; }
+    public bool IsPracticeTest { get; set; }
+
+    public List<WorksheetInstanceQuestionDto> TestInstanceQuestions { get; set; } = new();
+}
+
+public class WorksheetInstanceQuestionDto
+{
+    public int Id { get; set; }
+    public int Order { get; set; }
+    public QuestionDto Question { get; set; } = default!;
+    public int? SelectedAnswerId { get; set; }
+}
+
+public class WorksheetInstanceResultDto
+{
+    public int Id { get; set; }
+    public string TestName { get; set; } = default!;
+    public WorksheetInstanceStatus Status { get; set; }
+    public int MaxDurationSeconds { get; set; }
+    public bool IsPracticeTest { get; set; }
+    public List<WorksheetInstanceQuestionDto> TestInstanceQuestions { get; set; } = new();
+}

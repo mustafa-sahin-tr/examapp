@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -9,22 +10,24 @@ namespace ExamApp.Api.Controllers
     [ApiController]
     public class BooksController : BaseController
     {
-        public BooksController(AppDbContext context)
-            : base(context)
+        private readonly IBookService _bookService;
+        public BooksController(IBookService bookService)
+            : base()
         {
+            _bookService = bookService;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetBooks()
+        public async Task<IActionResult> GetBooksAsync()
         {
-            var books = await _context.Books.ToListAsync();
+            var books = await _bookService.GetAllBooksAsync();
             return Ok(books);
         }
 
         [HttpGet("{bookId}/tests")]
-        public async Task<IActionResult> GetBookTests(int bookId)
+        public async Task<IActionResult> GetBookTestsByBookId(int bookId)
         {
-            var tests = await _context.BookTests.Where(bt => bt.BookId == bookId).ToListAsync();
+            var tests = await _bookService.GetBookTestsByBookIdAsync(bookId);
             return Ok(tests);
         }
 

@@ -1,5 +1,6 @@
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -9,36 +10,31 @@ using System.Threading.Tasks;
 [Route("api/subject")]
 public class SubjectController : BaseController
 {
-
-    public SubjectController(AppDbContext context)
-        : base(context)
+    private readonly ISubjectService _subjectService;
+    public SubjectController(ISubjectService subjectService)
+        : base()
     {
-        
+        _subjectService = subjectService;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<Subject>>> GetSubjectAsync()
     {
-        return await _context.Subjects.ToListAsync();
+        return await _subjectService.GetAllSubjectsAsync();
     }
 
     [HttpGet("topics/{subjectId}")]
     public async Task<IActionResult> GetTopicsBySubject(int subjectId)
     {
-        var topics = await _context.Topics
-            .Where(t => t.SubjectId == subjectId)
-            .Select(t => new { t.Id, t.Name })
-            .ToListAsync();
+        var topics = await _subjectService.GetTopicBySubjectIdAsync(subjectId);
+
         return Ok(topics);
     }
 
     [HttpGet("subtopics/{topicId}")]
     public async Task<IActionResult> GetSubTopicsByTopic(int topicId)
     {
-        var subTopics = await _context.SubTopics
-            .Where(st => st.TopicId == topicId)
-            .Select(st => new { st.Id, st.Name })
-            .ToListAsync();
+        var subTopics = await _subjectService.GetSubTopicByTopicIdAsync(topicId);
         return Ok(subTopics);
     }
 

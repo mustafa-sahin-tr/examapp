@@ -6,6 +6,7 @@ using System.Text;
 using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
 using System.Security.Claims;
+using ExamApp.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,11 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<IJwtService,JwtService>();
 builder.Services.AddSingleton<IMinIoService, MinIoService>();
+builder.Services.AddScoped<IExamService, ExamService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ISubjectService, SubjectService>();
+builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddSingleton<ImageHelper>();
 
 // PostgreSQL & EF Core

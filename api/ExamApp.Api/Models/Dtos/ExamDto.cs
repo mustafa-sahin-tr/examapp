@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Numerics;
 
 namespace ExamApp.Api.Models.Dtos;
 
@@ -30,4 +31,24 @@ public class ExamDto
     public string? NewBookName { get; set; }
     public string? NewBookTestName { get; set; }
 
+}
+
+public class ExamSavedDto : ResponseBaseDto 
+{
+    public int? BookId { get; set; }
+    public int? BookTestId { get; set; } = null;
+    public int? ExamId { get; set; } = null;
+}
+
+public class ExamStatisticsDto {
+    public int TotalSolvedTests { get; set; } = 0;
+    public int  CompletedTests  { get; set; } = 0;
+    public int  TotalTimeSpentMinutes { get; set; } = 0;
+    public int  TotalCorrectAnswers { get; set; } = 0;
+    public int  TotalWrongAnswers { get; set; } = 0;
+}
+
+public class ExamAllStatisticsDto {
+    public ExamStatisticsDto Total { get; set; } = new();
+    public List<ExamStatisticsDto> Grouped { get; set; } = new();
 }

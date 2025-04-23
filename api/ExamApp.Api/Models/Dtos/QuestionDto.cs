@@ -1,3 +1,5 @@
+using ExamApp.Api.Models.Dtos;
+
 public class QuestionDto
 {
     public int Id { get; set; }
@@ -10,9 +12,13 @@ public class QuestionDto
 
     public int? TopicId { get; set; } // Konu ID'si
     public int Point { get; set; }
+
+    public string? Image { get; set; } // Base64 formatında geliyor
     public bool IsExample { get; set; }
     public string? PracticeCorrectAnswer { get; set; }
     public int AnswerColCount { get; set; }
+
+    public int? TestId { get; set; } // Test ID'si
 
     public bool IsCanvasQuestion { get; set; } // Canvas sorusu mu? (Evet/Hayır)
     public PassageDto? Passage { get; set; }
@@ -50,4 +56,9 @@ public class AnswerDto
     public double? Y { get; set; }
     public double? Width { get; set; }
     public double? Height { get; set; }
+}
+
+public class QuestionSavedDto : ResponseBaseDto
+{
+    public int? QuestionId { get; set; }
 }

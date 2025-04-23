@@ -5,7 +5,7 @@ namespace ExamApp.Api.Models.Dtos;
 
 public class ExamDto
 {
-    
+
     public int? Id { get; set; }
     public required string Name { get; set; }
 
@@ -23,6 +23,11 @@ public class ExamDto
 
     public string? BadgeText { get; set; }
 
+
     public int? BookTestId { get; set; }
+    public int? BookId { get; set; }
+
+    public string? NewBookName { get; set; }
+    public string? NewBookTestName { get; set; }
 
 }

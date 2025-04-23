@@ -463,13 +463,17 @@ export class ImageSelectorComponent {
     if(!region.answers.find(a => a.isCorrect)) {
       messages.push(`Doğru cevap yok`);
     }
-    this.warningMarkers.push({
-      id: region.id,
-      x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
-      y: region.y - (this.warningIconHeight / 2) ,
-      messages: messages,
-      type: 'error'
-    });
+
+
+    if(messages.length > 0) {
+      this.warningMarkers.push({
+        id: region.id,
+        x: (region.x + region.width) - (this.warningIconHeight / 2), // mat-icon width
+        y: region.y - (this.warningIconHeight / 2) ,
+        messages: messages,
+        type: 'error'
+      });
+    }
   }
 
   drawImage() {

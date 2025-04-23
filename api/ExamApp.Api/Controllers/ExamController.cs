@@ -771,10 +771,79 @@ public class ExamController : BaseController
     [HttpPost]
     public async Task<IActionResult> CreateOrUpdateAsync([FromBody] ExamDto examDto)
     {
+        if(examDto == null)
+        {
+            return BadRequest(new { error = "Sınav bilgileri eksik!" });
+        }
+            
         try
         {
-            Worksheet examination;
+            if(examDto.BookId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookName))
+            {
+                return BadRequest(new { error = "Kitap seçilmedi!" });
+            }
 
+            if(examDto.BookTestId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+            {
+                return BadRequest(new { error = "Kipta Test seçilmedi!" });
+            }
+
+            Book? book = null;
+
+            if (examDto.BookId == 0)
+            {
+                if(string.IsNullOrWhiteSpace(examDto.NewBookName))
+                    return BadRequest(new { error = "Kitap seçilmedi!" });
+                
+                if(string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+                    return BadRequest(new { error = "Kipta Test seçilmedi!" });
+
+                book = new Book
+                {
+                    Name = examDto.NewBookName
+                };
+
+                book.BookTests =
+                [
+                  new BookTest
+                  {
+                      Name = examDto.NewBookTestName,
+                      BookId = book.Id
+                  },
+                ];
+
+                _context.Books.Add(book);
+                await _context.SaveChangesAsync();
+            } else {
+                book = await _context.Books
+                            .Include(b => b.BookTests)
+                        .FirstOrDefaultAsync(b => b.Id == examDto.BookId) ;
+
+                if (book == null)
+                {
+                    return NotFound(new { error = "Kitap bulunamadı!" });
+                }
+                if (examDto.BookTestId == 0)
+                {
+                    if(string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+                        return BadRequest(new { error = "Kipta Test seçilmedi!" });
+                    else 
+                    {
+                        book.BookTests.Add(new BookTest
+                        {
+                            Name = examDto.NewBookTestName,
+                            BookId = book.Id
+                        });
+                    }
+                    await _context.SaveChangesAsync();
+                }                            
+            }
+            
+
+            var bookTestId = examDto.BookTestId == 0 ?
+                        book.BookTests.First(bt => bt.Name == examDto.NewBookTestName).Id : examDto.BookTestId;
+
+            Worksheet? examination;
             // 📌 Eğer ID varsa, veritabanından o soruyu bulup güncelle
             if (examDto.Id > 0)
             {
@@ -783,7 +852,7 @@ public class ExamController : BaseController
                 if (examination == null)
                 {
                     return NotFound(new { error = "Test bulunamadı!" });
-                }                
+                }
 
                 examination.Name = examDto.Name;
                 examination.Description = examDto.Description;
@@ -791,18 +860,18 @@ public class ExamController : BaseController
                 examination.MaxDurationSeconds = examDto.MaxDurationSeconds;
                 examination.IsPracticeTest = examDto.IsPracticeTest;
                 examination.Subtitle = examDto.Subtitle;
-                examination.BookTestId = examDto.BookTestId;
+                examination.BookTestId = bookTestId;
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
-                    _imageHelper.IsBase64String(examDto.ImageUrl)) 
+                    _imageHelper.IsBase64String(examDto.ImageUrl))
                 {
                     byte[] imageBytes = Convert.FromBase64String(examDto.ImageUrl.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
-                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg","exams");
+                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg", "exams");
                 }
 
-                _context.Worksheets.Update(examination);                
+                _context.Worksheets.Update(examination);
             }
             else
             {
@@ -815,16 +884,16 @@ public class ExamController : BaseController
                     MaxDurationSeconds = examDto.MaxDurationSeconds,
                     IsPracticeTest = examDto.IsPracticeTest,
                     Subtitle = examDto.Subtitle,
-                    BookTestId = examDto.BookTestId
+                    BookTestId = bookTestId
                 };
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
-                    _imageHelper.IsBase64String(examDto.ImageUrl)) 
+                    _imageHelper.IsBase64String(examDto.ImageUrl))
                 {
                     byte[] imageBytes = Convert.FromBase64String(examDto.ImageUrl.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
-                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg","exams");
+                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg", "exams");
                 }
 
                 _context.Worksheets.Add(examination);
@@ -833,7 +902,14 @@ public class ExamController : BaseController
             // 📌 Değişiklikleri Kaydet
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = examDto.Id > 0 ? "Test başarıyla güncellendi!" : "Test başarıyla kaydedildi!", examId = examination.Id });
+            return Ok(new
+            {
+                message = examDto.Id > 0 ?
+                            "Test başarıyla güncellendi!" : "Test başarıyla kaydedildi!",
+                examId = examination.Id,
+                bookId = book?.Id,
+                bookTestId = bookTestId
+            });
         }
         catch (Exception ex)
         {

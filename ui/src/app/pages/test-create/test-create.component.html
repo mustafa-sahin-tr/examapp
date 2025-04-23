@@ -12,7 +12,7 @@
               @if (!showAddBookInput) {
             <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Kitap Seç</mat-label>
-              <mat-select formControlName="bookId" required (selectionChange)="onBookChange($event.value)">
+              <mat-select formControlName="bookId" (selectionChange)="onBookChange($event.value)">
                 @for ( book of books ; track book.id ) {
                   <mat-option [value]="book.id">
                     {{ book.name }}
@@ -36,7 +36,7 @@
             @if (!showAddBookTestInput) {
             <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Kitap Testi</mat-label>
-              <mat-select formControlName="bookTestId" required>
+              <mat-select formControlName="bookTestId">
                 @for ( bt of bookTests ; track bt.id ) {
                   <mat-option [value]="bt.id">
                     {{ bt.name }}
@@ -77,7 +77,7 @@
             <!-- Test Açıklaması -->
             <mat-form-field appearance="outline" class="hide-subscript">
               <mat-label>Açıklama</mat-label>
-              <textarea matInput formControlName="description"></textarea>
+              <textarea matInput style="padding-top: 10px;" formControlName="description"></textarea>
             </mat-form-field>
 
             <!-- Test Açıklaması -->

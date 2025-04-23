@@ -55,8 +55,8 @@ export class TestCreateComponent implements OnInit {
       imageUrl: [''],     
       newBookName: [''],
       newBookTestName: [''],
-      bookTestId: ['', Validators.required],
-      bookId: ['', Validators.required],
+      bookTestId: [''],
+      bookId: [''],
       questionCount: [0]
     });
   }
@@ -65,6 +65,12 @@ export class TestCreateComponent implements OnInit {
 
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;  
+    this.reload();
+  }
+
+  reload() {
+    this.showAddBookInput = false;
+    this.showAddBookTestInput = false;
     this.loadBooks();
     if(this.isEditMode) {
       this.loadTest();
@@ -122,6 +128,15 @@ export class TestCreateComponent implements OnInit {
       // if user leaves without typing, hide the input again
       if (!name) {
         this.showAddBookInput = false;
+        this.showAddBookTestInput = false;
+      }
+    }
+
+    onNewBookTestBlur() {
+      const name = this.testForm.get('newBookTestName')?.value;
+      // if user leaves without typing, hide the input again
+      if (!name) {
+        this.showAddBookTestInput = false;
       }
     }
 
@@ -162,13 +177,20 @@ export class TestCreateComponent implements OnInit {
         maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
         isPracticeTest: this.testForm.value.isPracticeTest,
         imageUrl: this.testForm.value.imageUrl,
-        subtitle: this.testForm.value.subtitle   ,
-        bookTestId: this.testForm.value.bookTestId,
-        bookId: this.testForm.value.bookId
+        subtitle: this.testForm.value.subtitle,
+        newBookName: this.testForm.value.newBookName,
+        newBookTestName: this.testForm.value.newBookTestName,
+        bookTestId: !this.testForm.value.bookTestId ? 0 : this.testForm.value.bookTestId,
+        bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
       };
 
       this.testService.create(testPayload).subscribe(response => {
-        this.router.navigate(['/exam', response.examId]); // Test oluşturulduktan sonra yönlendirme
+        if(this.isEditMode) {
+          this.reload();
+        }
+        else {        
+          this.router.navigate(['/exam', response.examId]); // Test oluşturulduktan sonra yönlendirme
+        }
       });
     }
   }

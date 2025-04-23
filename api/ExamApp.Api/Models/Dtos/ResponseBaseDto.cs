@@ -6,4 +6,5 @@ public class ResponseBaseDto
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
+    public int ObjectId { get; set; } = 0;
 }

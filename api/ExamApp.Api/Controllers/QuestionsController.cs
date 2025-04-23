@@ -40,26 +40,23 @@ public class QuestionsController : BaseController
         }
         return Ok(response);
     }
+
+    [HttpGet("passages")]
+    public async Task<IActionResult> GetLastTenPassages() 
+    {
+        var passages = await _questionService.GetLastTenPassages();
+        return Ok(passages);
+    }
+
+    // 🟢 GET /api/questions/{id} - ID ile Soru Çekme
+    [HttpGet("bytest/{testid}")]
+    public async Task<IActionResult> GetQuestionByTestId(int testid)
+    {
+        var questionList = await _questionService.GetQuestionByTestId(testid);
+        return Ok(questionList);
+    }
 }
 
-
-    
-
-//     [HttpGet("passages")]
-//     public async Task<IActionResult> GetLastTenPassages() {
-//         var passages = await _context.Passage
-//             .OrderByDescending(p => p.Id)
-//             .Take(10)
-//             .Select(p => new {
-//                 p.Id,
-//                 p.Title,
-//                 p.Text,
-//                 p.ImageUrl
-//             })
-//             .ToListAsync();
-
-//         return Ok(passages);
-//     }
 
 //     [HttpDelete("{id}")]
 //     [Authorize]
@@ -92,55 +89,7 @@ public class QuestionsController : BaseController
 //     [HttpGet("bytest/{testid}")]
 //     public async Task<IActionResult> GetQuestionByTestId(int testid)
 //     {
-//         var questionList = await _context.TestQuestions
-//             .Include(tq => tq.Question)
-//                 .ThenInclude(q => q.Answers)
-//             .Include(tq => tq.Question)
-//                 .ThenInclude(q => q.Subject)
-//             .Include(tq => tq.Question)
-//                 .ThenInclude(q => q.Passage)      
-//             .Include(tq => tq.Question)
-//                 .ThenInclude(q => q.QuestionSubTopics)
-//                     .ThenInclude(qst => qst.SubTopic)
-//             .Where(tq => tq.TestId == testid)
-//             .Select(tq => new
-//             {                
-//                 tq.Question.Id,
-//                 tq.Question.Text,
-//                 tq.Question.SubText,
-//                 tq.Question.ImageUrl,
-//                 tq.Question.SubjectId,
-//                 tq.Question.TopicId,
-//                 CategoryName = tq.Question.Subject.Name,
-//                 tq.Question.Point,
-//                 Answers = tq.Question.Answers.Select(a => new
-//                 {
-//                     a.Id,
-//                     a.Text,
-//                     a.ImageUrl
-//                 }).ToList(),
-//                 tq.Question.IsExample,
-//                 tq.Question.PracticeCorrectAnswer,
-//                 Passage = tq.Question.PassageId.HasValue ? new {
-//                     tq.Question.Passage.Id,
-//                     tq.Question.Passage.Title,
-//                     tq.Question.Passage.Text, 
-//                     tq.Question.Passage.ImageUrl
-//                 } : null,
-//                 tq.Question.CorrectAnswer,
-//                 tq.Question.AnswerColCount,
-//                 SubTopics = tq.Question.QuestionSubTopics.Select(qst => new
-//                 {
-//                     qst.SubTopicId,
-//                     qst.SubTopic.Name
-//                 }).ToList()
-//             })
-//             .ToListAsync();
-
-//         if (questionList == null)
-//         {
-//             return NotFound(new { message = "Soru bulunamadı!" });
-//         }
+//         
 
 //         return Ok(questionList);
 //     }

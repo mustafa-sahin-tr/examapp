@@ -77,4 +77,79 @@ public class QuestionService : IQuestionService
 
         return question;
     }
+
+    public async Task<List<PassageDto>> GetLastTenPassages() {
+        return  await _context.Passage
+            .OrderByDescending(p => p.Id)
+            .Take(10)
+            .Select(p => new PassageDto {
+                Id = p.Id,
+                Title = p.Title,
+                Text = p.Text,
+                ImageUrl = p.ImageUrl,
+                X = p.X,
+                Y = p.Y,
+                Width = p.Width,
+                Height = p.Height,
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<QuestionDto>> GetQuestionByTestId(int testid) 
+    {
+        var questionList = await _context.TestQuestions
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.Answers)
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.Subject)
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.Passage)      
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.QuestionSubTopics)
+                    .ThenInclude(qst => qst.SubTopic)
+            .Where(tq => tq.TestId == testid)
+            .Select(tq => new QuestionDto
+            {                
+                Id = tq.Question.Id,
+                Text = tq.Question.Text,
+                SubText = tq.Question.SubText,
+                ImageUrl = tq.Question.ImageUrl,
+                SubjectId = tq.Question.SubjectId,
+                TopicId = tq.Question.TopicId,
+                CategoryName = tq.Question.Subject.Name,
+                Point = tq.Question.Point,
+                X = tq.Question.X,
+                Y = tq.Question.Y,
+                Width = tq.Question.Width,
+                Height = tq.Question.Height,
+                Answers = tq.Question.Answers.Select(a => new AnswerDto
+                {
+                    Id = a.Id,
+                    Text = a.Text,
+                    ImageUrl = a.ImageUrl,
+                    X = a.X,
+                    Y = a.Y,
+                    Width = a.Width,
+                    Height = a.Height,
+                }).ToList(),
+                IsExample = tq.Question.IsExample,
+                PracticeCorrectAnswer = tq.Question.PracticeCorrectAnswer,
+                Passage = tq.Question.PassageId.HasValue ? new PassageDto {
+                    Id = tq.Question.Passage.Id,
+                    Title = tq.Question.Passage.Title,
+                    Text = tq.Question.Passage.Text, 
+                    ImageUrl = tq.Question.Passage.ImageUrl
+                } : null,
+                CorrectAnswerId = tq.Question.CorrectAnswerId,
+                AnswerColCount = tq.Question.AnswerColCount,
+                // SubTopics = tq.Question.QuestionSubTopics.Select(qst => new
+                // {
+                //     qst.SubTopicId,
+                //     qst.SubTopic.Name
+                // }).ToList()
+            })
+            .ToListAsync();
+
+        return questionList;
+    }
 }

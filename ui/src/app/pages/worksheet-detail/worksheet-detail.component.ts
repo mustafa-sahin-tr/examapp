@@ -10,6 +10,7 @@ import { TestSolveCanvasComponent } from '../test-solve/test-solve-canvas.compon
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-worksheet-detail',
@@ -19,7 +20,7 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class WorksheetDetailComponent implements OnInit {
 
-  
+  private snackBar = inject(MatSnackBar);
   @Input() exam!: Test; // Test bilgisi ve sorular
   route = inject(ActivatedRoute);
   testService = inject(TestService);  
@@ -34,7 +35,13 @@ export class WorksheetDetailComponent implements OnInit {
   StartTest(id: number | null ) {
     if (id) {
       this.testService.startTest(id).subscribe(response => {
-          this.router.navigate(['/testsolve', response.testInstanceId]);
+          if(response.success) {
+            this.router.navigate(['/testsolve', response.instanceId]);
+          }
+          else {
+            this.snackBar.open(response.message, 'Tamam', { duration: 2000 });
+          }
+          
         }); 
       }
   }
@@ -45,6 +52,10 @@ export class WorksheetDetailComponent implements OnInit {
 
   get instanceCompleted() : boolean {
     return this.exam.instance?.status === 1;
+  }
+
+  get instanceStarted() : boolean {
+    return this.exam.instance?.status === 0;
   }
 
   editWorksheet(id: number | null) {

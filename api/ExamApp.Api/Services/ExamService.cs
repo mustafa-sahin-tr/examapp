@@ -25,11 +25,19 @@ public class ExamService : IExamService
 
     public async Task<Paged<WorksheetDto>> GetWorksheetsAsync(ExamFilterDto dto, User user, Student? student = null)
     {
+         var instanceQuery = _context.TestInstances
+            .Where(ti => ti.StudentId == student.Id)            
+            .Include(ti => ti.WorksheetInstanceQuestions)
+            .Include(ti => ti.Worksheet)
+            .AsQueryable();
+
+
         var query = _context.Worksheets.AsQueryable();
 
-        if (dto.id > 0)
+        if(dto.id > 0)
         {
             query = query.Where(t => t.Id == dto.id);
+            instanceQuery = instanceQuery.Where(ti => ti.WorksheetId == dto.id);
         }
         else
         {
@@ -53,33 +61,78 @@ public class ExamService : IExamService
                     EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%"));
             }
         }
+        // Her worksheet için kaç benzersiz öğrenci instance oluşturmuş
+        var worksheetStudentCounts = await _context.TestInstances
+            .GroupBy(ti => ti.WorksheetId)
+            .Select(g => new {
+                WorksheetId = g.Key,
+                UniqueStudentCount = g.Select(ti => ti.StudentId).Distinct().Count()
+            })
+            .ToDictionaryAsync(x => x.WorksheetId, x => x.UniqueStudentCount);
+        
+        var instances = await instanceQuery.ToListAsync(); // 🔥 Burada `ToListAsync()` çağırarak veriyi hafızaya alıyoruz
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
         var tests = await query
             .Include(t => t.BookTest)
-                .ThenInclude(bt => bt.Book)
+                .ThenInclude(bt => bt.Book)      
             .Include(t => t.WorksheetQuestions)
                 .ThenInclude(tq => tq.Question)
-            .OrderBy(t => t.Name)
-            .Skip((dto.pageNumber - 1) * dto.pageSize)
+            .OrderBy(t => t.Name) // Sıralama için
+            .Skip((dto.pageNumber - 1) * dto.pageSize) // Sayfalama için
             .Take(dto.pageSize)
             .ToListAsync();
 
-        var worksheetDtos = tests.Select(t => new WorksheetDto
+        var worksheetDtos = tests.Select(t =>
         {
-            Id = t.Id,
-            Name = t.Name,
-            Description = t.Description,
-            GradeId = t.GradeId,
-            SubjectId = t.SubjectId,
-            MaxDurationSeconds = t.MaxDurationSeconds,
-            IsPracticeTest = t.IsPracticeTest,
-            Subtitle = t.Subtitle,
-            ImageUrl = t.ImageUrl,
-            BadgeText = t.BadgeText,
-            BookTestId = t.BookTestId,
-            BookId = t.BookTest?.BookId,
-            QuestionCount = t.WorksheetQuestions.Count()
+            var instance = instances.FirstOrDefault(i => i.WorksheetId == t.Id);
+
+            InstanceSummaryDto? instanceDto = null;
+            if (instance != null)
+            {
+                var correct = instance.WorksheetInstanceQuestions.Count(wiq =>
+                    wiq.SelectedAnswerId != null &&
+                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                        && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId));
+
+                var wrong = instance.WorksheetInstanceQuestions.Count(wiq =>
+                    wiq.SelectedAnswerId != null &&
+                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                        && wq.Question.CorrectAnswerId != wiq.SelectedAnswerId));
+                        instanceDto = new InstanceSummaryDto
+                {
+                    Id = instance.Id,
+                    Name = t.Name,
+                    Status = (int)instance.Status,
+                    ImageUrl = t.ImageUrl,
+                    CompletedDate = instance.EndTime ?? DateTime.UtcNow,
+                    DurationMinutes = instance.EndTime.HasValue ? 
+                        (int)(instance.EndTime.Value - instance.StartTime).TotalMinutes : 0,
+                    TotalQuestions = instance.WorksheetInstanceQuestions.Count,
+                    CorrectAnswers = correct,
+                    WrongAnswers = wrong,
+                    Score = (correct * 100) / (instance.WorksheetInstanceQuestions.Count > 0 ? instance.WorksheetInstanceQuestions.Count : 1)
+                };
+            }
+
+            return new WorksheetDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                GradeId = t.GradeId,
+                SubjectId = t.SubjectId,
+                MaxDurationSeconds = t.MaxDurationSeconds,
+                IsPracticeTest = t.IsPracticeTest,
+                Subtitle = t.Subtitle,
+                ImageUrl = t.ImageUrl,
+                BadgeText = t.BadgeText,
+                BookTestId = t.BookTestId,
+                BookId = t.BookTest?.BookId,
+                QuestionCount = t.WorksheetQuestions.Count(),
+                Instance = instanceDto, // 💡 Eklenen alan
+                InstanceCount = worksheetStudentCounts.TryGetValue(t.Id, out var count) ? count : 0 // 💡 Yeni eklenen alan
+            };            
         }).ToList();
 
         return new Paged<WorksheetDto>
@@ -261,7 +314,22 @@ public class ExamService : IExamService
 
         if (existing != null)
         {
-            throw new InvalidOperationException("Bu testi zaten başlattınız.");
+            if(existing.Status == WorksheetInstanceStatus.Completed) {
+                return new TestStartResultDto
+                {            
+                    Success = false,
+                    Message = "Bu test zaten tamamlanmış.",
+                    InstanceId = existing.Id,
+                    StartTime = existing.StartTime
+                };
+            }
+
+            return new TestStartResultDto
+            {
+                Success = true,
+                InstanceId = existing.Id,
+                StartTime = existing.StartTime
+            };
         }
 
         var instance = new WorksheetInstance
@@ -277,6 +345,7 @@ public class ExamService : IExamService
 
         return new TestStartResultDto
         {
+            Success = true,
             InstanceId = instance.Id,
             StartTime = instance.StartTime
         };
@@ -388,7 +457,7 @@ public class ExamService : IExamService
                 return null;
             }        
 
-            if(testInstance.Status != WorksheetInstanceStatus.Completed)
+            if(includeCorrectAnswer && testInstance.Status != WorksheetInstanceStatus.Completed)
             {
                 return null;
             }

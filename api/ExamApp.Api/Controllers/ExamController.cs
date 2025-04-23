@@ -121,6 +121,9 @@ public class ExamController : BaseController
         try
         {
             var result = await _examService.StartTestAsync(testId, student);
+            if (result == null)
+                return NotFound(new { message = "Test bulunamadı!" });
+                        
             return Ok(result);
         }
         catch (InvalidOperationException ex)

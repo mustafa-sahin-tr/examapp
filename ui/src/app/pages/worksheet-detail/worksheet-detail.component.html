@@ -4,7 +4,8 @@
       <p class="course-subtitle">{{exam.gradeId}}. Sınıf</p>
       <p>{{exam.description}}</p>
       <div class="course-actions">
-        <button *ngIf="!instanceCompleted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
+        <button *ngIf="!exam.instance" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
+        <button *ngIf="instanceStarted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Teste Devam Et</button>
         <button mat-raised-button ><mat-icon>bookmark</mat-icon>Favori</button>
         <button mat-raised-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
         
@@ -22,13 +23,14 @@
         ></app-question-canvas-view>
       </div>
     </div>
-    <div class="course-info">
+    <div class="course-info" *ngIf="exam">
       <h3>Course Info</h3>
       <div class="info-item"><span>Seviye</span><span>Başlangıç</span></div>
       <div class="info-item"><span>Oylama</span><span class="rating-stars">★★★★★ (45)</span></div>
       <div class="info-item"><span>Benim Oyum</span><span class="rating-stars">★★☆☆☆</span></div>
       <div class="info-item"><span>Süre</span><span>0h 39m</span></div>
       <div class="info-item"><span>Güncelleme Tarihi</span><span>Nov 2024</span></div>
+      
       <div class="info-item"><span>Testi Çözen Öğrenci Sayısı</span><span>{{exam.instanceCount}}</span></div>
       
     </div>

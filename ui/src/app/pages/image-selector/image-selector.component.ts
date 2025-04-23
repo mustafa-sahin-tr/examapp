@@ -281,7 +281,7 @@ export class ImageSelectorComponent {
 
   nextImage() {
     if (this.imageFiles.length === 0) return;
-  
+    
     this.currentImageIndex++;
     if (this.currentImageIndex >= this.imageFiles.length) {
       this.currentImageIndex = 0; // döngüsel olarak başa sar
@@ -969,8 +969,12 @@ export class ImageSelectorComponent {
     this.imageSrc.set(null);
     this.exampleAnswers.clear();
     this.exampleFlags.clear();
-    this.selectedPassageMap.clear();    
-    
+    this.selectedPassageMap.clear();      
+    this.warningMarkers = [];
+    this.selectedQuestionIndex = -1;
+    this.selectedAnswer = -1;
+    this.selectedRegion = -1;
+    this.selectedWarning = null;
   }
 
 

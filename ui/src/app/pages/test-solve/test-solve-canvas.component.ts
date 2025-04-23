@@ -48,6 +48,8 @@ export class TestSolveCanvasComponent implements OnInit, AfterViewInit, OnDestro
   rightColumn: any[] = [];
   confettiService = inject(ConfettiService);
   correctAnswerVisible = false;
+  autoPlay = false;
+
 
   @ViewChildren('questionCard') questionCards!: QueryList<ElementRef>;
 
@@ -250,6 +252,11 @@ async loadTest(testId: number) {
   }
 
   completeTest() {
+    // son soru kaydedilmemiş olaiblir.
+    this.autoPlay = false;
+    if(this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId) {
+      this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId);
+    }
     this.testService.completeTest(this.testInstance.id).subscribe({
       next: () => {
         this.router.navigate(['/student-profile']);
@@ -313,8 +320,9 @@ async loadTest(testId: number) {
       timeTaken: this.testInstance.testInstanceQuestions[this.currentIndex()].timeTaken
     }).subscribe({
       next: () => {
-        // Cevap kaydedildi, sonraki soruya geç
-        //this.nextQuestion();
+        if(this.autoPlay) {
+          this.nextQuestion();
+        }        
       },
       error: (error) => {
         console.error('Error saving answer', error);

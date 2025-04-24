@@ -4,8 +4,14 @@
 
 
     <div class="form-column-4" style="border: var(--border-input);">
+
+      <ng-container *ngIf="previewMode()">
+      <app-question-navigator [questions]="previewQuestions" (questionSelected)="questionSelected($event)"></app-question-navigator>  
+      <app-question-canvas-view [questionRegion]="regions()[previewCurrentIndex()]"></app-question-canvas-view>
+    </ng-container>
+
       
-      <div *ngIf="imageSrc()" class="ms-canvas-wrapper">
+      <div *ngIf="!previewMode() && imageSrc()" class="ms-canvas-wrapper">
         <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)" 
         (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)" (contextmenu)="onRightClick($event)"></canvas>
         <!-- Sol bölge – Previous -->
@@ -99,34 +105,6 @@
 
     <!-- <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*"> -->
     {{imagName()}}
-    <div class="button-group-vertical">
-      
-      <!-- <div class="button-row">
-        <button class="button-type-1" (click)="toggleSelectionMode('question')">Soru Seç</button>
-        <button class="button-type-2"  (click)="toggleSelectionMode('passage')">📜 Passage Seç</button>
-      </div> -->
-      
-        <!-- <button mat-raised-button color="primary" (click)="toggleOnlyQuestionMode()">{{onlyQuestionMode() ? 'Soru-Cevap Modu' : 'Soru Modu'}}</button> -->
-        <!-- <button mat-raised-button color="primary" (click)="lockSelectionMode('answer')">Disable Modes</button> -->
-        <!-- <button mat-raised-button color="primary" (click)="lockSelectionMode(null)">Disable Modes</button> -->
-        <!-- <button mat-raised-button color="primary" (click)="toggleSelectionMode('answer')" [disabled]="regions().length === 0">Şık Seç</button> -->
-        <!-- <button mat-raised-button color="primary" (click)="downloadRegionsLite()" [disabled]="regions().length === 0">Koordinatları İndir</button> -->
-     
-      
-      
-      <!-- <button mat-raised-button color="primary" (click)="predict()">Predict</button> -->
-      <!-- <button mat-raised-button color="primary" (click)="sendToFix()">Sent To Fix</button> -->
-      <!-- <div class="button-row">
-        <button mat-raised-button color="primary" (click)="previousImage()">❮ Önceki</button>
-        <mat-slide-toggle
-          class="example-margin" [checked]="autoMode()" (change)="autoMode.set($event.checked)">
-          Auto
-        </mat-slide-toggle>
-        <button mat-raised-button color="primary" (click)="nextImage()" [disabled]="inProgress()">Sonraki ❯</button>
-      </div> -->
-    </div>
-    
-    <!-- <button mat-raised-button color="primary" (click)="sendToFixForAnswer()">Sent To Fix For Answer</button> -->
   
     <div *ngIf="showRegions()" class="regions-list">
       <h3>Seçilen Bölgeler:</h3>
@@ -165,19 +143,6 @@
              
         </li>
       </ul>
-
-      <!-- <ul>
-        <li *ngFor="let region of regions(); let i = index">
-          <strong>{{ region.name }}</strong>
-          <select id="passageSelect" (change)="onPassageChange($event, region.name)">
-            <option value="0" [selected]="!selectedPassageMap.has(region.name)">🔹 Passage Seçiniz</option>
-            <option *ngFor="let passage of passages()" [value]="passage.id" [selected]="selectedPassageMap.get(region.name) === passage.id">
-              Passage {{ passage.id }}
-            </option>
-          </select>
-                
-        </li>
-      </ul> -->
     </div>
     </div>
   </div>

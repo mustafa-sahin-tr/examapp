@@ -88,9 +88,9 @@
 
             <!-- Menü tanımı -->
             <mat-menu #actionMenu="matMenu">
-              <button mat-menu-item >
+              <button mat-menu-item  (click)="togglePreviewMode()" >
                 <mat-icon>edit</mat-icon>
-                <span>Düzenle</span>
+                <span>{{isPreviewMode ? 'Ön İzlemeden Çık' : 'Ön İzleme'}}</span>
               </button>
               <button mat-menu-item (click)="downloadRegionsLite()">
                 <mat-icon>file_download</mat-icon>
@@ -168,8 +168,6 @@
         </form>
        
       
-    <app-image-selector>
-
-    </app-image-selector>
+    <app-image-selector></app-image-selector>
     
 

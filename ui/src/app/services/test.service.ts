@@ -11,6 +11,7 @@ import { StudentAnswer } from '../models/student-answer';
 import { AnswerChoice, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
 import { StudentStatisticsResponse } from '../models/statistics';
+import { Question } from '../models/question';
 
 @Injectable({
   providedIn: 'root'
@@ -139,4 +140,46 @@ export class TestService {
     return this.http.get<StudentStatisticsResponse>(`${this.baseUrl}/student/statistics`);      
   }
 
+  convertQuestionsToRegions(qeuestions: Question[]): QuestionRegion[] 
+  {
+      if (!qeuestions || qeuestions.length === 0) {
+          return [];
+      }
+
+      const regions: QuestionRegion[] = qeuestions.map((question,index) => {
+          return {
+              id: question.id,
+              name: `Soru ${index}`,
+              x: question.x,
+              y: question.y,
+              width: question.width,
+              height: question.height,
+              isExample: question.isExample,
+              passageId: question.passage ? question.passage.id.toString() : '',
+              imageId: question.imageUrl,
+              imageUrl: question.imageUrl,
+              exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+              answers: question.answers.map(answer => ({
+                  id: answer.id,
+                  label: answer.text,
+                  x: answer.x,
+                  y: answer.y,
+                  width: answer.width,
+                  height: answer.height
+              })),
+              passage: question.passage ? {
+                  id: question.passage.id,
+                  title: question.passage.title,
+                  x: question.passage.x,
+                  y: question.passage.y,
+                  width: question.passage.width,
+                  height: question.passage.height
+              } : undefined
+          };
+      });
+
+      return regions;
+  }
+
 }
+

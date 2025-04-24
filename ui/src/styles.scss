@@ -2989,12 +2989,18 @@ h4 {
 
 .ms-option-button:hover {
   box-shadow: 0 0 0 2px rgba(144, 134, 202, 0.3);
+  background-color: var(--ms-colors-yellow-3) !important;
 }
 
 .ms-option-icon {
   width: 2.4rem;
   height: 2.4rem;
-  fill: #9086CA;
+  fill: currentColor;
+}
+
+.ms-option-active {
+  background-color: var(--ms-colors-yellow-3) !important;
+  color: #fff !important;
 }
 
 .ms-option-label {
@@ -3540,6 +3546,15 @@ h4 {
 
 .c-ptr {
   cursor: pointer !important;
+}
+
+.psds-carousel__item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center ;
+  margin-top: .75rem ;
+  margin-bottom: .75rem;
+  gap: 1rem;
 }
 
 

@@ -13,6 +13,11 @@ import {MatSlideToggleModule} from '@angular/material/slide-toggle'
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
+import { QuestionCanvasComponent } from '../question/question-canvas.component';
+import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
+import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { QuestionService } from '../../services/question.service';
+import { TestService } from '../../services/test.service';
 
 interface WarningMarker {
   id: number;
@@ -24,7 +29,8 @@ interface WarningMarker {
 @Component({
   selector: 'app-image-selector',
   standalone: true,
-  imports: [CommonModule, QuillModule, MatDividerModule, MatIconModule, FormsModule,MatMenuModule, MatButtonModule,MatSlideToggleModule],
+  imports: [CommonModule, QuillModule, MatDividerModule, MatIconModule, FormsModule,MatMenuModule, 
+      MatButtonModule,MatSlideToggleModule, QuestionNavigatorComponent, QuestionCanvasViewComponent],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss']
 })
@@ -52,8 +58,10 @@ export class ImageSelectorComponent {
   public imageSrc = signal<string | null>(null);
   public imagName = signal<string | null>(null);
   questionDetectorService = inject(QuestionDetectorService);
+  questionService = inject(QuestionService);
+  testService = inject(TestService);
   private snackBar = inject(MatSnackBar);
-
+  public previewCurrentIndex = signal(0);
   private startX = 0;
   private startY = 0;
   private isDrawing = false;
@@ -63,7 +71,7 @@ export class ImageSelectorComponent {
   contextMenuType: 'region' | 'answer' | 'worksheet' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null  = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
-
+  previewMode = signal(false); // ✅ Önizleme açma durumu
   public exampleAnswers = new Map<string, string>(); // 📜 Her soru için örnek cevapları sakla
   public exampleFlags = new Map<string, boolean>();  // ✅ Her soru için "isExample" flag'ini sakla
 
@@ -112,6 +120,38 @@ export class ImageSelectorComponent {
   dismissWarning(event: MouseEvent) {
     this.stopEvent(event);
     this.warningMenuVisible = false;
+  }
+
+  get previewQuestions() {
+    let questions:  { status: 'correct' | 'incorrect' | 'unknown' }[] = [];
+    for (let i = 0; i < this.regions().length; i++) {
+      const region = this.regions()[i];      
+        questions.push({ status: 'unknown' });      
+    }
+    return questions;
+  }
+
+  questionSelected(index: number) {    
+    this.previewCurrentIndex.set(index);
+  }
+
+  
+
+  public togglePreviewMode(testId: number) {
+    if(!this.previewMode()) {
+      // get questions and sets region
+      this.questionService.getAll(testId).subscribe((response) => {
+         const regions = this.testService.convertQuestionsToRegions(response);
+         this.regions.set(regions);
+         this.previewMode.set(!this.previewMode());
+         this.previewCurrentIndex.set(0);
+      });      
+    }
+    else {
+      this.resetRegions();
+      this.previewMode.set(!this.previewMode());
+      this.loadCurrentImage();
+    }    
   }
 
   getRegionOrAnswerAtPosition(x: number, y: number): RegionOrAnswerHit {

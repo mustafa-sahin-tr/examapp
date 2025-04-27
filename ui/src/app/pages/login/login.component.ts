@@ -64,7 +64,25 @@ export class LoginComponent implements OnInit {
           this.snackBar.open('Öğrenci bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
         }
       });
-    } else {
+    }
+    else if(role == 'Teacher') {
+      // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
+      this.authService.checkTeacherProfile().subscribe({
+        next: (teacherRes) => {
+          if (teacherRes.hasTeacherRecord) {
+            localStorage.setItem('teacher', JSON.stringify(teacherRes.teacher));
+            this.router.navigate([`/tests`]);  // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
+          } else {
+            this.router.navigate(['/teacher-register']);  // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
+          }
+        },
+        error: () => {
+          this.isLoading = false;
+          this.snackBar.open('Öğretmen bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
+        }
+      });
+    }
+    else {
       this.router.navigate(['/tests']); // ✅ Öğretmen veya Veli ise Home sayfasına git
     }
   }
@@ -76,24 +94,7 @@ export class LoginComponent implements OnInit {
         next: (res) => {
           this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
           const role = res.role; // 0 = Student, 1 = Teacher, 2 = Parent
-          if (role === 'Student') {
-            // Eğer Student ise, Student kaydı olup olmadığını kontrol et
-            this.authService.checkStudentProfile().subscribe({
-              next: (studentRes) => {
-                if (studentRes.hasStudentRecord && studentRes.student) {
-                  this.router.navigate(['/student-profile']); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
-                } else {
-                  this.router.navigate(['/student-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
-                }
-              },
-              error: () => {
-                this.snackBar.open('Öğrenci kaydı kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-                this.router.navigate(['/student-register']); // ❌ Hata olursa öğrenci kayıt sayfasına git
-              }
-            });
-          } else {
-            this.router.navigate(['/home']); // ✅ Öğretmen/Veli ise Home sayfasına git
-          }
+          this.checkUserSession(role);
         },
         error: () => {
           this.isLoading = false;

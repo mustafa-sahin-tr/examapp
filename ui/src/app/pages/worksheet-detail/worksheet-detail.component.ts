@@ -11,10 +11,13 @@ import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 
 @Component({
   selector: 'app-worksheet-detail',
-  imports: [CommonModule,MatIconModule,QuestionNavigatorComponent,QuestionCanvasViewComponent, MatButtonModule],
+  imports: [CommonModule,MatIconModule,QuestionNavigatorComponent,QuestionCanvasViewComponent, MatButtonModule,
+      IsStudentDirective, IsTeacherDirective
+  ],
   templateUrl: './worksheet-detail.component.html',
   styleUrl: './worksheet-detail.component.scss'
 })

@@ -106,6 +106,21 @@ namespace ExamApp.Api.Controllers
             return Ok(new { HasStudentRecord = false });
         }
 
+
+        [Authorize]
+        [HttpGet("check-teacher")]
+        public async Task<IActionResult> CheckTeacher() 
+        {
+            var teacher = await GetAuthenticatedTeacherAsync();
+
+            if (teacher != null)
+            {
+                return Ok(new { HasTeacherRecord = true, Teacher = teacher });
+            }
+
+            return Ok(new { HasTeacherRecord = false });
+        }
+
         [HttpGet("grades")]
         public async Task<IActionResult> GetGradesAsync()
         {

@@ -89,7 +89,7 @@
             <!-- Menü tanımı -->
             <mat-menu #actionMenu="matMenu">
               <button mat-menu-item  (click)="togglePreviewMode()" >
-                <mat-icon>edit</mat-icon>
+                <mat-icon>{{isPreviewMode ? 'visibility_off' : 'visibility'}}</mat-icon>
                 <span>{{isPreviewMode ? 'Ön İzlemeden Çık' : 'Ön İzleme'}}</span>
               </button>
               <button mat-menu-item (click)="downloadRegionsLite()">

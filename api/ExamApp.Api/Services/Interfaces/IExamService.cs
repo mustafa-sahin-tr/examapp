@@ -7,7 +7,8 @@ namespace ExamApp.Api.Services.Interfaces;
 public interface IExamService
 {
     // Define methods for exam-related operations here
-    Task<Paged<WorksheetDto>> GetWorksheetsAsync(ExamFilterDto dto, User user, Student? student = null);
+    Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, User user, Student? student = null);
+    Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, User user, Teacher? teacher = null);
 
     Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(Student student, int pageNumber, int pageSize);
 

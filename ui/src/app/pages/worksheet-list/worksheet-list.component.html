@@ -116,22 +116,24 @@
       </div>
   
 </div>
+<ng-container *appIsStudent >
 <app-section-header class="section-container" title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
-
-<div class="list-container">       
-    @if (completedTestWorksheets.length > 0) {
-        <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
-    <div class="cards" #cardContainer2>
-      
-    <app-completed-worksheet-card *ngFor="let cws of completedTestWorksheets"
-      [completedTest]="cws">
-    </app-completed-worksheet-card>
+  <div class="list-container">     
+    <ng-container *ngIf="completedTest$ | async as tests">
+        @if (completedTestWorksheets.length > 0) {
+            <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
+        <div class="cards" #cardContainer2>
+          
+        <app-completed-worksheet-card *ngFor="let cws of tests.items"
+          [completedTest]="cws">
+        </app-completed-worksheet-card>
+      </div>
+      <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
+        } @else {
+            <p> Henüz bir test tamamlanadınız! </p>
+        }    
+    </ng-container>  
   </div>
-  <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
-    } @else {
-        <p> Henüz bir test tamamlanadınız! </p>
-    }    
-    
-</div>
+</ng-container>
 
 

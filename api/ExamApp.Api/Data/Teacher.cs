@@ -10,8 +10,11 @@ public class Teacher : BaseEntity
 
     [Required]
     public int UserId { get; set; }
-    public virtual User User { get; set; }
+    public virtual User User { get; set; }    
 
-    [Required, MaxLength(100)]
-    public string Subject { get; set; }
+    [MaxLength(100)]
+    public string SchoolName { get; set; }
+
+
+
 }

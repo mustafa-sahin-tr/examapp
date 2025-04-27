@@ -19,6 +19,7 @@ import { PublicLayoutComponent } from './pages/public/public-layout/public-layou
 import { LayoutComponent } from './pages/layout/layout.component';
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
 import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
+import { TeacherRegisterComponent } from './pages/teacher-register/teacher-register.component';
 
 export const routes: Routes = [
   { path: '', 
@@ -26,6 +27,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'student-register', component: StudentRegisterComponent },
+      { path: 'teacher-register', component: TeacherRegisterComponent },
       { path: 'question/:id', component: QuestionComponent },
       { path: 'questioncanvas', component: QuestionCanvasComponent },
       { path: 'questioncanvas/:id', component: QuestionCanvasComponent },

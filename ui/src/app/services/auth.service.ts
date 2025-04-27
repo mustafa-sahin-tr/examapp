@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
+import { CheckkTeacherResponse } from '../models/check-teacher-response';
 
 @Injectable({providedIn: 'root'})
 
@@ -23,6 +24,10 @@ export class AuthService {
 
   checkStudentProfile(): Observable<CheckStudentResponse> {
     return this.http.get<CheckStudentResponse>('/api/student/check-student');
+  }
+
+  checkTeacherProfile(): Observable<CheckkTeacherResponse> {
+    return this.http.get<CheckkTeacherResponse>('/api/teacher/check-teacher');
   }
 
   login(credentials: any): Observable<{ token: string; role: string , avatar: string}> {

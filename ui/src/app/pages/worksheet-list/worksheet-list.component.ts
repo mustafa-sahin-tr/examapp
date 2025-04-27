@@ -15,6 +15,7 @@ import { PaginationComponent } from '../../shared/components/pagination/paginati
 import { SubjectService } from '../../services/subject.service';
 import { Subject } from '../../models/subject';
 import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
+import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -24,14 +25,17 @@ import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-
   imports: [CommonModule, WorksheetCardComponent ,MatAutocompleteModule, MatInputModule,
       ReactiveFormsModule, CompletedWorksheetCardComponent, 
       CustomCheckboxComponent, RouterModule,
-      SectionHeaderComponent, FormsModule ,PaginationComponent]
+      SectionHeaderComponent, FormsModule ,PaginationComponent, IsStudentDirective]
 })
 export class WorksheetListComponent {
   testService = inject(TestService);
   searchControl = new FormControl('');  
   newestWorksheets!: Test[];
   pagedWorksheets!: Paged<Test>;
+  
   completedTestWorksheets: InstanceSummary[] = [];
+
+  completedTest$!: Observable<Paged<InstanceSummary>>;
   totalCount = 0;
   pageSize = 10;
   pageNumber = 1;
@@ -60,9 +64,11 @@ export class WorksheetListComponent {
           this.makeNewSearch();
         });
 
-        this.testService.getCompleted(1).subscribe(response => {
-            this.completedTestWorksheets = response.items;
-        });
+        this.completedTest$ = this.testService.getCompleted(1);
+
+        // this.testService.getCompleted(1).subscribe(response => {
+        //     this.completedTestWorksheets = response.items;
+        // });
 
         this.testService.getLatest(1).subscribe(response => {
           this.newestWorksheets = response;

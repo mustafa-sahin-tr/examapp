@@ -22,8 +22,77 @@ public class ExamService : IExamService
         _minioService = minioService;
     }
     
+    public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, User user, Teacher? teacher = null)
+    {
+        var query = _context.Worksheets.AsQueryable();
 
-    public async Task<Paged<WorksheetDto>> GetWorksheetsAsync(ExamFilterDto dto, User user, Student? student = null)
+        if(dto.id > 0)
+        {
+            query = query.Where(t => t.Id == dto.id);
+        }
+        else
+        {
+            if (dto.gradeId.HasValue)
+                query = query.Where(t => t.GradeId == dto.gradeId.Value);            
+
+            if (dto.subjectIds != null && dto.subjectIds.Any())
+                query = query.Where(t => t.SubjectId.HasValue && dto.subjectIds.Contains(t.SubjectId.Value));
+
+            if (dto.bookTestId > 0)
+                query = query.Where(t => t.BookTestId == dto.bookTestId);
+
+            if (!string.IsNullOrEmpty(dto.search))
+            {
+                var normalizedSearch = dto.search.ToLower(new CultureInfo("tr-TR"));
+                query = query.Where(t =>
+                    EF.Functions.Like(t.Name.ToLower(), $"%{normalizedSearch}%") ||
+                    (t.Subtitle != null && EF.Functions.Like(t.Subtitle.ToLower(), $"%{normalizedSearch}%")) ||
+                    EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%"));
+            }
+        }
+        // Her worksheet için kaç benzersiz öğrenci instance oluşturmuş
+
+        var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
+        var tests = await query
+            .Include(t => t.BookTest)
+                .ThenInclude(bt => bt.Book)      
+            .Include(t => t.WorksheetQuestions)
+                .ThenInclude(tq => tq.Question)
+            .OrderBy(t => t.Name) // Sıralama için
+            .Skip((dto.pageNumber - 1) * dto.pageSize) // Sayfalama için
+            .Take(dto.pageSize)
+            .ToListAsync();
+
+        var worksheetDtos = tests.Select(t =>
+        {
+            return new WorksheetDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                GradeId = t.GradeId,
+                SubjectId = t.SubjectId,
+                MaxDurationSeconds = t.MaxDurationSeconds,
+                IsPracticeTest = t.IsPracticeTest,
+                Subtitle = t.Subtitle,
+                ImageUrl = t.ImageUrl,
+                BadgeText = t.BadgeText,
+                BookTestId = t.BookTestId,
+                BookId = t.BookTest?.BookId,
+                QuestionCount = t.WorksheetQuestions.Count()                
+            };            
+        }).ToList();
+
+        return new Paged<WorksheetDto>
+        {
+            PageNumber = dto.pageNumber,
+            PageSize = dto.pageSize,
+            TotalCount = totalCount,
+            Items = worksheetDtos
+        };
+    }
+
+    public async Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, User user, Student? student = null)
     {
          var instanceQuery = _context.TestInstances
             .Where(ti => ti.StudentId == student.Id)            
@@ -310,7 +379,10 @@ public class ExamService : IExamService
     public async Task<TestStartResultDto> StartTestAsync(int testId, Student student)
     {
         var existing = await _context.TestInstances
-            .FirstOrDefaultAsync(t => t.WorksheetId == testId && t.StudentId == student.Id);
+            .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
+                && ti.EndTime == null
+                && ti.Student.UserId == student.UserId );
+
 
         if (existing != null)
         {
@@ -337,8 +409,25 @@ public class ExamService : IExamService
             WorksheetId = testId,
             StudentId = student.Id,
             Status = WorksheetInstanceStatus.Started,
+            WorksheetInstanceQuestions = new List<WorksheetInstanceQuestion>(),
             StartTime = DateTime.UtcNow
         };
+
+        // Teste ait soruları TestQuestion tablosundan çekiyoruz
+        var testQuestions = await _context.TestQuestions
+            .Where(tq => tq.TestId == testId)
+            .OrderBy(tq => tq.Order)
+            .ToListAsync();
+
+        foreach (var tq in testQuestions)
+        {
+            instance.WorksheetInstanceQuestions.Add(new WorksheetInstanceQuestion
+            {
+                WorksheetQuestionId = tq.Id,
+                IsCorrect = false,
+                TimeTaken = 0
+            });
+        }
 
         _context.TestInstances.Add(instance);
         await _context.SaveChangesAsync(); // burada audit çalışır

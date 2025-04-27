@@ -15,3 +15,18 @@ export class IsStudentDirective extends HasRoleDirective {
     this.checkRole('Student');
   }
 }
+
+@Directive({
+  selector: '[appIsTeacher]',
+})
+export class IsTeacherDirective extends HasRoleDirective {
+  constructor(
+    authService: AuthService,
+    templateRef: TemplateRef<any>,
+    viewContainer: ViewContainerRef
+  ) {
+    super(authService, templateRef, viewContainer);
+    this.checkRole('Teacher');
+  }
+}
+

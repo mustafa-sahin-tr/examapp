@@ -4,14 +4,15 @@
       <p class="course-subtitle">{{exam.gradeId}}. Sınıf</p>
       <p>{{exam.description}}</p>
       <div class="course-actions">
-        <button *ngIf="!exam.instance" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
-        <button *ngIf="instanceStarted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Teste Devam Et</button>
+        <ng-container *appIsStudent>
+          <button *ngIf="!exam.instance" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
+          <button *ngIf="instanceStarted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Teste Devam Et</button>
+        </ng-container>
         <button mat-raised-button ><mat-icon>bookmark</mat-icon>Favori</button>
-        <button mat-raised-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
-        
-          <button mat-raised-button color="primary" type="button"
-          (click)="navigateToQuestionCanvas()"
-          ><mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç</button>
+        <ng-container *appIsTeacher>
+          <button mat-raised-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
+          <button mat-raised-button color="primary" type="button" (click)="navigateToQuestionCanvas()"><mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç</button>
+        </ng-container>
       </div>
       <div *ngIf="instanceCompleted" >
         <h1 class="course-title">Sonuç</h1>

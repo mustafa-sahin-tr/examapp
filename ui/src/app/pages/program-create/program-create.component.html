@@ -12,7 +12,7 @@
   </div>
 
   <div class="ms-wizard-question">
-    Programını hazırlarken bunlardan hangisini göz önünde bulundurmak istersin?
+     {{currentStep.description}}
   </div>
 
   <div class="ms-wizard-required">
@@ -20,17 +20,19 @@
   </div>
 
     <div class="ms-wizard-cards" #cardContainer>
-    <button class="nav-btn left">❮</button>
+    <button class="nav-btn left" (click)="previous()">❮</button>
 
       <ul class="psds-carousel__track">
-        <li class="psds-carousel__item" class="m-5">            
-            <button class="ms-option-button">
-                <img src="icons/question-mark.svg" alt="Timer Icon" class="ms-option-icon" />
-                <b class="ms-option-label">Süreli Çalışma</b>
+        <li class="psds-carousel__item m-5">      
+            <button *ngFor="let opt of currentStep.options"
+               class="ms-option-button"
+               [class.ms-option-active]="opt.selected" (click)="selectOption(currentStep, opt)">
+                <img [src]="opt.icon" alt="Timer Icon" class="ms-option-icon" />
+                <b class="ms-option-label">{{opt.label}}</b>
               </button> 
         </li>
       </ul>
-      <button class="nav-btn right">❯</button>
+      <button class="nav-btn right"  (click)="next()">❯</button>
 
   </div>
   <div class="d-flex justify-content-center align-items-center">

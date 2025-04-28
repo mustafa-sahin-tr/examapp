@@ -36,16 +36,14 @@ export class LayoutComponent implements OnInit {
   showHeader = signal(true);
   globalSearchControl = new FormControl('');
   // Örnek geçmiş aramalar
-  searchHistory: string[] = ['Angular', 'TypeScript', 'RxJS'];
+  searchHistory: string[] = ['Matematik', 'Türkçe', 'Hayat Bilgisi','Fen Bilimler'];
   
   // Örnek öneri listesi (tüm öneriler)
   allSuggestions: string[] = [
-    'Angular Material', 
-    'Angular Animations', 
-    'Angular Universal',
-    'Angular CLI',
-    'TypeScript Tutorial',
-    'RxJS Operators'
+    'Doğal Sayılar', 
+    'Gezegenimiz', 
+    'Çarpma',
+    'Zıt Anlamlı'    
   ];
   // Filtrelenmiş öneriler ya da geçmiş arama listesi için liste
   filteredSuggestions: string[] = [];

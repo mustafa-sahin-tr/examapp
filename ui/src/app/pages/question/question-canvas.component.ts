@@ -118,6 +118,18 @@ export class QuestionCanvasComponent implements OnInit {
     this.imageSelector.downloadRegionsLite();
   }
 
+  get isPreviewMode() {
+    return this.imageSelector ? this.imageSelector.previewMode() : true;
+  }
+
+  togglePreviewMode() {
+    let testId = this.id;
+    if(!testId) {
+      testId = this.questionForm.value.testValue;
+    }
+    this.imageSelector.togglePreviewMode(testId || 0);
+  }
+
   toggleOnlyQuestionMode()  {
     this.imageSelector.toggleOnlyQuestionMode();
   }

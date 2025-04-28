@@ -86,12 +86,16 @@ public class ExamController : BaseController
             bookTestId = bookTestId
         };
 
-        var user = await GetAuthenticatedUserAsync();
-        Student? student = null;
-        if (user.Role == UserRole.Student)
-            student = await GetAuthenticatedStudentAsync();
-
-        var result = await _examService.GetWorksheetsAsync(filterDto, user, student);
+        var user = await GetAuthenticatedUserAsync();         
+        Paged<WorksheetDto> result = null;
+        if (user.Role == UserRole.Student) {
+            Student? student = await GetAuthenticatedStudentAsync();
+            result = await _examService.GetWorksheetsForStudentsAsync(filterDto, user, student);
+        }
+        else if(user.Role == UserRole.Teacher) {
+            Teacher? teacher = await GetAuthenticatedTeacherAsync();
+            result = await _examService.GetWorksheetsForTeacherAsync(filterDto,user,teacher);
+        }
         return Ok(result);
     }
 

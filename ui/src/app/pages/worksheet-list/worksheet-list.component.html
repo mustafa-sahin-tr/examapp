@@ -6,7 +6,7 @@
         <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
         <div class="cards" #cardContainer>
           <ul class="psds-carousel__track">
-            <li class="psds-carousel__item" class="m-5" style="flex-basis: 377.305px;" *ngFor="let worksheet of newestWorksheets">
+            <li class="psds-carousel__item" class="m-5"  *ngFor="let worksheet of newestWorksheets">
               <app-worksheet-card
                 [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)">
             </app-worksheet-card>

@@ -1,15 +1,14 @@
-
-
-  <app-section-header class="section-container" title="Senin İçin Yeni Testler" icon="/icons/18.svg"></app-section-header>
+<app-section-header class="section-container" title="Senin İçin Yeni Testler" icon="/icons/18.svg"></app-section-header>
     <div class="list-container">
       
         <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
         <div class="cards" #cardContainer>
           <ul class="psds-carousel__track">
-            <li class="psds-carousel__item" class="m-5" style="flex-basis: 377.305px;" *ngFor="let worksheet of newestWorksheets">
+            <li class="psds-carousel__item m-5" style="flex-basis: 377.305px;" 
+                *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
               <app-worksheet-card
                 [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)">
-            </app-worksheet-card>
+              </app-worksheet-card>
             </li>
           </ul>
         
@@ -21,40 +20,23 @@
     <div class="list-container">
       <div class="search-results">
         <div class="form-container">
-            <!-- <div class="form-column-2">
-              <div class="search-container">    
-                <mat-form-field appearance="outline" class="search-box">
-                    <mat-label>Ara</mat-label>
-                    <input matInput [formControl]="searchControl" (keyup.enter)="onEnter()">                    
-                </mat-form-field>
-            </div>
-            </div> -->
             <div class="form-column">
               <app-pagination
               [currentPage]="pageNumber"
-              [totalItems]="pagedWorksheets.totalCount"
+              [totalItems]="pagedWorksheetsSignal().totalCount"
               (pageChanged)="changePage($event)"></app-pagination>          
-                <h2>{{searchControl.value ? searchControl.value + ' için ' : '' }} <strong>{{ pagedWorksheets.totalCount }}</strong> test bulundu </h2>
+                <h2>{{searchControl.value ? searchControl.value + ' için ' : '' }} <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test bulundu </h2>
             </div>
         </div>
-        
-      
-        
-      
         <div class="form-container">
          <div class="form-column">
           <div class="filters-container">
             <div class="filters">
-              <button class="clear-btn" (click)="toggleRetiredResults()">Temizle</button>        
+              <button class="clear-btn">Temizle</button>        
               <div class="filter-category">
                 <h4>Dersler</h4>
                 <ul>
-                    <li *ngFor="let category of $subjects | async" class="search-result-item">
-                        <!-- <label class="check-box-container filter-checkbox">
-                          <input type="checkbox" class="checkbox-input" [value]="category.name">
-                          <span class="check-box-container checkbox-span"></span>
-                          <span  class="check-box-form-label">{{category.name}} ()</span>
-                        </label> -->
+                    <li *ngFor="let category of subjectsSignal(); trackBy: trackCategory" class="search-result-item">
                         <app-custom-checkbox
                           [label]="category.name"
                           [checked]="false"                          
@@ -64,33 +46,12 @@
                       </li>                      
                 </ul>
               </div>
-        
-              <!-- <div class="filter-topic">
-                <h4>Topic</h4>
-                <ul>
-                  <li *ngFor="let topic of filters.topics">
-                    <input type="checkbox" [(ngModel)]="topic.selected" />
-                    <label>{{ topic.name }} ({{ topic.count }})</label>
-                  </li>
-                </ul>
-              </div> -->
             </div>
-        
-            <!-- <div class="results-header">
-              <h3>{{ totalResults }} Results</h3>
-              <label>
-                Show {{ showRetiredResults ? 'active' : 'retired' }} results
-                <input type="checkbox" [(ngModel)]="showRetiredResults" />
-              </label>
-              <select [(ngModel)]="selectedSort">
-                <option *ngFor="let option of sortOptions">{{ option }}</option>
-              </select>
-            </div> -->
           </div>
          </div>
          <div class="form-column-3">
           <ul class="course-list">
-            <li *ngFor="let course of pagedWorksheets.items" class="course-item">
+            <li *ngFor="let course of pagedWorksheetsSignal().items; trackBy: trackWorksheet" class="course-item">
               <div class="course-info">
                 <h3>
                   {{ course.name }}
@@ -111,27 +72,27 @@
 
         <app-pagination
           [currentPage]="pageNumber"
-          [totalItems]="pagedWorksheets.totalCount"
+          [totalItems]="pagedWorksheetsSignal().totalCount"
           (pageChanged)="changePage($event)"></app-pagination>
       </div>
   
 </div>
-<ng-container *appIsStudent >
-<app-section-header class="section-container" title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
+<ng-container *appIsStudent>
+  <app-section-header class="section-container" title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
   <div class="list-container">     
-    <ng-container *ngIf="completedTest$ | async as tests">
-        @if (completedTestWorksheets.length > 0) {
-            <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
-        <div class="cards" #cardContainer2>
-          
-        <app-completed-worksheet-card *ngFor="let cws of tests.items"
-          [completedTest]="cws">
-        </app-completed-worksheet-card>
-      </div>
-      <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
-        } @else {
-            <p> Henüz bir test tamamlanadınız! </p>
-        }    
+    <ng-container *ngIf="(completedTestSignal()) as tests">
+      <ng-container *ngIf="tests.items.length > 0; else noTests">
+          <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
+          <div class="cards" #cardContainer2>
+            <app-completed-worksheet-card *ngFor="let cws of tests.items; trackBy: trackCompletedTests"
+                [completedTest]="cws">
+            </app-completed-worksheet-card>
+          </div>
+          <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
+      </ng-container>
+      <ng-template #noTests>
+          <p>Henüz bir test tamamlamadınız!</p>
+      </ng-template>
     </ng-container>  
   </div>
 </ng-container>

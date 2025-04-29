@@ -1,0 +1,19 @@
+{
+    // Kaydederken otomatik formatlasın
+    "editor.formatOnSave": true,
+  
+    // JavaScript/TypeScript dosyalarında Prettier’ı kullan
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+  
+    // Projede .prettierrc yoksa Prettier’ı çalıştırma
+    "prettier.requireConfig": true
+  }
+  

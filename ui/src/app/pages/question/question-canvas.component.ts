@@ -1,5 +1,5 @@
-import { Component, ElementRef, inject, OnInit, signal, ViewChild } from '@angular/core';
-import { FormGroup, Validators, FormArray, FormControl, FormsModule, ReactiveFormsModule, FormBuilder } from '@angular/forms';
+import { Component, computed, effect, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { FormGroup, Validators, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,80 +11,57 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { SubjectService } from '../../services/subject.service';
-import { Subject } from '../../models/subject';
 import { QuestionService } from '../../services/question.service';
-import { SubTopic } from '../../models/subtopic';
-import { Topic } from '../../models/topic';
 import { QuillModule } from 'ngx-quill';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { Test, TestInstance } from '../../models/test-instance';
+import { Test } from '../../models/test-instance';
 import { TestService } from '../../services/test.service';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
-import { Passage } from '../../models/question';
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
-import { debounceTime, switchMap, tap } from 'rxjs';
+import { debounceTime, of, switchMap, tap } from 'rxjs';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatMenuModule } from '@angular/material/menu';
+import { toSignal } from '@angular/core/rxjs-interop';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
   templateUrl: './question-canvas.component.html',
   styleUrls: ['./question-canvas.component.scss'],
-  imports: [MatInputModule,
-            MatFormFieldModule,
-            MatButtonModule,
-            MatSelectModule,
-            MatRadioModule,
-            MatSliderModule,
-            MatSnackBarModule,
-            FormsModule,
-            ReactiveFormsModule,
-            CommonModule, MatMenuModule,
-            MatCardModule,
-            MatIconModule,
-            QuillModule,
-            ImageSelectorComponent, MatAutocompleteModule, MatSlideToggleModule
-          ]
+  imports: [
+    MatInputModule,
+    MatFormFieldModule,
+    MatButtonModule,
+    MatSelectModule,
+    MatRadioModule,
+    MatSliderModule,
+    MatSnackBarModule,
+    FormsModule,
+    ReactiveFormsModule,
+    CommonModule,
+    MatMenuModule,
+    MatCardModule,
+    MatIconModule,
+    QuillModule,
+    ImageSelectorComponent,
+    MatAutocompleteModule,
+    MatSlideToggleModule,
+  ],
 })
 export class QuestionCanvasComponent implements OnInit {
-
   @ViewChild(ImageSelectorComponent) imageSelector!: ImageSelectorComponent; // 🔥 Alt bileşene erişim
 
-  testList: Test[] = [];
-  subjects: Subject[] = [];
-  passages: Passage[] = []; 
-  topics: Topic[] = [];
-  subTopics: SubTopic[] = [];
   id: number | null = null;
   isEditMode: boolean = false;
-  searchInProgress: boolean = false;
+  resetTest: boolean = false;
   public autoMode = signal<boolean>(false);
   public autoAlign = signal<boolean>(false);
   public inProgress = signal<boolean>(false);
-  testInstance: TestInstance = {
-    id: 0,
-    testName: 'DryRun',
-    status: 0,
-    maxDurationSeconds: 1800,
-    testInstanceQuestions: [],
-    isPracticeTest: false
-  }
-  modules = {
-    formula: true,
-    toolbar: [      
-      [{ header: [1, 2, false] }],
-      ['bold', 'italic', 'underline'],
-      ['formula'], 
-      ['image', 'code-block'],
-      ['color','background']
-    ]
-  };
+  public dropdownVisible = signal<boolean>(false);
   router = inject(Router);
   route = inject(ActivatedRoute);
   questionService = inject(QuestionService);
@@ -92,17 +69,91 @@ export class QuestionCanvasComponent implements OnInit {
   subjectService = inject(SubjectService);
   sidenavService = inject(SidenavService);
   snackBar = inject(MatSnackBar);
-  questionForm!: FormGroup;
+  questionForm: FormGroup = new FormGroup<QuestionCanvasForm>({
+    subjectId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+    topicId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+    subtopicId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+    isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
+    practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    testId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+    testValue: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+    bookId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+    bookTestId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
+  });
   bookService = inject(BookService);
-  selectedSubtopicsId: number[] = [];
   bookTests: BookTest[] = [];
-  books: Book[] = [];
+  booksSignal = toSignal(this.bookService.getAll(), { initialValue: [] as Book[] });
+
+  readonly bookIdSignal = toSignal(this.questionForm.get('bookId')!.valueChanges, {
+    initialValue: this.questionForm.get('bookId')!.value,
+  });
+
+  readonly bookTestIdSignal = toSignal(this.questionForm.get('bookTestId')!.valueChanges, {
+    initialValue: this.questionForm.get('bookTestId')!.value,
+  });
+
+  readonly bookEffect = effect(() => {
+    const books = this.booksSignal();
+    const bookId = this.bookIdSignal();
+  });
+
+  readonly clearTestFieldsEffect = effect(() => {
+    // Subscribe to both signals.
+    const currentBookId = this.bookIdSignal();
+    const currentBookTestId = this.bookTestIdSignal();
+
+    // Whenever either changes, clear testId and testValue.
+    if (!this.resetTest) {
+      this.questionForm.get('testId')?.setValue(null, { emitEvent: false });
+      this.questionForm.get('testValue')?.setValue(null, { emitEvent: false });
+    }
+    this.resetTest = false;
+  });
+
+  readonly searchResultSignal = toSignal(
+    this.questionForm.get('testId')!.valueChanges.pipe(
+      debounceTime(300),
+      switchMap((searchValue) => {
+        if (!searchValue) {
+          return of({ items: [] });
+        }
+        return this.testService.search(searchValue, [], undefined, 1, 1000);
+      })
+    ),
+    { initialValue: { items: [] } }
+  );
+
+  readonly filteredTestListSignal = computed(() => {
+    const results = this.searchResultSignal();
+    const bookTestId = this.questionForm.get('bookTestId')?.value;
+    const testId = this.questionForm.get('testValue')?.value;
+    const testText = this.questionForm.get('testId')?.value;
+    return results.items.filter((test: Test) => {
+      if (test.id == testId) return true;
+      if (bookTestId) {
+        return (
+          test.bookTestId === +bookTestId &&
+          (testText === '' || test.subtitle?.toLowerCase().includes(testText.toLowerCase()))
+        );
+      } else {
+        return testText === '' || test.subtitle?.toLowerCase().includes(testText.toLowerCase());
+      }
+    });
+  });
+
   fullScreen = signal(false);
 
-  // 🟢 Form Kontrolleri
-
-
-  // 🟢 Filtrelenmiş listeler
+  readonly bookTestsSignal = toSignal(
+    this.questionForm.get('bookId')!.valueChanges.pipe(
+      switchMap((bookId) => {
+        if (bookId) {
+          return this.bookService.getTestsByBook(bookId);
+        }
+        return of([] as BookTest[]);
+      })
+    ),
+    { initialValue: [] as BookTest[] }
+  );
 
   constructor() {
     this.setFullScreen(false);
@@ -113,45 +164,27 @@ export class QuestionCanvasComponent implements OnInit {
     this.sidenavService.setSidenavState(!fullScreen);
     this.sidenavService.setFullScreen(fullScreen);
   }
-  
+
   downloadRegionsLite() {
     this.imageSelector.downloadRegionsLite();
   }
 
-  get isPreviewMode() {
-    return this.imageSelector ? this.imageSelector.previewMode() : true;
-  }
+  public isPreviewModeComputed = computed(() => (this.imageSelector ? this.imageSelector.previewMode() : true));
 
   togglePreviewMode() {
     let testId = this.id;
-    if(!testId) {
+    if (!testId) {
       testId = this.questionForm.value.testValue;
     }
     this.imageSelector.togglePreviewMode(testId || 0);
   }
 
-  toggleOnlyQuestionMode()  {
+  toggleOnlyQuestionMode() {
     this.imageSelector.toggleOnlyQuestionMode();
   }
 
   handleFilesInput2(event: Event) {
     this.imageSelector.handleFilesInput2(event);
-  }
- 
-
-  onCheckboxChange(event: { checked: boolean; value: any }) {
-    const subjectId = event.value.id;
-    if (event.checked) {
-      if (!this.selectedSubtopicsId.includes(subjectId)) {
-        this.selectedSubtopicsId.push(subjectId);        
-      }
-    } else {
-      const index = this.selectedSubtopicsId.indexOf(subjectId);
-      if (index > -1) {
-        this.selectedSubtopicsId.splice(index, 1);        
-      }
-    }
-    console.log('Checkbox State:', event.checked, 'Value:', event.value);
   }
 
   onChangeQuestionCount(event: any) {
@@ -160,175 +193,85 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   resetFormWithDefaultValues(state: any) {
-    this.questionForm = new FormGroup<QuestionCanvasForm>({
-      subjectId: new FormControl(state?.subjectId || 0, { nonNullable: true, validators: [Validators.required] }),
-      topicId: new FormControl(state?.topicId || 0, { nonNullable: true, validators: [Validators.required] }),
-      subtopicId: new FormControl(state?.subtopicId || 0, { nonNullable: true, validators: [Validators.required] }),
-      isExample: new FormControl(false, { nonNullable: true, validators: [Validators.required] }),
-      practiceCorrectAnswer: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-      testId: new FormControl(state?.testId || '', { nonNullable: true, validators: [Validators.required] })   ,   
-      testValue: new FormControl(state?.testValue || '', { nonNullable: true, validators: [Validators.required] })   ,   
-      bookId: new FormControl(state?.bookId || '', { nonNullable: true, validators: [Validators.required] }),
-      bookTestId: new FormControl(state?.bookTestId || '', { nonNullable: true, validators: [Validators.required] }),      
-    });
+    this.resetTest = true;
+    this.questionForm.patchValue(
+      {
+        subjectId: state?.subjectId || 0,
+        topicId: state?.topicId || 0,
+        subtopicId: state?.subtopicId || 0,
+        isExample: false,
+        practiceCorrectAnswer: '',
+        testId: state?.testId || '',
+        testValue: state?.testValue || '',
+        bookId: state?.bookId || '',
+        bookTestId: state?.bookTestId || '',
+      },
+      { emitEvent: true }
+    );
 
-    this.questionForm.get('testId')?.valueChanges.pipe(      
-      debounceTime(300),
-      switchMap(value => {        
-        console.log('Search value:', value); // Gelen değeri kontrol et
-        return this.testService.search(value || '',[],undefined,1,1000)
-      }),
-      tap(results => {
-        // this.searchInProgress = true;
-        console.log(results.items.filter(test => test.bookTestId === +this.questionForm.value.bookTestId)); // Gelen sonuçları kontrol et
-        this.testList = results.items.filter(test => test.bookTestId === +this.questionForm.value.bookTestId);
-        console.log(this.testList ); // Gelen sonuçları kontrol et
-
-      })
-    ).subscribe();
-
+    this.questionForm.get('testId')?.setValue(state?.testId || '', { emitEvent: false });
   }
 
-    // Input focus olduğunda geçmiş veya öneri listesini göster
-    onFocus() {
-      this.searchInProgress = true;
-    }
+  onFocus() {
+    this.dropdownVisible.set(true);
+  }
 
-    previousImage() {
-      this.imageSelector.previousImage();
-    }
+  previousImage() {
+    this.imageSelector.previousImage();
+  }
 
-    nextImage() {
-      this.imageSelector.nextImage();
-    }
+  nextImage() {
+    this.imageSelector.nextImage();
+  }
 
-    setAutoMode(checked: boolean) {      
-      
-      this.imageSelector.autoMode.set(checked)
-      if(checked){
-       this.nextImage(); 
-      }
+  setAutoMode(checked: boolean) {
+    this.imageSelector.autoMode.set(checked);
+    if (checked) {
+      this.nextImage();
     }
+  }
 
-    setAutoAlign(checked: boolean) {
-      this.imageSelector.autoAlign.set(checked);
-      this.imageSelector.predict();
-    }
-    
-    
-    
-    // Blur olduğunda belirli bir gecikme sonrası listeyi kapat (click eventi için)
-    onBlur() {
-      setTimeout(() => {
-        this.searchInProgress = true;
-      }, 150);
-    }
+  setAutoAlign(checked: boolean) {
+    this.imageSelector.autoAlign.set(checked);
+    this.imageSelector.predict();
+  }
+
+  onBlur() {
+    setTimeout(() => {
+      this.dropdownVisible.set(false);
+    }, 150);
+  }
 
   loadBooks() {
-    this.bookService.getAll().subscribe(data => {
-      this.books = data;
-      if(this.questionForm.value.bookId) {
-        this.onBookChange();
-      } 
-    });
+    const books = this.booksSignal();
   }
 
-
-
-   
-  displayFn = (selectedoption: any): string => {    
-    return selectedoption ? selectedoption.name + '-' + selectedoption.subtitle  : '';
+  displayFn = (selectedoption: any): string => {
+    return selectedoption ? selectedoption.name + '-' + selectedoption.subtitle : '';
   };
 
-  // Kullanıcı seçim yaptığında `FormControl` içine nesneyi set et
   onOptionSelected(event: any) {
-    console.log(event);    
-    // this.searchInProgress = false;  
-    this.testList = [];
+    console.log(event);
     this.questionForm.get('testId')?.setValue(event.subtitle, { emitEvent: false });
     this.questionForm.get('testValue')?.setValue(event.id);
-    
+    this.dropdownVisible.set(false);
   }
 
   ngOnInit() {
     this.loadBooks();
-    // 🟢 Backend'den test listesini getir
-    // this.testService.search('',[],undefined,1,1000).subscribe(data => {
-    //   this.testList = data.items;
-    // });
-
     const navigation = this.router.getCurrentNavigation();
-    const state = navigation?.extras.state as { 
-        subjectId?: number; topicId?: number, subtopicId?: number, testId?: number, bookId?: number, 
-          bookTestId?: number,  testValue?: string};
+    const state = navigation?.extras.state as {
+      subjectId?: number;
+      topicId?: number;
+      subtopicId?: number;
+      testId?: number;
+      bookId?: number;
+      bookTestId?: number;
+      testValue?: string;
+    };
     this.resetFormWithDefaultValues(history.state);
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
-    this.isEditMode = this.id !== null;  
-    // this.loadTests();
-    this.loadCategories();
-  }
-
-  loadTests() {
-    this.testService.search('', [],undefined,1,1000).subscribe(data => {
-      this.testList = data.items.filter(test => test.bookTestId === this.questionForm.value.bookTestId)
-    });
-  }
-
-  loadCategories() {
-    this.subjectService.loadCategories().subscribe(data => {
-      this.subjects = data;
-      if(this.questionForm.value.subjectId) {
-        this.onSubjectChange();
-      }
-    });
-
-    this.questionService.loadPassages().subscribe(data => {
-      this.passages = data;
-    });
-  }
-
-
-  onBookTestChange() {
-    if(this.questionForm.value.bookTestId) {
-        this.questionForm.get('testId')?.setValue(null);
-        this.questionForm.get('testValue')?.setValue(null);        
-    }
-  }
-
-  onBookChange() {
-    if(this.questionForm.value.bookId) {
-      this.bookService.getTestsByBook(this.questionForm.value.bookId).
-        subscribe(data => {
-          this.bookTests = data          
-        });
-    }     
-  }
-  
-
-  onSubjectChange() {
-    if(this.questionForm.value.subjectId) {
-      this.subjectService.getTopicsBySubject(this.questionForm.value.subjectId).
-        subscribe(data => {
-          this.topics = data
-          if(this.questionForm.value.topicId) {
-            this.onTopicChange();
-          }
-        } );
-    } 
-    
-    this.subTopics = []; // Konu değişince alt konuları sıfırla
-  }
-  
-  onTopicChange() {
-    if(this.questionForm.value.topicId) {
-      this.subjectService.getSubTopicsByTopic(this.questionForm.value.topicId).subscribe(data => this.subTopics = data);
-    }
-  }
-
-
-
-  getFormControl(control: any): FormControl {
-    return control as FormControl;
+    this.isEditMode = this.id !== null;
   }
 
   sendToFix() {
@@ -340,39 +283,35 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSubmit() {
-    this.onSave()
+    this.onSave();
   }
 
   onSave(navigateNewQuestion: boolean = false) {
     const formData = this.questionForm.value;
 
-    if(formData.isExample) {
-      if(!formData.practiceCorrectAnswer) {
+    if (formData.isExample) {
+      if (!formData.practiceCorrectAnswer) {
         this.snackBar.open('Lütfen örnek soru için doğru cevabı seçin!', 'Tamam', { duration: 3000 });
-        return
+        return;
       }
     }
-   
 
-    const questionPayload = {            
+    const questionPayload = {
       testId: formData.testValue ? formData.testValue : 0,
       topicId: formData.topicId,
-      subTopics: this.selectedSubtopicsId,
-      subjectId : formData.subjectId,
-    }
+      subjectId: formData.subjectId,
+    };
 
     var payload = this.imageSelector.getRegions(questionPayload);
     this.questionService.saveBulk(payload).subscribe({
-       next: (data) => {
+      next: (data) => {
         console.log('Soru Kaydedildi:', data);
         this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
         this.imageSelector.sendToFix();
-        // this.imageSelector.resetRegions();
-       },
-        error: (err) => {
-          console.log(err);
-        }
+      },
+      error: (err) => {
+        console.log(err);
+      },
     });
-
   }
 }

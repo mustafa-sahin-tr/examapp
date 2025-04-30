@@ -4,6 +4,7 @@
         <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
         <div class="cards" #cardContainer>
           <ul class="psds-carousel__track">
+
             <li class="psds-carousel__item m-5" style="flex-basis: 377.305px;" 
                 *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
               <app-worksheet-card

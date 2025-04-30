@@ -675,7 +675,7 @@ export class ImageSelectorComponent {
     console.log('Entered EndSelection.IsDrawing :', this.isDrawing);
     this.stopEvent(event);
     const questionWidthThreshold = 250;
-    const questionHeightThreshold = 250;
+    const questionHeightThreshold = 100;
     const answerHeightThreshold = 20;
     const answerWidthThreshold = 20;
     if (!this.selectionMode() || !this.ctx || !this.isDrawing) return;

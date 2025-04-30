@@ -100,3 +100,5 @@ minio-data/
 /question-detector/app/data/questions
 /question-detector/app/venv/
 /question-detector/app/venv/lib/python3.8/site-packages
+/question-detector/app/.tmp.driveupload
+/question-detector/app/.tmp.drivedownload

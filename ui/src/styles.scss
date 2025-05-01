@@ -808,11 +808,11 @@ ul {
   min-width: 250px;
 }
 
-img {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-}
+// img {
+//   width: 100px;
+//   height: 100px;
+//   object-fit: cover;
+// }
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/worksheet-list/worksheet-list.component.scss ---- */
 // worksheet-list.component.scss
@@ -1938,7 +1938,7 @@ position: relative;
   /* margin: 12px; */
   transition: box-shadow 0.3sease-in-out;
   cursor: pointer;
-  width: 400px;
+  width: 250px;
 }
 
 .ms-card:hover {
@@ -1953,7 +1953,7 @@ position: relative;
 }
 
 .ms-card h3 {
-  height: 110px;
+  // height: 110px;
   // display: flex;
   align-items: center;
   // justify-content: center;
@@ -2305,7 +2305,7 @@ h4 {
 
 .course-card {
   // padding: 12px;
-  min-height: 130px;
+  min-height: 250px;
   display: flex;
   flex-direction: column;
   border-radius: 6px;
@@ -2314,9 +2314,9 @@ h4 {
 }
 
 .course-title {
-  font-size: 16px;
+  font-size: 14px;
   line-height: 22px;
-  min-height: 75px;
+  min-height: 50px;
   color: var(--mat-sys-on-surface);
 }
 
@@ -2540,11 +2540,12 @@ h4 {
 
     .course-item {
       // background-color: #282832;
-      padding: 15px;
+      // padding: 15px;
       margin-bottom: 10px;
       border-radius: 8px;
       border-bottom: 2px solid rgb(45, 45, 85);
       text-align: left;
+      display: flex;
       h3 {
         font-size: 20px;
         padding-left: 0px;
@@ -2554,6 +2555,10 @@ h4 {
       p {
         margin: 5px 0;
         color: #b3b3b3;
+      }
+
+      img {
+        padding: 12px;
       }
 
       .course-topics {
@@ -3460,7 +3465,7 @@ h4 {
 .ms-nav-area {
   position: absolute;
   top: 0;
-  width: 100px;             /* istediğiniz genişlik */
+  width: 50px;             /* istediğiniz genişlik */
   height: 100%;
   cursor: pointer;
   background: transparent;   /* başlangıçta görünmez */
@@ -3557,6 +3562,17 @@ h4 {
   gap: 1rem;
 }
 
+/* Scroll aktif, çubuk görünmez */
+.hidden-scrollable {
+  overflow: auto;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE ve Edge */
+}
+
+.hidden-scrollable::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari */
+}
+
 
 /* bunlar her zaman en altta kalsın*/
 
@@ -3569,6 +3585,20 @@ h4 {
 .mat-drawer-container {
   background-color: var(--ms-surface) !important;  
 }
+
+/* Scroll aktif, çubuk görünmez */
+.hidden-scrollable .mat-drawer-inner-container{
+  overflow: auto;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* IE ve Edge */
+}
+
+.hidden-scrollable .mat-drawer-inner-container::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari */
+}
+//  {
+//   overflow: hidden !important;
+// }
 
 .mat-drawer.mat-drawer-opened {
   transform: none;

@@ -1,12 +1,5 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  ElementRef,
-  inject,
-  Input,
-  signal,
-  ViewChild,
-} from '@angular/core';
+import { Component, ElementRef, inject, Input, signal, ViewChild } from '@angular/core';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -67,6 +60,12 @@ export class WorksheetListComponent {
 
   @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;
 
+  images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
+  public getBackgroundImage(id: number) {
+    const randomIndex = id % this.images.length;
+    return this.images[randomIndex];
+  }
+
   get totalPages(): number {
     return Math.ceil(this.pagedWorksheetsSignal().totalCount / this.pageSize);
   }
@@ -88,9 +87,7 @@ export class WorksheetListComponent {
   }
 
   ngOnInit() {
-    const initialWorksheets = this.route.snapshot.data[
-      'worksheets'
-    ] as Paged<Test>;
+    const initialWorksheets = this.route.snapshot.data['worksheets'] as Paged<Test>;
     this.pagedWorksheetsSignal.set(initialWorksheets);
     this.route.queryParams.subscribe((params) => {
       const search = params['search'] ?? '';
@@ -118,10 +115,7 @@ export class WorksheetListComponent {
 
   nextPage() {
     console.log('Next page');
-    if (
-      this.pageNumber * this.pageSize <
-      this.pagedWorksheetsSignal().totalCount
-    ) {
+    if (this.pageNumber * this.pageSize < this.pagedWorksheetsSignal().totalCount) {
       this.pageNumber++;
       this.updatePagedWorksheets(this.pageNumber);
     }
@@ -137,12 +131,7 @@ export class WorksheetListComponent {
 
   private updatePagedWorksheets(page: number): void {
     this.testService
-      .search(
-        this.searchControl.value || '',
-        this.selectedSubjectIds,
-        this.selectedGradeId,
-        page
-      )
+      .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeId, page)
       .subscribe((results) => {
         this.pagedWorksheetsSignal.set(results);
       });
@@ -186,15 +175,9 @@ export class WorksheetListComponent {
   handleRightNavigation() {
     if (this.cardContainer) {
       const container = this.cardContainer.nativeElement;
-      if (
-        container.scrollLeft + container.clientWidth <
-        container.scrollWidth
-      ) {
+      if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
         container.scrollBy({ left: this.scrollDistance, behavior: 'smooth' });
-      } else if (
-        this.pageNumber * this.pageSize <
-        this.pagedWorksheetsSignal().totalCount
-      ) {
+      } else if (this.pageNumber * this.pageSize < this.pagedWorksheetsSignal().totalCount) {
         // this.nextPage();
       }
     }

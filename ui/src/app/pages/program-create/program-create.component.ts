@@ -2,101 +2,186 @@ import { NgFor } from '@angular/common';
 import { Component, signal } from '@angular/core';
 
 export interface Option {
-    label: string;
-    value: string;
-    selected?: boolean;
-    icon?: string;
+  label: string;
+  value: string;
+  selected?: boolean;
+  icon?: string;
 }
 export interface ProgramStep {
-    title: string;
-    description: string;
-    options: Option[];
+  title: string;
+  description: string;
+  options: Option[];
 }
 
 @Component({
   selector: 'app-program-create',
   imports: [NgFor],
   templateUrl: './program-create.component.html',
-  styleUrl: './program-create.component.scss'
+  styleUrl: './program-create.component.scss',
 })
 export class ProgramCreateComponent {
-    currentIndex = signal(0);
+  currentIndex = signal(0);
+  stepList = [0, 1, 2, 3, 4, 5, 6];
 
-    get currentStep(): ProgramStep {
-        return this.programSteps[this.currentIndex()];
-    }
+  get currentStep(): ProgramStep {
+    return this.programSteps[this.currentIndex()];
+  }
 
-    userProgramSteps: number[] = [];
+  userProgramSteps: number[] = [];
 
-    programSteps = [
-        {   
-          id: 1,
-          title: 'Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?',
-          description: 'Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?',
-          options: [
-              { label: 'Süreli Çalışma', value: 'time', selected: false, icon: 'icons/question-mark.svg', nextStep: 2 },
-              { label: 'Soru Sayısı Takipli Çalışma', value: 'question', selected: false, icon: 'icons/timer.svg', nextStep: 3 },
-              { label: 'Her ikisi', value: 'both', selected: false, icon: 'icons/all.svg', nextStep: 4 },
-            ]
+  programSteps = [
+    {
+      id: 1,
+      title: 'Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?',
+      description: 'Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?',
+      options: [
+        { label: 'Süreli Çalışma', value: 'time', selected: false, icon: 'icons/question-mark.svg', nextStep: 2 },
+        {
+          label: 'Soru Sayısı Takipli Çalışma',
+          value: 'question',
+          selected: false,
+          icon: 'icons/timer.svg',
+          nextStep: 3,
         },
-        { 
-          id: 2,  
-          title: 'Sana uygun olan çalışma süresini seçebilirsin.',
-          description: 'Sana uygun olan çalışma süresini seçebilirsin.',
-          options: [
-             { label: '25 dakika çalışma 5 dakika ara', value: '25-5' , selected: false, icon: 'icons/question-mark.svg' ,  nextStep: 3 },
-             { label: '30 dakika çalışma 10 dakika ara', value: '30-10' , selected: false, icon: 'icons/question-mark.svg' ,  nextStep: 3 },
-             { label: '40 dakika çalışma 10 dakika ara', value: '40-10' , selected: false, icon: 'icons/question-mark.svg' ,  nextStep: 3 },
-             { label: '50 dakika çalışma 10 dakika ara', value: '50-10' , selected: false, icon: 'icons/question-mark.svg' ,  nextStep: 3 },
-            ]
+        { label: 'Her ikisi', value: 'both', selected: false, icon: 'icons/all.svg', nextStep: 4 },
+      ],
+    },
+    {
+      id: 2,
+      title: 'Sana uygun olan çalışma süresini seçebilirsin.',
+      description: 'Sana uygun olan çalışma süresini seçebilirsin.',
+      options: [
+        {
+          label: '25 dakika çalışma 5 dakika ara',
+          value: '25-5',
+          selected: false,
+          icon: 'icons/question-mark.svg',
+          nextStep: 5,
         },
-     {   
+        {
+          label: '30 dakika çalışma 10 dakika ara',
+          value: '30-10',
+          selected: false,
+          icon: 'icons/question-mark.svg',
+          nextStep: 5,
+        },
+        {
+          label: '40 dakika çalışma 10 dakika ara',
+          value: '40-10',
+          selected: false,
+          icon: 'icons/question-mark.svg',
+          nextStep: 5,
+        },
+        {
+          label: '50 dakika çalışma 10 dakika ara',
+          value: '50-10',
+          selected: false,
+          icon: 'icons/question-mark.svg',
+          nextStep: 5,
+        },
+      ],
+    },
+    {
       id: 3,
       title: 'Bir dersten bir günde kaç soru çözersin?',
       description: 'Bir dersten bir günde kaç soru çözersin?',
       options: [
-         { label: '8', value: '8',selected: false, icon: 'icons/question-mark.svg'  ,  nextStep: 4 },
-         { label: '12', value: '12', selected: false, icon: 'icons/question-mark.svg' ,  nextStep: 4  },
-         { label: '16', value: '16', selected: false, icon: 'icons/question-mark.svg'  ,  nextStep: 4 }
-         ]
+        { label: '8', value: '8', selected: false, icon: 'icons/question-mark.svg', nextStep: 4 },
+        { label: '12', value: '12', selected: false, icon: 'icons/question-mark.svg', nextStep: 4 },
+        { label: '16', value: '16', selected: false, icon: 'icons/question-mark.svg', nextStep: 4 },
+      ],
     },
-    {  
+    {
       id: 4,
       title: 'Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin',
       description: 'Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin',
       options: [
-        { label: 'Süreli Çalışma', value: 'time' , selected: false, icon: 'icons/question-mark.svg' , nextStep: -1  },
-        { label: 'Soru Sayısı Takipli Çalışma', value: 'question', selected: false, icon: 'icons/question-mark.svg' ,nextStep: -1 }
-        ]
-    }
-    ];
+        { label: 'Süreli Çalışma', value: 'time', selected: false, icon: 'icons/question-mark.svg', nextStep: -1 },
+        {
+          label: 'Soru Sayısı Takipli Çalışma',
+          value: 'question',
+          selected: false,
+          icon: 'icons/question-mark.svg',
+          nextStep: -1,
+        },
+      ],
+    },
+    {
+      id: 5,
+      title: 'Bir günde kaç farklı ders çalışmak istersin?',
+      description: 'Bir günde kaç farklı ders çalışmak istersin?',
+      options: [
+        { label: '1', value: '1', selected: false, icon: 'icons/one-svgrepo-com.svg', nextStep: 6 },
+        {
+          label: '2',
+          value: '2',
+          selected: false,
+          icon: 'icons/two-svgrepo-com.svg',
+          nextStep: 6,
+        },
+        {
+          label: '3',
+          value: '3',
+          selected: false,
+          icon: 'icons/three-svgrepo-com.svg',
+          nextStep: 6,
+        },
+      ],
+    },
+    {
+      id: 6,
+      title: 'Ders çalışamayacağın gün var mı?',
+      description: 'Ders çalışamayacağın gün var mı?',
+      options: [
+        { label: 'Pazartesi', value: '1', selected: false, icon: 'icons/monday-svgrepo-com.svg', nextStep: 7 },
+        { label: 'Salı', value: '2', selected: false, icon: 'icons/tuesday-svgrepo-com.svg', nextStep: 7 },
+        { label: 'Çarşamba', value: '3', selected: false, icon: 'icons/wednesday-svgrepo-com.svg', nextStep: 7 },
+        { label: 'Perşembe', value: '4', selected: false, icon: 'icons/thursday-svgrepo-com.svg', nextStep: 7 },
+        { label: 'Cuma', value: '5', selected: false, icon: 'icons/friday-svgrepo-com.svg', nextStep: 7 },
+        { label: 'Cumartesi', value: '6', selected: false, icon: 'icons/saturday-svgrepo-com.svg', nextStep: 7 },
+        { label: 'Pazar', value: '7', selected: false, icon: 'icons/sunday-svgrepo-com.svg', nextStep: 7 },
+      ],
+    },
+    {
+      id: 7,
+      title: 'Çalışırken zorlandığın ders / dersler hangileri?',
+      description: 'Çalışırken zorlandığın ders / dersler hangileri?',
+      options: [
+        { label: 'Hayat Bilgisi', value: '1', selected: false, icon: 'icons/home-svgrepo-com.svg', nextStep: -1 },
+        { label: 'Türkçe', value: '2', selected: false, icon: 'icons/alphabet-svgrepo-com.svg', nextStep: -1 },
+        { label: 'Matematik', value: '3', selected: false, icon: 'icons/math-svgrepo-com.svg', nextStep: -1 },
+        { label: 'Türkçe', value: '4', selected: false, icon: 'icons/world-svgrepo-com.svg', nextStep: -1 },
+        { label: 'Yok', value: '5', selected: false, icon: 'icons/null-svgrepo-com.svg', nextStep: -1 },
+      ],
+    },
+  ];
 
-    next() {
-        this.userProgramSteps.push(this.currentIndex());
-        const nextStep = this.programSteps.findIndex(s => s.id === this.programSteps[this.currentIndex()].options.find(o => o.selected)?.nextStep);                      
-        if (nextStep !== undefined && nextStep !== -1) {
-            this.currentIndex.set(nextStep);
-        } else {
-            // Eğer bir sonraki adım yoksa, işlemi tamamla veya başka bir şey yap
-            console.log('Program oluşturma işlemi tamamlandı.');
-        }    
+  next() {
+    this.userProgramSteps.push(this.currentIndex());
+    const nextStep = this.programSteps.findIndex(
+      (s) => s.id === this.programSteps[this.currentIndex()].options.find((o) => o.selected)?.nextStep
+    );
+    if (nextStep !== undefined && nextStep !== -1) {
+      this.currentIndex.set(nextStep);
+    } else {
+      // Eğer bir sonraki adım yoksa, işlemi tamamla veya başka bir şey yap
+      console.log('Program oluşturma işlemi tamamlandı.');
     }
-    previous() {
-        const previousStep = this.userProgramSteps.pop();
-        if (previousStep !== undefined) {
-            this.currentIndex.set(previousStep);
+  }
+  previous() {
+    const previousStep = this.userProgramSteps.pop();
+    if (previousStep !== undefined) {
+      this.currentIndex.set(previousStep);
 
-            console.log('Previous step:', this.programSteps[this.currentIndex()]);  
-        }
+      console.log('Previous step:', this.programSteps[this.currentIndex()]);
     }
+  }
 
-    selectOption(step: any, option: Option) {
-        this.programSteps.forEach(s => {
-            s.options.forEach(o => {
-                o.selected = option.value === o.value;
-            });
-        }
-      );
-        
-    }
+  selectOption(step: any, option: Option) {
+    this.programSteps.forEach((s) => {
+      s.options.forEach((o) => {
+        o.selected = option.value === o.value;
+      });
+    });
+  }
 }

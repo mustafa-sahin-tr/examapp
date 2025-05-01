@@ -2990,6 +2990,8 @@ h4 {
   color: #9086ca;
   cursor: pointer;
   transition: box-shadow 0.2s ease-in-out;
+  max-width: 200px;
+  min-width: 100px;
 }
 
 .ms-option-button:hover {

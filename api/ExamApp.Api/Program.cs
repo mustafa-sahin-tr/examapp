@@ -40,7 +40,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddScoped<IJwtService,JwtService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddSingleton<IMinIoService, MinIoService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -50,7 +50,7 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
-
+builder.Services.AddSingleton<TestInstanceQuestionSaveChangesInterceptor>();
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));

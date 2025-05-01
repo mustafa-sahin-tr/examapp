@@ -7,8 +7,11 @@ namespace ExamApp.Api.Data;
 public class AppDbContext : DbContext
 {
     private int? _currentUserId = 0;  // Varsayılan olarak 0
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) 
+    private readonly TestInstanceQuestionSaveChangesInterceptor _interceptor;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
+        _interceptor = interceptor;
     }
 
     // BaseController'dan çağrılacak metod
@@ -27,6 +30,11 @@ public class AppDbContext : DbContext
     {
         ApplyAuditInfo();
         return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.AddInterceptors(_interceptor);
     }
 
     private void ApplyAuditInfo()
@@ -121,7 +129,7 @@ public class AppDbContext : DbContext
             new Subject { Id = 15, Name = "Felsefe" }
         );
 
-        modelBuilder.Entity<GradeSubject>().HasData(            
+        modelBuilder.Entity<GradeSubject>().HasData(
             new GradeSubject { Id = 1, GradeId = 1, SubjectId = 1 }, // 1. Sınıf - Türkçe
             new GradeSubject { Id = 2, GradeId = 1, SubjectId = 2 }, // 1. Sınıf - Matematik
             new GradeSubject { Id = 3, GradeId = 1, SubjectId = 3 }, // 1. Sınıf - Hayat Bilgisi
@@ -205,7 +213,7 @@ public class AppDbContext : DbContext
             .WithOne(wq => wq.Worksheet)
             .HasForeignKey(wq => wq.TestId);
 
-            // 📌 Grade - Subject İlişkisi
+        // 📌 Grade - Subject İlişkisi
         modelBuilder.Entity<GradeSubject>()
             .HasOne(gs => gs.Grade)
             .WithMany(g => g.GradeSubjects)
@@ -252,8 +260,8 @@ public class AppDbContext : DbContext
             .HasForeignKey(sse => sse.SpecialEventId);
 
         modelBuilder.Entity<Student>()
-            .HasMany(s => s.StudentBadges)  
-            .WithOne(sb => sb.Student)  
+            .HasMany(s => s.StudentBadges)
+            .WithOne(sb => sb.Student)
             .HasForeignKey(sb => sb.StudentId);
 
         modelBuilder.Entity<Badge>()
@@ -296,7 +304,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(qst => qst.QuestionId);
 
         modelBuilder.Entity<QuestionSubTopic>()
-            .HasOne(qst => qst.SubTopic) 
+            .HasOne(qst => qst.SubTopic)
             .WithMany(st => st.QuestionSubTopics)
             .HasForeignKey(qst => qst.SubTopicId);
 
@@ -315,7 +323,7 @@ public class AppDbContext : DbContext
                 method?.Invoke(null, new object[] { modelBuilder });
             }
         }
-            
+
     }
 
     private static LambdaExpression ConvertFilter<T>(Expression<Func<T, bool>> filter)

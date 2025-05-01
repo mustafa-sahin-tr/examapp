@@ -21,19 +21,19 @@ public class ExamService : IExamService
         _context = context;
         _minioService = minioService;
     }
-    
+
     public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, User user, Teacher? teacher = null)
     {
         var query = _context.Worksheets.AsQueryable();
 
-        if(dto.id > 0)
+        if (dto.id > 0)
         {
             query = query.Where(t => t.Id == dto.id);
         }
         else
         {
             if (dto.gradeId.HasValue)
-                query = query.Where(t => t.GradeId == dto.gradeId.Value);            
+                query = query.Where(t => t.GradeId == dto.gradeId.Value);
 
             if (dto.subjectIds != null && dto.subjectIds.Any())
                 query = query.Where(t => t.SubjectId.HasValue && dto.subjectIds.Contains(t.SubjectId.Value));
@@ -55,7 +55,7 @@ public class ExamService : IExamService
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
         var tests = await query
             .Include(t => t.BookTest)
-                .ThenInclude(bt => bt.Book)      
+                .ThenInclude(bt => bt.Book)
             .Include(t => t.WorksheetQuestions)
                 .ThenInclude(tq => tq.Question)
             .OrderBy(t => t.Name) // Sıralama için
@@ -79,8 +79,8 @@ public class ExamService : IExamService
                 BadgeText = t.BadgeText,
                 BookTestId = t.BookTestId,
                 BookId = t.BookTest?.BookId,
-                QuestionCount = t.WorksheetQuestions.Count()                
-            };            
+                QuestionCount = t.WorksheetQuestions.Count()
+            };
         }).ToList();
 
         return new Paged<WorksheetDto>
@@ -94,16 +94,16 @@ public class ExamService : IExamService
 
     public async Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, User user, Student? student = null)
     {
-         var instanceQuery = _context.TestInstances
-            .Where(ti => ti.StudentId == student.Id)            
-            .Include(ti => ti.WorksheetInstanceQuestions)
-            .Include(ti => ti.Worksheet)
-            .AsQueryable();
+        var instanceQuery = _context.TestInstances
+           .Where(ti => ti.StudentId == student.Id)
+           .Include(ti => ti.WorksheetInstanceQuestions)
+           .Include(ti => ti.Worksheet)
+           .AsQueryable();
 
 
         var query = _context.Worksheets.AsQueryable();
 
-        if(dto.id > 0)
+        if (dto.id > 0)
         {
             query = query.Where(t => t.Id == dto.id);
             instanceQuery = instanceQuery.Where(ti => ti.WorksheetId == dto.id);
@@ -133,18 +133,19 @@ public class ExamService : IExamService
         // Her worksheet için kaç benzersiz öğrenci instance oluşturmuş
         var worksheetStudentCounts = await _context.TestInstances
             .GroupBy(ti => ti.WorksheetId)
-            .Select(g => new {
+            .Select(g => new
+            {
                 WorksheetId = g.Key,
                 UniqueStudentCount = g.Select(ti => ti.StudentId).Distinct().Count()
             })
             .ToDictionaryAsync(x => x.WorksheetId, x => x.UniqueStudentCount);
-        
+
         var instances = await instanceQuery.ToListAsync(); // 🔥 Burada `ToListAsync()` çağırarak veriyi hafızaya alıyoruz
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
         var tests = await query
             .Include(t => t.BookTest)
-                .ThenInclude(bt => bt.Book)      
+                .ThenInclude(bt => bt.Book)
             .Include(t => t.WorksheetQuestions)
                 .ThenInclude(tq => tq.Question)
             .OrderBy(t => t.Name) // Sıralama için
@@ -161,22 +162,22 @@ public class ExamService : IExamService
             {
                 var correct = instance.WorksheetInstanceQuestions.Count(wiq =>
                     wiq.SelectedAnswerId != null &&
-                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId
                         && wq.Question.CorrectAnswerId == wiq.SelectedAnswerId));
 
                 var wrong = instance.WorksheetInstanceQuestions.Count(wiq =>
                     wiq.SelectedAnswerId != null &&
-                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId 
+                    t.WorksheetQuestions.Any(wq => wq.Id == wiq.WorksheetQuestionId
                         && wq.Question.CorrectAnswerId != wiq.SelectedAnswerId));
-                        instanceDto = new InstanceSummaryDto
+                instanceDto = new InstanceSummaryDto
                 {
                     Id = instance.Id,
                     Name = t.Name,
                     Status = (int)instance.Status,
                     ImageUrl = t.ImageUrl,
                     CompletedDate = instance.EndTime ?? DateTime.UtcNow,
-                    DurationMinutes = instance.EndTime.HasValue ? 
-                        (int)(instance.EndTime.Value - instance.StartTime).TotalMinutes : 0,
+                    DurationMinutes = instance.EndTime.HasValue ?
+                (int)(instance.EndTime.Value - instance.StartTime).TotalMinutes : 0,
                     TotalQuestions = instance.WorksheetInstanceQuestions.Count,
                     CorrectAnswers = correct,
                     WrongAnswers = wrong,
@@ -201,7 +202,7 @@ public class ExamService : IExamService
                 QuestionCount = t.WorksheetQuestions.Count(),
                 Instance = instanceDto, // 💡 Eklenen alan
                 InstanceCount = worksheetStudentCounts.TryGetValue(t.Id, out var count) ? count : 0 // 💡 Yeni eklenen alan
-            };            
+            };
         }).ToList();
 
         return new Paged<WorksheetDto>
@@ -246,7 +247,7 @@ public class ExamService : IExamService
             Name = wi.Name,
             ImageUrl = wi.ImageUrl,
             CompletedDate = wi.EndTime ?? DateTime.UtcNow,
-            DurationMinutes = wi.EndTime.HasValue ? 
+            DurationMinutes = wi.EndTime.HasValue ?
                 (int)(wi.EndTime.Value - wi.StartTime).TotalMinutes : 0,
             TotalQuestions = wi.TotalQuestions,
             CorrectAnswers = wi.CorrectAnswers,
@@ -381,14 +382,15 @@ public class ExamService : IExamService
         var existing = await _context.TestInstances
             .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
                 && ti.EndTime == null
-                && ti.Student.UserId == student.UserId );
+                && ti.Student.UserId == student.UserId);
 
 
         if (existing != null)
         {
-            if(existing.Status == WorksheetInstanceStatus.Completed) {
+            if (existing.Status == WorksheetInstanceStatus.Completed)
+            {
                 return new TestStartResultDto
-                {            
+                {
                     Success = false,
                     Message = "Bu test zaten tamamlanmış.",
                     InstanceId = existing.Id,
@@ -498,117 +500,121 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<List<WorksheetInstanceQuestionDto>> GetAllCanvasQuestions(bool includeAnswers = false, int maxId = 0) 
-    {    
+    public async Task<List<WorksheetInstanceQuestionDto>> GetAllCanvasQuestions(bool includeAnswers = false, int maxId = 0)
+    {
         var questions = await _context.Questions
             .Include(q => q.Answers)
             .Where(q => q.IsCanvasQuestion && q.Id > maxId)
             .Select(q => new WorksheetInstanceQuestionDto
-            {                                
-                Question = new QuestionDto {
-                Id = q.Id,
-                X = q.X,
-                Y = q.Y,
-                Width = q.Width,
-                Height = q.Height,
-                ImageUrl = q.ImageUrl,
-                Answers = includeAnswers ? q.Answers.Select(a => new AnswerDto
+            {
+                Question = new QuestionDto
                 {
-                    X = a.X,
-                    Y = a.Y,
-                    Width = a.Width,
-                    Height = a.Height
-                }).ToList() : new List<AnswerDto>(),
-            }}
+                    Id = q.Id,
+                    X = q.X,
+                    Y = q.Y,
+                    Width = q.Width,
+                    Height = q.Height,
+                    ImageUrl = q.ImageUrl,
+                    Answers = includeAnswers ? q.Answers.Select(a => new AnswerDto
+                    {
+                        X = a.X,
+                        Y = a.Y,
+                        Width = a.Width,
+                        Height = a.Height
+                    }).ToList() : new List<AnswerDto>(),
+                }
+            }
             )
-            .ToListAsync(); 
+            .ToListAsync();
 
         return questions;
     }
 
     public async Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false)
     {
-            var testInstance = await _context.TestInstances
-                .Include(ti => ti.Worksheet)
-                .Include(ti => ti.WorksheetInstanceQuestions)
-                    .ThenInclude(tiq => tiq.WorksheetQuestion)
-                    .ThenInclude(tq => tq.Question)
-                    .ThenInclude(q => q.Answers)
-                .Include(ti => ti.WorksheetInstanceQuestions)
-                    .ThenInclude(tiq => tiq.WorksheetQuestion)
-                    .ThenInclude(tq => tq.Question)
-                    .ThenInclude(q => q.Passage)
-                .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && 
-                        ti.Student.UserId == userId);
+        var testInstance = await _context.TestInstances
+            .Include(ti => ti.Worksheet)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Answers)
+            .Include(ti => ti.WorksheetInstanceQuestions)
+                .ThenInclude(tiq => tiq.WorksheetQuestion)
+                .ThenInclude(tq => tq.Question)
+                .ThenInclude(q => q.Passage)
+            .FirstOrDefaultAsync(ti => ti.Id == testInstanceId &&
+                    ti.Student.UserId == userId);
 
-            if (testInstance == null)
-            {
-                return null;
-            }        
+        if (testInstance == null)
+        {
+            return null;
+        }
 
-            if(includeCorrectAnswer && testInstance.Status != WorksheetInstanceStatus.Completed)
-            {
-                return null;
-            }
+        if (includeCorrectAnswer && testInstance.Status != WorksheetInstanceStatus.Completed)
+        {
+            return null;
+        }
 
-            var response = new WorksheetInstanceResultDto
+        var response = new WorksheetInstanceResultDto
+        {
+            Id = testInstance.Id,
+            TestName = testInstance.Worksheet.Name,
+            Status = testInstance.Status,
+            MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
+            IsPracticeTest = testInstance.Worksheet.IsPracticeTest,
+            TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq => new WorksheetInstanceQuestionDto
             {
-                Id = testInstance.Id,
-                TestName = testInstance.Worksheet.Name,            
-                Status = testInstance.Status,
-                MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
-                IsPracticeTest = testInstance.Worksheet.IsPracticeTest,
-                TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq => new WorksheetInstanceQuestionDto
+                Id = tiq.Id,
+                Order = tiq.WorksheetQuestion.Order,
+                Question = new QuestionDto
                 {
-                    Id = tiq.Id,
-                    Order = tiq.WorksheetQuestion.Order,                
-                    Question = new QuestionDto {
-                        Id = tiq.WorksheetQuestion.Question.Id,
-                        Text = tiq.WorksheetQuestion?.Question?.Text ?? string.Empty,
-                        SubText = tiq.WorksheetQuestion.Question.SubText,
-                        ImageUrl = tiq.WorksheetQuestion.Question.ImageUrl,
-                        IsExample = tiq.WorksheetQuestion.Question.IsExample,
-                        CorrectAnswerId = includeCorrectAnswer ? tiq.WorksheetQuestion.Question.CorrectAnswerId : null,
-                        Passage = tiq.WorksheetQuestion.Question.PassageId.HasValue ? new PassageDto {
-                            Id = tiq.WorksheetQuestion.Question.Passage?.Id,
-                            Title = tiq.WorksheetQuestion.Question.Passage?.Title,
-                            Text = tiq.WorksheetQuestion.Question.Passage?.Text,
-                            ImageUrl = tiq.WorksheetQuestion.Question.Passage?.ImageUrl,
-                            X = tiq.WorksheetQuestion.Question.Passage?.X,
-                            Y = tiq.WorksheetQuestion.Question.Passage?.Y,
-                            Width = tiq.WorksheetQuestion.Question.Passage?.Width,
-                            Height = tiq.WorksheetQuestion.Question.Passage?.Height
-                        } : null,
-                        PracticeCorrectAnswer = tiq.WorksheetQuestion.Question.PracticeCorrectAnswer,
-                        AnswerColCount = tiq.WorksheetQuestion.Question.AnswerColCount,
-                        IsCanvasQuestion = tiq.WorksheetQuestion.Question.IsCanvasQuestion,
-                        X= tiq.WorksheetQuestion.Question.X,
-                        Y= tiq.WorksheetQuestion.Question.Y,
-                        Width = tiq.WorksheetQuestion.Question.Width,
-                        Height = tiq.WorksheetQuestion.Question.Height,                    
-                        Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new AnswerDto
-                        {
-                            Id = a.Id,
-                            Text = a.Text,                        
-                            ImageUrl = a.ImageUrl,
-                            X = a.X,
-                            Y = a.Y,
-                            Width = a.Width,
-                            Height = a.Height
-                        }).ToList() 
-                    } ,
-                    SelectedAnswerId = tiq.SelectedAnswerId // Önceden seçilen cevap
-                }).ToList()
-            };
+                    Id = tiq.WorksheetQuestion.Question.Id,
+                    Text = tiq.WorksheetQuestion?.Question?.Text ?? string.Empty,
+                    SubText = tiq.WorksheetQuestion.Question.SubText,
+                    ImageUrl = tiq.WorksheetQuestion.Question.ImageUrl,
+                    IsExample = tiq.WorksheetQuestion.Question.IsExample,
+                    CorrectAnswerId = includeCorrectAnswer ? tiq.WorksheetQuestion.Question.CorrectAnswerId : null,
+                    Passage = tiq.WorksheetQuestion.Question.PassageId.HasValue ? new PassageDto
+                    {
+                        Id = tiq.WorksheetQuestion.Question.Passage?.Id,
+                        Title = tiq.WorksheetQuestion.Question.Passage?.Title,
+                        Text = tiq.WorksheetQuestion.Question.Passage?.Text,
+                        ImageUrl = tiq.WorksheetQuestion.Question.Passage?.ImageUrl,
+                        X = tiq.WorksheetQuestion.Question.Passage?.X,
+                        Y = tiq.WorksheetQuestion.Question.Passage?.Y,
+                        Width = tiq.WorksheetQuestion.Question.Passage?.Width,
+                        Height = tiq.WorksheetQuestion.Question.Passage?.Height
+                    } : null,
+                    PracticeCorrectAnswer = tiq.WorksheetQuestion.Question.PracticeCorrectAnswer,
+                    AnswerColCount = tiq.WorksheetQuestion.Question.AnswerColCount,
+                    IsCanvasQuestion = tiq.WorksheetQuestion.Question.IsCanvasQuestion,
+                    X = tiq.WorksheetQuestion.Question.X,
+                    Y = tiq.WorksheetQuestion.Question.Y,
+                    Width = tiq.WorksheetQuestion.Question.Width,
+                    Height = tiq.WorksheetQuestion.Question.Height,
+                    Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new AnswerDto
+                    {
+                        Id = a.Id,
+                        Text = a.Text,
+                        ImageUrl = a.ImageUrl,
+                        X = a.X,
+                        Y = a.Y,
+                        Width = a.Width,
+                        Height = a.Height
+                    }).ToList()
+                },
+                SelectedAnswerId = tiq.SelectedAnswerId // Önceden seçilen cevap
+            }).ToList()
+        };
 
 
-            return response;
+        return response;
     }
 
     public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, int userId)
-    {            
+    {
         var testInstanceQuestion = await _context.TestInstanceQuestions
-            .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId && 
+            .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId &&
                 tiq.Id == dto.TestQuestionId
                 && tiq.WorksheetInstance.Student.UserId == userId);
 
@@ -620,13 +626,11 @@ public class ExamService : IExamService
                 Message = "Test instance question not found."
             };
         }
-
-        testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId;        
+        testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId;
         testInstanceQuestion.TimeTaken = dto.TimeTaken;
-
         _context.TestInstanceQuestions.Update(testInstanceQuestion);
+        // Update Question Count
         await _context.SaveChangesAsync();
-
         return new ResponseBaseDto
         {
             Success = true,
@@ -639,7 +643,8 @@ public class ExamService : IExamService
         var testInstance = await _context.TestInstances
             .FirstOrDefaultAsync(ti => ti.Id == testInstanceId && ti.Student.UserId == userId);
 
-        if (testInstance == null){
+        if (testInstance == null)
+        {
             return new ResponseBaseDto
             {
                 Success = false,
@@ -647,7 +652,8 @@ public class ExamService : IExamService
             };
         }
 
-        if (testInstance.Status != WorksheetInstanceStatus.Started) {
+        if (testInstance.Status != WorksheetInstanceStatus.Started)
+        {
             return new ResponseBaseDto
             {
                 Success = false,
@@ -666,9 +672,9 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId) 
+    public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId)
     {
-        if(examDto == null)
+        if (examDto == null)
         {
             // TODO: bu kontrolleri contrrollerda yapabilirsin
             // return BadRequest(new { error = "Sınav bilgileri eksik!" });
@@ -678,10 +684,10 @@ public class ExamService : IExamService
                 Message = "Sınav bilgileri eksik!"
             };
         }
-            
+
         try
         {
-            if(examDto.BookId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookName))
+            if (examDto.BookId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookName))
             {
                 // return BadRequest(new { error = "Kitap seçilmedi!" });
                 return new ExamSavedDto
@@ -691,7 +697,7 @@ public class ExamService : IExamService
                 };
             }
 
-            if(examDto.BookTestId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+            if (examDto.BookTestId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookTestName))
             {
                 // return BadRequest(new { error = "Kipta Test seçilmedi!" });
                 return new ExamSavedDto
@@ -705,7 +711,8 @@ public class ExamService : IExamService
 
             if (examDto.BookId == 0)
             {
-                if(string.IsNullOrWhiteSpace(examDto.NewBookName)) {
+                if (string.IsNullOrWhiteSpace(examDto.NewBookName))
+                {
                     // return BadRequest(new { error = "Kitap seçilmedi!" });
                     return new ExamSavedDto
                     {
@@ -714,8 +721,9 @@ public class ExamService : IExamService
                     };
                     // return BadRequest(new { error = "Kitap seçilmedi!" });
                 }
-                
-                if(string.IsNullOrWhiteSpace(examDto.NewBookTestName)) {
+
+                if (string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+                {
                     // return BadRequest(new { error = "Kipta Test seçilmedi!" });
                     return new ExamSavedDto
                     {
@@ -740,10 +748,12 @@ public class ExamService : IExamService
 
                 _context.Books.Add(book);
                 await _context.SaveChangesAsync();
-            } else {
+            }
+            else
+            {
                 book = await _context.Books
                             .Include(b => b.BookTests)
-                        .FirstOrDefaultAsync(b => b.Id == examDto.BookId) ;
+                        .FirstOrDefaultAsync(b => b.Id == examDto.BookId);
 
                 if (book == null)
                 {
@@ -756,7 +766,8 @@ public class ExamService : IExamService
                 }
                 if (examDto.BookTestId == 0)
                 {
-                    if(string.IsNullOrWhiteSpace(examDto.NewBookTestName)) {
+                    if (string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+                    {
                         // return BadRequest(new { error = "Kipta Test seçilmedi!" });
                         return new ExamSavedDto
                         {
@@ -764,7 +775,7 @@ public class ExamService : IExamService
                             Message = "Kipta Test seçilmedi!"
                         };
                     }
-                    else 
+                    else
                     {
                         book.BookTests.Add(new BookTest
                         {
@@ -773,9 +784,9 @@ public class ExamService : IExamService
                         });
                     }
                     await _context.SaveChangesAsync();
-                }                            
+                }
             }
-            
+
 
             var bookTestId = examDto.BookTestId == 0 ?
                         book.BookTests.First(bt => bt.Name == examDto.NewBookTestName).Id : examDto.BookTestId;
@@ -948,8 +959,9 @@ public class ExamService : IExamService
             .ToList();
 
         // 🔹 Response
-        var response = new ExamAllStatisticsDto {
-            Total =  new ExamStatisticsDto
+        var response = new ExamAllStatisticsDto
+        {
+            Total = new ExamStatisticsDto
             {
                 TotalSolvedTests = totalSolved,
                 CompletedTests = completedCount,

@@ -7,13 +7,9 @@ namespace ExamApp.Api.Data;
 public class AppDbContext : DbContext
 {
     private int? _currentUserId = 0;  // Varsayılan olarak 0
-    private readonly TestInstanceQuestionSaveChangesInterceptor _interceptor;
-
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
-        _interceptor = interceptor;
     }
-
     // BaseController'dan çağrılacak metod
     public void SetCurrentUser(int userId)
     {
@@ -30,11 +26,6 @@ public class AppDbContext : DbContext
     {
         ApplyAuditInfo();
         return await base.SaveChangesAsync(cancellationToken);
-    }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        optionsBuilder.AddInterceptors(_interceptor);
     }
 
     private void ApplyAuditInfo()
@@ -91,6 +82,7 @@ public class AppDbContext : DbContext
     public DbSet<BookTest> BookTests { get; set; }
     public DbSet<Passage> Passage { get; set; }
     public DbSet<QuestionSubTopic> QuestionSubTopics { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

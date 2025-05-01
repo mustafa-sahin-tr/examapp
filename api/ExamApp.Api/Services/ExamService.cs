@@ -2,10 +2,12 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Events;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Numerics;
+using System.Text.Json;
 
 namespace ExamApp.Api.Services;
 
@@ -613,7 +615,10 @@ public class ExamService : IExamService
 
     public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, int userId)
     {
-        var testInstanceQuestion = await _context.TestInstanceQuestions
+        var testInstanceQuestion = await _context.TestInstanceQuestions                    
+                    .Include(t => t.WorksheetQuestion)
+                    .ThenInclude(wq => wq.Question)
+                    .ThenInclude(wiq => wiq.Subject)
             .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId &&
                 tiq.Id == dto.TestQuestionId
                 && tiq.WorksheetInstance.Student.UserId == userId);
@@ -629,6 +634,28 @@ public class ExamService : IExamService
         testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId;
         testInstanceQuestion.TimeTaken = dto.TimeTaken;
         _context.TestInstanceQuestions.Update(testInstanceQuestion);
+
+        // 1. Event oluştur
+        var evt = new AnswerSubmittedEvent
+        {
+            UserId = userId,
+            QuestionId = testInstanceQuestion.WorksheetQuestion.QuestionId,
+            Subject = testInstanceQuestion.WorksheetQuestion.Question.Subject.Name,
+            TestInstanceId = testInstanceQuestion.WorksheetInstanceId,
+            SelectedAnswerId = dto.SelectedAnswerId,
+            SubmittedAt = DateTime.UtcNow,
+            TimeTakenInSeconds = dto.TimeTaken
+        };
+
+        // 2. Outbox'a yaz
+        var outbox = new OutboxMessage
+        {
+            Type = nameof(AnswerSubmittedEvent),
+            Content = JsonSerializer.Serialize(evt)
+        };
+        _context.OutboxMessages.Add(outbox);
+
+
         // Update Question Count
         await _context.SaveChangesAsync();
         return new ResponseBaseDto

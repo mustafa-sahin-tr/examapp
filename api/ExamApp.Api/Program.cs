@@ -7,6 +7,7 @@ using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
 using System.Security.Claims;
 using ExamApp.Api.Services.Interfaces;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,10 +51,24 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
-builder.Services.AddSingleton<TestInstanceQuestionSaveChangesInterceptor>();
+
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddHostedService<OutboxPublisher>();
+var rabbitConfig = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+       cfg.Host(rabbitConfig.Host, "/", h =>
+        {
+            h.Username(rabbitConfig.Username);
+            h.Password(rabbitConfig.Password);
+        });
+    });
+});
 
 var app = builder.Build();
 

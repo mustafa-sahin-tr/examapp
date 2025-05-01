@@ -122,6 +122,19 @@ services:
     networks:
       - mynetwork
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP portu (backend ile iletişim)
+      - "15672:15672" # Yönetim paneli (browser'dan erişim için)
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbituser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    networks:
+      - mynetwork
+
+
 
 networks:   
   mynetwork:

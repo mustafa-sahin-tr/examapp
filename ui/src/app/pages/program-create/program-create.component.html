@@ -2,9 +2,9 @@
   <div class="ms-wizard-header">
     <div class="ms-wizard-title"><b>Soru 1</b></div>
     <div class="ms-wizard-progress">
-      <div class="ms-progress-text">0% Tamamlandı</div>
+      <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ stepList.length }}</div>
       <div class="ms-progress-bar-bg">
-        <div class="ms-progress-bar-fill" style="width: 0%"></div>
+        <div class="ms-progress-bar-fill" [style.width]="((stepIndex() + 1) / stepList.length) * 100 + '%'"></div>
       </div>
     </div>
   </div>
@@ -12,8 +12,6 @@
   <div class="ms-wizard-question">
     {{ currentStep.description }}
   </div>
-
-  <div class="ms-wizard-required">Bu soruyu yanıtlaman gerekmektedir</div>
 
   <div class="ms-wizard-cards" #cardContainer>
     <button class="nav-btn left" (click)="previous()">❮</button>
@@ -29,6 +27,17 @@
           <img [src]="opt.icon" alt="Timer Icon" class="ms-option-icon" />
           <b class="ms-option-label">{{ opt.label }}</b>
         </button>
+        <div class="course-actions">
+          <button
+            *ngFor="let act of currentStep.actions"
+            mat-raised-button
+            color="primary"
+            type="button"
+            (click)="takeAction(act.value)"
+          >
+            <mat-icon>playlist_add</mat-icon>{{ act.label }}
+          </button>
+        </div>
       </li>
     </ul>
     <button class="nav-btn right" (click)="next()">❯</button>
@@ -37,7 +46,7 @@
     <div
       *ngFor="let i of stepList"
       class="mx-2 ms-wizard-step-item"
-      [class.ms-wizard-step-item-active]="i == currentIndex()"
+      [class.ms-wizard-step-item-active]="i == stepIndex()"
     ></div>
   </div>
 </div>

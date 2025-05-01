@@ -994,6 +994,7 @@ ul {
   font-size: 24px;
   cursor: pointer;
   height: fit-content;
+  margin: auto;
 }
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/question-view/question-view.component.scss ---- */
@@ -2999,6 +3000,7 @@ h4 {
   background-color: var(--ms-colors-yellow-3) !important;
 }
 
+
 .ms-option-icon {
   width: 2.4rem;
   height: 2.4rem;
@@ -3006,7 +3008,12 @@ h4 {
 }
 
 .ms-option-active {
-  background-color: var(--ms-colors-yellow-3) !important;
+  background-color: var(--ms-colors-yellow-10) !important;
+  color: #fff !important;
+}
+
+.ms-option-active:hover {
+  background-color: var(--ms-colors-yellow-10) !important;
   color: #fff !important;
 }
 

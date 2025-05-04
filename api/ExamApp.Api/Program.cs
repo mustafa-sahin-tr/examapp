@@ -1,13 +1,13 @@
 using ExamApp.Api.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
-using System.Security.Claims;
 using ExamApp.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using MassTransit;
+using Microsoft.AspNetCore.Authentication;
+using System.Text.Json;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,29 +19,65 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(kestrelPort); // 🟢 Dinamik Port Kullanımı
 });
 
-// 🔹 Authentication ve Authorization Servislerini Ekleyelim
+var keycloakConfig = builder.Configuration.GetSection("Keycloak");
+
+builder.Services.Configure<KeycloakSettings>(keycloakConfig);
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.Authority = "http://localhost:5678/realms/exam-realm"; // Ocelot üzerinden erişilen Keycloak
+        options.MetadataAddress = "http://keycloak:8080/realms/exam-realm/.well-known/openid-configuration";
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
             ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            ClockSkew = TimeSpan.Zero
+            ValidIssuer = "http://localhost:5678/realms/exam-realm"
+        };
+        options.Audience = "account"; // veya client_id değerin
+        options.RequireHttpsMetadata = false;
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                Console.WriteLine($"🔹 Raw token: {context.Request.Headers["Authorization"]}");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                var jwtToken = context.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
+                Console.WriteLine($"✅ Token validated. Subject: {jwtToken?.Subject}");
+                Console.WriteLine($"🔐 Issuer: {jwtToken?.Issuer}");
+                Console.WriteLine($"🕒 Expiration: {jwtToken?.ValidTo}");
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"❌ JWT ERROR: {context.Exception.Message}");
+                return Task.CompletedTask;
+            }
         };
     });
+
+builder.Services.AddAuthorization();
+
+var redisConfig = builder.Configuration.GetSection("Redis");
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConfig["Configuration"];
+    options.InstanceName = redisConfig["InstanceName"];
+});
+
+
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
 
-builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleTransformer>();
 builder.Services.AddSingleton<IMinIoService, MinIoService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -51,6 +87,7 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
+builder.Services.AddScoped<UserProfileCacheService>();
 
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -62,13 +99,15 @@ builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
     {
-       cfg.Host(rabbitConfig.Host, "/", h =>
-        {
-            h.Username(rabbitConfig.Username);
-            h.Password(rabbitConfig.Password);
-        });
+        cfg.Host(rabbitConfig.Host, "/", h =>
+         {
+             h.Username(rabbitConfig.Username);
+             h.Password(rabbitConfig.Password);
+         });
     });
 });
+
+
 
 var app = builder.Build();
 
@@ -81,6 +120,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

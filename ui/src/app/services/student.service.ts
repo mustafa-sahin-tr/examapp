@@ -12,32 +12,31 @@ import { StudentProfile } from '../models/student-profile';
 import { Grade } from '../models/student';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class StudentService {
-
   constructor(private http: HttpClient) {}
+  private baseUrl = '/api/exam/student';
 
   getProfile(): Observable<StudentProfile> {
-    return this.http.get<StudentProfile>(`/api/student/profile`);
+    return this.http.get<StudentProfile>(`${this.baseUrl}/profile`);
   }
 
   updateGrade(newGradeId: number): Observable<StudentProfile> {
-    return this.http.post<StudentProfile>(`/api/student/update-grade`, newGradeId);
+    return this.http.post<StudentProfile>(`${this.baseUrl}/update-grade`, newGradeId);
   }
 
   updateAvatar(file: File): Observable<StudentProfile> {
     const formData = new FormData();
     formData.append('avatar', file);
-    return this.http.post<StudentProfile>(`/api/student/update-avatar`, formData);
+    return this.http.post<StudentProfile>(`${this.baseUrl}/update-avatar`, formData);
   }
 
   loadGrades(): Observable<Grade[]> {
-    return this.http.get<Grade[]>(`/api/student/grades`);
+    return this.http.get<Grade[]>(`${this.baseUrl}/grades`);
   }
 
   register(student: any): Observable<any> {
-    return this.http.post<any>(`/api/student/register`, student);
+    return this.http.post<any>(`${this.baseUrl}/register`, student);
   }
-
 }

@@ -38,5 +38,4 @@ export class QuestionDetectorService {
   sendtoFixForAnswer(fixData: any): Observable<any> {
     return this.http.post<any>(`http://localhost/question-detector-dev/send-to-fix-for-answers`, fixData);
   }
-  // http://localhost/minio-api/exam-questions/questions/04a3609b-8a98-4849-949d-32c14a6d72c1.jpg
 }

@@ -4,10 +4,10 @@ import { Observable } from 'rxjs';
 import { Passage, Question } from '../models/question';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class QuestionService {
-  private apiUrl = '/api/questions'; // Backend API URL
+  private apiUrl = '/api/exam/questions'; // Backend API URL
 
   constructor(private http: HttpClient) {}
 
@@ -23,7 +23,7 @@ export class QuestionService {
     return this.http.get<Question>(`${this.apiUrl}/${questionId}`);
   }
 
-  getAll(testId: number | undefined ): Observable<Question[]> {
+  getAll(testId: number | undefined): Observable<Question[]> {
     return this.http.get<Question[]>(`${this.apiUrl}/bytest/${testId}`);
   }
 
@@ -31,7 +31,7 @@ export class QuestionService {
     return this.http.get<Passage[]>(`${this.apiUrl}/passages`);
   }
 
-  saveBulk(bulkDto: any) : Observable<any> {
+  saveBulk(bulkDto: any): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/save`, bulkDto);
   }
 }

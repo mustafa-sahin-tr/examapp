@@ -11,16 +11,16 @@ namespace ExamApp.Api.Controllers
     [ApiController]
     public class TeacherController : BaseController
     {
-        private readonly IJwtService _jwtService;
 
         private readonly ITeacherService _teacherService;
 
         private readonly IUserService _userService;
+        private readonly UserProfileCacheService _userProfileCacheService;
 
-        public TeacherController(IJwtService jwtService, ITeacherService teacherService, IUserService userService)
+        public TeacherController( ITeacherService teacherService, IUserService userService,UserProfileCacheService userProfileCacheService)
             : base()
         {
-            _jwtService = jwtService;
+            _userProfileCacheService = userProfileCacheService;
             _teacherService = teacherService;
             _userService = userService;
         }
@@ -46,7 +46,7 @@ namespace ExamApp.Api.Controllers
 
             return Ok(new { Message = "Student registered successfully.", 
                 TeacherId = response.ObjectId,
-                RefreshToken = _jwtService.GenerateToken(user) // Token'ı burada döndürüyoruz
+                
                  });
         }
 
@@ -55,7 +55,13 @@ namespace ExamApp.Api.Controllers
         [HttpGet("check-teacher")]
         public async Task<IActionResult> CheckTeacher()
         {
-            var teacher = await GetAuthenticatedTeacherAsync();
+            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            if(user == null) 
+            {
+                return NotFound(new { message = "Kullanıcı bulunamadı." });
+            }
+
+            var teacher = await _teacherService.GetTeacher(user.Id);
 
             if (teacher != null)
             {

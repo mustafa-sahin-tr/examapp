@@ -9,29 +9,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Controllers;
 
-[ExamAuthorize]
+[Authorize]
 public class BaseController : ControllerBase
 {    
-    protected int AuthenticatedUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
-    protected int AuthenticatedStudentId => int.Parse(User.FindFirstValue(ExamClaimTypes.StudentId) ?? "0");
-    protected int AuthenticatedTeacherId => int.Parse(User.FindFirstValue(ExamClaimTypes.TeacherId) ?? "0");
-
+    protected string KeyCloakId => User.FindFirstValue(ClaimTypes.NameIdentifier);
     protected async Task<User> GetAuthenticatedUserAsync()
     {
         var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        return await db.Users.FindAsync(AuthenticatedUserId) ?? throw new UnauthorizedAccessException("User not found.");
-    }
-
-    protected async Task<Student?> GetAuthenticatedStudentAsync()
-    {
-        var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        return await db.Students.FindAsync(AuthenticatedStudentId);
-    }
-
-    protected async Task<Teacher?> GetAuthenticatedTeacherAsync()
-    {
-        var db = HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-        var teacherId = AuthenticatedTeacherId;
-        return await db.Teachers.FindAsync(teacherId);
+        return await db.Users.FirstOrDefaultAsync(u => u.KeycloakId == KeyCloakId) ?? throw new UnauthorizedAccessException("User not found.");
     }
 }

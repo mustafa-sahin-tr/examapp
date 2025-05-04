@@ -1,0 +1,121 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/auth/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "exam-dotnet-api", "Port": 5079 }
+      ],
+      "UpstreamPathTemplate": "/api/auth/{everything}"      
+    },
+    {
+      "DownstreamPathTemplate": "/api/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "exam-dotnet-api", "Port": 5079 }
+      ],
+      "UpstreamPathTemplate": "/api/exam/{everything}",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "TestKey"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "exam-badge-api", "Port": 5080 }
+      ],
+      "UpstreamPathTemplate": "/api/badge/{everything}",
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "TestKey"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/auth",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "keycloak",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/login",
+      "UpstreamHttpMethod": [ "GET" ],
+      "AddQueriesToRequest": true
+    },
+    {
+      "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/token",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "keycloak",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/token",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AddQueriesToRequest": true
+    },
+    {
+      "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/userinfo",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "keycloak",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/userinfo",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/resources/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "keycloak",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/resources/{everything}",
+      "UpstreamHttpMethod": [ "GET" ]
+    },
+    {
+      "DownstreamPathTemplate": "/realms/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "keycloak",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/auth/realms/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+    },
+    {
+      "DownstreamPathTemplate": "/realms/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "keycloak",
+          "Port": 8080
+        }
+      ],
+      "UpstreamPathTemplate": "/realms/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post" ],
+      "AddHeadersToRequest": true
+    },
+    {
+      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "angular-app", "Port": 4200 }
+      ],
+      "UpstreamPathTemplate": "/{everything}",
+      "Priority": 0
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "http://localhost:5678"
+  }
+}

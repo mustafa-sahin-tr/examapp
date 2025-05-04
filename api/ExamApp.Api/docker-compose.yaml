@@ -101,6 +101,17 @@ services:
     networks:
       - mynetwork
 
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass MyStrongRedisPassword
+    networks:
+      - mynetwork
+      
+
 networks:   
   mynetwork:
     driver: bridge

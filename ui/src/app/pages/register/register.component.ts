@@ -26,8 +26,8 @@ import { NavigationExtras } from '@angular/router';
     MatSnackBarModule,
     MatIconModule,
     MatSelectModule,
-    CommonModule
-  ]
+    CommonModule,
+  ],
 })
 export class RegisterComponent {
   registerForm: FormGroup;
@@ -37,7 +37,7 @@ export class RegisterComponent {
   roles = [
     { value: 0, viewValue: 'Öğrenci' },
     { value: 1, viewValue: 'Öğretmen' },
-    { value: 2, viewValue: 'Veli' }
+    { value: 2, viewValue: 'Veli' },
   ];
 
   constructor(
@@ -46,14 +46,17 @@ export class RegisterComponent {
     private router: Router,
     private snackBar: MatSnackBar
   ) {
-    this.registerForm = this.fb.group({
-      firstName: ['', [Validators.required, Validators.minLength(2)]],
-      lastName: ['', [Validators.required, Validators.minLength(2)]],
-      email: ['', [Validators.required, Validators.email]],
-      role: [null, [Validators.required]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      confirmPassword: ['', [Validators.required]]
-    }, { validator: this.passwordMatchValidator });
+    this.registerForm = this.fb.group(
+      {
+        firstName: ['', [Validators.required, Validators.minLength(2)]],
+        lastName: ['', [Validators.required, Validators.minLength(2)]],
+        email: ['', [Validators.required, Validators.email]],
+        role: [null, [Validators.required]],
+        password: ['', [Validators.required, Validators.minLength(6)]],
+        confirmPassword: ['', [Validators.required]],
+      },
+      { validator: this.passwordMatchValidator }
+    );
   }
 
   passwordMatchValidator(group: FormGroup) {
@@ -65,13 +68,14 @@ export class RegisterComponent {
   onSubmit() {
     if (this.registerForm.valid) {
       this.isLoading = true;
-      
+
       const fullName = `${this.registerForm.value.firstName} ${this.registerForm.value.lastName}`.trim();
       const registerPayload = {
-        fullName: fullName,
+        firstName: this.registerForm.value.firstName,
+        lastName: this.registerForm.value.lastName,
         email: this.registerForm.value.email,
         password: this.registerForm.value.password,
-        role: this.registerForm.value.role
+        role: this.registerForm.value.role,
       };
 
       this.authService.register(registerPayload).subscribe({
@@ -82,11 +86,11 @@ export class RegisterComponent {
             const navigationExtras: NavigationExtras = {
               state: {
                 email: registerPayload.email,
-                password: registerPayload.password
-              }
+                password: registerPayload.password,
+              },
             };
             setTimeout(() => {
-              this.router.navigate(['/login'],navigationExtras);
+              this.router.navigate(['/login'], navigationExtras);
             }, 1000);
           } else {
             console.error('Başarılı ama beklenmeyen yanıt kodu:', res.id);
@@ -96,7 +100,7 @@ export class RegisterComponent {
           console.error('Hata Yanıtı:', err);
           this.isLoading = false;
           this.snackBar.open('Kayıt başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });
-        }
+        },
       });
     }
   }

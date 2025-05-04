@@ -1,5 +1,12 @@
 import { Component, inject, Inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl, MinLengthValidator } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  ReactiveFormsModule,
+  FormControl,
+  MinLengthValidator,
+} from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -9,7 +16,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
-
 
 @Component({
   selector: 'app-login',
@@ -24,8 +30,8 @@ import { CommonModule } from '@angular/common';
     MatCardModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
-    CommonModule
-  ]
+    CommonModule,
+  ],
 })
 export class LoginComponent implements OnInit {
   authService = inject(AuthService);
@@ -33,9 +39,9 @@ export class LoginComponent implements OnInit {
   snackBar = inject(MatSnackBar);
   isLoading = false;
   loginForm = new FormGroup({
-    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email], }),
-    password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6)] })
-  })
+    email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+    password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(6)] }),
+  });
 
   ngOnInit() {
     const token = localStorage.getItem('auth_token');
@@ -54,35 +60,33 @@ export class LoginComponent implements OnInit {
         next: (studentRes) => {
           if (studentRes.hasStudentRecord) {
             localStorage.setItem('student', JSON.stringify(studentRes.student));
-            this.router.navigate([`/student-profile`]);  // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
+            this.router.navigate([`/student-profile`]); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
           } else {
-            this.router.navigate(['/student-register']);  // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
+            this.router.navigate(['/student-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
           }
         },
         error: () => {
           this.isLoading = false;
           this.snackBar.open('Öğrenci bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-        }
+        },
       });
-    }
-    else if(role == 'Teacher') {
+    } else if (role == 'Teacher') {
       // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
       this.authService.checkTeacherProfile().subscribe({
         next: (teacherRes) => {
           if (teacherRes.hasTeacherRecord) {
             localStorage.setItem('teacher', JSON.stringify(teacherRes.teacher));
-            this.router.navigate([`/tests`]);  // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
+            this.router.navigate([`/tests`]); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
           } else {
-            this.router.navigate(['/teacher-register']);  // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
+            this.router.navigate(['/teacher-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
           }
         },
         error: () => {
           this.isLoading = false;
           this.snackBar.open('Öğretmen bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-        }
+        },
       });
-    }
-    else {
+    } else {
       this.router.navigate(['/tests']); // ✅ Öğretmen veya Veli ise Home sayfasına git
     }
   }
@@ -93,13 +97,13 @@ export class LoginComponent implements OnInit {
       this.authService.login(this.loginForm.value).subscribe({
         next: (res) => {
           this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
-          const role = res.role; // 0 = Student, 1 = Teacher, 2 = Parent
+          const role = 'Student'; //res.role; // 0 = Student, 1 = Teacher, 2 = Parent
           this.checkUserSession(role);
         },
         error: () => {
           this.isLoading = false;
           this.snackBar.open('Giriş başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });
-        }
+        },
       });
     }
   }

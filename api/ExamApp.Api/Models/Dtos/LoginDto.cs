@@ -10,3 +10,9 @@ public class LoginDto
     [MinLength(6)]
     public string Password { get; set; }
 }
+
+public class CodeDto
+{
+    [Required]    
+    public string Code { get; set; }
+}

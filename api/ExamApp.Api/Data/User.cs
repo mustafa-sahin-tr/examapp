@@ -8,15 +8,17 @@ public class User : BaseEntity
 {
     [Key]
     public int Id { get; set; }
+
+    [MaxLength(50)]
+    public string KeycloakId { get; set; } = null!;
     
     [Required, MaxLength(100)]
     public string FullName { get; set; }
 
     [Required, MaxLength(100)]
     public string Email { get; set; }
-
-    [Required]
-    public string PasswordHash { get; set; }
+    
+    public string? PasswordHash { get; set; }
 
     public string? AvatarUrl { get; set; }
 

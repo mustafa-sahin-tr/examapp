@@ -20,9 +20,11 @@ import { LayoutComponent } from './pages/layout/layout.component';
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
 import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
 import { TeacherRegisterComponent } from './pages/teacher-register/teacher-register.component';
+import { CallbackComponent } from './pages/callback/callback.component';
 
 export const routes: Routes = [
-  { path: '', 
+  {
+    path: '',
     component: LayoutComponent,
     canActivate: [authGuard],
     children: [
@@ -31,26 +33,27 @@ export const routes: Routes = [
       { path: 'question/:id', component: QuestionComponent },
       { path: 'questioncanvas', component: QuestionCanvasComponent },
       { path: 'questioncanvas/:id', component: QuestionCanvasComponent },
-      { path: 'question', component: QuestionComponent},
-      { path: 'imageselect', component: ImageSelectorComponent},
-      { path: 'tests', component: WorksheetListComponent , resolve: { worksheets : worksheetListResolver } },
+      { path: 'question', component: QuestionComponent },
+      { path: 'imageselect', component: ImageSelectorComponent },
+      { path: 'tests', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } },
       { path: 'questions/view', component: QuestionViewComponent },
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent },  // 🆕 Test çözme sayfası
-      { path: 'test/:testId', component: WorksheetDetailComponent },  // 🆕 Test çözme sayfası
-      { path: 'student-profile', component: StudentProfileComponent },  // 🆕 Test çözme sayfası
-      { path: 'exam', component: TestCreateComponent},  // 🆕 Test çözme sayfası
-      { path: 'exam/:id', component: TestCreateComponent },  // 🆕 Test çözme sayfası    
-      { path: 'program-create', component: ProgramCreateComponent },  
-      { path: 'certificates', component: BadgeThropyComponent },  //
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
+      { path: 'test/:testId', component: WorksheetDetailComponent }, // 🆕 Test çözme sayfası
+      { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
+      { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
+      { path: 'exam/:id', component: TestCreateComponent }, // 🆕 Test çözme sayfası
+      { path: 'program-create', component: ProgramCreateComponent },
+      { path: 'certificates', component: BadgeThropyComponent }, //
     ],
   },
-  { path: '', 
+  {
+    path: '',
     component: PublicLayoutComponent,
     children: [
+      { path: 'callback', component: CallbackComponent },
       { path: 'register', component: RegisterComponent },
-      { path: 'login', component: LoginComponent }      
+      // { path: 'login', component: LoginComponent },
     ],
   },
-  { path: '**', redirectTo: 'tests' }
-  
+  { path: '**', redirectTo: 'tests' },
 ];

@@ -3,8 +3,18 @@ services:
   # exam-dotnet-api:
   #   command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
 
+  exam-badge-api:
+    command: dotnet watch run --urls=http://+:5080
+
+  # ocelot-gateway:
+  #   command: dotnet watch run --urls=http://+:5678  
+
   angular-app:
     command: yarn start
 
   question-detector-dev:
     command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+
+  keycloak:
+    volumes:
+      - ./keycloak-themes/my-theme:/opt/keycloak/themes/my-theme    

@@ -1,0 +1,13 @@
+body.login-page {
+  background-color: #f0f0f0;
+  font-family: Arial, sans-serif;
+}
+
+.kc-page {
+  max-width: 400px;
+  margin: 100px auto;
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 0 10px #aaa;
+}

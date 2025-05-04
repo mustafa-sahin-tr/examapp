@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 namespace ExamApp.Api.Controllers
 {
@@ -14,19 +15,22 @@ namespace ExamApp.Api.Controllers
     public class StudentController : BaseController
     {
         private readonly IMinIoService _minioService;
-        private readonly IJwtService _jwtService;
 
         private readonly IStudentService _studentService;
 
         private readonly IUserService _userService;
 
-        public StudentController(IMinIoService minioService, IJwtService jwtService, IStudentService studentService, IUserService userService)
+        private readonly UserProfileCacheService _userProfileCacheService;
+
+
+        public StudentController(IMinIoService minioService,IStudentService studentService,
+             IUserService userService,  UserProfileCacheService userProfileCacheService)
             : base()
         {
             _minioService = minioService;
-            _jwtService = jwtService;
             _studentService = studentService;
             _userService = userService;
+            _userProfileCacheService = userProfileCacheService;
         }
 
         [HttpPost("update-grade")]
@@ -48,7 +52,7 @@ namespace ExamApp.Api.Controllers
         [HttpPost("update-avatar")]
         public async Task<IActionResult> UpdateAvatar(IFormFile avatar)
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));            
+            var user = await GetAuthenticatedUserAsync();         
 
             if (avatar == null || avatar.Length == 0)
                 return BadRequest(new { message = "Geçersiz dosya." });
@@ -60,7 +64,7 @@ namespace ExamApp.Api.Controllers
             {
                 await _minioService.UploadFileAsync(stream, filePath, "student-avatars");
             }
-            await _userService.UpdateUserAvatar(userId, filePath);
+            await _userService.UpdateUserAvatar(user.Id, filePath);
             return await GetStudentProfile();
         }
 
@@ -69,7 +73,7 @@ namespace ExamApp.Api.Controllers
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
         [HttpPost("register")]
         public async Task<IActionResult> RegisterStudent(RegisterStudentDto request)
-        {
+        {                    
             // 🔹 Token’dan UserId'yi al
             var user = await GetAuthenticatedUserAsync();
 
@@ -87,7 +91,6 @@ namespace ExamApp.Api.Controllers
 
             return Ok(new { Message = "Student registered successfully.", 
                 StudentId = response.ObjectId,
-                RefreshToken = _jwtService.GenerateToken(user) // Token'ı burada döndürüyoruz
                  });
         }
 
@@ -96,8 +99,12 @@ namespace ExamApp.Api.Controllers
         [HttpGet("check-student")]
         public async Task<IActionResult> CheckStudent()
         {
-            var student = await GetAuthenticatedStudentAsync();
-
+            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            if(user == null) 
+            {
+                return NotFound(new { message = "Kullanıcı bulunamadı." });
+            }
+            var student = await _studentService.GetStudentProfile(user.Id);
             if (student != null)
             {
                 return Ok(new { HasStudentRecord = true, Student = student });
@@ -106,20 +113,6 @@ namespace ExamApp.Api.Controllers
             return Ok(new { HasStudentRecord = false });
         }
 
-
-        [Authorize]
-        [HttpGet("check-teacher")]
-        public async Task<IActionResult> CheckTeacher() 
-        {
-            var teacher = await GetAuthenticatedTeacherAsync();
-
-            if (teacher != null)
-            {
-                return Ok(new { HasTeacherRecord = true, Teacher = teacher });
-            }
-
-            return Ok(new { HasTeacherRecord = false });
-        }
 
         [HttpGet("grades")]
         public async Task<IActionResult> GetGradesAsync()
@@ -132,8 +125,8 @@ namespace ExamApp.Api.Controllers
         [HttpGet("profile")]
         public async Task<IActionResult> GetStudentProfile()
         {
-            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            var student = await _studentService.GetStudentProfile(userId);
+            var user = await GetAuthenticatedUserAsync();
+            var student = await _studentService.GetStudentProfile(user.Id);
             if (student == null)
             {
                 return NotFound(new { message = "Öğrenci bulunamadı." });

@@ -14,6 +14,14 @@ public class TeacherService : ITeacherService
         _context = context;
     }
 
+    public async Task<Teacher> GetTeacher(int userId)
+    {
+        return await _context.Teachers
+            .Include(t => t.UserId)
+            .Where(t => t.UserId == userId)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<ResponseBaseDto> Save(int userId, RegisterTeacherDto dto)
     {
         var existingTeacher = await _context.Teachers.FirstOrDefaultAsync(s => s.UserId == userId);

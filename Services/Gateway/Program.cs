@@ -49,7 +49,7 @@ app.Use(async (context, next) =>
 
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path == "/login")
+    if (context.Request.Path == "/oidc-login")
     {
         context.Response.Redirect("http://localhost:5678/auth/realms/exam-realm/protocol/openid-connect/auth?client_id=exam-client&redirect_uri=http://localhost:5678/callback&response_type=code&scope=openid");
         return;

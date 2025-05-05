@@ -39,7 +39,7 @@
           "Port": 8080
         }
       ],
-      "UpstreamPathTemplate": "/login",
+      "UpstreamPathTemplate": "/oidc-login",
       "UpstreamHttpMethod": [ "GET" ],
       "AddQueriesToRequest": true
     },

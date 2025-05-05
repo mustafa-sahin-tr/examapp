@@ -16,11 +16,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
+import { jwtDecode } from 'jwt-decode'
+
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  templateUrl: './login.component.html',
+  // templateUrl: './login.component.html',
+  template: `<p>Giriş yapılıyor, lütfen bekleyin...</p>`,
   styleUrls: ['./login.component.scss'],
   imports: [
     ReactiveFormsModule,
@@ -44,12 +47,30 @@ export class LoginComponent implements OnInit {
   });
 
   ngOnInit() {
-    const token = localStorage.getItem('auth_token');
-    const role = localStorage.getItem('user_role');
-    const user = localStorage.getItem('user');
-    if (token && role) {
-      this.isLoading = true;
-      this.checkUserSession(role);
+    const token = localStorage.getItem('access_token');
+    // 
+    if (token && this.isTokenValid(token)) {
+      this.router.navigate(['/tests']);
+    } else {
+      window.location.href = '/oidc-login'; // veya /oidc-login gibi temiz bir path
+    }
+
+    // const token = localStorage.getItem('auth_token');
+    // const role = localStorage.getItem('user_role');
+    // const user = localStorage.getItem('user');
+    // if (token && role) {
+    //   this.isLoading = true;
+    //   this.checkUserSession(role);
+    // }
+  }
+
+  isTokenValid(token: string): boolean {
+    try {
+      const decoded: any = jwtDecode(token);
+      const now = Math.floor(Date.now() / 1000);
+      return decoded.exp && decoded.exp > now;
+    } catch (e) {
+      return false;
     }
   }
 

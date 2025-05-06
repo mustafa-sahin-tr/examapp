@@ -24,7 +24,7 @@ public class ExamService : IExamService
         _minioService = minioService;
     }
 
-    public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, User user, Teacher? teacher = null)
+    public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, UserProfileDto userProfile)
     {
         var query = _context.Worksheets.AsQueryable();
 
@@ -94,10 +94,10 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, User user, Student? student = null)
+    public async Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, UserProfileDto userProfile)
     {
         var instanceQuery = _context.TestInstances
-           .Where(ti => ti.StudentId == student.Id)
+           .Where(ti => ti.StudentId == userProfile.ProfileId)
            .Include(ti => ti.WorksheetInstanceQuestions)
            .Include(ti => ti.Worksheet)
            .AsQueryable();
@@ -114,8 +114,8 @@ public class ExamService : IExamService
         {
             if (dto.gradeId.HasValue)
                 query = query.Where(t => t.GradeId == dto.gradeId.Value);
-            else if (student != null)
-                query = query.Where(t => t.GradeId == student.GradeId);
+            else if (userProfile.Student != null && userProfile.Student.GradeId.HasValue)
+                query = query.Where(t => t.GradeId == userProfile.Student.GradeId);
 
             if (dto.subjectIds != null && dto.subjectIds.Any())
                 query = query.Where(t => t.SubjectId.HasValue && dto.subjectIds.Contains(t.SubjectId.Value));

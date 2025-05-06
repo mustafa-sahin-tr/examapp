@@ -431,6 +431,123 @@ body {
       background: white;
 }
 
+.kcIcon-google {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-image: url('../img/google-custom.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+a.gsi-material-button {
+  display: inline-block;
+  text-decoration: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  -webkit-appearance: none;
+  background-color: #131314;
+  background-image: none;
+  border: 1px solid #8e918f;
+  border-radius: 20px;
+  box-sizing: border-box;
+  color: #e3e3e3;
+  cursor: pointer;
+  font-family: 'Roboto', arial, sans-serif;
+  font-size: 14px;
+  height: 40px;
+  letter-spacing: 0.25px;
+  outline: none;
+  overflow: hidden;
+  padding: 0 12px;
+  position: relative;
+  text-align: center;
+  transition: background-color .218s, border-color .218s, box-shadow .218s;
+  vertical-align: middle;
+  white-space: nowrap;
+  width: auto;
+  max-width: 400px;
+  min-width: min-content;
+  line-height: 40px; /* a'ya özel satır hizalama */
+}
+
+/* Icon container */
+a.gsi-material-button .gsi-material-button-icon {
+  height: 20px;
+  margin-right: 12px;
+  min-width: 20px;
+  width: 20px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* İçerik düzeni */
+a.gsi-material-button .gsi-material-button-content-wrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  height: 100%;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+}
+
+/* Buton içeriği */
+a.gsi-material-button .gsi-material-button-contents {
+  flex-grow: 1;
+  font-family: 'Roboto', arial, sans-serif;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
+  display: inline-block;
+}
+
+/* State efekti */
+a.gsi-material-button .gsi-material-button-state {
+  transition: opacity .218s;
+  bottom: 0;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+/* Hover & Active */
+a.gsi-material-button:hover {
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
+}
+
+a.gsi-material-button:hover .gsi-material-button-state {
+  background-color: white;
+  opacity: 8%;
+}
+
+a.gsi-material-button:active .gsi-material-button-state,
+a.gsi-material-button:focus .gsi-material-button-state {
+  background-color: white;
+  opacity: 12%;
+}
+
+/* Disabled simülasyonu (manuel eklenmeli çünkü <a> disable olamaz) */
+a.gsi-material-button.disabled {
+  cursor: default;
+  background-color: #13131461;
+  border-color: #8e918f1f;
+  pointer-events: none;
+}
+
+a.gsi-material-button.disabled .gsi-material-button-state,
+a.gsi-material-button.disabled .gsi-material-button-contents,
+a.gsi-material-button.disabled .gsi-material-button-icon {
+  opacity: 38%;
+}
+
+
 .login-card h2 {
   margin-bottom: 1.5rem;
   font-size: 1.5rem;
@@ -475,10 +592,19 @@ body {
 .actions {
   margin-top: 1rem;
   text-align: center;
+  display: flex;
+  justify-content: space-between;
 }
 
 .actions a {
   color: #1976d2;
   text-decoration: none;
   font-weight: 500;
+}
+
+
+.social-login {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
 }

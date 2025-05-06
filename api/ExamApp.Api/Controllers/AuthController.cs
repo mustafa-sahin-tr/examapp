@@ -262,6 +262,25 @@ namespace ExamApp.Api.Controllers
                 return await GetUserProfile(sub);
             });
 
+            if((profile == null || profile.Id == 0) && !string.IsNullOrEmpty(sub))
+            {
+                // new user registration
+                var user = new User
+                {
+
+                    FullName = jwt.Claims.First(c => c.Type == "given_name").Value + " " +
+                               jwt.Claims.First(c => c.Type == "family_name").Value,
+                    Email = email,                    
+                    KeycloakId = sub
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();                
+
+                profile = await GetUserProfile(sub);
+                await _userProfileCacheService.SetAsync(sub, profile);
+            }
+
             var loginResponseDto = new LoginResponseDto
             {
                 Token = tokenDto.AccessToken,
@@ -279,14 +298,24 @@ namespace ExamApp.Api.Controllers
                                 .Include(u => u.Parent)
                                 .FirstOrDefaultAsync(u => u.KeycloakId == sub);
 
+            if (user == null)
+                return null;
+
             return new UserProfileDto
             {
-                Avatar = user.AvatarUrl,
+                Avatar = user.AvatarUrl ?? string.Empty,
                 Email = user.Email,
                 Role = user.Role.ToString(),
                 FullName = user.FullName,
                 Id = user.Id,
-                KeycloakId = sub,
+                KeycloakId = sub,                
+                Student = user.Student != null ? new StudentDto
+                {
+                    Id = user.Student.Id,
+                    GradeId = user.Student.GradeId,
+                    SchoolName = user.Student.SchoolName,
+                    StudentNumber = user.Student.StudentNumber 
+                } : null,
                 ProfileId = user.Student != null ? user.Student.Id : (user.Teacher != null ? user.Teacher.Id : user.Parent != null ? user.Parent.Id : 0),
             };
         }

@@ -13,6 +13,7 @@ public class UserProfileDto
     public int ProfileId { get; set;}    
     // public string? SchoolName { get; set; } // Student bilgisi
     // public string? Department { get; set; } // opsiyonel
+    public StudentDto Student { get; set; }
 }
 
 public class LoginResponseDto {

@@ -74,7 +74,7 @@ namespace ExamApp.Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> RegisterStudent(RegisterStudentDto request)
         {                    
-            // 🔹 Token’dan UserId'yi al
+            // 🔹 Token’dan UserId'yi al // token var valid ama user
             var user = await GetAuthenticatedUserAsync();
 
             // 🔹 Öğrenci zaten var mı?

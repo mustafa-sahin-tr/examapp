@@ -1,4 +1,5 @@
 using System;
+using System.Linq.Expressions;
 using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Models.Dtos;
@@ -61,4 +62,15 @@ public class StudentWorkSheetSummaryDto {
     public int Score { get; set; } // 10 puan üzerinden hesaplama
     public int TotalQuestions { get; set; }
 
+}
+
+public class StudentDto {
+    public int Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string AvatarUrl { get; set; } = string.Empty;
+    public int? GradeId { get; set; }
+    public int XP { get; set; }
+    public int Level { get; set; } // 🟢 En son seviy
+    public string SchoolName { get; set; } = string.Empty;
+    public string StudentNumber { get; set; } = string.Empty;
 }

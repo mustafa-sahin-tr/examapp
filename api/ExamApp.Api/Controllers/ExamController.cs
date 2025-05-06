@@ -94,17 +94,16 @@ public class ExamController : BaseController
             bookTestId = bookTestId
         };
 
-        var user = await GetAuthenticatedUserAsync();         
         Paged<WorksheetDto> result = null;
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
         if(profile == null) {
             return BadRequest("Öğrenci Bilgisine ulaşılamadı");
         } 
-        if (user.Role == UserRole.Student) {
-            result = await _examService.GetWorksheetsForStudentsAsync(filterDto, user, new Student{Id = profile.ProfileId});
+        if (profile.Role == UserRole.Student.ToString()) {
+            result = await _examService.GetWorksheetsForStudentsAsync(filterDto, profile);
         }
-        else if(user.Role == UserRole.Teacher) {
-            result = await _examService.GetWorksheetsForTeacherAsync(filterDto,user,new Teacher{Id = profile.ProfileId});
+        else if(profile.Role == UserRole.Teacher.ToString()) {
+            result = await _examService.GetWorksheetsForTeacherAsync(filterDto,profile);
         }
         return Ok(result);
     }

@@ -83,13 +83,17 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem(this.tokenKey);
-    localStorage.removeItem(this.roleKey);
-    localStorage.removeItem(this.avatarKey);
-    localStorage.removeItem('user');
-    localStorage.removeItem('student');
-    this.isAuthenticatedSubject.next(false);
-    this.router.navigate(['/login']);
+    // logout işlemi için gerekli olan API çağrısını yapıyoruz
+    this.http.post('/api/exam/auth/logout', {}).subscribe(() => {
+      console.log('Logout successful');
+      localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.roleKey);
+      localStorage.removeItem(this.avatarKey);
+      localStorage.removeItem('user');
+      localStorage.removeItem('student');
+      this.isAuthenticatedSubject.next(false);
+      this.router.navigate(['/login']);
+    });
   }
 
   isAuthenticated(): Observable<boolean> {

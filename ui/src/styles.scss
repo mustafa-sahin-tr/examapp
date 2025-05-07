@@ -3737,3 +3737,25 @@ mat-form-field.hide-subscript
 //   margin: 0 !important;
 //   padding: 0 !important;
 // }
+/* Chrome autofill’ini override etmek için
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+input:-webkit-autofill:-internal-autofill-selected,
+input:-webkit-autofill:-internal-autofill-selected:hover,
+input:-webkit-autofill:-internal-autofill-selected:active,
+input:-webkit-autofill:-internal-autofill-selected:focus  {
+    -webkit-box-shadow: 0 0 0 60px var(--ms-surface-strong) inset!important;
+    
+    background-clip: content-box!important;
+}
+
+
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--ms-surface-inverse) !important;
+}
+
+input:-webkit-autofill:focus {  
+  -webkit-text-fill-color:  var(--ms-surface-inverse) !important;
+} 

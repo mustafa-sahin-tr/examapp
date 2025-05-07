@@ -49,7 +49,7 @@
       </#if>
 
      <div class="actions">
-        <a href="${url.registrationUrl}">Kayıt Ol</a>
+        <a href="/register">Kayıt Ol</a>
         <a href="${url.loginResetCredentialsUrl}">Şifremi Unuttum</a>
       </div>
     </div>

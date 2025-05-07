@@ -239,6 +239,17 @@ services:
     networks:
       - mynetwork
 
+  k6:
+    build:
+      context: ./dockerfiles/k6
+      dockerfile: Dockerfile.k6
+    volumes:
+      - ./k6:/home/k6/testfiles
+    # entrypoint: ["k6", "run", "/load_test.js"]      
+    networks:
+      - mynetwork
+
+
 networks:   
   mynetwork:
     driver: bridge

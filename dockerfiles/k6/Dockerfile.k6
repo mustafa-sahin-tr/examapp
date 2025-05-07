@@ -1,0 +1,8 @@
+# Dockerfile
+FROM grafana/k6:latest
+
+# Çalışma dizinini ayarla (opsiyonel, run ederken otomatik bu dizine geçersin)
+WORKDIR /testfiles
+
+# Container ayakta kalsın diye sonsuz uyku komutu
+ENTRYPOINT ["/bin/sh", "-c", "sleep infinity"]

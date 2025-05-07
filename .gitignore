@@ -83,6 +83,7 @@ testem.log
 Thumbs.db
 
 /postgres/examdata
+/postgres/examdata*
 
 /ui/node_modules
 /ui/dist

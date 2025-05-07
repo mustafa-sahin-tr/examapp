@@ -1,7 +1,7 @@
 version: '3.8'
 services:
-  # exam-dotnet-api:
-  #   command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
+  exam-dotnet-api:
+    command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
 
   exam-badge-api:
     command: dotnet watch run --urls=http://+:5080
@@ -10,7 +10,7 @@ services:
     command: dotnet watch run --urls=http://+:5678 
 
   angular-app:
-    command: yarn install & yarn start
+    command: yarn start
 
   question-detector-dev:
     command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload

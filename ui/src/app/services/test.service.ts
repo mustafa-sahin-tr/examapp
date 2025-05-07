@@ -60,7 +60,6 @@ export class TestService {
     const subjectIdsParam = subjectIds && subjectIds.length > 0 ? '&subjectIds=' + subjectIds.join(`&subjectIds=`) : '';
     const gradeIdParam = gradeId ? `&gradeId=${gradeId}` : '';
     const bookTestIdParam = booktestId ? `&bookTestId=${booktestId}` : '';
-    debugger;
     var reqUrl = `${this.baseUrl}/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
     console.log(reqUrl);
     return this.http.get<Paged<Test>>(reqUrl);

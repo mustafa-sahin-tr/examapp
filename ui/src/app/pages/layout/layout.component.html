@@ -65,13 +65,90 @@
 
       @if( $isAuthenticated | async) {
 
-      <div class="profile-menu" mat-button [matMenuTriggerFor]="menu" (click)="navigateTo('/student-profile')">
+      <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
         <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
         <span class="username">{{ userName }}</span>
       </div>
-      <mat-menu #menu="matMenu">
-        <button mat-menu-item (click)="logout()">Çıkış Yap</button>
+      <!-- <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="logout()">Çıkış Yap</button>(click)="navigateTo('/student-profile')"
+      </mat-menu> -->
+
+      <!-- component.html -->
+      <!-- <div class="ms-profile-trigger" mat-button [matMenuTriggerFor]="profileMenu">
+        <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-trigger-avatar" />
+        <span class="ms-trigger-name">{{ userName }}</span>
+      </div> -->
+
+      <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
+        <!-- Başlık Bölümü -->
+        <div class="ms-menu-header">
+          <div class="ms-header-bg"></div>
+          <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-header-avatar" />
+          <div class="ms-header-info">
+            <div class="ms-user-name">{{ userName }}</div>
+            <div class="ms-user-email">{{ 'test@test.com' }}</div>
+          </div>
+        </div>
+
+        <!-- Menü Öğeleri -->
+        <button mat-menu-item class="ms-menu-item">
+          <mat-icon>person</mat-icon>
+          <div class="ms-item-content">
+            <span class="ms-item-title">Profil Bilgileri</span>
+          </div>
+        </button>
+
+        <button mat-menu-item class="ms-menu-item">
+          <mat-icon>settings</mat-icon>
+          <div class="ms-item-content">
+            <!-- <span class="ms-item-title">Ayarlar</span> -->
+            <span class="ms-item-subtitle">Ayarlar, Hesap, Güvenlik</span>
+          </div>
+        </button>
+
+        <mat-divider class="ms-menu-divider"></mat-divider>
+        <button mat-menu-item class="ms-menu-item">
+          <mat-icon>assignment</mat-icon>
+          <div class="ms-item-content">
+            <span class="ms-item-title">Görevler</span>
+            <!-- <span class="ms-item-subtitle">Aktif görevler, Takvim</span> -->
+          </div>
+        </button>
+
+        <button mat-menu-item class="ms-menu-item">
+          <mat-icon>emoji_events</mat-icon>
+          <div class="ms-item-content">
+            <span class="ms-item-title">Başarılar</span>
+            <!-- <span class="ms-item-subtitle">Ödüller, Sertifikalar</span> -->
+          </div>
+        </button>
+
+        <button mat-menu-item class="ms-menu-item">
+          <mat-icon>notifications</mat-icon>
+          <div class="ms-item-content">
+            <span class="ms-item-title">Bildirimler</span>
+            <!-- <span class="ms-item-subtitle">Bildirim Ayarları</span> -->
+          </div>
+        </button>
+
+        <button mat-menu-item class="ms-menu-item">
+          <mat-icon>support</mat-icon>
+          <div class="ms-item-content">
+            <span class="ms-item-title">Destek</span>
+            <!-- <span class="ms-item-subtitle">SSS, Canlı Destek</span> -->
+          </div>
+        </button>
+
+        <mat-divider class="ms-menu-divider"></mat-divider>
+
+        <button mat-menu-item class="ms-menu-item" (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <div class="ms-item-content">
+            <span class="ms-item-title">Çıkış Yap</span>
+          </div>
+        </button>
       </mat-menu>
+
       }
     </mat-toolbar>
 

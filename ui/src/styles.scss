@@ -3582,6 +3582,89 @@ h4 {
   display: none;              /* Chrome, Safari */
 }
 
+/* component.css veya global styles.scss */
+
+.ms-profile-trigger {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.ms-trigger-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+.ms-trigger-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Mat-menu panel ayarları */
+.ms-menu-panel {
+  padding: 0;
+  min-width: 280px;
+}
+
+/* Menü üst başlığı */
+.ms-menu-header {
+  position: relative;
+  text-align: center;
+  padding-top: 16px;
+  padding-bottom: 40px;
+  overflow: hidden;
+}
+.ms-header-bg {
+  background-color: #e8f5f8;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+}
+.ms-header-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  position: relative;
+  margin-top: 8px;
+}
+.ms-header-info {
+  margin-top: 25px;
+}
+.ms-user-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+.ms-user-email {
+  font-size: 12px;
+  // color: rgba(0, 0, 0, 0.6);
+}
+
+/* Menü öğeleri */
+.ms-menu-item {
+  height: 40px;
+  color: white;
+  text-decoration: none;
+}
+.ms-menu-item mat-icon {
+  margin-right: 12px;
+  font-size: 20px;
+}
+.ms-menu-divider {
+  margin: 8px 0;
+}
+
+.ms-menu-item[mat-menu-item]:last-child {
+  color: #d32f2f;           /* kırmızı ton, isteğe bağlı */
+}
+.ms-menu-item[mat-menu-item]:last-child mat-icon {
+  /* ikon da renklensin */
+  color: #d32f2f;
+}
+
+
 
 /* bunlar her zaman en altta kalsın*/
 
@@ -3657,6 +3740,12 @@ input {
   top: 0;
   left: 0;
   position: absolute;
+}
+
+.mat-mdc-menu-panel {
+  background-color: var(--main-foreground-color) !important;
+  border-radius: 0;
+  border: var(--border-input);
 }
 
 
@@ -3737,7 +3826,7 @@ mat-form-field.hide-subscript
 //   margin: 0 !important;
 //   padding: 0 !important;
 // }
-/* Chrome autofill’ini override etmek için
+/* Chrome autofill’ini override etmek için */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,

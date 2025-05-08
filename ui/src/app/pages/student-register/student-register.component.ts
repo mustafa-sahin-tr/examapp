@@ -20,7 +20,7 @@ import { StudentService } from '../../services/student.service';
     MatFormFieldModule,
     MatButtonModule,
     MatSelectModule,
-    MatSnackBarModule
+    MatSnackBarModule,
   ],
   templateUrl: './student-register.component.html',
 })
@@ -32,7 +32,7 @@ export class StudentRegisterComponent {
 
   isSubmitting = signal(false);
 
-  studentForm = this.fb.group({    
+  studentForm = this.fb.group({
     studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
     schoolName: ['', [Validators.required, Validators.maxLength(100)]],
     gradeId: [null], // Opsiyonel
@@ -46,11 +46,11 @@ export class StudentRegisterComponent {
     this.studentService.register(this.studentForm.value).subscribe({
       next: (val) => {
         this.isSubmitting.set(false);
-        if(val.refreshToken) {
-          localStorage.setItem('auth_token', val.refreshToken);
+        if (val.accessToken) {
+          localStorage.setItem('auth_token', val.accessToken);
         }
         this.snackBar.open('Öğrenci kaydı başarılı!', 'Tamam', { duration: 3000 });
-        this.router.navigate(['/dashboard']); // Kayıt sonrası yönlendirme
+        this.router.navigate(['/tests']); // Kayıt sonrası yönlendirme
       },
       error: (err) => {
         this.isSubmitting.set(false);

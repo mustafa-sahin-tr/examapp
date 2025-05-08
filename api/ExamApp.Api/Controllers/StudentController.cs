@@ -1,11 +1,15 @@
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace ExamApp.Api.Controllers
@@ -17,20 +21,27 @@ namespace ExamApp.Api.Controllers
         private readonly IMinIoService _minioService;
 
         private readonly IStudentService _studentService;
+        
+        private readonly IKeycloakService _keycloakService;
 
         private readonly IUserService _userService;
+
+        private readonly KeycloakSettings _keycloakSettings;
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
 
         public StudentController(IMinIoService minioService,IStudentService studentService,
-             IUserService userService,  UserProfileCacheService userProfileCacheService)
+             IUserService userService,  UserProfileCacheService userProfileCacheService,
+            IOptions<KeycloakSettings> options,  IKeycloakService keycloakService)
             : base()
         {
             _minioService = minioService;
             _studentService = studentService;
             _userService = userService;
             _userProfileCacheService = userProfileCacheService;
+             _keycloakService = keycloakService;
+             _keycloakSettings = options.Value;
         }
 
         [HttpPost("update-grade")]
@@ -76,6 +87,14 @@ namespace ExamApp.Api.Controllers
         {                    
             // 🔹 Token’dan UserId'yi al // token var valid ama user
             var user = await GetAuthenticatedUserAsync();
+            await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Student);
+
+            var refreshToken = Request.Cookies["refresh_token"];
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return Unauthorized("No refresh token provided.");
+
+            // 2. Keycloak token endpoint'ine isteği hazırla
+            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _studentService.Save(user.Id, request);
@@ -89,9 +108,24 @@ namespace ExamApp.Api.Controllers
                 return BadRequest(new { message = response.Message });
             }
 
-            return Ok(new { Message = "Student registered successfully.", 
-                StudentId = response.ObjectId,
-                 });
+            if (!string.IsNullOrEmpty(tokenData.RefreshToken))
+            {
+                Response.Cookies.Append("refresh_token", tokenData.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    MaxAge = TimeSpan.FromSeconds(tokenData.RefreshExpiresIn),
+                    Path = "/"
+                });
+            }
+            // 4. Access token'ı UI’a dön
+            return Ok(new
+            {
+                accessToken = tokenData.AccessToken,
+                expiresIn = tokenData.ExpiresIn
+            });
+                 
         }
 
 

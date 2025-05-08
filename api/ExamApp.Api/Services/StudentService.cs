@@ -67,33 +67,31 @@ public class StudentService : IStudentService
 
     public async Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto)
     {
-        var existingStudent = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
-            if (existingStudent != null)
-            {
-                return new ResponseBaseDto
-                {
-                    Success = false,
-                    Message = "Öğrenci zaten kayıtlı."
-                };
-            }
-
+        var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+        if (student != null)
+        {
+            student.StudentNumber = dto.StudentNumber;
+            student.SchoolName = dto.SchoolName;
+            student.GradeId = dto.GradeId;
+        } else {
             // 🔹 Yeni öğrenci kaydını ekle
-            var student = new Student
+            student = new Student
             {
                 UserId = userId,
                 StudentNumber = dto.StudentNumber,
                 SchoolName = dto.SchoolName,
                 GradeId = dto.GradeId
             };
+            _context.Students.Add(student);                
+        }
 
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync();
-            return new ResponseBaseDto
-            {
-                Success = true,
-                Message = "Öğrenci başarıyla kaydedildi.",
-                ObjectId = student.Id            
-            };
+        await _context.SaveChangesAsync();
+        return new ResponseBaseDto
+        {
+            Success = true,
+            Message = "Öğrenci başarıyla kaydedildi.",
+            ObjectId = student.Id            
+        };
     }
 
     public async Task<ResponseBaseDto> UpdateStudentGrade(int userId, int gradeId)

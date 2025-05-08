@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,21 +16,23 @@ namespace ExamApp.Api.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
-    {
-        private readonly HttpClient _http;
+    {        
         protected readonly AppDbContext _context;
         private readonly KeycloakSettings _keycloakSettings;
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
+        private readonly IKeycloakService _keycloakService;
+
         public AuthController(AppDbContext context,
-             IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService)
+             IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService,
+             IKeycloakService keycloakService)
             : base()
         {
             _context = context;
             _keycloakSettings = options.Value;
-            _http = factory.CreateClient();
             _userProfileCacheService = userProfileCacheService;
+            _keycloakService = keycloakService;
         }
 
         [Authorize]
@@ -56,60 +59,7 @@ namespace ExamApp.Api.Controllers
                 }
 
                 // Keycloak admin access token (önceden alınmalı veya Client Credentials ile otomatik alınabilir)
-                var adminToken = await GetKeycloakAdminTokenAsync(); // bunu birazdan gösterebiliriz
-
-                var keycloakUser = new
-                {
-                    username = request.Email,
-                    email = request.Email,
-                    enabled = true,
-                    firstName = request.FirstName,
-                    lastName = request.LastName,
-                    credentials = new[]
-                    {
-                        new {
-                            type = "password",
-                            value = request.Password,
-                            temporary = false
-                        }
-                    }
-                };
-
-                var json = JsonSerializer.Serialize(keycloakUser);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
-
-                var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}", content);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    return BadRequest($"Keycloak registration failed: {error}");
-                }
-
-                // Keycloak yeni kullanıcıya ID dönmez, ama Location header'ı olur
-                var locationHeader = response.Headers.Location?.ToString();
-                keycloakUserId = locationHeader?.Split("/").Last();
-
-                if (string.IsNullOrEmpty(keycloakUserId))
-                    return BadRequest("Keycloak user creation succeeded but no user ID returned.");
-
-                var rolesResponse = await _http.GetAsync($"{_keycloakSettings.Host}/{_keycloakSettings.RealmRolesUrl}");
-                var rolesJson = await rolesResponse.Content.ReadAsStringAsync();
-
-                var roles = JsonSerializer.Deserialize<List<KeycloakRoleDto>>(rolesJson, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });               
-
-                var role = roles.FirstOrDefault(f => f.name.Equals(request.Role.ToString()));  
-
-                var roleAssignJson = JsonSerializer.Serialize(new[] { role });
-                var assignContent = new StringContent(roleAssignJson, Encoding.UTF8, "application/json");
-
-                await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm", assignContent);               
-
+                await _keycloakService.SetRoleAsync(keycloakUserId, request.Role);
                 var user = new User
                 {
                     FullName = request.FirstName + " " + request.LastName,
@@ -130,37 +80,20 @@ namespace ExamApp.Api.Controllers
                 // Keycloak'taki kullanıcıyı silmeye çalış
                 if (!string.IsNullOrEmpty(keycloakUserId))
                 {
-                    await TryDeleteKeycloakUserAsync(keycloakUserId);
+                    await _keycloakService.DeleteUserAsync(keycloakUserId);
                 }
 
                 return StatusCode(500, "Kullanıcı kaydedilemedi.");
             }
 
-            
+
         }
 
-        private async Task<string> GetKeycloakAdminTokenAsync()
-        {
-            var content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                new KeyValuePair<string, string>("client_id", _keycloakSettings.AdminClientId),
-                new KeyValuePair<string, string>("client_secret", _keycloakSettings.AdminClientSecret)
-            });
+       
 
-            var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content);
-            var json = await response.Content.ReadAsStringAsync();
+        
 
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.GetProperty("access_token").GetString();
-        }
-
-        private async Task TryDeleteKeycloakUserAsync(string userId)
-        {            
-            var token = await GetKeycloakAdminTokenAsync();
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            var result = await _http.DeleteAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{userId}");                
-        }
+        
 
         [Authorize]
         [HttpPost("logout")]
@@ -170,19 +103,9 @@ namespace ExamApp.Api.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            // 2) Admin token'ı al
-            var adminToken = await GetKeycloakAdminTokenAsync();
+            await _keycloakService.LogoutAsync(userId);
 
-            // 3) Admin API ile session'ları sonlandır
-           
-            _http.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", adminToken);
-
-            var logoutUrl = string.Format($"{_keycloakSettings.Host}/{_keycloakSettings.LogoutUrl}", userId);
-
-            var resp = await _http.PostAsync(logoutUrl, null);
-            if (!resp.IsSuccessStatusCode)
-                return StatusCode((int)resp.StatusCode, "Keycloak oturumu sonlandırılamadı.");
+            Response.Cookies.Delete("refresh_token");
 
             return NoContent();
         }
@@ -191,37 +114,7 @@ namespace ExamApp.Api.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto request)
         {
-            var body = new Dictionary<string, string>
-            {
-                { "grant_type", _keycloakSettings.GrantType },
-                { "client_id", _keycloakSettings.ClientId },
-                { "client_secret", _keycloakSettings.ClientSecret },
-                { "username", request.Email },
-                { "password", request.Password }                
-            };
-
-            var response = await _http.PostAsync(
-                $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-                new FormUrlEncodedContent(body)
-            );
-
-            var content = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
-            {
-                // Keycloak error'ını ayıkla
-                using var doc = JsonDocument.Parse(content);
-                var error = doc.RootElement.GetProperty("error").GetString();
-                var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                    ? descProp.GetString()
-                    : null;
-                // _logger.LogWarning("Login failed: {Error} - {Description}", error, description);
-                return Unauthorized(new
-                {
-                    message = description ?? "Login failed."
-                });
-            }
-
-            var tokenDto = JsonSerializer.Deserialize<TokenResponseDto>(content)!;
+            var tokenDto = await _keycloakService.LoginAsync(request.Email, request.Password);
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
@@ -242,40 +135,41 @@ namespace ExamApp.Api.Controllers
             return Ok(loginResponseDto);
         }
 
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken()
+        {
+            // 1. Refresh token'ı cookie'den al
+            var refreshToken = Request.Cookies["refresh_token"];
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return Unauthorized("No refresh token provided.");
+
+            // 2. Keycloak token endpoint'ine isteği hazırla
+            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
+            // 3. Yeni refresh token varsa, cookie’yi güncelle
+            if (!string.IsNullOrEmpty(tokenData.RefreshToken))
+            {
+                Response.Cookies.Append("refresh_token", tokenData.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    MaxAge = TimeSpan.FromSeconds(tokenData.RefreshExpiresIn),
+                    Path = "/"
+                });
+            }
+            // 4. Access token'ı UI’a dön
+            return Ok(new
+            {
+                accessToken = tokenData.AccessToken,
+                expiresIn = tokenData.ExpiresIn
+            });
+        }
+
+
         [HttpPost("exchange")]
         public async Task<IActionResult> EchangeCode(CodeDto dto)
         {
-            var body = new Dictionary<string, string>
-            {
-                { "grant_type", "authorization_code" },
-                { "client_id", _keycloakSettings.ClientId },
-                { "client_secret", _keycloakSettings.ClientSecret },
-                { "redirect_uri", "http://localhost:5678/callback" },
-                { "code", dto.Code }                
-            };
-
-            var response = await _http.PostAsync(
-                $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-                new FormUrlEncodedContent(body)
-            );
-
-            var content = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
-            {
-                // Keycloak error'ını ayıkla
-                using var doc = JsonDocument.Parse(content);
-                var error = doc.RootElement.GetProperty("error").GetString();
-                var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                    ? descProp.GetString()
-                    : null;
-                // _logger.LogWarning("Login failed: {Error} - {Description}", error, description);
-                return Unauthorized(new
-                {
-                    message = description ?? "Login failed."
-                });
-            }
-
-            var tokenDto = JsonSerializer.Deserialize<TokenResponseDto>(content)!;
+            var tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code);
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
@@ -287,7 +181,7 @@ namespace ExamApp.Api.Controllers
                 return await GetUserProfile(sub);
             });
 
-            if((profile == null || profile.Id == 0) && !string.IsNullOrEmpty(sub))
+            if ((profile == null || profile.Id == 0) && !string.IsNullOrEmpty(sub))
             {
                 // new user registration
                 var user = new User
@@ -295,16 +189,25 @@ namespace ExamApp.Api.Controllers
 
                     FullName = jwt.Claims.First(c => c.Type == "given_name").Value + " " +
                                jwt.Claims.First(c => c.Type == "family_name").Value,
-                    Email = email,                    
+                    Email = email,
                     KeycloakId = sub
                 };
 
                 _context.Users.Add(user);
-                await _context.SaveChangesAsync();                
+                await _context.SaveChangesAsync();
 
                 profile = await GetUserProfile(sub);
                 await _userProfileCacheService.SetAsync(sub, profile);
             }
+
+            Response.Cookies.Append("refresh_token", tokenDto.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                MaxAge = TimeSpan.FromSeconds(tokenDto.RefreshExpiresIn),
+                Path = "/"
+            });
 
             var loginResponseDto = new LoginResponseDto
             {
@@ -333,13 +236,13 @@ namespace ExamApp.Api.Controllers
                 Role = user.Role.ToString(),
                 FullName = user.FullName,
                 Id = user.Id,
-                KeycloakId = sub,                
+                KeycloakId = sub,
                 Student = user.Student != null ? new StudentDto
                 {
                     Id = user.Student.Id,
                     GradeId = user.Student.GradeId,
                     SchoolName = user.Student.SchoolName,
-                    StudentNumber = user.Student.StudentNumber 
+                    StudentNumber = user.Student.StudentNumber
                 } : null,
                 ProfileId = user.Student != null ? user.Student.Id : (user.Teacher != null ? user.Teacher.Id : user.Parent != null ? user.Parent.Id : 0),
             };

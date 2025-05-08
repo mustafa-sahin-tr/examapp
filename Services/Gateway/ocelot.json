@@ -109,6 +109,19 @@
       "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
+        {
+          "Host": "minio",
+          "Port": 9000
+        }
+      ],
+      "UpstreamPathTemplate": "/minio-api/{everything}",
+      "UpstreamHttpMethod": [ "Get", "Post" ],
+      "AddHeadersToRequest": true
+    },
+    {
+      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
         { "Host": "angular-app", "Port": 4200 }
       ],
       "UpstreamPathTemplate": "/{everything}",

@@ -1,9 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
+import { BehaviorSubject, map, Observable, tap } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 import { CheckkTeacherResponse } from '../models/check-teacher-response';
+import { jwtDecode } from 'jwt-decode';
 
 export interface UserProfile {
   email: string;
@@ -136,5 +137,23 @@ export class AuthService {
         this.isAuthenticatedSubject.next(true);
       })
     );
+  }
+
+  isExpiringSoon(token: string): boolean {
+    try {
+      const decoded: any = jwtDecode(token);
+      const now = Math.floor(Date.now() / 1000);
+      console.log(' kalan süre : ', decoded.exp - now);
+      // token süresi bitmeden 60 saniye içinde yenileme işlemi yap
+      return decoded.exp - now < 200; // 60 saniye içinde bitiyorsa yenile
+    } catch {
+      return true;
+    }
+  }
+
+  refreshToken(): Observable<string> {
+    return this.http
+      .post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true })
+      .pipe(map((res) => res.accessToken));
   }
 }

@@ -17,7 +17,7 @@ builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange
 builder.Services.AddAuthentication()
     .AddJwtBearer("TestKey", options =>
     {
-        options.Authority = "http://localhost:5678/realms/exam-realm"; // Keycloak
+        options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}" ;//  "http://localhost:5678/realms/exam-realm"; // Keycloak
         options.Audience = "account";
         options.RequireHttpsMetadata = false;
         options.Events = new JwtBearerEvents
@@ -51,7 +51,10 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/oidc-login")
     {
-        context.Response.Redirect("http://localhost:5678/auth/realms/exam-realm/protocol/openid-connect/auth?client_id=exam-client&redirect_uri=http://localhost:5678/callback&response_type=code&scope=openid");
+        var host = builder.Configuration.GetValue<string>("Server:BaseUrl");
+        var realm = builder.Configuration.GetValue<string>("Keycloak:Realm");
+        var ClientCallbackUrl = builder.Configuration.GetValue<string>("Keycloak:ClientCallbackUrl");
+        context.Response.Redirect($"{host}/auth/realms/{realm}/protocol/openid-connect/auth?client_id=exam-client&redirect_uri={ClientCallbackUrl}");
         return;
     }
 

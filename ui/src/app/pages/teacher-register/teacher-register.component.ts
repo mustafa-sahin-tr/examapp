@@ -20,7 +20,7 @@ import { TeacherService } from '../../services/teacher.service';
     MatFormFieldModule,
     MatButtonModule,
     MatSelectModule,
-    MatSnackBarModule
+    MatSnackBarModule,
   ],
   templateUrl: './teacher-register.component.html',
 })
@@ -32,8 +32,8 @@ export class TeacherRegisterComponent {
 
   isSubmitting = signal(false);
 
-  teacherForm = this.fb.group({    
-    schoolName: ['', [Validators.required, Validators.maxLength(100)]]
+  teacherForm = this.fb.group({
+    schoolName: ['', [Validators.required, Validators.maxLength(100)]],
   });
 
   submitForm() {
@@ -44,11 +44,11 @@ export class TeacherRegisterComponent {
     this.teacherService.register(this.teacherForm.value).subscribe({
       next: (val) => {
         this.isSubmitting.set(false);
-        if(val.refreshToken) {
+        if (val.refreshToken) {
           localStorage.setItem('auth_token', val.refreshToken);
         }
         this.snackBar.open('Öğretmen kaydı başarılı!', 'Tamam', { duration: 3000 });
-        this.router.navigate(['/dashboard']); // Kayıt sonrası yönlendirme
+        this.router.navigate(['/tests']); // Kayıt sonrası yönlendirme
       },
       error: (err) => {
         this.isSubmitting.set(false);

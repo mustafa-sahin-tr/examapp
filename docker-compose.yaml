@@ -39,6 +39,25 @@ services:
     networks:
       - mynetwork      
 
+  exam-outbox-publisher:
+    container_name: exam-outbox-publisher
+    build:
+      context: ./dockerfiles/outboxpub
+      dockerfile: Dockerfile.outboxpub
+    ports:
+      - "8007:8007"
+      - "5081:5081"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8007
+    volumes:
+      - ./Services/OutboxPublisher:/app
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+    networks:
+      - mynetwork        
+
   angular-app:
     container_name: angular-app
     build:
@@ -229,6 +248,8 @@ services:
     networks:
       - mynetwork
 
+  
+
   redis:
     image: redis:7
     container_name: redis
@@ -248,6 +269,24 @@ services:
     # entrypoint: ["k6", "run", "/load_test.js"]      
     networks:
       - mynetwork
+
+  baget:
+    image: loicsharma/baget
+    platform: linux/amd64 
+    container_name: baget
+    ports:
+      - "8008:80"
+    volumes:
+      - ./nuget-packages:/var/baget
+    environment:
+      - ApiKey=dev123
+      - Storage__Type=FileSystem
+      - Storage__Path=/var/baget/packages
+      - Database__Type=Sqlite
+      - Database__ConnectionString=Data Source=/var/baget/baget.db
+      - Search__Type=Database
+    networks:
+      - mynetwork      
 
 
 networks:   

@@ -1,6 +1,8 @@
 <div class="ms-wizard-container">
   <div class="ms-wizard-header">
-    <div class="ms-wizard-title"><b>Soru 1</b></div>
+    <div class="ms-wizard-title">
+      <b>Soru {{ stepIndex() + 1 }}</b>
+    </div>
     <div class="ms-wizard-progress">
       <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ stepList.length }}</div>
       <div class="ms-progress-bar-bg">

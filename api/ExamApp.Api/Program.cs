@@ -4,7 +4,6 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using MassTransit;
 using Microsoft.AspNetCore.Authentication;
 using System.Text.Json;
 using Microsoft.IdentityModel.Tokens;
@@ -94,19 +93,19 @@ builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddHostedService<OutboxPublisher>();
-var rabbitConfig = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
-builder.Services.AddMassTransit(x =>
-{
-    x.UsingRabbitMq((context, cfg) =>
-    {
-        cfg.Host(rabbitConfig.Host, "/", h =>
-         {
-             h.Username(rabbitConfig.Username);
-             h.Password(rabbitConfig.Password);
-         });
-    });
-});
+// builder.Services.AddHostedService<OutboxPublisher>();
+// var rabbitConfig = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
+// builder.Services.AddMassTransit(x =>
+// {
+//     x.UsingRabbitMq((context, cfg) =>
+//     {
+//         cfg.Host(rabbitConfig.Host, "/", h =>
+//          {
+//              h.Username(rabbitConfig.Username);
+//              h.Password(rabbitConfig.Password);
+//          }); 
+//     });
+// });
 
 
 

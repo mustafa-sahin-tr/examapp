@@ -2,6 +2,7 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using OutboxPublisherService.Data;
 using System.Text.Json;
+using ExamApp.Foundation.Contracts;
 
 namespace OutboxPublisherService.Publishers;
 

@@ -3,11 +3,14 @@ services:
   exam-dotnet-api:
     command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
 
-  exam-badge-api:
-    command: dotnet watch run --urls=http://+:5080
+  # exam-badge-api:
+  #   command: dotnet watch run --urls=http://+:8006
 
   ocelot-gateway:
     command: dotnet watch run --urls=http://+:5678 
+
+  exam-outbox-publisher:
+    command: dotnet watch run --urls=http://+:8007
 
   angular-app:
     command: yarn start

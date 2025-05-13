@@ -17,7 +17,7 @@ builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange
 builder.Services.AddAuthentication()
     .AddJwtBearer("TestKey", options =>
     {
-        options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}" ;//  "http://localhost:5678/realms/exam-realm"; // Keycloak
+        options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}";//  "http://localhost:5678/realms/exam-realm"; // Keycloak
         options.Audience = "account";
         options.RequireHttpsMetadata = false;
         options.Events = new JwtBearerEvents
@@ -61,7 +61,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
-
+app.UseWebSockets();    // WebSocket desteği SignalR için gerekli
 await app.UseOcelot();
 
 app.Run();

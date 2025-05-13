@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, map, Observable, tap } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 import { CheckkTeacherResponse } from '../models/check-teacher-response';
@@ -152,8 +152,16 @@ export class AuthService {
   }
 
   refreshToken(): Observable<string> {
-    return this.http
-      .post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true })
-      .pipe(map((res) => res.accessToken));
+    return this.http.post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true }).pipe(
+      map((res) => res.accessToken),
+      catchError((error) => {
+        console.error('Token yenileme hatası:', error);
+        localStorage.clear();
+        this.isAuthenticatedSubject.next(false);
+        this.router.navigate(['/login']);
+        return throwError(() => new Error('Refresh failed'));
+      }) // Hata durumunda null döndür
+      // tap((res) => {
+    );
   }
 }

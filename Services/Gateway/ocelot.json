@@ -1,6 +1,19 @@
 {
   "Routes": [
     {
+      "DownstreamPathTemplate": "/hub/badges",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "exam-badge-api",
+          "Port": 8006
+        }
+      ],
+      "UpstreamPathTemplate": "/hub/badges",
+      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "UseWebSockets": true
+    },
+    {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

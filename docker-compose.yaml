@@ -108,6 +108,8 @@ services:
     depends_on:
       exam-pg-container:
         condition: service_healthy
+    volumes:
+      - ./pgadmin-data:/var/lib/pgadmin        
     networks:
       - mynetwork
 

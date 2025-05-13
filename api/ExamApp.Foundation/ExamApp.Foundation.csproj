@@ -4,12 +4,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageId>ExamApp.Contracts</PackageId>
-    <Version>1.0.0</Version>
+    <PackageId>ExamApp.Foundation</PackageId>
+    <Version>1.0.1</Version>
     <Authors>ExamApp Team</Authors>
     <Company>ExamApp</Company>
-    <Description>ExamApp Contracts</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>    
+    <Description>Shared event contracts, persistence layer for OutboxMessage and EF context</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
 </Project>

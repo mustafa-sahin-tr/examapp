@@ -1,5 +1,5 @@
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
-using OutboxPublisherService.Models;
 
 namespace OutboxPublisherService.Data;
 

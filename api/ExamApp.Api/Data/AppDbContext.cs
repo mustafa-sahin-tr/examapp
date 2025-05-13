@@ -1,5 +1,6 @@
 using System;
 using System.Linq.Expressions;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Data;

@@ -2,8 +2,9 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
-using ExamApp.Api.Models.Dtos.Events;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Numerics;
@@ -613,15 +614,15 @@ public class ExamService : IExamService
         return response;
     }
 
-    public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, int userId)
+    public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, User user)
     {
-        var testInstanceQuestion = await _context.TestInstanceQuestions                    
+        var testInstanceQuestion = await _context.TestInstanceQuestions
                     .Include(t => t.WorksheetQuestion)
                     .ThenInclude(wq => wq.Question)
                     .ThenInclude(wiq => wiq.Subject)
             .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId &&
                 tiq.Id == dto.TestQuestionId
-                && tiq.WorksheetInstance.Student.UserId == userId);
+                && tiq.WorksheetInstance.Student.UserId == user.Id);
 
         if (testInstanceQuestion == null)
         {
@@ -638,20 +639,22 @@ public class ExamService : IExamService
         // 1. Event oluştur
         var evt = new AnswerSubmittedEvent
         {
-            UserId = userId,
+            UserId = user.Id,
             QuestionId = testInstanceQuestion.WorksheetQuestion.QuestionId,
             Subject = testInstanceQuestion.WorksheetQuestion.Question.Subject.Name,
             TestInstanceId = testInstanceQuestion.WorksheetInstanceId,
             SelectedAnswerId = dto.SelectedAnswerId,
             SubmittedAt = DateTime.UtcNow,
-            TimeTakenInSeconds = dto.TimeTaken
+            TimeTakenInSeconds = dto.TimeTaken,
+            ClientId = user.KeycloakId
         };
 
         // 2. Outbox'a yaz
         var outbox = new OutboxMessage
         {
-            Type = nameof(AnswerSubmittedEvent),
-            Content = JsonSerializer.Serialize(evt)
+            Type = typeof(AnswerSubmittedEvent).AssemblyQualifiedName ?? nameof(AnswerSubmittedEvent),
+            Content = JsonSerializer.Serialize(evt),
+            CreatedAt = DateTime.UtcNow
         };
         _context.OutboxMessages.Add(outbox);
 

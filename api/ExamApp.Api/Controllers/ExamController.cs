@@ -26,7 +26,7 @@ public class ExamController : BaseController
         _examService = examService;
         _userProfileCacheService = userProfileCacheService;
     }
-    
+
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetWorksheet(int id)
@@ -40,31 +40,33 @@ public class ExamController : BaseController
 
 
     [HttpGet("student-worksheets")]
-    [Authorize(Roles ="Student")]
+    [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetWorksheetAndInstancessAsync(int gradeId)
     {
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if(profile == null) {
+        if (profile == null)
+        {
             return BadRequest("Öğrenci Bilgisine ulaşılamadı");
-        }        
-        var result = await _examService.GetWorksheetAndInstancesAsync(new Student{Id = profile.ProfileId}, gradeId);
+        }
+        var result = await _examService.GetWorksheetAndInstancesAsync(new Student { Id = profile.ProfileId }, gradeId);
         return Ok(result);
     }
 
 
-    [HttpGet("CompletedTests")]    
-    [Authorize(Roles ="Student")]
+    [HttpGet("CompletedTests")]
+    [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetCompletedTests(int pageNumber = 1, int pageSize = 10)
     {
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if(profile == null) {
+        if (profile == null)
+        {
             return BadRequest("Öğrenci Bilgisine ulaşılamadı");
-        }        
-        var result = await _examService.GetCompletedTestsAsync(new Student{Id = profile.ProfileId}, pageNumber, pageSize);
+        }
+        var result = await _examService.GetCompletedTestsAsync(new Student { Id = profile.ProfileId }, pageNumber, pageSize);
         return Ok(result);
     }
 
-    [HttpGet("latest")]    
+    [HttpGet("latest")]
     public async Task<IActionResult> GetLatestWorksheetsAsync(int pageNumber = 1, int pageSize = 10)
     {
         var result = await _examService.GetLatestWorksheetsAsync(pageNumber, pageSize);
@@ -72,7 +74,7 @@ public class ExamController : BaseController
     }
 
 
-    [Authorize(Roles ="Student,Teacher")]
+    [Authorize(Roles = "Student,Teacher")]
     [HttpGet("list")]
     public async Task<IActionResult> GetWorksheetsAsync(
         int? id = 0,
@@ -96,14 +98,17 @@ public class ExamController : BaseController
 
         Paged<WorksheetDto> result = null;
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if(profile == null) {
+        if (profile == null)
+        {
             return BadRequest("Öğrenci Bilgisine ulaşılamadı");
-        } 
-        if (profile.Role == UserRole.Student.ToString()) {
+        }
+        if (profile.Role == UserRole.Student.ToString())
+        {
             result = await _examService.GetWorksheetsForStudentsAsync(filterDto, profile);
         }
-        else if(profile.Role == UserRole.Teacher.ToString()) {
-            result = await _examService.GetWorksheetsForTeacherAsync(filterDto,profile);
+        else if (profile.Role == UserRole.Teacher.ToString())
+        {
+            result = await _examService.GetWorksheetsForTeacherAsync(filterDto, profile);
         }
         return Ok(result);
     }
@@ -130,16 +135,17 @@ public class ExamController : BaseController
     public async Task<IActionResult> StartTest(int testId)
     {
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if(profile == null) {
+        if (profile == null)
+        {
             return BadRequest("Öğrenci Bilgisine ulaşılamadı");
-        } 
+        }
 
         try
         {
-            var result = await _examService.StartTestAsync(testId, new Student{Id = profile.ProfileId});
+            var result = await _examService.StartTestAsync(testId, new Student { Id = profile.ProfileId });
             if (result == null)
                 return NotFound(new { message = "Test bulunamadı!" });
-                        
+
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -170,7 +176,7 @@ public class ExamController : BaseController
         var response = await _examService.GetCanvasTestResultAsync(testInstanceId, user.Id, true);
         return Ok(response);
     }
-    
+
 
     [HttpGet("test-canvas-instance/{testInstanceId}")]
     public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
@@ -179,14 +185,14 @@ public class ExamController : BaseController
         var response = await _examService.GetCanvasTestResultAsync(testInstanceId, user.Id);
         return Ok(response);
     }
-    
+
 
     [Authorize]
     [HttpPost("save-answer")]
     public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _examService.SaveAnswer(dto, user.Id);
+        var response = await _examService.SaveAnswer(dto, user);
         return Ok(response);
     }
 
@@ -205,16 +211,17 @@ public class ExamController : BaseController
         var response = await _examService.CreateOrUpdateAsync(examDto, 0);
         return Ok(response);
     }
-    
-    
+
+
     [HttpGet("student/statistics")]
     public async Task<IActionResult> GetGroupedStudentStatistics()
     {
         var user = await GetAuthenticatedUserAsync();
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if(profile == null) {
+        if (profile == null)
+        {
             return BadRequest("Öğrenci Bilgisine ulaşılamadı");
-        } 
+        }
         var result = await _examService.GetGroupedStudentStatistics(profile.ProfileId);
         return Ok(result);
     }

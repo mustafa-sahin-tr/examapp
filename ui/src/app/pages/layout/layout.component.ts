@@ -1,4 +1,3 @@
-
 import { Component, inject, OnInit, signal, WritableSignal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -6,7 +5,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
-import {MatSidenavModule} from '@angular/material/sidenav';
+import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatMenuModule } from '@angular/material/menu';
 import { AuthService } from '../../services/auth.service';
 import { SidenavService } from '../../services/sidenav.service';
@@ -14,10 +13,12 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatFormField, MatFormFieldModule } from '@angular/material/form-field';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
+import { SignalRService } from '../../services/signalr.service';
 
 @Component({
   selector: 'app-layout',
-  imports: [CommonModule,
+  imports: [
+    CommonModule,
     MatSidenavModule,
     MatToolbarModule,
     MatButtonModule,
@@ -26,48 +27,45 @@ import { MatInputModule } from '@angular/material/input';
     RouterModule,
     MatMenuModule,
     FormsModule,
-    ReactiveFormsModule,MatAutocompleteModule, MatInputModule
+    ReactiveFormsModule,
+    MatAutocompleteModule,
+    MatInputModule,
   ],
   templateUrl: './layout.component.html',
-  styleUrl: './layout.component.scss'
+  styleUrl: './layout.component.scss',
 })
 export class LayoutComponent implements OnInit {
   // isSidenavOpen = signal(true);
   showHeader = signal(true);
   globalSearchControl = new FormControl('');
   // Örnek geçmiş aramalar
-  searchHistory: string[] = ['Matematik', 'Türkçe', 'Hayat Bilgisi','Fen Bilimler'];
-  
+  searchHistory: string[] = ['Matematik', 'Türkçe', 'Hayat Bilgisi', 'Fen Bilimler'];
+
   // Örnek öneri listesi (tüm öneriler)
-  allSuggestions: string[] = [
-    'Doğal Sayılar', 
-    'Gezegenimiz', 
-    'Çarpma',
-    'Zıt Anlamlı'    
-  ];
+  allSuggestions: string[] = ['Doğal Sayılar', 'Gezegenimiz', 'Çarpma', 'Zıt Anlamlı'];
   // Filtrelenmiş öneriler ya da geçmiş arama listesi için liste
   filteredSuggestions: string[] = [];
-  
+
   // Input aktif mi? (focus durumunu takip etmek için)
   isInputFocused: boolean = false;
 
   menuItems = [
-    { type:"menu", name: 'Sınavlar', icon: 'folder', route: '/tests' },
-    { type:"menu", name: 'Program', icon: 'assignment_ind', route: '/program-create' },
-    { type:"menu", name: 'Sertifikalar', icon: 'verified', route: '/certificates' },
-    { type:"menu", name: 'Parkur', icon: 'timeline' },
-    { type:"menu", name: 'Sonuçlar', icon: 'track_changes'},
-    { type:"divider"},
-    { type:"menu", name: 'Destek', icon: 'help' },
-    { type:"menu", name: 'Geri Bildirim', icon: 'feedback' },
-    { type:"divider"},
-    { type:"menu", name: 'Test Ekleme', icon: 'add_circle' , route: '/exam'}
-  ];  
+    { type: 'menu', name: 'Sınavlar', icon: 'folder', route: '/tests' },
+    { type: 'menu', name: 'Program', icon: 'assignment_ind', route: '/program-create' },
+    { type: 'menu', name: 'Sertifikalar', icon: 'verified', route: '/certificates' },
+    { type: 'menu', name: 'Parkur', icon: 'timeline' },
+    { type: 'menu', name: 'Sonuçlar', icon: 'track_changes' },
+    { type: 'divider' },
+    { type: 'menu', name: 'Destek', icon: 'help' },
+    { type: 'menu', name: 'Geri Bildirim', icon: 'feedback' },
+    { type: 'divider' },
+    { type: 'menu', name: 'Test Ekleme', icon: 'add_circle', route: '/exam' },
+  ];
 
   activeMenuItem: WritableSignal<string | null> = signal('/home');
 
   authService = inject(AuthService);
-  profileImage = 'assets/profile.png';  
+  profileImage = 'assets/profile.png';
   userRole: string | null = null;
   $isAuthenticated = this.authService.isAuthenticated();
   sidenavService = inject(SidenavService);
@@ -85,16 +83,14 @@ export class LayoutComponent implements OnInit {
 
   ngOnInit(): void {
     // Abone olarak değer değişimini takip et
-    this.globalSearchControl.valueChanges.subscribe(value => {
+    this.globalSearchControl.valueChanges.subscribe((value) => {
       // Eğer input boşsa, geçmiş aramalar gösterilsin
       if (!value || !value.trim()) {
         this.filteredSuggestions = [...this.searchHistory];
       } else {
         // Girilen değere göre öneriler filtrelensin (küçük/büyük harf duyarsız)
         const filterValue = value.toLowerCase();
-        this.filteredSuggestions = this.allSuggestions.filter(item =>
-          item.toLowerCase().includes(filterValue)
-        );
+        this.filteredSuggestions = this.allSuggestions.filter((item) => item.toLowerCase().includes(filterValue));
       }
     });
   }
@@ -119,10 +115,10 @@ export class LayoutComponent implements OnInit {
   }
 
   onDelete(item: string) {
-    this.searchHistory = this.searchHistory.filter(i => i !== item);
-    this.filteredSuggestions = this.filteredSuggestions.filter(i => i !== item);
+    this.searchHistory = this.searchHistory.filter((i) => i !== item);
+    this.filteredSuggestions = this.filteredSuggestions.filter((i) => i !== item);
   }
-  
+
   // Blur olduğunda belirli bir gecikme sonrası listeyi kapat (click eventi için)
   onBlur() {
     setTimeout(() => {
@@ -136,40 +132,39 @@ export class LayoutComponent implements OnInit {
     this.onGlobalSearch();
   }
 
-  
   isSidenavOpen = this.sidenavService.isSidenavOpen; // Servisten değer alıyoruz
   isFullScreen = this.sidenavService.isFullScreen; // Servisten değer alıyoruz
 
-  constructor(private router: Router) {
-    this.router.events.subscribe(event => {
+  constructor(private router: Router, private signalR: SignalRService) {
+    this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {
         const url = (event as NavigationEnd).urlAfterRedirects; // ✅ Doğru URL almak için
         this.showHeader.set(!(url === '/login' || url === '/register'));
       }
     });
+    this.signalR.startConnection();
   }
   title = 'exam-app';
-    get userAvatarUrl () {
-      return this.authService.getUserAvatar() || this.profileImage;
-    }
+  get userAvatarUrl() {
+    return this.authService.getUserAvatar() || this.profileImage;
+  }
 
-    get userName() {
-      return this.authService.getUser()?.fullName || 'Kullanıcı';
+  get userName() {
+    return this.authService.getUser()?.fullName || 'Kullanıcı';
+  }
+
+  navigateTo(path: string | undefined) {
+    if (!path) {
+      return;
     }
-  
-    navigateTo(path: string | undefined) {
-      if (!path) {
-        return;
-      }
-      if(path === '/tests') {
-         this.globalSearchControl.setValue(''); // Arama çubuğunu temizle
-      }
-      this.activeMenuItem.set(path);
-      this.router.navigate([path]);
+    if (path === '/tests') {
+      this.globalSearchControl.setValue(''); // Arama çubuğunu temizle
     }
-  
-    logout() {
-      this.authService.logout();
-    }
+    this.activeMenuItem.set(path);
+    this.router.navigate([path]);
+  }
+
+  logout() {
+    this.authService.logout();
+  }
 }
-

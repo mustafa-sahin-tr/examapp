@@ -146,12 +146,12 @@ export class ImageSelectorComponent {
 
   public togglePreviewMode(testId: number) {
     if (!this.previewMode()) {
+      this.previewMode.set(!this.previewMode());
+      this.previewCurrentIndex.set(0);
       // get questions and sets region
       this.questionService.getAll(testId).subscribe((response) => {
         const regions = this.testService.convertQuestionsToRegions(response);
         this.regions.set(regions);
-        this.previewMode.set(!this.previewMode());
-        this.previewCurrentIndex.set(0);
       });
     } else {
       this.resetRegions();

@@ -79,8 +79,8 @@
 
       <mat-menu #actionMenu="matMenu">
         <button mat-menu-item (click)="togglePreviewMode()">
-          <mat-icon>{{ isPreviewModeComputed() ? 'visibility_off' : 'visibility' }}</mat-icon>
-          <span>{{ isPreviewModeComputed() ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
+          <mat-icon>{{ previewModeText() }}</mat-icon>
+          <span>{{ previewModeText() == 'visibility_off' ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
         </button>
         <div mat-menu-item (click)="$event.stopPropagation()">
           <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">

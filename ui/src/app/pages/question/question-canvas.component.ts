@@ -61,6 +61,7 @@ export class QuestionCanvasComponent implements OnInit {
   public autoMode = signal<boolean>(false);
   public autoAlign = signal<boolean>(false);
   public inProgress = signal<boolean>(false);
+  public previewModeText = signal<string>('Önizleme Modu');
   public dropdownVisible = signal<boolean>(false);
   router = inject(Router);
   route = inject(ActivatedRoute);
@@ -169,7 +170,7 @@ export class QuestionCanvasComponent implements OnInit {
     this.imageSelector.downloadRegionsLite();
   }
 
-  public isPreviewModeComputed = computed(() => (this.imageSelector ? this.imageSelector.previewMode() : true));
+  // public isPreviewModeComputed = computed(() => (this.imageSelector ? this.imageSelector.previewMode() : true));
 
   togglePreviewMode() {
     let testId = this.id;
@@ -177,6 +178,9 @@ export class QuestionCanvasComponent implements OnInit {
       testId = this.questionForm.value.testValue;
     }
     this.imageSelector.togglePreviewMode(testId || 0);
+    console.log('Preview Mode:', this.imageSelector.previewMode());
+    this.previewModeText.set(this.imageSelector.previewMode() ? 'visibility_off' : 'visibility');
+    console.log('Preview Mode Text:', this.previewModeText());
   }
 
   toggleOnlyQuestionMode() {

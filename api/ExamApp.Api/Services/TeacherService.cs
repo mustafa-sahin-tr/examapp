@@ -14,10 +14,9 @@ public class TeacherService : ITeacherService
         _context = context;
     }
 
-    public async Task<Teacher> GetTeacher(int userId)
+    public async Task<Teacher?> GetTeacher(int userId)
     {
-        return await _context.Teachers
-            .Include(t => t.UserId)
+        return await _context.Teachers            
             .Where(t => t.UserId == userId)
             .FirstOrDefaultAsync();
     }

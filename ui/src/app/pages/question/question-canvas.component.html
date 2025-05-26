@@ -38,7 +38,7 @@
       </span>
     </div>
     <label for="subject">Test</label>
-    {{ dropdownVisible() }} {{ filteredTestListSignal().length }}
+
     <div class="search-box" style="max-width: 450px" (focusin)="onFocus()" (focusout)="onBlur()">
       <mat-icon class="search-icon">search</mat-icon>
       <input
@@ -63,13 +63,9 @@
         </ul>
       </div>
     </div>
-    <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
+    <!-- <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
       Auto Play
-    </mat-slide-toggle>
-
-    <mat-slide-toggle class="example-margin" [checked]="autoAlign()" (change)="setAutoAlign($event.checked)">
-      Hizalama
-    </mat-slide-toggle>
+    </mat-slide-toggle> -->
 
     <div class="button-group ml-auto">
       <button mat-raised-button color="primary" (click)="sendToFix()" class="full-width" type="button">Eğit</button>
@@ -86,6 +82,16 @@
           <mat-icon>{{ isPreviewModeComputed() ? 'visibility_off' : 'visibility' }}</mat-icon>
           <span>{{ isPreviewModeComputed() ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
         </button>
+        <div mat-menu-item (click)="$event.stopPropagation()">
+          <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
+            Auto Play
+          </mat-slide-toggle>
+        </div>
+        <div mat-menu-item (click)="$event.stopPropagation()">
+          <mat-slide-toggle class="example-margin" [checked]="autoAlign()" (change)="setAutoAlign($event.checked)">
+            Hizalama
+          </mat-slide-toggle>
+        </div>
         <button mat-menu-item (click)="downloadRegionsLite()">
           <mat-icon>file_download</mat-icon>
           <span>İndir</span>

@@ -64,8 +64,7 @@ export class CallbackComponent implements OnInit {
         this.authService.exchangeCodeForToken(code).subscribe({
           next: (res) => {
             this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
-            const role = 'Student'; //res.role; // 0 = Student, 1 = Teacher, 2 = Parent
-            this.checkUserSession(role);
+            this.checkUserSession(res.profile.role);
           },
           error: () => {
             //   this.isLoading = false;

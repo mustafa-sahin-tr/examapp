@@ -14,6 +14,14 @@
       "UseWebSockets": true
     },
     {
+      "DownstreamPathTemplate": "/{everything}" ,
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "question-detector-dev", "Port": 8080 }
+      ],
+      "UpstreamPathTemplate": "/question-detector-dev/{everything}"
+    },
+    {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
@@ -31,7 +39,7 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "TestKey"
       }
-    },
+    },    
     {
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
@@ -127,7 +135,7 @@
           "Port": 9000
         }
       ],
-      "UpstreamPathTemplate": "/minio-api/{everything}",
+      "UpstreamPathTemplate": "/img/{everything}",
       "UpstreamHttpMethod": [ "Get", "Post" ],
       "AddHeadersToRequest": true
     },

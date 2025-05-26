@@ -8,5 +8,5 @@ public interface ITeacherService
 {
     Task<ResponseBaseDto> Save(int userId, RegisterTeacherDto dto);
 
-    Task<Teacher> GetTeacher(int userId)    ;
+    Task<Teacher?> GetTeacher(int userId);
 }

@@ -21,6 +21,8 @@ RUN apt-get update \
 
 RUN dotnet tool install -g microsoft.sqlpackage
 
+RUN dotnet tool install --global dotnet-outdated-tool
+
 # Install dotnet-ef tool globally
 RUN dotnet tool install -g dotnet-ef
 

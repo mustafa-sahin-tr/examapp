@@ -77,7 +77,7 @@ public class QuestionsController : BaseController
         }
 
         var reponse = await _questionService.SaveBulkQuestion(soruDto);
-        if (reponse == null || !reponse.Success == false)
+        if (reponse == null || !reponse.Success)
         {
             return BadRequest("Soru seti kaydedilemedi.");
         }

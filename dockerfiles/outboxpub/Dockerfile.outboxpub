@@ -1,5 +1,5 @@
 # Use the official .NET SDK image as the base image
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -20,6 +20,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN dotnet tool install -g microsoft.sqlpackage
+
+RUN dotnet tool install --global dotnet-outdated-tool
 
 # Install dotnet-ef tool globally
 RUN dotnet tool install -g dotnet-ef

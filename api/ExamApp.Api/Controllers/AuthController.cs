@@ -58,6 +58,9 @@ namespace ExamApp.Api.Controllers
                     return BadRequest("Email already exists.");
                 }
 
+                keycloakUserId = await _keycloakService.CreateUserAsync(
+                    request.Email, request.Password, request.Email,
+                    request.FirstName, request.LastName);
                 // Keycloak admin access token (önceden alınmalı veya Client Credentials ile otomatik alınabilir)
                 await _keycloakService.SetRoleAsync(keycloakUserId, request.Role);
                 var user = new User

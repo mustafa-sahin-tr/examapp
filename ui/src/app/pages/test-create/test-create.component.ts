@@ -23,10 +23,24 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
   standalone: true,
-  imports: [ CommonModule, MatCardModule , MatButtonModule, FormsModule, MatFormFieldModule, MatOptionModule,
-    MatInputModule, MatSelectModule, MatCheckboxModule, AutofocusDirective, MatIconModule,
-    ReactiveFormsModule, MatToolbarModule,MatLabel, WorksheetCardComponent],
-  styleUrls: ['./test-create.component.scss']
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatButtonModule,
+    FormsModule,
+    MatFormFieldModule,
+    MatOptionModule,
+    MatInputModule,
+    MatSelectModule,
+    MatCheckboxModule,
+    AutofocusDirective,
+    MatIconModule,
+    ReactiveFormsModule,
+    MatToolbarModule,
+    MatLabel,
+    WorksheetCardComponent,
+  ],
+  styleUrls: ['./test-create.component.scss'],
 })
 export class TestCreateComponent implements OnInit {
   id!: number | null;
@@ -37,34 +51,41 @@ export class TestCreateComponent implements OnInit {
   books: Book[] = [];
   bookTests: BookTest[] = [];
   bookService = inject(BookService);
-  grades = [{ id: 1, name: '1. Sınıf' }, { id: 2, name: '2. Sınıf' }, { id: 3, name: '3. Sınıf' }];
+  grades = [
+    { id: 1, name: '1. Sınıf' },
+    { id: 2, name: '2. Sınıf' },
+    { id: 3, name: '3. Sınıf' },
+  ];
   showAddBookInput = false;
   showAddBookTestInput = false;
   /** grab the input once it’s in the DOM */
   @ViewChild('newBookInput') newBookInput!: ElementRef<HTMLInputElement>;
 
-  constructor(private fb: FormBuilder, private router: Router, private route: ActivatedRoute,
-    private testService: TestService) {
-    this.testForm = this.fb.group({      
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private route: ActivatedRoute,
+    private testService: TestService
+  ) {
+    this.testForm = this.fb.group({
       name: ['', Validators.required],
       description: [''],
       gradeId: ['', Validators.required],
       maxDurationMinutes: [600, [Validators.required, Validators.min(10)]], // Varsayılan 10 dakika
       isPracticeTest: [false], // Çalışma testi mi?
       subtitle: [''],
-      imageUrl: [''],     
+      imageUrl: [''],
       newBookName: [''],
       newBookTestName: [''],
       bookTestId: [''],
       bookId: [''],
-      questionCount: [0]
+      questionCount: [0],
     });
   }
 
   ngOnInit(): void {
-
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
-    this.isEditMode = this.id !== null;  
+    this.isEditMode = this.id !== null;
     this.reload();
   }
 
@@ -72,82 +93,98 @@ export class TestCreateComponent implements OnInit {
     this.showAddBookInput = false;
     this.showAddBookTestInput = false;
     this.loadBooks();
-    if(this.isEditMode) {
+    if (this.isEditMode) {
       this.loadTest();
     }
   }
 
   loadTest() {
-      this.testService.get(this.id!).subscribe(exam => {
-        this.onBookChange(exam.bookId);
-        this.testForm.patchValue({
-          name: exam.name,
-          description: exam.description,
-          gradeId: exam.gradeId,
-          maxDurationMinutes: exam.maxDurationSeconds / 60,
-          isPracticeTest: exam.isPracticeTest,
-          subtitle: exam.subtitle,
-          imageUrl: exam.imageUrl,
-          bookTestId: exam.bookTestId,
-          bookId: exam.bookId,
-          questionCount: exam.questionCount
-        });
+    this.testService.get(this.id!).subscribe((exam) => {
+      this.onBookChange(exam.bookId);
+      this.testForm.patchValue({
+        name: exam.name,
+        description: exam.description,
+        gradeId: exam.gradeId,
+        maxDurationMinutes: exam.maxDurationSeconds / 60,
+        isPracticeTest: exam.isPracticeTest,
+        subtitle: exam.subtitle,
+        imageUrl: exam.imageUrl,
+        bookTestId: exam.bookTestId,
+        bookId: exam.bookId,
+        questionCount: exam.questionCount,
+      });
+    });
+  }
+
+  loadBooks() {
+    this.bookService.getAll().subscribe((data) => {
+      this.books = data;
+      if (this.testForm.value.bookId) {
+        this.onBookChange(this.testForm.value.bookId);
+      }
+    });
+  }
+
+  onBookChange($event: any) {
+    if ($event) {
+      this.showAddBookInput = false;
+      this.bookService.getTestsByBook($event).subscribe((data) => {
+        this.bookTests = data;
       });
     }
+  }
 
-    loadBooks() {
-      this.bookService.getAll().subscribe(data => {
-        this.books = data;
-        if(this.testForm.value.bookId) {
-          this.onBookChange(this.testForm.value.bookId);
-        }
-      });
+  openNewBookAdd() {
+    this.showAddBookInput = true;
+    this.testForm.patchValue({ bookId: null });
+    this.bookTests = [];
+
+    this.openNewBookTestAdd();
+  }
+
+  onNewBookBlur() {
+    const name = this.testForm.get('newBookName')?.value;
+    // if user leaves without typing, hide the input again
+    if (!name) {
+      this.showAddBookInput = false;
+      this.showAddBookTestInput = false;
     }
-  
-    onBookChange($event : any) {
-      if($event) {
-        this.showAddBookInput = false;        
-        this.bookService.getTestsByBook($event).
-          subscribe(data => {
-            this.bookTests = data          
-          });
-      }     
+  }
+
+  onNewBookTestBlur() {
+    const name = this.testForm.get('newBookTestName')?.value;
+    // if user leaves without typing, hide the input again
+    if (!name) {
+      this.showAddBookTestInput = false;
     }
+  }
 
-    openNewBookAdd() {
-      this.showAddBookInput = true;
-      this.testForm.patchValue({ bookId: null });
-      this.bookTests = [];
+  openNewBookTestAdd() {
+    this.showAddBookTestInput = true;
+    this.testForm.patchValue({ bookTestId: null });
+  }
 
-      this.openNewBookTestAdd();
-    }
+  private createTestPayload(): Test {
+    return {
+      id: this.id,
+      name: this.testForm.value.name,
+      description: this.testForm.value.description,
+      gradeId: this.testForm.value.gradeId,
+      maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
+      isPracticeTest: this.testForm.value.isPracticeTest,
+      imageUrl: this.testForm.value.imageUrl,
+      subtitle: this.testForm.value.subtitle,
+      newBookName: this.testForm.value.newBookName,
+      newBookTestName: this.testForm.value.newBookTestName,
+      bookTestId: !this.testForm.value.bookTestId ? 0 : this.testForm.value.bookTestId,
+      bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
+    };
+  }
 
-
-    onNewBookBlur() {
-      const name = this.testForm.get('newBookName')?.value;
-      // if user leaves without typing, hide the input again
-      if (!name) {
-        this.showAddBookInput = false;
-        this.showAddBookTestInput = false;
-      }
-    }
-
-    onNewBookTestBlur() {
-      const name = this.testForm.get('newBookTestName')?.value;
-      // if user leaves without typing, hide the input again
-      if (!name) {
-        this.showAddBookTestInput = false;
-      }
-    }
-
-    openNewBookTestAdd() {
-      this.showAddBookTestInput = true;
-      this.testForm.patchValue({ bookTestId: null });
-    }
-
-    navigateToQuestionCanvas() {
-      //subjectId?: number; topicId?: number, subtopicId?: number, testId?: number, bookId?: number, bookTestId?: number};
-      const navigationExtras: NavigationExtras = {
+  navigateToQuestionCanvas() {
+    if (this.testForm.valid) {
+      this.testService.create(this.createTestPayload()).subscribe(() => {
+        const navigationExtras: NavigationExtras = {
           state: {
             subjectId: null,
             topicId: null,
@@ -155,41 +192,23 @@ export class TestCreateComponent implements OnInit {
             testId: this.testForm.value.subtitle,
             bookId: this.testForm.value.bookId,
             bookTestId: this.testForm.value.bookTestId,
-            testValue: this.id
-          }
+            testValue: this.id,
+          },
         };
-        setTimeout(() => {  
-          this.router.navigate(['/questioncanvas'],navigationExtras);
+        setTimeout(() => {
+          this.router.navigate(['/questioncanvas'], navigationExtras);
         }, 1000);
+      });
     }
+  }
 
   onSubmit() {
     if (this.testForm.valid) {
-      console.log('Yeni Test:', this.testForm.value);
-      // Backend API çağrısı yapılabilir burada
-      // Testi kaydet api'sini çağır.
-
-      const testPayload: Test = {
-        id: this.id,
-        name: this.testForm.value.name,
-        description: this.testForm.value.description,
-        gradeId: this.testForm.value.gradeId,
-        maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
-        isPracticeTest: this.testForm.value.isPracticeTest,
-        imageUrl: this.testForm.value.imageUrl,
-        subtitle: this.testForm.value.subtitle,
-        newBookName: this.testForm.value.newBookName,
-        newBookTestName: this.testForm.value.newBookTestName,
-        bookTestId: !this.testForm.value.bookTestId ? 0 : this.testForm.value.bookTestId,
-        bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
-      };
-
-      this.testService.create(testPayload).subscribe(response => {
-        if(this.isEditMode) {
+      this.testService.create(this.createTestPayload()).subscribe((response) => {
+        if (this.isEditMode) {
           this.reload();
-        }
-        else {        
-          this.router.navigate(['/exam', response.examId]); // Test oluşturulduktan sonra yönlendirme
+        } else {
+          this.router.navigate(['/exam', response.examId]);
         }
       });
     }

@@ -13,13 +13,15 @@ RUN apt-get update && apt-get install -y ca-certificates
 # Install required tools for development (e.g., curl, nano, git)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        curl \
-        nano \
-        git \
-        net-tools \
+    curl \
+    nano \
+    git \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 RUN dotnet tool install -g microsoft.sqlpackage
+
+RUN dotnet tool install --global dotnet-outdated-tool
 
 # Install dotnet-ef tool globally
 RUN dotnet tool install -g dotnet-ef

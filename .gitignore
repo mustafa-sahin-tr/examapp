@@ -94,11 +94,13 @@ Thumbs.db
 minio-data/
 
 /question-detector/app/data/labels
-/question-detector/app/data/answers
+/question-detector/app/data/answers/*
+!/question-detector/app/data/answers/runs
 /question-detector/app/data/answers-v1
 /question-detector/app/data/crops
 /question-detector/app/data/images
-/question-detector/app/data/questions
+/question-detector/app/data/questions/*
+!/question-detector/app/data/questions/runs
 /question-detector/app/venv/
 /question-detector/app/venv/lib/python3.8/site-packages
 /question-detector/app/.tmp.driveupload

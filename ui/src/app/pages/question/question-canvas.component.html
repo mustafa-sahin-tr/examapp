@@ -1,6 +1,6 @@
 <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
   <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center" class="flex-row">
-    <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()">
+    <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()" type="button">
       <mat-icon>cloud_upload</mat-icon>
       <span>Yükle</span>
     </button>
@@ -73,12 +73,12 @@
         Kaydet
       </button>
 
-      <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Open actions">
+      <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Open actions" type="button">
         <mat-icon>more_vert</mat-icon>
       </button>
 
       <mat-menu #actionMenu="matMenu">
-        <button mat-menu-item (click)="togglePreviewMode()">
+        <button mat-menu-item (click)="togglePreviewMode()" type="button">
           <mat-icon>{{ previewModeText() }}</mat-icon>
           <span>{{ previewModeText() == 'visibility_off' ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
         </button>

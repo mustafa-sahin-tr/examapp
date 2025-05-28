@@ -366,6 +366,449 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Passage");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ProgramStep", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Multiple")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProgramSteps");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?",
+                            Multiple = false,
+                            Order = 1,
+                            Title = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Sana uygun olan çalışma süresini seçebilirsin.",
+                            Multiple = false,
+                            Order = 2,
+                            Title = "Sana uygun olan çalışma süresini seçebilirsin."
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Bir dersten bir günde kaç soru çözersin?",
+                            Multiple = false,
+                            Order = 3,
+                            Title = "Bir dersten bir günde kaç soru çözersin?"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Description = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin",
+                            Multiple = false,
+                            Order = 4,
+                            Title = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Description = "Bir günde kaç farklı ders çalışmak istersin?",
+                            Multiple = false,
+                            Order = 5,
+                            Title = "Bir günde kaç farklı ders çalışmak istersin?"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Description = "Ders çalışamayacağın gün var mı?",
+                            Multiple = true,
+                            Order = 6,
+                            Title = "Ders çalışamayacağın gün var mı?"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Description = "Çalışırken zorlandığın ders / dersler hangileri?",
+                            Multiple = true,
+                            Order = 7,
+                            Title = "Çalışırken zorlandığın ders / dersler hangileri?"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Description = "Artık programını oluşturmaya hazırsın",
+                            Multiple = false,
+                            Order = 8,
+                            Title = "Artık programını oluşturmaya hazırsın"
+                        });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ProgramStepAction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ProgramStepId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProgramStepId");
+
+                    b.ToTable("ProgramStepActions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Label = "Programı Oluştur",
+                            ProgramStepId = 8,
+                            Value = "CreateProgram"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Label = "Vazgeç",
+                            ProgramStepId = 8,
+                            Value = "Cancel"
+                        });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ProgramStepOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("NextStep")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ProgramStepId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("Selected")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProgramStepId");
+
+                    b.ToTable("ProgramStepOptions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Icon = "icons/question-mark.svg",
+                            Label = "Süreli Çalışma",
+                            NextStep = 2,
+                            ProgramStepId = 1,
+                            Selected = false,
+                            Value = "time"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Icon = "icons/timer.svg",
+                            Label = "Soru Sayısı Takipli Çalışma",
+                            NextStep = 3,
+                            ProgramStepId = 1,
+                            Selected = false,
+                            Value = "question"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Icon = "icons/question-mark.svg",
+                            Label = "25 dakika çalışma 5 dakika ara",
+                            NextStep = 5,
+                            ProgramStepId = 2,
+                            Selected = false,
+                            Value = "25-5"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Icon = "icons/question-mark.svg",
+                            Label = "30 dakika çalışma 10 dakika ara",
+                            NextStep = 5,
+                            ProgramStepId = 2,
+                            Selected = false,
+                            Value = "30-10"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Icon = "icons/question-mark.svg",
+                            Label = "40 dakika çalışma 10 dakika ara",
+                            NextStep = 5,
+                            ProgramStepId = 2,
+                            Selected = false,
+                            Value = "40-10"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Icon = "icons/question-mark.svg",
+                            Label = "50 dakika çalışma 10 dakika ara",
+                            NextStep = 5,
+                            ProgramStepId = 2,
+                            Selected = false,
+                            Value = "50-10"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Icon = "icons/question-mark.svg",
+                            Label = "8",
+                            NextStep = 5,
+                            ProgramStepId = 3,
+                            Selected = false,
+                            Value = "8"
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Icon = "icons/question-mark.svg",
+                            Label = "12",
+                            NextStep = 5,
+                            ProgramStepId = 3,
+                            Selected = false,
+                            Value = "12"
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Icon = "icons/question-mark.svg",
+                            Label = "16",
+                            NextStep = 5,
+                            ProgramStepId = 3,
+                            Selected = false,
+                            Value = "16"
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Icon = "icons/question-mark.svg",
+                            Label = "Süreli Çalışma",
+                            NextStep = -1,
+                            ProgramStepId = 4,
+                            Selected = false,
+                            Value = "time"
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Icon = "icons/question-mark.svg",
+                            Label = "Soru Sayısı Takipli Çalışma",
+                            NextStep = -1,
+                            ProgramStepId = 4,
+                            Selected = false,
+                            Value = "question"
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Icon = "icons/one-svgrepo-com.svg",
+                            Label = "1",
+                            NextStep = 6,
+                            ProgramStepId = 5,
+                            Selected = false,
+                            Value = "1"
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Icon = "icons/two-svgrepo-com.svg",
+                            Label = "2",
+                            NextStep = 6,
+                            ProgramStepId = 5,
+                            Selected = false,
+                            Value = "2"
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Icon = "icons/three-svgrepo-com.svg",
+                            Label = "3",
+                            NextStep = 6,
+                            ProgramStepId = 5,
+                            Selected = false,
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Icon = "icons/monday-svgrepo-com.svg",
+                            Label = "Pazartesi",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "1"
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Icon = "icons/tuesday-svgrepo-com.svg",
+                            Label = "Salı",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "2"
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Icon = "icons/wednesday-svgrepo-com.svg",
+                            Label = "Çarşamba",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Icon = "icons/thursday-svgrepo-com.svg",
+                            Label = "Perşembe",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "4"
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Icon = "icons/friday-svgrepo-com.svg",
+                            Label = "Cuma",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "5"
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Icon = "icons/saturday-svgrepo-com.svg",
+                            Label = "Cumartesi",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "6"
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Icon = "icons/sunday-svgrepo-com.svg",
+                            Label = "Pazar",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "7"
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Icon = "icons/null-svgrepo-com.svg",
+                            Label = "Yok",
+                            NextStep = 7,
+                            ProgramStepId = 6,
+                            Selected = false,
+                            Value = "8"
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Icon = "icons/home-svgrepo-com.svg",
+                            Label = "Hayat Bilgisi",
+                            NextStep = 8,
+                            ProgramStepId = 7,
+                            Selected = false,
+                            Value = "1"
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Icon = "icons/alphabet-svgrepo-com.svg",
+                            Label = "Türkçe",
+                            NextStep = 8,
+                            ProgramStepId = 7,
+                            Selected = false,
+                            Value = "2"
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Icon = "icons/math-svgrepo-com.svg",
+                            Label = "Matematik",
+                            NextStep = 8,
+                            ProgramStepId = 7,
+                            Selected = false,
+                            Value = "3"
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Icon = "icons/world-svgrepo-com.svg",
+                            Label = "Fen Bilimleri",
+                            NextStep = 8,
+                            ProgramStepId = 7,
+                            Selected = false,
+                            Value = "4"
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Icon = "icons/null-svgrepo-com.svg",
+                            Label = "Yok",
+                            NextStep = 8,
+                            ProgramStepId = 7,
+                            Selected = false,
+                            Value = "5"
+                        });
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -2531,6 +2974,28 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ProgramStepAction", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ProgramStep", "ProgramStep")
+                        .WithMany("Actions")
+                        .HasForeignKey("ProgramStepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProgramStep");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ProgramStepOption", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.ProgramStep", "ProgramStep")
+                        .WithMany("Options")
+                        .HasForeignKey("ProgramStepId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProgramStep");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Question", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Answer", "CorrectAnswer")
@@ -2873,6 +3338,13 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
                 {
                     b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.ProgramStep", b =>
+                {
+                    b.Navigation("Actions");
+
+                    b.Navigation("Options");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Question", b =>

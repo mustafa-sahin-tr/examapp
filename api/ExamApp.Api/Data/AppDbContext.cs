@@ -84,6 +84,9 @@ public class AppDbContext : DbContext
     public DbSet<Passage> Passage { get; set; }
     public DbSet<QuestionSubTopic> QuestionSubTopics { get; set; }
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
+    public DbSet<ProgramStep> ProgramSteps { get; set; } // ProgramStep tablosu
+    public DbSet<ProgramStepOption> ProgramStepOptions { get; set; } // ProgramStepOption tablosu
+    public DbSet<ProgramStepAction> ProgramStepActions { get; set; } // ProgramStepAction tablosu
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -173,8 +176,6 @@ public class AppDbContext : DbContext
             new GradeSubject { Id = 44, GradeId = 11, SubjectId = 14 },
             new GradeSubject { Id = 45, GradeId = 11, SubjectId = 15 }
         );
-
-        TopicSeed.SeedData(modelBuilder);
 
         modelBuilder.Entity<Student>()
             .HasMany(s => s.StudentPoints)  // 🟢 Bir Student'in birden fazla StudentPoints kaydı vardır.
@@ -301,6 +302,22 @@ public class AppDbContext : DbContext
             .WithMany(st => st.QuestionSubTopics)
             .HasForeignKey(qst => qst.SubTopicId);
 
+        // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
+        modelBuilder.Entity<ProgramStep>()
+            .HasMany(ps => ps.Options)
+            .WithOne(pso => pso.ProgramStep)
+            .HasForeignKey(pso => pso.ProgramStepId)
+            .OnDelete(DeleteBehavior.Cascade); // If a ProgramStep is deleted, its options are also deleted
+
+        modelBuilder.Entity<ProgramStep>()
+            .HasMany(ps => ps.Actions)
+            .WithOne(psa => psa.ProgramStep)
+            .HasForeignKey(psa => psa.ProgramStepId)
+            .OnDelete(DeleteBehavior.Cascade); // If a ProgramStep is deleted, its actions are also deleted
+
+        // Call Seeders
+        TopicSeed.SeedData(modelBuilder); // Assuming TopicSeed is already using HasData
+        ProgramStepSeed.SeedData(modelBuilder); // New seeder for ProgramSteps
 
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

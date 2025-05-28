@@ -13,12 +13,10 @@ import {
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { SafeHtmlPipe } from '../../../services/safehtml';
-import { NgIf } from '@angular/common';
-import { throwToolbarMixedModesError } from '@angular/material/toolbar';
 
 @Component({
   selector: 'app-question-canvas-view',
-  imports: [SafeHtmlPipe, NgIf],
+  imports: [SafeHtmlPipe],
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss',
 })

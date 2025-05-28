@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -71,7 +72,11 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
@@ -88,6 +93,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
+builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>

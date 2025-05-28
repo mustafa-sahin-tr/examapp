@@ -165,6 +165,7 @@ export class LayoutComponent implements OnInit {
   }
 
   logout() {
-    this.authService.logout();
+    // Navigate to logout page instead of direct logout
+    this.router.navigate(['/logout']);
   }
 }

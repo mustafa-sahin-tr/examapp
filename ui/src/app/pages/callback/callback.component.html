@@ -1,0 +1,77 @@
+<div class="ms-callback-container">
+  <div class="ms-loading-wrapper">
+    <!-- App Logo/Branding -->
+    <div class="ms-brand-section">
+      <div class="ms-logo">
+        <img src="assets/logo.png" alt="ExamApp" class="ms-logo-img" />
+      </div>
+      <h1 class="ms-app-title">ExamApp</h1>
+      <p class="ms-app-subtitle">Eğitime Yönelik Sınav Platformu</p>
+    </div>
+
+    <!-- Loading Animation -->
+    <div class="ms-loading-section">
+      <div class="ms-loading-animation">
+        <div class="ms-spinner">
+          <div class="ms-dot ms-dot-1"></div>
+          <div class="ms-dot ms-dot-2"></div>
+          <div class="ms-dot ms-dot-3"></div>
+        </div>
+      </div>
+
+      <div class="ms-loading-text">
+        <h2>{{ currentMessage }}</h2>
+        <p>Lütfen bekleyiniz...</p>
+      </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="ms-progress-steps">
+      <div class="ms-step" [class.ms-step-active]="currentStep >= 1" [class.ms-step-completed]="currentStep > 1">
+        <div class="ms-step-circle">
+          <mat-icon *ngIf="currentStep > 1">check</mat-icon>
+          <span *ngIf="currentStep <= 1">1</span>
+        </div>
+        <span class="ms-step-label">Kimlik Doğrulama</span>
+      </div>
+
+      <div class="ms-step-connector" [class.ms-step-connector-active]="currentStep >= 2"></div>
+
+      <div class="ms-step" [class.ms-step-active]="currentStep >= 2" [class.ms-step-completed]="currentStep > 2">
+        <div class="ms-step-circle">
+          <mat-icon *ngIf="currentStep > 2">check</mat-icon>
+          <span *ngIf="currentStep <= 2">2</span>
+        </div>
+        <span class="ms-step-label">Profil Kontrolü</span>
+      </div>
+
+      <div class="ms-step-connector" [class.ms-step-connector-active]="currentStep >= 3"></div>
+
+      <div class="ms-step" [class.ms-step-active]="currentStep >= 3" [class.ms-step-completed]="currentStep > 3">
+        <div class="ms-step-circle">
+          <mat-icon *ngIf="currentStep > 3">check</mat-icon>
+          <span *ngIf="currentStep <= 3">3</span>
+        </div>
+        <span class="ms-step-label">Yönlendirme</span>
+      </div>
+    </div>
+
+    <!-- Welcome Message -->
+    {{ userRole }}
+    <div class="ms-welcome-section" *ngIf="userRole">
+      <div class="ms-welcome-card">
+        <mat-icon class="ms-role-icon">{{ getRoleIcon(userRole) }}</mat-icon>
+        <h3>Hoş Geldiniz!</h3>
+        <p>{{ getRoleMessage(userRole) }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Background Animation -->
+  <div class="ms-background-animation">
+    <div class="ms-floating-element ms-element-1"></div>
+    <div class="ms-floating-element ms-element-2"></div>
+    <div class="ms-floating-element ms-element-3"></div>
+    <div class="ms-floating-element ms-element-4"></div>
+  </div>
+</div>

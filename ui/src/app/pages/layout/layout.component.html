@@ -69,15 +69,6 @@
         <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
         <span class="username">{{ userName }}</span>
       </div>
-      <!-- <mat-menu #menu="matMenu">
-        <button mat-menu-item (click)="logout()">Çıkış Yap</button>(click)="navigateTo('/student-profile')"
-      </mat-menu> -->
-
-      <!-- component.html -->
-      <!-- <div class="ms-profile-trigger" mat-button [matMenuTriggerFor]="profileMenu">
-        <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-trigger-avatar" />
-        <span class="ms-trigger-name">{{ userName }}</span>
-      </div> -->
 
       <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
         <!-- Başlık Bölümü -->

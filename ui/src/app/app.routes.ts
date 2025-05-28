@@ -22,6 +22,7 @@ import { MyProgramsComponent } from './pages/my-programs/my-programs.component';
 import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
 import { TeacherRegisterComponent } from './pages/teacher-register/teacher-register.component';
 import { CallbackComponent } from './pages/callback/callback.component';
+import { LogoutComponent } from './pages/logout/logout.component';
 
 export const routes: Routes = [
   {
@@ -53,6 +54,7 @@ export const routes: Routes = [
     component: PublicLayoutComponent,
     children: [
       { path: 'callback', component: CallbackComponent },
+      { path: 'logout', component: LogoutComponent },
       { path: 'register', component: RegisterComponent },
       { path: 'login', component: LoginComponent },
     ],

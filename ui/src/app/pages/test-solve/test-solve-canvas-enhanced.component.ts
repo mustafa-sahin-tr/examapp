@@ -606,7 +606,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.showToastMessage('Tüm sorular cevaplanmış', 'info');
   }
 
-  clearAnswer() {
+  clearAnswer() {    
     const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
     if (currentQuestion.selectedAnswerId) {
       currentQuestion.selectedAnswerId = undefined as any;

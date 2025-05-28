@@ -84,6 +84,28 @@
         <!-- Canvas Soru Türü -->
         @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
         <div class="canvas-question-container">
+          <!-- Canvas Overlay Butonları -->
+          <div class="canvas-overlay-actions">
+            <button 
+              mat-mini-fab 
+              [class.active]="isQuestionBookmarked()" 
+              (click)="toggleBookmark()" 
+              class="overlay-bookmark-btn"
+              [attr.aria-label]="isQuestionBookmarked() ? 'İşareti kaldır' : 'İşaretle'"
+            >
+              <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+            </button>
+
+            <button 
+              mat-mini-fab 
+              (click)="reportQuestion()" 
+              class="overlay-report-btn"
+              [attr.aria-label]="'Soruyu bildir'"
+            >
+              <mat-icon>flag</mat-icon>
+            </button>
+          </div>
+
           <app-question-canvas-view
             [questionRegion]="regions()[currentIndex()]"
             [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
@@ -120,7 +142,8 @@
         }
       </div>
 
-      <!-- Soru Etkileşim Butonları -->
+      <!-- Soru Etkileşim Butonları - Sadece Metin Sorularında -->
+      @if(!testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
       <div class="question-actions">
         <button mat-button [class.active]="isQuestionBookmarked()" (click)="toggleBookmark()" class="bookmark-btn">
           <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
@@ -139,6 +162,7 @@
           Bildir
         </button>
       </div>
+      }
     </section>
 
     <!-- Sağ Panel: Navigasyon ve Araçlar -->
@@ -146,39 +170,45 @@
     <aside class="tools-panel">
       <!-- Soru Haritası -->
       <div class="question-map">
-        <h3 class="map-title">
-          <mat-icon>map</mat-icon>
-          Soru Haritası
-        </h3>
-
-        <div class="question-grid">
-          @for(question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
-          <button
-            mat-mini-fab
-            [class.current]="i === currentIndex()"
-            [class.answered]="question.selectedAnswerId"
-            [class.bookmarked]="isQuestionBookmarked(i)"
-            (click)="goToQuestion(i)"
-            [attr.aria-label]="'Soru ' + (i + 1)"
-          >
-            {{ i + 1 }}
-          </button>
-          }
-        </div>
-
-        <!-- Soru Durumu Göstergeleri -->
-        <div class="legend">
-          <div class="legend-item">
-            <div class="legend-color answered"></div>
-            <span>Cevaplanmış</span>
+        <div class="map-content">
+          <div class="map-header">
+            <h3 class="map-title">
+              <mat-icon>map</mat-icon>
+              Soru Haritası
+            </h3>
           </div>
-          <div class="legend-item">
-            <div class="legend-color current"></div>
-            <span>Mevcut Soru</span>
+
+          <div class="question-grid-container">
+            <div class="question-grid">
+              @for(question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
+              <button
+                mat-mini-fab
+                [class.current]="i === currentIndex()"
+                [class.answered]="question.selectedAnswerId"
+                [class.bookmarked]="isQuestionBookmarked(i)"
+                (click)="goToQuestion(i)"
+                [attr.aria-label]="'Soru ' + (i + 1)"
+              >
+                {{ i + 1 }}
+              </button>
+              }
+            </div>
           </div>
-          <div class="legend-item">
-            <div class="legend-color bookmarked"></div>
-            <span>İşaretlenmiş</span>
+
+          <!-- Soru Durumu Göstergeleri -->
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color answered"></div>
+              <span>Cevaplanmış</span>
+            </div>
+            <!-- <div class="legend-item">
+              <div class="legend-color current"></div>
+              <span>Mevcut Soru</span>
+            </div> -->
+            <div class="legend-item">
+              <div class="legend-color bookmarked"></div>
+              <span>İşaretlenmiş</span>
+            </div>
           </div>
         </div>
       </div>

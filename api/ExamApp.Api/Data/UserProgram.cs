@@ -27,17 +27,17 @@ namespace ExamApp.Api.Data
         public bool IsActive { get; set; } = true;
 
         // Program configuration based on user selections
-        public string StudyType { get; set; } = "time"; // "time" or "question"
+        public string StudyType { get; set; } // "time" or "question"
 
-        public string StudyDuration { get; set; } = "25-5"; // "25-5", "30-10", etc.
+        public string StudyDuration { get; set; } // "25-5", "30-10", etc.
 
         public int? QuestionsPerDay { get; set; } // 8, 12, 16
 
-        public int SubjectsPerDay { get; set; } = 1; // 1, 2, 3
+        public int SubjectsPerDay { get; set; } // 1, 2, 3
 
-        public string RestDays { get; set; } = ""; // Comma-separated day numbers: "1,6,7"
+        public string RestDays { get; set; } // Comma-separated day numbers: "1,6,7"
 
-        public string DifficultSubjects { get; set; } = ""; // Comma-separated subject IDs: "1,3,4"
+        public string DifficultSubjects { get; set; } // Comma-separated subject IDs: "1,3,4"
 
         // Navigation properties
         public virtual ICollection<UserProgramSchedule> Schedules { get; set; } = new List<UserProgramSchedule>();

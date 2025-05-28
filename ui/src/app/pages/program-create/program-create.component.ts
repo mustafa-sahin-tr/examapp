@@ -70,7 +70,7 @@ export class ProgramCreateComponent implements OnInit {
   get totalPossibleSteps(): number {
     // Calculate based on the longest possible path through the steps
     if (this.programSteps.length === 0) return 1;
-    
+
     // Count unique steps that can be reached
     const reachableSteps = new Set<number>();
     this.calculateReachableSteps(1, reachableSteps); // Assuming first step has ID 1
@@ -79,12 +79,12 @@ export class ProgramCreateComponent implements OnInit {
 
   private calculateReachableSteps(stepId: number, visited: Set<number>, depth: number = 0): void {
     if (depth > 10 || visited.has(stepId)) return; // Prevent infinite loops
-    
+
     visited.add(stepId);
-    const step = this.programSteps.find(s => s.id === stepId);
+    const step = this.programSteps.find((s) => s.id === stepId);
     if (!step) return;
 
-    step.options.forEach(option => {
+    step.options.forEach((option) => {
       if (option.nextStep) {
         this.calculateReachableSteps(option.nextStep, visited, depth + 1);
       }
@@ -100,7 +100,7 @@ export class ProgramCreateComponent implements OnInit {
       indicators.push({
         isCompleted: i < currentStepIndex,
         isActive: i === currentStepIndex,
-        isUpcoming: i > currentStepIndex
+        isUpcoming: i > currentStepIndex,
       });
     }
 

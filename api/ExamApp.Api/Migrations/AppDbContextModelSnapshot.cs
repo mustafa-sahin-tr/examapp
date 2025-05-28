@@ -374,9 +374,24 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("Multiple")
                         .HasColumnType("boolean");
@@ -388,6 +403,12 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("ProgramSteps");
@@ -396,7 +417,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?",
+                            IsDeleted = false,
                             Multiple = false,
                             Order = 1,
                             Title = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin?"
@@ -404,7 +427,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Sana uygun olan çalışma süresini seçebilirsin.",
+                            IsDeleted = false,
                             Multiple = false,
                             Order = 2,
                             Title = "Sana uygun olan çalışma süresini seçebilirsin."
@@ -412,7 +437,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Bir dersten bir günde kaç soru çözersin?",
+                            IsDeleted = false,
                             Multiple = false,
                             Order = 3,
                             Title = "Bir dersten bir günde kaç soru çözersin?"
@@ -420,7 +447,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin",
+                            IsDeleted = false,
                             Multiple = false,
                             Order = 4,
                             Title = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin"
@@ -428,7 +457,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Bir günde kaç farklı ders çalışmak istersin?",
+                            IsDeleted = false,
                             Multiple = false,
                             Order = 5,
                             Title = "Bir günde kaç farklı ders çalışmak istersin?"
@@ -436,7 +467,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Ders çalışamayacağın gün var mı?",
+                            IsDeleted = false,
                             Multiple = true,
                             Order = 6,
                             Title = "Ders çalışamayacağın gün var mı?"
@@ -444,18 +477,12 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Çalışırken zorlandığın ders / dersler hangileri?",
+                            IsDeleted = false,
                             Multiple = true,
                             Order = 7,
                             Title = "Çalışırken zorlandığın ders / dersler hangileri?"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Description = "Artık programını oluşturmaya hazırsın",
-                            Multiple = false,
-                            Order = 8,
-                            Title = "Artık programını oluşturmaya hazırsın"
                         });
                 });
 
@@ -467,11 +494,32 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Label")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("ProgramStepId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Value")
@@ -483,22 +531,6 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("ProgramStepId");
 
                     b.ToTable("ProgramStepActions");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Label = "Programı Oluştur",
-                            ProgramStepId = 8,
-                            Value = "CreateProgram"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Label = "Vazgeç",
-                            ProgramStepId = 8,
-                            Value = "Cancel"
-                        });
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.ProgramStepOption", b =>
@@ -509,9 +541,24 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -525,6 +572,12 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<bool?>("Selected")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Value")
                         .IsRequired()
@@ -540,7 +593,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 1,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "Süreli Çalışma",
                             NextStep = 2,
                             ProgramStepId = 1,
@@ -550,7 +605,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 2,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/timer.svg",
+                            IsDeleted = false,
                             Label = "Soru Sayısı Takipli Çalışma",
                             NextStep = 3,
                             ProgramStepId = 1,
@@ -560,7 +617,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 3,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "25 dakika çalışma 5 dakika ara",
                             NextStep = 5,
                             ProgramStepId = 2,
@@ -570,7 +629,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 4,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "30 dakika çalışma 10 dakika ara",
                             NextStep = 5,
                             ProgramStepId = 2,
@@ -580,7 +641,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 5,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "40 dakika çalışma 10 dakika ara",
                             NextStep = 5,
                             ProgramStepId = 2,
@@ -590,7 +653,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 6,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "50 dakika çalışma 10 dakika ara",
                             NextStep = 5,
                             ProgramStepId = 2,
@@ -600,7 +665,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 7,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "8",
                             NextStep = 5,
                             ProgramStepId = 3,
@@ -610,7 +677,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 8,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "12",
                             NextStep = 5,
                             ProgramStepId = 3,
@@ -620,7 +689,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 9,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "16",
                             NextStep = 5,
                             ProgramStepId = 3,
@@ -630,7 +701,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 10,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "Süreli Çalışma",
                             NextStep = -1,
                             ProgramStepId = 4,
@@ -640,7 +713,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 11,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/question-mark.svg",
+                            IsDeleted = false,
                             Label = "Soru Sayısı Takipli Çalışma",
                             NextStep = -1,
                             ProgramStepId = 4,
@@ -650,7 +725,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 12,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/one-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "1",
                             NextStep = 6,
                             ProgramStepId = 5,
@@ -660,7 +737,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 13,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/two-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "2",
                             NextStep = 6,
                             ProgramStepId = 5,
@@ -670,7 +749,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 14,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/three-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "3",
                             NextStep = 6,
                             ProgramStepId = 5,
@@ -680,7 +761,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 15,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/monday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Pazartesi",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -690,7 +773,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 16,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/tuesday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Salı",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -700,7 +785,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 17,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/wednesday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Çarşamba",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -710,7 +797,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 18,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/thursday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Perşembe",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -720,7 +809,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 19,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/friday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Cuma",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -730,7 +821,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 20,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/saturday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Cumartesi",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -740,7 +833,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 21,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/sunday-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Pazar",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -750,7 +845,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 22,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/null-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Yok",
                             NextStep = 7,
                             ProgramStepId = 6,
@@ -760,7 +857,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 23,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/home-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Hayat Bilgisi",
                             NextStep = 8,
                             ProgramStepId = 7,
@@ -770,7 +869,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 24,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/alphabet-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Türkçe",
                             NextStep = 8,
                             ProgramStepId = 7,
@@ -780,7 +881,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 25,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/math-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Matematik",
                             NextStep = 8,
                             ProgramStepId = 7,
@@ -790,7 +893,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 26,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/world-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Fen Bilimleri",
                             NextStep = 8,
                             ProgramStepId = 7,
@@ -800,7 +905,9 @@ namespace ExamApp.Api.Migrations
                         new
                         {
                             Id = 27,
+                            CreateTime = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Icon = "icons/null-svgrepo-com.svg",
+                            IsDeleted = false,
                             Label = "Yok",
                             NextStep = 8,
                             ProgramStepId = 7,
@@ -1398,6 +1505,152 @@ namespace ExamApp.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("DifficultSubjects")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ProgramName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("QuestionsPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RestDays")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StudyDuration")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StudyType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SubjectsPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserPrograms");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("QuestionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ScheduleDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("StudyDurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SubjectName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserProgramId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserProgramId");
+
+                    b.ToTable("UserProgramSchedules");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>
@@ -3143,6 +3396,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.UserProgram", "UserProgram")
+                        .WithMany("Schedules")
+                        .HasForeignKey("UserProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserProgram");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Question", "Question")
@@ -3375,6 +3639,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
+                {
+                    b.Navigation("Schedules");
                 });
 
             modelBuilder.Entity("Grade", b =>

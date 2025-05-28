@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ExamApp.Api.Data
 {
-    public class ProgramStep
+    public class ProgramStep : BaseEntity
     {
         [Key]
         public int Id { get; set; }

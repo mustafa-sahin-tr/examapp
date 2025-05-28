@@ -80,13 +80,6 @@ namespace ExamApp.Api.Data
                         new { Label = "Yok", Value = "5", Icon = "icons/null-svgrepo-com.svg", NextStep = (int?)8 }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
-                },
-                new { Id = 8, Order = 8, Title = "Artık programını oluşturmaya hazırsın", Description = "Artık programını oluşturmaya hazırsın", Multiple = false,
-                    Options = new[] { new { Label = default(string), Value = default(string), Icon = default(string), NextStep = default(int?) } }.Take(0).ToArray(),
-                    Actions = new[] {
-                        new { Label = "Programı Oluştur", Value = "CreateProgram" },
-                        new { Label = "Vazgeç", Value = "Cancel" }
-                    }
                 }
             };
 

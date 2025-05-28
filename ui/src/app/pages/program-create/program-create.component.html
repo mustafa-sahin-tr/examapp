@@ -1,12 +1,14 @@
+<!-- Program Step Selection -->
+@if (!isCreatingProgram()) {
 <div class="ms-wizard-container">
   <div class="ms-wizard-header">
     <div class="ms-wizard-title">
       <b>Soru {{ stepIndex() + 1 }}</b>
     </div>
     <div class="ms-wizard-progress">
-      <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ stepList.length }}</div>
+      <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ getStepIndicators().length }}</div>
       <div class="ms-progress-bar-bg">
-        <div class="ms-progress-bar-fill" [style.width]="((stepIndex() + 1) / stepList.length) * 100 + '%'"></div>
+        <div class="ms-progress-bar-fill" [style.width]="((stepIndex() + 1) / getStepIndicators().length) * 100 + '%'"></div>
       </div>
     </div>
   </div>
@@ -16,12 +18,12 @@
   </div>
 
   <div class="ms-wizard-cards" #cardContainer>
-    <button class="nav-btn left" (click)="previous()">❮</button>
+    <button class="nav-btn left" (click)="previous()" [disabled]="stepIndex() === 0">❮</button>
 
     <ul class="psds-carousel__track">
       <li class="psds-carousel__item m-5">
         <button
-          *ngFor="let opt of currentStep.options"
+          *ngFor="let opt of currentStep?.options"
           class="ms-option-button"
           [class.ms-option-active]="opt.selected"
           (click)="selectOption(currentStep, opt)"
@@ -31,7 +33,7 @@
         </button>
         <div class="course-actions">
           <button
-            *ngFor="let act of currentStep.actions"
+            *ngFor="let act of currentStep?.actions"
             mat-raised-button
             color="primary"
             type="button"
@@ -43,12 +45,77 @@
       </li>
     </ul>
     <button class="nav-btn right" (click)="next()">❯</button>
-  </div>
+  </div>  <!-- Step indicators -->
   <div class="d-flex justify-content-center align-items-center">
-    <div
-      *ngFor="let i of stepList"
-      class="mx-2 ms-wizard-step-item"
-      [class.ms-wizard-step-item-active]="i == stepIndex()"
-    ></div>
+    @for (indicator of getStepIndicators(); track $index; let i = $index) {
+      <div class="mx-2 ms-wizard-step-item"
+           [class.ms-wizard-step-item-completed]="indicator.isCompleted"
+           [class.ms-wizard-step-item-active]="indicator.isActive"
+           [class.ms-wizard-step-item-upcoming]="indicator.isUpcoming">
+      </div>
+    }
+  </div>
+
+  <!-- Selection Summary -->
+  @if (userSelections.length > 0) {
+  <div class="ms-selection-summary">
+    <h3>Seçimleriniz:</h3>
+    @for (selection of userSelections; track selection.stepId) {
+    <div class="ms-summary-item">
+      <strong>{{ selection.stepTitle }}:</strong>
+      {{ getSelectedOptionsText(selection) }}
+    </div>
+    }
+  </div>
+  }
+</div>
+}
+
+<!-- Program Creation Form -->
+@if (isCreatingProgram()) {
+<div class="ms-program-creation-container">
+  <div class="ms-program-creation-header">
+    <h2>Programınızı Oluşturun</h2>
+    <p>Son bir adım! Programınıza bir isim verin ve açıklama ekleyin.</p>
+  </div>
+
+  <div class="ms-program-creation-form">
+    <mat-form-field appearance="outline" class="ms-full-width">
+      <mat-label>Program Adı</mat-label>
+      <input matInput [(ngModel)]="programName" placeholder="Örn: Matematik Çalışma Programım" required />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="ms-full-width">
+      <mat-label>Açıklama (İsteğe bağlı)</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="programDescription"
+        rows="3"
+        placeholder="Programınız hakkında kısa bir açıklama yazabilirsiniz..."
+      ></textarea>
+    </mat-form-field>
+
+    <div class="ms-program-creation-actions">
+      <button mat-raised-button color="primary" (click)="createProgram()" [disabled]="!programName.trim()">
+        <mat-icon>add</mat-icon>
+        Programı Oluştur
+      </button>
+      <button mat-button (click)="cancelProgramCreation()">
+        <mat-icon>arrow_back</mat-icon>
+        Geri Dön
+      </button>
+    </div>
+  </div>
+
+  <!-- Final Selection Summary -->
+  <div class="ms-selection-summary">
+    <h3>Seçimleriniz:</h3>
+    @for (selection of userSelections; track selection.stepId) {
+    <div class="ms-summary-item">
+      <strong>{{ selection.stepTitle }}:</strong>
+      {{ getSelectedOptionsText(selection) }}
+    </div>
+    }
   </div>
 </div>
+}

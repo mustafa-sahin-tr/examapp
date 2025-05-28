@@ -8,6 +8,8 @@ namespace ExamApp.Api.Services
     public interface IProgramService
     {
         Task<List<ProgramStepDto>> GetProgramStepsAsync();
+        Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request);
+        Task<List<UserProgramDto>> GetUserProgramsAsync(string userId);
         // Add other methods as needed, for example:
         // Task<ProgramStep> GetProgramStepByIdAsync(int id);
         // Task CreateProgramStepAsync(ProgramStep programStep);

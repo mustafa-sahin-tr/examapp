@@ -1056,8 +1056,8 @@ ul {
   justify-content: center;
   align-items: center;
   margin: 5px;
-  width: 36px;
-  height: 36px;
+  width: 10px;
+  height: 10px;
 }
 
 /* 🟢 Mat Button İçin Maksimum Genişlik ve Yükseklik */
@@ -1600,7 +1600,6 @@ select:focus {
   max-height: 50px;
   border-radius: 4px;
 }
-
 
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/question/question.component.scss ---- */
@@ -3849,4 +3848,87 @@ input:-webkit-autofill {
 
 input:-webkit-autofill:focus {  
   -webkit-text-fill-color:  var(--ms-surface-inverse) !important;
-} 
+}
+
+/* Program Creation Styles */
+.ms-program-creation-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.ms-program-creation-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.ms-program-creation-header h2 {
+  color: #2196f3;
+  margin-bottom: 0.5rem;
+}
+
+.ms-program-creation-header p {
+  color: #666;
+  font-size: 1rem;
+}
+
+.ms-program-creation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.ms-program-creation-form .mat-mdc-form-field {
+  width: 100%;
+}
+
+.ms-program-creation-form .mat-mdc-text-field-wrapper {
+  width: 100%;
+}
+
+.ms-program-creation-form input,
+.ms-program-creation-form textarea {
+  width: 100%;
+}
+
+.ms-full-width {
+  width: 100%;
+}
+
+.ms-program-creation-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.ms-selection-summary {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: var(--main-foreground-color);
+  border-radius: 8px;
+}
+
+.ms-selection-summary h3 {
+  margin-bottom: 1rem;
+  color: var(--mat-sys-on-surface);
+}
+
+.ms-summary-item {
+  padding: 0.5rem 0;
+  // border-bottom: 1px solid #e0e0e0;
+}
+
+.ms-summary-item:last-child {
+  border-bottom: none;
+}
+
+.ms-summary-item strong {
+  color: #2196f3;
+}
+
+.ms-wizard-step-item-completed {
+  background-color: #4caf50 !important;
+}

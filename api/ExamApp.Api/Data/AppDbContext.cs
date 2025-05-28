@@ -87,6 +87,8 @@ public class AppDbContext : DbContext
     public DbSet<ProgramStep> ProgramSteps { get; set; } // ProgramStep tablosu
     public DbSet<ProgramStepOption> ProgramStepOptions { get; set; } // ProgramStepOption tablosu
     public DbSet<ProgramStepAction> ProgramStepActions { get; set; } // ProgramStepAction tablosu
+    public DbSet<UserProgram> UserPrograms { get; set; } // UserProgram tablosu
+    public DbSet<UserProgramSchedule> UserProgramSchedules { get; set; } // UserProgramSchedule tablosu
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -314,6 +316,13 @@ public class AppDbContext : DbContext
             .WithOne(psa => psa.ProgramStep)
             .HasForeignKey(psa => psa.ProgramStepId)
             .OnDelete(DeleteBehavior.Cascade); // If a ProgramStep is deleted, its actions are also deleted
+
+        // UserProgram and UserProgramSchedule relationships
+        modelBuilder.Entity<UserProgram>()
+            .HasMany(up => up.Schedules)
+            .WithOne(ups => ups.UserProgram)
+            .HasForeignKey(ups => ups.UserProgramId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Call Seeders
         TopicSeed.SeedData(modelBuilder); // Assuming TopicSeed is already using HasData

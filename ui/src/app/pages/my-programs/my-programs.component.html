@@ -1,0 +1,87 @@
+<div class="ms-programs-container">
+  <div class="ms-programs-header">
+    <h1 class="ms-title">Programlarım</h1>
+    <button mat-raised-button color="primary" (click)="createNewProgram()">
+      <mat-icon>add</mat-icon>
+      Yeni Program Oluştur
+    </button>
+  </div>
+
+  @if (loading) {
+  <div class="ms-loading">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    <p>Programlarınız yükleniyor...</p>
+  </div>
+  } @if (!loading && programs.length === 0) {
+  <div class="ms-empty-state">
+    <mat-icon class="ms-empty-icon">assignment</mat-icon>
+    <h2>Henüz program oluşturmadınız</h2>
+    <p>Size özel bir çalışma programı oluşturmak için hemen başlayın!</p>
+    <button mat-raised-button color="primary" (click)="createNewProgram()">
+      <mat-icon>add</mat-icon>
+      İlk Programımı Oluştur
+    </button>
+  </div>
+  } @if (!loading && programs.length > 0) {
+  <div class="ms-programs-grid">
+    @for (program of programs; track program.id) {
+    <mat-card class="ms-program-card">
+      <mat-card-header>
+        <mat-card-title>{{ program.programName }}</mat-card-title>
+        <mat-card-subtitle>
+          <mat-icon>calendar_today</mat-icon>
+          {{ formatDate(program.createdDate) }}
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        @if (program.description) {
+        <p class="ms-description">{{ program.description }}</p>
+        }
+
+        <div class="ms-program-details">
+          <div class="ms-detail-item">
+            <mat-icon>schedule</mat-icon>
+            <span>{{ program.studyDuration || 'Belirtilmemiş' }} günlük program</span>
+          </div>
+
+          <div class="ms-detail-item">
+            <mat-icon>timeline</mat-icon>
+            <span>{{ program.studyType }} türü çalışma</span>
+          </div>
+
+          <div class="ms-detail-item">
+            <mat-icon>assignment</mat-icon>
+            <span>Günde {{ program.subjectsPerDay }} konu</span>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="ms-progress-section">
+          <div class="ms-progress-header">
+            <span class="ms-progress-label">İlerleme</span>
+            <span class="ms-progress-value">{{ getProgressPercentage(program) }}%</span>
+          </div>
+          <mat-progress-bar mode="determinate" [value]="getProgressPercentage(program)"> </mat-progress-bar>
+          <div class="ms-progress-details">
+            <small>{{ getCompletedDays(program) }} / {{ program.studyDuration || 30 }} gün tamamlandı</small>
+          </div>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-button color="primary" (click)="continueProgram(program)">
+          <mat-icon>play_arrow</mat-icon>
+          Devam Et
+        </button>
+        <button mat-button (click)="viewProgramDetails(program)">
+          <mat-icon>visibility</mat-icon>
+          Detaylar
+        </button>
+      </mat-card-actions>
+    </mat-card>
+    }
+  </div>
+  }
+</div>

@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ExamApp.Api.Data
 {
-    public class ProgramStepAction
+    public class ProgramStepAction : BaseEntity
     {
         [Key]
         public int Id { get; set; }

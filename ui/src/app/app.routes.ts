@@ -18,6 +18,7 @@ import { AppComponent } from './app.component';
 import { PublicLayoutComponent } from './pages/public/public-layout/public-layout.component';
 import { LayoutComponent } from './pages/layout/layout.component';
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
+import { MyProgramsComponent } from './pages/my-programs/my-programs.component';
 import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
 import { TeacherRegisterComponent } from './pages/teacher-register/teacher-register.component';
 import { CallbackComponent } from './pages/callback/callback.component';
@@ -42,6 +43,7 @@ export const routes: Routes = [
       { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
       { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
       { path: 'exam/:id', component: TestCreateComponent }, // 🆕 Test çözme sayfası
+      { path: 'programs', component: MyProgramsComponent },
       { path: 'program-create', component: ProgramCreateComponent },
       { path: 'certificates', component: BadgeThropyComponent }, //
     ],

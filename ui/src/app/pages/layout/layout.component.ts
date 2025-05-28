@@ -51,7 +51,7 @@ export class LayoutComponent implements OnInit {
 
   menuItems = [
     { type: 'menu', name: 'Sınavlar', icon: 'folder', route: '/tests' },
-    { type: 'menu', name: 'Program', icon: 'assignment_ind', route: '/program-create' },
+    { type: 'menu', name: 'Programlarım', icon: 'assignment_ind', route: '/programs' },
     { type: 'menu', name: 'Sertifikalar', icon: 'verified', route: '/certificates' },
     { type: 'menu', name: 'Parkur', icon: 'timeline' },
     { type: 'menu', name: 'Sonuçlar', icon: 'track_changes' },

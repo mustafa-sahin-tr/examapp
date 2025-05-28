@@ -4,43 +4,67 @@
   <!-- Üst Header - Sabit -->
   <header class="test-header">
     <div class="header-content">
-      <!-- Sol: Test Bilgileri -->
-      <div class="test-info">
-        <div class="test-title">
-          <mat-icon class="test-icon">quiz</mat-icon>
-          <span>{{ testInstance.testName }}</span>
-        </div>
-        <div class="test-meta">
-          <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
-        </div>
-      </div>
-
-      <!-- Orta: Süre ve İlerleme -->
+      <!-- Sol: Timer -->
       <div class="timer-section">
         <app-countdown
           [durationInSeconds]="testDuration"
           [totalDurationInSeconds]="testInstance.maxDurationSeconds"
           [showProgressBar]="true"
-          [size]="'large'"
+          [size]="'medium'"
           [label]="'Kalan Süre'"
         >
         </app-countdown>
-
-        <!-- İlerleme Çubuğu -->
-        <div class="progress-container">
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
-          </div>
-          <span class="progress-text">%{{ progressPercentage() | number : '1.0-0' }} tamamlandı</span>
-        </div>
       </div>
 
-      <!-- Sağ: Eylem Butonları -->
+      <!-- Orta: Navigation ve Test Bilgileri -->
+      <div class="center-navigation">
+        <!-- Önceki Soru -->
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="prevQuestion()"
+          [disabled]="currentIndex() === 0"
+          class="header-nav-btn prev-btn"
+          [attr.aria-label]="'Önceki soru'"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+
+        <!-- Test Bilgileri -->
+        <div class="test-info">
+          <div class="test-title">
+            <mat-icon class="test-icon">quiz</mat-icon>
+            <span>{{ testInstance.testName }}</span>
+          </div>
+          <div class="test-meta">
+            <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+            <div class="progress-container">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+              </div>
+              <span class="progress-text">%{{ progressPercentage() | number : '1.0-0' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sonraki Soru -->
+        <button
+          mat-icon-button
+          color="accent"
+          (click)="nextQuestion()"
+          [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
+          class="header-nav-btn next-btn"
+          [attr.aria-label]="'Sonraki soru'"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <!-- Sağ: Test Bitir -->
       <div class="action-buttons">
         @if(showStopButton) {
-        <button mat-stroked-button color="warn" (click)="pauseTest()" class="pause-btn">
+        <button mat-icon-button color="warn" (click)="pauseTest()" class="pause-btn">
           <mat-icon>pause</mat-icon>
-          Durdur
         </button>
         }
         <button mat-raised-button color="primary" (click)="completeTest()" class="complete-btn">
@@ -199,14 +223,9 @@
             {{ focusMode() ? 'Normal Mod' : 'Odaklanma Modu' }}
           </button>
 
-          <button mat-stroked-button (click)="increaseFontSize()" class="tool-btn">
-            <mat-icon>text_increase</mat-icon>
-            Yazıyı Büyüt
-          </button>
-
-          <button mat-stroked-button (click)="decreaseFontSize()" class="tool-btn">
-            <mat-icon>text_decrease</mat-icon>
-            Yazıyı Küçült
+          <button mat-stroked-button (click)="toggleAutoNextQuestion()" class="tool-btn">
+            <mat-icon>{{ autoNextQuestion() ? 'play_arrow' : 'pause' }}</mat-icon>
+            {{ autoNextQuestion() ? 'Otomatik Geçiş Açık' : 'Otomatik Geçiş Kapalı' }}
           </button>
 
           <button mat-stroked-button (click)="toggleHighContrast()" class="tool-btn">
@@ -224,8 +243,7 @@
     <div class="nav-content">
       <!-- Sol: Önceki Soru -->
       <button
-        mat-fab
-        color="primary"
+        mat-icon-button
         (click)="prevQuestion()"
         [disabled]="currentIndex() === 0"
         class="nav-btn prev-btn"
@@ -267,8 +285,7 @@
 
       <!-- Sağ: Sonraki Soru -->
       <button
-        mat-fab
-        color="accent"
+        mat-icon-button
         (click)="nextQuestion()"
         [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
         class="nav-btn next-btn"

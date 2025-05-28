@@ -342,6 +342,11 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
+    if (this.autoNextQuestion()) {
+      setTimeout(() => {
+        this.nextQuestion();
+      }, 300); // Kısa bir gecikme ile otomatik geçiş
+    }
   }
 
   createDialogTemplate() {
@@ -644,16 +649,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.showToastMessage('Soru bildirildi', 'success');
   }
 
-  increaseFontSize() {
-    const newSize = Math.min(this.fontSize() + 2, 24);
-    this.fontSize.set(newSize);
-    document.documentElement.style.setProperty('--question-font-size', `${newSize}px`);
-  }
+  // Otomatik sonraki soruya geçiş özelliği
+  public autoNextQuestion = signal(false);
 
-  decreaseFontSize() {
-    const newSize = Math.max(this.fontSize() - 2, 12);
-    this.fontSize.set(newSize);
-    document.documentElement.style.setProperty('--question-font-size', `${newSize}px`);
+  toggleAutoNextQuestion() {
+    this.autoNextQuestion.set(!this.autoNextQuestion());
+    this.showToastMessage(
+      this.autoNextQuestion() ? 'Cevaplayınca otomatik sonraki soruya geçiş aktif' : 'Otomatik geçiş kapalı',
+      'info'
+    );
   }
 
   toggleHighContrast() {

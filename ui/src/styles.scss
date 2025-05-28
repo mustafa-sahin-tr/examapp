@@ -1140,7 +1140,9 @@ ul {
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/test-solve/test-solve-canvas.component.scss ---- */
 .test-container {
-  max-width: 960px;
+  display: inline-block !important;
+  width: auto;
+  max-width: none;
   margin: auto;
   padding: 16px;
   position: relative;
@@ -1181,7 +1183,7 @@ ul {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 100vw; /* Butonları tüm ekran genişliğinde konumlandır */
+  // width: 100vw; /* Butonları tüm ekran genişliğinde konumlandır */
   left: 0;
   right: 0;
   display: flex;
@@ -1239,13 +1241,13 @@ ul {
 
 /* Sağ butonu ekranın sağ margin boşluğuna taşı */
 .navigation-buttons .next-button {
-  right: calc((100vw - 960px) - 116px); /* Margin'in içine konumlandır */
-  max-width: calc(((100vw - 960px) / 2));
+  right: 0;
+  transform: translateX(110%);
   color: var(--mat-sys-on-surface);
 }
 
 /* Eğer ekran genişliği 1100px’den küçükse, butonları alta koy */
-@media (max-width: 1132px) {
+@media (max-width: 1400px) {
   .navigation-buttons {
     position: static;
     top: auto;

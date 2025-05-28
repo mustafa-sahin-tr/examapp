@@ -20,6 +20,4 @@ services:
 
   keycloak:
     volumes:
-      - ./keycloak-themes/my-theme:/opt/keycloak/themes/my-theme    
-  # nuget-server:
-  #   command: mini-nuget-server --path /var/nuget-packages --port 80 --api-key your_api_key      
+      - ./keycloak-themes/my-theme:/opt/keycloak/themes/my-theme       

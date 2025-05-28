@@ -78,7 +78,7 @@
       </button>
 
       <mat-menu #actionMenu="matMenu">
-        <button mat-menu-item (click)="togglePreviewMode()">
+        <button mat-menu-item (click)="togglePreviewMode()" type="button">
           <mat-icon>{{ previewModeText() }}</mat-icon>
           <span>{{ previewModeText() == 'visibility_off' ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
         </button>

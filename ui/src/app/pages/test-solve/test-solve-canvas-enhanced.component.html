@@ -1,0 +1,345 @@
+@if(testInstance) {
+<!-- Ana Test Konteyner -->
+<div class="test-solve-container" [class.focus-mode]="focusMode()">
+  <!-- Üst Header - Sabit -->
+  <header class="test-header">
+    <div class="header-content">
+      <!-- Sol: Test Bilgileri -->
+      <div class="test-info">
+        <div class="test-title">
+          <mat-icon class="test-icon">quiz</mat-icon>
+          <span>{{ testInstance.testName }}</span>
+        </div>
+        <div class="test-meta">
+          <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+        </div>
+      </div>
+
+      <!-- Orta: Süre ve İlerleme -->
+      <div class="timer-section">
+        <app-countdown
+          [durationInSeconds]="testDuration"
+          [totalDurationInSeconds]="testInstance.maxDurationSeconds"
+          [showProgressBar]="true"
+          [size]="'large'"
+          [label]="'Kalan Süre'"
+        >
+        </app-countdown>
+
+        <!-- İlerleme Çubuğu -->
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+          </div>
+          <span class="progress-text">%{{ progressPercentage() | number : '1.0-0' }} tamamlandı</span>
+        </div>
+      </div>
+
+      <!-- Sağ: Eylem Butonları -->
+      <div class="action-buttons">
+        @if(showStopButton) {
+        <button mat-stroked-button color="warn" (click)="pauseTest()" class="pause-btn">
+          <mat-icon>pause</mat-icon>
+          Durdur
+        </button>
+        }
+        <button mat-raised-button color="primary" (click)="completeTest()" class="complete-btn">
+          <mat-icon>done_all</mat-icon>
+          Sınavı Bitir
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Ana İçerik Alanı -->
+  <main class="test-content">
+    <!-- Sol Panel: Soru İçeriği -->
+    <section class="question-panel" [class.fullwidth]="focusMode()">
+      <!-- Soru Container -->
+      <div class="question-wrapper">
+        <!-- Canvas Soru Türü -->
+        @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
+        <div class="canvas-question-container">
+          <app-question-canvas-view
+            [questionRegion]="regions()[currentIndex()]"
+            [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
+            (choiceSelected)="selectChoice($event)"
+            (answerOpened)="openAnswer($event)"
+            [correctAnswerVisible]="correctAnswerVisible"
+          >
+          </app-question-canvas-view>
+        </div>
+        } @else {
+        <!-- Metin Tabanlı Soru -->
+        <div class="text-question-container">
+          <!-- Passage Card (Eğer varsa) -->
+          @if(testInstance.testInstanceQuestions[currentIndex()].question.passage) {
+          <div class="passage-section">
+            <app-passage-card [passage]="testInstance.testInstanceQuestions[currentIndex()].question.passage">
+            </app-passage-card>
+          </div>
+          }
+
+          <!-- Soru İçeriği -->
+          <div class="question-content">
+            <app-question-lite-view
+              [question]="testInstance.testInstanceQuestions[currentIndex()].question"
+              [selectedAnswerId]="testInstance.testInstanceQuestions[currentIndex()].selectedAnswerId"
+              [isPracticeTest]="testInstance.isPracticeTest"
+              (answerSelected)="selectAnswer($event)"
+              (answerOpened)="openAnswer($event)"
+              [correctAnswerVisible]="correctAnswerVisible"
+            >
+            </app-question-lite-view>
+          </div>
+        </div>
+        }
+      </div>
+
+      <!-- Soru Etkileşim Butonları -->
+      <div class="question-actions">
+        <button mat-button [class.active]="isQuestionBookmarked()" (click)="toggleBookmark()" class="bookmark-btn">
+          <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+          İşaretle
+        </button>
+
+        @if(testInstance.isPracticeTest) {
+        <button mat-button (click)="showHint()" class="hint-btn" [disabled]="!hasHint()">
+          <mat-icon>lightbulb</mat-icon>
+          İpucu
+        </button>
+        }
+
+        <button mat-button (click)="reportQuestion()" class="report-btn">
+          <mat-icon>flag</mat-icon>
+          Bildir
+        </button>
+      </div>
+    </section>
+
+    <!-- Sağ Panel: Navigasyon ve Araçlar -->
+    @if(!focusMode()) {
+    <aside class="tools-panel">
+      <!-- Soru Haritası -->
+      <div class="question-map">
+        <h3 class="map-title">
+          <mat-icon>map</mat-icon>
+          Soru Haritası
+        </h3>
+
+        <div class="question-grid">
+          @for(question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
+          <button
+            mat-mini-fab
+            [class.current]="i === currentIndex()"
+            [class.answered]="question.selectedAnswerId"
+            [class.bookmarked]="isQuestionBookmarked(i)"
+            (click)="goToQuestion(i)"
+            [attr.aria-label]="'Soru ' + (i + 1)"
+          >
+            {{ i + 1 }}
+          </button>
+          }
+        </div>
+
+        <!-- Soru Durumu Göstergeleri -->
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color answered"></div>
+            <span>Cevaplanmış</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color current"></div>
+            <span>Mevcut Soru</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color bookmarked"></div>
+            <span>İşaretlenmiş</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- İstatistikler -->
+      <div class="stats-panel">
+        <h3 class="stats-title">
+          <mat-icon>analytics</mat-icon>
+          İstatistikler
+        </h3>
+
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">{{ answeredCount() }}</div>
+            <div class="stat-label">Cevaplanmış</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ remainingCount() }}</div>
+            <div class="stat-label">Kalan</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ bookmarkedCount() }}</div>
+            <div class="stat-label">İşaretli</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ averageTimePerQuestion() }}s</div>
+            <div class="stat-label">Ort. Süre</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Araçlar -->
+      <div class="tools-section">
+        <h3 class="tools-title">
+          <mat-icon>build</mat-icon>
+          Araçlar
+        </h3>
+
+        <div class="tool-buttons">
+          <button mat-stroked-button (click)="toggleFocusMode()" class="tool-btn">
+            <mat-icon>{{ focusMode() ? 'visibility' : 'visibility_off' }}</mat-icon>
+            {{ focusMode() ? 'Normal Mod' : 'Odaklanma Modu' }}
+          </button>
+
+          <button mat-stroked-button (click)="increaseFontSize()" class="tool-btn">
+            <mat-icon>text_increase</mat-icon>
+            Yazıyı Büyüt
+          </button>
+
+          <button mat-stroked-button (click)="decreaseFontSize()" class="tool-btn">
+            <mat-icon>text_decrease</mat-icon>
+            Yazıyı Küçült
+          </button>
+
+          <button mat-stroked-button (click)="toggleHighContrast()" class="tool-btn">
+            <mat-icon>contrast</mat-icon>
+            Yüksek Kontrast
+          </button>
+        </div>
+      </div>
+    </aside>
+    }
+  </main>
+
+  <!-- Alt Navigasyon -->
+  <footer class="navigation-footer">
+    <div class="nav-content">
+      <!-- Sol: Önceki Soru -->
+      <button
+        mat-fab
+        color="primary"
+        (click)="prevQuestion()"
+        [disabled]="currentIndex() === 0"
+        class="nav-btn prev-btn"
+        [attr.aria-label]="'Önceki soru'"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <!-- Orta: Hızlı Eylemler -->
+      <div class="quick-actions">
+        <!-- Cevabı Temizle -->
+        <button mat-stroked-button (click)="clearAnswer()" [disabled]="!hasAnswer()" class="quick-action-btn">
+          <mat-icon>clear</mat-icon>
+          Temizle
+        </button>
+
+        <!-- İşaretli Sorulara Git -->
+        <button
+          mat-stroked-button
+          (click)="goToNextBookmarked()"
+          [disabled]="bookmarkedCount() === 0"
+          class="quick-action-btn"
+        >
+          <mat-icon>bookmark</mat-icon>
+          İşaretlilere Git
+        </button>
+
+        <!-- Boş Sorulara Git -->
+        <button
+          mat-stroked-button
+          (click)="goToNextUnanswered()"
+          [disabled]="remainingCount() === 0"
+          class="quick-action-btn"
+        >
+          <mat-icon>help_outline</mat-icon>
+          Boşlara Git
+        </button>
+      </div>
+
+      <!-- Sağ: Sonraki Soru -->
+      <button
+        mat-fab
+        color="accent"
+        (click)="nextQuestion()"
+        [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
+        class="nav-btn next-btn"
+        [attr.aria-label]="'Sonraki soru'"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Floating Action Buttons -->
+  <div class="floating-actions">
+    <!-- Odaklanma Modu Toggle -->
+    <button
+      mat-mini-fab
+      color="primary"
+      (click)="toggleFocusMode()"
+      class="floating-btn focus-toggle"
+      [attr.aria-label]="focusMode() ? 'Normal moda geç' : 'Odaklanma moduna geç'"
+    >
+      <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+    </button>
+
+    <!-- Yardım -->
+    <button mat-mini-fab color="accent" (click)="showHelp()" class="floating-btn help-btn" [attr.aria-label]="'Yardım'">
+      <mat-icon>help</mat-icon>
+    </button>
+
+    <!-- Ayarlar -->
+    <button mat-mini-fab (click)="openSettings()" class="floating-btn settings-btn" [attr.aria-label]="'Ayarlar'">
+      <mat-icon>settings</mat-icon>
+    </button>
+  </div>
+
+  <!-- İpucu Modal -->
+  @if(showHintModal()) {
+  <div class="hint-overlay" (click)="closeHint()">
+    <div class="hint-modal" (click)="$event.stopPropagation()">
+      <div class="hint-header">
+        <mat-icon>lightbulb</mat-icon>
+        <h3>İpucu</h3>
+        <button mat-icon-button (click)="closeHint()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="hint-content">
+        {{ currentHint() }}
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Uyarı Toast'ları -->
+  @if(showToast()) {
+  <div class="toast-container">
+    <div class="toast" [class]="toastType()">
+      <mat-icon>{{ toastIcon() }}</mat-icon>
+      <span>{{ toastMessage() }}</span>
+      <button mat-icon-button (click)="hideToast()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+  }
+</div>
+
+}
+<!-- Confetti Butonu -->
+
+<!-- Modal İçin Şablon -->
+<ng-template #spinWheelDialog>
+  <app-spin-wheel></app-spin-wheel>
+  <button mat-button (click)="closeDialog()">Kapat</button>
+</ng-template>

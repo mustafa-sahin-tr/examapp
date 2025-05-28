@@ -23,6 +23,7 @@ import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thr
 import { TeacherRegisterComponent } from './pages/teacher-register/teacher-register.component';
 import { CallbackComponent } from './pages/callback/callback.component';
 import { LogoutComponent } from './pages/logout/logout.component';
+import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
 
 export const routes: Routes = [
   {
@@ -39,7 +40,8 @@ export const routes: Routes = [
       { path: 'imageselect', component: ImageSelectorComponent },
       { path: 'tests', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } },
       { path: 'questions/view', component: QuestionViewComponent },
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
+      // { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
       { path: 'test/:testId', component: WorksheetDetailComponent }, // 🆕 Test çözme sayfası
       { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
       { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası

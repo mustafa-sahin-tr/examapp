@@ -48,6 +48,17 @@
   --ms-info-border: #00A3FF;
   --ms-info-surface: #003655;
   --ms-info-text: #D5F0FF;
+  
+  /* Test Solve Enhancement Colors */
+  --primary-rgb: 102, 126, 234;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --error-color: #f44336;
+  --info-color: #2196f3;
+  --primary-light: #8fa4f3;
+  --primary-dark: #5e7ce0;
+  --text-primary: #212121;
+  --text-secondary: #757575;
   --ms-info-text-weak: #80D1FF;
   --ms-info-text-medium: #2BB2FF;
   --ms-success-border: #02E088;
@@ -286,6 +297,19 @@
   --contribution-default-bgColor-2: #4ac26b;
   --contribution-default-bgColor-3: #2da44e;
   --contribution-default-bgColor-4: #116329;
+}
+
+/* Test Solve Enhancement Colors */
+:root {
+  --primary-rgb: 102, 126, 234;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --error-color: #f44336;
+  --info-color: #2196f3;
+  --primary-light: #8fa4f3;
+  --primary-dark: #5e7ce0;
+  --text-primary: #212121;
+  --text-secondary: #757575;
 }
 
 body, .course-card, .navigation, .header {
@@ -1701,16 +1725,6 @@ h3 {
   margin: 0;
   font-size: 0.9rem;
   color: #1976d2;
-}
-
-/* 🟢 Resim Önizleme */
-.preview-image {
-  max-width: 100px;
-  max-height: 100px;
-  display: block;
-  margin-top: 10px;
-  border-radius: 4px;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 
@@ -3821,12 +3835,6 @@ mat-form-field.hide-subscript
     padding: 0 !important;
 }
 
-// .mat-mdc-form-field-subscript-wrapper {
-//   display: none !important;
-//   height: 0 !important;
-//   margin: 0 !important;
-//   padding: 0 !important;
-// }
 /* Chrome autofill’ini override etmek için */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,

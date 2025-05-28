@@ -84,8 +84,8 @@
         <!-- Canvas Soru Türü -->
         @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
         <div class="canvas-question-container">
-          <!-- Canvas Overlay Butonları -->
-          <div class="canvas-overlay-actions">
+          <!-- Canvas Overlay Butonları - Sol Üst -->
+          <div class="canvas-overlay-actions top-left">
             <button 
               mat-mini-fab 
               [class.active]="isQuestionBookmarked()" 
@@ -106,7 +106,21 @@
             </button>
           </div>
 
+          <!-- Canvas Overlay Butonları - Sağ Alt -->
+          <div class="canvas-overlay-actions bottom-right">
+            <button 
+              mat-mini-fab 
+              (click)="clearCanvasAnswer()" 
+              [disabled]="!hasAnswer()"
+              class="overlay-clear-btn"
+              [attr.aria-label]="'Cevabı temizle'"
+            >
+              <mat-icon>check_box_outline_blank</mat-icon>
+            </button>
+          </div>
+
           <app-question-canvas-view
+            #canvasView
             [questionRegion]="regions()[currentIndex()]"
             [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
             (choiceSelected)="selectChoice($event)"
@@ -284,11 +298,13 @@
 
       <!-- Orta: Hızlı Eylemler -->
       <div class="quick-actions">
-        <!-- Cevabı Temizle -->
+        <!-- Cevabı Temizle - Sadece metin tabanlı sorular için -->
+        @if(!testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
         <button mat-stroked-button (click)="clearAnswer()" [disabled]="!hasAnswer()" class="quick-action-btn">
-          <mat-icon>clear</mat-icon>
+          <mat-icon>radio_button_unchecked</mat-icon>
           Temizle
         </button>
+        }
 
         <!-- İşaretli Sorulara Git -->
         <button

@@ -288,15 +288,27 @@
 
     .canvas-overlay-actions {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
       z-index: 10; // Canvas üzerinde görünsün
 
+      &.top-left {
+        top: 16px;
+        left: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      &.bottom-right {
+        bottom: 16px;
+        right: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
       .overlay-bookmark-btn,
-      .overlay-report-btn {
+      .overlay-report-btn,
+      .overlay-clear-btn {
         width: 40px;
         height: 40px;
         background: rgba(255, 255, 255, 0.9);
@@ -337,6 +349,28 @@
         &:hover {
           .mat-icon {
             color: var(--error-dark);
+          }
+        }
+      }
+
+      .overlay-clear-btn {
+        .mat-icon {
+          color: var(--error-color);
+        }
+
+        &:hover {
+          .mat-icon {
+            color: var(--error-dark);
+          }
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          transform: none;
+
+          &:hover {
+            transform: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           }
         }
       }
@@ -531,7 +565,7 @@
         position: absolute;
         top: -2px;
         right: -2px;
-        font-size: 10px;
+        font-size: 13px;
         color: var(--warning-color);
       }
     }
@@ -961,12 +995,21 @@
 
   .canvas-question-container {
     .canvas-overlay-actions {
-      top: 12px;
-      left: 12px;
-      gap: 6px;
+      &.top-left {
+        top: 12px;
+        left: 12px;
+        gap: 6px;
+      }
+
+      &.bottom-right {
+        bottom: 12px;
+        right: 12px;
+        gap: 6px;
+      }
 
       .overlay-bookmark-btn,
-      .overlay-report-btn {
+      .overlay-report-btn,
+      .overlay-clear-btn {
         width: 36px;
         height: 36px;
 
@@ -1051,6 +1094,33 @@
     .mat-icon {
       font-size: 18px;
       margin-right: 4px;
+    }
+  }
+
+  .canvas-question-container {
+    .canvas-overlay-actions {
+      &.top-left {
+        top: 8px;
+        left: 8px;
+        gap: 4px;
+      }
+
+      &.bottom-right {
+        bottom: 8px;
+        right: 8px;
+        gap: 4px;
+      }
+
+      .overlay-bookmark-btn,
+      .overlay-report-btn,
+      .overlay-clear-btn {
+        width: 32px;
+        height: 32px;
+
+        .mat-icon {
+          font-size: 16px;
+        }
+      }
     }
   }
 }

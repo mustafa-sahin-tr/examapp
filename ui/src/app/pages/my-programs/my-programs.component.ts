@@ -4,6 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
@@ -20,6 +21,7 @@ import { UserProgram } from '../../models/program.interfaces';
     MatButtonModule,
     MatIconModule,
     MatProgressBarModule,
+    MatProgressSpinnerModule,
     MatChipsModule,
     MatDividerModule,
     MatMenuModule,
@@ -32,7 +34,9 @@ export class MyProgramsComponent implements OnInit {
   private router = inject(Router);
 
   programs: UserProgram[] = [];
+  filteredPrograms: UserProgram[] = [];
   loading = true;
+  selectedFilter: 'all' | 'active' | 'completed' = 'all';
 
   ngOnInit(): void {
     this.loadMyPrograms();
@@ -44,6 +48,7 @@ export class MyProgramsComponent implements OnInit {
       this.programService.getMyPrograms().subscribe({
         next: (programs) => {
           this.programs = programs;
+          this.applyFilter(); // Apply current filter after loading
           this.loading = false;
         },
         error: (error) => {
@@ -55,6 +60,50 @@ export class MyProgramsComponent implements OnInit {
       console.error('Programs could not be loaded:', error);
       // Here you might want to show a snackbar or error message
       this.loading = false;
+    }
+  }
+
+  // Filter functionality
+  setFilter(filter: 'all' | 'active' | 'completed'): void {
+    this.selectedFilter = filter;
+    this.applyFilter();
+  }
+
+  private applyFilter(): void {
+    switch (this.selectedFilter) {
+      case 'active':
+        this.filteredPrograms = this.programs.filter(program => this.isActive(program));
+        break;
+      case 'completed':
+        this.filteredPrograms = this.programs.filter(program => this.isCompleted(program));
+        break;
+      default:
+        this.filteredPrograms = [...this.programs];
+        break;
+    }
+  }
+
+  isFilterSelected(filter: 'all' | 'active' | 'completed'): boolean {
+    return this.selectedFilter === filter;
+  }
+
+  getFilterLabel(filter: 'all' | 'active' | 'completed'): string {
+    const labels = {
+      all: 'Tümü',
+      active: 'Aktif',
+      completed: 'Tamamlanan'
+    };
+    return labels[filter];
+  }
+
+  getFilterCount(filter: 'all' | 'active' | 'completed'): number {
+    switch (filter) {
+      case 'active':
+        return this.getActivePrograms();
+      case 'completed':
+        return this.getCompletedPrograms();
+      default:
+        return this.programs.length;
     }
   }
 
@@ -98,5 +147,79 @@ export class MyProgramsComponent implements OnInit {
     const daysSinceCreated = Math.floor((Date.now() - new Date(program.createdDate).getTime()) / (1000 * 60 * 60 * 24));
     const studyDuration = program.studyDuration ? parseInt(program.studyDuration, 10) : 30;
     return Math.min(daysSinceCreated, studyDuration);
+  }
+
+  // Yeni metodlar - Enhanced UI için
+  getActivePrograms(): number {
+    return this.programs.filter(program => this.isActive(program)).length;
+  }
+
+  getCompletedPrograms(): number {
+    return this.programs.filter(program => this.isCompleted(program)).length;
+  }
+
+  isActive(program: UserProgram): boolean {
+    const progress = this.getProgressPercentage(program);
+    return progress > 0 && progress < 100;
+  }
+
+  isCompleted(program: UserProgram): boolean {
+    return this.getProgressPercentage(program) >= 100;
+  }
+
+  getStatusIcon(program: UserProgram): string {
+    if (this.isCompleted(program)) {
+      return 'check_circle';
+    } else if (this.isActive(program)) {
+      return 'play_circle';
+    } else {
+      return 'pause_circle';
+    }
+  }
+
+  getStatusText(program: UserProgram): string {
+    if (this.isCompleted(program)) {
+      return 'Tamamlandı';
+    } else if (this.isActive(program)) {
+      return 'Devam Ediyor';
+    } else {
+      return 'Başlanmadı';
+    }
+  }
+
+  getProgramIcon(studyType: string): string {
+    const icons: { [key: string]: string } = {
+      'intensive': 'flash_on',
+      'regular': 'schedule',
+      'flexible': 'tune',
+      'weekend': 'weekend',
+      'exam': 'quiz'
+    };
+    return icons[studyType.toLowerCase()] || 'assignment';
+  }
+
+  getRemainingDays(program: UserProgram): number {
+    const studyDuration = program.studyDuration ? parseInt(program.studyDuration, 10) : 30;
+    const completedDays = this.getCompletedDays(program);
+    return Math.max(0, studyDuration - completedDays);
+  }
+
+  // Yeni aksiyon metodları
+  editProgram(program: UserProgram): void {
+    this.router.navigate(['/programs/edit', program.id]);
+  }
+
+  duplicateProgram(program: UserProgram): void {
+    // Program kopyalama işlemi
+    console.log('Duplicating program:', program);
+    // TODO: Implement program duplication
+  }
+
+  deleteProgram(program: UserProgram): void {
+    if (confirm('Bu programı silmek istediğinizden emin misiniz?')) {
+      // Program silme işlemi
+      console.log('Deleting program:', program);
+      // TODO: Implement program deletion
+    }
   }
 }

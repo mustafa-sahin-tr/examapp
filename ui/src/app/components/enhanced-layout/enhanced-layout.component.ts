@@ -36,10 +36,10 @@ interface MenuItem {
     MatDividerModule,
     MatTooltipModule,
     RouterOutlet,
-    ReactiveFormsModule
+    ReactiveFormsModule,
   ],
   templateUrl: './enhanced-layout.component.html',
-  styleUrls: ['./enhanced-layout.component.scss']
+  styleUrls: ['./enhanced-layout.component.scss'],
 })
 export class EnhancedLayoutComponent implements OnInit {
   // Signals for state management
@@ -60,6 +60,8 @@ export class EnhancedLayoutComponent implements OnInit {
   isAuthenticated = this.authService.isAuthenticated();
   // Örnek öneri listesi (tüm öneriler)
   allSuggestions: string[] = ['Doğal Sayılar', 'Gezegenimiz', 'Çarpma', 'Zıt Anlamlı'];
+  currentSection = signal<'newest' | 'hot' | 'completed' | 'search' | 'relevant'>('newest');
+
   // Menu items
   menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu' },
@@ -71,9 +73,9 @@ export class EnhancedLayoutComponent implements OnInit {
     { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
     { id: 'divider2', name: '', icon: '', route: '', type: 'divider' },
     { id: 'help', name: 'Yardım', icon: 'support', route: '/help', type: 'menu' },
-    { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' }
+    { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' },
   ];
-/*
+  /*
     menuItems = [
     { type: 'menu', name: 'Sınavlar', icon: 'folder', route: '/tests' },
     { type: 'menu', name: 'Programlarım', icon: 'assignment_ind', route: '/programs' },
@@ -88,14 +90,14 @@ export class EnhancedLayoutComponent implements OnInit {
   ];*/
 
   // Computed values
-  
+
   filteredSuggestions: string[] = [];
   constructor(private router: Router) {}
 
   ngOnInit() {
     // Set initial active menu item based on current route
     const currentRoute = this.router.url;
-    const activeItem = this.menuItems.find(item => item.route === currentRoute);
+    const activeItem = this.menuItems.find((item) => item.route === currentRoute);
     if (activeItem) {
       this.activeMenuItem.set(activeItem.id);
     }
@@ -121,7 +123,7 @@ export class EnhancedLayoutComponent implements OnInit {
   navigateTo(route: string) {
     if (route) {
       this.router.navigate([route]);
-      const menuItem = this.menuItems.find(item => item.route === route);
+      const menuItem = this.menuItems.find((item) => item.route === route);
       if (menuItem) {
         this.activeMenuItem.set(menuItem.id);
       }
@@ -206,6 +208,13 @@ export class EnhancedLayoutComponent implements OnInit {
     // Aramayı search history'e ekle (varsa yinelenmeyen)
     if (query && !this.searchHistory.includes(query)) {
       this.searchHistory.unshift(query);
+    }
+  }
+
+  showSection(section: 'newest' | 'hot' | 'completed' | 'search' | 'relevant') {
+    this.currentSection.set(section);
+    if (section === 'search') {
+      // this.performSearch();
     }
   }
 }

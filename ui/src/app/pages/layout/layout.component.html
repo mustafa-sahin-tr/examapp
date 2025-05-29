@@ -39,10 +39,14 @@
   <!-- İçerik Alanı -->
   <mat-sidenav-content class="content hidden-scrollable">
     <mat-toolbar color="primary" *ngIf="!isFullScreen()">
-      <button mat-button (click)="toggleSidenav()">
-        <mat-icon>list</mat-icon>
+      <button class="section-nav-btn" [class.active]="currentSection() === 'newest'" (click)="showSection('newest')">
+        <mat-icon>new_releases</mat-icon>
+        Yeni Testler
       </button>
-
+      <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
+        <mat-icon>local_fire_department</mat-icon>
+        Popüler
+      </button>
       <div class="search-box" (focusin)="onFocus()" (focusout)="onBlur()">
         <mat-icon class="search-icon">search</mat-icon>
         <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()" placeholder="Ara ..." />
@@ -67,7 +71,7 @@
 
       <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
         <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
-        <span class="username">{{ userName }}</span>
+        <span class="username">{{ userName() }}</span>
       </div>
 
       <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
@@ -76,7 +80,7 @@
           <div class="ms-header-bg"></div>
           <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-header-avatar" />
           <div class="ms-header-info">
-            <div class="ms-user-name">{{ userName }}</div>
+            <div class="ms-user-name">{{ userName() }}</div>
             <div class="ms-user-email">{{ 'test@test.com' }}</div>
           </div>
         </div>

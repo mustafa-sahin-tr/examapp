@@ -9,6 +9,7 @@ import { StudentProfileComponent } from './pages/student-profile/student-profile
 import { TestCreateComponent } from './pages/test-create/test-create.component';
 import { HomeComponent } from './home/home.component';
 import { WorksheetListComponent } from './pages/worksheet-list/worksheet-list.component';
+import { WorksheetListEnhancedComponent } from './pages/worksheet-list/worksheet-list-enhanced.component';
 import { worksheetListResolver } from './shared/resolvers/worksheet-resolver';
 import { ImageSelectorComponent } from './pages/image-selector/image-selector.component';
 import { QuestionCanvasComponent } from './pages/question/question-canvas.component';
@@ -40,6 +41,11 @@ export const routes: Routes = [
       { path: 'question', component: QuestionComponent },
       { path: 'imageselect', component: ImageSelectorComponent },
       { path: 'tests', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } },
+      {
+        path: 'tests-enhanced',
+        component: WorksheetListEnhancedComponent,
+        resolve: { worksheets: worksheetListResolver },
+      },
       { path: 'questions/view', component: QuestionViewComponent },
       // { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
       { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası

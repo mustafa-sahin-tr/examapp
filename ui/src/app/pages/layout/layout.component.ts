@@ -97,6 +97,13 @@ export class LayoutComponent implements OnInit {
     });
   }
 
+  currentSection = signal<'newest' | 'hot' | 'completed' | 'search' | 'relevant'>('newest');
+  showSection(section: 'newest' | 'hot' | 'completed' | 'search') {
+    this.currentSection.set(section);
+    if (section === 'search') {
+      // this.performSearch();
+    }
+  }
   onGlobalSearch() {
     const query = this.globalSearchControl.value?.trim() || '';
     this.router.navigate(['/tests'], { queryParams: { search: query } });

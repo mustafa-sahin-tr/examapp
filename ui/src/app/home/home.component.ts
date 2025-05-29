@@ -1,13 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WorksheetListComponent } from '../pages/worksheet-list/worksheet-list.component';
+import { WorksheetListEnhancedComponent } from '../pages/worksheet-list/worksheet-list-enhanced.component';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, WorksheetListComponent],
+  imports: [CommonModule, WorksheetListEnhancedComponent],
   templateUrl: './home.component.html',
-  styleUrl: './home.component.scss'
+  styleUrl: './home.component.scss',
 })
-export class HomeComponent {
-
-}
+export class HomeComponent {}

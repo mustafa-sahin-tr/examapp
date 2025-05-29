@@ -4,24 +4,12 @@
   margin: 0 auto;
 }
 
-.ms-programs-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  
-  .ms-title {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 500;
-    color: #333;
-  }
-}
+
 
 .ms-loading {
   text-align: center;
   padding: 48px;
-  
+
   p {
     margin-top: 16px;
     color: #666;
@@ -31,7 +19,7 @@
 .ms-empty-state {
   text-align: center;
   padding: 64px 24px;
-  
+
   .ms-empty-icon {
     font-size: 64px;
     width: 64px;
@@ -39,13 +27,13 @@
     color: #ccc;
     margin-bottom: 16px;
   }
-  
+
   h2 {
     margin: 16px 0;
     color: #666;
     font-weight: 400;
   }
-  
+
   p {
     margin-bottom: 24px;
     color: #999;
@@ -63,34 +51,34 @@
 
 .ms-program-card {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  
+
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   }
-  
-  mat-card-header {
-    margin-bottom: 16px;
-    
-    mat-card-title {
-      font-size: 1.25rem;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-    
-    mat-card-subtitle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #666;
-      
-      mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-    }
-  }
+
+  // mat-card-header {
+  //   margin-bottom: 16px;
+
+  //   mat-card-title {
+  //     font-size: 1.25rem;
+  //     font-weight: 500;
+  //     margin-bottom: 4px;
+  //   }
+
+  //   mat-card-subtitle {
+  //     display: flex;
+  //     align-items: center;
+  //     gap: 8px;
+  //     color: #666;
+
+  //     mat-icon {
+  //       font-size: 16px;
+  //       width: 16px;
+  //       height: 16px;
+  //     }
+  //   }
+  // }
 }
 
 .ms-description {
@@ -101,20 +89,20 @@
 
 .ms-program-details {
   margin: 16px 0;
-  
+
   .ms-detail-item {
     display: flex;
     align-items: center;
     gap: 12px;
     margin-bottom: 8px;
-    
+
     mat-icon {
       font-size: 18px;
       width: 18px;
       height: 18px;
       color: #666;
     }
-    
+
     span {
       font-size: 0.9rem;
       color: #555;
@@ -124,29 +112,29 @@
 
 .ms-progress-section {
   margin-top: 16px;
-  
+
   .ms-progress-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 8px;
-    
+
     .ms-progress-label {
       font-size: 0.9rem;
       color: #666;
       font-weight: 500;
     }
-    
+
     .ms-progress-value {
       font-size: 0.9rem;
       color: #1976d2;
       font-weight: 600;
     }
   }
-  
+
   .ms-progress-details {
     margin-top: 8px;
-    
+
     small {
       color: #999;
       font-size: 0.8rem;
@@ -156,10 +144,10 @@
 
 mat-card-actions {
   padding-top: 16px;
-  
+
   button {
     margin-right: 8px;
-    
+
     mat-icon {
       margin-right: 4px;
       font-size: 18px;
@@ -174,17 +162,8 @@ mat-card-actions {
   .ms-programs-container {
     padding: 16px;
   }
-  
-  .ms-programs-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    
-    .ms-title {
-      font-size: 1.5rem;
-    }
-  }
-  
+
+
   .ms-programs-grid {
     grid-template-columns: 1fr;
     gap: 16px;

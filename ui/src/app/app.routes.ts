@@ -24,11 +24,12 @@ import { TeacherRegisterComponent } from './pages/teacher-register/teacher-regis
 import { CallbackComponent } from './pages/callback/callback.component';
 import { LogoutComponent } from './pages/logout/logout.component';
 import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
+import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 
 export const routes: Routes = [
   {
     path: '',
-    component: LayoutComponent,
+    component: EnhancedLayoutComponent,
     canActivate: [authGuard],
     children: [
       { path: 'student-register', component: StudentRegisterComponent },

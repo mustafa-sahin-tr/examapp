@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatFabButton } from '@angular/material/button';
 import { AuthService } from '../../services/auth.service';
 import { SidenavService } from '../../services/sidenav.service';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -22,6 +23,7 @@ import { SignalRService } from '../../services/signalr.service';
     MatSidenavModule,
     MatToolbarModule,
     MatButtonModule,
+    MatFabButton,
     MatIconModule,
     MatListModule,
     RouterModule,
@@ -133,6 +135,7 @@ export class LayoutComponent implements OnInit {
   }
 
   isSidenavOpen = this.sidenavService.isSidenavOpen; // Servisten değer alıyoruz
+  isSidenavCollapsed = this.sidenavService.isSidenavCollapsed; // Collapsed state
   isFullScreen = this.sidenavService.isFullScreen; // Servisten değer alıyoruz
 
   constructor(private router: Router, private signalR: SignalRService) {

@@ -4,15 +4,21 @@ import { Injectable, signal } from '@angular/core';
   providedIn: 'root'
 })
 export class SidenavService {
-  isSidenavOpen = signal(true);  // Global olarak yönetilecek değişken
+  isSidenavOpen = signal(true);  // Sidebar her zaman açık
+  isSidenavCollapsed = signal(false);  // Collapsed/mini mode için
   isFullScreen = signal(false);  // Global olarak yönetilecek değişken
 
   toggleSidenav() {
-    this.isSidenavOpen.set(!this.isSidenavOpen());
+    // Artık collapse/expand yapıyoruz, tamamen gizlemiyoruz
+    this.isSidenavCollapsed.set(!this.isSidenavCollapsed());
   }
 
   setSidenavState(state: boolean) {
     this.isSidenavOpen.set(state);
+  }
+
+  setSidenavCollapsed(collapsed: boolean) {
+    this.isSidenavCollapsed.set(collapsed);
   }
 
   toggleSidenavState() {
@@ -23,12 +29,10 @@ export class SidenavService {
   toggleFullScreen() {
     this.isFullScreen.set(!this.isFullScreen());
     console.log('full screen state: ',this.isFullScreen());
-
   }
 
-    setFullScreen(state: boolean) {
-        this.isFullScreen.set(state);
-        console.log('full screen state: ',this.isFullScreen());
-    }
-
+  setFullScreen(state: boolean) {
+    this.isFullScreen.set(state);
+    console.log('full screen state: ',this.isFullScreen());
+  }
 }

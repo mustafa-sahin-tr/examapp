@@ -1,0 +1,187 @@
+<div class="enhanced-layout">
+  <mat-sidenav-container class="layout-container">
+    <!-- Enhanced Sidebar -->
+    <mat-sidenav 
+      mode="side" 
+      [opened]="true"
+      class="enhanced-sidenav"
+      [class.collapsed]="isSidenavCollapsed()">
+      
+      <!-- Sidebar Header -->
+      <div class="sidebar-header">
+        <div class="header-content">
+          <div class="app-logo">
+            <mat-icon class="logo-icon">school</mat-icon>
+            <span class="app-title" *ngIf="!isSidenavCollapsed()">ExamApp</span>
+          </div>
+          <button 
+            mat-icon-button 
+            class="toggle-btn" 
+            (click)="toggleSidenav()"
+            [matTooltip]="isSidenavCollapsed() ? 'Menüyü Genişlet' : 'Menüyü Daralt'">
+            <mat-icon>{{ isSidenavCollapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav class="nav-menu">
+        <ng-container *ngFor="let item of menuItems; trackBy: trackByItemId">
+          <div 
+            *ngIf="item.type === 'menu'"
+            class="menu-item"
+            [class.active]="item.id === activeMenuItem()"
+            (click)="navigateTo(item.route)"
+            [title]="isSidenavCollapsed() ? item.name : ''"
+            [matTooltip]="isSidenavCollapsed() ? item.name : ''"
+            matTooltipPosition="right">
+            <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+            <span class="menu-text" *ngIf="!isSidenavCollapsed()">{{ item.name }}</span>
+            <div class="ripple-effect"></div>
+          </div>
+          
+          <div 
+            *ngIf="item.type === 'divider'" 
+            class="menu-divider"
+            [class.collapsed]="isSidenavCollapsed()">
+          </div>
+        </ng-container>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer" *ngIf="!isSidenavCollapsed()">
+        <div class="footer-content">
+          <span class="app-version">v2.0.1</span>
+        </div>
+      </div>
+    </mat-sidenav>
+
+    <!-- Main Content Area -->
+    <mat-sidenav-content class="main-content-wrapper" [class.sidebar-collapsed]="isSidenavCollapsed()">
+      <!-- Enhanced Toolbar -->
+      <mat-toolbar class="enhanced-toolbar" color="primary">
+        <!-- Left Section -->
+        <div class="toolbar-left">
+          <button 
+            mat-icon-button 
+            class="menu-toggle-btn"
+            (click)="toggleSidenav()"
+            matTooltip="Toggle Menu">
+            <mat-icon>menu</mat-icon>
+          </button>
+          
+          <div class="breadcrumb">
+            <mat-icon>home</mat-icon>
+            <span class="breadcrumb-text">Dashboard</span>
+          </div>
+        </div>
+
+        <!-- Center Section - Search -->
+        <div class="toolbar-center">
+          <div class="search-container" [class.focused]="isSearchFocused()">
+            <mat-icon class="search-icon">search</mat-icon>
+            <input 
+              matInput 
+              class="search-input"
+              [formControl]="searchControl"
+              placeholder="Ara..."
+              (focus)="onSearchFocus()"
+              (blur)="onSearchBlur()"
+              (keyup.enter)="onSearch()">
+            
+            <!-- Search Suggestions Dropdown -->
+            <div class="search-dropdown" *ngIf="isSearchFocused() && filteredSuggestions().length">
+              <div class="dropdown-content">
+                <div 
+                  *ngFor="let suggestion of filteredSuggestions()"
+                  class="suggestion-item"
+                  (click)="onSelectSuggestion(suggestion)">
+                  <mat-icon>search</mat-icon>
+                  <span>{{ suggestion }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Section - Profile -->
+        <div class="toolbar-right">
+          <!-- Notifications -->
+          <button mat-icon-button class="notification-btn" matTooltip="Bildirimler">
+            <mat-icon>notifications</mat-icon>
+            <span class="notification-badge">3</span>
+          </button>
+
+          <!-- Profile Menu -->
+          <div class="profile-section" [matMenuTriggerFor]="profileMenu">
+            <div class="profile-info">
+              <img 
+                [src]="userAvatarUrl() || 'assets/images/default-avatar.png'" 
+                alt="Profile" 
+                class="profile-avatar">
+              <div class="profile-text">
+                <span class="profile-name">{{ userName() }}</span>
+                <span class="profile-role">Admin</span>
+              </div>
+            </div>
+            <button mat-icon-button class="profile-dropdown-btn">
+              <mat-icon>expand_more</mat-icon>
+            </button>
+          </div>
+
+          <!-- Profile Menu Dropdown -->
+          <mat-menu #profileMenu="matMenu" class="profile-menu">
+            <!-- Profile Header -->
+            <div class="profile-menu-header">
+              <img 
+                [src]="userAvatarUrl() || 'assets/images/default-avatar.png'" 
+                alt="Profile" 
+                class="menu-avatar">
+              <div class="menu-user-info">
+                <div class="menu-user-name">{{ userName() }}</div>
+                <div class="menu-user-email">{{ userEmail() }}</div>
+              </div>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <!-- Menu Items -->
+            <button mat-menu-item (click)="onProfile()">
+              <mat-icon>person</mat-icon>
+              <span>Profil</span>
+            </button>
+
+            <button mat-menu-item (click)="onAccountSettings()">
+              <mat-icon>settings</mat-icon>
+              <span>Hesap Ayarları</span>
+            </button>
+
+            <button mat-menu-item (click)="onNotifications()">
+              <mat-icon>notifications</mat-icon>
+              <span>Bildirimler</span>
+            </button>
+
+            <mat-divider></mat-divider>
+
+            <button mat-menu-item (click)="onSupport()">
+              <mat-icon>help</mat-icon>
+              <span>Yardım & Destek</span>
+            </button>
+
+            <mat-divider></mat-divider>
+
+            <button mat-menu-item (click)="logout()" class="logout-item">
+              <mat-icon>logout</mat-icon>
+              <span>Çıkış Yap</span>
+            </button>
+          </mat-menu>
+        </div>
+      </mat-toolbar>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <router-outlet></router-outlet>
+      </main>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

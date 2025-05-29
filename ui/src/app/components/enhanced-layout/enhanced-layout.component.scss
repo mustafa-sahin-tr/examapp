@@ -1,4 +1,4 @@
-// Enhanced Layout Component Styles
+// Enhanced Layout Component Styles - Sadece Layout ve Pozisyonlama
 .enhanced-layout {
     height: 100vh;
     overflow: hidden;
@@ -10,7 +10,7 @@
     position: relative;
 }
 
-// Enhanced Sidebar Styles
+// Enhanced Sidebar Layout
 .enhanced-sidenav {
     width: 280px;
     min-width: 280px;
@@ -115,7 +115,7 @@
     }
 }
 
-// Sidebar Header
+// Sidenav İçerik Stilleri
 .sidebar-header {
     padding: 24px 20px 16px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -170,7 +170,6 @@
     }
 }
 
-// Navigation Menu
 .nav-menu {
     padding: 16px 12px;
     flex: 1;
@@ -246,7 +245,6 @@
     }
 }
 
-// Sidebar Footer
 .sidebar-footer {
     padding: 16px 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -262,302 +260,11 @@
     }
 }
 
-// Enhanced Toolbar
-.enhanced-toolbar {
-    background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
-    color: #1e293b;
-    border-bottom: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    height: 72px;
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    .toolbar-left {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-
-        .menu-toggle-btn {
-            color: #64748b;
-            background: #f1f5f9;
-            border-radius: 8px;
-
-            &:hover {
-                background: #e2e8f0;
-                color: #334155;
-            }
-        }
-
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #64748b;
-            font-size: 14px;
-
-            mat-icon {
-                font-size: 18px;
-                width: 18px;
-                height: 18px;
-            }
-
-            .breadcrumb-text {
-                font-weight: 500;
-            }
-        }
-    }
-
-    .toolbar-center {
-        flex: 1;
-        max-width: 600px;
-        margin: 0 24px;
-
-        .search-container {
-            position: relative;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-            transition: all 0.2s ease;
-
-            &:hover {
-                border-color: #cbd5e1;
-                background: #ffffff;
-            }
-
-            &.focused {
-                border-color: #667eea;
-                background: #ffffff;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            }
-
-            .search-icon {
-                color: #94a3b8;
-                margin-right: 12px;
-                font-size: 20px;
-                width: 20px;
-                height: 20px;
-            }
-
-            .search-input {
-                border: none;
-                outline: none;
-                background: transparent;
-                flex: 1;
-                font-size: 14px;
-                color: #1e293b;
-
-                &::placeholder {
-                    color: #94a3b8;
-                }
-            }
-
-            .search-dropdown {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                margin-top: 4px;
-                background: white;
-                border: 1px solid #e2e8f0;
-                border-radius: 12px;
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-                z-index: 1000;
-
-                .dropdown-content {
-                    padding: 8px 0;
-
-                    .suggestion-item {
-                        display: flex;
-                        align-items: center;
-                        padding: 12px 16px;
-                        cursor: pointer;
-                        color: #64748b;
-
-                        &:hover {
-                            background: #f8fafc;
-                            color: #1e293b;
-                        }
-
-                        mat-icon {
-                            margin-right: 12px;
-                            font-size: 16px;
-                            width: 16px;
-                            height: 16px;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    .toolbar-right {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-
-        .notification-btn {
-            position: relative;
-            color: #64748b;
-            background: #f1f5f9;
-            border-radius: 8px;
-
-            &:hover {
-                background: #e2e8f0;
-                color: #334155;
-            }
-
-            .notification-badge {
-                position: absolute;
-                top: 4px;
-                right: 4px;
-                background: #ef4444;
-                color: white;
-                border-radius: 50%;
-                font-size: 10px;
-                font-weight: 600;
-                min-width: 16px;
-                height: 16px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                line-height: 1;
-            }
-        }
-
-        .profile-section {
-            display: flex;
-            align-items: center;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 6px 12px 6px 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-
-            &:hover {
-                background: #f1f5f9;
-                border-color: #cbd5e1;
-            }
-
-            .profile-info {
-                display: flex;
-                align-items: center;
-                margin-right: 8px;
-
-                .profile-avatar {
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    margin-right: 12px;
-                    border: 2px solid #e2e8f0;
-                }
-
-                .profile-text {
-                    display: flex;
-                    flex-direction: column;
-
-                    .profile-name {
-                        font-size: 14px;
-                        font-weight: 600;
-                        color: #1e293b;
-                        line-height: 1.2;
-                    }
-
-                    .profile-role {
-                        font-size: 12px;
-                        color: #64748b;
-                        line-height: 1.2;
-                    }
-                }
-            }
-
-            .profile-dropdown-btn {
-                color: #94a3b8;
-                width: 20px;
-                height: 20px;
-
-                mat-icon {
-                    font-size: 16px;
-                    width: 16px;
-                    height: 16px;
-                }
-            }
-        }
-    }
-}
-
-// Profile Menu Dropdown
-.profile-menu {
-    min-width: 280px;
-
-    .profile-menu-header {
-        padding: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        display: flex;
-        align-items: center;
-
-        .menu-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            margin-right: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .menu-user-info {
-            .menu-user-name {
-                font-size: 16px;
-                font-weight: 600;
-                margin-bottom: 4px;
-            }
-
-            .menu-user-email {
-                font-size: 13px;
-                opacity: 0.9;
-            }
-        }
-    }
-
-    button[mat-menu-item] {
-        padding: 12px 20px;
-        display: flex;
-        align-items: center;
-        color: #64748b;
-
-        &:hover {
-            background: #f8fafc;
-            color: #1e293b;
-        }
-
-        &.logout-item {
-            color: #ef4444;
-
-            &:hover {
-                background: #fef2f2;
-                color: #dc2626;
-            }
-        }
-
-        mat-icon {
-            margin-right: 12px;
-            font-size: 18px;
-            width: 18px;
-            height: 18px;
-        }
-    }
-}
-
-// Main Content
+// Main Content Layout - Sadece Pozisyonlama
 .main-content-wrapper {
-    background: #f8fafc;
     margin-left: 280px;
     transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    padding-left: 10px;
 
     &.sidebar-collapsed {
         margin-left: 72px;
@@ -574,16 +281,6 @@ mat-sidenav-content.main-content-wrapper {
     }
 }
 
-.main-content {
-    padding: 24px;
-    min-height: calc(100vh - 72px);
-    background: #ffffff;
-    margin: 24px;
-    border-radius: 16px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-}
-
 // Responsive Design
 @media (max-width: 768px) {
     .enhanced-sidenav {
@@ -597,37 +294,14 @@ mat-sidenav-content.main-content-wrapper {
         }
     }
 
-    .main-content-wrapper {
+    .main-content-wrapper,
+    mat-sidenav-content.main-content-wrapper {
         margin-left: 0 !important;
-    }
-
-    .enhanced-toolbar {
-        .toolbar-center {
-            max-width: 300px;
-            margin: 0 16px;
-        }
-
-        .toolbar-right {
-            .profile-info .profile-text {
-                display: none;
-            }
-        }
+        padding-left: 10px;
     }
 }
 
 // Animation Keyframes
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @keyframes fadeInTooltip {
     from {
         opacity: 0;
@@ -638,10 +312,6 @@ mat-sidenav-content.main-content-wrapper {
         opacity: 1;
         transform: translateY(-50%) scale(1);
     }
-}
-
-.search-dropdown {
-    animation: fadeIn 0.2s ease;
 }
 
 // Scrollbar Styling

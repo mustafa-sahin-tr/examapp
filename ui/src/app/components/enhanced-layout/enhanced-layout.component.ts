@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, computed } from '@angular/core';
+import { Component, signal, OnInit, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -11,6 +11,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterOutlet, Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
 
 interface MenuItem {
   id: string;
@@ -45,39 +46,50 @@ export class EnhancedLayoutComponent implements OnInit {
   isSidenavCollapsed = signal(false);
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
-  
+  authService = inject(AuthService);
   // Search functionality
   searchControl = new FormControl('');
   searchSuggestions = signal<string[]>(['Dashboard', 'Sınavlar', 'Sorular', 'Öğrenciler', 'Raporlar']);
-  
+  globalSearchControl = new FormControl('');
   // User info
   userName = signal('Mustafa Sahin');
   userEmail = signal('mustafa@examapp.com');
   userAvatarUrl = signal('');
-
+  isInputFocused: boolean = false;
+  searchHistory: string[] = ['Matematik', 'Türkçe', 'Hayat Bilgisi', 'Fen Bilimler'];
+  isAuthenticated = this.authService.isAuthenticated();
+  // Örnek öneri listesi (tüm öneriler)
+  allSuggestions: string[] = ['Doğal Sayılar', 'Gezegenimiz', 'Çarpma', 'Zıt Anlamlı'];
   // Menu items
   menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu' },
-    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/exams', type: 'menu' },
-    { id: 'questions', name: 'Sorular', icon: 'help_outline', route: '/questions', type: 'menu' },
+    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu' },
+    { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu' },
     { id: 'students', name: 'Öğrenciler', icon: 'people', route: '/students', type: 'menu' },
     { id: 'divider1', name: '', icon: '', route: '', type: 'divider' },
-    { id: 'reports', name: 'Raporlar', icon: 'analytics', route: '/reports', type: 'menu' },
-    { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/settings', type: 'menu' },
+    { id: 'reports', name: 'Raporlar', icon: 'analytics', route: '/certificates', type: 'menu' },
+    { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
     { id: 'divider2', name: '', icon: '', route: '', type: 'divider' },
     { id: 'help', name: 'Yardım', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' }
   ];
+/*
+    menuItems = [
+    { type: 'menu', name: 'Sınavlar', icon: 'folder', route: '/tests' },
+    { type: 'menu', name: 'Programlarım', icon: 'assignment_ind', route: '/programs' },
+    { type: 'menu', name: 'Sertifikalar', icon: 'verified', route: '/certificates' },
+    { type: 'menu', name: 'Parkur', icon: 'timeline' },
+    { type: 'menu', name: 'Sonuçlar', icon: 'track_changes' },
+    { type: 'divider' },
+    { type: 'menu', name: 'Destek', icon: 'help' },
+    { type: 'menu', name: 'Geri Bildirim', icon: 'feedback' },
+    { type: 'divider' },
+    { type: 'menu', name: 'Test Ekleme', icon: 'add_circle', route: '/exam' },
+  ];*/
 
   // Computed values
-  filteredSuggestions = computed(() => {
-    const searchValue = this.searchControl.value?.toLowerCase() || '';
-    if (!searchValue) return [];
-    return this.searchSuggestions().filter(suggestion => 
-      suggestion.toLowerCase().includes(searchValue)
-    );
-  });
-
+  
+  filteredSuggestions: string[] = [];
   constructor(private router: Router) {}
 
   ngOnInit() {
@@ -87,6 +99,18 @@ export class EnhancedLayoutComponent implements OnInit {
     if (activeItem) {
       this.activeMenuItem.set(activeItem.id);
     }
+
+    // Abone olarak değer değişimini takip et
+    this.globalSearchControl.valueChanges.subscribe((value) => {
+      // Eğer input boşsa, geçmiş aramalar gösterilsin
+      if (!value || !value.trim()) {
+        this.filteredSuggestions = [...this.searchHistory];
+      } else {
+        // Girilen değere göre öneriler filtrelensin (küçük/büyük harf duyarsız)
+        const filterValue = value.toLowerCase();
+        this.filteredSuggestions = this.allSuggestions.filter((item) => item.toLowerCase().includes(filterValue));
+      }
+    });
   }
 
   toggleSidenav() {
@@ -123,15 +147,14 @@ export class EnhancedLayoutComponent implements OnInit {
   }
 
   onSelectSuggestion(suggestion: string) {
-    this.searchControl.setValue(suggestion);
-    this.onSearch();
-    this.isSearchFocused.set(false);
+    this.globalSearchControl.setValue(suggestion);
+    this.onGlobalSearch();
   }
 
   logout() {
     console.log('Logging out...');
     // Implement logout logic here
-    this.router.navigate(['/login']);
+    this.router.navigate(['/logout']);
   }
 
   // Profile menu actions
@@ -154,5 +177,35 @@ export class EnhancedLayoutComponent implements OnInit {
   // Track by function for ngFor performance
   trackByItemId(index: number, item: MenuItem): string {
     return item.id;
+  }
+
+  onFocus() {
+    this.isInputFocused = true;
+    const value = this.globalSearchControl.value;
+    // if (!value || !value.trim()) {
+    //   this.filteredSuggestions
+    // }
+  }
+
+  onDelete(item: string) {
+    this.searchHistory = this.searchHistory.filter((i) => i !== item);
+    // this.filteredSuggestions = this.filteredSuggestions.filter((i) => i !== item);
+  }
+
+  // Blur olduğunda belirli bir gecikme sonrası listeyi kapat (click eventi için)
+  onBlur() {
+    setTimeout(() => {
+      this.isInputFocused = false;
+    }, 150);
+  }
+
+  onGlobalSearch() {
+    const query = this.globalSearchControl.value?.trim() || '';
+    this.router.navigate(['/tests'], { queryParams: { search: query } });
+
+    // Aramayı search history'e ekle (varsa yinelenmeyen)
+    if (query && !this.searchHistory.includes(query)) {
+      this.searchHistory.unshift(query);
+    }
   }
 }

@@ -8,6 +8,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 interface ProgramDayDetail {
   date: string;
@@ -31,6 +33,8 @@ interface ProgramDayDetail {
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule,
   ],
   templateUrl: './program-detail.component.html',
   styleUrls: ['./program-detail.component.scss'],
@@ -346,5 +350,28 @@ export class ProgramDetailComponent {
   }
   get weeklyTotalMinutes() {
     return this.program.days.slice(-7).reduce((sum, d) => sum + d.minutes, 0);
+  }
+
+  // Radar chart için örnek veri
+  get radarChartData() {
+    // ngx-charts-polar-chart expects an array of objects with a 'name' and a 'series' array
+    // Example:
+    // [
+    //   { name: 'Başarı', series: [
+    //     { name: 'Matematik', value: 85 },
+    //     { name: 'Türkçe', value: 60 }, ... ] }
+    // ]
+    return [
+      {
+        name: 'Başarı',
+        series: [
+          { name: 'Matematik', value: 85 },
+          { name: 'Türkçe', value: 60 },
+          { name: 'Fen', value: 40 },
+          { name: 'Sosyal Bil.', value: 75 },
+          { name: 'İngilizce', value: 90 },
+        ],
+      },
+    ];
   }
 }

@@ -33,21 +33,119 @@
     </mat-card>
   </div>
 
-  <!-- Isı Haritası (Heatmap) -->
-  <div class="heatmap-section">
-    <h3>Günlük Performans Isı Haritası</h3>
-    <ngx-charts-heat-map
-      [view]="[700, 180]"
+  <!-- Performans Radar Grafiği (Radar Chart) -->
+  <div class="dashboard-section">
+    <h3>Performans Radar Grafiği</h3>
+    <ngx-charts-polar-chart
+      [view]="[350, 250]"
       [scheme]="heatmapScheme"
-      [results]="heatmapData"
-      [xAxis]="true"
-      [yAxis]="true"
-      [legend]="false"
+      [results]="radarChartData"
+      [legend]="true"
+      [animations]="true"
       [showXAxisLabel]="true"
       [showYAxisLabel]="true"
-      [xAxisLabel]="'Gün'"
-      [yAxisLabel]="'Hafta'"
-    ></ngx-charts-heat-map>
+      [xAxisLabel]="'Dersler'"
+      [yAxisLabel]="'Başarı (%)'"
+    ></ngx-charts-polar-chart>
+    <div class="radar-legend">
+      <div>📌 Matematik: 85%</div>
+      <div>📌 Türkçe: 60%</div>
+      <div>📌 Fen: 40%</div>
+      <div>📌 Sosyal Bil.: 75%</div>
+      <div>📌 İngilizce: 90%</div>
+    </div>
+  </div>
+
+  <!-- Trafik Işıkları Sistemi -->
+  <div class="dashboard-section">
+    <h3>Trafik Işıkları Sistemi</h3>
+    <div class="traffic-row">
+      <span class="traffic-green">🟢 Matematik hedefi: Çok iyi!</span><br />
+      <span class="traffic-yellow">🟡 Fen hedefi: Orta düzey.</span><br />
+      <span class="traffic-red">🔴 İngilizce hedefi: Dikkat, zayıf ilerleme!</span>
+    </div>
+  </div>
+
+  <!-- Dairesel İlerleme Yüzdeleri (Circular Progress) -->
+  <div class="dashboard-section">
+    <h3>Dairesel İlerleme Yüzdeleri</h3>
+    <div class="circular-progress-row">
+      <div class="circular-progress">
+        <mat-progress-spinner mode="determinate" [value]="75" diameter="60" color="primary"></mat-progress-spinner>
+        <div>Matematik %75</div>
+      </div>
+      <div class="circular-progress">
+        <mat-progress-spinner mode="determinate" [value]="45" diameter="60" color="accent"></mat-progress-spinner>
+        <div>Fen %45</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kişisel SWOT Analizi -->
+  <div class="dashboard-section">
+    <h3>Kişisel SWOT Analizi</h3>
+    <div class="swot-grid">
+      <div class="swot-block strength">
+        <div class="swot-title"><mat-icon>trending_up</mat-icon> Güçlü Yönler</div>
+        <ul>
+          <li>Matematik</li>
+          <li>Düzenlilik</li>
+        </ul>
+      </div>
+      <div class="swot-block weakness">
+        <div class="swot-title"><mat-icon>trending_down</mat-icon> Gelişmesi Gerekenler</div>
+        <ul>
+          <li>İngilizce</li>
+          <li>Fen Bilimleri</li>
+        </ul>
+      </div>
+      <div class="swot-block opportunity">
+        <div class="swot-title"><mat-icon>lightbulb</mat-icon> Fırsatlar</div>
+        <ul>
+          <li>Günlük çalışma süreni artırabilirsin</li>
+        </ul>
+      </div>
+      <div class="swot-block threat">
+        <div class="swot-title"><mat-icon>warning</mat-icon> Riskler</div>
+        <ul>
+          <li>İngilizce hedeflerini sürekli erteliyorsun</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kadranlı Hedef Metreleri (Gauge Chart) -->
+  <div class="dashboard-section">
+    <h3>Kadranlı Hedef Metreleri</h3>
+    <div class="gauge-row">
+      <div class="gauge-item">
+        <span class="gauge-label">Matematik 📗</span>
+        <div class="gauge-bar">
+          <div class="gauge-bar-fill" style="width: 80%"></div>
+          <span class="gauge-bar-text">80%</span>
+        </div>
+      </div>
+      <div class="gauge-item">
+        <span class="gauge-label">Fen Bil. 📘</span>
+        <div class="gauge-bar">
+          <div class="gauge-bar-fill" style="width: 40%"></div>
+          <span class="gauge-bar-text">40%</span>
+        </div>
+      </div>
+      <div class="gauge-item">
+        <span class="gauge-label">Türkçe 📕</span>
+        <div class="gauge-bar">
+          <div class="gauge-bar-fill" style="width: 70%"></div>
+          <span class="gauge-bar-text">70%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kişisel Başarı Haritası (Achievement Map) -->
+  <div class="dashboard-section">
+    <h3>Kişisel Başarı Haritası</h3>
+    <div class="achievement-map">🏁 Başlangıç → ✅ İstasyon 1 → ✅ İstasyon 2 → ❌ İstasyon 3 → 🎯 Hedef</div>
   </div>
 
   <!-- Günlük Detay Carousel -->
@@ -310,6 +408,24 @@
         <div class="trello-list-title">🚩 Ertelenen</div>
         <div class="trello-card delayed">Kimya (Asitler ve Bazlar)</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Günlük Performans Isı Haritası (Modern) -->
+  <div class="dashboard-section">
+    <h3>Günlük Performans Isı Haritası 2</h3>
+
+    <div class="heatmap-grid">
+      <div
+        *ngFor="let day of program.days; let i = index"
+        class="heatmap-cell"
+        [ngClass]="{
+          'heatmap-green': day.done,
+          'heatmap-yellow': !day.done && day.solved > 0,
+          'heatmap-red': !day.done && day.solved === 0
+        }"
+        [matTooltip]="day.date + ': ' + (day.done ? 'Tamamlandı' : day.solved > 0 ? 'Kısmen' : 'Çalışılmadı')"
+      ></div>
     </div>
   </div>
 </div>

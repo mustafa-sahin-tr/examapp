@@ -52,6 +52,28 @@ namespace ExamApp.Api.Services
             // Parse user selections to extract program configuration
             var programConfig = ParseUserSelections(request.UserSelections);
 
+            // Parse provided dates or use defaults, always set Kind=Utc
+            DateTime startDate = DateTime.UtcNow.Date;
+            DateTime endDate = DateTime.UtcNow.Date.AddDays(30);
+
+            if (!string.IsNullOrEmpty(request.StartDate) && DateTime.TryParse(request.StartDate, out var parsedStartDate))
+            {
+                startDate = DateTime.SpecifyKind(parsedStartDate.Date, DateTimeKind.Utc);
+            }
+            else
+            {
+                startDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            }
+
+            if (!string.IsNullOrEmpty(request.EndDate) && DateTime.TryParse(request.EndDate, out var parsedEndDate))
+            {
+                endDate = DateTime.SpecifyKind(parsedEndDate.Date, DateTimeKind.Utc);
+            }
+            else
+            {
+                endDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+            }
+
             var userProgram = new UserProgram
             {
                 UserId = userId,
@@ -63,8 +85,8 @@ namespace ExamApp.Api.Services
                 SubjectsPerDay = programConfig.SubjectsPerDay,
                 RestDays = programConfig.RestDays,
                 DifficultSubjects = programConfig.DifficultSubjects,
-                StartDate = DateTime.UtcNow.Date,
-                EndDate = DateTime.UtcNow.Date.AddDays(30) // Default 30-day program
+                StartDate = startDate,
+                EndDate = endDate
             };
 
             _context.UserPrograms.Add(userProgram);
@@ -79,76 +101,55 @@ namespace ExamApp.Api.Services
 
         public async Task<List<UserProgramDto>> GetUserProgramsAsync(string userId)
         {
-            return await _context.UserPrograms
+            var userPrograms = await _context.UserPrograms
                 .Where(up => up.UserId == userId)
-                .Select(up => new UserProgramDto
-                {
-                    Id = up.Id,
-                    UserId = up.UserId,
-                    ProgramName = up.ProgramName,
-                    Description = up.Description,
-                    CreatedDate = up.CreatedDate,
-                    StartDate = up.StartDate,
-                    EndDate = up.EndDate,
-                    IsActive = up.IsActive,
-                    StudyType = up.StudyType,
-                    StudyDuration = up.StudyDuration,
-                    QuestionsPerDay = up.QuestionsPerDay,
-                    SubjectsPerDay = up.SubjectsPerDay,
-                    RestDays = up.RestDays,
-                    DifficultSubjects = up.DifficultSubjects,
-                    Schedules = up.Schedules.Select(s => new UserProgramScheduleDto
-                    {
-                        Id = s.Id,
-                        UserProgramId = s.UserProgramId,
-                        ScheduleDate = s.ScheduleDate,
-                        SubjectId = s.SubjectId,
-                        SubjectName = s.SubjectName,
-                        StudyDurationMinutes = s.StudyDurationMinutes,
-                        QuestionCount = s.QuestionCount,
-                        IsCompleted = s.IsCompleted,
-                        CompletedDate = s.CompletedDate,
-                        Notes = s.Notes
-                    }).ToList()
-                })
+                .Include(up => up.Schedules)
                 .ToListAsync();
+
+            return userPrograms.Select(MapToUserProgramDto).ToList();
         }
 
         private async Task<UserProgramDto> GetUserProgramDtoAsync(int userProgramId)
         {
-            return await _context.UserPrograms
-                .Where(up => up.Id == userProgramId)
-                .Select(up => new UserProgramDto
+            var userProgram = await _context.UserPrograms
+                .Include(up => up.Schedules)
+                .FirstOrDefaultAsync(up => up.Id == userProgramId);
+
+            return userProgram != null ? MapToUserProgramDto(userProgram) : null;
+        }
+
+        private UserProgramDto MapToUserProgramDto(UserProgram up)
+        {
+            return new UserProgramDto
+            {
+                Id = up.Id,
+                UserId = up.UserId,
+                ProgramName = up.ProgramName,
+                Description = up.Description,
+                CreatedDate = up.CreatedDate,
+                StartDate = up.StartDate,
+                EndDate = up.EndDate,
+                IsActive = up.IsActive,
+                StudyType = up.StudyType,
+                StudyDuration = up.StudyDuration,
+                QuestionsPerDay = up.QuestionsPerDay,
+                SubjectsPerDay = up.SubjectsPerDay,
+                RestDays = up.RestDays,
+                DifficultSubjects = up.DifficultSubjects,
+                Schedules = up.Schedules.Select(s => new UserProgramScheduleDto
                 {
-                    Id = up.Id,
-                    UserId = up.UserId,
-                    ProgramName = up.ProgramName,
-                    Description = up.Description,
-                    CreatedDate = up.CreatedDate,
-                    StartDate = up.StartDate,
-                    EndDate = up.EndDate,
-                    IsActive = up.IsActive,
-                    StudyType = up.StudyType,
-                    StudyDuration = up.StudyDuration,
-                    QuestionsPerDay = up.QuestionsPerDay,
-                    SubjectsPerDay = up.SubjectsPerDay,
-                    RestDays = up.RestDays,
-                    DifficultSubjects = up.DifficultSubjects,
-                    Schedules = up.Schedules.Select(s => new UserProgramScheduleDto
-                    {
-                        Id = s.Id,
-                        UserProgramId = s.UserProgramId,
-                        ScheduleDate = s.ScheduleDate,
-                        SubjectId = s.SubjectId,
-                        SubjectName = s.SubjectName,
-                        StudyDurationMinutes = s.StudyDurationMinutes,
-                        QuestionCount = s.QuestionCount,
-                        IsCompleted = s.IsCompleted,
-                        CompletedDate = s.CompletedDate,
-                        Notes = s.Notes
-                    }).ToList()
-                })
-                .FirstOrDefaultAsync();
+                    Id = s.Id,
+                    UserProgramId = s.UserProgramId,
+                    ScheduleDate = s.ScheduleDate,
+                    SubjectId = s.SubjectId,
+                    SubjectName = s.SubjectName,
+                    StudyDurationMinutes = s.StudyDurationMinutes,
+                    QuestionCount = s.QuestionCount,
+                    IsCompleted = s.IsCompleted,
+                    CompletedDate = s.CompletedDate,
+                    Notes = s.Notes
+                }).ToList()
+            };
         }
 
         private (string StudyType, string StudyDuration, int? QuestionsPerDay, int SubjectsPerDay, string RestDays, string DifficultSubjects) ParseUserSelections(List<UserSelectionDto> selections)

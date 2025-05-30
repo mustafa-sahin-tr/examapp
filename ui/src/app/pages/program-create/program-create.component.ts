@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { ProgramStep } from '../../models/programstep';
 import { ProgramService } from '../../services/program.service';
@@ -30,7 +32,17 @@ export interface UserStepSelection {
 
 @Component({
   selector: 'app-program-create',
-  imports: [NgFor, MatIconModule, MatButtonModule, MatSnackBarModule, MatFormFieldModule, MatInputModule, FormsModule],
+  imports: [
+    NgFor,
+    MatIconModule,
+    MatButtonModule,
+    MatSnackBarModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    FormsModule,
+  ],
   templateUrl: './program-create.component.html',
   styleUrl: './program-create.component.scss',
 })
@@ -49,6 +61,15 @@ export class ProgramCreateComponent implements OnInit {
   // Program creation form fields
   programName = '';
   programDescription = '';
+  programStartDate: Date | null = null;
+  programEndDate: Date | null = null;
+
+  constructor() {
+    // Set default dates
+    const today = new Date();
+    this.programStartDate = today;
+    this.programEndDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+  }
 
   ngOnInit(): void {
     this.programService.getProgramSteps().subscribe((steps) => {
@@ -204,9 +225,32 @@ export class ProgramCreateComponent implements OnInit {
       return;
     }
 
+    if (!this.programStartDate) {
+      this.snackBar.open('Başlangıç tarihi gereklidir', 'Tamam', {
+        duration: 2000,
+      });
+      return;
+    }
+
+    if (!this.programEndDate) {
+      this.snackBar.open('Bitiş tarihi gereklidir', 'Tamam', {
+        duration: 2000,
+      });
+      return;
+    }
+
+    if (this.programStartDate >= this.programEndDate) {
+      this.snackBar.open('Bitiş tarihi, başlangıç tarihinden sonra olmalıdır', 'Tamam', {
+        duration: 3000,
+      });
+      return;
+    }
+
     const request: CreateProgramRequest = {
       programName: this.programName.trim(),
       description: this.programDescription.trim(),
+      startDate: this.programStartDate.toISOString(),
+      endDate: this.programEndDate.toISOString(),
       userSelections: this.userSelections.map((selection) => ({
         stepId: selection.stepId,
         selectedValues: selection.selectedOptions.map((o) => o.value),
@@ -234,6 +278,10 @@ export class ProgramCreateComponent implements OnInit {
     this.isCreatingProgram.set(false);
     this.programName = '';
     this.programDescription = '';
+    // Reset dates to defaults
+    const today = new Date();
+    this.programStartDate = today;
+    this.programEndDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
   }
 
   resetForm() {
@@ -244,6 +292,11 @@ export class ProgramCreateComponent implements OnInit {
     this.visitedSteps.clear();
     this.programName = '';
     this.programDescription = '';
+
+    // Reset dates to defaults
+    const today = new Date();
+    this.programStartDate = today;
+    this.programEndDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     // Clear all selections
     this.programSteps.forEach((step) => {

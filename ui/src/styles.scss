@@ -3664,6 +3664,48 @@ h4 {
   color: #d32f2f;
 }
 
+.section-nav {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--ms-surface-medium);
+    border-radius: 1rem;
+    overflow-x: visible;
+    flex: 1;
+    min-height: 48px;
+    align-items: center;
+
+    .section-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      background: transparent;
+      color: var(--ms-text-medium);
+      border-radius: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+      font-weight: 500;
+
+      mat-icon {
+        font-size: 1.2rem;
+      }
+
+      &:hover {
+        background: var(--ms-surface-strong);
+        color: var(--ms-text);
+      }
+
+      &.active {
+        background: var(--ms-action-background);
+        color: var(--ms-action-text);
+        box-shadow: 0 2px 8px rgba(104, 85, 217, 0.3);
+      }
+    }
+  }
+
 
 
 /* bunlar her zaman en altta kalsın*/

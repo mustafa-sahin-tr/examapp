@@ -8,7 +8,10 @@
     <div class="ms-wizard-progress">
       <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ getStepIndicators().length }}</div>
       <div class="ms-progress-bar-bg">
-        <div class="ms-progress-bar-fill" [style.width]="((stepIndex() + 1) / getStepIndicators().length) * 100 + '%'"></div>
+        <div
+          class="ms-progress-bar-fill"
+          [style.width]="((stepIndex() + 1) / getStepIndicators().length) * 100 + '%'"
+        ></div>
       </div>
     </div>
   </div>
@@ -45,14 +48,16 @@
       </li>
     </ul>
     <button class="nav-btn right" (click)="next()">❯</button>
-  </div>  <!-- Step indicators -->
+  </div>
+  <!-- Step indicators -->
   <div class="d-flex justify-content-center align-items-center">
     @for (indicator of getStepIndicators(); track $index; let i = $index) {
-      <div class="mx-2 ms-wizard-step-item"
-           [class.ms-wizard-step-item-completed]="indicator.isCompleted"
-           [class.ms-wizard-step-item-active]="indicator.isActive"
-           [class.ms-wizard-step-item-upcoming]="indicator.isUpcoming">
-      </div>
+    <div
+      class="mx-2 ms-wizard-step-item"
+      [class.ms-wizard-step-item-completed]="indicator.isCompleted"
+      [class.ms-wizard-step-item-active]="indicator.isActive"
+      [class.ms-wizard-step-item-upcoming]="indicator.isUpcoming"
+    ></div>
     }
   </div>
 
@@ -95,8 +100,29 @@
       ></textarea>
     </mat-form-field>
 
+    <div class="date-fields-row">
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>Başlangıç Tarihi</mat-label>
+        <input matInput [matDatepicker]="startPicker" [(ngModel)]="programStartDate" required />
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="date-field">
+        <mat-label>Bitiş Tarihi</mat-label>
+        <input matInput [matDatepicker]="endPicker" [(ngModel)]="programEndDate" required />
+        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+      </mat-form-field>
+    </div>
+
     <div class="ms-program-creation-actions">
-      <button mat-raised-button color="primary" (click)="createProgram()" [disabled]="!programName.trim()">
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="createProgram()"
+        [disabled]="!programName.trim() || !programStartDate || !programEndDate"
+      >
         <mat-icon>add</mat-icon>
         Programı Oluştur
       </button>

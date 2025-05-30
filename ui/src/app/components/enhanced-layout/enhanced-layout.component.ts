@@ -121,13 +121,24 @@ export class EnhancedLayoutComponent implements OnInit {
     console.log('Sidebar collapsed:', this.isSidenavCollapsed());
   }
 
-  navigateTo(route: string) {
+  navigateTo(route: string, options: any = {}) {
     if (route) {
-      this.router.navigate([route]);
+      this.router.navigate([route], options);
       const menuItem = this.menuItems.find((item) => item.route === route);
       if (menuItem) {
         this.activeMenuItem.set(menuItem.id);
       }
+    }
+  }
+
+  onGlobalSearch() {
+    const query = this.globalSearchControl.value?.trim() || '';
+    this.navigateTo('/tests', { queryParams: { search: query } });
+    // this.router.navigate(['/tests'], { queryParams: { search: query } });
+
+    // Aramayı search history'e ekle (varsa yinelenmeyen)
+    if (query && !this.searchHistory.includes(query)) {
+      this.searchHistory.unshift(query);
     }
   }
 
@@ -200,16 +211,6 @@ export class EnhancedLayoutComponent implements OnInit {
     setTimeout(() => {
       this.isInputFocused = false;
     }, 150);
-  }
-
-  onGlobalSearch() {
-    const query = this.globalSearchControl.value?.trim() || '';
-    this.router.navigate(['/tests'], { queryParams: { search: query } });
-
-    // Aramayı search history'e ekle (varsa yinelenmeyen)
-    if (query && !this.searchHistory.includes(query)) {
-      this.searchHistory.unshift(query);
-    }
   }
 
   showSection(section: 'newest' | 'hot' | 'completed' | 'search' | 'relevant') {

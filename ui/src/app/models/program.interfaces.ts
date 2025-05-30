@@ -1,6 +1,8 @@
 export interface CreateProgramRequest {
   programName: string;
   description: string;
+  startDate?: string;
+  endDate?: string;
   userSelections: UserSelection[];
 }
 

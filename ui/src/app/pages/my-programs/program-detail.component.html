@@ -1,0 +1,202 @@
+<div class="program-detail-container">
+  <h2 class="program-title">{{ program.programName }}</h2>
+  <div class="program-meta">
+    <span><mat-icon>calendar_today</mat-icon> {{ program.startDate }} - {{ program.endDate }}</span>
+    <span
+      ><mat-icon>assignment</mat-icon> Günde {{ program.questionsPerDay }} soru, {{ program.subjectsPerDay }} konu</span
+    >
+    <span><mat-icon>timeline</mat-icon> Tür: {{ program.studyType }}</span>
+  </div>
+
+  <!-- <div class="program-stats">
+    <div class="stat-box completed">
+      <mat-icon>check_circle</mat-icon>
+      <div>
+        <div class="stat-value">{{ completedDays }}</div>
+        <div class="stat-label">Uyulan Gün</div>
+      </div>
+    </div>
+    <div class="stat-box missed">
+      <mat-icon>cancel</mat-icon>
+      <div>
+        <div class="stat-value">{{ missedDays }}</div>
+        <div class="stat-label">Uyulmayan Gün</div>
+      </div>
+    </div>
+    <div class="stat-box total">
+      <mat-icon>calendar_view_day</mat-icon>
+      <div>
+        <div class="stat-value">{{ totalDays }}</div>
+        <div class="stat-label">Toplam Gün</div>
+      </div>
+    </div>
+  </div> -->
+
+  <!-- Özet Kartlar -->
+  <div class="summary-cards">
+    <!-- <mat-card class="summary-card">
+      <mat-icon>check_circle</mat-icon>
+      <div>
+        <div class="summary-value">{{ completedDays }}</div>
+        <div class="summary-label">Uyulan Gün</div>
+      </div>
+    </mat-card> -->
+    <mat-card class="summary-card">
+      <mat-icon>assignment</mat-icon>
+      <div>
+        <div class="summary-value">{{ totalSolved }}</div>
+        <div class="summary-label">Toplam Soru</div>
+      </div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <mat-icon>timer</mat-icon>
+      <div>
+        <div class="summary-value">{{ totalMinutes }}</div>
+        <div class="summary-label">Toplam Süre (dk)</div>
+      </div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <mat-icon>percent</mat-icon>
+      <div>
+        <div class="summary-value">{{ successRate }}%</div>
+        <div class="summary-label">Başarı Oranı</div>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Isı Haritası (Heatmap) -->
+  <div class="heatmap-section">
+    <h3>Günlük Performans Isı Haritası</h3>
+    <ngx-charts-heat-map
+      [view]="[700, 180]"
+      [scheme]="heatmapScheme"
+      [results]="heatmapData"
+      [xAxis]="true"
+      [yAxis]="true"
+      [legend]="false"
+      [showXAxisLabel]="true"
+      [showYAxisLabel]="true"
+      [xAxisLabel]="'Gün'"
+      [yAxisLabel]="'Hafta'"
+    ></ngx-charts-heat-map>
+  </div>
+
+  <!-- Günlük Detay Carousel -->
+  <div class="day-carousel-modern">
+    <button (click)="scrollDays(-1)" [disabled]="carouselIndex === 0"><mat-icon>chevron_left</mat-icon></button>
+    <div class="carousel-days-list">
+      <div
+        *ngFor="let day of visibleDays; let i = index"
+        [class.selected]="selectedDay === day"
+        (click)="selectDay(day)"
+      >
+        <div class="day-number">{{ getRealIndex(i) + 1 }}. Gün</div>
+        <div class="day-status" [class.done]="day.done" [class.missed]="!day.done">
+          <mat-icon>{{ day.done ? 'check_circle' : 'cancel' }}</mat-icon>
+        </div>
+        <div class="day-solved">{{ day.solved }} / {{ program.questionsPerDay }} soru</div>
+      </div>
+    </div>
+    <button (click)="scrollDays(1)" [disabled]="carouselIndex >= maxCarouselIndex">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+
+  <!-- <div class="pie-section">
+    <h3>Ders Bazında Soru Dağılımı</h3>
+    <ngx-charts-pie-chart
+      [view]="[400, 220]"
+      [scheme]="subjectPieScheme"
+      [results]="subjectPieData"
+      [legend]="true"
+      [labels]="true"
+      [doughnut]="true"
+      [explodeSlices]="false"
+      [gradient]="false"
+    ></ngx-charts-pie-chart>
+  </div> -->
+
+  <!-- Günlük Detayda: Motivasyon, Emoji, Not, ProgressBar -->
+  <div class="selected-day-detail" *ngIf="selectedDay">
+    <h4>
+      {{ selectedDay.date }} |
+      <span [class.done]="selectedDay.done" [class.missed]="!selectedDay.done">{{
+        selectedDay.done ? 'Hedefe UYULDU' : 'UYULMADI'
+      }}</span>
+    </h4>
+    <div class="detail-row">
+      <mat-icon>assignment</mat-icon> <b>{{ selectedDay.solved }}</b> soru
+    </div>
+    <div class="detail-row">
+      <mat-icon>timer</mat-icon> <b>{{ selectedDay.minutes }}</b> dakika
+    </div>
+    <div class="detail-row">
+      <mat-icon>mood</mat-icon> <span class="emoji">{{ selectedDay.mood }}</span>
+    </div>
+    <div class="detail-row">
+      <mat-progress-bar
+        mode="determinate"
+        [value]="(selectedDay.solved / program.questionsPerDay) * 100"
+      ></mat-progress-bar>
+      <span class="progress-label"
+        >Hedef Tamamlanma: {{ (selectedDay.solved / program.questionsPerDay) * 100 | number : '1.0-0' }}%</span
+      >
+    </div>
+    <div class="detail-row feedback-row">
+      <mat-icon>emoji_objects</mat-icon>
+      <span class="motivation">{{ getMotivation(selectedDay) }}</span>
+    </div>
+    <div class="detail-row" *ngIf="selectedDay.subjects.length">
+      <mat-icon>menu_book</mat-icon>
+      <span>Dersler:</span>
+      <ul>
+        <li *ngFor="let s of selectedDay.subjects">
+          <b>{{ s.name }}</b
+          >: {{ s.solved }} soru, {{ s.minutes }} dk
+        </li>
+      </ul>
+    </div>
+    <div class="detail-row" *ngIf="selectedDay.notes">
+      <mat-icon>note</mat-icon>
+      <span>{{ selectedDay.notes }}</span>
+    </div>
+    <div class="detail-row">
+      <mat-form-field appearance="outline" class="note-input">
+        <mat-label>Bugünkü Notun</mat-label>
+        <input matInput [(ngModel)]="selectedDay.notes" placeholder="Kısa bir not ekle..." />
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Ekstra: Streak, En İyi Gün, En Kötü Gün, Pie Chart, Not/Emoji, ProgressBar -->
+  <div class="extra-stats-row">
+    <mat-card class="extra-card streak">
+      <mat-icon>whatshot</mat-icon>
+      <div>
+        <div class="extra-value">{{ currentStreak }}</div>
+        <div class="extra-label">Günlük Streak</div>
+      </div>
+    </mat-card>
+    <mat-card class="extra-card streak-max">
+      <mat-icon>local_fire_department</mat-icon>
+      <div>
+        <div class="extra-value">{{ maxStreak }}</div>
+        <div class="extra-label">En Uzun Streak</div>
+      </div>
+    </mat-card>
+    <mat-card class="extra-card best" *ngIf="bestDay">
+      <mat-icon>star</mat-icon>
+      <div>
+        <div class="extra-value">{{ bestDay.solved }}</div>
+        <div class="extra-label">En İyi Gün ({{ bestDay.date }})</div>
+      </div>
+    </mat-card>
+    <mat-card class="extra-card worst" *ngIf="worstDay">
+      <mat-icon>sentiment_dissatisfied</mat-icon>
+      <div>
+        <div class="extra-value">{{ worstDay.solved }}</div>
+        <div class="extra-label">En Kötü Gün ({{ worstDay.date }})</div>
+      </div>
+    </mat-card>
+  </div>
+</div>

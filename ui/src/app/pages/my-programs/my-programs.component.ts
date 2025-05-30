@@ -72,10 +72,10 @@ export class MyProgramsComponent implements OnInit {
   private applyFilter(): void {
     switch (this.selectedFilter) {
       case 'active':
-        this.filteredPrograms = this.programs.filter(program => this.isActive(program));
+        this.filteredPrograms = this.programs.filter((program) => this.isActive(program));
         break;
       case 'completed':
-        this.filteredPrograms = this.programs.filter(program => this.isCompleted(program));
+        this.filteredPrograms = this.programs.filter((program) => this.isCompleted(program));
         break;
       default:
         this.filteredPrograms = [...this.programs];
@@ -91,7 +91,7 @@ export class MyProgramsComponent implements OnInit {
     const labels = {
       all: 'Tümü',
       active: 'Aktif',
-      completed: 'Tamamlanan'
+      completed: 'Tamamlanan',
     };
     return labels[filter];
   }
@@ -118,9 +118,7 @@ export class MyProgramsComponent implements OnInit {
   }
 
   viewProgramDetails(program: UserProgram): void {
-    // Navigate to program details page
-    // This will be implemented later
-    console.log('View program details:', program);
+    this.router.navigate(['/programs', program.id, 'detail']);
   }
 
   formatDate(dateString: string): string {
@@ -151,11 +149,11 @@ export class MyProgramsComponent implements OnInit {
 
   // Yeni metodlar - Enhanced UI için
   getActivePrograms(): number {
-    return this.programs.filter(program => this.isActive(program)).length;
+    return this.programs.filter((program) => this.isActive(program)).length;
   }
 
   getCompletedPrograms(): number {
-    return this.programs.filter(program => this.isCompleted(program)).length;
+    return this.programs.filter((program) => this.isCompleted(program)).length;
   }
 
   isActive(program: UserProgram): boolean {
@@ -189,11 +187,11 @@ export class MyProgramsComponent implements OnInit {
 
   getProgramIcon(studyType: string): string {
     const icons: { [key: string]: string } = {
-      'intensive': 'flash_on',
-      'regular': 'schedule',
-      'flexible': 'tune',
-      'weekend': 'weekend',
-      'exam': 'quiz'
+      intensive: 'flash_on',
+      regular: 'schedule',
+      flexible: 'tune',
+      weekend: 'weekend',
+      exam: 'quiz',
     };
     return icons[studyType.toLowerCase()] || 'assignment';
   }

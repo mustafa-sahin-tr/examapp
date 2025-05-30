@@ -54,6 +54,11 @@ export const routes: Routes = [
       { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
       { path: 'exam/:id', component: TestCreateComponent }, // 🆕 Test çözme sayfası
       { path: 'programs', component: MyProgramsComponent },
+      {
+        path: 'programs/:id/detail',
+        loadComponent: () =>
+          import('./pages/my-programs/program-detail.component').then((m) => m.ProgramDetailComponent),
+      },
       { path: 'program-create', component: ProgramCreateComponent },
       { path: 'certificates', component: BadgeThropyComponent }, //
     ],

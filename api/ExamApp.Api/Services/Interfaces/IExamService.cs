@@ -26,9 +26,9 @@ public interface IExamService
     // Task<List<QuestionDto>> GetAllCanvasQuestions(bool includeAnswers = false, int maxId = 0);
     Task<WorksheetInstanceResultDto?> GetCanvasTestResultAsync(int testInstanceId, int userId, bool includeCorrectAnswer = false);
     Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, User user);
-    Task<ResponseBaseDto> EndTest(int testInstanceId, int userId);
+    Task<ResponseBaseDto> EndTest(int testInstanceId, int userId); Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId);
 
-    Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId);
+    Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId);
 
     Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId);
 

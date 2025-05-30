@@ -1,121 +1,110 @@
-
-<div class="form-container ta-left" >
+<div class="form-container ta-left">
   <div class="form-column">
     <mat-card class="test-create-card">
-        <mat-card-title>Yeni Test Oluştur</mat-card-title>
-        <mat-card-content>
-          <form [formGroup]="testForm" (ngSubmit)="onSubmit()">
+      <mat-card-title>Yeni Test Oluştur</mat-card-title>
+      <mat-card-content>
+        <form [formGroup]="testForm" (ngSubmit)="onSubmit()">
+          <!-- Sınıf Seçimi -->
 
-            <!-- Sınıf Seçimi -->
-             
-              
-              @if (!showAddBookInput) {
-            <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Kitap Seç</mat-label>
-              <mat-select formControlName="bookId" (selectionChange)="onBookChange($event.value)">
-                @for ( book of books ; track book.id ) {
-                  <mat-option [value]="book.id">
-                    {{ book.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <a class="ta-left c-ptr" (click)="openNewBookAdd()"> Yeni Kitap Ekle</a>
-               
-              } @else {
-                <mat-form-field appearance="outline">
-                  <mat-label>Yeni Kitap Adı</mat-label>
-                  <input matInput formControlName="newBookName"
-                  appAutofocus
-                  (blur)="onNewBookBlur()"/>                 
-                </mat-form-field>
+          @if (!showAddBookInput) {
+          <mat-form-field appearance="outline" class="hide-subscript">
+            <mat-label>Kitap Seç</mat-label>
+            <mat-select formControlName="bookId" (selectionChange)="onBookChange($event.value)">
+              @for ( book of books ; track book.id ) {
+              <mat-option [value]="book.id">
+                {{ book.name }}
+              </mat-option>
               }
-           
+            </mat-select>
+          </mat-form-field>
+          <a class="ta-left c-ptr" (click)="openNewBookAdd()"> Yeni Kitap Ekle</a>
 
-            <!-- 🟢 Kitap Testi -->
-            @if (!showAddBookTestInput) {
-            <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Kitap Testi</mat-label>
-              <mat-select formControlName="bookTestId">
-                @for ( bt of bookTests ; track bt.id ) {
-                  <mat-option [value]="bt.id">
-                    {{ bt.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+          } @else {
+          <mat-form-field appearance="outline">
+            <mat-label>Yeni Kitap Adı</mat-label>
+            <input matInput formControlName="newBookName" appAutofocus (blur)="onNewBookBlur()" />
+          </mat-form-field>
+          }
 
+          <!-- 🟢 Kitap Testi -->
+          @if (!showAddBookTestInput) {
+          <mat-form-field appearance="outline" class="hide-subscript">
+            <mat-label>Kitap Testi</mat-label>
+            <mat-select formControlName="bookTestId">
+              @for ( bt of bookTests ; track bt.id ) {
+              <mat-option [value]="bt.id">
+                {{ bt.name }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-           
-              <a class="ta-left c-ptr" (click)="openNewBookTestAdd()">Yeni Kitap Testi Ekle</a>
-            } @else {
-              <mat-form-field appearance="outline">
-                <mat-label>Yeni Kitap Testi Adı</mat-label>
-                <input matInput formControlName="newBookTestName" />
-                <!-- <div class="new-book-actions">
+          <a class="ta-left c-ptr" (click)="openNewBookTestAdd()">Yeni Kitap Testi Ekle</a>
+          } @else {
+          <mat-form-field appearance="outline">
+            <mat-label>Yeni Kitap Testi Adı</mat-label>
+            <input matInput formControlName="newBookTestName" />
+            <!-- <div class="new-book-actions">
                   <button mat-button type="button" (click)="addNewBook()">Ekle</button>
                   <button mat-button type="button" (click)="showAddBookInput = false">İptal</button>
                 </div> -->
-              </mat-form-field>
-            }
-          
-            <!-- 🟢 Soru Resmi -->
-            <!-- <label for="testImage">Soru Resmi</label>
+          </mat-form-field>
+          }
+
+          <!-- 🟢 Soru Resmi -->
+          <!-- <label for="testImage">Soru Resmi</label>
             <input type="file" id="testImage" (change)="onImageUploadForTest($event)" />
             @if (testForm.value.imageUrl) {
               <img [src]="testForm.value.imageUrl" class="preview-image" />
             } -->
 
-            <!-- Test Adı -->
-            <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Ders Adı</mat-label>
-              <input matInput formControlName="name" required />
-            </mat-form-field>
+          <!-- Test Adı -->
+          <mat-form-field appearance="outline" class="hide-subscript">
+            <mat-label>Ders Adı</mat-label>
+            <input matInput formControlName="name" required />
+          </mat-form-field>
 
-            
-      
-            <!-- Test Açıklaması -->
-            <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Açıklama</mat-label>
-              <textarea matInput style="padding-top: 10px;" formControlName="description"></textarea>
-            </mat-form-field>
+          <!-- Test Açıklaması -->
+          <mat-form-field appearance="outline" class="hide-subscript">
+            <mat-label>Açıklama</mat-label>
+            <textarea matInput style="padding-top: 10px" formControlName="description"></textarea>
+          </mat-form-field>
 
-            <!-- Test Açıklaması -->
-            <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Alt İsim</mat-label>
-              <input matInput formControlName="subtitle" required />
-            </mat-form-field>
-      
-            <!-- Sınıf Seçimi -->
-            <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Sınıf</mat-label>
-              <mat-select formControlName="gradeId" required>
-                @for (grade of grades; track grade.id) {
-                  <mat-option [value]="grade.id">
-                    {{ grade.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-      
-            <!-- Süre Seçimi -->
-            <mat-form-field appearance="outline">
-              <mat-label>Test Süresi (Dakika)</mat-label>
-              <input matInput type="number" formControlName="maxDurationMinutes" min="1" />
-            </mat-form-field>
-      
-            <!-- Çalışma Testi Mi? -->
-            <mat-checkbox formControlName="isPracticeTest">Bu bir çalışma testi mi?</mat-checkbox>
-      
-            <!-- Butonlar -->
-            <div class="button-group">
-              <button mat-raised-button color="primary" type="submit" [disabled]="testForm.invalid">Kaydet</button>
-              <button mat-raised-button color="warn" type="button" (click)="navigateToTestList()">İptal</button>
-            </div>
-      
-          </form>
-        </mat-card-content>
-      </mat-card>
+          <!-- Test Açıklaması -->
+          <mat-form-field appearance="outline" class="hide-subscript">
+            <mat-label>Alt İsim</mat-label>
+            <input matInput formControlName="subtitle" required />
+          </mat-form-field>
+
+          <!-- Sınıf Seçimi -->
+          <mat-form-field appearance="outline" class="hide-subscript">
+            <mat-label>Sınıf</mat-label>
+            <mat-select formControlName="gradeId" required>
+              @for (grade of grades; track grade.id) {
+              <mat-option [value]="grade.id">
+                {{ grade.name }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <!-- Süre Seçimi -->
+          <mat-form-field appearance="outline">
+            <mat-label>Test Süresi (Dakika)</mat-label>
+            <input matInput type="number" formControlName="maxDurationMinutes" min="1" />
+          </mat-form-field>
+
+          <!-- Çalışma Testi Mi? -->
+          <mat-checkbox formControlName="isPracticeTest">Bu bir çalışma testi mi?</mat-checkbox>
+
+          <!-- Butonlar -->
+          <div class="button-group">
+            <button mat-raised-button color="primary" type="submit" [disabled]="testForm.invalid">Kaydet</button>
+            <button mat-raised-button color="warn" type="button" (click)="navigateToTestList()">İptal</button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
   </div>
   <div class="form-column">
     <h2>Kart Ön İzleme</h2>
@@ -128,10 +117,18 @@
               <h3>
                 {{ testForm.value.name }}
                 <span class="new-badge">NEW & POPULAR</span>
-                <span class="new-badge"><strong> {{ testForm.value.questionCount }} Soru</strong></span>
-                <span class="new-badge"><strong> {{ testForm.value.gradeId }}.Sınıf</strong></span>
-                <span class="new-badge"><strong> ⭐  {{ 4.8 }}</strong></span>
-                <span class="new-badge"><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span>
+                <span class="new-badge"
+                  ><strong> {{ testForm.value.questionCount }} Soru</strong></span
+                >
+                <span class="new-badge"
+                  ><strong> {{ testForm.value.gradeId }}.Sınıf</strong></span
+                >
+                <span class="new-badge"
+                  ><strong> ⭐ {{ 4.8 }}</strong></span
+                >
+                <span class="new-badge"
+                  ><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span
+                >
               </h3>
               <span>{{ testForm.value.subtitle }}</span>
               <p>{{ testForm.value.description }}</p>
@@ -142,9 +139,65 @@
     </div>
     <!-- Butonlar -->
     <div class="button-group">
-      <button mat-raised-button color="primary" type="button" [disabled]="testForm.invalid"
-      (click)="navigateToQuestionCanvas()"
-      ><mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç</button>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        [disabled]="testForm.invalid"
+        (click)="navigateToQuestionCanvas()"
+      >
+        <mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç
+      </button>
     </div>
   </div>
+
+  <!-- Excel ile Toplu Test Yükleme Kartı -->
+  <mat-card class="bulk-import-card" style="margin-bottom: 24px">
+    <mat-card-title>Excel ile Toplu Test Yükle</mat-card-title>
+    <mat-card-content>
+      <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
+        <input
+          #fileInput
+          type="file"
+          accept=".xlsx, .xls"
+          style="display: none"
+          (change)="onBulkFileSelected($event)"
+        />
+        <button mat-raised-button color="primary" type="button" (click)="fileInput.click()">
+          <mat-icon>upload_file</mat-icon> Excel Dosyası Seç
+        </button>
+        <span *ngIf="selectedBulkFile">{{ selectedBulkFile.name }}</span>
+        <button
+          mat-raised-button
+          color="accent"
+          type="button"
+          [disabled]="!selectedBulkFile || isUploading"
+          (click)="onBulkImport()"
+        >
+          <mat-icon>cloud_upload</mat-icon> Yükle
+        </button>
+      </div>
+      <mat-progress-bar
+        *ngIf="isUploading"
+        mode="indeterminate"
+        color="primary"
+        style="margin-top: 8px"
+      ></mat-progress-bar>
+      <div *ngIf="bulkImportResults" style="margin-top: 12px">
+        <div *ngIf="bulkImportResults.isSuccess" class="success-message">
+          ✔️ Toplu yükleme tamamlandı. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
+          {{ bulkImportResults.failureCount }}
+        </div>
+        <div *ngIf="!bulkImportResults.isSuccess" class="error-message">
+          ❌ Yükleme sırasında hatalar oluştu. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
+          {{ bulkImportResults.failureCount }}
+        </div>
+        <ul *ngIf="bulkImportResults.failedExams?.length">
+          <li *ngFor="let err of bulkImportResults.failedExams">
+            <strong>{{ err.examName }}</strong> (Satır: {{ err.rowNumber }}): {{ err.errorMessage }}
+          </li>
+        </ul>
+      </div>
+    </mat-card-content>
+  </mat-card>
 </div>

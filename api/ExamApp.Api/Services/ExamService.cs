@@ -715,6 +715,29 @@ public class ExamService : IExamService
             };
         }
 
+        // eper newBookName ve newBookTestName dolu ise ve db'de zaten varsa o halde sucess = true olarak devam et
+        if (!string.IsNullOrWhiteSpace(examDto.NewBookName) && !string.IsNullOrWhiteSpace(examDto.NewBookTestName))
+        {
+            var existingBook = await _context.Books
+                .Include(b => b.BookTests)
+                .FirstOrDefaultAsync(b => b.Name == examDto.NewBookName);
+
+            if (existingBook != null)
+            {
+                var existingBookTest = existingBook.BookTests
+                    .FirstOrDefault(bt => bt.Name == examDto.NewBookTestName);
+
+                if (existingBookTest != null)
+                {
+                    return new ExamSavedDto
+                    {
+                        Success = true,
+                        Message = "Kitap ve kitap testi zaten mevcut."
+                    };
+                }
+            }
+        }
+
         try
         {
             if (examDto.BookId == 0 && string.IsNullOrWhiteSpace(examDto.NewBookName))
@@ -738,23 +761,19 @@ public class ExamService : IExamService
             }
 
             Book? book = null;
-
-            if (examDto.BookId == 0)
+            if (examDto.BookId is null || examDto.BookId == 0)
             {
                 if (string.IsNullOrWhiteSpace(examDto.NewBookName))
                 {
-                    // return BadRequest(new { error = "Kitap seçilmedi!" });
                     return new ExamSavedDto
                     {
                         Success = false,
                         Message = "Kitap seçilmedi!"
                     };
-                    // return BadRequest(new { error = "Kitap seçilmedi!" });
                 }
 
                 if (string.IsNullOrWhiteSpace(examDto.NewBookTestName))
                 {
-                    // return BadRequest(new { error = "Kipta Test seçilmedi!" });
                     return new ExamSavedDto
                     {
                         Success = false,
@@ -762,20 +781,25 @@ public class ExamService : IExamService
                     };
                 }
 
-                book = new Book
+                book = await _context.Books
+                            .Include(b => b.BookTests)
+                        .FirstOrDefaultAsync(b => b.Name == examDto.NewBookName);
+
+                if (book == null)
                 {
-                    Name = examDto.NewBookName
-                };
-
-                book.BookTests =
-                [
-                  new BookTest
-                  {
-                      Name = examDto.NewBookTestName,
-                      BookId = book.Id
-                  },
-                ];
-
+                    book = new Book
+                    {
+                        Name = examDto.NewBookName
+                    };
+                    book.BookTests =
+                    [
+                    new BookTest
+                    {
+                        Name = examDto.NewBookTestName,
+                        BookId = book.Id
+                    },
+                    ];
+                }               
                 _context.Books.Add(book);
                 await _context.SaveChangesAsync();
             }
@@ -792,9 +816,20 @@ public class ExamService : IExamService
                         Success = false,
                         Message = "Kitap bulunamadı!"
                     };
-                    // return NotFound(new { error = "Kitap bulunamadı!" });
+                    
                 }
-                if (examDto.BookTestId == 0)
+
+                // Eğer zaten bu kitap için test zaten mevcutsa o halde success olarak devam et
+                if (book.BookTests.Any(bt => bt.Id == examDto.BookTestId))
+                {
+                    return new ExamSavedDto
+                    {
+                        Success = true,
+                        Message = "Kitap testi zaten mevcut."
+                    };
+                }
+
+                if (examDto.BookTestId is null || examDto.BookTestId == 0)
                 {
                     if (string.IsNullOrWhiteSpace(examDto.NewBookTestName))
                     {
@@ -822,7 +857,6 @@ public class ExamService : IExamService
                         book.BookTests.First(bt => bt.Name == examDto.NewBookTestName).Id : examDto.BookTestId;
 
             Worksheet? examination;
-            // 📌 Eğer ID varsa, veritabanından o soruyu bulup güncelle
             if (examDto.Id > 0)
             {
                 examination = await _context.Worksheets.FindAsync(examDto.Id);
@@ -1007,9 +1041,84 @@ public class ExamService : IExamService
                 TotalCorrectAnswers = g.TotalCorrectAnswers,
                 TotalWrongAnswers = g.TotalWrongAnswers
             }).ToList()
+        }; return response;
+    }
+
+    public async Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId)
+    {
+        var result = new BulkExamResultDto
+        {
+            Success = true,
+            Message = "Bulk exam creation completed"
         };
 
-        return response;
+        var successfulExams = new List<ExamSavedDto>();
+        var failedExams = new List<BulkExamErrorDto>();
+        int rowNumber = 1;
+
+        foreach (var examItem in bulkExamDto.Exams)
+        {
+            try
+            {
+                // Convert BulkExamItemDto to ExamDto
+                var examDto = new ExamDto
+                {
+                    Name = examItem.Name,
+                    Description = examItem.Description,
+                    GradeId = examItem.GradeId,
+                    MaxDurationSeconds = examItem.MaxDurationSeconds,
+                    IsPracticeTest = examItem.IsPracticeTest,
+                    Subtitle = examItem.Subtitle,
+                    BadgeText = examItem.BadgeText,
+                    BookTestId = examItem.BookTestId,
+                    BookId = examItem.BookId,
+                    NewBookName = examItem.NewBookName,
+                    NewBookTestName = examItem.NewBookTestName
+                };
+
+                // Use existing CreateOrUpdateAsync method
+                var savedExam = await CreateOrUpdateAsync(examDto, userId);
+
+                if (savedExam.Success)
+                {
+                    successfulExams.Add(savedExam);
+                }
+                else
+                {
+                    failedExams.Add(new BulkExamErrorDto
+                    {
+                        ExamName = examItem.Name,
+                        ErrorMessage = savedExam.Message,
+                        RowNumber = rowNumber
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                failedExams.Add(new BulkExamErrorDto
+                {
+                    ExamName = examItem.Name,
+                    ErrorMessage = ex.Message,
+                    RowNumber = rowNumber
+                });
+            }
+
+            rowNumber++;
+        }
+
+        result.SuccessfulExams = successfulExams;
+        result.FailedExams = failedExams;
+        result.TotalProcessed = bulkExamDto.Exams.Count;
+        result.SuccessCount = successfulExams.Count;
+        result.FailureCount = failedExams.Count;
+
+        if (failedExams.Any())
+        {
+            result.Success = false;
+            result.Message = $"Processed {result.TotalProcessed} exams: {result.SuccessCount} successful, {result.FailureCount} failed";
+        }
+
+        return result;
     }
 
 }

@@ -77,6 +77,10 @@ export class TestService {
     return this.http.post<any>(this.baseUrl, test);
   }
 
+  bulkImport(bulkData: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/bulk-import`, bulkData);
+  }
+
   get(id: number): Observable<Test> {
     var reqUrl = `${this.baseUrl}/list?id=${id}`;
     return this.http.get<Paged<Test>>(reqUrl).pipe(

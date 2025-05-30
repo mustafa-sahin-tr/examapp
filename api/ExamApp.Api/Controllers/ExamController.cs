@@ -204,12 +204,34 @@ public class ExamController : BaseController
         var response = await _examService.EndTest(testInstanceId, user.Id);
         return Ok(response);
     }
-
     [HttpPost]
     public async Task<IActionResult> CreateOrUpdateAsync([FromBody] ExamDto examDto)
     {
         var response = await _examService.CreateOrUpdateAsync(examDto, 0);
         return Ok(response);
+    }
+
+    [HttpPost("bulk-import")]
+    [Authorize]
+    public async Task<IActionResult> BulkImportExams([FromBody] BulkExamCreateDto bulkExamDto)
+    {
+        try
+        {
+            var user = await GetAuthenticatedUserAsync();
+            var response = await _examService.CreateBulkExamsAsync(bulkExamDto, user.Id);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new BulkExamResultDto
+            {
+                Success = false,
+                Message = $"Bulk import failed: {ex.Message}",
+                TotalProcessed = bulkExamDto.Exams.Count,
+                SuccessCount = 0,
+                FailureCount = bulkExamDto.Exams.Count
+            });
+        }
     }
 
 

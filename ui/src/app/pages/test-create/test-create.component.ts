@@ -19,6 +19,10 @@ import { SafeHtmlPipe } from '../../services/safehtml';
 import { MatButtonModule } from '@angular/material/button';
 import { AutofocusDirective } from '../../shared/directives/auto-focus.directive';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import * as XLSX from 'xlsx';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
@@ -39,6 +43,9 @@ import { MatIconModule } from '@angular/material/icon';
     MatToolbarModule,
     MatLabel,
     WorksheetCardComponent,
+    MatProgressBarModule,
+    MatTabsModule,
+    MatSnackBarModule,
   ],
   styleUrls: ['./test-create.component.scss'],
 })
@@ -60,6 +67,9 @@ export class TestCreateComponent implements OnInit {
   showAddBookTestInput = false;
   /** grab the input once it’s in the DOM */
   @ViewChild('newBookInput') newBookInput!: ElementRef<HTMLInputElement>;
+  selectedBulkFile: File | null = null;
+  isUploading = false;
+  bulkImportResults: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -227,5 +237,65 @@ export class TestCreateComponent implements OnInit {
       };
       reader.readAsDataURL(file);
     }
+  }
+
+  onBulkFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedBulkFile = file;
+    }
+  }
+
+  async onBulkImport() {
+    if (!this.selectedBulkFile) return;
+    this.isUploading = true;
+    this.bulkImportResults = null;
+    try {
+      const data = await this.readExcelFile(this.selectedBulkFile);
+      // Excel'den gelen veriyi backend DTO formatına çevir
+      const exams = data.map((row: any) => ({
+        name: row['Ad'] || row['Ders'],
+        description: row['Açıklama'] || row['Description'] || '',
+        gradeId: +row['Sınıf'] || +row['Grade'] || 1,
+        maxDurationSeconds: +row['Süre'] ? +row['Duration'] * 60 : 600,
+        isPracticeTest: row['ÇalışmaTesti'] === 'Evet' || row['IsPracticeTest'] === true,
+        subtitle: row['AltBaşlık'] || row['Subtitle'] || '',
+        badgeText: row['Badge'] || '',
+        bookTestId: row['BookTestId'] ? +row['BookTestId'] : undefined,
+        bookId: row['BookId'] ? +row['BookId'] : undefined,
+        newBookName: row['Book'] || '',
+        newBookTestName: row['BookTest'] || '',
+      }));
+      const payload = { exams };
+      this.testService.bulkImport(payload).subscribe({
+        next: (res) => {
+          this.bulkImportResults = res;
+          this.isUploading = false;
+        },
+        error: (err) => {
+          this.bulkImportResults = { isSuccess: false, message: 'Yükleme sırasında hata oluştu.' };
+          this.isUploading = false;
+        },
+      });
+    } catch (e) {
+      this.bulkImportResults = { isSuccess: false, message: 'Excel dosyası okunamadı.' };
+      this.isUploading = false;
+    }
+  }
+
+  private readExcelFile(file: File): Promise<any[]> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        resolve(json);
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsArrayBuffer(file);
+    });
   }
 }

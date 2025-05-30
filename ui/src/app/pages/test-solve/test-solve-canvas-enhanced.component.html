@@ -4,43 +4,67 @@
   <!-- Üst Header - Sabit -->
   <header class="test-header">
     <div class="header-content">
-      <!-- Sol: Test Bilgileri -->
-      <div class="test-info">
-        <div class="test-title">
-          <mat-icon class="test-icon">quiz</mat-icon>
-          <span>{{ testInstance.testName }}</span>
-        </div>
-        <div class="test-meta">
-          <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
-        </div>
-      </div>
-
-      <!-- Orta: Süre ve İlerleme -->
+      <!-- Sol: Timer -->
       <div class="timer-section">
         <app-countdown
           [durationInSeconds]="testDuration"
           [totalDurationInSeconds]="testInstance.maxDurationSeconds"
           [showProgressBar]="true"
-          [size]="'large'"
+          [size]="'medium'"
           [label]="'Kalan Süre'"
         >
         </app-countdown>
-
-        <!-- İlerleme Çubuğu -->
-        <div class="progress-container">
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
-          </div>
-          <span class="progress-text">%{{ progressPercentage() | number : '1.0-0' }} tamamlandı</span>
-        </div>
       </div>
 
-      <!-- Sağ: Eylem Butonları -->
+      <!-- Orta: Navigation ve Test Bilgileri -->
+      <div class="center-navigation">
+        <!-- Önceki Soru -->
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="prevQuestion()"
+          [disabled]="currentIndex() === 0"
+          class="header-nav-btn prev-btn"
+          [attr.aria-label]="'Önceki soru'"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+
+        <!-- Test Bilgileri -->
+        <div class="test-info">
+          <div class="test-title">
+            <mat-icon class="test-icon">quiz</mat-icon>
+            <span>{{ testInstance.testName }}</span>
+          </div>
+          <div class="test-meta">
+            <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+            <div class="progress-container">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
+              </div>
+              <span class="progress-text">%{{ progressPercentage() | number : '1.0-0' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sonraki Soru -->
+        <button
+          mat-icon-button
+          color="accent"
+          (click)="nextQuestion()"
+          [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
+          class="header-nav-btn next-btn"
+          [attr.aria-label]="'Sonraki soru'"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+
+      <!-- Sağ: Test Bitir -->
       <div class="action-buttons">
         @if(showStopButton) {
-        <button mat-stroked-button color="warn" (click)="pauseTest()" class="pause-btn">
+        <button mat-icon-button color="warn" (click)="pauseTest()" class="pause-btn">
           <mat-icon>pause</mat-icon>
-          Durdur
         </button>
         }
         <button mat-raised-button color="primary" (click)="completeTest()" class="complete-btn">
@@ -60,7 +84,43 @@
         <!-- Canvas Soru Türü -->
         @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
         <div class="canvas-question-container">
+          <!-- Canvas Overlay Butonları - Sol Üst -->
+          <div class="canvas-overlay-actions top-left">
+            <button 
+              mat-mini-fab 
+              [class.active]="isQuestionBookmarked()" 
+              (click)="toggleBookmark()" 
+              class="overlay-bookmark-btn"
+              [attr.aria-label]="isQuestionBookmarked() ? 'İşareti kaldır' : 'İşaretle'"
+            >
+              <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+            </button>
+
+            <button 
+              mat-mini-fab 
+              (click)="reportQuestion()" 
+              class="overlay-report-btn"
+              [attr.aria-label]="'Soruyu bildir'"
+            >
+              <mat-icon>flag</mat-icon>
+            </button>
+          </div>
+
+          <!-- Canvas Overlay Butonları - Sağ Alt -->
+          <div class="canvas-overlay-actions bottom-right">
+            <button 
+              mat-mini-fab 
+              (click)="clearCanvasAnswer()" 
+              [disabled]="!hasAnswer()"
+              class="overlay-clear-btn"
+              [attr.aria-label]="'Cevabı temizle'"
+            >
+              <mat-icon>check_box_outline_blank</mat-icon>
+            </button>
+          </div>
+
           <app-question-canvas-view
+            #canvasView
             [questionRegion]="regions()[currentIndex()]"
             [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
             (choiceSelected)="selectChoice($event)"
@@ -96,7 +156,8 @@
         }
       </div>
 
-      <!-- Soru Etkileşim Butonları -->
+      <!-- Soru Etkileşim Butonları - Sadece Metin Sorularında -->
+      @if(!testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
       <div class="question-actions">
         <button mat-button [class.active]="isQuestionBookmarked()" (click)="toggleBookmark()" class="bookmark-btn">
           <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
@@ -115,6 +176,7 @@
           Bildir
         </button>
       </div>
+      }
     </section>
 
     <!-- Sağ Panel: Navigasyon ve Araçlar -->
@@ -122,39 +184,45 @@
     <aside class="tools-panel">
       <!-- Soru Haritası -->
       <div class="question-map">
-        <h3 class="map-title">
-          <mat-icon>map</mat-icon>
-          Soru Haritası
-        </h3>
-
-        <div class="question-grid">
-          @for(question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
-          <button
-            mat-mini-fab
-            [class.current]="i === currentIndex()"
-            [class.answered]="question.selectedAnswerId"
-            [class.bookmarked]="isQuestionBookmarked(i)"
-            (click)="goToQuestion(i)"
-            [attr.aria-label]="'Soru ' + (i + 1)"
-          >
-            {{ i + 1 }}
-          </button>
-          }
-        </div>
-
-        <!-- Soru Durumu Göstergeleri -->
-        <div class="legend">
-          <div class="legend-item">
-            <div class="legend-color answered"></div>
-            <span>Cevaplanmış</span>
+        <div class="map-content">
+          <div class="map-header">
+            <h3 class="map-title">
+              <mat-icon>map</mat-icon>
+              Soru Haritası
+            </h3>
           </div>
-          <div class="legend-item">
-            <div class="legend-color current"></div>
-            <span>Mevcut Soru</span>
+
+          <div class="question-grid-container">
+            <div class="question-grid">
+              @for(question of testInstance.testInstanceQuestions; track question.id; let i = $index) {
+              <button
+                mat-mini-fab
+                [class.current]="i === currentIndex()"
+                [class.answered]="question.selectedAnswerId"
+                [class.bookmarked]="isQuestionBookmarked(i)"
+                (click)="goToQuestion(i)"
+                [attr.aria-label]="'Soru ' + (i + 1)"
+              >
+                {{ i + 1 }}
+              </button>
+              }
+            </div>
           </div>
-          <div class="legend-item">
-            <div class="legend-color bookmarked"></div>
-            <span>İşaretlenmiş</span>
+
+          <!-- Soru Durumu Göstergeleri -->
+          <div class="legend">
+            <div class="legend-item">
+              <div class="legend-color answered"></div>
+              <span>Cevaplanmış</span>
+            </div>
+            <!-- <div class="legend-item">
+              <div class="legend-color current"></div>
+              <span>Mevcut Soru</span>
+            </div> -->
+            <div class="legend-item">
+              <div class="legend-color bookmarked"></div>
+              <span>İşaretlenmiş</span>
+            </div>
           </div>
         </div>
       </div>
@@ -199,14 +267,9 @@
             {{ focusMode() ? 'Normal Mod' : 'Odaklanma Modu' }}
           </button>
 
-          <button mat-stroked-button (click)="increaseFontSize()" class="tool-btn">
-            <mat-icon>text_increase</mat-icon>
-            Yazıyı Büyüt
-          </button>
-
-          <button mat-stroked-button (click)="decreaseFontSize()" class="tool-btn">
-            <mat-icon>text_decrease</mat-icon>
-            Yazıyı Küçült
+          <button mat-stroked-button (click)="toggleAutoNextQuestion()" class="tool-btn">
+            <mat-icon>{{ autoNextQuestion() ? 'play_arrow' : 'pause' }}</mat-icon>
+            {{ autoNextQuestion() ? 'Otomatik Geçiş Açık' : 'Otomatik Geçiş Kapalı' }}
           </button>
 
           <button mat-stroked-button (click)="toggleHighContrast()" class="tool-btn">
@@ -224,8 +287,7 @@
     <div class="nav-content">
       <!-- Sol: Önceki Soru -->
       <button
-        mat-fab
-        color="primary"
+        mat-icon-button
         (click)="prevQuestion()"
         [disabled]="currentIndex() === 0"
         class="nav-btn prev-btn"
@@ -236,11 +298,13 @@
 
       <!-- Orta: Hızlı Eylemler -->
       <div class="quick-actions">
-        <!-- Cevabı Temizle -->
+        <!-- Cevabı Temizle - Sadece metin tabanlı sorular için -->
+        @if(!testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
         <button mat-stroked-button (click)="clearAnswer()" [disabled]="!hasAnswer()" class="quick-action-btn">
-          <mat-icon>clear</mat-icon>
+          <mat-icon>radio_button_unchecked</mat-icon>
           Temizle
         </button>
+        }
 
         <!-- İşaretli Sorulara Git -->
         <button
@@ -267,8 +331,7 @@
 
       <!-- Sağ: Sonraki Soru -->
       <button
-        mat-fab
-        color="accent"
+        mat-icon-button
         (click)="nextQuestion()"
         [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
         class="nav-btn next-btn"

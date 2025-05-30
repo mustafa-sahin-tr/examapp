@@ -63,15 +63,15 @@ export class CallbackComponent implements OnInit {
   async checkUserSession(role: string) {
     this.userRole = role;
     this.updateStep(2);
-    await this.delay(800); // Add visual delay for better UX
+    await this.delay(300); // Add visual delay for better UX
 
     if (role === 'Student') {
       // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
       this.authService.checkStudentProfile().subscribe({
         next: async (studentRes) => {
-          await this.delay(500);
+          await this.delay(300);
           this.updateStep(3);
-          await this.delay(800);
+          await this.delay(300);
 
           if (studentRes.hasStudentRecord) {
             localStorage.setItem('student', JSON.stringify(studentRes.student));
@@ -88,9 +88,9 @@ export class CallbackComponent implements OnInit {
       // 🟢 Öğretmen ise teacher kaydı olup olmadığını kontrol et
       this.authService.checkTeacherProfile().subscribe({
         next: async (teacherRes) => {
-          await this.delay(500);
+          await this.delay(300);
           this.updateStep(3);
-          await this.delay(800);
+          await this.delay(300);
 
           if (teacherRes.hasTeacherRecord) {
             localStorage.setItem('teacher', JSON.stringify(teacherRes.teacher));
@@ -105,9 +105,9 @@ export class CallbackComponent implements OnInit {
       });
     } else {
       console.log('Unknown role');
-      await this.delay(500);
+      await this.delay(300);
       this.updateStep(3);
-      await this.delay(800);
+      await this.delay(300);
       this.router.navigate(['/tests']);
     }
   }
@@ -118,12 +118,12 @@ export class CallbackComponent implements OnInit {
 
       if (code) {
         // Add initial delay for better visual experience
-        await this.delay(1000);
+        await this.delay(300);
 
         this.authService.exchangeCodeForToken(code).subscribe({
           next: async (res) => {
             this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
-            await this.delay(500);
+            await this.delay(300);
             this.checkUserSession(res.profile.role);
           },
           error: () => {

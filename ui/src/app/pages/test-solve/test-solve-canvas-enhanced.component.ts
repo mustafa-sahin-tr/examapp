@@ -56,6 +56,7 @@ import { Answer } from '../../models/answer';
 export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(SpinWheelComponent) spinWheelComp!: SpinWheelComponent;
   @ViewChild('spinWheelDialog') spinWheelDialog!: TemplateRef<any>; // 📌 Modal Şablonunu Yakala
+  @ViewChild('canvasView') canvasViewComponent!: QuestionCanvasViewComponent;
 
   testInstanceId!: number;
   @Input() testInstance!: TestInstance; // Test bilgisi ve sorular
@@ -107,6 +108,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public toastType = signal<'success' | 'warning' | 'error' | 'info'>('info');
   public questionStartTimes = signal<Map<number, number>>(new Map());
   public questionDurations = signal<Map<number, number>>(new Map());
+  
+  // Cevap sayısını takip etmek için signal
+  public answeredQuestionsCount = signal(0);
 
   // Computed properties
   public progressPercentage = computed(() => {
@@ -116,6 +120,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   });
 
   public answeredCount = computed(() => {
+    // Signal'dan değeri al, böylece reaktif olur
+    this.answeredQuestionsCount();
+    // Gerçek sayımı yap
     return this.testInstance?.testInstanceQuestions?.filter((q) => q.selectedAnswerId).length || 0;
   });
 
@@ -205,6 +212,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         this.loadTest(this.testInstanceId);
       } else if (!this.testInstance) {
         this.router.navigate(['/']); // Geçersiz ID varsa anasayfaya yönlendir
+      } else {
+        // testInstance Input ile geldi, initial count'u set et
+        this.updateAnsweredCount();
       }
     });
 
@@ -276,6 +286,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // ⏳ Sayaçları başlat
       this.startTimer();
       this.startQuestionTimer();
+      
+      // 📊 Initial cevaplanan soru sayısını hesapla
+      this.updateAnsweredCount();
     } catch (error) {
       console.error('Test yüklenirken hata oluştu:', error);
     }
@@ -342,6 +355,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
+    
+    // Cevaplanan soru sayısını güncelle
+    this.updateAnsweredCount();
+    
+    if (this.autoNextQuestion()) {
+      setTimeout(() => {
+        this.nextQuestion();
+      }, 300); // Kısa bir gecikme ile otomatik geçiş
+    }
   }
 
   createDialogTemplate() {
@@ -601,10 +623,14 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.showToastMessage('Tüm sorular cevaplanmış', 'info');
   }
 
-  clearAnswer() {
+  clearAnswer() {    
     const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
     if (currentQuestion.selectedAnswerId) {
       currentQuestion.selectedAnswerId = undefined as any;
+      
+      // Cevaplanan soru sayısını güncelle
+      this.updateAnsweredCount();
+      
       this.showToastMessage('Cevap temizlendi', 'info');
       // Save to backend
       this.saveAnswer(null);
@@ -644,16 +670,42 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.showToastMessage('Soru bildirildi', 'success');
   }
 
-  increaseFontSize() {
-    const newSize = Math.min(this.fontSize() + 2, 24);
-    this.fontSize.set(newSize);
-    document.documentElement.style.setProperty('--question-font-size', `${newSize}px`);
+  // Otomatik sonraki soruya geçiş özelliği
+  public autoNextQuestion = signal(false);
+
+  toggleAutoNextQuestion() {
+    this.autoNextQuestion.set(!this.autoNextQuestion());
+    this.showToastMessage(
+      this.autoNextQuestion() ? 'Cevaplayınca otomatik sonraki soruya geçiş aktif' : 'Otomatik geçiş kapalı',
+      'info'
+    );
   }
 
-  decreaseFontSize() {
-    const newSize = Math.max(this.fontSize() - 2, 12);
-    this.fontSize.set(newSize);
-    document.documentElement.style.setProperty('--question-font-size', `${newSize}px`);
+  clearCanvasAnswer() {
+    if (this.canvasViewComponent) {
+      // Canvas component'indeki seçimi temizle
+      this.canvasViewComponent.selectedChoice = undefined;
+      // Canvas'ı yeniden çiz
+      this.canvasViewComponent.drawImageSection();
+      
+      // Test instance'daki seçimi de temizle
+      const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
+      currentQuestion.selectedAnswerId = undefined as any;
+      
+      // Cevaplanan soru sayısını güncelle
+      this.updateAnsweredCount();
+      
+      this.showToastMessage('Canvas cevabı temizlendi', 'success');
+      
+      // Save to backend
+      this.saveAnswer(null);
+    }
+  }
+
+  // Cevaplanan soru sayısını güncelle
+  private updateAnsweredCount() {
+    const count = this.testInstance?.testInstanceQuestions?.filter((q) => q.selectedAnswerId).length || 0;
+    this.answeredQuestionsCount.set(count);
   }
 
   toggleHighContrast() {

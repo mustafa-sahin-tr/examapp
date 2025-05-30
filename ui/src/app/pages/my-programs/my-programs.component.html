@@ -1,87 +1,293 @@
 <div class="ms-programs-container">
-  <div class="ms-programs-header">
-    <h1 class="ms-title">Programlarım</h1>
-    <button mat-raised-button color="primary" (click)="createNewProgram()">
-      <mat-icon>add</mat-icon>
-      Yeni Program Oluştur
-    </button>
+  <!-- Hero Section -->
+  <div class="hero-section">
+    <div class="hero-content">
+      <div class="hero-text">
+        <h1 class="hero-title">
+          <mat-icon class="hero-icon">school</mat-icon>
+          Çalışma Programlarım
+        </h1>
+        <p class="hero-subtitle">Hedeflerinize ulaşmak için özel olarak tasarlanmış çalışma programlarınızı yönetin</p>
+      </div>
+      <button mat-fab extended color="primary" (click)="createNewProgram()" class="create-program-btn">
+        <mat-icon>add</mat-icon>
+        Yeni Program Oluştur
+      </button>
+    </div>
+    
+    <!-- Stats Section -->
+    @if (!loading && programs.length > 0) {
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-icon">
+          <mat-icon>assignment</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ programs.length }}</div>
+          <div class="stat-label">Toplam Program</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon active">
+          <mat-icon>trending_up</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ getActivePrograms() }}</div>
+          <div class="stat-label">Aktif Program</div>
+        </div>
+      </div>
+      
+      <div class="stat-card">
+        <div class="stat-icon completed">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ getCompletedPrograms() }}</div>
+          <div class="stat-label">Tamamlanan</div>
+        </div>
+      </div>
+    </div>
+    }
   </div>
 
   @if (loading) {
-  <div class="ms-loading">
-    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-    <p>Programlarınız yükleniyor...</p>
+  <div class="loading-state">
+    <div class="loading-content">
+      <div class="loading-spinner">
+        <mat-progress-spinner mode="indeterminate" diameter="60"></mat-progress-spinner>
+      </div>
+      <h3 class="loading-title">Programlarınız Yükleniyor</h3>
+      <p class="loading-description">Çalışma programlarınız hazırlanıyor...</p>
+    </div>
   </div>
   } @if (!loading && programs.length === 0) {
-  <div class="ms-empty-state">
-    <mat-icon class="ms-empty-icon">assignment</mat-icon>
-    <h2>Henüz program oluşturmadınız</h2>
-    <p>Size özel bir çalışma programı oluşturmak için hemen başlayın!</p>
-    <button mat-raised-button color="primary" (click)="createNewProgram()">
-      <mat-icon>add</mat-icon>
-      İlk Programımı Oluştur
-    </button>
+  <!-- Hiç program yok -->
+  <div class="empty-state">
+    <div class="empty-illustration">
+      <div class="empty-icon-wrapper">
+        <mat-icon class="empty-icon">assignment</mat-icon>
+        <div class="empty-decoration"></div>
+      </div>
+    </div>
+    
+    <div class="empty-content">
+      <h2 class="empty-title">Henüz bir çalışma programınız yok</h2>
+      <p class="empty-description">
+        Hedeflerinize ulaşmak için kişiselleştirilmiş bir çalışma programı oluşturun. 
+        Size özel hazırlanacak program ile daha etkili çalışın.
+      </p>
+      
+      <div class="empty-features">
+        <div class="feature-item">
+          <mat-icon>schedule</mat-icon>
+          <span>Kişisel program</span>
+        </div>
+        <div class="feature-item">
+          <mat-icon>trending_up</mat-icon>
+          <span>İlerleme takibi</span>
+        </div>
+        <div class="feature-item">
+          <mat-icon>notifications</mat-icon>
+          <span>Hatırlatmalar</span>
+        </div>
+      </div>
+      
+      <button mat-fab extended color="primary" (click)="createNewProgram()" class="empty-action-btn">
+        <mat-icon>add</mat-icon>
+        İlk Programımı Oluştur
+      </button>
+    </div>
   </div>
-  } @if (!loading && programs.length > 0) {
-  <div class="ms-programs-grid">
-    @for (program of programs; track program.id) {
-    <mat-card class="ms-program-card">
-      <mat-card-header>
-        <mat-card-title>{{ program.programName }}</mat-card-title>
-        <mat-card-subtitle>
-          <mat-icon>calendar_today</mat-icon>
-          {{ formatDate(program.createdDate) }}
-        </mat-card-subtitle>
-      </mat-card-header>
+  } @if (!loading && programs.length > 0 && filteredPrograms.length === 0) {
+  <!-- Program var ama filtre sonucu yok -->
+  <div class="programs-section">
+    <div class="section-title-wrapper">
+      <h2 class="section-title">Programlarınız</h2>
+      <div class="filter-chips">
+        <mat-chip-set>
+          <mat-chip-option 
+            (click)="setFilter('all')" 
+            [selected]="isFilterSelected('all')">
+            {{ getFilterLabel('all') }} ({{ getFilterCount('all') }})
+          </mat-chip-option>
+          <mat-chip-option 
+            (click)="setFilter('active')" 
+            [selected]="isFilterSelected('active')">
+            {{ getFilterLabel('active') }} ({{ getFilterCount('active') }})
+          </mat-chip-option>
+          <mat-chip-option 
+            (click)="setFilter('completed')" 
+            [selected]="isFilterSelected('completed')">
+            {{ getFilterLabel('completed') }} ({{ getFilterCount('completed') }})
+          </mat-chip-option>
+        </mat-chip-set>
+      </div>
+    </div>
 
-      <mat-card-content>
-        @if (program.description) {
-        <p class="ms-description">{{ program.description }}</p>
-        }
-
-        <div class="ms-program-details">
-          <div class="ms-detail-item">
-            <mat-icon>schedule</mat-icon>
-            <span>{{ program.studyDuration || 'Belirtilmemiş' }} günlük program</span>
+    <div class="filter-empty-state">
+      <div class="filter-empty-content">
+        <mat-icon class="filter-empty-icon">filter_list_off</mat-icon>
+        <h3 class="filter-empty-title">{{ getFilterLabel(selectedFilter) }} program bulunamadı</h3>
+        <p class="filter-empty-description">
+          @if (selectedFilter === 'active') {
+            Şu anda aktif bir programınız bulunmuyor. Yeni bir program başlatabilir veya mevcut programlarınızı görüntülemek için "Tümü" filtresini seçebilirsiniz.
+          } @else if (selectedFilter === 'completed') {
+            Henüz tamamlanmış bir programınız bulunmuyor. Çalışmaya devam edin ve hedeflerinize ulaşın!
+          }
+        </p>
+        <button mat-stroked-button (click)="setFilter('all')" class="filter-reset-btn">
+          <mat-icon>clear_all</mat-icon>
+          Tüm Programları Göster
+        </button>
+      </div>
+    </div>
+  </div>
+  } @if (!loading && filteredPrograms.length > 0) {
+  <div class="programs-section">
+    <div class="section-title-wrapper">
+      <h2 class="section-title">Programlarınız</h2>
+      <div class="filter-chips">
+        <mat-chip-set>
+          <mat-chip-option 
+            (click)="setFilter('all')" 
+            [selected]="isFilterSelected('all')">
+            {{ getFilterLabel('all') }} ({{ getFilterCount('all') }})
+          </mat-chip-option>
+          <mat-chip-option 
+            (click)="setFilter('active')" 
+            [selected]="isFilterSelected('active')">
+            {{ getFilterLabel('active') }} ({{ getFilterCount('active') }})
+          </mat-chip-option>
+          <mat-chip-option 
+            (click)="setFilter('completed')" 
+            [selected]="isFilterSelected('completed')">
+            {{ getFilterLabel('completed') }} ({{ getFilterCount('completed') }})
+          </mat-chip-option>
+        </mat-chip-set>
+      </div>
+    </div>
+    
+    <div class="ms-programs-grid">
+      @for (program of filteredPrograms; track program.id) {
+      <div class="program-card-wrapper">
+        <div class="program-card" [class.completed]="isCompleted(program)" [class.active]="isActive(program)">
+          <!-- Status Badge -->
+          <div class="status-badge" [class.completed]="isCompleted(program)" [class.active]="isActive(program)">
+            <mat-icon>{{ getStatusIcon(program) }}</mat-icon>
+            {{ getStatusText(program) }}
           </div>
-
-          <div class="ms-detail-item">
-            <mat-icon>timeline</mat-icon>
-            <span>{{ program.studyType }} türü çalışma</span>
+          
+          <!-- Card Header -->
+          <div class="card-header">
+            <div class="program-icon">
+              <mat-icon>{{ getProgramIcon(program.studyType) }}</mat-icon>
+            </div>
+            <div class="header-content">
+              <h3 class="program-title">{{ program.programName }}</h3>
+              <p class="program-date">
+                <mat-icon>schedule</mat-icon>
+                {{ formatDate(program.createdDate) }}
+              </p>
+            </div>
+            <button mat-icon-button [matMenuTriggerFor]="menu" class="options-btn">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="editProgram(program)">
+                <mat-icon>edit</mat-icon>
+                Düzenle
+              </button>
+              <button mat-menu-item (click)="duplicateProgram(program)">
+                <mat-icon>content_copy</mat-icon>
+                Kopyala
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="deleteProgram(program)" class="danger-item">
+                <mat-icon>delete</mat-icon>
+                Sil
+              </button>
+            </mat-menu>
           </div>
-
-          <div class="ms-detail-item">
-            <mat-icon>assignment</mat-icon>
-            <span>Günde {{ program.subjectsPerDay }} konu</span>
+          
+          <!-- Description -->
+          @if (program.description) {
+          <div class="program-description">
+            <p>{{ program.description }}</p>
+          </div>
+          }
+          
+          <!-- Program Stats -->
+          <div class="program-stats">
+            <div class="stat-item">
+              <div class="stat-icon-wrapper duration">
+                <mat-icon>calendar_today</mat-icon>
+              </div>
+              <div class="stat-text">
+                <span class="stat-value">{{ program.studyDuration || 30 }}</span>
+                <span class="stat-label">Gün</span>
+              </div>
+            </div>
+            
+            <div class="stat-item">
+              <div class="stat-icon-wrapper subjects">
+                <mat-icon>assignment</mat-icon>
+              </div>
+              <div class="stat-text">
+                <span class="stat-value">{{ program.subjectsPerDay }}</span>
+                <span class="stat-label">Konu/Gün</span>
+              </div>
+            </div>
+            
+            <div class="stat-item">
+              <div class="stat-icon-wrapper type">
+                <mat-icon>timeline</mat-icon>
+              </div>
+              <div class="stat-text">
+                <span class="stat-value">{{ program.studyType }}</span>
+                <span class="stat-label">Tür</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Progress Section -->
+          <div class="progress-section">
+            <div class="progress-header">
+              <span class="progress-label">İlerleme Durumu</span>
+              <span class="progress-percentage">{{ getProgressPercentage(program) }}%</span>
+            </div>
+            
+            <div class="progress-bar-container">
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="getProgressPercentage(program)"></div>
+              </div>
+            </div>
+            
+            <div class="progress-details">
+              <div class="days-info">
+                <span class="completed-days">{{ getCompletedDays(program) }} gün tamamlandı</span>
+                <span class="remaining-days">{{ getRemainingDays(program) }} gün kaldı</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="card-actions">
+            <button mat-flat-button color="primary" (click)="continueProgram(program)" class="primary-action">
+              <mat-icon>play_arrow</mat-icon>
+              {{ isCompleted(program) ? 'Tekrar Başla' : 'Devam Et' }}
+            </button>
+            
+            <button mat-stroked-button (click)="viewProgramDetails(program)" class="secondary-action">
+              <mat-icon>visibility</mat-icon>
+              Detaylar
+            </button>
           </div>
         </div>
-
-        <mat-divider></mat-divider>
-
-        <div class="ms-progress-section">
-          <div class="ms-progress-header">
-            <span class="ms-progress-label">İlerleme</span>
-            <span class="ms-progress-value">{{ getProgressPercentage(program) }}%</span>
-          </div>
-          <mat-progress-bar mode="determinate" [value]="getProgressPercentage(program)"> </mat-progress-bar>
-          <div class="ms-progress-details">
-            <small>{{ getCompletedDays(program) }} / {{ program.studyDuration || 30 }} gün tamamlandı</small>
-          </div>
-        </div>
-      </mat-card-content>
-
-      <mat-card-actions>
-        <button mat-button color="primary" (click)="continueProgram(program)">
-          <mat-icon>play_arrow</mat-icon>
-          Devam Et
-        </button>
-        <button mat-button (click)="viewProgramDetails(program)">
-          <mat-icon>visibility</mat-icon>
-          Detaylar
-        </button>
-      </mat-card-actions>
-    </mat-card>
-    }
+      </div>
+      }
+    </div>
   </div>
+
   }
 </div>

@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { ProgramStep } from '../../models/programstep';
 import { ProgramService } from '../../services/program.service';
 import { CreateProgramRequest, UserSelection } from '../../models/program.interfaces';
-
+import { Router } from '@angular/router';
 export interface Option {
   label: string;
   value: string;
@@ -40,6 +40,7 @@ export class ProgramCreateComponent implements OnInit {
   isCreatingProgram = signal(false);
   private snackBar = inject(MatSnackBar);
   private programService = inject(ProgramService);
+  private router = inject(Router);
 
   programSteps: ProgramStep[] = [];
   userSelections: UserStepSelection[] = [];
@@ -218,7 +219,7 @@ export class ProgramCreateComponent implements OnInit {
           duration: 3000,
         });
         // Reset form or navigate to another page
-        this.resetForm();
+        this.router.navigate(['/programs']);
       },
       error: (error) => {
         console.error('Program oluşturma hatası:', error);

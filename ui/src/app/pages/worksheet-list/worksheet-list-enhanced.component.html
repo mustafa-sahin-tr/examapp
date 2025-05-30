@@ -1,0 +1,294 @@
+<div class="worksheet-list-enhanced">
+  <!-- Header Section -->
+  <!-- <div class="page-header">
+    <h1 class="page-title">Test Merkezi</h1>
+    <p class="page-subtitle">Öğrenme yolculuğunuza devam edin</p>
+  </div> -->
+
+  <!-- Search Panel -->
+  <!-- <div class="search-panel">
+    <div class="search-container">
+      <form [formGroup]="searchForm" class="search-form">
+        <div class="search-input-wrapper">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input matInput formControlName="searchTerm" placeholder="Test ara..." class="search-input" />
+          <button
+            *ngIf="searchForm.get('searchTerm')?.value"
+            type="button"
+            class="clear-search-btn"
+            (click)="searchForm.patchValue({ searchTerm: '' })"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div> -->
+
+  <!-- Section Navigation -->
+  <div class="section-nav">
+    <button class="section-nav-btn" [class.active]="currentSection() === 'newest'" (click)="showSection('newest')">
+      <mat-icon>new_releases</mat-icon>
+      Yeni Testler
+    </button>
+    <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
+      <mat-icon>local_fire_department</mat-icon>
+      Popüler
+    </button>
+    <button
+      class="section-nav-btn"
+      [class.active]="currentSection() === 'completed'"
+      (click)="showSection('completed')"
+    >
+      <mat-icon>check_circle</mat-icon>
+      Tamamlanan
+    </button>
+    <button
+      class="section-nav-btn"
+      [class.active]="currentSection() === 'search'"
+      (click)="showSection('search')"
+      *ngIf="searchForm.get('searchTerm')?.value"
+    >
+      <mat-icon>search</mat-icon>
+      Arama Sonuçları
+    </button>
+  </div>
+
+  <!-- Newest Tests Section -->
+  <div class="content-section" *ngIf="currentSection() === 'newest'">
+    <div class="section-header">
+      <h2 class="section-title">En Yeni Testler</h2>
+      <p class="section-subtitle">Size özel seçilmiş yeni testler</p>
+    </div>
+
+    <div class="carousel-container">
+      <button class="carousel-nav-btn prev" (click)="scrollCarousel(newestContainer, 'left')">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <div class="carousel-track" #newestContainer>
+        <div class="test-card-wrapper" *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
+          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+        </div>
+      </div>
+
+      <button class="carousel-nav-btn next" (click)="scrollCarousel(newestContainer, 'right')">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Hot Tests Section -->
+  <div class="content-section" *ngIf="currentSection() === 'hot'">
+    <div class="section-header">
+      <h2 class="section-title">Popüler Testler</h2>
+      <p class="section-subtitle">En çok tercih edilen testler</p>
+    </div>
+
+    <div class="carousel-container">
+      <button class="carousel-nav-btn prev" (click)="scrollCarousel(hotContainer, 'left')">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <div class="carousel-track" #hotContainer>
+        <div class="test-card-wrapper" *ngFor="let worksheet of hotTestsSignal(); trackBy: trackWorksheet">
+          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+        </div>
+      </div>
+
+      <button class="carousel-nav-btn next" (click)="scrollCarousel(hotContainer, 'right')">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Relevant Tests Section -->
+  <div class="content-section" *ngIf="currentSection() === 'relevant'">
+    <div class="section-header">
+      <h2 class="section-title">En İlgili Testler</h2>
+      <p class="section-subtitle">Arama terimine göre size özel seçilmiş testler</p>
+    </div>
+
+    <div class="carousel-container">
+      <button class="carousel-nav-btn prev" (click)="scrollCarousel(relevantContainer, 'left')">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <div class="carousel-track" #relevantContainer>
+        <div class="test-card-wrapper" *ngFor="let worksheet of relevantTestsSignal(); trackBy: trackWorksheet">
+          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+        </div>
+      </div>
+
+      <button class="carousel-nav-btn next" (click)="scrollCarousel(relevantContainer, 'right')">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Completed Tests Section -->
+  <div class="content-section" *ngIf="currentSection() === 'completed'">
+    <ng-container *appIsStudent>
+      <div class="section-header">
+        <h2 class="section-title">Tamamlanan Testler</h2>
+        <p class="section-subtitle">Başarılarınızı gözden geçirin</p>
+      </div>
+
+      <ng-container *ngIf="completedTestSignal() as tests">
+        <ng-container *ngIf="tests.items.length > 0; else noCompletedTests">
+          <div class="completed-tests-grid">
+            <app-completed-worksheet-card
+              *ngFor="let completedTest of tests.items; trackBy: trackCompletedTests"
+              [completedTest]="completedTest"
+            ></app-completed-worksheet-card>
+          </div>
+        </ng-container>
+        <ng-template #noCompletedTests>
+          <div class="empty-state">
+            <mat-icon class="empty-icon">quiz</mat-icon>
+            <h3>Henüz test tamamlamadınız</h3>
+            <p>İlk testinizi çözmeye başlayın!</p>
+          </div>
+        </ng-template>
+      </ng-container>
+    </ng-container>
+  </div>
+
+  <!-- Search Results Section -->
+  <div class="content-section" *ngIf="currentSection() === 'search'">
+    <div class="search-results-layout">
+      <!-- Filters Sidebar -->
+      <div class="filters-sidebar">
+        <div class="filters-header">
+          <h3>Filtreler</h3>
+          <button class="clear-filters-btn" (click)="clearFilters()">
+            <mat-icon>clear</mat-icon>
+            Temizle
+          </button>
+        </div>
+
+        <!-- Subject Filters -->
+        <div class="filter-group">
+          <h4 class="filter-title">Dersler</h4>
+          <div class="filter-options">
+            <div class="filter-checkbox" *ngFor="let subject of subjectsSignal(); trackBy: trackSubject">
+              <app-custom-checkbox
+                [label]="subject.name"
+                [checked]="selectedSubjectIds().includes(subject.id)"
+                [value]="subject"
+                (checkedChange)="toggleSubjectFilter(subject)"
+              ></app-custom-checkbox>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sort Options -->
+        <div class="filter-group">
+          <h4 class="filter-title">Sıralama</h4>
+          <mat-select formControlName="sortBy" class="filter-select" (selectionChange)="onSortChange()">
+            <mat-option value="newest">En Yeni</mat-option>
+            <mat-option value="popular">Popüler</mat-option>
+            <mat-option value="difficulty">Zorluk</mat-option>
+            <mat-option value="duration">Süre</mat-option>
+          </mat-select>
+        </div>
+
+        <!-- Difficulty Filter -->
+        <div class="filter-group">
+          <h4 class="filter-title">Zorluk</h4>
+          <mat-select formControlName="difficulty" class="filter-select" (selectionChange)="onFilterChange()">
+            <mat-option value="all">Tümü</mat-option>
+            <mat-option value="easy">Kolay</mat-option>
+            <mat-option value="medium">Orta</mat-option>
+            <mat-option value="hard">Zor</mat-option>
+          </mat-select>
+        </div>
+
+        <!-- Duration Filter -->
+        <div class="filter-group">
+          <h4 class="filter-title">Süre</h4>
+          <mat-select formControlName="duration" class="filter-select" (selectionChange)="onFilterChange()">
+            <mat-option value="all">Tümü</mat-option>
+            <mat-option value="short">Kısa (< 30 dk)</mat-option>
+            <mat-option value="medium">Orta (30-60 dk)</mat-option>
+            <mat-option value="long">Uzun (> 60 dk)</mat-option>
+          </mat-select>
+        </div>
+      </div>
+
+      <!-- Results Area -->
+      <div class="results-area">
+        <div class="results-header">
+          <div class="results-info">
+            <h2 class="results-title">
+              {{ searchForm.get('searchTerm')?.value ? '"' + searchForm.get('searchTerm')?.value + '"' : 'Arama' }}
+              için sonuçlar
+            </h2>
+            <p class="results-count">
+              <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test bulundu
+            </p>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading-state" *ngIf="isLoading()">
+          <div class="loading-spinner"></div>
+          <p>Testler yükleniyor...</p>
+        </div>
+
+        <!-- Results Grid -->
+        <div class="results-grid" *ngIf="!isLoading()">
+          <div
+            class="result-card"
+            *ngFor="let test of pagedWorksheetsSignal().items; trackBy: trackWorksheet"
+            (click)="onCardClick(test.id || 0)"
+          >
+            <div class="result-card-image">
+              <img [src]="getBackgroundImage(test.id || 0)" [alt]="test.name" loading="lazy" />
+            </div>
+            <div class="result-card-content">
+              <h3 class="result-card-title">{{ test.name }}</h3>
+              <p class="result-card-subtitle">{{ test.subtitle }}</p>
+              <p class="result-card-description">{{ test.description }}</p>
+
+              <div class="result-card-meta">
+                <span class="meta-item">
+                  <mat-icon>quiz</mat-icon>
+                  {{ test.questionCount }} Soru
+                </span>
+                <span class="meta-item">
+                  <mat-icon>school</mat-icon>
+                  {{ test.gradeId }}.Sınıf
+                </span>
+                <span class="meta-item">
+                  <mat-icon>schedule</mat-icon>
+                  {{ test.maxDurationSeconds / 60 }} Dakika
+                </span>
+                <span class="meta-item" *ngIf="test.instance?.status === 1">
+                  <mat-icon class="completed-icon">check_circle</mat-icon>
+                  Tamamlandı
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="!isLoading() && pagedWorksheetsSignal().items.length === 0">
+          <mat-icon class="empty-icon">search_off</mat-icon>
+          <h3>Sonuç bulunamadı</h3>
+          <p>Arama kriterlerinizi değiştirmeyi deneyin</p>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination-container" *ngIf="pagedWorksheetsSignal().items.length > 0">
+          <app-pagination
+            [currentPage]="pageNumber()"
+            [totalItems]="pagedWorksheetsSignal().totalCount"
+            (pageChanged)="changePage($event)"
+          ></app-pagination>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

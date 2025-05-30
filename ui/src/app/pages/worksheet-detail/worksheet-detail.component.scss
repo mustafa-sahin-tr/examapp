@@ -1,47 +1,387 @@
-.container {
-    display: flex;
-    gap: 20px;
+// Modern Worksheet Detail Component Styles
+.worksheet-detail-container {
+  min-height: 100vh;
+  background: var(--main-bg-color);
+  padding: 0;
+}
+
+// Header Section
+.worksheet-header {
+
+  color: var(--ms-action-text);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/images/pattern.svg') repeat;
+    opacity: 0.1;
+    z-index: 1;
   }
-  .course-container {
+
+  .header-content {
     position: relative;
-    background: linear-gradient(to bottom, transparent, black), url('/pink-back.webp');
-    background-size: cover;
-    background-position: center;
-    color: white;
-    padding: 40px;
-    border-radius: 10px;
-    text-align: left;
-    flex: 2;
+    z-index: 2;
+    padding: 3rem 2rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 3rem;
+    align-items: start;
   }
-  .course-title {
-    font-size: 28px;
-    font-weight: bold;
+
+  .header-main {
+    max-width: none;
   }
-  .course-subtitle {
-    font-size: 16px;
-    margin-bottom: 20px;
+
+  // Header Info Panel
+  .header-info-panel {
+    .info-card {
+      background: var(--ms-surface);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      border: 1px solid var(--ms-border);
+
+      .info-header {
+        background: var(--ms-surface-medium);
+        color: var(--ms-text);
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border-bottom: 1px solid var(--ms-border);
+
+        mat-icon {
+          font-size: 1.3rem;
+          width: 1.3rem;
+          height: 1.3rem;
+        }
+
+        h3 {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 600;
+        }
+      }
+
+      .info-content {
+        padding: 1.25rem;
+      }
+
+      .info-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--ms-border-weak);
+
+        &:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+
+        &:first-child {
+          padding-top: 0;
+        }
+
+        .info-label {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          color: var(--ms-text-medium);
+          font-weight: 500;
+          font-size: 0.875rem;
+
+          mat-icon {
+            font-size: 1rem;
+            width: 1rem;
+            height: 1rem;
+            color: var(--ms-action-background);
+          }
+        }
+
+        .info-value {
+          font-weight: 600;
+          color: var(--ms-text);
+          font-size: 0.875rem;
+
+          &.highlight {
+            background: var(--ms-action-background);
+            color: var(--ms-action-text);
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+          }
+
+          &.level-beginner {
+            background: var(--ms-colors-green-6);
+            color: var(--ms-text-inverse);
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+          }
+        }
+
+        .rating {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+
+          .rating-stars {
+            color: var(--ms-colors-yellow-6);
+            font-size: 1rem;
+
+            &.user-rating {
+              color: var(--ms-text-weak);
+            }
+          }
+
+          .rating-count {
+            color: var(--ms-text-medium);
+            font-size: 0.8rem;
+            font-weight: 500;
+          }
+        }
+      }
+    }
   }
-  .course-actions {
+
+  .course-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--ms-surface-medium);
+    backdrop-filter: blur(10px);
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--ms-border);
+
+    mat-icon {
+      font-size: 1.2rem;
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+  }
+
+  .worksheet-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    line-height: 1.2;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .worksheet-subtitle {
+    font-size: 1.25rem;
+    font-weight: 400;
+    margin: 0 0 1rem;
+    opacity: 0.9;
+    color: var(--ms-text-weak);
+  }
+
+  .worksheet-description {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 2rem;
+    opacity: 0.9;
+    max-width: 600px;
+  }
+
+  .action-buttons {
     display: flex;
-    gap: 15px;
-    margin-top: 20px;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+
+    button {
+      border-radius: 12px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      text-transform: none;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      mat-icon {
+        margin-right: 0.5rem;
+        font-size: 1.2rem;
+        width: 1.2rem;
+        height: 1.2rem;
+      }
+    }
+
+    .primary-action {
+      background: var(--ms-danger-background);
+      color: var(--ms-danger-text);
+
+      &:hover {
+        background: var(--ms-danger-background-hover);
+      }
+    }
+
+    .secondary-action {
+      background: var(--ms-surface);
+      color: var(--ms-action-background);
+      border: 2px solid var(--ms-border);
+
+      &:hover {
+        background: var(--ms-surface-medium);
+        border-color: var(--ms-border-strong);
+      }
+    }
+
+    .accent-action {
+      background: var(--ms-colors-teal-6);
+      color: var(--ms-text-inverse);
+
+      &:hover {
+        background: var(--ms-colors-teal-7);
+      }
+    }
   }
-  .course-info {
-    background: #181829;
-    color: white;
-    padding: 20px;
-    border-radius: 10px;
-    flex: 1;
+}
+
+// Main Content
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: calc(100vh - 400px);
+}
+
+// Content Area
+.content-area {
+  background: var(--ms-surface);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  border: 1px solid var(--ms-border);
+}
+
+// Results Section
+.results-section {
+  padding: 2rem;
+
+  .results-header {
+    margin-bottom: 2rem;
+
+    h2 {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--ms-text);
+      margin: 0;
+
+      mat-icon {
+        color: var(--ms-action-background);
+        font-size: 1.8rem;
+        width: 1.8rem;
+        height: 1.8rem;
+      }
+    }
   }
-  .course-info h3 {
-    margin-bottom: 10px;
-  }
-  .info-item {
+
+  .results-content {
     display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-    border-bottom: 1px solid #333;
+    flex-direction: column;
+    gap: 2rem;
   }
-  .rating-stars {
-    color: gold;
+
+  .question-review {
+    background: var(--ms-surface-weak);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid var(--ms-border);
   }
+}
+
+// Responsive Design
+@media (max-width: 1024px) {
+  .worksheet-header {
+    .header-content {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      padding: 2rem 1.5rem 1.5rem;
+    }
+
+    .worksheet-title {
+      font-size: 2rem;
+    }
+  }
+
+  .main-content {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .worksheet-header {
+    .header-content {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem 1rem;
+    }
+
+    .worksheet-title {
+      font-size: 1.75rem;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+      align-items: stretch;
+
+      button {
+        justify-content: center;
+      }
+    }
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
+
+  .results-section {
+    padding: 1.5rem;
+  }
+}
+
+// Animation for smooth transitions
+* {
+  transition: all 0.3s ease;
+}
+
+// Custom scrollbar for webkit browsers
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ms-surface-weak);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ms-border);
+  border-radius: 4px;
+
+  &:hover {
+    background: var(--ms-border-strong);
+  }
+}

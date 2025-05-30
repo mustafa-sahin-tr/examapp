@@ -48,17 +48,6 @@
   --ms-info-border: #00A3FF;
   --ms-info-surface: #003655;
   --ms-info-text: #D5F0FF;
-  
-  /* Test Solve Enhancement Colors */
-  --primary-rgb: 102, 126, 234;
-  --success-color: #4caf50;
-  --warning-color: #ff9800;
-  --error-color: #f44336;
-  --info-color: #2196f3;
-  --primary-light: #8fa4f3;
-  --primary-dark: #5e7ce0;
-  --text-primary: #212121;
-  --text-secondary: #757575;
   --ms-info-text-weak: #80D1FF;
   --ms-info-text-medium: #2BB2FF;
   --ms-success-border: #02E088;
@@ -297,19 +286,6 @@
   --contribution-default-bgColor-2: #4ac26b;
   --contribution-default-bgColor-3: #2da44e;
   --contribution-default-bgColor-4: #116329;
-}
-
-/* Test Solve Enhancement Colors */
-:root {
-  --primary-rgb: 102, 126, 234;
-  --success-color: #4caf50;
-  --warning-color: #ff9800;
-  --error-color: #f44336;
-  --info-color: #2196f3;
-  --primary-light: #8fa4f3;
-  --primary-dark: #5e7ce0;
-  --text-primary: #212121;
-  --text-secondary: #757575;
 }
 
 body, .course-card, .navigation, .header {
@@ -1080,8 +1056,8 @@ ul {
   justify-content: center;
   align-items: center;
   margin: 5px;
-  width: 10px;
-  height: 10px;
+  width: 36px;
+  height: 36px;
 }
 
 /* 🟢 Mat Button İçin Maksimum Genişlik ve Yükseklik */
@@ -1164,9 +1140,7 @@ ul {
 
 /* ---- Styles from /mnt/data/app_extracted/app/pages/test-solve/test-solve-canvas.component.scss ---- */
 .test-container {
-  display: inline-block !important;
-  width: auto;
-  max-width: none;
+  max-width: 960px;
   margin: auto;
   padding: 16px;
   position: relative;
@@ -1207,7 +1181,7 @@ ul {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  // width: 100vw; /* Butonları tüm ekran genişliğinde konumlandır */
+  width: 100vw; /* Butonları tüm ekran genişliğinde konumlandır */
   left: 0;
   right: 0;
   display: flex;
@@ -1265,13 +1239,13 @@ ul {
 
 /* Sağ butonu ekranın sağ margin boşluğuna taşı */
 .navigation-buttons .next-button {
-  right: 0;
-  transform: translateX(110%);
+  right: calc((100vw - 960px) - 116px); /* Margin'in içine konumlandır */
+  max-width: calc(((100vw - 960px) / 2));
   color: var(--mat-sys-on-surface);
 }
 
 /* Eğer ekran genişliği 1100px’den küçükse, butonları alta koy */
-@media (max-width: 1400px) {
+@media (max-width: 1132px) {
   .navigation-buttons {
     position: static;
     top: auto;
@@ -1626,6 +1600,7 @@ select:focus {
 }
 
 
+
 /* ---- Styles from /mnt/data/app_extracted/app/pages/question/question.component.scss ---- */
 .question-card {
   max-width: 960px;
@@ -1725,6 +1700,16 @@ h3 {
   margin: 0;
   font-size: 0.9rem;
   color: #1976d2;
+}
+
+/* 🟢 Resim Önizleme */
+.preview-image {
+  max-width: 100px;
+  max-height: 100px;
+  display: block;
+  margin-top: 10px;
+  border-radius: 4px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 
@@ -3835,6 +3820,12 @@ mat-form-field.hide-subscript
     padding: 0 !important;
 }
 
+// .mat-mdc-form-field-subscript-wrapper {
+//   display: none !important;
+//   height: 0 !important;
+//   margin: 0 !important;
+//   padding: 0 !important;
+// }
 /* Chrome autofill’ini override etmek için */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
@@ -3856,87 +3847,4 @@ input:-webkit-autofill {
 
 input:-webkit-autofill:focus {  
   -webkit-text-fill-color:  var(--ms-surface-inverse) !important;
-}
-
-/* Program Creation Styles */
-.ms-program-creation-container {
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.ms-program-creation-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.ms-program-creation-header h2 {
-  color: #2196f3;
-  margin-bottom: 0.5rem;
-}
-
-.ms-program-creation-header p {
-  color: #666;
-  font-size: 1rem;
-}
-
-.ms-program-creation-form {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.ms-program-creation-form .mat-mdc-form-field {
-  width: 100%;
-}
-
-.ms-program-creation-form .mat-mdc-text-field-wrapper {
-  width: 100%;
-}
-
-.ms-program-creation-form input,
-.ms-program-creation-form textarea {
-  width: 100%;
-}
-
-.ms-full-width {
-  width: 100%;
-}
-
-.ms-program-creation-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
-.ms-selection-summary {
-  margin-top: 2rem;
-  padding: 1rem;
-  background: var(--main-foreground-color);
-  border-radius: 8px;
-}
-
-.ms-selection-summary h3 {
-  margin-bottom: 1rem;
-  color: var(--mat-sys-on-surface);
-}
-
-.ms-summary-item {
-  padding: 0.5rem 0;
-  // border-bottom: 1px solid #e0e0e0;
-}
-
-.ms-summary-item:last-child {
-  border-bottom: none;
-}
-
-.ms-summary-item strong {
-  color: #2196f3;
-}
-
-.ms-wizard-step-item-completed {
-  background-color: #4caf50 !important;
-}
+} 

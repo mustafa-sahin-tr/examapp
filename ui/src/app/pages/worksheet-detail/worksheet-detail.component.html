@@ -1,38 +1,155 @@
-<div class="container">
-    <div class="course-container" *ngIf="exam">
-      <h1 class="course-title">{{exam.name}} - {{exam.subtitle}}</h1>
-      <p class="course-subtitle">{{exam.gradeId}}. Sınıf</p>
-      <p>{{exam.description}}</p>
-      <div class="course-actions">
-        <ng-container *appIsStudent>
-          <button *ngIf="!exam.instance" mat-raised-button color="primary" (click)="StartTest(exam.id)">Testi Başlat</button>
-          <button *ngIf="instanceStarted" mat-raised-button color="primary" (click)="StartTest(exam.id)">Teste Devam Et</button>
-        </ng-container>
-        <button mat-raised-button ><mat-icon>bookmark</mat-icon>Favori</button>
-        <ng-container *appIsTeacher>
-          <button mat-raised-button (click)="editWorksheet(exam.id)"><mat-icon>edit</mat-icon>Düzenle</button>
-          <button mat-raised-button color="primary" type="button" (click)="navigateToQuestionCanvas()"><mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç</button>
-        </ng-container>
+<div class="worksheet-detail-container">
+  <!-- Header Section -->
+  <div class="worksheet-header" *ngIf="exam">
+    <div class="header-content">
+      <div class="header-main">
+        <div class="course-badge">
+          <mat-icon>quiz</mat-icon>
+          <span>{{exam.gradeId}}. Sınıf</span>
+        </div>
+        <h1 class="worksheet-title">{{exam.name}}</h1>
+        <h2 class="worksheet-subtitle">{{exam.subtitle}}</h2>
+        <p class="worksheet-description">{{exam.description}}</p>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+          <ng-container *appIsStudent>
+            <button *ngIf="!exam.instance" 
+                    mat-flat-button 
+                    color="primary" 
+                    class="primary-action"
+                    (click)="StartTest(exam.id)">
+              <mat-icon>play_arrow</mat-icon>
+              Testi Başlat
+            </button>
+            <button *ngIf="instanceStarted" 
+                    mat-flat-button 
+                    color="primary" 
+                    class="primary-action"
+                    (click)="StartTest(exam.id)">
+              <mat-icon>play_arrow</mat-icon>
+              Teste Devam Et
+            </button>
+          </ng-container>
+          
+          <button mat-stroked-button class="secondary-action">
+            <mat-icon>bookmark_border</mat-icon>
+            Favorilere Ekle
+          </button>
+          
+          <ng-container *appIsTeacher>
+            <button mat-stroked-button 
+                    class="secondary-action"
+                    (click)="editWorksheet(exam.id)">
+              <mat-icon>edit</mat-icon>
+              Düzenle
+            </button>
+            <button mat-flat-button 
+                    color="accent"
+                    class="accent-action"
+                    (click)="navigateToQuestionCanvas()">
+              <mat-icon>add_circle</mat-icon>
+              Soru Ekle
+            </button>
+          </ng-container>
+        </div>
       </div>
-      <div *ngIf="instanceCompleted" >
-        <h1 class="course-title">Sonuç</h1>
-        <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)"></app-question-navigator>  
-        <app-question-canvas-view [questionRegion]="regions()[currentIndex()]" 
-          [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
-          [mode]="'result'"  
-          [correctChoice]="correctChoices().get(regions()[currentIndex()].id)"
-        ></app-question-canvas-view>
+      
+      <!-- Info Panel - moved to header -->
+      <div class="header-info-panel">
+        <div class="info-card">
+          <div class="info-header">
+            <mat-icon>info</mat-icon>
+            <h3>Test Bilgileri</h3>
+          </div>
+          
+          <div class="info-content">
+            <div class="info-item">
+              <div class="info-label">
+                <mat-icon>signal_cellular_alt</mat-icon>
+                <span>Seviye</span>
+              </div>
+              <span class="info-value level-beginner">Başlangıç</span>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <mat-icon>star</mat-icon>
+                <span>Oylama</span>
+              </div>
+              <div class="info-value rating">
+                <div class="rating-stars">★★★★★</div>
+                <span class="rating-count">(45)</span>
+              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <mat-icon>star_border</mat-icon>
+                <span>Benim Oyum</span>
+              </div>
+              <div class="info-value rating">
+                <div class="rating-stars user-rating">★★☆☆☆</div>
+              </div>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <mat-icon>schedule</mat-icon>
+                <span>Süre</span>
+              </div>
+              <span class="info-value">39 dakika</span>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <mat-icon>update</mat-icon>
+                <span>Güncelleme</span>
+              </div>
+              <span class="info-value">Kasım 2024</span>
+            </div>
+            
+            <div class="info-item">
+              <div class="info-label">
+                <mat-icon>group</mat-icon>
+                <span>Çözen Öğrenci</span>
+              </div>
+              <span class="info-value highlight">{{exam.instanceCount}}</span>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="course-info" *ngIf="exam">
-      <h3>Course Info</h3>
-      <div class="info-item"><span>Seviye</span><span>Başlangıç</span></div>
-      <div class="info-item"><span>Oylama</span><span class="rating-stars">★★★★★ (45)</span></div>
-      <div class="info-item"><span>Benim Oyum</span><span class="rating-stars">★★☆☆☆</span></div>
-      <div class="info-item"><span>Süre</span><span>0h 39m</span></div>
-      <div class="info-item"><span>Güncelleme Tarihi</span><span>Nov 2024</span></div>
-      
-      <div class="info-item"><span>Testi Çözen Öğrenci Sayısı</span><span>{{exam.instanceCount}}</span></div>
-      
     </div>
   </div>
+
+  <!-- Main Content Section -->
+  <div class="main-content">
+    <!-- Content Area - Full Width -->
+    <div class="content-area">
+      <!-- Results Section -->
+      <div *ngIf="instanceCompleted" class="results-section">
+        <div class="results-header">
+          <h2>
+            <mat-icon>assessment</mat-icon>
+            Test Sonuçları
+          </h2>
+        </div>
+        <div class="results-content">
+          <app-question-navigator 
+            [questions]="questions" 
+            (questionSelected)="questionSelected($event)">
+          </app-question-navigator>
+          
+          <div class="question-review">
+            <app-question-canvas-view 
+              [questionRegion]="regions()[currentIndex()]" 
+              [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
+              [mode]="'result'"  
+              [correctChoice]="correctChoices().get(regions()[currentIndex()].id)">
+            </app-question-canvas-view>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

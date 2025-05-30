@@ -315,4 +315,36 @@ export class ProgramDetailComponent {
     if (day.solved >= this.program.questionsPerDay * 0.7) return 'Fena değil, biraz daha gayret!';
     return 'Bugün hedefin altında kaldın.';
   }
+
+  // Bar chart için gün bazında hedef ve gerçekleşen soru sayısı
+  get barChartData() {
+    return this.program.days.map((d, i) => ({
+      name: `${i + 1}.Gün`,
+      value: d.solved,
+    }));
+  }
+  // En uzun süre günü
+  get maxMinutesDay() {
+    if (!this.program.days.length) return null;
+    return this.program.days.reduce((max, d) => (d.minutes > (max?.minutes ?? 0) ? d : max), this.program.days[0]);
+  }
+  // En yüksek uyum oranı günü
+  get maxRateDay() {
+    if (!this.program.days.length) return null;
+    return this.program.days.reduce(
+      (max, d) => {
+        const rate = d.solved / this.program.questionsPerDay;
+        const maxRate = max.solved / this.program.questionsPerDay;
+        return rate > maxRate ? { ...d, rate: Math.round(rate * 100) } : { ...max, rate: Math.round(maxRate * 100) };
+      },
+      { ...this.program.days[0], rate: Math.round((this.program.days[0].solved / this.program.questionsPerDay) * 100) }
+    );
+  }
+  // Haftalık toplam soru ve süre (son 7 gün)
+  get weeklyTotalSolved() {
+    return this.program.days.slice(-7).reduce((sum, d) => sum + d.solved, 0);
+  }
+  get weeklyTotalMinutes() {
+    return this.program.days.slice(-7).reduce((sum, d) => sum + d.minutes, 0);
+  }
 }

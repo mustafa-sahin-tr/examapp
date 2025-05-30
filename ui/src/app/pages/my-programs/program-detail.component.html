@@ -199,4 +199,96 @@
       </div>
     </mat-card>
   </div>
+
+  <!-- Yeni Dashboard Bölümü -->
+  <div class="dashboard-section">
+    <h3>📊 Günlük Uyum Oranı</h3>
+    <div class="subject-progress-row">
+      <div *ngFor="let day of program.days" class="subject-progress">
+        <span>{{ day.date | date : 'd MMM' }}</span>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="(day.solved / program.questionsPerDay) * 100"
+          style="width: 80px"
+        ></mat-progress-bar>
+        <span>{{ (day.solved / program.questionsPerDay) * 100 | number : '1.0-0' }}%</span>
+      </div>
+    </div>
+
+    <h3>📈 Soru Hedefi Tamamlama Grafiği</h3>
+    <ngx-charts-bar-vertical
+      [view]="[600, 220]"
+      [scheme]="heatmapScheme"
+      [results]="barChartData"
+      [xAxis]="true"
+      [yAxis]="true"
+      [legend]="false"
+      [showXAxisLabel]="true"
+      [showYAxisLabel]="true"
+      [xAxisLabel]="'Gün'"
+      [yAxisLabel]="'Soru'"
+      [roundEdges]="true"
+      [animations]="true"
+    ></ngx-charts-bar-vertical>
+
+    <h3>📅 Çalışılan/Çalışılmayan Gün Takvimi</h3>
+    <div class="subject-progress-row">
+      <div
+        *ngFor="let day of program.days"
+        [ngClass]="{
+          'subject-progress': true,
+          done: day.done,
+          missed: !day.done && day.solved === 0,
+          partial: !day.done && day.solved > 0
+        }"
+      >
+        <mat-icon *ngIf="day.done">check_circle</mat-icon>
+        <mat-icon *ngIf="!day.done && day.solved === 0">cancel</mat-icon>
+        <mat-icon *ngIf="!day.done && day.solved > 0">hourglass_bottom</mat-icon>
+        <span>{{ day.date | date : 'd MMM' }}</span>
+      </div>
+    </div>
+
+    <div class="streak-badge">
+      <mat-icon>local_fire_department</mat-icon>
+      🔥 {{ currentStreak }} Günlük Seri!
+    </div>
+
+    <div class="record-badges">
+      <div class="record-badge">
+        <mat-icon>star</mat-icon> En fazla soru: {{ bestDay?.solved }} ({{ bestDay?.date }})
+      </div>
+      <div class="record-badge">
+        <mat-icon>timer</mat-icon> En uzun süre: {{ maxMinutesDay?.minutes }} dk ({{ maxMinutesDay?.date }})
+      </div>
+      <div class="record-badge">
+        <mat-icon>percent</mat-icon> En yüksek uyum: {{ maxRateDay?.rate }}% ({{ maxRateDay?.date }})
+      </div>
+    </div>
+
+    <div class="achievement-badges">
+      <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> İlk 100 Soru Çözüldü!</div>
+      <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> İlk 5 Gün Üst Üste Tamamlandı</div>
+      <div class="achievement-badge"><mat-icon>emoji_events</mat-icon> Toplam 1000 Soru!</div>
+    </div>
+
+    <div class="weekly-summary">
+      Haftalık toplam soru: {{ weeklyTotalSolved }} | Haftalık toplam süre: {{ weeklyTotalMinutes }} dk
+    </div>
+
+    <div class="subject-progress-row">
+      <div *ngFor="let s of subjectStats" class="subject-progress">
+        <mat-icon>menu_book</mat-icon> {{ s.name }}: {{ s.solved }} soru, {{ s.minutes }} dk
+      </div>
+    </div>
+
+    <div class="comparison-section">
+      Senin gibi 8. sınıf öğrencileri haftada ortalama 150 soru çözüyor. Sen {{ weeklyTotalSolved }} soru çözdün,
+      harikasın!
+    </div>
+
+    <div class="suggestion-section">
+      Son 3 gündür Matematik hedefini kaçırıyorsun, bugün hedefe ulaşmak için önerilen süre 45 dk.
+    </div>
+  </div>
 </div>

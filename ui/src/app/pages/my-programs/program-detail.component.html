@@ -8,39 +8,8 @@
     <span><mat-icon>timeline</mat-icon> Tür: {{ program.studyType }}</span>
   </div>
 
-  <!-- <div class="program-stats">
-    <div class="stat-box completed">
-      <mat-icon>check_circle</mat-icon>
-      <div>
-        <div class="stat-value">{{ completedDays }}</div>
-        <div class="stat-label">Uyulan Gün</div>
-      </div>
-    </div>
-    <div class="stat-box missed">
-      <mat-icon>cancel</mat-icon>
-      <div>
-        <div class="stat-value">{{ missedDays }}</div>
-        <div class="stat-label">Uyulmayan Gün</div>
-      </div>
-    </div>
-    <div class="stat-box total">
-      <mat-icon>calendar_view_day</mat-icon>
-      <div>
-        <div class="stat-value">{{ totalDays }}</div>
-        <div class="stat-label">Toplam Gün</div>
-      </div>
-    </div>
-  </div> -->
-
   <!-- Özet Kartlar -->
   <div class="summary-cards">
-    <!-- <mat-card class="summary-card">
-      <mat-icon>check_circle</mat-icon>
-      <div>
-        <div class="summary-value">{{ completedDays }}</div>
-        <div class="summary-label">Uyulan Gün</div>
-      </div>
-    </mat-card> -->
     <mat-card class="summary-card">
       <mat-icon>assignment</mat-icon>
       <div>
@@ -101,20 +70,6 @@
       <mat-icon>chevron_right</mat-icon>
     </button>
   </div>
-
-  <!-- <div class="pie-section">
-    <h3>Ders Bazında Soru Dağılımı</h3>
-    <ngx-charts-pie-chart
-      [view]="[400, 220]"
-      [scheme]="subjectPieScheme"
-      [results]="subjectPieData"
-      [legend]="true"
-      [labels]="true"
-      [doughnut]="true"
-      [explodeSlices]="false"
-      [gradient]="false"
-    ></ngx-charts-pie-chart>
-  </div> -->
 
   <!-- Günlük Detayda: Motivasyon, Emoji, Not, ProgressBar -->
   <div class="selected-day-detail" *ngIf="selectedDay">
@@ -202,39 +157,33 @@
 
   <!-- Yeni Dashboard Bölümü -->
   <div class="dashboard-section">
-    <h3>📊 Günlük Uyum Oranı</h3>
+    <h3>📊 Günlük Uyum Oranı (Son 7 Gün)</h3>
     <div class="subject-progress-row">
-      <div *ngFor="let day of program.days" class="subject-progress">
+      <div *ngFor="let day of program.days.slice(-7)" class="subject-progress">
         <span>{{ day.date | date : 'd MMM' }}</span>
-        <mat-progress-bar
-          mode="determinate"
-          [value]="(day.solved / program.questionsPerDay) * 100"
-          style="width: 80px"
-        ></mat-progress-bar>
+        <mat-progress-bar mode="determinate" [value]="(day.solved / program.questionsPerDay) * 100"></mat-progress-bar>
         <span>{{ (day.solved / program.questionsPerDay) * 100 | number : '1.0-0' }}%</span>
       </div>
     </div>
 
-    <h3>📈 Soru Hedefi Tamamlama Grafiği</h3>
-    <ngx-charts-bar-vertical
-      [view]="[600, 220]"
+    <h3>📈 Soru Hedefi Tamamlama Grafiği (Son 7 Gün)</h3>
+    <!-- <ngx-charts-bar-vertical
+      [view]="[420, 160]"
       [scheme]="heatmapScheme"
-      [results]="barChartData"
+      [results]="barChartData.slice(-7)"
       [xAxis]="true"
       [yAxis]="true"
       [legend]="false"
-      [showXAxisLabel]="true"
-      [showYAxisLabel]="true"
-      [xAxisLabel]="'Gün'"
-      [yAxisLabel]="'Soru'"
+      [showXAxisLabel]="false"
+      [showYAxisLabel]="false"
       [roundEdges]="true"
       [animations]="true"
-    ></ngx-charts-bar-vertical>
+    ></ngx-charts-bar-vertical> -->
 
-    <h3>📅 Çalışılan/Çalışılmayan Gün Takvimi</h3>
+    <h3>📅 Çalışılan/Çalışılmayan Gün Takvimi (Son 14 Gün)</h3>
     <div class="subject-progress-row">
       <div
-        *ngFor="let day of program.days"
+        *ngFor="let day of program.days.slice(-14)"
         [ngClass]="{
           'subject-progress': true,
           done: day.done,
@@ -289,6 +238,78 @@
 
     <div class="suggestion-section">
       Son 3 gündür Matematik hedefini kaçırıyorsun, bugün hedefe ulaşmak için önerilen süre 45 dk.
+    </div>
+
+    <!-- Duolingo Stili Seri Uyarısı -->
+    <div class="streak-warning" *ngIf="currentStreak > 0 && currentStreak < maxStreak">
+      <mat-icon>local_fire_department</mat-icon>
+      🔥 {{ currentStreak }} gün seri! Seri kırılmaması için bugün {{ program.questionsPerDay }} soru çözmelisin!
+    </div>
+
+    <!-- Google Classroom Stili Görev Takvimi -->
+    <div class="task-calendar">
+      <div class="task-row completed">Matematik: Tamamlandı ✅ (4/5 görev), Geç teslim ❗ (1 görev)</div>
+      <div class="task-row missing">Fen Bilimleri: Eksik ❌ (0/3 görev)</div>
+    </div>
+
+    <!-- Khan Academy Tarzı Beceri Ağacı -->
+    <div class="skill-tree">
+      <div class="skill-branch">
+        Matematik → Kesirler
+        <mat-progress-bar class="skill-progress" mode="determinate" [value]="80"></mat-progress-bar>
+        %80 tamamlandı
+      </div>
+      <div class="skill-branch locked">
+        Matematik → Kesirler → İleri Seviye Sorular
+        <mat-icon>lock</mat-icon> (Kilidi açmak için %90 tamamlanmalı!)
+      </div>
+    </div>
+
+    <!-- Quizlet Tarzı Etkileşimli İstatistikler -->
+    <div class="study-stats-row">
+      <div class="study-stat"><mat-icon>schedule</mat-icon> En verimli saat: 18:00 - 19:00</div>
+      <div class="study-stat"><mat-icon>check_circle</mat-icon> Doğru cevap oranı: %92</div>
+    </div>
+
+    <!-- Notion Akademik Dashboard Odak Konular -->
+    <div class="focus-topics">
+      Bu hafta odaklandığın konular:<br />
+      Matematik – Trigonometri (%60 tamamlandı)<br />
+      Tarih – I. Dünya Savaşı (%100 tamamlandı)
+    </div>
+
+    <!-- Forest Uygulaması Tarzı Zaman Yönetimi -->
+    <div class="forest-row">
+      <span>Bu hafta 5 kez 45 dakika kesintisiz çalıştın ve 5 ağaç diktin</span>
+      <span class="forest-tree">🌳🌳🌳🌳🌳</span>
+    </div>
+
+    <!-- Udemy Tarzı İlerleme Barları -->
+    <div class="course-progress-row">
+      <div class="course-progress">
+        Biyoloji: %45 tamamlandı, hedef %60 📌 (geride kalıyorsun, hızlanmalısın!)
+        <mat-progress-bar class="skill-progress" mode="determinate" [value]="45"></mat-progress-bar>
+      </div>
+    </div>
+
+    <!-- Trello Tarzı Kart Yapıları -->
+    <div class="trello-board">
+      <div class="trello-list">
+        <div class="trello-list-title">✅ Tamamlanan</div>
+        <div class="trello-card completed">Matematik (Çarpanlara ayırma)</div>
+      </div>
+      <div class="trello-list">
+        <div class="trello-list-title">⏳ Devam eden</div>
+        <div class="trello-card inprogress">Türkçe (Dil Bilgisi – Sıfatlar)</div>
+      </div>
+      <div class="trello-list">
+        <div class="trello-list-title">📅 Planlanan</div>
+        <div class="trello-card planned">Fizik (Optik) – yarın başlanacak</div>
+      </div>
+      <div class="trello-list">
+        <div class="trello-list-title">🚩 Ertelenen</div>
+        <div class="trello-card delayed">Kimya (Asitler ve Bazlar)</div>
+      </div>
     </div>
   </div>
 </div>

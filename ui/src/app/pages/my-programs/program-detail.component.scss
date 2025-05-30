@@ -1,3 +1,74 @@
+// Ortak kutu stilleri
+@mixin dashboard-box($bg, $color, $shadow, $radius: 10px) {
+  background: $bg;
+  color: $color;
+  border-radius: $radius;
+  box-shadow: $shadow;
+}
+
+// Ortak progress bar
+@mixin progress-bar($bg, $height: 7px, $radius: 4px) {
+  background: $bg;
+  height: $height;
+  border-radius: $radius;
+}
+
+// Ortak badge
+@mixin badge($bg, $color, $shadow) {
+  background: $bg;
+  color: $color;
+  box-shadow: $shadow;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+// Kullanım örnekleri:
+.subject-progress {
+  @include dashboard-box(linear-gradient(90deg, #e3f2fd 60%, #fff 100%), #1976d2, 0 1px 6px #90caf9);
+  padding: 8px 16px;
+  font-size: 0.98rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gauge-item {
+  @include dashboard-box(#f5f7fa, #1976d2, 0 1px 6px #bbdefb44);
+  min-width: 180px;
+  padding: 12px 18px 16px 18px;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 1.01rem;
+}
+.gauge-bar {
+  @include progress-bar(#e3f2fd, 18px, 9px);
+  width: 140px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+.gauge-bar-fill {
+  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+  height: 100%;
+  border-radius: 9px 0 0 9px;
+  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+}
+.record-badge {
+  @include badge(linear-gradient(90deg, #e3f2fd 60%, #bbdefb 100%), #1976d2, 0 1px 6px #90caf9);
+  padding: 8px 16px;
+  font-size: 1.01rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.achievement-badge {
+  @include badge(linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%), #388e3c, 0 1px 6px #a5d6a7);
+  padding: 7px 14px;
+  font-size: 0.98rem;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .program-detail-container {
   max-width: 700px;
   margin: 32px auto;
@@ -984,1548 +1055,778 @@ li {
   max-width: 220px;
 }
 .heatmap-cell {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1.5px solid #e0e0e0;
+  background: #eee;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  box-shadow: 0 1px 4px #e0e0e0;
+}
+.heatmap-cell.heatmap-green {
+  background: linear-gradient(135deg, #43ea7d 60%, #1de982 100%);
+  border-color: #43ea7d;
+}
+.heatmap-cell.heatmap-yellow {
+  background: linear-gradient(135deg, #ffe082 60%, #ffd54f 100%);
+  border-color: #ffe082;
+}
+.heatmap-cell.heatmap-red {
+  background: linear-gradient(135deg, #ff8a80 60%, #ff5252 100%);
+  border-color: #ff8a80;
+}
+.heatmap-cell:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px #bdbdbd;
+}
+
+@keyframes progressBarGlow {
+  from { box-shadow: 0 0 0px #1976d2; }
+  to { box-shadow: 0 0 8px #1976d2; }
+}
+
+ul {
+  margin: 0 0 0 18px;
+  padding: 0;
+}
+
+li {
+  font-size: 0.99rem;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 600px) {
+  .program-detail-container {
+    padding: 12px 2px;
+  }
+  .program-stats {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .stat-box {
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .days-grid {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 10px;
+  }
+  .day-detail-panel {
+    padding: 10px 4px 10px 4px;
+  }
+  .days-carousel {
+    gap: 10px;
+  }
+  .day-box {
+    min-width: 80px;
+    max-width: 90px;
+    font-size: 0.95em;
+  }
+}
+
+@media (max-width: 700px) {
+  .program-performance-container {
+    padding: 10px 2px;
+  }
+  .summary-cards {
+    gap: 10px;
+  }
+  .summary-card {
+    min-width: 100px;
+    padding: 10px 8px;
+    font-size: 1em;
+  }
+  .heatmap-section {
+    padding: 8px 2px 8px 2px;
+  }
+  .carousel-days-list > div {
+    min-width: 80px;
+    max-width: 90px;
+    font-size: 0.95em;
+  }
+  .extra-stats-row {
+    gap: 8px;
+  }
+  .extra-card {
+    min-width: 90px;
+    padding: 8px 4px;
+    font-size: 0.98em;
+  }
+  .pie-section {
+    padding: 8px 2px 8px 2px;
+  }
+  .selected-day-detail {
+    padding: 10px 4px 10px 4px;
+  }
+}
+
+.dashboard-section {
+  margin: 40px 0 36px 0;
+  background: var(--main-foreground-color, #fff);
+  border-radius: 18px;
+  box-shadow: 0 2px 16px rgba(33,150,243,0.10);
+  padding: 28px 18px 18px 18px;
+  border: 1.5px solid #bbdefb;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-section h3 {
+  margin-bottom: 18px;
+  font-size: 1.22rem;
+  font-weight: 700;
+  color: #1976d2;
+  letter-spacing: 0.5px;
+}
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ff9800;
+  box-shadow: 0 2px 8px #ffe08244;
+  margin-bottom: 18px;
+  animation: streakPulse 1.2s infinite alternate;
+}
+// Duolingo Stili Seri Uyarısı
+.streak-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #fff3e0 60%, #ffe0b2 100%);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 1.08rem;
+  color: #ff9800;
+  font-weight: 700;
+  box-shadow: 0 2px 8px #ffe08244;
+  margin-bottom: 18px;
+  border: 1.5px solid #ffb300;
+  animation: streakPulse 1.2s infinite alternate;
+}
+// Google Classroom Stili Görev Takvimi
+.task-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 1.01rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px #bbdefb44;
+}
+.task-row.completed {
+  color: #43a047;
+}
+.task-row.late {
+  color: #ff9800;
+}
+.task-row.missing {
+  color: #e53935;
+}
+// Khan Academy Beceri Ağacı
+.skill-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.skill-branch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #e3f2fd 60%, #fff 100%);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 1.01rem;
+  color: #1976d2;
+  font-weight: 600;
+  box-shadow: 0 1px 4px #bbdefb44;
+  position: relative;
+}
+.skill-branch.locked {
+  color: #aaa;
+  background: #f5f5f5;
+  text-decoration: line-through;
+}
+.skill-progress {
+  min-width: 60px;
+  max-width: 90px;
+  margin: 0 4px;
+  height: 7px;
+  border-radius: 4px;
+  background: #e3f2fd;
+}
+// Quizlet Stili Saat ve Başarı
+.study-stats-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.study-stat {
+  background: linear-gradient(90deg, #f3e5f5 60%, #ce93d8 100%);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.98rem;
+  color: #6a1b9a;
+  font-weight: 600;
+  box-shadow: 0 1px 6px #ce93d8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+// Notion Dashboard Odak Konular
+.focus-topics {
+  background: linear-gradient(90deg, #e1f5fe 60%, #b3e5fc 100%);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 1.01rem;
+  color: #0277bd;
+  font-weight: 600;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 6px #b3e5fc;
+}
+// Forest Uygulaması Stili
+.forest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 1.01rem;
+  color: #388e3c;
+  font-weight: 600;
+  box-shadow: 0 1px 6px #a5d6a7;
+  margin-bottom: 12px;
+}
+.forest-tree {
+  font-size: 1.3em;
+  margin-right: 2px;
+}
+// Udemy Stili İlerleme Barı
+.course-progress-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.course-progress {
+  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.98rem;
+  color: #ff9800;
+  font-weight: 600;
+  box-shadow: 0 1px 6px #ffe082;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+// Trello Stili Kartlar
+.trello-board {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.trello-list {
+  background: #f5f7fa;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 180px;
+  box-shadow: 0 1px 6px #bbdefb44;
+}
+.trello-list-title {
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 8px;
+}
+.trello-card {
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  font-size: 0.97rem;
+  color: #333;
+  box-shadow: 0 1px 2px #bbdefb44;
+}
+.trello-card.completed {
+  color: #43a047;
+  text-decoration: line-through;
+}
+.trello-card.inprogress {
+  color: #ff9800;
+}
+.trello-card.planned {
+  color: #1976d2;
+}
+.trello-card.delayed {
+  color: #e53935;
+}
+
+.gauge-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  align-items: flex-end;
+}
+.gauge-item {
+  min-width: 180px;
+  background: #f5f7fa;
+  border-radius: 10px;
+  padding: 12px 18px 16px 18px;
+  box-shadow: 0 1px 6px #bbdefb44;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 1.01rem;
+  font-weight: 600;
+  color: #1976d2;
+}
+.gauge-label {
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #333;
+}
+.gauge-bar {
+  width: 140px;
+  height: 18px;
+  background: #e3f2fd;
+  border-radius: 9px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2px;
+  box-shadow: 0 1px 4px #bbdefb44;
+}
+.gauge-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+  border-radius: 9px 0 0 9px;
+  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+}
+.gauge-bar-text {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 0.98em;
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 4px #1976d2;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  max-width: 220px;
+}
+.heatmap-cell {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1.5px solid #e0e0e0;
+  background: #eee;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  box-shadow: 0 1px 4px #e0e0e0;
+}
+.heatmap-cell.heatmap-green {
+  background: linear-gradient(135deg, #43ea7d 60%, #1de982 100%);
+  border-color: #43ea7d;
+}
+.heatmap-cell.heatmap-yellow {
+  background: linear-gradient(135deg, #ffe082 60%, #ffd54f 100%);
+  border-color: #ffe082;
+}
+.heatmap-cell.heatmap-red {
+  background: linear-gradient(135deg, #ff8a80 60%, #ff5252 100%);
+  border-color: #ff8a80;
+}
+.heatmap-cell:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px #bdbdbd;
+}
+
+@keyframes progressBarGlow {
+  from { box-shadow: 0 0 0px #1976d2; }
+  to { box-shadow: 0 0 8px #1976d2; }
+}
+
+ul {
+  margin: 0 0 0 18px;
+  padding: 0;
+}
+
+li {
+  font-size: 0.99rem;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 600px) {
+  .program-detail-container {
+    padding: 12px 2px;
+  }
+  .program-stats {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .stat-box {
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .days-grid {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 10px;
+  }
+  .day-detail-panel {
+    padding: 10px 4px 10px 4px;
+  }
+  .days-carousel {
+    gap: 10px;
+  }
+  .day-box {
+    min-width: 80px;
+    max-width: 90px;
+    font-size: 0.95em;
+  }
+}
+
+@media (max-width: 700px) {
+  .program-performance-container {
+    padding: 10px 2px;
+  }
+  .summary-cards {
+    gap: 10px;
+  }
+  .summary-card {
+    min-width: 100px;
+    padding: 10px 8px;
+    font-size: 1em;
+  }
+  .heatmap-section {
+    padding: 8px 2px 8px 2px;
+  }
+  .carousel-days-list > div {
+    min-width: 80px;
+    max-width: 90px;
+    font-size: 0.95em;
+  }
+  .extra-stats-row {
+    gap: 8px;
+  }
+  .extra-card {
+    min-width: 90px;
+    padding: 8px 4px;
+    font-size: 0.98em;
+  }
+  .pie-section {
+    padding: 8px 2px 8px 2px;
+  }
+  .selected-day-detail {
+    padding: 10px 4px 10px 4px;
+  }
+}
+
+.dashboard-section {
+  margin: 40px 0 36px 0;
+  background: var(--main-foreground-color, #fff);
+  border-radius: 18px;
+  box-shadow: 0 2px 16px rgba(33,150,243,0.10);
+  padding: 28px 18px 18px 18px;
+  border: 1.5px solid #bbdefb;
+  position: relative;
+  z-index: 1;
+}
+.dashboard-section h3 {
+  margin-bottom: 18px;
+  font-size: 1.22rem;
+  font-weight: 700;
+  color: #1976d2;
+  letter-spacing: 0.5px;
+}
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ff9800;
+  box-shadow: 0 2px 8px #ffe08244;
+  margin-bottom: 18px;
+  animation: streakPulse 1.2s infinite alternate;
+}
+// Duolingo Stili Seri Uyarısı
+.streak-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #fff3e0 60%, #ffe0b2 100%);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 1.08rem;
+  color: #ff9800;
+  font-weight: 700;
+  box-shadow: 0 2px 8px #ffe08244;
+  margin-bottom: 18px;
+  border: 1.5px solid #ffb300;
+  animation: streakPulse 1.2s infinite alternate;
+}
+// Google Classroom Stili Görev Takvimi
+.task-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 1.01rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px #bbdefb44;
+}
+.task-row.completed {
+  color: #43a047;
+}
+.task-row.late {
+  color: #ff9800;
+}
+.task-row.missing {
+  color: #e53935;
+}
+// Khan Academy Beceri Ağacı
+.skill-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.skill-branch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, #e3f2fd 60%, #fff 100%);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 1.01rem;
+  color: #1976d2;
+  font-weight: 600;
+  box-shadow: 0 1px 4px #bbdefb44;
+  position: relative;
+}
+.skill-branch.locked {
+  color: #aaa;
+  background: #f5f5f5;
+  text-decoration: line-through;
+}
+.skill-progress {
+  min-width: 60px;
+  max-width: 90px;
+  margin: 0 4px;
+  height: 7px;
+  border-radius: 4px;
+  background: #e3f2fd;
+}
+// Quizlet Stili Saat ve Başarı
+.study-stats-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.study-stat {
+  background: linear-gradient(90deg, #f3e5f5 60%, #ce93d8 100%);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.98rem;
+  color: #6a1b9a;
+  font-weight: 600;
+  box-shadow: 0 1px 6px #ce93d8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+// Notion Dashboard Odak Konular
+.focus-topics {
+  background: linear-gradient(90deg, #e1f5fe 60%, #b3e5fc 100%);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 1.01rem;
+  color: #0277bd;
+  font-weight: 600;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 6px #b3e5fc;
+}
+// Forest Uygulaması Stili
+.forest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 1.01rem;
+  color: #388e3c;
+  font-weight: 600;
+  box-shadow: 0 1px 6px #a5d6a7;
+  margin-bottom: 12px;
+}
+.forest-tree {
+  font-size: 1.3em;
+  margin-right: 2px;
+}
+// Udemy Stili İlerleme Barı
+.course-progress-row {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.course-progress {
+  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 0.98rem;
+  color: #ff9800;
+  font-weight: 600;
+  box-shadow: 0 1px 6px #ffe082;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+// Trello Stili Kartlar
+.trello-board {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.trello-list {
+  background: #f5f7fa;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 180px;
+  box-shadow: 0 1px 6px #bbdefb44;
+}
+.trello-list-title {
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 8px;
+}
+.trello-card {
+  background: #fff;
+  border-radius: 7px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  font-size: 0.97rem;
+  color: #333;
+  box-shadow: 0 1px 2px #bbdefb44;
+}
+.trello-card.completed {
+  color: #43a047;
+  text-decoration: line-through;
+}
+.trello-card.inprogress {
+  color: #ff9800;
+}
+.trello-card.planned {
+  color: #1976d2;
+}
+.trello-card.delayed {
+  color: #e53935;
+}
+
+.gauge-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  align-items: flex-end;
+}
+.gauge-item {
+  min-width: 180px;
+  background: #f5f7fa;
+  border-radius: 10px;
+  padding: 12px 18px 16px 18px;
+  box-shadow: 0 1px 6px #bbdefb44;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-size: 1.01rem;
+  font-weight: 600;
+  color: #1976d2;
+}
+.gauge-label {
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #333;
+}
+.gauge-bar {
+  width: 140px;
+  height: 18px;
+  background: #e3f2fd;
+  border-radius: 9px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2px;
+  box-shadow: 0 1px 4px #bbdefb44;
+}
+.gauge-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
+  border-radius: 9px 0 0 9px;
+  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+}
+.gauge-bar-text {
+  position: absolute;
+  right: 10px;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 0.98em;
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 4px #1976d2;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  max-width: 220px;
+}
+.heatmap-cell {
   width: 12px;
   height: 12px;
-  border-radius: 5px;
-  border: 1.5px solid #e0e0e0;
-  background: #eee;
-  transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
-  box-shadow: 0 1px 4px #e0e0e0;
-}
-.heatmap-cell.heatmap-green {
-  background: linear-gradient(135deg, #43ea7d 60%, #1de982 100%);
-  border-color: #43ea7d;
-}
-.heatmap-cell.heatmap-yellow {
-  background: linear-gradient(135deg, #ffe082 60%, #ffd54f 100%);
-  border-color: #ffe082;
-}
-.heatmap-cell.heatmap-red {
-  background: linear-gradient(135deg, #ff8a80 60%, #ff5252 100%);
-  border-color: #ff8a80;
-}
-.heatmap-cell:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px #bdbdbd;
-}
-
-@keyframes progressBarGlow {
-  from { box-shadow: 0 0 0px #1976d2; }
-  to { box-shadow: 0 0 8px #1976d2; }
-}
-
-ul {
-  margin: 0 0 0 18px;
-  padding: 0;
-}
-
-li {
-  font-size: 0.99rem;
-  margin-bottom: 2px;
-}
-
-@media (max-width: 600px) {
-  .program-detail-container {
-    padding: 12px 2px;
-  }
-  .program-stats {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .stat-box {
-    min-width: 0;
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .days-grid {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 10px;
-  }
-  .day-detail-panel {
-    padding: 10px 4px 10px 4px;
-  }
-  .days-carousel {
-    gap: 10px;
-  }
-  .day-box {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-}
-
-@media (max-width: 700px) {
-  .program-performance-container {
-    padding: 10px 2px;
-  }
-  .summary-cards {
-    gap: 10px;
-  }
-  .summary-card {
-    min-width: 100px;
-    padding: 10px 8px;
-    font-size: 1em;
-  }
-  .heatmap-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .carousel-days-list > div {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-  .extra-stats-row {
-    gap: 8px;
-  }
-  .extra-card {
-    min-width: 90px;
-    padding: 8px 4px;
-    font-size: 0.98em;
-  }
-  .pie-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .selected-day-detail {
-    padding: 10px 4px 10px 4px;
-  }
-}
-
-.dashboard-section {
-  margin: 40px 0 36px 0;
-  background: var(--main-foreground-color, #fff);
-  border-radius: 18px;
-  box-shadow: 0 2px 16px rgba(33,150,243,0.10);
-  padding: 28px 18px 18px 18px;
-  border: 1.5px solid #bbdefb;
-  position: relative;
-  z-index: 1;
-}
-.dashboard-section h3 {
-  margin-bottom: 18px;
-  font-size: 1.22rem;
-  font-weight: 700;
-  color: #1976d2;
-  letter-spacing: 0.5px;
-}
-.streak-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 12px;
-  padding: 12px 22px;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #ff9800;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Duolingo Stili Seri Uyarısı
-.streak-warning {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fff3e0 60%, #ffe0b2 100%);
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-size: 1.08rem;
-  color: #ff9800;
-  font-weight: 700;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  border: 1.5px solid #ffb300;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Google Classroom Stili Görev Takvimi
-.task-calendar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.task-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.task-row.completed {
-  color: #43a047;
-}
-.task-row.late {
-  color: #ff9800;
-}
-.task-row.missing {
-  color: #e53935;
-}
-// Khan Academy Beceri Ağacı
-.skill-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 11px;
-  margin-bottom: 18px;
-}
-.skill-branch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #e3f2fd 60%, #fff 100%);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  color: #1976d2;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-  position: relative;
-}
-.skill-branch.locked {
-  color: #aaa;
-  background: #f5f5f5;
-  text-decoration: line-through;
-}
-.skill-progress {
-  min-width: 60px;
-  max-width: 90px;
-  margin: 0 4px;
-  height: 7px;
-  border-radius: 4px;
-  background: #e3f2fd;
-}
-// Quizlet Stili Saat ve Başarı
-.study-stats-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.study-stat {
-  background: linear-gradient(90deg, #f3e5f5 60%, #ce93d8 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #6a1b9a;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ce93d8;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Notion Dashboard Odak Konular
-.focus-topics {
-  background: linear-gradient(90deg, #e1f5fe 60%, #b3e5fc 100%);
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-size: 1.01rem;
-  color: #0277bd;
-  font-weight: 600;
-  margin-bottom: 18px;
-  box-shadow: 0 1px 6px #b3e5fc;
-}
-// Forest Uygulaması Stili
-.forest-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 1.01rem;
-  color: #388e3c;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #a5d6a7;
-  margin-bottom: 12px;
-}
-.forest-tree {
-  font-size: 1.3em;
-  margin-right: 2px;
-}
-// Udemy Stili İlerleme Barı
-.course-progress-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.course-progress {
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #ff9800;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ffe082;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Trello Stili Kartlar
-.trello-board {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-.trello-list {
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 180px;
-  box-shadow: 0 1px 6px #bbdefb44;
-}
-.trello-list-title {
-  font-weight: 700;
-  color: #1976d2;
-  margin-bottom: 8px;
-}
-.trello-card {
-  background: #fff;
-  border-radius: 7px;
-  padding: 6px 10px;
-  margin-bottom: 6px;
-  font-size: 0.97rem;
-  color: #333;
-  box-shadow: 0 1px 2px #bbdefb44;
-}
-.trello-card.completed {
-  color: #43a047;
-  text-decoration: line-through;
-}
-.trello-card.inprogress {
-  color: #ff9800;
-}
-.trello-card.planned {
-  color: #1976d2;
-}
-.trello-card.delayed {
-  color: #e53935;
-}
-
-.gauge-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-  align-items: flex-end;
-}
-.gauge-item {
-  min-width: 180px;
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 12px 18px 16px 18px;
-  box-shadow: 0 1px 6px #bbdefb44;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 1.01rem;
-  font-weight: 600;
-  color: #1976d2;
-}
-.gauge-label {
-  margin-bottom: 8px;
-  font-weight: 700;
-  color: #333;
-}
-.gauge-bar {
-  width: 140px;
-  height: 18px;
-  background: #e3f2fd;
-  border-radius: 9px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 2px;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.gauge-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
-  border-radius: 9px 0 0 9px;
-  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
-}
-.gauge-bar-text {
-  position: absolute;
-  right: 10px;
-  top: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-size: 0.98em;
-  color: #fff;
-  font-weight: 700;
-  text-shadow: 0 1px 4px #1976d2;
-}
-
-.heatmap-grid {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  max-width: 220px;
-}
-.heatmap-cell {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: 1.5px solid #e0e0e0;
-  background: #eee;
-  transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
-  box-shadow: 0 1px 4px #e0e0e0;
-}
-.heatmap-cell.heatmap-green {
-  background: linear-gradient(135deg, #43ea7d 60%, #1de982 100%);
-  border-color: #43ea7d;
-}
-.heatmap-cell.heatmap-yellow {
-  background: linear-gradient(135deg, #ffe082 60%, #ffd54f 100%);
-  border-color: #ffe082;
-}
-.heatmap-cell.heatmap-red {
-  background: linear-gradient(135deg, #ff8a80 60%, #ff5252 100%);
-  border-color: #ff8a80;
-}
-.heatmap-cell:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px #bdbdbd;
-}
-
-@keyframes progressBarGlow {
-  from { box-shadow: 0 0 0px #1976d2; }
-  to { box-shadow: 0 0 8px #1976d2; }
-}
-
-ul {
-  margin: 0 0 0 18px;
-  padding: 0;
-}
-
-li {
-  font-size: 0.99rem;
-  margin-bottom: 2px;
-}
-
-@media (max-width: 600px) {
-  .program-detail-container {
-    padding: 12px 2px;
-  }
-  .program-stats {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .stat-box {
-    min-width: 0;
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .days-grid {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 10px;
-  }
-  .day-detail-panel {
-    padding: 10px 4px 10px 4px;
-  }
-  .days-carousel {
-    gap: 10px;
-  }
-  .day-box {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-}
-
-@media (max-width: 700px) {
-  .program-performance-container {
-    padding: 10px 2px;
-  }
-  .summary-cards {
-    gap: 10px;
-  }
-  .summary-card {
-    min-width: 100px;
-    padding: 10px 8px;
-    font-size: 1em;
-  }
-  .heatmap-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .carousel-days-list > div {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-  .extra-stats-row {
-    gap: 8px;
-  }
-  .extra-card {
-    min-width: 90px;
-    padding: 8px 4px;
-    font-size: 0.98em;
-  }
-  .pie-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .selected-day-detail {
-    padding: 10px 4px 10px 4px;
-  }
-}
-
-.dashboard-section {
-  margin: 40px 0 36px 0;
-  background: var(--main-foreground-color, #fff);
-  border-radius: 18px;
-  box-shadow: 0 2px 16px rgba(33,150,243,0.10);
-  padding: 28px 18px 18px 18px;
-  border: 1.5px solid #bbdefb;
-  position: relative;
-  z-index: 1;
-}
-.dashboard-section h3 {
-  margin-bottom: 18px;
-  font-size: 1.22rem;
-  font-weight: 700;
-  color: #1976d2;
-  letter-spacing: 0.5px;
-}
-.streak-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 12px;
-  padding: 12px 22px;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #ff9800;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Duolingo Stili Seri Uyarısı
-.streak-warning {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fff3e0 60%, #ffe0b2 100%);
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-size: 1.08rem;
-  color: #ff9800;
-  font-weight: 700;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  border: 1.5px solid #ffb300;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Google Classroom Stili Görev Takvimi
-.task-calendar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.task-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.task-row.completed {
-  color: #43a047;
-}
-.task-row.late {
-  color: #ff9800;
-}
-.task-row.missing {
-  color: #e53935;
-}
-// Khan Academy Beceri Ağacı
-.skill-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.skill-branch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #e3f2fd 60%, #fff 100%);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  color: #1976d2;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-  position: relative;
-}
-.skill-branch.locked {
-  color: #aaa;
-  background: #f5f5f5;
-  text-decoration: line-through;
-}
-.skill-progress {
-  min-width: 60px;
-  max-width: 90px;
-  margin: 0 4px;
-  height: 7px;
-  border-radius: 4px;
-  background: #e3f2fd;
-}
-// Quizlet Stili Saat ve Başarı
-.study-stats-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.study-stat {
-  background: linear-gradient(90deg, #f3e5f5 60%, #ce93d8 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #6a1b9a;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ce93d8;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Notion Dashboard Odak Konular
-.focus-topics {
-  background: linear-gradient(90deg, #e1f5fe 60%, #b3e5fc 100%);
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-size: 1.01rem;
-  color: #0277bd;
-  font-weight: 600;
-  margin-bottom: 18px;
-  box-shadow: 0 1px 6px #b3e5fc;
-}
-// Forest Uygulaması Stili
-.forest-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 1.01rem;
-  color: #388e3c;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #a5d6a7;
-  margin-bottom: 12px;
-}
-.forest-tree {
-  font-size: 1.3em;
-  margin-right: 2px;
-}
-// Udemy Stili İlerleme Barı
-.course-progress-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.course-progress {
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #ff9800;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ffe082;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Trello Stili Kartlar
-.trello-board {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-.trello-list {
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 180px;
-  box-shadow: 0 1px 6px #bbdefb44;
-}
-.trello-list-title {
-  font-weight: 700;
-  color: #1976d2;
-  margin-bottom: 8px;
-}
-.trello-card {
-  background: #fff;
-  border-radius: 7px;
-  padding: 6px 10px;
-  margin-bottom: 6px;
-  font-size: 0.97rem;
-  color: #333;
-  box-shadow: 0 1px 2px #bbdefb44;
-}
-.trello-card.completed {
-  color: #43a047;
-  text-decoration: line-through;
-}
-.trello-card.inprogress {
-  color: #ff9800;
-}
-.trello-card.planned {
-  color: #1976d2;
-}
-.trello-card.delayed {
-  color: #e53935;
-}
-
-.gauge-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-  align-items: flex-end;
-}
-.gauge-item {
-  min-width: 180px;
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 12px 18px 16px 18px;
-  box-shadow: 0 1px 6px #bbdefb44;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 1.01rem;
-  font-weight: 600;
-  color: #1976d2;
-}
-.gauge-label {
-  margin-bottom: 8px;
-  font-weight: 700;
-  color: #333;
-}
-.gauge-bar {
-  width: 140px;
-  height: 18px;
-  background: #e3f2fd;
-  border-radius: 9px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 2px;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.gauge-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
-  border-radius: 9px 0 0 9px;
-  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
-}
-.gauge-bar-text {
-  position: absolute;
-  right: 10px;
-  top: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-size: 0.98em;
-  color: #fff;
-  font-weight: 700;
-  text-shadow: 0 1px 4px #1976d2;
-}
-
-.heatmap-grid {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  max-width: 220px;
-}
-.heatmap-cell {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: 1.5px solid #e0e0e0;
-  background: #eee;
-  transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
-  box-shadow: 0 1px 4px #e0e0e0;
-}
-.heatmap-cell.heatmap-green {
-  background: linear-gradient(135deg, #43ea7d 60%, #1de982 100%);
-  border-color: #43ea7d;
-}
-.heatmap-cell.heatmap-yellow {
-  background: linear-gradient(135deg, #ffe082 60%, #ffd54f 100%);
-  border-color: #ffe082;
-}
-.heatmap-cell.heatmap-red {
-  background: linear-gradient(135deg, #ff8a80 60%, #ff5252 100%);
-  border-color: #ff8a80;
-}
-.heatmap-cell:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px #bdbdbd;
-}
-
-@keyframes progressBarGlow {
-  from { box-shadow: 0 0 0px #1976d2; }
-  to { box-shadow: 0 0 8px #1976d2; }
-}
-
-ul {
-  margin: 0 0 0 18px;
-  padding: 0;
-}
-
-li {
-  font-size: 0.99rem;
-  margin-bottom: 2px;
-}
-
-@media (max-width: 600px) {
-  .program-detail-container {
-    padding: 12px 2px;
-  }
-  .program-stats {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .stat-box {
-    min-width: 0;
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .days-grid {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 10px;
-  }
-  .day-detail-panel {
-    padding: 10px 4px 10px 4px;
-  }
-  .days-carousel {
-    gap: 10px;
-  }
-  .day-box {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-}
-
-@media (max-width: 700px) {
-  .program-performance-container {
-    padding: 10px 2px;
-  }
-  .summary-cards {
-    gap: 10px;
-  }
-  .summary-card {
-    min-width: 100px;
-    padding: 10px 8px;
-    font-size: 1em;
-  }
-  .heatmap-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .carousel-days-list > div {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-  .extra-stats-row {
-    gap: 8px;
-  }
-  .extra-card {
-    min-width: 90px;
-    padding: 8px 4px;
-    font-size: 0.98em;
-  }
-  .pie-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .selected-day-detail {
-    padding: 10px 4px 10px 4px;
-  }
-}
-
-.dashboard-section {
-  margin: 40px 0 36px 0;
-  background: var(--main-foreground-color, #fff);
-  border-radius: 18px;
-  box-shadow: 0 2px 16px rgba(33,150,243,0.10);
-  padding: 28px 18px 18px 18px;
-  border: 1.5px solid #bbdefb;
-  position: relative;
-  z-index: 1;
-}
-.dashboard-section h3 {
-  margin-bottom: 18px;
-  font-size: 1.22rem;
-  font-weight: 700;
-  color: #1976d2;
-  letter-spacing: 0.5px;
-}
-.streak-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 12px;
-  padding: 12px 22px;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #ff9800;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Duolingo Stili Seri Uyarısı
-.streak-warning {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fff3e0 60%, #ffe0b2 100%);
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-size: 1.08rem;
-  color: #ff9800;
-  font-weight: 700;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  border: 1.5px solid #ffb300;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Google Classroom Stili Görev Takvimi
-.task-calendar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.task-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.task-row.completed {
-  color: #43a047;
-}
-.task-row.late {
-  color: #ff9800;
-}
-.task-row.missing {
-  color: #e53935;
-}
-// Khan Academy Beceri Ağacı
-.skill-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.skill-branch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #e3f2fd 60%, #fff 100%);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  color: #1976d2;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-  position: relative;
-}
-.skill-branch.locked {
-  color: #aaa;
-  background: #f5f5f5;
-  text-decoration: line-through;
-}
-.skill-progress {
-  min-width: 60px;
-  max-width: 90px;
-  margin: 0 4px;
-  height: 7px;
-  border-radius: 4px;
-  background: #e3f2fd;
-}
-// Quizlet Stili Saat ve Başarı
-.study-stats-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.study-stat {
-  background: linear-gradient(90deg, #f3e5f5 60%, #ce93d8 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #6a1b9a;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ce93d8;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Notion Dashboard Odak Konular
-.focus-topics {
-  background: linear-gradient(90deg, #e1f5fe 60%, #b3e5fc 100%);
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-size: 1.01rem;
-  color: #0277bd;
-  font-weight: 600;
-  margin-bottom: 18px;
-  box-shadow: 0 1px 6px #b3e5fc;
-}
-// Forest Uygulaması Stili
-.forest-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 1.01rem;
-  color: #388e3c;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #a5d6a7;
-  margin-bottom: 12px;
-}
-.forest-tree {
-  font-size: 1.3em;
-  margin-right: 2px;
-}
-// Udemy Stili İlerleme Barı
-.course-progress-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.course-progress {
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #ff9800;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ffe082;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Trello Stili Kartlar
-.trello-board {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-.trello-list {
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 180px;
-  box-shadow: 0 1px 6px #bbdefb44;
-}
-.trello-list-title {
-  font-weight: 700;
-  color: #1976d2;
-  margin-bottom: 8px;
-}
-.trello-card {
-  background: #fff;
-  border-radius: 7px;
-  padding: 6px 10px;
-  margin-bottom: 6px;
-  font-size: 0.97rem;
-  color: #333;
-  box-shadow: 0 1px 2px #bbdefb44;
-}
-.trello-card.completed {
-  color: #43a047;
-  text-decoration: line-through;
-}
-.trello-card.inprogress {
-  color: #ff9800;
-}
-.trello-card.planned {
-  color: #1976d2;
-}
-.trello-card.delayed {
-  color: #e53935;
-}
-
-.gauge-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-  align-items: flex-end;
-}
-.gauge-item {
-  min-width: 180px;
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 12px 18px 16px 18px;
-  box-shadow: 0 1px 6px #bbdefb44;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 1.01rem;
-  font-weight: 600;
-  color: #1976d2;
-}
-.gauge-label {
-  margin-bottom: 8px;
-  font-weight: 700;
-  color: #333;
-}
-.gauge-bar {
-  width: 140px;
-  height: 18px;
-  background: #e3f2fd;
-  border-radius: 9px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 2px;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.gauge-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
-  border-radius: 9px 0 0 9px;
-  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
-}
-.gauge-bar-text {
-  position: absolute;
-  right: 10px;
-  top: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-size: 0.98em;
-  color: #fff;
-  font-weight: 700;
-  text-shadow: 0 1px 4px #1976d2;
-}
-
-.heatmap-grid {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  max-width: 220px;
-}
-.heatmap-cell {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  border: 1.5px solid #e0e0e0;
-  background: #eee;
-  transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
-  box-shadow: 0 1px 4px #e0e0e0;
-}
-.heatmap-cell.heatmap-green {
-  background: linear-gradient(135deg, #43ea7d 60%, #1de982 100%);
-  border-color: #43ea7d;
-}
-.heatmap-cell.heatmap-yellow {
-  background: linear-gradient(135deg, #ffe082 60%, #ffd54f 100%);
-  border-color: #ffe082;
-}
-.heatmap-cell.heatmap-red {
-  background: linear-gradient(135deg, #ff8a80 60%, #ff5252 100%);
-  border-color: #ff8a80;
-}
-.heatmap-cell:hover {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px #bdbdbd;
-}
-
-@keyframes progressBarGlow {
-  from { box-shadow: 0 0 0px #1976d2; }
-  to { box-shadow: 0 0 8px #1976d2; }
-}
-
-ul {
-  margin: 0 0 0 18px;
-  padding: 0;
-}
-
-li {
-  font-size: 0.99rem;
-  margin-bottom: 2px;
-}
-
-@media (max-width: 600px) {
-  .program-detail-container {
-    padding: 12px 2px;
-  }
-  .program-stats {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .stat-box {
-    min-width: 0;
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .days-grid {
-    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-    gap: 10px;
-  }
-  .day-detail-panel {
-    padding: 10px 4px 10px 4px;
-  }
-  .days-carousel {
-    gap: 10px;
-  }
-  .day-box {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-}
-
-@media (max-width: 700px) {
-  .program-performance-container {
-    padding: 10px 2px;
-  }
-  .summary-cards {
-    gap: 10px;
-  }
-  .summary-card {
-    min-width: 100px;
-    padding: 10px 8px;
-    font-size: 1em;
-  }
-  .heatmap-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .carousel-days-list > div {
-    min-width: 80px;
-    max-width: 90px;
-    font-size: 0.95em;
-  }
-  .extra-stats-row {
-    gap: 8px;
-  }
-  .extra-card {
-    min-width: 90px;
-    padding: 8px 4px;
-    font-size: 0.98em;
-  }
-  .pie-section {
-    padding: 8px 2px 8px 2px;
-  }
-  .selected-day-detail {
-    padding: 10px 4px 10px 4px;
-  }
-}
-
-.dashboard-section {
-  margin: 40px 0 36px 0;
-  background: var(--main-foreground-color, #fff);
-  border-radius: 18px;
-  box-shadow: 0 2px 16px rgba(33,150,243,0.10);
-  padding: 28px 18px 18px 18px;
-  border: 1.5px solid #bbdefb;
-  position: relative;
-  z-index: 1;
-}
-.dashboard-section h3 {
-  margin-bottom: 18px;
-  font-size: 1.22rem;
-  font-weight: 700;
-  color: #1976d2;
-  letter-spacing: 0.5px;
-}
-.streak-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 12px;
-  padding: 12px 22px;
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #ff9800;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Duolingo Stili Seri Uyarısı
-.streak-warning {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #fff3e0 60%, #ffe0b2 100%);
-  border-radius: 12px;
-  padding: 10px 18px;
-  font-size: 1.08rem;
-  color: #ff9800;
-  font-weight: 700;
-  box-shadow: 0 2px 8px #ffe08244;
-  margin-bottom: 18px;
-  border: 1.5px solid #ffb300;
-  animation: streakPulse 1.2s infinite alternate;
-}
-// Google Classroom Stili Görev Takvimi
-.task-calendar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.task-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f5f7fa;
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.task-row.completed {
-  color: #43a047;
-}
-.task-row.late {
-  color: #ff9800;
-}
-.task-row.missing {
-  color: #e53935;
-}
-// Khan Academy Beceri Ağacı
-.skill-tree {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.skill-branch {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #e3f2fd 60%, #fff 100%);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 1.01rem;
-  color: #1976d2;
-  font-weight: 600;
-  box-shadow: 0 1px 4px #bbdefb44;
-  position: relative;
-}
-.skill-branch.locked {
-  color: #aaa;
-  background: #f5f5f5;
-  text-decoration: line-through;
-}
-.skill-progress {
-  min-width: 60px;
-  max-width: 90px;
-  margin: 0 4px;
-  height: 7px;
-  border-radius: 4px;
-  background: #e3f2fd;
-}
-// Quizlet Stili Saat ve Başarı
-.study-stats-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.study-stat {
-  background: linear-gradient(90deg, #f3e5f5 60%, #ce93d8 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #6a1b9a;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ce93d8;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Notion Dashboard Odak Konular
-.focus-topics {
-  background: linear-gradient(90deg, #e1f5fe 60%, #b3e5fc 100%);
-  border-radius: 10px;
-  padding: 10px 18px;
-  font-size: 1.01rem;
-  color: #0277bd;
-  font-weight: 600;
-  margin-bottom: 18px;
-  box-shadow: 0 1px 6px #b3e5fc;
-}
-// Forest Uygulaması Stili
-.forest-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(90deg, #e8f5e9 60%, #a5d6a7 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 1.01rem;
-  color: #388e3c;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #a5d6a7;
-  margin-bottom: 12px;
-}
-.forest-tree {
-  font-size: 1.3em;
-  margin-right: 2px;
-}
-// Udemy Stili İlerleme Barı
-.course-progress-row {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-.course-progress {
-  background: linear-gradient(90deg, #fffde7 60%, #ffe082 100%);
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-size: 0.98rem;
-  color: #ff9800;
-  font-weight: 600;
-  box-shadow: 0 1px 6px #ffe082;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-// Trello Stili Kartlar
-.trello-board {
-  display: flex;
-  gap: 18px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-.trello-list {
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 180px;
-  box-shadow: 0 1px 6px #bbdefb44;
-}
-.trello-list-title {
-  font-weight: 700;
-  color: #1976d2;
-  margin-bottom: 8px;
-}
-.trello-card {
-  background: #fff;
-  border-radius: 7px;
-  padding: 6px 10px;
-  margin-bottom: 6px;
-  font-size: 0.97rem;
-  color: #333;
-  box-shadow: 0 1px 2px #bbdefb44;
-}
-.trello-card.completed {
-  color: #43a047;
-  text-decoration: line-through;
-}
-.trello-card.inprogress {
-  color: #ff9800;
-}
-.trello-card.planned {
-  color: #1976d2;
-}
-.trello-card.delayed {
-  color: #e53935;
-}
-
-.gauge-row {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-  align-items: flex-end;
-}
-.gauge-item {
-  min-width: 180px;
-  background: #f5f7fa;
-  border-radius: 10px;
-  padding: 12px 18px 16px 18px;
-  box-shadow: 0 1px 6px #bbdefb44;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  font-size: 1.01rem;
-  font-weight: 600;
-  color: #1976d2;
-}
-.gauge-label {
-  margin-bottom: 8px;
-  font-weight: 700;
-  color: #333;
-}
-.gauge-bar {
-  width: 140px;
-  height: 18px;
-  background: #e3f2fd;
-  border-radius: 9px;
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 2px;
-  box-shadow: 0 1px 4px #bbdefb44;
-}
-.gauge-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #1976d2 60%, #64b5f6 100%);
-  border-radius: 9px 0 0 9px;
-  transition: width 0.7s cubic-bezier(.68,-0.55,.27,1.55);
-}
-.gauge-bar-text {
-  position: absolute;
-  right: 10px;
-  top: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  font-size: 0.98em;
-  color: #fff;
-  font-weight: 700;
-  text-shadow: 0 1px 4px #1976d2;
-}
-
-.heatmap-grid {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  max-width: 220px;
-}
-.heatmap-cell {
-  width: 22px;
-  height: 22px;
   border-radius: 5px;
   border: 1.5px solid #e0e0e0;
   background: #eee;

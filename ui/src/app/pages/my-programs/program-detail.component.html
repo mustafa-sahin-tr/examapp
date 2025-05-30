@@ -256,7 +256,7 @@
   <!-- Yeni Dashboard Bölümü -->
   <div class="dashboard-section">
     <h3>📊 Günlük Uyum Oranı (Son 7 Gün)</h3>
-    <div class="subject-progress-row">
+    <div class="course-progress-row">
       <div *ngFor="let day of program.days.slice(-7)" class="subject-progress">
         <span>{{ day.date | date : 'd MMM' }}</span>
         <mat-progress-bar mode="determinate" [value]="(day.solved / program.questionsPerDay) * 100"></mat-progress-bar>
@@ -279,7 +279,7 @@
     ></ngx-charts-bar-vertical> -->
 
     <h3>📅 Çalışılan/Çalışılmayan Gün Takvimi (Son 14 Gün)</h3>
-    <div class="subject-progress-row">
+    <div class="course-progress-row">
       <div
         *ngFor="let day of program.days.slice(-14)"
         [ngClass]="{

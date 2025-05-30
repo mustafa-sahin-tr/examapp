@@ -1,0 +1,17 @@
+{
+  "name": "angular-app",
+  "dockerComposeFile": [
+    "../docker-compose.yaml",
+    "../docker-compose.override.yml"
+  ],
+  "service": "angular-app",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "angular.ng-template",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

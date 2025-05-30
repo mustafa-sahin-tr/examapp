@@ -1,0 +1,11 @@
+pillow
+tqdm
+jupyter
+ipykernel
+fastapi
+uvicorn
+pillow
+ultralytics
+python-multipart
+pyzbar
+pytesseract

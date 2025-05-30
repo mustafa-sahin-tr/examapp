@@ -1,0 +1,16 @@
+{
+  "name": "badge-service",
+  "dockerComposeFile": [
+    "../../docker-compose.yaml",
+    "../../docker-compose.override.yml"
+  ],
+  "service": "exam-badge-api",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp"
+      ]
+    }
+  }
+}

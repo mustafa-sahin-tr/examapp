@@ -1,0 +1,22 @@
+{
+  "folders": [
+    { "path": "." }
+  ],
+  "settings": {
+    "files.exclude": {      
+      "**/nuget-packages": true,
+      "**/pgadmin-data": true,
+      "**/postgres": true,
+      "**/minio-data": true,
+      "**/rabbitmq": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode-remote.remote-containers",
+      "ms-dotnettools.csharp",
+      "angular.ng-template",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}

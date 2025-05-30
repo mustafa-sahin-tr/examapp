@@ -1,0 +1,16 @@
+{
+  "name": "exam-outbox-publisher",
+  "dockerComposeFile": [
+    "../../../docker-compose.yaml",
+    "../../../docker-compose.override.yml"
+  ],
+  "service": "exam-outbox-publisher",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp"
+      ]
+    }
+  }
+}

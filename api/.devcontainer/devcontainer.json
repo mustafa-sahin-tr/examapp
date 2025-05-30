@@ -1,0 +1,17 @@
+{
+  "name": "exam-dotnet-api",
+  "dockerComposeFile": [
+    "../docker-compose.yaml",
+    "../docker-compose.override.yml"
+  ],
+  "service": "exam-dotnet-api",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "editorconfig.editorconfig"
+      ]
+    }
+  }
+}

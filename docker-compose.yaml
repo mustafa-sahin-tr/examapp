@@ -150,7 +150,7 @@ services:
       context: .
       dockerfile: question-detector/Dockerfile
     volumes:
-      - ./question-detector/app:/app
+      - ./question-detector:/app
     working_dir: /app
     tty: true
     stdin_open: true

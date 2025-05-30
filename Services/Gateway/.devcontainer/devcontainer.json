@@ -1,0 +1,16 @@
+{
+  "name": "ocelot-gateway",
+  "dockerComposeFile": [
+    "../../../docker-compose.yaml",
+    "../../../docker-compose.override.yml"
+  ],
+  "service": "ocelot-gateway",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp"
+      ]
+    }
+  }
+}

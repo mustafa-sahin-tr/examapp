@@ -10,7 +10,7 @@ WORKDIR /app
 # Expose the default ASP.NET Core port for development
 RUN apt-get update && apt-get install -y ca-certificates
 
-# Install required tools for development (e.g., curl, nano, git)
+# Install required tools for development     (e.g., curl, nano, git)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     curl \

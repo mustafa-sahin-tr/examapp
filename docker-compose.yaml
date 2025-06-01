@@ -39,6 +39,25 @@ services:
     networks:
       - mynetwork      
 
+  exam-catalog-api:
+    container_name: exam-catalog-api
+    build:
+      context: ./dockerfiles/catalog
+      dockerfile: Dockerfile.catalog
+    ports:
+      - "8009:8009"
+      - "5089:5089"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8009
+    volumes:
+      - ./Services/CatalogService:/app
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+    networks:
+      - mynetwork            
+
   exam-outbox-publisher:
     container_name: exam-outbox-publisher
     build:

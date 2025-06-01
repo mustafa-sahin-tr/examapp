@@ -89,95 +89,14 @@ public class AppDbContext : DbContext
     public DbSet<ProgramStepAction> ProgramStepActions { get; set; } // ProgramStepAction tablosu
     public DbSet<UserProgram> UserPrograms { get; set; } // UserProgram tablosu
     public DbSet<UserProgramSchedule> UserProgramSchedules { get; set; } // UserProgramSchedule tablosu
+    public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
+    public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
+
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<Grade>().HasData(
-            new Grade { Id = 1, Name = "1. Sınıf" },
-            new Grade { Id = 2, Name = "2. Sınıf" },
-            new Grade { Id = 3, Name = "3. Sınıf" },
-            new Grade { Id = 4, Name = "4. Sınıf" },
-            new Grade { Id = 5, Name = "5. Sınıf" },
-            new Grade { Id = 6, Name = "6. Sınıf" },
-            new Grade { Id = 7, Name = "7. Sınıf" },
-            new Grade { Id = 8, Name = "8. Sınıf" },
-            new Grade { Id = 9, Name = "9. Sınıf" },
-            new Grade { Id = 10, Name = "10. Sınıf" },
-            new Grade { Id = 11, Name = "11. Sınıf" },
-            new Grade { Id = 12, Name = "12. Sınıf" }
-        );
-
-        modelBuilder.Entity<Subject>().HasData(
-            new Subject { Id = 1, Name = "Türkçe" },
-            new Subject { Id = 2, Name = "Matematik" },
-            new Subject { Id = 3, Name = "Hayat Bilgisi" },
-            new Subject { Id = 4, Name = "Fen Bilimleri" },
-            new Subject { Id = 5, Name = "Sosyal Bilgiler" },
-            new Subject { Id = 6, Name = "T.C. İnkılâp Tarihi ve Atatürkçülük" },
-            new Subject { Id = 7, Name = "Yabancı Dil" },
-            new Subject { Id = 8, Name = "Din Kültürü ve Ahlak Bilgisi" },
-            new Subject { Id = 9, Name = "Türk Dili ve Edebiyatı" },
-            new Subject { Id = 10, Name = "Tarih" },
-            new Subject { Id = 11, Name = "Coğrafya" },
-            new Subject { Id = 12, Name = "Fizik" },
-            new Subject { Id = 13, Name = "Kimya" },
-            new Subject { Id = 14, Name = "Biyoloji" },
-            new Subject { Id = 15, Name = "Felsefe" }
-        );
-
-        modelBuilder.Entity<GradeSubject>().HasData(
-            new GradeSubject { Id = 1, GradeId = 1, SubjectId = 1 }, // 1. Sınıf - Türkçe
-            new GradeSubject { Id = 2, GradeId = 1, SubjectId = 2 }, // 1. Sınıf - Matematik
-            new GradeSubject { Id = 3, GradeId = 1, SubjectId = 3 }, // 1. Sınıf - Hayat Bilgisi
-            new GradeSubject { Id = 4, GradeId = 2, SubjectId = 1 },
-            new GradeSubject { Id = 5, GradeId = 2, SubjectId = 2 },
-            new GradeSubject { Id = 6, GradeId = 2, SubjectId = 3 },
-            new GradeSubject { Id = 7, GradeId = 3, SubjectId = 1 },
-            new GradeSubject { Id = 8, GradeId = 3, SubjectId = 2 },
-            new GradeSubject { Id = 9, GradeId = 3, SubjectId = 3 },
-            new GradeSubject { Id = 10, GradeId = 3, SubjectId = 4 },
-            new GradeSubject { Id = 11, GradeId = 4, SubjectId = 1 },
-            new GradeSubject { Id = 12, GradeId = 4, SubjectId = 2 },
-            new GradeSubject { Id = 13, GradeId = 4, SubjectId = 4 },
-            new GradeSubject { Id = 14, GradeId = 4, SubjectId = 5 },
-
-            // 🟢 Ortaokul Dersleri (5-8. Sınıf)
-            new GradeSubject { Id = 15, GradeId = 5, SubjectId = 1 },
-            new GradeSubject { Id = 16, GradeId = 5, SubjectId = 2 },
-            new GradeSubject { Id = 17, GradeId = 5, SubjectId = 4 },
-            new GradeSubject { Id = 18, GradeId = 5, SubjectId = 5 },
-            new GradeSubject { Id = 19, GradeId = 5, SubjectId = 7 },
-            new GradeSubject { Id = 20, GradeId = 6, SubjectId = 1 },
-            new GradeSubject { Id = 21, GradeId = 6, SubjectId = 2 },
-            new GradeSubject { Id = 22, GradeId = 6, SubjectId = 4 },
-            new GradeSubject { Id = 23, GradeId = 6, SubjectId = 5 },
-
-            // 🟢 Lise Dersleri (9-12. Sınıf)
-            new GradeSubject { Id = 24, GradeId = 9, SubjectId = 9 },
-            new GradeSubject { Id = 25, GradeId = 9, SubjectId = 10 },
-            new GradeSubject { Id = 26, GradeId = 9, SubjectId = 11 },
-            new GradeSubject { Id = 27, GradeId = 9, SubjectId = 2 },
-            new GradeSubject { Id = 28, GradeId = 9, SubjectId = 12 },
-            new GradeSubject { Id = 29, GradeId = 9, SubjectId = 13 },
-            new GradeSubject { Id = 30, GradeId = 9, SubjectId = 14 },
-            new GradeSubject { Id = 31, GradeId = 9, SubjectId = 7 },
-            new GradeSubject { Id = 32, GradeId = 10, SubjectId = 9 },
-            new GradeSubject { Id = 33, GradeId = 10, SubjectId = 10 },
-            new GradeSubject { Id = 34, GradeId = 10, SubjectId = 11 },
-            new GradeSubject { Id = 35, GradeId = 10, SubjectId = 2 },
-            new GradeSubject { Id = 36, GradeId = 10, SubjectId = 12 },
-            new GradeSubject { Id = 37, GradeId = 10, SubjectId = 13 },
-            new GradeSubject { Id = 38, GradeId = 10, SubjectId = 14 },
-            new GradeSubject { Id = 39, GradeId = 10, SubjectId = 7 },
-            new GradeSubject { Id = 40, GradeId = 11, SubjectId = 9 },
-            new GradeSubject { Id = 41, GradeId = 11, SubjectId = 10 },
-            new GradeSubject { Id = 42, GradeId = 11, SubjectId = 12 },
-            new GradeSubject { Id = 43, GradeId = 11, SubjectId = 13 },
-            new GradeSubject { Id = 44, GradeId = 11, SubjectId = 14 },
-            new GradeSubject { Id = 45, GradeId = 11, SubjectId = 15 }
-        );
 
         modelBuilder.Entity<Student>()
             .HasMany(s => s.StudentPoints)  // 🟢 Bir Student'in birden fazla StudentPoints kaydı vardır.
@@ -324,9 +243,20 @@ public class AppDbContext : DbContext
             .HasForeignKey(ups => ups.UserProgramId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<LearningOutcome>()
+            .HasOne(lo => lo.SubTopic)
+            .WithMany() // SubTopic içinde LearningOutcomes kolleksiyonu yoksa WithMany() kullanabiliriz
+            .HasForeignKey(lo => lo.SubTopicId);
+
+        modelBuilder.Entity<LearningOutcomeDetail>()
+            .HasOne(lod => lod.LearningOutcome)
+            .WithMany(lo => lo.Details)
+            .HasForeignKey(lod => lod.LearningOutcomeId);
+
         // Call Seeders
-        TopicSeed.SeedData(modelBuilder); // Assuming TopicSeed is already using HasData
+        TopicSeed.SeedGradesSubjects(modelBuilder); // Assuming TopicSeed is already using HasData
         ProgramStepSeed.SeedData(modelBuilder); // New seeder for ProgramSteps
+        // CatalogSeed.Initialize(); // Assuming CatalogSeed is already using HasData
 
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())

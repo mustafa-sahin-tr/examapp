@@ -184,11 +184,11 @@
         style="margin-top: 8px"
       ></mat-progress-bar>
       <div *ngIf="bulkImportResults" style="margin-top: 12px">
-        <div *ngIf="bulkImportResults.isSuccess" class="success-message">
+        <div *ngIf="bulkImportResults.success" class="success-message">
           ✔️ Toplu yükleme tamamlandı. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
           {{ bulkImportResults.failureCount }}
         </div>
-        <div *ngIf="!bulkImportResults.isSuccess" class="error-message">
+        <div *ngIf="!bulkImportResults.success" class="error-message">
           ❌ Yükleme sırasında hatalar oluştu. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
           {{ bulkImportResults.failureCount }}
         </div>

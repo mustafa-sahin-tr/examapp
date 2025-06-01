@@ -273,12 +273,12 @@ export class TestCreateComponent implements OnInit {
           this.isUploading = false;
         },
         error: (err) => {
-          this.bulkImportResults = { isSuccess: false, message: 'Yükleme sırasında hata oluştu.' };
+          this.bulkImportResults = err; //{ isSuccess: false, message: 'Yükleme sırasında hata oluştu.' };
           this.isUploading = false;
         },
       });
     } catch (e) {
-      this.bulkImportResults = { isSuccess: false, message: 'Excel dosyası okunamadı.' };
+      this.bulkImportResults = { success: false, message: 'Excel dosyası okunamadı.' };
       this.isUploading = false;
     }
   }

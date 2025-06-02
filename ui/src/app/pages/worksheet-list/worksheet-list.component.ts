@@ -15,6 +15,8 @@ import { Subject } from '../../models/subject';
 import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
 import { IsStudentDirective } from '../../shared/directives/is-student.directive';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { GradesService } from '../../services/grades.service';
+import { Grade } from '../../models/student';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -51,12 +53,14 @@ export class WorksheetListComponent {
   });
   completedTestSignal = toSignal(this.testService.getCompleted(1));
   subjectsSignal = toSignal(this.subjectService.loadCategories());
+  gradesService = inject(GradesService);
+  gradesSignal = toSignal(this.gradesService.getGrades());
   totalCount = 0;
   pageSize = 10;
   pageNumber = 1;
   scrollDistance = 600;
   selectedSubjectIds: number[] = [];
-  selectedGradeId: number | undefined;
+  selectedGradeIds: number[] = [];
 
   @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;
 
@@ -80,6 +84,10 @@ export class WorksheetListComponent {
 
   trackCategory(index: number, category: Subject): number {
     return category.id;
+  }
+
+  trackGrades(index: number, grade: Grade): number {
+    return grade.id || index;
   }
 
   trackCompletedTests(index: number, instance: InstanceSummary): number {
@@ -131,7 +139,7 @@ export class WorksheetListComponent {
 
   private updatePagedWorksheets(page: number): void {
     this.testService
-      .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeId, page)
+      .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeIds, page)
       .subscribe((results) => {
         this.pagedWorksheetsSignal.set(results);
       });
@@ -159,6 +167,19 @@ export class WorksheetListComponent {
       }
     }
     console.log('Checkbox State:', event.checked, 'Value:', event.value);
+  }
+
+  onGradeCheckboxChange(event: { checked: boolean; value: any }) {
+    if (event.checked) {
+      if (!this.selectedGradeIds.includes(event.value.id)) {
+        this.selectedGradeIds = [...this.selectedGradeIds, event.value.id];
+      }
+    } else {
+      this.selectedGradeIds = this.selectedGradeIds.filter((id) => id !== event.value.id);
+    }
+    this.pageNumber = 1;
+    this.updatePagedWorksheets(this.pageNumber);
+    console.log('Grade Checkbox State:', event.checked, 'Value:', event.value);
   }
 
   handleLeftNavigation() {

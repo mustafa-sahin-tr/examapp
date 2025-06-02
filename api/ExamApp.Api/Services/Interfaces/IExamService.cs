@@ -1,5 +1,6 @@
 using System;
 using ExamApp.Api.Data;
+using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
 
 namespace ExamApp.Api.Services.Interfaces;
@@ -31,5 +32,5 @@ public interface IExamService
     Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId);
 
     Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId);
-
+    Task<List<Grade>> GetGradesAsync();
 }

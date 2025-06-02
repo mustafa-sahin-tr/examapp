@@ -54,6 +54,20 @@
                 </li>
               </ul>
             </div>
+            <div class="filter-category">
+              <h4>Sınıflar</h4>
+              <ul>
+                <li *ngFor="let grade of gradesSignal(); trackBy: trackGrades" class="search-result-item">
+                  <app-custom-checkbox
+                    [label]="grade.name"
+                    [checked]="false"
+                    [value]="grade"
+                    (checkedChange)="onGradeCheckboxChange($event)"
+                  >
+                  </app-custom-checkbox>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

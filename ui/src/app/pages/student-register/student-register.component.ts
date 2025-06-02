@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 
 import { Router } from '@angular/router';
 import { MatInputModule } from '@angular/material/input';
@@ -9,6 +10,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { StudentService } from '../../services/student.service';
+import { GradesService } from '../../services/grades.service';
 
 @Component({
   selector: 'app-student-register',
@@ -24,11 +26,12 @@ import { StudentService } from '../../services/student.service';
   ],
   templateUrl: './student-register.component.html',
 })
-export class StudentRegisterComponent {
+export class StudentRegisterComponent implements OnInit {
   private fb = inject(FormBuilder);
   private studentService = inject(StudentService);
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
+  private gradesService = inject(GradesService);
 
   isSubmitting = signal(false);
 
@@ -37,6 +40,19 @@ export class StudentRegisterComponent {
     schoolName: ['', [Validators.required, Validators.maxLength(100)]],
     gradeId: [null], // Opsiyonel
   });
+
+  grades: any[] = [];
+
+  ngOnInit(): void {
+    this.loadGrades();
+  }
+
+  loadGrades() {
+    this.gradesService.getGrades().subscribe({
+      next: (grades) => (this.grades = grades),
+      error: () => (this.grades = []),
+    });
+  }
 
   submitForm() {
     if (this.studentForm.invalid) return;

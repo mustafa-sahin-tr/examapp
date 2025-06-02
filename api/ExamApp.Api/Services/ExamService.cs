@@ -35,8 +35,8 @@ public class ExamService : IExamService
         }
         else
         {
-            if (dto.gradeId.HasValue)
-                query = query.Where(t => t.GradeId == dto.gradeId.Value);
+            if (dto.gradeIds != null && dto.gradeIds.Any())
+                query = query.Where(t => dto.gradeIds.Contains(t.GradeId));
 
             if (dto.subjectIds != null && dto.subjectIds.Any())
                 query = query.Where(t => t.SubjectId.HasValue && dto.subjectIds.Contains(t.SubjectId.Value));
@@ -113,8 +113,8 @@ public class ExamService : IExamService
         }
         else
         {
-            if (dto.gradeId.HasValue)
-                query = query.Where(t => t.GradeId == dto.gradeId.Value);
+            if (dto.gradeIds != null && dto.gradeIds.Any())
+                query = query.Where(t => dto.gradeIds.Contains(t.GradeId));
             else if (userProfile.Student != null && userProfile.Student.GradeId.HasValue)
                 query = query.Where(t => t.GradeId == userProfile.Student.GradeId);
 
@@ -799,7 +799,7 @@ public class ExamService : IExamService
                         BookId = book.Id
                     },
                     ];
-                }               
+                }
                 _context.Books.Add(book);
                 await _context.SaveChangesAsync();
             }
@@ -816,7 +816,7 @@ public class ExamService : IExamService
                         Success = false,
                         Message = "Kitap bulunamadı!"
                     };
-                    
+
                 }
 
                 // Eğer zaten bu kitap için test zaten mevcutsa o halde success olarak devam et
@@ -1121,4 +1121,8 @@ public class ExamService : IExamService
         return result;
     }
 
+    public async Task<List<Grade>> GetGradesAsync()
+    {
+        return await _context.Grades.ToListAsync();
+    }
 }

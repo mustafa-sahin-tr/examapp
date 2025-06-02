@@ -52,13 +52,13 @@ export class TestService {
   search(
     query: string | undefined,
     subjectIds: number[],
-    gradeId?: number,
+    gradeIds: number[],
     pageNumber: number = 1,
     pageSize = 10,
     booktestId = 0
   ): Observable<Paged<Test>> {
     const subjectIdsParam = subjectIds && subjectIds.length > 0 ? '&subjectIds=' + subjectIds.join(`&subjectIds=`) : '';
-    const gradeIdParam = gradeId ? `&gradeId=${gradeId}` : '';
+    const gradeIdParam = gradeIds && gradeIds.length > 0 ? '&gradeIds=' + gradeIds.join(`&gradeIds=`) : '';
     const bookTestIdParam = booktestId ? `&bookTestId=${booktestId}` : '';
     var reqUrl = `${this.baseUrl}/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
     console.log(reqUrl);

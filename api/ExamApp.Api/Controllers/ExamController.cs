@@ -80,7 +80,7 @@ public class ExamController : BaseController
         int? id = 0,
         string? search = null,
         [FromQuery] List<int>? subjectIds = null,
-        int? gradeId = null,
+        [FromQuery] List<int>? gradeIds = null,
         int pageNumber = 1,
         int pageSize = 10,
         int bookTestId = 0)
@@ -90,7 +90,7 @@ public class ExamController : BaseController
             id = id,
             search = search,
             subjectIds = subjectIds,
-            gradeId = gradeId,
+            gradeIds = gradeIds,
             pageNumber = pageNumber,
             pageSize = pageSize,
             bookTestId = bookTestId
@@ -246,6 +246,13 @@ public class ExamController : BaseController
         }
         var result = await _examService.GetGroupedStudentStatistics(profile.ProfileId);
         return Ok(result);
+    }
+
+    [HttpGet("grades")]
+    public async Task<IActionResult> GetGrades()
+    {
+        var grades = await _examService.GetGradesAsync();
+        return Ok(grades);
     }
 
 }

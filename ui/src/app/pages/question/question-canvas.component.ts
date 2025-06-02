@@ -118,7 +118,7 @@ export class QuestionCanvasComponent implements OnInit {
         if (!searchValue) {
           return of({ items: [] });
         }
-        return this.testService.search(searchValue, [], undefined, 1, 1000);
+        return this.testService.search(searchValue, [], [], 1, 1000);
       })
     ),
     { initialValue: { items: [] } }

@@ -19,6 +19,7 @@ import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-
 import { IsStudentDirective } from '../../shared/directives/is-student.directive';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { GradesService } from '../../services/grades.service';
 
 @Component({
   selector: 'app-worksheet-list-enhanced',
@@ -64,11 +65,13 @@ export class WorksheetListEnhancedComponent {
   });
   completedTestSignal = toSignal(this.testService.getCompleted(1));
   subjectsSignal = toSignal(this.subjectService.loadCategories());
+  gradeService = inject(GradesService);
+  gradesSignal = toSignal(this.gradeService.getGrades());
 
   // State
   currentSection = signal<'newest' | 'hot' | 'completed' | 'search' | 'relevant'>('newest');
   selectedSubjectIds = signal<number[]>([]);
-  selectedGradeId = signal<number | undefined>(undefined);
+  selectedGradeIds = signal<number[]>([]);
   pageNumber = signal(1);
   pageSize = 12;
   isLoading = signal(false);
@@ -139,6 +142,10 @@ export class WorksheetListEnhancedComponent {
     return subject.id;
   }
 
+  trackGrades(index: number, grade: { id: number }): number {
+    return grade.id || index;
+  }
+
   trackCompletedTests(index: number, instance: InstanceSummary): number {
     return instance.id || index;
   }
@@ -173,7 +180,7 @@ export class WorksheetListEnhancedComponent {
     const searchTerm = this.searchForm.get('searchTerm')?.value || '';
 
     this.testService
-      .search(searchTerm, this.selectedSubjectIds(), this.selectedGradeId(), this.pageNumber())
+      .search(searchTerm, this.selectedSubjectIds(), this.selectedGradeIds(), this.pageNumber())
       .subscribe((results) => {
         this.pagedWorksheetsSignal.set(results);
         this.isLoading.set(false);
@@ -197,9 +204,25 @@ export class WorksheetListEnhancedComponent {
     }
   }
 
+  toggleGradeFilter(gradeId: number) {
+    const currentIds = this.selectedGradeIds();
+    const index = currentIds.indexOf(gradeId);
+
+    if (index > -1) {
+      this.selectedGradeIds.set(currentIds.filter((id) => id !== gradeId));
+    } else {
+      this.selectedGradeIds.set([...currentIds, gradeId]);
+    }
+
+    if (this.currentSection() === 'search') {
+      this.pageNumber.set(1);
+      this.updateSearchResults();
+    }
+  }
+
   clearFilters() {
     this.selectedSubjectIds.set([]);
-    this.selectedGradeId.set(undefined);
+    this.selectedGradeIds.set([]);
     this.searchForm.patchValue({
       sortBy: 'newest',
       difficulty: 'all',
@@ -247,7 +270,7 @@ export class WorksheetListEnhancedComponent {
     const searchTerm = this.searchForm.get('searchTerm')?.value || '';
     if (searchTerm.trim()) {
       // Eğer search term varsa, ona göre alakalı testleri getir
-      this.testService.search(searchTerm, [], undefined, 1, 6).subscribe((results) => {
+      this.testService.search(searchTerm, [], this.selectedGradeIds(), 1, 6).subscribe((results) => {
         this.relevantTestsSignal.set(results.items);
       });
     } else {

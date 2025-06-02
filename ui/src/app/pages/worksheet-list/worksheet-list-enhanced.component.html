@@ -180,6 +180,17 @@
               ></app-custom-checkbox>
             </div>
           </div>
+          <h4 class="filter-title">Sınıflar</h4>
+          <div class="filter-options">
+            <div class="filter-checkbox" *ngFor="let grade of gradesSignal(); trackBy: trackGrades">
+              <app-custom-checkbox
+                [label]="grade.name"
+                [checked]="selectedGradeIds().includes(grade.id)"
+                [value]="grade"
+                (checkedChange)="toggleGradeFilter(grade)"
+              ></app-custom-checkbox>
+            </div>
+          </div>
         </div>
 
         <!-- Sort Options -->

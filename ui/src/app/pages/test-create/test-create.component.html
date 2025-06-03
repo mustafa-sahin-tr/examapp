@@ -200,17 +200,25 @@
 
               <ng-container matColumnDef="bookName">
                 <th mat-header-cell *matHeaderCellDef>Kitap</th>
-                <td mat-cell *matCellDef="let element">{{ element.bookName }}</td>
+                <td mat-cell *matCellDef="let element; let i = index">
+                  <span [ngClass]="isFieldChanged('bookName', i) ? 'cell-changed' : ''">{{ element.bookName }}</span>
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="bookTestName">
                 <th mat-header-cell *matHeaderCellDef>Kitap Testi</th>
-                <td mat-cell *matCellDef="let element">{{ element.bookTestName }}</td>
+                <td mat-cell *matCellDef="let element; let i = index">
+                  <span [ngClass]="isFieldChanged('bookTestName', i) ? 'cell-changed' : ''">{{
+                    element.bookTestName
+                  }}</span>
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="subtitle">
                 <th mat-header-cell *matHeaderCellDef>Alt Başlık</th>
-                <td mat-cell *matCellDef="let element">{{ element.subtitle }}</td>
+                <td mat-cell *matCellDef="let element; let i = index">
+                  <span [ngClass]="isFieldChanged('subtitle', i) ? 'cell-changed' : ''">{{ element.subtitle }}</span>
+                </td>
               </ng-container>
 
               <ng-container matColumnDef="status">

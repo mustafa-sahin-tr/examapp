@@ -84,6 +84,7 @@ export class TestCreateComponent implements OnInit {
   bulkImportResults: any = null;
   bulkImportData: any[] = [];
   selectedBulkIndex: number | null = null;
+  lastPatchedBulkFormValue: any = null;
 
   constructor(
     private fb: FormBuilder,
@@ -116,6 +117,23 @@ export class TestCreateComponent implements OnInit {
     this.reload();
     this.loadGrades();
     this.loadSubjects();
+
+    // Form değişikliklerini dinle
+    this.testForm.valueChanges.subscribe(() => {
+      if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+        const current = this.testForm.value;
+        const last = this.lastPatchedBulkFormValue;
+        const changed = last && Object.keys(current).some((key) => current[key] !== last[key]);
+        if (changed) {
+          this.bulkImportData[this.selectedBulkIndex] = {
+            ...this.bulkImportData[this.selectedBulkIndex],
+            ...current,
+            __status: 'updated',
+          };
+          this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
+        }
+      }
+    });
   }
 
   loadSubjects() {
@@ -320,6 +338,7 @@ export class TestCreateComponent implements OnInit {
     }
   }
 
+  // Excel'den gelen her satırın orijinal halini __original alanında sakla. Böylece değişiklikleri karşılaştırmak mümkün olacak.
   async onBulkImport() {
     if (!this.selectedBulkFile) return;
     this.isUploading = true;
@@ -327,19 +346,25 @@ export class TestCreateComponent implements OnInit {
     try {
       const data = await this.readExcelFile(this.selectedBulkFile);
       // Excel'den gelen veriyi backend DTO formatına çevir
-      const exams = data.map((row: any) => ({
-        name: row['Ad'] || row['Ders'],
-        description: row['Açıklama'] || row['Description'] || '',
-        gradeId: +row['Sınıf'] || +row['Grade'] || 1,
-        maxDurationMinutes: +row['Süre'] || +row['Duration'] || 10,
-        isPracticeTest: row['ÇalışmaTesti'] === 'Evet' || row['IsPracticeTest'] === true,
-        subtitle: row['AltBaşlık'] || row['Subtitle'] || '',
-        badgeText: row['Badge'] || '',
-        bookTestId: row['BookTestId'] ? +row['BookTestId'] : undefined,
-        bookId: row['BookId'] ? +row['BookId'] : undefined,
-        bookName: row['Book'] || '',
-        bookTestName: row['BookTest'] || '',
-      }));
+      const exams = data.map((row: any) => {
+        const item = {
+          name: row['Ad'] || row['Ders'],
+          description: row['Açıklama'] || row['Description'] || '',
+          gradeId: +row['Sınıf'] || +row['Grade'] || 1,
+          maxDurationMinutes: +row['Süre'] || +row['Duration'] || 10,
+          isPracticeTest: row['ÇalışmaTesti'] === 'Evet' || row['IsPracticeTest'] === true,
+          subtitle: row['AltBaşlık'] || row['Subtitle'] || '',
+          badgeText: row['Badge'] || '',
+          bookTestId: row['BookTestId'] ? +row['BookTestId'] : undefined,
+          bookId: row['BookId'] ? +row['BookId'] : undefined,
+          bookName: row['Book'] || '',
+          bookTestName: row['BookTest'] || '',
+        };
+        return {
+          ...item,
+          __original: { ...item },
+        };
+      });
       this.bulkImportData = exams;
       this.isUploading = false;
     } catch (e) {
@@ -350,37 +375,144 @@ export class TestCreateComponent implements OnInit {
 
   onBulkItemSelect(i: number, element: any) {
     this.selectedBulkIndex = i;
+
+    // BookId ve BookTestId eşleştirme
+    let bookId = 0;
+    let bookTestId = '';
+    let newBookName = '';
+    let newBookTestName = '';
+    let showAddBookInput = false;
+    let showAddBookTestInput = false;
+
+    // Kitap adı ile eşleşen kitap var mı?
+    if (element.bookName) {
+      const normalize = (str: string) =>
+        str
+          ?.toLocaleLowerCase('tr-TR')
+          .replace(/ı/g, 'i')
+          .replace(/İ/g, 'i')
+          .replace(/ş/g, 's')
+          .replace(/Ş/g, 's')
+          .replace(/ğ/g, 'g')
+          .replace(/Ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/Ü/g, 'u')
+          .replace(/ö/g, 'o')
+          .replace(/Ö/g, 'o')
+          .replace(/ç/g, 'c')
+          .replace(/Ç/g, 'c')
+          .trim();
+      const foundBook = this.books.find((b) => normalize(b.name) === normalize(element.bookName));
+      if (foundBook) {
+        bookId = foundBook.id;
+        newBookName = '';
+        showAddBookInput = false;
+        // Kitap testleri de yüklenmeli
+        this.onBookChange(foundBook.id); // bookId yerine foundBook.id (number) gönder
+        setTimeout(() => {
+          this.testForm.patchValue({ bookId: foundBook.id });
+        }, 0);
+      } else {
+        bookId = 0;
+        newBookName = element.bookName;
+        showAddBookInput = true;
+        this.bookTests = [];
+      }
+    }
+
+    // Kitap testi adı ile eşleşen test var mı? (bookId varsa ona göre, yoksa genel listede arar)
+    if (element.bookTestName) {
+      let foundBookTest;
+      const normalize = (str: string) =>
+        str
+          ?.toLocaleLowerCase('tr-TR')
+          .replace(/ı/g, 'i')
+          .replace(/İ/g, 'i')
+          .replace(/ş/g, 's')
+          .replace(/Ş/g, 's')
+          .replace(/ğ/g, 'g')
+          .replace(/Ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/Ü/g, 'u')
+          .replace(/ö/g, 'o')
+          .replace(/Ö/g, 'o')
+          .replace(/ç/g, 'c')
+          .replace(/Ç/g, 'c')
+          .trim();
+      if (bookId) {
+        foundBookTest = this.bookTests.find((bt) => normalize(bt.name) === normalize(element.bookTestName));
+      } else {
+        foundBookTest = null;
+      }
+      if (foundBookTest) {
+        bookTestId = foundBookTest.id.toString();
+        newBookTestName = '';
+        showAddBookTestInput = false;
+      } else {
+        bookTestId = '';
+        newBookTestName = element.bookTestName;
+        showAddBookTestInput = true;
+      }
+    }
+
+    // Formu patchle
     this.testForm.patchValue({
       name: element.name,
       description: element.description,
-      gradeId: element.gradeId,
+      gradeId: +element.gradeId,
       maxDurationMinutes: element.maxDurationMinutes,
       isPracticeTest: element.isPracticeTest,
       subtitle: element.subtitle,
-      bookTestId: element.bookTestId || '',
-      bookId: element.bookId || '',
-      newBookName: element.bookName || '',
-      newBookTestName: element.bookTestName || '',
+      bookTestId: bookTestId,
+      bookId: bookId,
+      newBookName: newBookName,
+      newBookTestName: newBookTestName,
+      imageUrl: element.imageUrl,
+      subjectId: element.subjectId ? +element.subjectId : null,
+      topicId: element.topicId ? +element.topicId : null,
+      subtopicId: element.subtopicId ? +element.subtopicId : null,
     });
+    this.showAddBookInput = showAddBookInput;
+    this.showAddBookTestInput = showAddBookTestInput;
+    // Seçildiğinde statü değiştirme! Sadece son patchlenen değeri sakla
+    this.lastPatchedBulkFormValue = { ...this.testForm.value };
   }
 
   processBulkImport() {
     if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
-      // Update the selected item with the current form values
       this.bulkImportData[this.selectedBulkIndex] = {
         ...this.bulkImportData[this.selectedBulkIndex],
         ...this.testForm.value,
+        __status: 'updated',
       };
+      this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
+      this.lastPatchedBulkFormValue = { ...this.testForm.value };
     }
   }
 
   hasUpdatedItems() {
-    // For now, always enable save if an item is selected
-    return this.selectedBulkIndex !== null;
+    return this.bulkImportData.some((item) => item.__status === 'updated');
   }
 
   getBulkItemStatus(i: number) {
-    return this.selectedBulkIndex === i ? 'updated' : 'pending';
+    if (!this.bulkImportData[i]) return 'pending';
+    if (this.selectedBulkIndex === i) {
+      // Formda değişiklik var mı kontrolü
+      if (this.lastPatchedBulkFormValue) {
+        const current = this.testForm.value;
+        const last = this.lastPatchedBulkFormValue;
+        const changed = Object.keys(current).some((key) => current[key] !== last[key]);
+        if (changed) return 'updated';
+      }
+    }
+    return this.bulkImportData[i].__status === 'updated' ? 'updated' : 'pending';
+  }
+
+  // Yardımcı fonksiyon: Bir alan değişti mi?
+  isFieldChanged(field: string, i: number): boolean {
+    const item = this.bulkImportData[i];
+    if (!item || !item.__original) return false;
+    return item[field] !== item.__original[field];
   }
 
   private readExcelFile(file: File): Promise<any[]> {

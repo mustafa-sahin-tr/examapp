@@ -463,7 +463,6 @@ public class QuestionService : IQuestionService
                     if (soruDto.Header.Subtopics == null || !soruDto.Header.Subtopics.Any())
                     {
                         Console.WriteLine("Worksheet SubTopicId: " + worksheet.SubTopicId);
-                        Console.WriteLine("soruDto.Header.Subtopics: " + string.Join(", ", soruDto.Header.Subtopics));
                         soruDto.Header.Subtopics = new List<int>();
                         if (worksheet.SubTopicId != null && worksheet.SubTopicId > 0)
                         {
@@ -510,8 +509,8 @@ public class QuestionService : IQuestionService
                         IsExample = questionDto.IsExample,
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,
-                        // SubjectId = soruDto.Header.SubjectId ?? 0,
-                        // TopicId = soruDto.Header.TopicId ?? 0,
+                        SubjectId = soruDto.Header.SubjectId,
+                        TopicId = soruDto.Header.TopicId,
                         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
                     };
 

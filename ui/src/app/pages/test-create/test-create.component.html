@@ -142,53 +142,10 @@
       </mat-card-content>
     </mat-card>
   </div>
-  <div class="form-column">
-    <h2>Kart Ön İzleme</h2>
-    <app-worksheet-card [color]="'red'" [test]="testForm.value"> </app-worksheet-card>
-    <div class="list-container">
-      <div class="search-results">
-        <ul class="course-list">
-          <li class="course-item">
-            <div class="course-info">
-              <h3>
-                {{ testForm.value.name }}
-                <span class="new-badge">NEW & POPULAR</span>
-                <span class="new-badge"
-                  ><strong> {{ testForm.value.questionCount }} Soru</strong></span
-                >
-                <span class="new-badge"
-                  ><strong> {{ getSelectedGradeName }}</strong></span
-                >
-                <span class="new-badge"
-                  ><strong> ⭐ {{ 4.8 }}</strong></span
-                >
-                <span class="new-badge"
-                  ><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span
-                >
-              </h3>
-              <span>{{ testForm.value.subtitle }}</span>
-              <p>{{ testForm.value.description }}</p>
-            </div>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <!-- Butonlar -->
-    <div class="button-group">
-      <button
-        mat-raised-button
-        color="primary"
-        type="button"
-        [disabled]="testForm.invalid"
-        (click)="navigateToQuestionCanvas()"
-      >
-        <mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç
-      </button>
-    </div>
-  </div>
 
   <!-- Excel ile Toplu Test Yükleme Kartı -->
-  <mat-card class="bulk-import-card" style="margin-bottom: 24px">
+
+  <mat-card class="bulk-import-card form-column-2" style="margin-bottom: 24px">
     <mat-card-title>Excel ile Toplu Test Yükle</mat-card-title>
     <mat-card-content>
       <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
@@ -219,6 +176,69 @@
         color="primary"
         style="margin-top: 8px"
       ></mat-progress-bar>
+      <!-- Bulk Import Preview List -->
+      <mat-card
+        class="bulk-preview-card"
+        *ngIf="bulkImportData && bulkImportData.length > 0"
+        style="margin-bottom: 24px"
+      >
+        <!-- <mat-card-title>Excel'den Yüklenen Testler</mat-card-title> -->
+        <mat-card-content>
+          <div class="bulk-list-container" style="max-height: 400px; overflow-y: auto">
+            <table mat-table [dataSource]="bulkImportData" class="bulk-table">
+              <ng-container matColumnDef="select">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let element; let i = index">
+                  <mat-radio-button
+                    [value]="i"
+                    [checked]="selectedBulkIndex === i"
+                    (change)="onBulkItemSelect(i, element)"
+                  >
+                  </mat-radio-button>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="bookName">
+                <th mat-header-cell *matHeaderCellDef>Kitap</th>
+                <td mat-cell *matCellDef="let element">{{ element.bookName }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="bookTestName">
+                <th mat-header-cell *matHeaderCellDef>Kitap Testi</th>
+                <td mat-cell *matCellDef="let element">{{ element.bookTestName }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="subtitle">
+                <th mat-header-cell *matHeaderCellDef>Alt Başlık</th>
+                <td mat-cell *matCellDef="let element">{{ element.subtitle }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Durum</th>
+                <td mat-cell *matCellDef="let element; let i = index">
+                  <mat-chip [color]="getBulkItemStatus(i) === 'updated' ? 'accent' : 'primary'" selected>
+                    {{ getBulkItemStatus(i) === 'updated' ? 'Güncellendi' : 'Bekliyor' }}
+                  </mat-chip>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="['select', 'bookName', 'bookTestName', 'subtitle', 'status']"></tr>
+              <tr
+                mat-row
+                *matRowDef="let row; columns: ['select', 'bookName', 'bookTestName', 'subtitle', 'status']"
+              ></tr>
+            </table>
+          </div>
+          <div class="bulk-actions" style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end">
+            <button mat-raised-button color="accent" [disabled]="!hasUpdatedItems()" (click)="processBulkImport()">
+              <mat-icon>save</mat-icon>Güncellenenleri Kaydet
+            </button>
+            <button mat-raised-button color="warn" (click)="clearBulkImport()">
+              <mat-icon>clear</mat-icon>Listeyi Temizle
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
       <div *ngIf="bulkImportResults" style="margin-top: 12px">
         <div *ngIf="bulkImportResults.success" class="success-message">
           ✔️ Toplu yükleme tamamlandı. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
@@ -233,6 +253,49 @@
             <strong>{{ err.examName }}</strong> (Satır: {{ err.rowNumber }}): {{ err.errorMessage }}
           </li>
         </ul>
+      </div>
+      <div class="form-column">
+        <h2>Kart Ön İzleme</h2>
+        <app-worksheet-card [color]="'red'" [test]="testForm.value"> </app-worksheet-card>
+        <div class="list-container">
+          <div class="search-results">
+            <ul class="course-list">
+              <li class="course-item">
+                <div class="course-info">
+                  <h3>
+                    {{ testForm.value.name }}
+                    <span class="new-badge">NEW & POPULAR</span>
+                    <span class="new-badge"
+                      ><strong> {{ testForm.value.questionCount }} Soru</strong></span
+                    >
+                    <span class="new-badge"
+                      ><strong> {{ getSelectedGradeName }}</strong></span
+                    >
+                    <span class="new-badge"
+                      ><strong> ⭐ {{ 4.8 }}</strong></span
+                    >
+                    <span class="new-badge"
+                      ><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span
+                    >
+                  </h3>
+                  <span>{{ testForm.value.subtitle }}</span>
+                  <p>{{ testForm.value.description }}</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="button-group">
+          <button
+            mat-raised-button
+            color="primary"
+            type="button"
+            [disabled]="testForm.invalid"
+            (click)="navigateToQuestionCanvas()"
+          >
+            <mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç
+          </button>
+        </div>
       </div>
     </mat-card-content>
   </mat-card>

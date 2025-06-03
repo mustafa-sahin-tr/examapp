@@ -104,7 +104,7 @@ pgadmin-data/
 !/question-detector/data/questions/runs
 /question-detector/data/venv/
 /question-detector/data/venv/lib/python3.8/site-packages
-/question-detector/data/.tmp.driveupload
-/question-detector/data/.tmp.drivedownload
+/question-detector/.tmp.driveupload
+/question-detector/.tmp.drivedownload
 
 /rabbitmq

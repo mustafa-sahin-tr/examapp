@@ -28,6 +28,9 @@ import { SubjectService } from '../../services/subject.service';
 import { Subject } from '../../models/subject';
 import { Topic } from '../../models/topic';
 import { SubTopic } from '../../models/subtopic';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTableModule } from '@angular/material/table';
+import { MatRadioModule } from '@angular/material/radio';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
@@ -51,6 +54,9 @@ import { SubTopic } from '../../models/subtopic';
     MatProgressBarModule,
     MatTabsModule,
     MatSnackBarModule,
+    MatChipsModule,
+    MatTableModule,
+    MatRadioModule,
   ],
   styleUrls: ['./test-create.component.scss'],
 })
@@ -76,6 +82,8 @@ export class TestCreateComponent implements OnInit {
   selectedBulkFile: File | null = null;
   isUploading = false;
   bulkImportResults: any = null;
+  bulkImportData: any[] = [];
+  selectedBulkIndex: number | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -323,30 +331,56 @@ export class TestCreateComponent implements OnInit {
         name: row['Ad'] || row['Ders'],
         description: row['Açıklama'] || row['Description'] || '',
         gradeId: +row['Sınıf'] || +row['Grade'] || 1,
-        maxDurationSeconds: +row['Süre'] ? +row['Duration'] * 60 : 600,
+        maxDurationMinutes: +row['Süre'] || +row['Duration'] || 10,
         isPracticeTest: row['ÇalışmaTesti'] === 'Evet' || row['IsPracticeTest'] === true,
         subtitle: row['AltBaşlık'] || row['Subtitle'] || '',
         badgeText: row['Badge'] || '',
         bookTestId: row['BookTestId'] ? +row['BookTestId'] : undefined,
         bookId: row['BookId'] ? +row['BookId'] : undefined,
-        newBookName: row['Book'] || '',
-        newBookTestName: row['BookTest'] || '',
+        bookName: row['Book'] || '',
+        bookTestName: row['BookTest'] || '',
       }));
-      const payload = { exams };
-      this.testService.bulkImport(payload).subscribe({
-        next: (res) => {
-          this.bulkImportResults = res;
-          this.isUploading = false;
-        },
-        error: (err) => {
-          this.bulkImportResults = err; //{ isSuccess: false, message: 'Yükleme sırasında hata oluştu.' };
-          this.isUploading = false;
-        },
-      });
+      this.bulkImportData = exams;
+      this.isUploading = false;
     } catch (e) {
       this.bulkImportResults = { success: false, message: 'Excel dosyası okunamadı.' };
       this.isUploading = false;
     }
+  }
+
+  onBulkItemSelect(i: number, element: any) {
+    this.selectedBulkIndex = i;
+    this.testForm.patchValue({
+      name: element.name,
+      description: element.description,
+      gradeId: element.gradeId,
+      maxDurationMinutes: element.maxDurationMinutes,
+      isPracticeTest: element.isPracticeTest,
+      subtitle: element.subtitle,
+      bookTestId: element.bookTestId || '',
+      bookId: element.bookId || '',
+      newBookName: element.bookName || '',
+      newBookTestName: element.bookTestName || '',
+    });
+  }
+
+  processBulkImport() {
+    if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+      // Update the selected item with the current form values
+      this.bulkImportData[this.selectedBulkIndex] = {
+        ...this.bulkImportData[this.selectedBulkIndex],
+        ...this.testForm.value,
+      };
+    }
+  }
+
+  hasUpdatedItems() {
+    // For now, always enable save if an item is selected
+    return this.selectedBulkIndex !== null;
+  }
+
+  getBulkItemStatus(i: number) {
+    return this.selectedBulkIndex === i ? 'updated' : 'pending';
   }
 
   private readExcelFile(file: File): Promise<any[]> {
@@ -363,5 +397,10 @@ export class TestCreateComponent implements OnInit {
       reader.onerror = (err) => reject(err);
       reader.readAsArrayBuffer(file);
     });
+  }
+
+  clearBulkImport() {
+    this.bulkImportData = [];
+    this.selectedBulkIndex = null;
   }
 }

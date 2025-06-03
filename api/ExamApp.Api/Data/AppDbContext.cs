@@ -254,7 +254,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(lod => lod.LearningOutcomeId);
 
         // Call Seeders
-        TopicSeed.SeedGradesSubjects(modelBuilder); // Assuming TopicSeed is already using HasData
+        // TopicSeed.SeedGradesSubjects(modelBuilder); // Assuming TopicSeed is already using HasData
         ProgramStepSeed.SeedData(modelBuilder); // New seeder for ProgramSteps
         // CatalogSeed.Initialize(); // Assuming CatalogSeed is already using HasData
 

@@ -1079,7 +1079,10 @@ public class ExamService : IExamService
                     BookTestId = examItem.BookTestId,
                     BookId = examItem.BookId,
                     NewBookName = examItem.NewBookName,
-                    NewBookTestName = examItem.NewBookTestName
+                    NewBookTestName = examItem.NewBookTestName,
+                    SubjectId = examItem.SubjectId,
+                    TopicId = examItem.TopicId,
+                    SubTopicId = examItem.SubTopicId
                 };
 
                 // Use existing CreateOrUpdateAsync method

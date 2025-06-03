@@ -33,6 +33,17 @@ public class BulkExamItemDto
     public string? NewBookName { get; set; }
 
     public string? NewBookTestName { get; set; }
+
+    public int? SubjectId { get; set; }
+
+
+    public int? TopicId { get; set; }
+
+
+    public int? SubTopicId { get; set; }
+
+
+
 }
 
 public class BulkExamResultDto : ResponseBaseDto

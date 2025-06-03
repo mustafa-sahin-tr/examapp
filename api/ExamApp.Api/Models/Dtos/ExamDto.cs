@@ -28,27 +28,35 @@ public class ExamDto
     public int? BookTestId { get; set; }
     public int? BookId { get; set; }
 
+    public int? SubjectId { get; set; }
+
+    public int? TopicId { get; set; }
+
+    public int? SubTopicId { get; set; }
+
     public string? NewBookName { get; set; }
     public string? NewBookTestName { get; set; }
 
 }
 
-public class ExamSavedDto : ResponseBaseDto 
+public class ExamSavedDto : ResponseBaseDto
 {
     public int? BookId { get; set; }
     public int? BookTestId { get; set; } = null;
     public int? ExamId { get; set; } = null;
 }
 
-public class ExamStatisticsDto {
+public class ExamStatisticsDto
+{
     public int TotalSolvedTests { get; set; } = 0;
-    public int  CompletedTests  { get; set; } = 0;
-    public int  TotalTimeSpentMinutes { get; set; } = 0;
-    public int  TotalCorrectAnswers { get; set; } = 0;
-    public int  TotalWrongAnswers { get; set; } = 0;
+    public int CompletedTests { get; set; } = 0;
+    public int TotalTimeSpentMinutes { get; set; } = 0;
+    public int TotalCorrectAnswers { get; set; } = 0;
+    public int TotalWrongAnswers { get; set; } = 0;
 }
 
-public class ExamAllStatisticsDto {
+public class ExamAllStatisticsDto
+{
     public ExamStatisticsDto Total { get; set; } = new();
     public List<ExamStatisticsDto> Grouped { get; set; } = new();
 }

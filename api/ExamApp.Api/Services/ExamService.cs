@@ -878,6 +878,9 @@ public class ExamService : IExamService
                 examination.IsPracticeTest = examDto.IsPracticeTest;
                 examination.Subtitle = examDto.Subtitle;
                 examination.BookTestId = bookTestId;
+                examination.SubjectId = examDto.SubjectId;
+                examination.TopicId = examDto.TopicId;
+                examination.SubTopicId = examDto.SubTopicId;
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
@@ -901,7 +904,10 @@ public class ExamService : IExamService
                     MaxDurationSeconds = examDto.MaxDurationSeconds,
                     IsPracticeTest = examDto.IsPracticeTest,
                     Subtitle = examDto.Subtitle,
-                    BookTestId = bookTestId
+                    BookTestId = bookTestId,
+                    SubjectId = examDto.SubjectId,
+                    TopicId = examDto.TopicId,
+                    SubTopicId = examDto.SubTopicId,
                 };
 
                 // 📌 Eğer yeni resim varsa, güncelle

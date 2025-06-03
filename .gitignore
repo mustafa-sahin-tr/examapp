@@ -92,6 +92,7 @@ Thumbs.db
 /ui/.idea
 
 minio-data/
+pgadmin-data/
 
 /question-detector/app/data/labels
 /question-detector/app/data/answers/*

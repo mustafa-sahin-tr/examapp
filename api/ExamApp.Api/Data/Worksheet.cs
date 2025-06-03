@@ -19,6 +19,14 @@ public class Worksheet : BaseEntity
 
     [ForeignKey("SubjectId")]
     public Subject Subject { get; set; }
+
+    public int? TopicId { get; set; } // Konu ID'si (isteğe bağlı)
+    [ForeignKey("TopicId")]
+    public Topic? Topic { get; set; } // Konu (isteğe bağlı)
+
+    public int? SubTopicId { get; set; } // Alt konu ID'si (isteğe bağlı)
+    [ForeignKey("SubTopicId")]
+    public SubTopic? SubTopic { get; set; } // Alt konu (isteğe bağlı)
     // Test içindeki sorular (Ara tablo ile ilişkilendirilecek)
     public ICollection<WorksheetQuestion> WorksheetQuestions { get; set; } = new List<WorksheetQuestion>();
     public int MaxDurationSeconds { get; set; } // 🕒 Maksimum test süresi (saniye)
@@ -34,5 +42,5 @@ public class Worksheet : BaseEntity
 
     [ForeignKey("BookTestId")]
     public BookTest? BookTest { get; set; }  // Navigation Property
-    
+
 }

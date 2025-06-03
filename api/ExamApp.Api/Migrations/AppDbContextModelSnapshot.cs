@@ -24951,11 +24951,17 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("SubTopicId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SubjectId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Subtitle")
                         .HasColumnType("text");
+
+                    b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");
@@ -24969,7 +24975,11 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("GradeId");
 
+                    b.HasIndex("SubTopicId");
+
                     b.HasIndex("SubjectId");
+
+                    b.HasIndex("TopicId");
 
                     b.ToTable("Worksheets");
                 });
@@ -25516,15 +25526,27 @@ namespace ExamApp.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SubTopic", "SubTopic")
+                        .WithMany()
+                        .HasForeignKey("SubTopicId");
+
                     b.HasOne("Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId");
+
+                    b.HasOne("Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId");
 
                     b.Navigation("BookTest");
 
                     b.Navigation("Grade");
 
+                    b.Navigation("SubTopic");
+
                     b.Navigation("Subject");
+
+                    b.Navigation("Topic");
                 });
 
             modelBuilder.Entity("WorksheetInstance", b =>

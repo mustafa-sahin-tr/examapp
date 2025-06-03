@@ -23,6 +23,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import * as XLSX from 'xlsx';
+import { GradesService } from '../../services/grades.service';
+import { SubjectService } from '../../services/subject.service';
+import { Subject } from '../../models/subject';
+import { Topic } from '../../models/topic';
+import { SubTopic } from '../../models/subtopic';
 @Component({
   selector: 'app-test-create',
   templateUrl: './test-create.component.html',
@@ -58,11 +63,12 @@ export class TestCreateComponent implements OnInit {
   books: Book[] = [];
   bookTests: BookTest[] = [];
   bookService = inject(BookService);
-  grades = [
-    { id: 1, name: '1. Sınıf' },
-    { id: 2, name: '2. Sınıf' },
-    { id: 3, name: '3. Sınıf' },
-  ];
+  gradeService = inject(GradesService);
+  subjectService = inject(SubjectService);
+  grades = [] as any[];
+  subjects = [] as Subject[];
+  topics = [] as Topic[];
+  subtopics = [] as SubTopic[];
   showAddBookInput = false;
   showAddBookTestInput = false;
   /** grab the input once it’s in the DOM */
@@ -89,6 +95,9 @@ export class TestCreateComponent implements OnInit {
       newBookTestName: [''],
       bookTestId: [''],
       bookId: [''],
+      subjectId: [''],
+      topicId: [''],
+      subtopicId: [''],
       questionCount: [0],
     });
   }
@@ -97,6 +106,47 @@ export class TestCreateComponent implements OnInit {
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
     this.isEditMode = this.id !== null;
     this.reload();
+    this.loadGrades();
+    this.loadSubjects();
+  }
+
+  loadSubjects() {
+    this.subjectService.loadCategories().subscribe((data) => {
+      this.subjects = data;
+      if (this.testForm.value.subjectId) {
+        this.onSubjectChange(this.testForm.value.subjectId);
+      }
+    });
+  }
+
+  onSubjectChange(subjectId: number) {
+    if (subjectId) {
+      this.subjectService.getTopicsBySubject(subjectId).subscribe((topics) => {
+        this.topics = topics;
+        this.testForm.patchValue({ topicId: null, subtopicId: null });
+      });
+    } else {
+      this.topics = [];
+      this.testForm.patchValue({ topicId: null, subtopicId: null });
+    }
+  }
+  onTopicChange(topicId: number) {
+    if (topicId) {
+      this.subjectService.getSubTopicsByTopic(topicId).subscribe((subtopics) => {
+        this.subtopics = subtopics;
+        this.testForm.patchValue({ subtopicId: null });
+      });
+    } else {
+      this.subtopics = [];
+      this.testForm.patchValue({ subtopicId: null });
+    }
+  }
+  onSubtopicChange(subtopicId: number) {
+    if (subtopicId) {
+      // Do any additional logic needed when subtopic changes
+    } else {
+      // Reset any dependent fields if needed
+    }
   }
 
   reload() {
@@ -106,6 +156,19 @@ export class TestCreateComponent implements OnInit {
     if (this.isEditMode) {
       this.loadTest();
     }
+  }
+  loadGrades() {
+    this.gradeService.getGrades().subscribe((data) => {
+      this.grades = data;
+      if (this.testForm.value.gradeId) {
+        this.gradeId = this.testForm.value.gradeId;
+      }
+    });
+  }
+
+  get getSelectedGradeName(): string {
+    const selectedGrade = this.grades.find((grade) => grade.id === this.testForm.value.gradeId);
+    return selectedGrade ? selectedGrade.name : 'Sınıf Seçin';
   }
 
   loadTest() {
@@ -188,6 +251,9 @@ export class TestCreateComponent implements OnInit {
       newBookTestName: this.testForm.value.newBookTestName,
       bookTestId: !this.testForm.value.bookTestId ? 0 : this.testForm.value.bookTestId,
       bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
+      subjectId: this.testForm.value.subjectId ? this.testForm.value.subjectId : null,
+      topicId: this.testForm.value.topicId ? this.testForm.value.topicId : null,
+      subtopicId: this.testForm.value.subtopicId ? this.testForm.value.subtopicId : null,
     };
   }
 

@@ -88,6 +88,42 @@
             </mat-select>
           </mat-form-field>
 
+          <!--Subject Seçimi -->
+          <mat-form-field appearance="outline">
+            <mat-label>Ders</mat-label>
+            <mat-select formControlName="subjectId" (selectionChange)="onSubjectChange($event.value)">
+              @for (subject of subjects; track subject.id) {
+              <mat-option [value]="subject.id">
+                {{ subject.name }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <!-- Topic Seçimi -->
+          <mat-form-field appearance="outline">
+            <mat-label>Konu</mat-label>
+            <mat-select formControlName="topicId" (selectionChange)="onTopicChange($event.value)">
+              @for (topic of topics; track topic.id) {
+              <mat-option [value]="topic.id">
+                {{ topic.name }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <!-- SubTopic Seçimi -->
+          <mat-form-field appearance="outline">
+            <mat-label>Alt Konu</mat-label>
+            <mat-select formControlName="subtopicId">
+              @for (subTopic of subtopics; track subTopic.id) {
+              <mat-option [value]="subTopic.id">
+                {{ subTopic.name }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
           <!-- Süre Seçimi -->
           <mat-form-field appearance="outline">
             <mat-label>Test Süresi (Dakika)</mat-label>
@@ -121,7 +157,7 @@
                   ><strong> {{ testForm.value.questionCount }} Soru</strong></span
                 >
                 <span class="new-badge"
-                  ><strong> {{ testForm.value.gradeId }}.Sınıf</strong></span
+                  ><strong> {{ getSelectedGradeName }}</strong></span
                 >
                 <span class="new-badge"
                   ><strong> ⭐ {{ 4.8 }}</strong></span

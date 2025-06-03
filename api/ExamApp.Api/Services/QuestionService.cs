@@ -9,7 +9,7 @@ namespace ExamApp.Api.Services;
 
 public class QuestionService : IQuestionService
 {
-    
+
     private readonly AppDbContext _context;
 
     private readonly ImageHelper _imageHelper;
@@ -20,7 +20,7 @@ public class QuestionService : IQuestionService
         _context = context;
         _minioService = minioService;
     }
-    
+
     public async Task<QuestionDto?> GetQuestionById(int id)
     {
         var question = await _context.Questions
@@ -36,7 +36,7 @@ public class QuestionService : IQuestionService
                 SubText = q.SubText,
                 ImageUrl = q.ImageUrl,
                 SubjectId = q.SubjectId,
-                TopicId = q.TopicId,                
+                TopicId = q.TopicId,
                 CategoryName = q.Subject.Name,
                 Point = q.Point,
                 X = q.X,
@@ -56,10 +56,11 @@ public class QuestionService : IQuestionService
                 }).ToList(),
                 IsExample = q.IsExample,
                 PracticeCorrectAnswer = q.PracticeCorrectAnswer,
-                Passage = q.PassageId.HasValue ? new PassageDto {
+                Passage = q.PassageId.HasValue ? new PassageDto
+                {
                     Id = q.Passage.Id,
                     Title = q.Passage.Title,
-                    Text = q.Passage.Text, 
+                    Text = q.Passage.Text,
                     ImageUrl = q.Passage.ImageUrl,
                     X = q.Passage.X,
                     Y = q.Passage.Y,
@@ -74,16 +75,18 @@ public class QuestionService : IQuestionService
                 //     qst.SubTopic.Name
                 // }).ToList()
             })
-            .FirstOrDefaultAsync();        
+            .FirstOrDefaultAsync();
 
         return question;
     }
 
-    public async Task<List<PassageDto>> GetLastTenPassages() {
-        return  await _context.Passage
+    public async Task<List<PassageDto>> GetLastTenPassages()
+    {
+        return await _context.Passage
             .OrderByDescending(p => p.Id)
             .Take(10)
-            .Select(p => new PassageDto {
+            .Select(p => new PassageDto
+            {
                 Id = p.Id,
                 Title = p.Title,
                 Text = p.Text,
@@ -96,7 +99,7 @@ public class QuestionService : IQuestionService
             .ToListAsync();
     }
 
-    public async Task<List<QuestionDto>> GetQuestionByTestId(int testid) 
+    public async Task<List<QuestionDto>> GetQuestionByTestId(int testid)
     {
         var questionList = await _context.TestQuestions
             .Include(tq => tq.Question)
@@ -104,13 +107,13 @@ public class QuestionService : IQuestionService
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.Subject)
             .Include(tq => tq.Question)
-                .ThenInclude(q => q.Passage)      
+                .ThenInclude(q => q.Passage)
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.QuestionSubTopics)
                     .ThenInclude(qst => qst.SubTopic)
             .Where(tq => tq.TestId == testid)
             .Select(tq => new QuestionDto
-            {                
+            {
                 Id = tq.Question.Id,
                 Text = tq.Question.Text,
                 SubText = tq.Question.SubText,
@@ -135,10 +138,11 @@ public class QuestionService : IQuestionService
                 }).ToList(),
                 IsExample = tq.Question.IsExample,
                 PracticeCorrectAnswer = tq.Question.PracticeCorrectAnswer,
-                Passage = tq.Question.PassageId.HasValue ? new PassageDto {
+                Passage = tq.Question.PassageId.HasValue ? new PassageDto
+                {
                     Id = tq.Question.Passage.Id,
                     Title = tq.Question.Passage.Title,
-                    Text = tq.Question.Passage.Text, 
+                    Text = tq.Question.Passage.Text,
                     ImageUrl = tq.Question.Passage.ImageUrl
                 } : null,
                 CorrectAnswerId = tq.Question.CorrectAnswerId,
@@ -179,14 +183,14 @@ public class QuestionService : IQuestionService
 
                 question.Text = questionDto.Text;
                 question.SubText = questionDto.SubText;
-                question.Point = questionDto.Point;                
+                question.Point = questionDto.Point;
                 // question.SubjectId = questionDto.SubjectId;
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
 
                 // 📌 Eğer yeni resim varsa, güncelle
-                if (!string.IsNullOrEmpty(questionDto.Image) && 
-                    _imageHelper.IsBase64String(questionDto.Image)) 
+                if (!string.IsNullOrEmpty(questionDto.Image) &&
+                    _imageHelper.IsBase64String(questionDto.Image))
                 {
                     byte[] imageBytes = Convert.FromBase64String(questionDto.Image.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
@@ -195,12 +199,12 @@ public class QuestionService : IQuestionService
 
                 // 📌 Cevapları Güncelle
                 question.Answers.Clear(); // Önce mevcut şıkları temizle
-                if (questionDto.IsExample) 
+                if (questionDto.IsExample)
                 {
                     question.IsExample = true;
-                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;                    
+                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;
                 }
-                else 
+                else
                 {
                     List<Answer> answers = new();
                     Answer? correctAnswer = null;
@@ -213,7 +217,7 @@ public class QuestionService : IQuestionService
                             QuestionId = question.Id // Foreign Key Set
                         };
 
-                        if (!string.IsNullOrEmpty(answerDto.Image) && 
+                        if (!string.IsNullOrEmpty(answerDto.Image) &&
                             _imageHelper.IsBase64String(answerDto.Image))
                         {
                             byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
@@ -235,24 +239,28 @@ public class QuestionService : IQuestionService
                     {
                         question.CorrectAnswerId = correctAnswer.Id;
                     }
-                }            
+                }
 
-                if(questionDto.Passage != null) {
-                    if(questionDto.Passage.Id > 0) {
+                if (questionDto.Passage != null)
+                {
+                    if (questionDto.Passage.Id > 0)
+                    {
                         var passage = await _context.Passage
                         .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException("Kapsam bulunamadı!");
-                    } 
-                    else {
-                        var passage = new Passage {
+                    }
+                    else
+                    {
+                        var passage = new Passage
+                        {
                             Title = questionDto.Passage.Title,
                             Text = questionDto.Passage.Text,
                             ImageUrl = questionDto.Passage.ImageUrl
                         };
-                        _context.Passage.Add(passage);                    
+                        _context.Passage.Add(passage);
                         question.PassageId = passage.Id;
                     }
-                }            
-                        
+                }
+
                 _context.Questions.Update(question);
 
                 // Update QuestionSubTopics
@@ -277,7 +285,7 @@ public class QuestionService : IQuestionService
                 {
                     Text = questionDto.Text,
                     SubText = questionDto.SubText,
-                    Point = questionDto.Point,                    
+                    Point = questionDto.Point,
                     // SubjectId = questionDto.SubjectId,
                     // TopicId = questionDto.TopicId,
                     AnswerColCount = questionDto.AnswerColCount
@@ -298,15 +306,15 @@ public class QuestionService : IQuestionService
                 List<Answer> answers = new();
                 Answer? correctAnswer = null;
 
-                if (questionDto.IsExample) 
+                if (questionDto.IsExample)
                 {
                     question.IsExample = true;
-                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;                    
+                    question.PracticeCorrectAnswer = questionDto.PracticeCorrectAnswer;
                 }
-                else 
+                else
                 {
 
-                    foreach (var answerDto in questionDto.Answers.Where(a => 
+                    foreach (var answerDto in questionDto.Answers.Where(a =>
                                 !string.IsNullOrEmpty(a.Text) || !string.IsNullOrEmpty(a.Image)))
                     {
                         var answer = new Answer
@@ -314,7 +322,7 @@ public class QuestionService : IQuestionService
                             Text = answerDto.Text
                         };
 
-                        if (!string.IsNullOrEmpty(answerDto.Image) && 
+                        if (!string.IsNullOrEmpty(answerDto.Image) &&
                             _imageHelper.IsBase64String(answerDto.Image))
                         {
                             byte[] imageBytes = Convert.FromBase64String(answerDto.Image.Split(',')[1]);
@@ -362,8 +370,10 @@ public class QuestionService : IQuestionService
                     await _context.SaveChangesAsync();
                 }
 
-                if(questionDto.Passage != null) {
-                    if(questionDto.Passage.Id > 0) {
+                if (questionDto.Passage != null)
+                {
+                    if (questionDto.Passage.Id > 0)
+                    {
                         var passage = await _context.Passage
                         .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException("Kapsam bulunamadı!");
 
@@ -371,16 +381,18 @@ public class QuestionService : IQuestionService
                         _context.Questions.Update(question);
                         await _context.SaveChangesAsync();
 
-                    } 
-                    else {
+                    }
+                    else
+                    {
 
-                        var passage = new Passage {
+                        var passage = new Passage
+                        {
                             Title = questionDto.Passage.Title,
                             Text = questionDto.Passage.Text
                         };
                         // 📌 Eğer yeni resim varsa, güncelle
-                        if (!string.IsNullOrEmpty(questionDto.Passage.ImageUrl) && 
-                            _imageHelper.IsBase64String(questionDto.Passage.ImageUrl)) 
+                        if (!string.IsNullOrEmpty(questionDto.Passage.ImageUrl) &&
+                            _imageHelper.IsBase64String(questionDto.Passage.ImageUrl))
                         {
                             byte[] imageBytes = Convert.FromBase64String(questionDto.Passage.ImageUrl.Split(',')[1]);
                             await using var imageStream = new MemoryStream(imageBytes);
@@ -412,7 +424,7 @@ public class QuestionService : IQuestionService
                 Success = questionDto.Id > 0,
                 QuestionId = question.Id,
                 Message = questionDto.Id > 0 ? "Soru başarıyla güncellendi!" : "Soru başarıyla kaydedildi!"
-            };            
+            };
         }
         catch (Exception ex)
         {
@@ -424,22 +436,52 @@ public class QuestionService : IQuestionService
         }
     }
 
-    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto) 
+    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto)
     {
         using (var transaction = await _context.Database.BeginTransactionAsync())
         {
             try
             {
+
+                var worksheet = _context.Worksheets.FirstOrDefault(worksheet => worksheet.Id == soruDto.Header.TestId);
+                if (worksheet != null)
+                {
+                    if (soruDto.Header.SubjectId == null || soruDto.Header.SubjectId == 0)
+                    {
+                        Console.WriteLine("Worksheet SubjectId: " + worksheet.SubjectId);
+                        Console.WriteLine("soruDto.Header.SubjectId: " + soruDto.Header.SubjectId);
+                        soruDto.Header.SubjectId = worksheet.SubjectId;
+                    }
+
+                    if (soruDto.Header.TopicId == null || soruDto.Header.TopicId == 0)
+                    {
+                        Console.WriteLine("Worksheet TopicId: " + worksheet.TopicId);
+                        Console.WriteLine("soruDto.Header.TopicId: " + soruDto.Header.TopicId);
+                        soruDto.Header.TopicId = worksheet.TopicId;
+                    }
+
+                    if (soruDto.Header.Subtopics == null || !soruDto.Header.Subtopics.Any())
+                    {
+                        Console.WriteLine("Worksheet SubTopicId: " + worksheet.SubTopicId);
+                        Console.WriteLine("soruDto.Header.Subtopics: " + string.Join(", ", soruDto.Header.Subtopics));
+                        soruDto.Header.Subtopics = new List<int>();
+                        if (worksheet.SubTopicId != null && worksheet.SubTopicId > 0)
+                        {
+                            soruDto.Header.Subtopics.Add(worksheet.SubTopicId.Value);
+                        }
+                    }
+
+                }
                 string imageUrl = string.Empty;
                 // 🔹 1. Resmi MinIO'ya kaydet ve ImageUrl olarak kaydet
-                if (!string.IsNullOrEmpty(soruDto.ImageData) && 
+                if (!string.IsNullOrEmpty(soruDto.ImageData) &&
                         _imageHelper.IsBase64String(soruDto.ImageData))
                 {
                     byte[] imageBytes = Convert.FromBase64String(soruDto.ImageData.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
                     imageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{Guid.NewGuid()}.jpg");
                 }
-                
+
                 // 🔹 2. Passage'ları kaydet
                 var passages = soruDto.Passages.Select(p => new Passage
                 {
@@ -495,13 +537,14 @@ public class QuestionService : IQuestionService
                             X = a.X,
                             Y = a.Y,
                             Width = a.Width,
-                            Height = a.Height,        
-                            IsCanvasQuestion = true                    
+                            Height = a.Height,
+                            IsCanvasQuestion = true
                         }).ToList();
 
                         var correctLabel = questionDto.Answers.FirstOrDefault(a => a.IsCorrect)?.Label;
 
-                        if(correctLabel == null) {
+                        if (correctLabel == null)
+                        {
                             throw new InvalidOperationException("Doğru cevap belirtilmemiş." + questionDto.Name);
                         }
 

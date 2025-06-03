@@ -94,17 +94,17 @@ Thumbs.db
 minio-data/
 pgadmin-data/
 
-/question-detector/app/data/labels
-/question-detector/app/data/answers/*
-!/question-detector/app/data/answers/runs
-/question-detector/app/data/answers-v1
-/question-detector/app/data/crops
-/question-detector/app/data/images
-/question-detector/app/data/questions/*
-!/question-detector/app/data/questions/runs
-/question-detector/app/venv/
-/question-detector/app/venv/lib/python3.8/site-packages
-/question-detector/app/.tmp.driveupload
-/question-detector/app/.tmp.drivedownload
+/question-detector/data/labels
+/question-detector/data/answers/*
+!/question-detector/data/answers/runs
+/question-detector/data/answers-v1
+/question-detector/data/crops
+/question-detector/data/images
+/question-detector/data/questions/*
+!/question-detector/data/questions/runs
+/question-detector/data/venv/
+/question-detector/data/venv/lib/python3.8/site-packages
+/question-detector/data/.tmp.driveupload
+/question-detector/data/.tmp.drivedownload
 
 /rabbitmq

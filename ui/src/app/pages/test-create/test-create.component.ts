@@ -156,7 +156,7 @@ export class TestCreateComponent implements OnInit {
 
           if (current.bookTestId) {
             updatedItem.bookTestId = current.bookTestId;
-            const bookTest = this.bookTests.find((bt) => bt.id.toString() === current.bookTestId);
+            const bookTest = this.bookTests.find((bt) => bt.id === current.bookTestId);
             if (bookTest) updatedItem.bookTestName = bookTest.name;
           } else if (current.newBookTestName) {
             updatedItem.bookTestName = current.newBookTestName;
@@ -262,6 +262,14 @@ export class TestCreateComponent implements OnInit {
       this.showAddBookInput = false;
       this.bookService.getTestsByBook($event).subscribe((data) => {
         this.bookTests = data;
+        // Eğer kitap değiştirildiyse, kitap testi seçimini sıfırla
+        this.testForm.patchValue({ bookTestId: null, newBookTestName: '' });
+        // Eğer excel'den gelen bir satır seçiliyse, bulkImportData'da da güncelle
+        if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+          this.bulkImportData[this.selectedBulkIndex].bookTestId = null;
+          this.bulkImportData[this.selectedBulkIndex].bookTestName = '';
+          this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
+        }
       });
     }
   }
@@ -392,6 +400,8 @@ export class TestCreateComponent implements OnInit {
           bookId: row['BookId'] ? +row['BookId'] : undefined,
           bookName: row['Book'] || '',
           bookTestName: row['BookTest'] || '',
+          newBookName: row['YeniKitap'] || '',
+          newBookTestName: row['YeniKitapTesti'] || '',
         };
         return {
           ...item,
@@ -399,7 +409,7 @@ export class TestCreateComponent implements OnInit {
         };
       });
       this.bulkImportData = exams;
-      this.ensureBulkImportGradeNames();
+      this.ensureBulkImportNames();
       this.isUploading = false;
     } catch (e) {
       this.bulkImportResults = { success: false, message: 'Excel dosyası okunamadı.' };
@@ -410,9 +420,8 @@ export class TestCreateComponent implements OnInit {
   onBulkItemSelect(i: number, element: any) {
     this.selectedBulkIndex = i;
 
-    // BookId ve BookTestId eşleştirme
     let bookId = 0;
-    let bookTestId = '';
+    let bookTestId = 0;
     let newBookName = '';
     let newBookTestName = '';
     let gradeId = 0;
@@ -443,50 +452,63 @@ export class TestCreateComponent implements OnInit {
         newBookName = '';
         showAddBookInput = false;
         // Kitap testleri de yüklenmeli
-        this.onBookChange(foundBook.id); // bookId yerine foundBook.id (number) gönder
-        setTimeout(() => {
-          this.testForm.patchValue({ bookId: foundBook.id });
-        }, 0);
+        this.bookService.getTestsByBook(foundBook.id).subscribe((tests) => {
+          this.bookTests = tests;
+          // Kitap testi adı ile eşleşen test var mı? (bookId varsa ona göre, yoksa genel listede arar)
+          if (element.bookTestName) {
+            let foundBookTest;
+            const normalize = (str: string) =>
+              str
+                ?.toLocaleLowerCase('tr-TR')
+                .replace(/ı/g, 'i')
+                .replace(/İ/g, 'i')
+                .replace(/ş/g, 's')
+                .replace(/Ş/g, 's')
+                .replace(/ğ/g, 'g')
+                .replace(/Ğ/g, 'g')
+                .replace(/ü/g, 'u')
+                .replace(/Ü/g, 'u')
+                .replace(/ö/g, 'o')
+                .replace(/Ö/g, 'o')
+                .replace(/ç/g, 'c')
+                .replace(/Ç/g, 'c')
+                .trim();
+            if (bookId) {
+              foundBookTest = this.bookTests.find((bt) => normalize(bt.name) === normalize(element.bookTestName));
+            } else {
+              foundBookTest = null;
+            }
+            if (foundBookTest) {
+              bookTestId = foundBookTest.id;
+              newBookTestName = '';
+              showAddBookTestInput = false;
+              this.testForm.patchValue({
+                bookId: bookId,
+                bookTestId: bookTestId,
+              });
+            } else {
+              bookTestId = 0;
+              newBookTestName = element.bookTestName;
+              showAddBookTestInput = true;
+            }
+          }
+        });
       } else {
         bookId = 0;
         newBookName = element.bookName;
         showAddBookInput = true;
         this.bookTests = [];
-      }
-    }
-
-    // Kitap testi adı ile eşleşen test var mı? (bookId varsa ona göre, yoksa genel listede arar)
-    if (element.bookTestName) {
-      let foundBookTest;
-      const normalize = (str: string) =>
-        str
-          ?.toLocaleLowerCase('tr-TR')
-          .replace(/ı/g, 'i')
-          .replace(/İ/g, 'i')
-          .replace(/ş/g, 's')
-          .replace(/Ş/g, 's')
-          .replace(/ğ/g, 'g')
-          .replace(/Ğ/g, 'g')
-          .replace(/ü/g, 'u')
-          .replace(/Ü/g, 'u')
-          .replace(/ö/g, 'o')
-          .replace(/Ö/g, 'o')
-          .replace(/ç/g, 'c')
-          .replace(/Ç/g, 'c')
-          .trim();
-      if (bookId) {
-        foundBookTest = this.bookTests.find((bt) => normalize(bt.name) === normalize(element.bookTestName));
-      } else {
-        foundBookTest = null;
-      }
-      if (foundBookTest) {
-        bookTestId = foundBookTest.id.toString();
-        newBookTestName = '';
-        showAddBookTestInput = false;
-      } else {
-        bookTestId = '';
+        // Kitap bulunamazsa kitap testi de yeni olarak işaretlenir
         newBookTestName = element.bookTestName;
         showAddBookTestInput = true;
+        this.testForm.patchValue({
+          bookId: null,
+          bookTestId: null,
+          newBookName: newBookName,
+          newBookTestName: newBookTestName,
+        });
+        this.showAddBookInput = showAddBookInput;
+        this.showAddBookTestInput = showAddBookTestInput;
       }
     }
 
@@ -556,7 +578,7 @@ export class TestCreateComponent implements OnInit {
         __status: 'updated',
       };
       this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
-      this.ensureBulkImportGradeNames();
+      this.ensureBulkImportNames();
       this.lastPatchedBulkFormValue = { ...this.testForm.value };
     }
   }
@@ -607,21 +629,35 @@ export class TestCreateComponent implements OnInit {
     this.selectedBulkIndex = null;
   }
 
-  // Excel'den gelen veya dışarıdan eklenen her item'a gradeName ekle
-  private ensureBulkImportGradeNames() {
-    if (!this.bulkImportData || !this.grades) return;
+  // Excel'den gelen veya dışarıdan eklenen her item'a gradeName, bookName, bookTestName ekle
+  private ensureBulkImportNames() {
+    if (!this.bulkImportData || !this.grades || !this.books) return;
     this.bulkImportData = this.bulkImportData.map((item) => {
-      // Eğer gradeName zaten varsa dokunma
-      if (item.gradeName) return item;
-      // Eğer gradeId varsa, gradeName'i bul
-      let gradeName = '';
-      if (item.gradeId) {
+      // GRADE
+      let gradeName = item.gradeName || '';
+      if (!gradeName && item.gradeId) {
         const found = this.grades.find((g) => g.id === item.gradeId || g.name === item.gradeId);
         if (found) gradeName = found.name;
       }
-      // Eğer grade (isim) varsa, gradeName olarak ata
       if (!gradeName && item.grade) gradeName = item.grade;
-      return { ...item, gradeName };
+
+      // BOOK
+      let bookName = item.bookName || '';
+      if (!bookName && item.bookId) {
+        const foundBook = this.books.find((b) => b.id === item.bookId || b.name === item.bookId);
+        if (foundBook) bookName = foundBook.name;
+      }
+      if (!bookName && item.newBookName) bookName = item.newBookName;
+
+      // BOOK TEST
+      let bookTestName = item.bookTestName || '';
+      if (!bookTestName && item.bookTestId && this.bookTests) {
+        const foundBookTest = this.bookTests.find((bt) => bt.id === item.bookTestId || bt.name === item.bookTestId);
+        if (foundBookTest) bookTestName = foundBookTest.name;
+      }
+      if (!bookTestName && item.newBookTestName) bookTestName = item.newBookTestName;
+
+      return { ...item, gradeName, bookName, bookTestName };
     });
   }
 }

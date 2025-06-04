@@ -1,0 +1,124 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit.emit()">
+  <!-- Sınıf Seçimi -->
+  <ng-container *ngIf="!showAddBookInput; else newBookInput">
+    <mat-form-field appearance="outline" class="hide-subscript">
+      <mat-label>Kitap Seç</mat-label>
+      <mat-select formControlName="bookId" (selectionChange)="onBookChange.emit($event)">
+        <mat-option *ngFor="let book of books" [value]="book.id">
+          {{ book.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <a
+      class="ta-left c-ptr"
+      style="display: inline; width: auto"
+      (click)="$event.stopPropagation(); openNewBookAdd.emit()"
+    >
+      <span>Yeni Kitap Ekle</span>
+    </a>
+  </ng-container>
+  <ng-template #newBookInput>
+    <mat-form-field appearance="outline">
+      <mat-label>Yeni Kitap Adı</mat-label>
+      <input matInput formControlName="newBookName" appAutofocus (blur)="onNewBookBlur.emit()" />
+    </mat-form-field>
+  </ng-template>
+
+  <!-- Kitap Testi -->
+  <ng-container *ngIf="!showAddBookTestInput; else newBookTestInput">
+    <mat-form-field appearance="outline" class="hide-subscript">
+      <mat-label>Kitap Testi</mat-label>
+      <mat-select formControlName="bookTestId">
+        <mat-option *ngFor="let bt of bookTests" [value]="bt.id">
+          {{ bt.name }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <a
+      class="ta-left c-ptr"
+      style="display: inline; width: auto"
+      (click)="$event.stopPropagation(); openNewBookTestAdd.emit()"
+    >
+      <span>Yeni Kitap Testi Ekle</span>
+    </a>
+  </ng-container>
+  <ng-template #newBookTestInput>
+    <mat-form-field appearance="outline">
+      <mat-label>Yeni Kitap Testi Adı</mat-label>
+      <input matInput formControlName="newBookTestName" />
+    </mat-form-field>
+  </ng-template>
+
+  <!-- Test Adı -->
+  <mat-form-field appearance="outline" class="hide-subscript">
+    <mat-label>Ders Adı</mat-label>
+    <input matInput formControlName="name" required />
+  </mat-form-field>
+
+  <!-- Test Açıklaması -->
+  <mat-form-field appearance="outline" class="hide-subscript">
+    <mat-label>Açıklama</mat-label>
+    <textarea matInput style="padding-top: 10px" formControlName="description"></textarea>
+  </mat-form-field>
+
+  <!-- Alt İsim -->
+  <mat-form-field appearance="outline" class="hide-subscript">
+    <mat-label>Alt İsim</mat-label>
+    <input matInput formControlName="subtitle" required />
+  </mat-form-field>
+
+  <!-- Sınıf Seçimi -->
+  <mat-form-field appearance="outline" class="hide-subscript">
+    <mat-label>Sınıf</mat-label>
+    <mat-select formControlName="gradeId" required>
+      <mat-option *ngFor="let grade of grades" [value]="grade.id">
+        {{ grade.name }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!--Subject Seçimi -->
+  <mat-form-field appearance="outline">
+    <mat-label>Ders</mat-label>
+    <mat-select formControlName="subjectId" (selectionChange)="subjectChange($event.value)">
+      <mat-option *ngFor="let subject of subjects" [value]="subject.id">
+        {{ subject.name }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Topic Seçimi -->
+  <mat-form-field appearance="outline">
+    <mat-label>Konu</mat-label>
+    <mat-select formControlName="topicId" (selectionChange)="topicChange($event.value)">
+      <mat-option *ngFor="let topic of topics" [value]="topic.id">
+        {{ topic.name }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- SubTopic Seçimi -->
+  <mat-form-field appearance="outline">
+    <mat-label>Alt Konu</mat-label>
+    <mat-select formControlName="subtopicId">
+      <mat-option *ngFor="let subTopic of subtopics" [value]="subTopic.id">
+        {{ subTopic.name }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <!-- Süre Seçimi -->
+  <mat-form-field appearance="outline">
+    <mat-label>Test Süresi (Dakika)</mat-label>
+    <input matInput type="number" formControlName="maxDurationMinutes" min="1" />
+  </mat-form-field>
+
+  <!-- Çalışma Testi Mi? -->
+  <mat-checkbox formControlName="isPracticeTest">Bu bir çalışma testi mi?</mat-checkbox>
+
+  <!-- Butonlar -->
+  <div class="button-group">
+    <button mat-raised-button color="primary" type="submit" [disabled]="form.invalid">Kaydet</button>
+    <button mat-raised-button color="warn" type="button" (click)="onCancel.emit()">İptal</button>
+  </div>
+</form>

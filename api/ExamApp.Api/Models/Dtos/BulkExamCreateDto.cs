@@ -4,7 +4,7 @@ namespace ExamApp.Api.Models.Dtos;
 
 public class BulkExamCreateDto
 {
-    public List<BulkExamItemDto> Exams { get; set; } = new List<BulkExamItemDto>();
+    public List<BulkExamItemDto>     Exams { get; set; } = new List<BulkExamItemDto>();
 }
 
 public class BulkExamItemDto

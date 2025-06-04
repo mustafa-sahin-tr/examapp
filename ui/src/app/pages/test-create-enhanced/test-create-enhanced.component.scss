@@ -1,0 +1,14 @@
+/* Basit stil örneği */
+table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+td, th { border: 1px solid #ccc; padding: 8px; }
+tr:hover { background: #f5f5f5; cursor: pointer; }
+
+.cell-changed {
+  background: #fff3cd !important;
+  color: #856404 !important;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 2px 4px;
+  transition: background 0.2s;
+}
+

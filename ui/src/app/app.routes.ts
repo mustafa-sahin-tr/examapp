@@ -26,6 +26,7 @@ import { CallbackComponent } from './pages/callback/callback.component';
 import { LogoutComponent } from './pages/logout/logout.component';
 import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
+import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
 
 export const routes: Routes = [
   {
@@ -51,7 +52,8 @@ export const routes: Routes = [
       { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
       { path: 'test/:testId', component: WorksheetDetailComponent }, // 🆕 Test çözme sayfası
       { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
-      { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
+      // { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
+      { path: 'exam', component: TestCreateEnhancedComponent }, // 🆕 Test çözme sayfası
       { path: 'exam/:id', component: TestCreateComponent }, // 🆕 Test çözme sayfası
       { path: 'programs', component: MyProgramsComponent },
       {

@@ -1,0 +1,241 @@
+<div>
+  <div class="form-container ta-left">
+    <div class="form-column">
+      <mat-card class="test-create-card">
+        <mat-card-title>Yeni Test Oluştur</mat-card-title>
+        <mat-card-content>
+          <app-test-form
+            [form]="testForm"
+            [books]="books"
+            [bookTests]="bookTests"
+            [grades]="grades"
+            [subjects]="subjects"
+            [topics]="topics"
+            [subtopics]="subtopics"
+            [showAddBookInput]="showAddBookInput"
+            [showAddBookTestInput]="showAddBookTestInput"
+            (onBookChange)="onBookChange($event)"
+            (openNewBookAdd)="openNewBookAdd()"
+            (onNewBookBlur)="onNewBookBlur()"
+            (openNewBookTestAdd)="openNewBookTestAdd()"
+            (onSubjectChange)="onSubjectChange($event)"
+            (onTopicChange)="onTopicChange($event)"
+            (onSubmit)="onSubmit()"
+            (onCancel)="navigateToTestList()"
+          ></app-test-form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mat-card class="bulk-import-card form-column-2" style="margin-bottom: 24px">
+      <mat-card-title>Excel ile Toplu Test Yükle</mat-card-title>
+      <mat-card-content>
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
+          <input
+            #fileInput
+            type="file"
+            accept=".xlsx, .xls"
+            style="display: none"
+            (change)="onBulkFileSelected($event)"
+          />
+          <button mat-raised-button color="primary" type="button" (click)="fileInput.click()">
+            <mat-icon>upload_file</mat-icon> Excel Dosyası Seç
+          </button>
+          <span *ngIf="selectedBulkFile">{{ selectedBulkFile.name }}</span>
+          <button
+            mat-raised-button
+            color="accent"
+            type="button"
+            [disabled]="!selectedBulkFile || isUploading"
+            (click)="onBulkImport()"
+          >
+            <mat-icon>cloud_upload</mat-icon> Yükle
+          </button>
+        </div>
+        <mat-progress-bar
+          *ngIf="isUploading"
+          mode="indeterminate"
+          color="primary"
+          style="margin-top: 8px"
+        ></mat-progress-bar>
+        <!-- Bulk Import Preview List -->
+        <mat-card
+          class="bulk-preview-card"
+          *ngIf="bulkImportData && bulkImportData.length > 0"
+          style="margin-bottom: 24px"
+        >
+          <!-- <mat-card-title>Excel'den Yüklenen Testler</mat-card-title> -->
+          <mat-card-content>
+            <div class="bulk-list-container" style="max-height: 400px; overflow-y: auto">
+              <table mat-table [dataSource]="bulkImportData" class="bulk-table">
+                <ng-container matColumnDef="select">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <mat-radio-button
+                      [value]="i"
+                      [checked]="selectedBulkIndex === i"
+                      (change)="onBulkItemSelect(i, element)"
+                    >
+                    </mat-radio-button>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="bookName">
+                  <th mat-header-cell *matHeaderCellDef>Kitap</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [ngClass]="isFieldChanged('bookName', i) ? 'cell-changed' : ''">{{ element.bookName }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="bookTestName">
+                  <th mat-header-cell *matHeaderCellDef>Kitap Testi</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [ngClass]="isFieldChanged('bookTestName', i) ? 'cell-changed' : ''">{{
+                      element.bookTestName
+                    }}</span>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef>Test Adı</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [ngClass]="isFieldChanged('name', i) ? 'cell-changed' : ''">{{ element.name }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="subtitle">
+                  <th mat-header-cell *matHeaderCellDef>Alt Başlık</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [ngClass]="isFieldChanged('subtitle', i) ? 'cell-changed' : ''">{{ element.subtitle }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="gradeId">
+                  <th mat-header-cell *matHeaderCellDef>Sınıf</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [ngClass]="isFieldChanged('gradeId', i) ? 'cell-changed' : ''">
+                      {{ element.gradeName }}
+                    </span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="maxDurationMinutes">
+                  <th mat-header-cell *matHeaderCellDef>Süre (Dakika)</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <span [ngClass]="isFieldChanged('maxDurationMinutes', i) ? 'cell-changed' : ''">{{
+                      element.maxDurationMinutes
+                    }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>Durum</th>
+                  <td mat-cell *matCellDef="let element; let i = index">
+                    <mat-chip [color]="getBulkItemStatus(i) === 'updated' ? 'accent' : 'primary'" selected>
+                      {{ getBulkItemStatus(i) === 'updated' ? 'Güncellendi' : 'Bekliyor' }}
+                    </mat-chip>
+                  </td>
+                </ng-container>
+
+                <tr
+                  mat-header-row
+                  *matHeaderRowDef="[
+                    'select',
+                    'bookName',
+                    'bookTestName',
+                    'name',
+                    'subtitle',
+                    'gradeId',
+                    'maxDurationMinutes',
+                    'status'
+                  ]"
+                ></tr>
+                <tr
+                  mat-row
+                  *matRowDef="
+                    let row;
+                    columns: [
+                      'select',
+                      'bookName',
+                      'bookTestName',
+                      'name',
+                      'subtitle',
+                      'gradeId',
+                      'maxDurationMinutes',
+                      'status'
+                    ]
+                  "
+                ></tr>
+              </table>
+            </div>
+            <div class="bulk-actions" style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end">
+              <button mat-raised-button color="accent" (click)="processBulkImport()">
+                <mat-icon>save</mat-icon>Testleri Oluştur
+              </button>
+              <button mat-raised-button color="warn" (click)="clearBulkImport()">
+                <mat-icon>clear</mat-icon>Listeyi Temizle
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <div *ngIf="bulkImportResults" style="margin-top: 12px">
+          <div *ngIf="bulkImportResults.success" class="success-message">
+            ✔️ Toplu yükleme tamamlandı. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
+            {{ bulkImportResults.failureCount }}
+          </div>
+          <div *ngIf="!bulkImportResults.success" class="error-message">
+            ❌ Yükleme sırasında hatalar oluştu. Başarılı: {{ bulkImportResults.successCount }}, Hatalı:
+            {{ bulkImportResults.failureCount }}
+          </div>
+          <ul *ngIf="bulkImportResults.failedExams?.length">
+            <li *ngFor="let err of bulkImportResults.failedExams">
+              <strong>{{ err.examName }}</strong> (Satır: {{ err.rowNumber }}): {{ err.errorMessage }}
+            </li>
+          </ul>
+        </div>
+        <div class="form-column">
+          <h2>Kart Ön İzleme</h2>
+          <app-worksheet-card [color]="'red'" [test]="testForm.value"> </app-worksheet-card>
+          <div class="list-container">
+            <div class="search-results">
+              <ul class="course-list">
+                <li class="course-item">
+                  <div class="course-info">
+                    <h3>
+                      {{ testForm.value.name }}
+                      <span class="new-badge">NEW & POPULAR</span>
+                      <span class="new-badge"
+                        ><strong> {{ testForm.value.questionCount }} Soru</strong></span
+                      >
+                      <span class="new-badge"
+                        ><strong> {{ getSelectedGradeName }}</strong></span
+                      >
+                      <span class="new-badge"
+                        ><strong> ⭐ {{ 4.8 }}</strong></span
+                      >
+                      <span class="new-badge"
+                        ><strong>{{ testForm.value.maxDurationMinutes }} dakika</strong></span
+                      >
+                    </h3>
+                    <span>{{ testForm.value.subtitle }}</span>
+                    <p>{{ testForm.value.description }}</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="button-group">
+            <button
+              mat-raised-button
+              color="primary"
+              type="button"
+              [disabled]="testForm.invalid"
+              (click)="navigateToQuestionCanvas()"
+            >
+              <mat-icon>playlist_add</mat-icon>Soru Ekleme Adımına Geç
+            </button>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

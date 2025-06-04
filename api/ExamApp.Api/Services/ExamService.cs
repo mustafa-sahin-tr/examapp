@@ -799,8 +799,9 @@ public class ExamService : IExamService
                         BookId = book.Id
                     },
                     ];
+                    _context.Books.Add(book);
                 }
-                _context.Books.Add(book);
+                
                 await _context.SaveChangesAsync();
             }
             else

@@ -125,11 +125,44 @@ export class TestCreateComponent implements OnInit {
         const last = this.lastPatchedBulkFormValue;
         const changed = last && Object.keys(current).some((key) => current[key] !== last[key]);
         if (changed) {
-          this.bulkImportData[this.selectedBulkIndex] = {
+          // this.bulkImportData field'ların name alanın tutarken form'da id değerleri var. gradeId, bookId, bookTestId gibi
+          // bu yüzden form'da değişiklik yapıldığında bulkImportData'yı güncelle
+          // Preserve name fields while updating with form values
+          const updatedItem = {
             ...this.bulkImportData[this.selectedBulkIndex],
-            ...current,
+            name: current.name,
+            description: current.description,
+            maxDurationMinutes: current.maxDurationMinutes,
+            isPracticeTest: current.isPracticeTest,
+            subtitle: current.subtitle,
+            imageUrl: current.imageUrl,
             __status: 'updated',
           };
+
+          // Update ID fields while maintaining the corresponding name fields
+          if (current.gradeId) {
+            updatedItem.gradeId = current.gradeId;
+            const grade = this.grades.find((g) => g.id === current.gradeId);
+            if (grade) updatedItem.gradeName = grade.name;
+          }
+
+          if (current.bookId) {
+            updatedItem.bookId = current.bookId;
+            const book = this.books.find((b) => b.id === current.bookId);
+            if (book) updatedItem.bookName = book.name;
+          } else if (current.newBookName) {
+            updatedItem.bookName = current.newBookName;
+          }
+
+          if (current.bookTestId) {
+            updatedItem.bookTestId = current.bookTestId;
+            const bookTest = this.bookTests.find((bt) => bt.id.toString() === current.bookTestId);
+            if (bookTest) updatedItem.bookTestName = bookTest.name;
+          } else if (current.newBookTestName) {
+            updatedItem.bookTestName = current.newBookTestName;
+          }
+
+          this.bulkImportData[this.selectedBulkIndex] = updatedItem;
           this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
         }
       }
@@ -350,7 +383,7 @@ export class TestCreateComponent implements OnInit {
         const item = {
           name: row['Ad'] || row['Ders'],
           description: row['Açıklama'] || row['Description'] || '',
-          gradeId: +row['Sınıf'] || +row['Grade'] || 1,
+          gradeId: row['Sınıf'] || row['Grade'] || '',
           maxDurationMinutes: +row['Süre'] || +row['Duration'] || 10,
           isPracticeTest: row['ÇalışmaTesti'] === 'Evet' || row['IsPracticeTest'] === true,
           subtitle: row['AltBaşlık'] || row['Subtitle'] || '',
@@ -366,6 +399,7 @@ export class TestCreateComponent implements OnInit {
         };
       });
       this.bulkImportData = exams;
+      this.ensureBulkImportGradeNames();
       this.isUploading = false;
     } catch (e) {
       this.bulkImportResults = { success: false, message: 'Excel dosyası okunamadı.' };
@@ -381,6 +415,7 @@ export class TestCreateComponent implements OnInit {
     let bookTestId = '';
     let newBookName = '';
     let newBookTestName = '';
+    let gradeId = 0;
     let showAddBookInput = false;
     let showAddBookTestInput = false;
 
@@ -455,11 +490,46 @@ export class TestCreateComponent implements OnInit {
       }
     }
 
+    // bookId ve bookTestId gibi grade id'yi de kontrol et excelde grade'in name alanı geliyor ama form'da id gerekiyor listeden bulsun ve setlesin aynı şekilde
+    // case insensitive olarak kontrol et ve türkçe karakterleri normalize et
+    if (element.gradeId && typeof element.gradeId === 'string') {
+      element.gradeId = element.gradeId.trim();
+    }
+    if (element.grade && typeof element.grade === 'string') {
+      element.grade = element.grade.trim();
+    }
+    if (element.gradeId) {
+      const normalize = (str: string) =>
+        str
+          ?.toLocaleLowerCase('tr-TR')
+          .replace(/ı/g, 'i')
+          .replace(/İ/g, 'i')
+          .replace(/ş/g, 's')
+          .replace(/Ş/g, 's')
+          .replace(/ğ/g, 'g')
+          .replace(/Ğ/g, 'g')
+          .replace(/ü/g, 'u')
+          .replace(/Ü/g, 'u')
+          .replace(/ö/g, 'o')
+          .replace(/Ö/g, 'o')
+          .replace(/ç/g, 'c')
+          .replace(/Ç/g, 'c')
+          .trim();
+      const foundGrade = this.grades.find((g) => normalize(g.name) === normalize(element.gradeId));
+      if (foundGrade) {
+        gradeId = foundGrade.id;
+        this.testForm.patchValue({ gradeId: foundGrade.id });
+      } else {
+        gradeId = 0; // Eğer bulunamazsa varsayılan olarak 0
+        this.testForm.patchValue({ gradeId: null });
+      }
+    }
+
     // Formu patchle
     this.testForm.patchValue({
       name: element.name,
       description: element.description,
-      gradeId: +element.gradeId,
+      gradeId: gradeId,
       maxDurationMinutes: element.maxDurationMinutes,
       isPracticeTest: element.isPracticeTest,
       subtitle: element.subtitle,
@@ -486,6 +556,7 @@ export class TestCreateComponent implements OnInit {
         __status: 'updated',
       };
       this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
+      this.ensureBulkImportGradeNames();
       this.lastPatchedBulkFormValue = { ...this.testForm.value };
     }
   }
@@ -534,5 +605,23 @@ export class TestCreateComponent implements OnInit {
   clearBulkImport() {
     this.bulkImportData = [];
     this.selectedBulkIndex = null;
+  }
+
+  // Excel'den gelen veya dışarıdan eklenen her item'a gradeName ekle
+  private ensureBulkImportGradeNames() {
+    if (!this.bulkImportData || !this.grades) return;
+    this.bulkImportData = this.bulkImportData.map((item) => {
+      // Eğer gradeName zaten varsa dokunma
+      if (item.gradeName) return item;
+      // Eğer gradeId varsa, gradeName'i bul
+      let gradeName = '';
+      if (item.gradeId) {
+        const found = this.grades.find((g) => g.id === item.gradeId || g.name === item.gradeId);
+        if (found) gradeName = found.name;
+      }
+      // Eğer grade (isim) varsa, gradeName olarak ata
+      if (!gradeName && item.grade) gradeName = item.grade;
+      return { ...item, gradeName };
+    });
   }
 }

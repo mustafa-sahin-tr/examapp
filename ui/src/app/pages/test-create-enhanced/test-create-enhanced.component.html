@@ -172,6 +172,26 @@
               <button mat-raised-button color="accent" (click)="processBulkImport()">
                 <mat-icon>save</mat-icon>Testleri Oluştur
               </button>
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="undoBulkItem(selectedBulkIndex!)"
+                [disabled]="
+                  selectedBulkIndex === null ||
+                  !bulkImportData[selectedBulkIndex] ||
+                  !bulkImportData[selectedBulkIndex].__original
+                "
+              >
+                <mat-icon>undo</mat-icon>Seçili Satırı Geri Al
+              </button>
+              <button
+                mat-raised-button
+                color="primary"
+                (click)="undoAllBulkItems()"
+                [disabled]="!bulkImportData.length"
+              >
+                <mat-icon>undo</mat-icon>Tümünü Geri Al
+              </button>
               <button mat-raised-button color="warn" (click)="clearBulkImport()">
                 <mat-icon>clear</mat-icon>Listeyi Temizle
               </button>

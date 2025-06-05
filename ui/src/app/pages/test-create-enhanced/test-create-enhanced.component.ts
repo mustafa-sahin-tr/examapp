@@ -657,4 +657,32 @@ export class TestCreateEnhancedComponent implements OnInit {
       this.subtopics = [];
     });
   }
+
+  // Tek bir satırı orijinal haline döndür
+  undoBulkItem(i: number) {
+    const item = this.bulkImportData[i];
+    if (item && item.__original) {
+      // Sadece orijinal veriyi tabloya setle
+      this.bulkImportData[i] = { ...item.__original, __original: { ...item.__original }, __status: undefined };
+      this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
+      // Form ve bağlı alanlar için mevcut mantığı tekrar kullan
+      this.ensureBulkImportNames();
+      this.onBulkItemSelect(i, this.bulkImportData[i]);
+    }
+  }
+
+  // Tüm satırları orijinal haline döndür
+  undoAllBulkItems() {
+    this.bulkImportData = this.bulkImportData.map((item) => ({
+      ...item.__original,
+      __original: { ...item.__original },
+    }));
+    this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
+    this.ensureBulkImportNames();
+    // Eğer bir satır seçiliyse formu da güncelle
+    if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+      this.testForm.patchValue({ ...this.bulkImportData[this.selectedBulkIndex].__original }, { emitEvent: false });
+      this.lastPatchedBulkFormValue = { ...this.bulkImportData[this.selectedBulkIndex].__original };
+    }
+  }
 }

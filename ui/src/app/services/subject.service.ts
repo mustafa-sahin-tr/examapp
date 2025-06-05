@@ -25,4 +25,12 @@ export class SubjectService {
   getSubTopicsByTopic(topicId: number): Observable<SubTopic[]> {
     return this.http.get<SubTopic[]>(`${this.baseUrl}/subtopics/${topicId}`);
   }
+
+  getSubjectsByGrade(gradeId: number) {
+    return this.http.get<Subject[]>(`/api/exam/subject/by-grade/${gradeId}`);
+  }
+
+  getTopicsBySubjectAndGrade(subjectId: number, gradeId: number): Observable<Topic[]> {
+    return this.http.get<Topic[]>(`${this.baseUrl}/topics?subjectId=${subjectId}&gradeId=${gradeId}`);
+  }
 }

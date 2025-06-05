@@ -44,6 +44,7 @@ export class TestFormComponent {
   @Output() onTopicChange = new EventEmitter<any>();
   @Output() onSubmit = new EventEmitter<void>();
   @Output() onCancel = new EventEmitter<void>();
+  @Output() onGradeChange = new EventEmitter<any>();
 
   // Template'te çağrılan fonksiyonlar
   subjectChange(value: any) {
@@ -51,5 +52,8 @@ export class TestFormComponent {
   }
   topicChange(value: any) {
     this.onTopicChange.emit(value);
+  }
+  gradeChange(value: any) {
+    this.onGradeChange.emit(value);
   }
 }

@@ -157,10 +157,16 @@ export class TestCreateEnhancedComponent implements OnInit {
       this.grades = data;
     });
   }
-  loadSubjects() {
-    this.subjectService.loadCategories().subscribe((data) => {
-      this.subjects = data;
-    });
+  loadSubjects(gradeId?: number) {
+    if (gradeId) {
+      this.subjectService.getSubjectsByGrade(gradeId).subscribe((data) => {
+        this.subjects = data;
+      });
+    } else {
+      this.subjectService.loadCategories().subscribe((data) => {
+        this.subjects = data;
+      });
+    }
   }
   onBookChange(bookId: any) {
     this.showAddBookInput = false;
@@ -187,10 +193,16 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.testForm.patchValue({ bookTestId: null }, { emitEvent: false });
   }
   onSubjectChange(subjectId: any) {
-    this.subjectService.getTopicsBySubject(subjectId).subscribe((topics) => {
-      this.topics = topics;
+    const gradeId = this.testForm.value.gradeId;
+    if (subjectId && gradeId) {
+      this.subjectService.getTopicsBySubjectAndGrade(subjectId, gradeId).subscribe((topics) => {
+        this.topics = topics;
+        this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
+      });
+    } else {
+      this.topics = [];
       this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
-    });
+    }
   }
   onTopicChange(topicId: any) {
     this.subjectService.getSubTopicsByTopic(topicId).subscribe((subtopics) => {
@@ -280,6 +292,8 @@ export class TestCreateEnhancedComponent implements OnInit {
     const i = this.bulkImportData.indexOf(row);
     if (i === -1) return;
     this.selectedBulkIndex = i;
+    // Önceki gradeId'yi al
+    const prevGradeId = this.testForm.value.gradeId;
     // Formu seçilen satır ile doldururken valueChanges tetiklenmesin
     this.testForm.patchValue(
       {
@@ -306,6 +320,11 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.showAddBookTestInput = !!row.newBookTestName && !row.bookTestId;
     // Son patchlenen değeri sakla
     this.lastPatchedBulkFormValue = { ...this.testForm.value };
+    // Eğer gradeId değiştiyse, onGradeChange fonksiyonunu tetikle
+    const newGradeId = typeof row.gradeId === 'string' ? parseInt(row.gradeId, 10) : row.gradeId;
+    if (newGradeId !== prevGradeId && !!newGradeId) {
+      this.onGradeChange(newGradeId);
+    }
   }
   // Bulk import tablosu ve form ile ilgili fonksiyonlar
   processBulkImport() {
@@ -445,6 +464,9 @@ export class TestCreateEnhancedComponent implements OnInit {
     let gradeId = 0;
     let showAddBookInput = false;
     let showAddBookTestInput = false;
+
+    // Store previous gradeId before patching
+    const prevGradeId = this.testForm.value.gradeId;
 
     // Kitap adı ile eşleşen kitap var mı?
     if (element.bookName) {
@@ -595,6 +617,11 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.showAddBookTestInput = showAddBookTestInput;
     // Seçildiğinde statü değiştirme! Sadece son patchlenen değeri sakla
     this.lastPatchedBulkFormValue = { ...this.testForm.value };
+
+    // Only trigger onGradeChange if grade actually changed and is valid
+    if (gradeId && gradeId !== prevGradeId) {
+      this.onGradeChange(gradeId);
+    }
   }
 
   get getSelectedGradeName(): string {
@@ -614,5 +641,20 @@ export class TestCreateEnhancedComponent implements OnInit {
     } else {
       this.snackBar.open('Form eksik veya hatalı!', 'Kapat', { duration: 2000 });
     }
+  }
+
+  onGradeChange(gradeId: number) {
+    // Filter subjects by grade
+    this.subjectService.getSubjectsByGrade(gradeId).subscribe((subjects) => {
+      this.subjects = subjects;
+      // Reset subject, topic, subtopic fields in the form
+      this.testForm.patchValue({
+        subjectId: null,
+        topicId: null,
+        subtopicId: null,
+      });
+      this.topics = [];
+      this.subtopics = [];
+    });
   }
 }

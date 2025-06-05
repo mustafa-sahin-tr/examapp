@@ -38,6 +38,19 @@ public class SubjectController : BaseController
         return Ok(subTopics);
     }
 
+    [HttpGet("by-grade/{gradeId}")]
+    public async Task<IActionResult> GetSubjectsByGrade(int gradeId)
+    {
+        var subjects = await _subjectService.GetSubjectsByGradeIdAsync(gradeId);
+        return Ok(subjects);
+    }
+
+    [HttpGet("topics")]
+    public async Task<IActionResult> GetTopicsBySubjectAndGrade([FromQuery] int subjectId, [FromQuery] int gradeId)
+    {
+        var topics = await _subjectService.GetTopicsBySubjectAndGradeAsync(subjectId, gradeId);
+        return Ok(topics);
+    }
 
 }
 

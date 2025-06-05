@@ -13,7 +13,7 @@ public class SubjectService : ISubjectService
         _context = context;
     }
 
-    public async Task<bool> DeleteSubjectAsync(int subjectId,CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteSubjectAsync(int subjectId, CancellationToken cancellationToken = default)
     {
         var subject = await _context.Subjects.FindAsync(subjectId);
         if (subject == null) return false;
@@ -36,5 +36,21 @@ public class SubjectService : ISubjectService
     {
         return await _context.SubTopics.Where(st => st.TopicId == topicId).ToListAsync(cancellationToken);
     }
-    
+
+    public async Task<List<Subject>> GetSubjectsByGradeIdAsync(int gradeId, CancellationToken cancellationToken = default)
+    {
+        return await _context.GradeSubjects
+            .Where(gs => gs.GradeId == gradeId)
+            .Include(gs => gs.Subject)
+            .Select(gs => gs.Subject)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Topic>> GetTopicsBySubjectAndGradeAsync(int subjectId, int gradeId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Topics
+            .Where(t => t.SubjectId == subjectId && t.GradeId == gradeId)
+            .ToListAsync(cancellationToken);
+    }
 }

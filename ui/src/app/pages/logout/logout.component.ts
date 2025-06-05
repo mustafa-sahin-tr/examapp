@@ -44,21 +44,21 @@ export class LogoutComponent implements OnInit {
     try {
       // Step 1: Starting logout process
       this.updateStep(1);
-      await this.delay(1200);
+      await this.delay(200);
 
       // Step 2: Clearing data
       this.updateStep(2);
-      await this.delay(1000);
+      await this.delay(200);
 
       // Step 3: Final logout
       this.updateStep(3);
-      await this.delay(800);
+      await this.delay(200);
 
       // Perform actual logout
       this.authService.logout();
 
       // Navigate to login after a short delay
-      await this.delay(500);
+      await this.delay(200);
       this.router.navigate(['/login']);
     } catch (error) {
       console.error('Logout error:', error);

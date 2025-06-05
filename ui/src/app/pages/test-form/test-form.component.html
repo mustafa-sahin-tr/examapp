@@ -70,7 +70,7 @@
   <!-- Sınıf Seçimi -->
   <mat-form-field appearance="outline" class="hide-subscript">
     <mat-label>Sınıf</mat-label>
-    <mat-select formControlName="gradeId" required>
+    <mat-select formControlName="gradeId" required (selectionChange)="gradeChange($event.value)">
       <mat-option *ngFor="let grade of grades" [value]="grade.id">
         {{ grade.name }}
       </mat-option>

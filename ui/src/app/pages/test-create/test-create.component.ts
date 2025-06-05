@@ -179,8 +179,9 @@ export class TestCreateComponent implements OnInit {
   }
 
   onSubjectChange(subjectId: number) {
-    if (subjectId) {
-      this.subjectService.getTopicsBySubject(subjectId).subscribe((topics) => {
+    const gradeId = this.testForm.value.gradeId;
+    if (subjectId && gradeId) {
+      this.subjectService.getTopicsBySubjectAndGrade(subjectId, gradeId).subscribe((topics) => {
         this.topics = topics;
         this.testForm.patchValue({ topicId: null, subtopicId: null });
       });

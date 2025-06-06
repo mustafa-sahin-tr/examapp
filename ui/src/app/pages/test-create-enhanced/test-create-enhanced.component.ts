@@ -114,6 +114,9 @@ export class TestCreateEnhancedComponent implements OnInit {
             isPracticeTest: current.isPracticeTest,
             subtitle: current.subtitle,
             imageUrl: current.imageUrl,
+            subjectId: current.subjectId,
+            topicId: current.topicId,
+            subtopicId: current.subtopicId,
             __status: 'updated',
           };
 
@@ -308,9 +311,9 @@ export class TestCreateEnhancedComponent implements OnInit {
         newBookName: row.newBookName,
         newBookTestName: row.newBookTestName,
         imageUrl: row.imageUrl,
-        subjectId: row.subjectId,
-        topicId: row.topicId,
-        subtopicId: row.subtopicId,
+        subjectId: row.subjectId ? +row.subjectId : null,
+        topicId: row.topicId ? +row.topicId : null,
+        subtopicId: row.subtopicId ? +row.subtopicId : null,
         questionCount: row.questionCount,
       },
       { emitEvent: false }
@@ -454,6 +457,24 @@ export class TestCreateEnhancedComponent implements OnInit {
     });
   }
 
+  normalizeTrString(str: any): string {
+    return (typeof str === 'string' ? str : String(str ?? ''))
+      .toLocaleLowerCase('tr-TR')
+      .replace(/ı/g, 'i')
+      .replace(/İ/g, 'i')
+      .replace(/ş/g, 's')
+      .replace(/Ş/g, 's')
+      .replace(/ğ/g, 'g')
+      .replace(/Ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/Ü/g, 'u')
+      .replace(/ö/g, 'o')
+      .replace(/Ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/Ç/g, 'c')
+      .trim();
+  }
+
   onBulkItemSelect(i: number, element: any) {
     this.selectedBulkIndex = i;
 
@@ -463,65 +484,36 @@ export class TestCreateEnhancedComponent implements OnInit {
     let newBookTestName = '';
     let gradeId = 0;
     let showAddBookInput = false;
-    let showAddBookTestInput = false;
 
     // Store previous gradeId before patching
     const prevGradeId = this.testForm.value.gradeId;
 
     // Kitap adı ile eşleşen kitap var mı?
     if (element.bookName) {
-      const normalize = (str: string) =>
-        str
-          ?.toLocaleLowerCase('tr-TR')
-          .replace(/ı/g, 'i')
-          .replace(/İ/g, 'i')
-          .replace(/ş/g, 's')
-          .replace(/Ş/g, 's')
-          .replace(/ğ/g, 'g')
-          .replace(/Ğ/g, 'g')
-          .replace(/ü/g, 'u')
-          .replace(/Ü/g, 'u')
-          .replace(/ö/g, 'o')
-          .replace(/Ö/g, 'o')
-          .replace(/ç/g, 'c')
-          .replace(/Ç/g, 'c')
-          .trim();
-      const foundBook = this.books.find((b) => normalize(b.name) === normalize(element.bookName));
+      const foundBook = this.books.find(
+        (b) => this.normalizeTrString(b.name) === this.normalizeTrString(element.bookName)
+      );
       if (foundBook) {
         bookId = foundBook.id;
         newBookName = '';
-        showAddBookInput = false;
+        this.showAddBookInput = false;
         // Kitap testleri de yüklenmeli
         this.bookService.getTestsByBook(foundBook.id).subscribe((tests) => {
           this.bookTests = tests;
           // Kitap testi adı ile eşleşen test var mı? (bookId varsa ona göre, yoksa genel listede arar)
           if (element.bookTestName) {
             let foundBookTest;
-            const normalize = (str: string) =>
-              str
-                ?.toLocaleLowerCase('tr-TR')
-                .replace(/ı/g, 'i')
-                .replace(/İ/g, 'i')
-                .replace(/ş/g, 's')
-                .replace(/Ş/g, 's')
-                .replace(/ğ/g, 'g')
-                .replace(/Ğ/g, 'g')
-                .replace(/ü/g, 'u')
-                .replace(/Ü/g, 'u')
-                .replace(/ö/g, 'o')
-                .replace(/Ö/g, 'o')
-                .replace(/ç/g, 'c')
-                .replace(/Ç/g, 'c')
-                .trim();
             if (bookId) {
-              foundBookTest = this.bookTests.find((bt) => normalize(bt.name) === normalize(element.bookTestName));
+              foundBookTest = this.bookTests.find(
+                (bt) => this.normalizeTrString(bt.name) === this.normalizeTrString(element.bookTestName)
+              );
             } else {
               foundBookTest = null;
             }
             if (foundBookTest) {
               bookTestId = foundBookTest.id;
               newBookTestName = '';
-              showAddBookTestInput = false;
+              this.showAddBookTestInput = false;
               this.testForm.patchValue(
                 {
                   bookId: bookId,
@@ -532,18 +524,26 @@ export class TestCreateEnhancedComponent implements OnInit {
             } else {
               bookTestId = 0;
               newBookTestName = element.bookTestName;
-              showAddBookTestInput = true;
+              this.showAddBookTestInput = true;
+              this.testForm.patchValue(
+                {
+                  bookId: bookId,
+                  bookTestId: null,
+                  newBookTestName: newBookTestName,
+                },
+                { emitEvent: false }
+              );
             }
           }
         });
       } else {
         bookId = 0;
         newBookName = element.bookName;
-        showAddBookInput = true;
+        this.showAddBookInput = true;
         this.bookTests = [];
         // Kitap bulunamazsa kitap testi de yeni olarak işaretlenir
         newBookTestName = element.bookTestName;
-        showAddBookTestInput = true;
+        this.showAddBookTestInput = true;
         this.testForm.patchValue(
           {
             bookId: null,
@@ -553,8 +553,6 @@ export class TestCreateEnhancedComponent implements OnInit {
           },
           { emitEvent: false }
         );
-        this.showAddBookInput = showAddBookInput;
-        this.showAddBookTestInput = showAddBookTestInput;
       }
     }
 
@@ -567,23 +565,9 @@ export class TestCreateEnhancedComponent implements OnInit {
       element.grade = element.grade.trim();
     }
     if (element.gradeId) {
-      const normalize = (str: string) =>
-        str
-          ?.toLocaleLowerCase('tr-TR')
-          .replace(/ı/g, 'i')
-          .replace(/İ/g, 'i')
-          .replace(/ş/g, 's')
-          .replace(/Ş/g, 's')
-          .replace(/ğ/g, 'g')
-          .replace(/Ğ/g, 'g')
-          .replace(/ü/g, 'u')
-          .replace(/Ü/g, 'u')
-          .replace(/ö/g, 'o')
-          .replace(/Ö/g, 'o')
-          .replace(/ç/g, 'c')
-          .replace(/Ç/g, 'c')
-          .trim();
-      const foundGrade = this.grades.find((g) => normalize(g.name) === normalize(element.gradeId));
+      const foundGrade = this.grades.find(
+        (g) => this.normalizeTrString(g.name) === this.normalizeTrString(element.gradeId)
+      );
       if (foundGrade) {
         gradeId = foundGrade.id;
         this.testForm.patchValue({ gradeId: foundGrade.id }, { emitEvent: false });
@@ -602,10 +586,10 @@ export class TestCreateEnhancedComponent implements OnInit {
         maxDurationMinutes: element.maxDurationMinutes,
         isPracticeTest: element.isPracticeTest,
         subtitle: element.subtitle,
-        bookTestId: bookTestId,
-        bookId: bookId,
-        newBookName: newBookName,
-        newBookTestName: newBookTestName,
+        // bookTestId: bookTestId,
+        // bookId: bookId,
+        // newBookName: newBookName,
+        // newBookTestName: newBookTestName,
         imageUrl: element.imageUrl,
         subjectId: element.subjectId ? +element.subjectId : null,
         topicId: element.topicId ? +element.topicId : null,
@@ -613,8 +597,7 @@ export class TestCreateEnhancedComponent implements OnInit {
       },
       { emitEvent: false }
     );
-    this.showAddBookInput = showAddBookInput;
-    this.showAddBookTestInput = showAddBookTestInput;
+
     // Seçildiğinde statü değiştirme! Sadece son patchlenen değeri sakla
     this.lastPatchedBulkFormValue = { ...this.testForm.value };
 
@@ -683,6 +666,84 @@ export class TestCreateEnhancedComponent implements OnInit {
     if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
       this.testForm.patchValue({ ...this.bulkImportData[this.selectedBulkIndex].__original }, { emitEvent: false });
       this.lastPatchedBulkFormValue = { ...this.bulkImportData[this.selectedBulkIndex].__original };
+    }
+  }
+
+  applySubjectToAllBulk(subjectId: any) {
+    if (!subjectId) return;
+    this.bulkImportData = this.bulkImportData.map((item, i) => {
+      const updated = { ...item, subjectId, __status: 'updated' };
+      // Optionally reset topic/subtopic if subject changes
+      if (item.subjectId !== subjectId) {
+        updated.topicId = undefined;
+        updated.subtopicId = undefined;
+      }
+      return updated;
+    });
+    this.bulkImportData = [...this.bulkImportData];
+    this.ensureBulkImportNames();
+    // If a row is selected, update the form
+    if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+      this.testForm.patchValue({ subjectId }, { emitEvent: false });
+      this.lastPatchedBulkFormValue = { ...this.testForm.value };
+    }
+  }
+
+  applyTopicToAllBulk(topicId: any) {
+    if (!topicId) return;
+    this.bulkImportData = this.bulkImportData.map((item, i) => {
+      const updated = { ...item, topicId, __status: 'updated' };
+      // Optionally reset subtopic if topic changes
+      if (item.topicId !== topicId) {
+        updated.subtopicId = undefined;
+      }
+      return updated;
+    });
+    this.bulkImportData = [...this.bulkImportData];
+    this.ensureBulkImportNames();
+    if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+      this.testForm.patchValue({ topicId }, { emitEvent: false });
+      this.lastPatchedBulkFormValue = { ...this.testForm.value };
+    }
+  }
+
+  applySubtopicToAllBulk(subtopicId: any) {
+    if (!subtopicId) return;
+    this.bulkImportData = this.bulkImportData.map((item, i) => ({
+      ...item,
+      subtopicId,
+      __status: 'updated',
+    }));
+    this.bulkImportData = [...this.bulkImportData];
+    this.ensureBulkImportNames();
+    if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+      this.testForm.patchValue({ subtopicId }, { emitEvent: false });
+      this.lastPatchedBulkFormValue = { ...this.testForm.value };
+    }
+  }
+
+  applyGradeToAllBulk(gradeId: any) {
+    if (!gradeId) return;
+    const grade = this.grades.find((g) => g.id === gradeId);
+    if (!grade) {
+      return;
+    }
+    this.bulkImportData = this.bulkImportData.map((item, i) => {
+      const updated = { ...item, gradeId, gradeName: grade.name, __status: 'updated' };
+      // Optionally reset subject/topic/subtopic if grade changes
+      if (item.gradeId !== gradeId) {
+        updated.subjectId = undefined;
+        updated.topicId = undefined;
+        updated.subtopicId = undefined;
+      }
+      return updated;
+    });
+    this.bulkImportData = [...this.bulkImportData];
+    this.ensureBulkImportNames();
+    // If a row is selected, update the form
+    if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
+      this.testForm.patchValue({ gradeId }, { emitEvent: false });
+      this.lastPatchedBulkFormValue = { ...this.testForm.value };
     }
   }
 }

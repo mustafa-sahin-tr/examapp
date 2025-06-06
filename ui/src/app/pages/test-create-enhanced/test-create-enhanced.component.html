@@ -23,6 +23,10 @@
             (onGradeChange)="onGradeChange($event)"
             (onSubmit)="onSubmit()"
             (onCancel)="navigateToTestList()"
+            (applySubjectToAll)="applySubjectToAllBulk($event)"
+            (applyTopicToAll)="applyTopicToAllBulk($event)"
+            (applySubtopicToAll)="applySubtopicToAllBulk($event)"
+            (applyGradeToAll)="applyGradeToAllBulk($event)"
           ></app-test-form>
         </mat-card-content>
       </mat-card>
@@ -214,6 +218,7 @@
           </ul>
         </div>
         <div class="form-column">
+          {{ bulkImportData[selectedBulkIndex || 0] | json }}
           <h2>Kart Ön İzleme</h2>
           <app-worksheet-card [color]="'red'" [test]="testForm.value"> </app-worksheet-card>
           <div class="list-container">

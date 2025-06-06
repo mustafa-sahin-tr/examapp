@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-test-form',
@@ -23,6 +24,7 @@ import { MatButtonModule } from '@angular/material/button';
     MatOptionModule,
     MatCheckboxModule,
     MatButtonModule,
+    MatIconModule,
   ],
 })
 export class TestFormComponent {
@@ -45,6 +47,10 @@ export class TestFormComponent {
   @Output() onSubmit = new EventEmitter<void>();
   @Output() onCancel = new EventEmitter<void>();
   @Output() onGradeChange = new EventEmitter<any>();
+  @Output() applySubjectToAll = new EventEmitter<any>();
+  @Output() applyTopicToAll = new EventEmitter<any>();
+  @Output() applySubtopicToAll = new EventEmitter<any>();
+  @Output() applyGradeToAll = new EventEmitter<any>();
 
   // Template'te çağrılan fonksiyonlar
   subjectChange(value: any) {

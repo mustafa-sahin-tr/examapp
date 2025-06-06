@@ -68,43 +68,147 @@
   </mat-form-field>
 
   <!-- Sınıf Seçimi -->
-  <mat-form-field appearance="outline" class="hide-subscript">
+  <mat-form-field appearance="outline" class="hide-subscript mat-form-field-with-suffix">
     <mat-label>Sınıf</mat-label>
     <mat-select formControlName="gradeId" required (selectionChange)="gradeChange($event.value)">
       <mat-option *ngFor="let grade of grades" [value]="grade.id">
         {{ grade.name }}
       </mat-option>
     </mat-select>
+    <span matSuffix style="display: flex; align-items: center">
+      <span
+        role="button"
+        tabindex="0"
+        (click)="$event.stopPropagation(); applyGradeToAll.emit(form.get('gradeId')?.value)"
+        (keydown.enter)="
+          $event.preventDefault(); $event.stopPropagation(); applyGradeToAll.emit(form.get('gradeId')?.value)
+        "
+        (keydown.space)="
+          $event.preventDefault(); $event.stopPropagation(); applyGradeToAll.emit(form.get('gradeId')?.value)
+        "
+        [class.disabled-link]="!form.get('gradeId')?.value"
+        [ngStyle]="{
+          'margin-left': '8px',
+          color: '#1976d2',
+          cursor: 'pointer',
+          opacity: form.get('gradeId')?.value ? 1 : 0.4,
+          'min-height': '32px',
+          display: 'flex',
+          'align-items': 'center'
+        }"
+        [attr.aria-disabled]="!form.get('gradeId')?.value"
+      >
+        <mat-icon style="font-size: 20px; vertical-align: middle">done_all</mat-icon>
+      </span>
+    </span>
   </mat-form-field>
 
   <!--Subject Seçimi -->
-  <mat-form-field appearance="outline">
+  <mat-form-field appearance="outline" class="hide-subscript mat-form-field-with-suffix">
     <mat-label>Ders</mat-label>
     <mat-select formControlName="subjectId" (selectionChange)="subjectChange($event.value)">
       <mat-option *ngFor="let subject of subjects" [value]="subject.id">
         {{ subject.name }}
       </mat-option>
     </mat-select>
+    <span matSuffix style="display: flex; align-items: center">
+      <span
+        role="button"
+        tabindex="0"
+        (click)="$event.stopPropagation(); applySubjectToAll.emit(form.get('subjectId')?.value)"
+        (keydown.enter)="
+          $event.preventDefault(); $event.stopPropagation(); applySubjectToAll.emit(form.get('subjectId')?.value)
+        "
+        (keydown.space)="
+          $event.preventDefault(); $event.stopPropagation(); applySubjectToAll.emit(form.get('subjectId')?.value)
+        "
+        [class.disabled-link]="!form.get('subjectId')?.value"
+        [ngStyle]="{
+          'margin-left': '8px',
+          color: '#1976d2',
+          cursor: 'pointer',
+          opacity: form.get('subjectId')?.value ? 1 : 0.4,
+          'min-height': '32px',
+          display: 'flex',
+          'align-items': 'center'
+        }"
+        [attr.aria-disabled]="!form.get('subjectId')?.value"
+      >
+        <mat-icon style="font-size: 20px; vertical-align: middle">done_all</mat-icon>
+      </span>
+    </span>
   </mat-form-field>
 
   <!-- Topic Seçimi -->
-  <mat-form-field appearance="outline">
+  <mat-form-field appearance="outline" class="hide-subscript mat-form-field-with-suffix">
     <mat-label>Konu</mat-label>
     <mat-select formControlName="topicId" (selectionChange)="topicChange($event.value)">
       <mat-option *ngFor="let topic of topics" [value]="topic.id">
         {{ topic.name }}
       </mat-option>
     </mat-select>
+    <span matSuffix style="display: flex; align-items: center">
+      <span
+        role="button"
+        tabindex="0"
+        (click)="$event.stopPropagation(); applyTopicToAll.emit(form.get('topicId')?.value)"
+        (keydown.enter)="
+          $event.preventDefault(); $event.stopPropagation(); applyTopicToAll.emit(form.get('topicId')?.value)
+        "
+        (keydown.space)="
+          $event.preventDefault(); $event.stopPropagation(); applyTopicToAll.emit(form.get('topicId')?.value)
+        "
+        [class.disabled-link]="!form.get('topicId')?.value"
+        [ngStyle]="{
+          'margin-left': '8px',
+          color: '#1976d2',
+          cursor: 'pointer',
+          opacity: form.get('topicId')?.value ? 1 : 0.4,
+          'min-height': '32px',
+          display: 'flex',
+          'align-items': 'center'
+        }"
+        [attr.aria-disabled]="!form.get('topicId')?.value"
+      >
+        <mat-icon style="font-size: 20px; vertical-align: middle">done_all</mat-icon>
+      </span>
+    </span>
   </mat-form-field>
 
   <!-- SubTopic Seçimi -->
-  <mat-form-field appearance="outline">
+  <mat-form-field appearance="outline" class="hide-subscript mat-form-field-with-suffix">
     <mat-label>Alt Konu</mat-label>
     <mat-select formControlName="subtopicId">
       <mat-option *ngFor="let subTopic of subtopics" [value]="subTopic.id">
         {{ subTopic.name }}
       </mat-option>
     </mat-select>
+    <span matSuffix style="display: flex; align-items: center">
+      <span
+        role="button"
+        tabindex="0"
+        (click)="$event.stopPropagation(); applySubtopicToAll.emit(form.get('subtopicId')?.value)"
+        (keydown.enter)="
+          $event.preventDefault(); $event.stopPropagation(); applySubtopicToAll.emit(form.get('subtopicId')?.value)
+        "
+        (keydown.space)="
+          $event.preventDefault(); $event.stopPropagation(); applySubtopicToAll.emit(form.get('subtopicId')?.value)
+        "
+        [class.disabled-link]="!form.get('subtopicId')?.value"
+        [ngStyle]="{
+          'margin-left': '8px',
+          color: '#1976d2',
+          cursor: 'pointer',
+          opacity: form.get('subtopicId')?.value ? 1 : 0.4,
+          'min-height': '32px',
+          display: 'flex',
+          'align-items': 'center'
+        }"
+        [attr.aria-disabled]="!form.get('subtopicId')?.value"
+      >
+        <mat-icon style="font-size: 20px; vertical-align: middle">done_all</mat-icon>
+      </span>
+    </span>
   </mat-form-field>
 
   <!-- Süre Seçimi -->
@@ -122,3 +226,28 @@
     <button mat-raised-button color="warn" type="button" (click)="onCancel.emit()">İptal</button>
   </div>
 </form>
+
+<style>
+  .mat-form-field-with-suffix .mat-form-field-suffix {
+    align-items: center !important;
+    display: flex !important;
+    height: 56px !important; /* match Material select height */
+    margin-top: 0 !important;
+  }
+  .mat-form-field-with-suffix .mat-icon-button {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    height: 40px;
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .disabled-link {
+    pointer-events: none;
+    cursor: default !important;
+    text-decoration: none !important;
+  }
+</style>

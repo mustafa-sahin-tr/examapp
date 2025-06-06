@@ -10,15 +10,16 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
-
+import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
+import { CoreModule } from './core/core.module';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withInterceptors([authInterceptor,authErrorInterceptor])), 
-    provideZoneChangeDetection({ eventCoalescing: true }), 
-    provideRouter(routes, withRouterConfig({onSameUrlNavigation: 'reload'})), 
+    provideHttpClient(withInterceptors([cacheInterceptor, authInterceptor, authErrorInterceptor])),
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),
     provideAnimationsAsync(),
     provideStore(reducers),
-    importProvidersFrom(ReactiveFormsModule)
-   ]
+    importProvidersFrom(ReactiveFormsModule, CoreModule),
+  ],
 };

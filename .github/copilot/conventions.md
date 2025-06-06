@@ -6,6 +6,7 @@
 - Use reactive forms with explicit FormControl typing
 - Follow Angular Material design patterns
 - Use 'ms-' prefix for css class names
+- Api base url for backend should bir '/api/exam' not only '/api'
 
 ## C# Backend
 - Follow REST API conventions

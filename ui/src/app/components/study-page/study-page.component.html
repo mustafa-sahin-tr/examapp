@@ -1,0 +1,74 @@
+<section class="ms-study-page">
+  <!-- Page Header -->
+  <app-section-header
+    title="Ders Çalışma"
+    subtitle="Konulara göz at, videolar izle, dökümanları incele"
+    [showBackButton]="currentView() !== 'catalog'"
+    (onBackClick)="
+      currentView() === 'content'
+        ? navigateToSubtopic(selectedTopicId()!)
+        : currentView() === 'subtopic'
+        ? navigateToCatalog()
+        : currentView() === 'topic'
+        ? navigateToCatalog()
+        : navigateToCatalog()
+    "
+  >
+  </app-section-header>
+
+  <!-- Search Bar -->
+  <div class="ms-search-container">
+    <mat-form-field appearance="outline" class="ms-search-field">
+      <mat-label>Ders, konu veya içerik ara</mat-label>
+      <input
+        matInput
+        placeholder="Aramak istediğiniz konuyu yazın..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearch($event)"
+      />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="ms-progress-container">
+    <div class="ms-progress-header">
+      <h3>İlerleme Durumu</h3>
+      <span>{{ overallProgress() }}%</span>
+    </div>
+    <mat-progress-bar mode="determinate" [value]="overallProgress()" color="primary"></mat-progress-bar>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="ms-study-content">
+    <!-- Catalog View - Show when no subject is selected -->
+    <ng-container *ngIf="currentView() === 'catalog'">
+      <app-study-catalog (subjectSelected)="navigateToTopic($event)"> </app-study-catalog>
+    </ng-container>
+
+    <!-- Topic View - Show when a subject is selected -->
+    <ng-container *ngIf="currentView() === 'topic' && selectedSubjectId() !== null">
+      <app-study-topic [subjectId]="selectedSubjectId()!" (topicSelected)="navigateToSubtopic($event)">
+      </app-study-topic>
+    </ng-container>
+
+    <!-- Subtopic View - Show when a topic is selected -->
+    <ng-container *ngIf="currentView() === 'subtopic' && selectedTopicId() !== null">
+      <app-study-subtopic
+        [topicId]="selectedTopicId()!"
+        (contentSelected)="navigateToContent($event.subtopicId, $event.contentId)"
+      >
+      </app-study-subtopic>
+    </ng-container>
+
+    <!-- Content View - Show when a subtopic and content are selected -->
+    <ng-container *ngIf="currentView() === 'content' && selectedContentId() !== null">
+      <app-study-content-viewer
+        [contentId]="selectedContentId()!"
+        [isCompleted]="isContentCompleted(selectedContentId()!)"
+        (markCompleted)="markContentAsCompleted($event)"
+      >
+      </app-study-content-viewer>
+    </ng-container>
+  </div>
+</section>

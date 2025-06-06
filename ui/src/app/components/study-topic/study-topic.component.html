@@ -1,0 +1,45 @@
+<div class="ms-study-topic">
+  <h2>{{ subject?.name }} Konuları</h2>
+
+  <div class="ms-topic-description">
+    <p>İncelemek istediğiniz konuyu seçin. Her konu, alt konular ve çalışma materyalleri içerir.</p>
+  </div>
+
+  <div *ngIf="isLoading" class="ms-loading-placeholder">
+    <mat-icon>autorenew</mat-icon>
+    <span>Konular yükleniyor...</span>
+  </div>
+
+  <div *ngIf="!isLoading && topics.length === 0" class="ms-empty-state">
+    <mat-icon>category</mat-icon>
+    <p>Bu ders için henüz konu eklenmemiş.</p>
+  </div>
+
+  <div *ngIf="!isLoading && topics.length > 0" class="ms-topic-list">
+    <mat-card
+      *ngFor="let topic of topics; let i = index"
+      class="ms-topic-card"
+      matRipple
+      (click)="onSelectTopic(topic.id)"
+    >
+      <div class="ms-topic-content">
+        <!-- Topic number and info -->
+        <div class="ms-topic-number">
+          <span>{{ i + 1 }}</span>
+        </div>
+
+        <div class="ms-topic-info">
+          <h3>{{ topic.name }}</h3>
+          <mat-progress-bar mode="determinate" [value]="50" color="primary"></mat-progress-bar>
+          <div class="ms-topic-progress-text">
+            <span>%50 Tamamlandı</span>
+          </div>
+        </div>
+
+        <div class="ms-topic-action">
+          <mat-icon>chevron_right</mat-icon>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

@@ -1,0 +1,162 @@
+<div class="ms-study-content-viewer">
+  <div *ngIf="isLoading" class="ms-loading-placeholder">
+    <mat-icon>autorenew</mat-icon>
+    <span>İçerik yükleniyor...</span>
+  </div>
+
+  <div *ngIf="!isLoading && !content" class="ms-empty-state">
+    <mat-icon>error</mat-icon>
+    <p>İçerik bulunamadı.</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading && content">
+    <!-- Content Header -->
+    <div class="ms-content-header">
+      <h2>{{ content.title }}</h2>
+
+      <div class="ms-content-actions">
+        <button
+          mat-icon-button
+          color="warn"
+          [class.active]="isFavorite"
+          (click)="toggleFavorite()"
+          matTooltip="Favorilere Ekle"
+        >
+          <mat-icon>{{ isFavorite ? 'favorite' : 'favorite_border' }}</mat-icon>
+        </button>
+
+        <button mat-icon-button [matMenuTriggerFor]="shareMenu" matTooltip="Paylaş">
+          <mat-icon>share</mat-icon>
+        </button>
+        <mat-menu #shareMenu="matMenu">
+          <button mat-menu-item (click)="shareContent('twitter')">
+            <mat-icon>public</mat-icon>
+            <span>Twitter</span>
+          </button>
+          <button mat-menu-item (click)="shareContent('facebook')">
+            <mat-icon>public</mat-icon>
+            <span>Facebook</span>
+          </button>
+          <button mat-menu-item (click)="shareContent('whatsapp')">
+            <mat-icon>chat</mat-icon>
+            <span>WhatsApp</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="shareContent('copy')">
+            <mat-icon>content_copy</mat-icon>
+            <span>Linki Kopyala</span>
+          </button>
+        </mat-menu>
+
+        <button mat-raised-button color="primary" [disabled]="isCompleted" (click)="onMarkCompleted()">
+          <mat-icon>{{ isCompleted ? 'check_circle' : 'check' }}</mat-icon>
+          {{ isCompleted ? 'Tamamlandı' : 'Tamamlandı Olarak İşaretle' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Content Display -->
+    <div class="ms-content-display">
+      <ng-container *ngIf="content.type === 'video' && safeUrl">
+        <div class="ms-video-container">
+          <iframe
+            [src]="safeUrl"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          >
+          </iframe>
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="content.type === 'document'">
+        <div class="ms-document-container">
+          <mat-card>
+            <mat-card-content>
+              <p>Dökümanı görüntülemek için aşağıdaki linke tıklayabilirsiniz.</p>
+              <a mat-raised-button color="accent" [href]="content.url" target="_blank">
+                <mat-icon>launch</mat-icon>
+                Dökümanı Görüntüle
+              </a>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </ng-container>
+    </div>
+
+    <div class="ms-content-description" *ngIf="content.description">
+      <p>{{ content.description }}</p>
+    </div>
+
+    <!-- Tabs for comments and notes -->
+    <mat-tab-group animationDuration="0ms" class="ms-content-tabs">
+      <mat-tab label="Yorumlar">
+        <div class="ms-comments-section">
+          <div class="ms-comment-form">
+            <mat-form-field appearance="outline" class="ms-comment-input">
+              <mat-label>Yorum ekle</mat-label>
+              <textarea
+                matInput
+                [formControl]="commentControl"
+                placeholder="Bu içerik hakkında bir yorum yazın..."
+              ></textarea>
+            </mat-form-field>
+            <button mat-raised-button color="primary" [disabled]="!commentControl.value" (click)="addComment()">
+              Gönder
+            </button>
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <div class="ms-comments-list">
+            <div *ngIf="comments.length === 0" class="ms-empty-comments">
+              <p>Henüz hiç yorum yok. İlk yorumu siz yapın!</p>
+            </div>
+
+            <div *ngFor="let comment of comments" class="ms-comment">
+              <div class="ms-comment-header">
+                <span class="ms-comment-author">{{ comment.username }}</span>
+                <span class="ms-comment-date">{{ comment.createdAt | date : 'dd.MM.yyyy HH:mm' }}</span>
+              </div>
+              <div class="ms-comment-body">
+                <p>{{ comment.text }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Notlarım">
+        <div class="ms-notes-section">
+          <div class="ms-note-form">
+            <mat-form-field appearance="outline" class="ms-note-input">
+              <mat-label>Not ekle</mat-label>
+              <textarea
+                matInput
+                [formControl]="noteControl"
+                placeholder="Bu içerik hakkında notlarınızı yazın..."
+              ></textarea>
+            </mat-form-field>
+            <button mat-raised-button color="primary" [disabled]="!noteControl.value" (click)="saveNote()">
+              Kaydet
+            </button>
+          </div>
+
+          <mat-divider *ngIf="notes.length > 0"></mat-divider>
+
+          <div class="ms-notes-list" *ngIf="notes.length > 0">
+            <h3>Önceki Notlarınız</h3>
+            <div *ngFor="let note of notes" class="ms-note">
+              <div class="ms-note-header">
+                <span class="ms-note-date">{{ note.updatedAt | date : 'dd.MM.yyyy HH:mm' }}</span>
+              </div>
+              <div class="ms-note-body">
+                <p>{{ note.text }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </ng-container>
+</div>

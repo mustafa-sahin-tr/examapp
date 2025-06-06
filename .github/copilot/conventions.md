@@ -5,6 +5,7 @@
 - Output events are prefixed with 'on' (e.g., onSubmit)
 - Use reactive forms with explicit FormControl typing
 - Follow Angular Material design patterns
+- Use 'ms-' prefix for css class names
 
 ## C# Backend
 - Follow REST API conventions

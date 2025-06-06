@@ -1,0 +1,125 @@
+.ms-study-catalog {
+  padding: 1.5rem;
+  background-color: var(--ms-surface-medium);
+  h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    color: var(--ms-surface-variant);
+  }
+  
+  .ms-catalog-description {
+    margin-bottom: 2rem;
+    p {
+      color: var(--ms-text);
+      font-size: 1rem;
+    }
+  }
+  
+  .ms-loading-placeholder,
+  .ms-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: #666;
+    
+    mat-icon {
+      font-size: 3rem;
+      height: 3rem;
+      width: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.7;
+    }
+  }
+  
+  .ms-subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .ms-subject-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    
+    .ms-subject-content {
+      display: flex;
+      align-items: center;
+      padding: 1.2rem;
+      background-color: var(--ms-background);
+    }
+    
+    .ms-subject-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      margin-right: 1rem;
+      background-color: #f0f0f0;
+      
+      mat-icon {
+        font-size: 24px;
+        height: 24px;
+        width: 24px;
+      }
+      
+      &.subject-1 {
+        background-color: #e3f2fd; /* Light blue for Math */
+        color: #1976d2;
+      }
+      
+      &.subject-2 {
+        background-color: #e8f5e9; /* Light green for Turkish */
+        color: #43a047;
+      }
+      
+      &.subject-3 {
+        background-color: #fff3e0; /* Light orange for Science */
+        color: #ff9800;
+      }
+      
+      &.subject-4 {
+        background-color: #f3e5f5; /* Light purple for Social Studies */
+        color: #9c27b0;
+      }
+    }
+    
+    .ms-subject-info {
+      flex: 1;
+      
+      h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.2rem;
+      }
+      
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+        // color: #666;
+      }
+    }
+    
+    .ms-subject-action {
+      color: #999;
+    }
+  }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 768px) {
+  .ms-study-catalog {
+    padding: 1rem;
+    
+    .ms-subject-grid {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+  }
+}

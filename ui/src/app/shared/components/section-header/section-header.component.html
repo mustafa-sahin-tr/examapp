@@ -1,5 +1,12 @@
 <div class="section-header">
-    <img *ngIf="icon" [src]="icon" class="section-icon" alt="{{ title }} icon">
-    <h2 class="section-title">{{ title }}</h2>
+  <div class="header-left">
+    <button mat-icon-button *ngIf="showBackButton" (click)="onBack()" class="back-button">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <img *ngIf="icon" [src]="icon" class="section-icon" alt="{{ title }} icon" />
+    <div class="title-container">
+      <h2 class="section-title">{{ title }}</h2>
+      <p class="section-subtitle" *ngIf="subtitle">{{ subtitle }}</p>
+    </div>
   </div>
-  
+</div>

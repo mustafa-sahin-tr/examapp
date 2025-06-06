@@ -27,6 +27,7 @@ import { LogoutComponent } from './pages/logout/logout.component';
 import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
+import { StudyPageComponent } from './components/study-page/study-page.component';
 
 export const routes: Routes = [
   {
@@ -63,6 +64,7 @@ export const routes: Routes = [
       },
       { path: 'program-create', component: ProgramCreateComponent },
       { path: 'certificates', component: BadgeThropyComponent }, //
+      { path: 'study', component: StudyPageComponent },
     ],
   },
   {

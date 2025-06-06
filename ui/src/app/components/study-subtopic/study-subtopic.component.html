@@ -1,0 +1,68 @@
+<div class="ms-study-subtopic">
+  <h2>{{ topic?.name }} Alt Konuları</h2>
+
+  <div class="ms-subtopic-description">
+    <p>İlgilendiğiniz alt konuyu seçin. Her alt konu, videolar ve dokümanlar içerir.</p>
+  </div>
+
+  <div *ngIf="isLoading" class="ms-loading-placeholder">
+    <mat-icon>autorenew</mat-icon>
+    <span>Alt konular yükleniyor...</span>
+  </div>
+
+  <div *ngIf="!isLoading && subtopics.length === 0" class="ms-empty-state">
+    <mat-icon>category</mat-icon>
+    <p>Bu konu için henüz alt konu eklenmemiş.</p>
+  </div>
+
+  <div *ngIf="!isLoading && subtopics.length > 0" class="ms-subtopic-list">
+    <mat-card *ngFor="let subtopic of subtopics; let i = index" class="ms-subtopic-card">
+      <div class="ms-subtopic-header">
+        <div class="ms-subtopic-title">
+          <span class="ms-subtopic-number">{{ i + 1 }}</span>
+          <h3>{{ subtopic.name }}</h3>
+        </div>
+
+        <mat-chip-set>
+          <mat-chip highlighted color="primary">
+            <mat-icon>videocam</mat-icon>
+            <span>{{ getVideoCount(subtopic.id) }} Video</span>
+          </mat-chip>
+          <mat-chip highlighted color="accent">
+            <mat-icon>article</mat-icon>
+            <span>{{ getDocumentCount(subtopic.id) }} Döküman</span>
+          </mat-chip>
+        </mat-chip-set>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="ms-content-list">
+        <div *ngIf="getContentBySubtopic(subtopic.id).length === 0" class="ms-empty-content">
+          <p>Bu alt konu için henüz içerik eklenmemiş.</p>
+        </div>
+
+        <div
+          *ngFor="let content of getContentBySubtopic(subtopic.id)"
+          class="ms-content-item"
+          matRipple
+          (click)="onSelectContent(subtopic.id, content.id)"
+        >
+          <div
+            class="ms-content-icon"
+            [ngClass]="{ 'ms-video': content.type === 'video', 'ms-document': content.type === 'document' }"
+          >
+            <mat-icon>{{ getContentIcon(content.type) }}</mat-icon>
+          </div>
+          <div class="ms-content-info">
+            <h4>{{ content.title }}</h4>
+            <p>{{ content.description }}</p>
+          </div>
+          <div class="ms-content-action">
+            <mat-icon>play_circle</mat-icon>
+          </div>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

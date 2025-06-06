@@ -1,0 +1,168 @@
+.ms-study-content-viewer {
+  padding: 1.5rem;
+  
+  .ms-loading-placeholder,
+  .ms-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    color: #666;
+    
+    mat-icon {
+      font-size: 3rem;
+      height: 3rem;
+      width: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.7;
+    }
+  }
+  
+  .ms-content-header {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    
+    @media (min-width: 768px) {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    h2 {
+      font-size: 1.8rem;
+      margin: 0;
+      color: #333;
+    }
+    
+    .ms-content-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      
+      button.active {
+        color: #f44336;
+      }
+    }
+  }
+  
+  .ms-content-display {
+    margin-bottom: 1.5rem;
+    
+    .ms-video-container {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+      height: 0;
+      overflow: hidden;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      
+      iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+    }
+    
+    .ms-document-container {
+      padding: 2rem;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      text-align: center;
+    }
+  }
+  
+  .ms-content-description {
+    background-color: #f9f9f9;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    
+    p {
+      margin: 0;
+      color: #555;
+    }
+  }
+  
+  .ms-content-tabs {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    
+    .ms-comments-section,
+    .ms-notes-section {
+      padding: 1.5rem;
+    }
+    
+    .ms-comment-form,
+    .ms-note-form {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      
+      @media (max-width: 768px) {
+        flex-direction: column;
+      }
+      
+      .ms-comment-input,
+      .ms-note-input {
+        flex: 1;
+      }
+    }
+    
+    .ms-comments-list,
+    .ms-notes-list {
+      margin-top: 1.5rem;
+    }
+    
+    .ms-empty-comments {
+      text-align: center;
+      color: #666;
+      padding: 1rem;
+    }
+    
+    .ms-comment,
+    .ms-note {
+      padding: 1rem;
+      border-radius: 8px;
+      background-color: #f5f5f5;
+      margin-bottom: 1rem;
+      
+      .ms-comment-header,
+      .ms-note-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        
+        .ms-comment-author {
+          font-weight: 500;
+        }
+        
+        .ms-comment-date,
+        .ms-note-date {
+          color: #888;
+          font-size: 0.9rem;
+        }
+      }
+      
+      .ms-comment-body,
+      .ms-note-body {
+        p {
+          margin: 0;
+          color: #333;
+        }
+      }
+    }
+  }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 768px) {
+  .ms-study-content-viewer {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,64 @@
+.ms-study-page {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  height: 100%;
+  
+  .ms-search-container {
+    margin-bottom: 1.5rem;
+    
+    .ms-search-field {
+      width: 100%;
+    }
+  }
+  
+  .ms-progress-container {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background-color: var(--ms-surface-medium);
+    
+    .ms-progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      
+      h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 500;
+      }
+      
+      span {
+        font-weight: bold;
+        color: #3f51b5;
+      }
+    }
+  }
+  
+  .ms-study-content {
+    flex: 1;
+    overflow-y: auto;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 768px) {
+  .ms-study-page {
+    padding: 0.5rem;
+    
+    .ms-progress-container {
+      padding: 0.8rem;
+      margin-bottom: 1rem;
+      
+      .ms-progress-header h3 {
+        font-size: 1rem;
+      }
+    }
+  }
+}

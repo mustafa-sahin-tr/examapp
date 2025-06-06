@@ -66,6 +66,7 @@ export class EnhancedLayoutComponent implements OnInit {
   menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu' },
     { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu' },
+    { id: 'study', name: 'Ders Çalışma', icon: 'school', route: '/study', type: 'menu' },
     { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu' },
     { id: 'students', name: 'Öğrenciler', icon: 'people', route: '/students', type: 'menu' },
     { id: 'divider1', name: '', icon: '', route: '', type: 'divider' },

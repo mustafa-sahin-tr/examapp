@@ -1,18 +1,40 @@
-// .section-header {
-//     display: flex;
-//     align-items: center;
-//     gap: 10px;
-//     margin: 20px 0;
-//   }
-  
-//   .section-icon {
-//     width: 24px;
-//     height: 24px;
-//   }
-  
-//   .section-title {
-//     font-size: 18px;
-//     font-weight: bold;
-//     color: #333;
-//   }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 20px 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.title-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 500;
+  margin: 0;
+//   color: #333;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: #666;
+  margin: 4px 0 0 0;
+}
+
+.back-button {
+  margin-right: 5px;
+}
   

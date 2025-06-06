@@ -14,5 +14,3 @@
 | İçerik Paylaşımı                | FEAT19    | Öğrenci olarak, faydalı bulduğum içerikleri arkadaşlarımla sosyal medya veya link ile paylaşabilmek istiyorum | - Paylaş butonları olmalı<br>- Link kopyalama seçeneği bulunmalı                                                  |
 | Bildirim Sistemi                | FEAT21    | Öğrenci olarak yeni içerik, yorum veya duyurulardan bildirim almak istiyorum                | - Bildirimler anasayfada veya profil kısmında görünmeli<br>- Yeni yorum veya içerik eklenince bildirim gönderilmeli|
 | Mobil Uyumlu Tasarım             | FEAT22    | Öğrenci olarak mobil cihazımdan da rahatça ders çalışma sayfasını kullanabilmek istiyorum  | - Responsive tasarım olmalı<br>- Menü ve içerik mobilde düzgün çalışmalı                                         |
-| Çoklu Dil Desteği               | FEAT23    | Öğrenci olarak siteyi tercihim olan dilde kullanabilmek istiyorum                          | - Dil seçenekleri sunulmalı<br>- En az Türkçe ve İngilizce desteklenmeli                                          |
-

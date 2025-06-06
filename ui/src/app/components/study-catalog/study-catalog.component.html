@@ -1,0 +1,47 @@
+<div class="ms-study-catalog">
+  <h2>Ders Kataloğu</h2>
+
+  <div class="ms-catalog-description">
+    <p>Çalışmak istediğiniz dersi seçin. Her ders, konular ve alt konular içerir.</p>
+  </div>
+
+  <div *ngIf="isLoading" class="ms-loading-placeholder">
+    <mat-icon>autorenew</mat-icon>
+    <span>Dersler yükleniyor...</span>
+  </div>
+
+  <div *ngIf="!isLoading && subjects.length === 0" class="ms-empty-state">
+    <mat-icon>school</mat-icon>
+    <p>Henüz hiç ders bulunamadı.</p>
+  </div>
+
+  <div *ngIf="!isLoading && subjects.length > 0" class="ms-subject-grid">
+    <mat-card *ngFor="let subject of subjects" class="ms-subject-card" matRipple (click)="onSelectSubject(subject.id)">
+      <div class="ms-subject-content">
+        <!-- Subject icon based on name -->
+        <div class="ms-subject-icon" [ngClass]="'subject-' + subject.id">
+          <mat-icon>{{
+            subject.name === 'Matematik'
+              ? 'calculate'
+              : subject.name === 'Türkçe'
+              ? 'menu_book'
+              : subject.name === 'Fen Bilimleri'
+              ? 'science'
+              : subject.name === 'Sosyal Bilgiler'
+              ? 'public'
+              : 'school'
+          }}</mat-icon>
+        </div>
+
+        <div class="ms-subject-info">
+          <h3>{{ subject.name }}</h3>
+          <p>Konuları görüntülemek için tıklayın</p>
+        </div>
+
+        <div class="ms-subject-action">
+          <mat-icon>chevron_right</mat-icon>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

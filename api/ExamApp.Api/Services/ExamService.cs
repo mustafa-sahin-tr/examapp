@@ -75,6 +75,8 @@ public class ExamService : IExamService
                 Description = t.Description,
                 GradeId = t.GradeId,
                 SubjectId = t.SubjectId,
+                TopicId = t.TopicId,
+                SubTopicId = t.SubTopicId,
                 MaxDurationSeconds = t.MaxDurationSeconds,
                 IsPracticeTest = t.IsPracticeTest,
                 Subtitle = t.Subtitle,
@@ -195,6 +197,8 @@ public class ExamService : IExamService
                 Description = t.Description,
                 GradeId = t.GradeId,
                 SubjectId = t.SubjectId,
+                TopicId = t.TopicId,    
+                SubTopicId = t.SubTopicId,
                 MaxDurationSeconds = t.MaxDurationSeconds,
                 IsPracticeTest = t.IsPracticeTest,
                 Subtitle = t.Subtitle,
@@ -724,16 +728,13 @@ public class ExamService : IExamService
 
             if (existingBook != null)
             {
+                examDto.BookId = existingBook.Id;
                 var existingBookTest = existingBook.BookTests
                     .FirstOrDefault(bt => bt.Name == examDto.NewBookTestName);
 
                 if (existingBookTest != null)
                 {
-                    return new ExamSavedDto
-                    {
-                        Success = true,
-                        Message = "Kitap ve kitap testi zaten mevcut."
-                    };
+                    examDto.BookTestId = existingBookTest.Id;
                 }
             }
         }
@@ -801,8 +802,10 @@ public class ExamService : IExamService
                     ];
                     _context.Books.Add(book);
                 }
-                
+
                 await _context.SaveChangesAsync();
+                examDto.BookId = book.Id;
+                examDto.BookTestId = book.BookTests.First(bt => bt.Name == examDto.NewBookTestName).Id;
             }
             else
             {
@@ -821,15 +824,6 @@ public class ExamService : IExamService
                 }
 
                 // Eğer zaten bu kitap için test zaten mevcutsa o halde success olarak devam et
-                if (book.BookTests.Any(bt => bt.Id == examDto.BookTestId))
-                {
-                    return new ExamSavedDto
-                    {
-                        Success = true,
-                        Message = "Kitap testi zaten mevcut."
-                    };
-                }
-
                 if (examDto.BookTestId is null || examDto.BookTestId == 0)
                 {
                     if (string.IsNullOrWhiteSpace(examDto.NewBookTestName))
@@ -850,12 +844,10 @@ public class ExamService : IExamService
                         });
                     }
                     await _context.SaveChangesAsync();
+                    examDto.BookTestId = book.BookTests.First(bt => bt.Name == examDto.NewBookTestName).Id;
                 }
             }
 
-
-            var bookTestId = examDto.BookTestId == 0 ?
-                        book.BookTests.First(bt => bt.Name == examDto.NewBookTestName).Id : examDto.BookTestId;
 
             Worksheet? examination;
             if (examDto.Id > 0)
@@ -878,7 +870,7 @@ public class ExamService : IExamService
                 examination.MaxDurationSeconds = examDto.MaxDurationSeconds;
                 examination.IsPracticeTest = examDto.IsPracticeTest;
                 examination.Subtitle = examDto.Subtitle;
-                examination.BookTestId = bookTestId;
+                examination.BookTestId = book.BookTests.FirstOrDefault(bt => bt.Id == examDto.BookTestId)?.Id ?? book.BookTests.First().Id;
                 examination.SubjectId = examDto.SubjectId;
                 examination.TopicId = examDto.TopicId;
                 examination.SubTopicId = examDto.SubTopicId;
@@ -897,6 +889,19 @@ public class ExamService : IExamService
             else
             {
                 // 📌 Yeni Soru Oluştur (INSERT)
+                var bookTestId = book.BookTests.FirstOrDefault(bt => bt.Id == examDto.BookTestId)?.Id ?? book.BookTests.First().Id;
+                var existingExam = await _context.Worksheets
+                    .FirstOrDefaultAsync(e => e.Name == examDto.Name && e.BookTestId == bookTestId);
+
+                if (existingExam != null)
+                {
+                    // return BadRequest(new { error = "Bu isimde ve kitap testinde bir sınav zaten var!" });
+                    return new ExamSavedDto
+                    {
+                        Success = false,
+                        Message = "Bu isimde ve kitap testinde bir sınav zaten var!"
+                    };
+                }
                 examination = new Worksheet
                 {
                     Name = examDto.Name,
@@ -932,7 +937,7 @@ public class ExamService : IExamService
                             "Test başarıyla güncellendi!" : "Test başarıyla kaydedildi!",
                 ExamId = examination.Id,
                 BookId = book?.Id,
-                BookTestId = bookTestId
+                BookTestId = examination.BookTestId
             };
         }
         catch (Exception ex)

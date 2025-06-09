@@ -24,6 +24,8 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { TestFormComponent } from '../test-form/test-form.component';
 import { TestService } from '../../services/test.service';
+import { Test } from '../../models/test-instance';
+import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -51,6 +53,9 @@ import { TestService } from '../../services/test.service';
   ],
 })
 export class TestCreateEnhancedComponent implements OnInit {
+  id!: number | null;
+  exam!: Test;
+  isEditMode: boolean = false;
   testForm!: FormGroup;
   books: any[] = [];
   bookTests: any[] = [];
@@ -74,8 +79,12 @@ export class TestCreateEnhancedComponent implements OnInit {
   subjectService = inject(SubjectService);
   snackBar = inject(MatSnackBar);
   fb = inject(FormBuilder);
+  route = inject(ActivatedRoute);
+  router = inject(Router);
 
   ngOnInit(): void {
+    this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
+    this.isEditMode = this.id !== null;
     this.testForm = this.fb.group({
       name: ['', Validators.required],
       description: [''],
@@ -96,6 +105,7 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.loadBooks();
     this.loadGrades();
     this.loadSubjects();
+    this.loadTest();
     // Form değişikliklerini dinle
     this.testForm.valueChanges.subscribe(() => {
       if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
@@ -150,6 +160,49 @@ export class TestCreateEnhancedComponent implements OnInit {
     });
   }
 
+  loadTest() {
+    this.testService.get(this.id!).subscribe((exam) => {
+      this.bookService.getTestsByBook(exam.bookId || 0).subscribe((data) => {
+        this.bookTests = data;
+        this.testForm.patchValue({ bookTestId: null, newBookTestName: '' }, { emitEvent: false });
+
+        this.testForm.patchValue({
+          name: exam.name,
+          description: exam.description,
+          gradeId: exam.gradeId,
+          maxDurationMinutes: exam.maxDurationSeconds / 60,
+          isPracticeTest: exam.isPracticeTest,
+          subtitle: exam.subtitle,
+          imageUrl: exam.imageUrl,
+          bookTestId: exam.bookTestId,
+          bookId: exam.bookId,
+          questionCount: exam.questionCount,
+          subjectId: exam.subjectId || null,
+        });
+
+        this.subjectService.getSubjectsByGrade(exam.gradeId!).subscribe((subjects) => {
+          this.subjects = subjects;
+          this.testForm.patchValue({ subjectId: exam.subjectId || null }, { emitEvent: false });
+
+          if (exam.subjectId && exam.gradeId) {
+            this.subjectService.getTopicsBySubjectAndGrade(exam.subjectId, exam.gradeId).subscribe((topics) => {
+              this.topics = topics;
+              this.testForm.patchValue({ topicId: exam.topicId, subtopicId: null }, { emitEvent: false });
+
+              this.subjectService.getSubTopicsByTopic(exam.topicId || 0).subscribe((subtopics) => {
+                this.subtopics = subtopics;
+                this.testForm.patchValue({ subtopicId: exam.subtopicId || null }, { emitEvent: false });
+              });
+            });
+          } else {
+            this.topics = [];
+            this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
+          }
+        });
+      });
+    });
+  }
+
   loadBooks() {
     this.bookService.getAll().subscribe((data) => {
       this.books = data;
@@ -173,7 +226,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   }
   onBookChange(bookId: any) {
     this.showAddBookInput = false;
-    this.bookService.getTestsByBook(bookId).subscribe((data) => {
+    this.bookService.getTestsByBook(bookId.value).subscribe((data) => {
       this.bookTests = data;
       this.testForm.patchValue({ bookTestId: null, newBookTestName: '' }, { emitEvent: false });
     });
@@ -213,6 +266,27 @@ export class TestCreateEnhancedComponent implements OnInit {
       this.testForm.patchValue({ subtopicId: null });
     });
   }
+
+  private createTestPayload(): Test {
+    return {
+      id: this.id,
+      name: this.testForm.value.name,
+      description: this.testForm.value.description,
+      gradeId: this.testForm.value.gradeId,
+      maxDurationSeconds: +this.testForm.value.maxDurationMinutes * 60,
+      isPracticeTest: this.testForm.value.isPracticeTest,
+      imageUrl: this.testForm.value.imageUrl,
+      subtitle: this.testForm.value.subtitle,
+      newBookName: this.testForm.value.newBookName,
+      newBookTestName: this.testForm.value.newBookTestName,
+      bookTestId: !this.testForm.value.bookTestId ? 0 : this.testForm.value.bookTestId,
+      bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
+      subjectId: this.testForm.value.subjectId ? this.testForm.value.subjectId : null,
+      topicId: this.testForm.value.topicId ? this.testForm.value.topicId : null,
+      subtopicId: this.testForm.value.subtopicId ? this.testForm.value.subtopicId : null,
+    };
+  }
+
   onSubmit() {
     // Form valid ise kaydet
     if (this.testForm.valid) {
@@ -222,6 +296,16 @@ export class TestCreateEnhancedComponent implements OnInit {
       // İsterseniz formu veya state'i sıfırlayabilirsiniz
     } else {
       this.snackBar.open('Form eksik veya hatalı!', 'Kapat', { duration: 2000 });
+    }
+
+    if (this.testForm.valid) {
+      this.testService.create(this.createTestPayload()).subscribe((response) => {
+        if (this.isEditMode) {
+          this.ngOnInit(); // Formu güncelle
+        } else {
+          this.router.navigate(['/exam', response.examId]);
+        }
+      });
     }
   }
 
@@ -620,7 +704,21 @@ export class TestCreateEnhancedComponent implements OnInit {
       //   const navigationExtras = { ... };
       //   this.router.navigate(['/questioncanvas'], navigationExtras);
       // });
-      this.snackBar.open('Soru ekleme adımına geçiliyor...', 'Kapat', { duration: 2000 });
+      this.snackBar.open('Soru ekleme adımına geçiliyor...', 'Kapat', { duration: 1000 });
+      const navigationExtras: NavigationExtras = {
+        state: {
+          subjectId: null,
+          topicId: null,
+          subtopicId: null,
+          testId: this.testForm.value.subtitle,
+          bookId: this.testForm.value.bookId,
+          bookTestId: this.testForm.value.bookTestId,
+          testValue: this.id,
+        },
+      };
+      setTimeout(() => {
+        this.router.navigate(['/questioncanvas'], navigationExtras);
+      }, 1000);
     } else {
       this.snackBar.open('Form eksik veya hatalı!', 'Kapat', { duration: 2000 });
     }

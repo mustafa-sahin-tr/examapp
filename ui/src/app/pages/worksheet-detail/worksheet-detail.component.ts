@@ -11,6 +11,7 @@ import { QuestionCanvasViewComponent } from '../../shared/components/question-ca
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
+import { GradesService } from '../../services/grades.service';
 
 @Component({
   selector: 'app-worksheet-detail',
@@ -31,8 +32,10 @@ export class WorksheetDetailComponent implements OnInit {
   @Input() exam!: Test; // Test bilgisi ve sorular
   route = inject(ActivatedRoute);
   testService = inject(TestService);
+  gradeService = inject(GradesService);
   router = inject(Router);
   results!: TestInstance;
+  gradeName = signal<string>(''); // Sınıf adı
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
   public selectedChoices = signal<Map<number, AnswerChoice>>(new Map()); // 🔄 Her soru için seçilen şıkkı sakla
   public correctChoices = signal<Map<number, AnswerChoice>>(new Map()); // 🔄 Her soru için seçilen şıkkı sakla
@@ -98,6 +101,16 @@ export class WorksheetDetailComponent implements OnInit {
       this.testId = Number(params.get('testId'));
       if (this.testId) {
         this.exam = await lastValueFrom(this.testService.get(this.testId));
+        if (this.exam) {
+          this.gradeService.getGrades().subscribe((grades) => {
+            const grade = grades.find((g) => g.id === this.exam.gradeId);
+            if (grade) {
+              this.gradeName.set(grade.name);
+            } else {
+              this.gradeName.set('Bilinmiyor');
+            }
+          });
+        }
         if (this.exam && this.exam.instance) {
           this.testService.getCanvasTestResults(this.exam.instance.id).subscribe((response: TestInstance) => {
             if (response) {

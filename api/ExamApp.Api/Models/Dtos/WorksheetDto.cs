@@ -9,6 +9,9 @@ public class WorksheetDto
     public string Description { get; set; } = string.Empty;
     public int GradeId { get; set; }
     public int? SubjectId { get; set; }
+
+    public int? TopicId { get; set; } // Konu ID'si (isteğe bağlı)
+    public int? SubTopicId { get; set; } // Alt konu ID'si (isteğe bağlı)
     public int MaxDurationSeconds { get; set; }
     public bool IsPracticeTest { get; set; }
     public string? Subtitle { get; set; }

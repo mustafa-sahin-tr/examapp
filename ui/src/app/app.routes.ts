@@ -55,7 +55,7 @@ export const routes: Routes = [
       { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
       // { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
       { path: 'exam', component: TestCreateEnhancedComponent }, // 🆕 Test çözme sayfası
-      { path: 'exam/:id', component: TestCreateComponent }, // 🆕 Test çözme sayfası
+      { path: 'exam/:id', component: TestCreateEnhancedComponent }, // 🆕 Test çözme sayfası
       { path: 'programs', component: MyProgramsComponent },
       {
         path: 'programs/:id/detail',

@@ -93,6 +93,7 @@ Thumbs.db
 
 minio-data/
 pgadmin-data/
+pgadmin-data/sessions/
 
 /question-detector/data/labels
 /question-detector/data/answers/*

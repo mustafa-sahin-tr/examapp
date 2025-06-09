@@ -5,56 +5,55 @@
       <div class="header-main">
         <div class="course-badge">
           <mat-icon>quiz</mat-icon>
-          <span>{{exam.gradeId}}. Sınıf</span>
+          <span>{{ gradeName() }}</span>
         </div>
-        <h1 class="worksheet-title">{{exam.name}}</h1>
-        <h2 class="worksheet-subtitle">{{exam.subtitle}}</h2>
-        <p class="worksheet-description">{{exam.description}}</p>
-        
+        <h1 class="worksheet-title">{{ exam.name }}</h1>
+        <h2 class="worksheet-subtitle">{{ exam.subtitle }}</h2>
+        <p class="worksheet-description">{{ exam.description }}</p>
+
         <!-- Action Buttons -->
         <div class="action-buttons">
           <ng-container *appIsStudent>
-            <button *ngIf="!exam.instance" 
-                    mat-flat-button 
-                    color="primary" 
-                    class="primary-action"
-                    (click)="StartTest(exam.id)">
+            <button
+              *ngIf="!exam.instance"
+              mat-flat-button
+              color="primary"
+              class="primary-action"
+              (click)="StartTest(exam.id)"
+            >
               <mat-icon>play_arrow</mat-icon>
               Testi Başlat
             </button>
-            <button *ngIf="instanceStarted" 
-                    mat-flat-button 
-                    color="primary" 
-                    class="primary-action"
-                    (click)="StartTest(exam.id)">
+            <button
+              *ngIf="instanceStarted"
+              mat-flat-button
+              color="primary"
+              class="primary-action"
+              (click)="StartTest(exam.id)"
+            >
               <mat-icon>play_arrow</mat-icon>
               Teste Devam Et
             </button>
           </ng-container>
-          
+
           <button mat-stroked-button class="secondary-action">
             <mat-icon>bookmark_border</mat-icon>
             Favorilere Ekle
           </button>
-          
+
           <ng-container *appIsTeacher>
-            <button mat-stroked-button 
-                    class="secondary-action"
-                    (click)="editWorksheet(exam.id)">
+            <button mat-stroked-button class="secondary-action" (click)="editWorksheet(exam.id)">
               <mat-icon>edit</mat-icon>
               Düzenle
             </button>
-            <button mat-flat-button 
-                    color="accent"
-                    class="accent-action"
-                    (click)="navigateToQuestionCanvas()">
+            <button mat-flat-button color="accent" class="accent-action" (click)="navigateToQuestionCanvas()">
               <mat-icon>add_circle</mat-icon>
               Soru Ekle
             </button>
           </ng-container>
         </div>
       </div>
-      
+
       <!-- Info Panel - moved to header -->
       <div class="header-info-panel">
         <div class="info-card">
@@ -62,7 +61,7 @@
             <mat-icon>info</mat-icon>
             <h3>Test Bilgileri</h3>
           </div>
-          
+
           <div class="info-content">
             <div class="info-item">
               <div class="info-label">
@@ -71,7 +70,7 @@
               </div>
               <span class="info-value level-beginner">Başlangıç</span>
             </div>
-            
+
             <div class="info-item">
               <div class="info-label">
                 <mat-icon>star</mat-icon>
@@ -82,7 +81,7 @@
                 <span class="rating-count">(45)</span>
               </div>
             </div>
-            
+
             <div class="info-item">
               <div class="info-label">
                 <mat-icon>star_border</mat-icon>
@@ -92,7 +91,7 @@
                 <div class="rating-stars user-rating">★★☆☆☆</div>
               </div>
             </div>
-            
+
             <div class="info-item">
               <div class="info-label">
                 <mat-icon>schedule</mat-icon>
@@ -100,7 +99,7 @@
               </div>
               <span class="info-value">39 dakika</span>
             </div>
-            
+
             <div class="info-item">
               <div class="info-label">
                 <mat-icon>update</mat-icon>
@@ -108,13 +107,13 @@
               </div>
               <span class="info-value">Kasım 2024</span>
             </div>
-            
+
             <div class="info-item">
               <div class="info-label">
                 <mat-icon>group</mat-icon>
                 <span>Çözen Öğrenci</span>
               </div>
-              <span class="info-value highlight">{{exam.instanceCount}}</span>
+              <span class="info-value highlight">{{ exam.instanceCount }}</span>
             </div>
           </div>
         </div>
@@ -135,17 +134,16 @@
           </h2>
         </div>
         <div class="results-content">
-          <app-question-navigator 
-            [questions]="questions" 
-            (questionSelected)="questionSelected($event)">
+          <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)">
           </app-question-navigator>
-          
+
           <div class="question-review">
-            <app-question-canvas-view 
-              [questionRegion]="regions()[currentIndex()]" 
+            <app-question-canvas-view
+              [questionRegion]="regions()[currentIndex()]"
               [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
-              [mode]="'result'"  
-              [correctChoice]="correctChoices().get(regions()[currentIndex()].id)">
+              [mode]="'result'"
+              [correctChoice]="correctChoices().get(regions()[currentIndex()].id)"
+            >
             </app-question-canvas-view>
           </div>
         </div>

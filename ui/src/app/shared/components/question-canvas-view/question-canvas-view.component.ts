@@ -13,10 +13,12 @@ import {
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { SafeHtmlPipe } from '../../../services/safehtml';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-question-canvas-view',
-  imports: [SafeHtmlPipe],
+  imports: [SafeHtmlPipe, MatButtonModule, MatIconModule],
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss',
 })
@@ -40,9 +42,20 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     if (value?.passage) {
       this.shouldInitCanvas = true;
     }
+
+    // Doğru cevabı otomatik olarak seçili hale getir
+    if (value?.answers) {
+      const correctAnswer = value.answers.find((answer) => answer.isCorrect);
+      if (correctAnswer) {
+        this._selectedChoice.set(correctAnswer);
+        this._correctChoice.set(correctAnswer);
+      }
+    }
   }
 
   @Input() correctAnswerVisible: boolean = false;
+
+  @Input() isPreviewMode: boolean = false;
 
   @Input() set selectedChoice(choice: AnswerChoice | undefined) {
     this._selectedChoice.set(choice);
@@ -60,6 +73,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   @Output() selectRegion = new EventEmitter<MouseEvent>();
   @Output() choiceSelected = new EventEmitter<AnswerChoice>();
   @Output() answerOpened = new EventEmitter<number>(); // 🆕 Event tanımlandı
+  @Output() questionRemove = new EventEmitter<number>(); // Soru silme event'i
 
   public hoveredChoice = signal<AnswerChoice | null>(null); // 🟦 Hangi şık üzerinde geziliyorsa
   private _selectedChoice = signal<AnswerChoice | undefined>(undefined); // 🔄 Her soru için seçilen şıkkı sakla
@@ -198,49 +212,32 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
         this._questionRegion().height
       );
 
-      // **Seçili ve hover edilen şıkları farklı renklerde göster**
+      // Seçili ve hover edilen şıkları farklı renklerde göster
       for (const answer of this._questionRegion().answers) {
         const isSelected = this._selectedChoice() === answer;
         const isHovered = this.hoveredChoice() === answer;
-        const isCorrect = this._correctChoice() === answer;
+        const isCorrect = answer.isCorrect;
 
-        const borderRadius = 0; // Math.min(answer.width, answer.height) * 0.3; // ✅ Dinamik yuvarlak köşe
         if (this._mode() === 'exam') {
-          if (isSelected) {
-            this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç);
+          if (isCorrect || isSelected) {
+            this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // Yeşil - doğru cevap veya seçili
           } else if (isHovered) {
-            this.canvasCtx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // 🟦 Mavi hover efekti
+            this.canvasCtx.fillStyle = 'rgba(0, 0, 255, 0.3)'; // Mavi hover efekti
             this.canvasCtx.fillRect(
               answer.x - this._questionRegion().x,
               answer.y - this._questionRegion().y,
               answer.width,
               answer.height
             );
-          } else {
-            this.canvasCtx.fillStyle = 'rgba(255, 255, 255, 0)'; // Varsayılan şeffaf
           }
         } else if (this._mode() === 'result') {
-          console.log('regions:', this._questionRegion());
-          console.log('selected answer:', this._selectedChoice());
-
           if (isCorrect) {
-            this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç);
+            this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // Doğru cevap yeşil
           }
-          if (isSelected) {
-            if (isCorrect) {
-              this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)'); // ✅ Yeşil başlangıç);
-            } else {
-              this.drawAnswer(answer, 'rgba(234, 21, 21, 0.46)'); // ✅ Yeşil başlangıç);
-            }
+          if (isSelected && !isCorrect) {
+            this.drawAnswer(answer, 'rgba(234, 21, 21, 0.46)'); // Yanlış seçim kırmızı
           }
         }
-
-        // this.ctx.fillRect(answer.x - region.x, answer.y - region.y, answer.width, answer.height);
-        // this.canvasCtx.fill();
-        // this.canvasCtx.strokeStyle = 'black'; // Çerçeve siyah
-        // this.canvasCtx.lineWidth = 2;
-        // this.canvasCtx.strokeRect(answer.x - this._questionRegion().x, answer.y - this._questionRegion().y, answer.width, answer.height);
-        // this.canvasCtx.stroke();
       }
     }
   }
@@ -303,5 +300,9 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   showCorrectAnswer() {
     // console.log('selected index: ',this.selectedAnswerId);
     this.answerOpened.emit(1); // 🆕 Seçilen cevap üst componente gönderiliyor
+  }
+
+  removeQuestion() {
+    this.questionRemove.emit(this._questionRegion().id);
   }
 }

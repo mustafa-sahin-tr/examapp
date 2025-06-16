@@ -18,6 +18,7 @@ import { QuestionNavigatorComponent } from '../../shared/components/question-nav
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
+import { MatDialog } from '@angular/material/dialog';
 
 interface WarningMarker {
   id: number;
@@ -71,6 +72,7 @@ export class ImageSelectorComponent {
   questionService = inject(QuestionService);
   testService = inject(TestService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
   public previewCurrentIndex = signal(0);
   private startX = 0;
   private startY = 0;
@@ -82,6 +84,8 @@ export class ImageSelectorComponent {
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
   previewMode = signal(false); // ✅ Önizleme açma durumu
+  currentTestId = signal<number | null>(null); // Test ID'yi sakla
+
   public exampleAnswers = new Map<string, string>(); // 📜 Her soru için örnek cevapları sakla
   public exampleFlags = new Map<string, boolean>(); // ✅ Her soru için "isExample" flag'ini sakla
 
@@ -148,6 +152,7 @@ export class ImageSelectorComponent {
     if (!this.previewMode()) {
       this.previewMode.set(!this.previewMode());
       this.previewCurrentIndex.set(0);
+      this.currentTestId.set(testId); // Test ID'yi sakla
       // get questions and sets region
       this.questionService.getAll(testId).subscribe((response) => {
         const regions = this.testService.convertQuestionsToRegions(response);
@@ -156,6 +161,7 @@ export class ImageSelectorComponent {
     } else {
       this.resetRegions();
       this.previewMode.set(!this.previewMode());
+      this.currentTestId.set(null); // Test ID'yi temizle
       this.loadCurrentImage();
     }
   }
@@ -1063,7 +1069,79 @@ export class ImageSelectorComponent {
 
     this.regions.set([...this.regions()]); // UI güncelleme
 
+    // Eğer preview mode'daysa backend'e güncelleme gönder
+    if (this.previewMode()) {
+      const questionId = region.id;
+      const correctAnswerId = region.answers[answerIndex].id;
+
+      if (questionId && correctAnswerId) {
+        this.questionService.updateCorrectAnswer(questionId, correctAnswerId).subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
+            } else {
+              this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
+            }
+          },
+          error: (error) => {
+            console.error('Error updating correct answer:', error);
+            this.snackBar.open('Doğru cevap güncellenirken hata oluştu!', 'Tamam', { duration: 3000 });
+          },
+        });
+      }
+    }
+
     this.drawImage();
+  }
+
+  onPreviewChoiceSelected(selectedChoice: AnswerChoice) {
+    if (!this.previewMode()) return;
+
+    const currentRegion = this.regions()[this.previewCurrentIndex()];
+    const answerIndex = currentRegion.answers.findIndex((answer) => answer.id === selectedChoice.id);
+
+    if (answerIndex !== -1) {
+      this.setCorrectAnswer(this.previewCurrentIndex(), answerIndex);
+    }
+  }
+
+  onQuestionRemove(questionId: number) {
+    if (!this.previewMode()) return;
+
+    // Confirmation dialog kullanarak kullanıcıdan onay al
+    const confirmRemoval = confirm('Bu soruyu testten çıkarmak istediğinizden emin misiniz?');
+
+    if (confirmRemoval && this.currentTestId()) {
+      this.questionService.removeQuestionFromTest(this.currentTestId()!, questionId).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.snackBar.open('Soru başarıyla testten çıkarıldı!', 'Tamam', { duration: 3000 });
+
+            // Local regions array'den de soruyu çıkar
+            const currentRegions = this.regions();
+            const updatedRegions = currentRegions.filter((region) => region.id !== questionId);
+            this.regions.set(updatedRegions);
+
+            // Eğer son soruyu sildik ve index sınır dışı kaldıysa, önceki soruya git
+            if (this.previewCurrentIndex() >= updatedRegions.length && updatedRegions.length > 0) {
+              this.previewCurrentIndex.set(updatedRegions.length - 1);
+            }
+
+            // Eğer hiç soru kalmadıysa preview mode'dan çık
+            if (updatedRegions.length === 0) {
+              this.togglePreviewMode(0); // Dummy testId, zaten false duruma geçiyor
+              this.snackBar.open('Testte soru kalmadığı için önizleme kapatıldı.', 'Tamam', { duration: 3000 });
+            }
+          } else {
+            this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
+          }
+        },
+        error: (error) => {
+          console.error('Error removing question from test:', error);
+          this.snackBar.open('Soru silinirken hata oluştu!', 'Tamam', { duration: 3000 });
+        },
+      });
+    }
   }
 
   sortRegionsByName() {

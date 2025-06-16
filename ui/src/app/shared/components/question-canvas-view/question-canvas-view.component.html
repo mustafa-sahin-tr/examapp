@@ -2,8 +2,18 @@
   <canvas #passagecanvas></canvas>
   <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
 </div>
+
+@if(isPreviewMode) {
+<div class="preview-actions" style="margin-top: 10px; display: flex; gap: 10px; justify-content: center">
+  <button mat-raised-button color="warn" (click)="removeQuestion()">
+    <mat-icon>delete</mat-icon>
+    Soruyu Testten Çıkar
+  </button>
+</div>
+}
+
 <div>
-  @if(_questionRegion().isExample) { @if(correctAnswerVisible) {
+  @if(_questionRegion() && _questionRegion().isExample) { @if(correctAnswerVisible) {
   <div class="correct-answer">
     Doğru Cevap:
     <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>

@@ -1,114 +1,129 @@
-<form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
-  <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center" class="flex-row">
-    <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()" type="button">
-      <mat-icon>cloud_upload</mat-icon>
-      <span>Yükle</span>
-    </button>
-    <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
-
-    <div class="select-wrapper">
-      <label for="subject">Kitap</label>
-      <select id="subject" formControlName="bookId" required class="select-style-1">
-        @for ( book of booksSignal() ; track book.id ) {
-        <option [value]="book.id">{{ book.name }}</option>
-        }
-      </select>
-      <span class="select-icon">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-          <path
-            d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"
-          ></path>
-        </svg>
-      </span>
+<div>
+  <div class="form-container ta-left">
+    <div class="form-column">
+      <app-test-create-enhanced></app-test-create-enhanced>
     </div>
+    <div class="form-column-4">
+      <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center" class="flex-row">
+          <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()" type="button">
+            <mat-icon>cloud_upload</mat-icon>
+            <span>Yükle</span>
+          </button>
+          <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
 
-    <div class="select-wrapper">
-      <label for="subject">Kitap Testi</label>
-      <select id="subject" formControlName="bookTestId" required class="select-style-1">
-        @for ( bt of bookTestsSignal() ; track bt.id ) {
-        <option [value]="bt.id">{{ bt.name }}</option>
-        }
-      </select>
-      <span class="select-icon">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-          <path
-            d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"
-          ></path>
-        </svg>
-      </span>
-    </div>
-    <label for="subject">Test</label>
+          <div class="select-wrapper">
+            <label for="subject">Kitap</label>
+            <select id="subject" formControlName="bookId" required class="select-style-1">
+              @for ( book of booksSignal() ; track book.id ) {
+              <option [value]="book.id">{{ book.name }}</option>
+              }
+            </select>
+            <span class="select-icon">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"
+                ></path>
+              </svg>
+            </span>
+          </div>
 
-    <div class="search-box" style="max-width: 450px" (focusin)="onFocus()" (focusout)="onBlur()">
-      <mat-icon class="search-icon">search</mat-icon>
-      <input
-        matInput
-        formControlName="testId"
-        class="fill-available"
-        style="max-width: 400px"
-        placeholder="Test Seç ..."
-      />
+          <div class="select-wrapper">
+            <label for="subject">Kitap Testi</label>
+            <select id="subject" formControlName="bookTestId" required class="select-style-1">
+              @for ( bt of bookTestsSignal() ; track bt.id ) {
+              <option [value]="bt.id">{{ bt.name }}</option>
+              }
+            </select>
+            <span class="select-icon">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z"
+                ></path>
+              </svg>
+            </span>
+          </div>
+          <label for="subject">Test</label>
 
-      <div class="ms-search-dropdown" *ngIf="filteredTestListSignal().length && dropdownVisible()">
-        <ul class="ms-dropdown-list">
-          <li
-            *ngFor="let worksheet of filteredTestListSignal()"
-            (click)="onOptionSelected(worksheet)"
-            class="ms-dropdown-item"
-          >
-            <div class="ms-item-content">
-              <span class="ms-item-text">{{ worksheet.name }} - {{ worksheet.subtitle }} </span>
+          <div class="search-box" style="max-width: 450px" (focusin)="onFocus()" (focusout)="onBlur()">
+            <mat-icon class="search-icon">search</mat-icon>
+            <input
+              matInput
+              formControlName="testId"
+              class="fill-available"
+              style="max-width: 400px"
+              placeholder="Test Seç ..."
+            />
+
+            <div class="ms-search-dropdown" *ngIf="filteredTestListSignal().length && dropdownVisible()">
+              <ul class="ms-dropdown-list">
+                <li
+                  *ngFor="let worksheet of filteredTestListSignal()"
+                  (click)="onOptionSelected(worksheet)"
+                  class="ms-dropdown-item"
+                >
+                  <div class="ms-item-content">
+                    <span class="ms-item-text">{{ worksheet.name }} - {{ worksheet.subtitle }} </span>
+                  </div>
+                </li>
+              </ul>
             </div>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <!-- <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
+          </div>
+          <!-- <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
       Auto Play
     </mat-slide-toggle> -->
 
-    <div class="button-group ml-auto">
-      <button mat-raised-button color="primary" (click)="sendToFix()" class="full-width" type="button">Eğit</button>
-      <button mat-raised-button color="primary" (click)="onSaveAndNew()" class="full-width" type="button">
-        Kaydet
-      </button>
+          <div class="button-group ml-auto">
+            <button mat-raised-button color="primary" (click)="sendToFix()" class="full-width" type="button">
+              Eğit
+            </button>
+            <button mat-raised-button color="primary" (click)="onSaveAndNew()" class="full-width" type="button">
+              Kaydet
+            </button>
 
-      <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Open actions" type="button">
-        <mat-icon>more_vert</mat-icon>
-      </button>
+            <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Open actions" type="button">
+              <mat-icon>more_vert</mat-icon>
+            </button>
 
-      <mat-menu #actionMenu="matMenu">
-        <button mat-menu-item (click)="togglePreviewMode()" type="button">
-          <mat-icon>{{ previewModeText() }}</mat-icon>
-          <span>{{ previewModeText() == 'visibility_off' ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
-        </button>
-        <div mat-menu-item (click)="$event.stopPropagation()">
-          <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
-            Auto Play
-          </mat-slide-toggle>
+            <mat-menu #actionMenu="matMenu">
+              <button mat-menu-item (click)="togglePreviewMode()" type="button">
+                <mat-icon>{{ previewModeText() }}</mat-icon>
+                <span>{{ previewModeText() == 'visibility_off' ? 'Ön İzlemeden Çık' : 'Ön İzleme' }}</span>
+              </button>
+              <div mat-menu-item (click)="$event.stopPropagation()">
+                <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
+                  Auto Play
+                </mat-slide-toggle>
+              </div>
+              <div mat-menu-item (click)="$event.stopPropagation()">
+                <mat-slide-toggle
+                  class="example-margin"
+                  [checked]="autoAlign()"
+                  (change)="setAutoAlign($event.checked)"
+                >
+                  Hizalama
+                </mat-slide-toggle>
+              </div>
+              <button mat-menu-item (click)="downloadRegionsLite()">
+                <mat-icon>file_download</mat-icon>
+                <span>İndir</span>
+              </button>
+              Şık Sayısı
+              <select (change)="onChangeQuestionCount($event)" (click)="$event.stopPropagation()">
+                <option [value]="3">3</option>
+                <option [value]="4">4</option>
+                <option [value]="5">5</option>
+              </select>
+            </mat-menu>
+
+            <button mat-icon-button aria-label="Enter Fullscreen" (click)="setFullScreen(!fullScreen())">
+              <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+            </button>
+          </div>
         </div>
-        <div mat-menu-item (click)="$event.stopPropagation()">
-          <mat-slide-toggle class="example-margin" [checked]="autoAlign()" (change)="setAutoAlign($event.checked)">
-            Hizalama
-          </mat-slide-toggle>
-        </div>
-        <button mat-menu-item (click)="downloadRegionsLite()">
-          <mat-icon>file_download</mat-icon>
-          <span>İndir</span>
-        </button>
-        Şık Sayısı
-        <select (change)="onChangeQuestionCount($event)" (click)="$event.stopPropagation()">
-          <option [value]="3">3</option>
-          <option [value]="4">4</option>
-          <option [value]="5">5</option>
-        </select>
-      </mat-menu>
+      </form>
 
-      <button mat-icon-button aria-label="Enter Fullscreen" (click)="setFullScreen(!fullScreen())">
-        <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-      </button>
+      <app-image-selector></app-image-selector>
     </div>
   </div>
-</form>
-
-<app-image-selector></app-image-selector>
+</div>

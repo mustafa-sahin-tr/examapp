@@ -27,6 +27,8 @@ import { SidenavService } from '../../services/sidenav.service';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatMenuModule } from '@angular/material/menu';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { TestFormComponent } from '../test-form/test-form.component';
+import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -50,10 +52,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
     ImageSelectorComponent,
     MatAutocompleteModule,
     MatSlideToggleModule,
+    TestCreateEnhancedComponent,
   ],
 })
 export class QuestionCanvasComponent implements OnInit {
   @ViewChild(ImageSelectorComponent) imageSelector!: ImageSelectorComponent; // 🔥 Alt bileşene erişim
+  @ViewChild(TestCreateEnhancedComponent) testCreateEnhancedComponent!: TestCreateEnhancedComponent;
 
   id: number | null = null;
   isEditMode: boolean = false;
@@ -283,11 +287,61 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   onSaveAndNew() {
-    this.onSave(true);
+    this.testCreateEnhancedComponent.onCreateAsync().subscribe({
+      next: (test) => {
+        console.log('Test created:', test);
+        this.id = test.examId;
+        this.testService.get(test.examId).subscribe({
+          next: (testData) => {
+            console.log('Test fetched:', testData);
+            this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
+            this.resetFormWithDefaultValues({
+              subjectId: null,
+              topicId: null,
+              subtopicId: null,
+              testId: testData.subtitle,
+              bookId: testData.bookId,
+              bookTestId: testData.bookTestId,
+              testValue: testData.id,
+            });
+            this.onSave(true);
+          },
+        });
+      },
+      error: (error) => {
+        console.error('Error creating test:', error);
+        this.snackBar.open('Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+      },
+    });
   }
 
   onSubmit() {
-    this.onSave();
+    this.testCreateEnhancedComponent.onCreateAsync().subscribe({
+      next: (test) => {
+        console.log('Test created:', test);
+        this.id = test.examId;
+        this.testService.get(test.examId).subscribe({
+          next: (testData) => {
+            console.log('Test fetched:', testData);
+            this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
+            this.resetFormWithDefaultValues({
+              subjectId: null,
+              topicId: null,
+              subtopicId: null,
+              testId: testData.subtitle,
+              bookId: testData.bookId,
+              bookTestId: testData.bookTestId,
+              testValue: testData.id,
+            });
+            this.onSave();
+          },
+        });
+      },
+      error: (error) => {
+        console.error('Error creating test:', error);
+        this.snackBar.open('Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+      },
+    });
   }
 
   onSave(navigateNewQuestion: boolean = false) {
@@ -312,6 +366,7 @@ export class QuestionCanvasComponent implements OnInit {
         console.log('Soru Kaydedildi:', data);
         this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
         this.imageSelector.sendToFix();
+        this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
       },
       error: (err) => {
         console.log(err);

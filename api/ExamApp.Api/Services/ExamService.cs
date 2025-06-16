@@ -197,7 +197,7 @@ public class ExamService : IExamService
                 Description = t.Description,
                 GradeId = t.GradeId,
                 SubjectId = t.SubjectId,
-                TopicId = t.TopicId,    
+                TopicId = t.TopicId,
                 SubTopicId = t.SubTopicId,
                 MaxDurationSeconds = t.MaxDurationSeconds,
                 IsPracticeTest = t.IsPracticeTest,
@@ -850,6 +850,7 @@ public class ExamService : IExamService
 
 
             Worksheet? examination;
+            var newId = 0;
             if (examDto.Id > 0)
             {
                 examination = await _context.Worksheets.FindAsync(examDto.Id);
@@ -892,45 +893,63 @@ public class ExamService : IExamService
                 var bookTestId = book.BookTests.FirstOrDefault(bt => bt.Id == examDto.BookTestId)?.Id ?? book.BookTests.First().Id;
                 var existingExam = await _context.Worksheets
                     .FirstOrDefaultAsync(e => e.Name == examDto.Name && e.BookTestId == bookTestId);
-
-                if (existingExam != null)
-                {
-                    // return BadRequest(new { error = "Bu isimde ve kitap testinde bir sınav zaten var!" });
-                    return new ExamSavedDto
-                    {
-                        Success = false,
-                        Message = "Bu isimde ve kitap testinde bir sınav zaten var!"
-                    };
-                }
-                examination = new Worksheet
-                {
-                    Name = examDto.Name,
-                    Description = examDto.Description,
-                    GradeId = examDto.GradeId,
-                    MaxDurationSeconds = examDto.MaxDurationSeconds,
-                    IsPracticeTest = examDto.IsPracticeTest,
-                    Subtitle = examDto.Subtitle,
-                    BookTestId = bookTestId,
-                    SubjectId = examDto.SubjectId,
-                    TopicId = examDto.TopicId,
-                    SubTopicId = examDto.SubTopicId,
-                };
-
                 // 📌 Eğer yeni resim varsa, güncelle
+                var newImageUrl = string.Empty;
                 if (!string.IsNullOrEmpty(examDto.ImageUrl) &&
                     _imageHelper.IsBase64String(examDto.ImageUrl))
                 {
                     byte[] imageBytes = Convert.FromBase64String(examDto.ImageUrl.Split(',')[1]);
                     await using var imageStream = new MemoryStream(imageBytes);
-                    examination.ImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg", "exams");
+                    newImageUrl = await _minioService.UploadFileAsync(imageStream, $"{Guid.NewGuid()}.jpg", "exams");
                 }
 
-                _context.Worksheets.Add(examination);
+                if (existingExam != null)
+                {
+                    // Update existing exam
+                    existingExam.Name = examDto.Name;
+                    existingExam.Description = examDto.Description;
+                    existingExam.GradeId = examDto.GradeId;
+                    existingExam.MaxDurationSeconds = examDto.MaxDurationSeconds;
+                    existingExam.IsPracticeTest = examDto.IsPracticeTest;
+                    existingExam.Subtitle = examDto.Subtitle;
+                    existingExam.BookTestId = bookTestId;
+                    existingExam.SubjectId = examDto.SubjectId;
+                    existingExam.TopicId = examDto.TopicId;
+                    existingExam.SubTopicId = examDto.SubTopicId;
+
+                    if (!string.IsNullOrEmpty(newImageUrl))
+                    {
+                        existingExam.ImageUrl = newImageUrl;
+                    }
+                    examination = existingExam;
+                    _context.Worksheets.Update(examination);
+                }
+                else
+                {
+                    // Create new exam
+                    examination = new Worksheet
+                    {
+                        Name = examDto.Name,
+                        Description = examDto.Description,
+                        GradeId = examDto.GradeId,
+                        MaxDurationSeconds = examDto.MaxDurationSeconds,
+                        IsPracticeTest = examDto.IsPracticeTest,
+                        Subtitle = examDto.Subtitle,
+                        BookTestId = bookTestId,
+                        SubjectId = examDto.SubjectId,
+                        TopicId = examDto.TopicId,
+                        SubTopicId = examDto.SubTopicId,
+                    };
+                    if (!string.IsNullOrEmpty(newImageUrl))
+                    {
+                        examination.ImageUrl = newImageUrl;
+                    }
+                    _context.Worksheets.Add(examination);
+
+                }
             }
 
-            // 📌 Değişiklikleri Kaydet
-            await _context.SaveChangesAsync();
-
+            await _context.SaveChangesAsync(); // burada audit çalışır
             return new ExamSavedDto
             {
                 Message = examDto.Id > 0 ?

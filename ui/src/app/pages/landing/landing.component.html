@@ -1,0 +1,391 @@
+<!-- Landing Page -->
+<div class="landing-page">
+  <!-- Header/Navigation -->
+  <header class="header" [class.scrolled]="isScrolled()">
+    <div class="header-container">
+      <div class="logo">
+        <mat-icon class="logo-icon">school</mat-icon>
+        <span class="logo-text">ExamApp</span>
+      </div>
+
+      <nav class="navigation">
+        <a (click)="scrollToSection('features')" class="nav-link">Özellikler</a>
+        <a (click)="scrollToSection('testimonials')" class="nav-link">Yorumlar</a>
+        <a (click)="scrollToSection('pricing')" class="nav-link">Fiyatlandırma</a>
+        <a (click)="scrollToSection('contact')" class="nav-link">İletişim</a>
+      </nav>
+
+      <div class="header-actions">
+        <button mat-stroked-button (click)="navigateToLogin()" class="login-btn">
+          <mat-icon>login</mat-icon>
+          Giriş Yap
+        </button>
+        <button mat-raised-button color="primary" (click)="navigateToRegister()" class="register-btn">
+          <mat-icon>person_add</mat-icon>
+          Kayıt Ol
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section" [@fadeInUp]>
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="hero-text">
+          <h1 class="hero-title">
+            Eğitimde Yeni Nesil
+            <span class="gradient-text">Dijital Çözüm</span>
+          </h1>
+          <p class="hero-subtitle">
+            AI destekli test sistemi ile öğrencilerinizin başarısını artırın. Akıllı analiz, gerçek zamanlı takip ve
+            modern eğitim araçları.
+          </p>
+
+          <div class="hero-features">
+            <div class="hero-feature">
+              <mat-icon>check_circle</mat-icon>
+              <span>Kolay Kullanım</span>
+            </div>
+            <div class="hero-feature">
+              <mat-icon>check_circle</mat-icon>
+              <span>AI Destekli Analiz</span>
+            </div>
+            <div class="hero-feature">
+              <mat-icon>check_circle</mat-icon>
+              <span>Gerçek Zamanlı Takip</span>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <button mat-raised-button color="primary" size="large" (click)="navigateToRegister()" class="cta-button">
+              <mat-icon>rocket_launch</mat-icon>
+              Ücretsiz Başla
+            </button>
+            <button mat-stroked-button size="large" (click)="scrollToSection('demo')" class="demo-button">
+              <mat-icon>play_circle</mat-icon>
+              Demo İzle
+            </button>
+          </div>
+        </div>
+
+        <div class="hero-visual">
+          <div class="dashboard-preview">
+            <div class="dashboard-header">
+              <div class="header-bar">
+                <div class="window-controls">
+                  <span class="control red"></span>
+                  <span class="control yellow"></span>
+                  <span class="control green"></span>
+                </div>
+                <span class="url-bar">examapp.com/dashboard</span>
+              </div>
+            </div>
+            <div class="dashboard-content">
+              <div class="stats-row">
+                <div class="stat-card">
+                  <mat-icon>school</mat-icon>
+                  <div class="stat-info">
+                    <span class="stat-number">245</span>
+                    <span class="stat-label">Öğrenci</span>
+                  </div>
+                </div>
+                <div class="stat-card">
+                  <mat-icon>quiz</mat-icon>
+                  <div class="stat-info">
+                    <span class="stat-number">1,234</span>
+                    <span class="stat-label">Test</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-placeholder">
+                <div class="chart-bars">
+                  <div class="bar" style="height: 60%"></div>
+                  <div class="bar" style="height: 80%"></div>
+                  <div class="bar" style="height: 45%"></div>
+                  <div class="bar" style="height: 90%"></div>
+                  <div class="bar" style="height: 70%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+      <div class="floating-icon icon-1">📚</div>
+      <div class="floating-icon icon-2">🎯</div>
+      <div class="floating-icon icon-3">📊</div>
+      <div class="floating-icon icon-4">🏆</div>
+    </div>
+  </section>
+
+  <!-- Statistics Section -->
+  <section class="statistics-section">
+    <div class="container">
+      <div class="statistics-grid" [@staggerAnimation]>
+        <div class="statistic-card" *ngFor="let stat of statistics">
+          <mat-icon class="stat-icon">{{ stat.icon }}</mat-icon>
+          <h3 class="stat-value">{{ stat.value }}</h3>
+          <p class="stat-label">{{ stat.label }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Güçlü Özellikler</h2>
+        <p class="section-subtitle">Modern eğitim ihtiyaçlarınız için tasarlanmış kapsamlı özellik seti</p>
+      </div>
+
+      <div class="features-grid" [@staggerAnimation]>
+        <div class="feature-card" *ngFor="let feature of features" [attr.data-color]="feature.color">
+          <div class="feature-icon" [class]="'icon-' + feature.color">
+            <mat-icon>{{ feature.icon }}</mat-icon>
+          </div>
+          <h3 class="feature-title">{{ feature.title }}</h3>
+          <p class="feature-description">{{ feature.description }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="how-it-works-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Nasıl Çalışır?</h2>
+        <p class="section-subtitle">3 adımda başlayın</p>
+      </div>
+
+      <div class="steps-container">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Kayıt Ol</h3>
+            <p>Hızlı ve kolay kayıt işlemi ile hesabınızı oluşturun</p>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Test Oluştur</h3>
+            <p>AI destekli araçlarla öğrencilerinize uygun testler hazırlayın</p>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Analiz Et</h3>
+            <p>Sonuçları analiz edin ve öğrenci gelişimini takip edin</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section id="testimonials" class="testimonials-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Kullanıcı Yorumları</h2>
+        <p class="section-subtitle">Öğretmenlerimizin deneyimleri</p>
+      </div>
+
+      <div class="testimonials-grid">
+        <div class="testimonial-card" *ngFor="let testimonial of testimonials" [@fadeInUp]>
+          <div class="testimonial-content">
+            <div class="quote-icon">"</div>
+            <p class="testimonial-text">{{ testimonial.comment }}</p>
+
+            <div class="rating">
+              <mat-icon *ngFor="let star of getStars(testimonial.rating)" [class.filled]="star === 1">star</mat-icon>
+            </div>
+          </div>
+
+          <div class="testimonial-author">
+            <div class="author-avatar">{{ testimonial.avatar }}</div>
+            <div class="author-info">
+              <h4>{{ testimonial.name }}</h4>
+              <p>{{ testimonial.role }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section id="pricing" class="pricing-section">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Fiyatlandırma</h2>
+        <p class="section-subtitle">İhtiyacınıza uygun planı seçin</p>
+      </div>
+
+      <div class="pricing-grid">
+        <div
+          class="pricing-card"
+          *ngFor="let plan of pricingPlans"
+          [class.popular]="plan.popular"
+          [attr.data-color]="plan.color"
+        >
+          <div class="popular-badge" *ngIf="plan.popular">
+            <mat-icon>star</mat-icon>
+            <span>Popüler</span>
+          </div>
+
+          <div class="plan-header">
+            <h3 class="plan-name">{{ plan.name }}</h3>
+            <div class="plan-price">
+              <span class="price">{{ plan.price }}</span>
+              <span class="duration" *ngIf="plan.duration">{{ plan.duration }}</span>
+            </div>
+          </div>
+
+          <div class="plan-features">
+            <div class="feature" *ngFor="let feature of plan.features">
+              <mat-icon>check</mat-icon>
+              <span>{{ feature }}</span>
+            </div>
+          </div>
+
+          <button
+            mat-raised-button
+            [color]="plan.popular ? 'primary' : 'basic'"
+            class="plan-button"
+            (click)="navigateToRegister()"
+          >
+            Başla
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact-section">
+    <div class="container">
+      <div class="contact-content">
+        <div class="contact-info">
+          <h2>İletişime Geçin</h2>
+          <p>Sorularınız için bizimle iletişime geçebilirsiniz</p>
+
+          <div class="contact-methods">
+            <div class="contact-method">
+              <mat-icon>email</mat-icon>
+              <div>
+                <h4>Email</h4>
+                <p>info&#64;examapp.com</p>
+              </div>
+            </div>
+
+            <div class="contact-method">
+              <mat-icon>phone</mat-icon>
+              <div>
+                <h4>Telefon</h4>
+                <p>+90 212 123 45 67</p>
+              </div>
+            </div>
+
+            <div class="contact-method">
+              <mat-icon>location_on</mat-icon>
+              <div>
+                <h4>Adres</h4>
+                <p>İstanbul, Türkiye</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-cta">
+          <h3>Hemen Başlayın</h3>
+          <p>Ücretsiz hesap oluşturun ve ExamApp'in gücünü keşfedin</p>
+          <button mat-raised-button color="primary" size="large" (click)="navigateToRegister()">
+            <mat-icon>rocket_launch</mat-icon>
+            Ücretsiz Dene
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-section">
+          <div class="logo">
+            <mat-icon class="logo-icon">school</mat-icon>
+            <span class="logo-text">ExamApp</span>
+          </div>
+          <p>Modern eğitim için tasarlanmış dijital platform</p>
+
+          <div class="social-links">
+            <button mat-icon-button>
+              <mat-icon>facebook</mat-icon>
+            </button>
+            <button mat-icon-button>
+              <mat-icon>twitter</mat-icon>
+            </button>
+            <button mat-icon-button>
+              <mat-icon>linkedin</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="footer-section">
+          <h4>Ürün</h4>
+          <ul>
+            <li><a (click)="scrollToSection('features')">Özellikler</a></li>
+            <li><a (click)="scrollToSection('pricing')">Fiyatlandırma</a></li>
+            <li><a href="#">API</a></li>
+            <li><a href="#">Güvenlik</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h4>Destek</h4>
+          <ul>
+            <li><a href="#">Yardım Merkezi</a></li>
+            <li><a href="#">Dokümantasyon</a></li>
+            <li><a (click)="scrollToSection('contact')">İletişim</a></li>
+            <li><a href="#">Durum</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h4>Şirket</h4>
+          <ul>
+            <li><a href="#">Hakkımızda</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Kariyer</a></li>
+            <li><a href="#">Basın Kiti</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="footer-bottom">
+        <p>&copy; {{ currentYear }} ExamApp. Tüm hakları saklıdır.</p>
+        <div class="footer-links">
+          <a href="#">Gizlilik Politikası</a>
+          <a href="#">Kullanım Şartları</a>
+          <a href="#">Çerez Politikası</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>

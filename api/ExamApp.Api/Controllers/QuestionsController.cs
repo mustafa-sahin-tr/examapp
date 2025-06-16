@@ -17,13 +17,13 @@ using System.Threading.Tasks;
 public class QuestionsController : BaseController
 {
     private readonly IMinIoService _minioService;
-    private readonly ImageHelper _imageHelper;  
+    private readonly ImageHelper _imageHelper;
 
-    private readonly IQuestionService _questionService;  
+    private readonly IQuestionService _questionService;
 
     public QuestionsController(IMinIoService minioService, ImageHelper imageHelper, IQuestionService questionService)
         : base()
-    {        
+    {
         _minioService = minioService;
         _imageHelper = imageHelper;
         _questionService = questionService;
@@ -42,7 +42,7 @@ public class QuestionsController : BaseController
     }
 
     [HttpGet("passages")]
-    public async Task<IActionResult> GetLastTenPassages() 
+    public async Task<IActionResult> GetLastTenPassages()
     {
         var passages = await _questionService.GetLastTenPassages();
         return Ok(passages);
@@ -82,6 +82,39 @@ public class QuestionsController : BaseController
             return BadRequest("Soru seti kaydedilemedi.");
         }
         return Ok(reponse);
+    }
+
+    [HttpPut("{questionId}/correct-answer")]
+    [Authorize]
+    public async Task<IActionResult> UpdateCorrectAnswer(int questionId, [FromBody] UpdateCorrectAnswerDto request)
+    {
+        if (request == null || request.CorrectAnswerId <= 0)
+        {
+            return BadRequest(new { message = "Geçersiz doğru cevap ID'si." });
+        }
+
+        var response = await _questionService.UpdateCorrectAnswer(questionId, request.CorrectAnswerId);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpDelete("test/{testId}/question/{questionId}")]
+    [Authorize]
+    public async Task<IActionResult> RemoveQuestionFromTest(int testId, int questionId)
+    {
+        var response = await _questionService.RemoveQuestionFromTest(testId, questionId);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
     }
 }
 

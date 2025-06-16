@@ -10,8 +10,11 @@ public interface IQuestionService
     Task<List<PassageDto>> GetLastTenPassages();
 
     Task<List<QuestionDto>> GetQuestionByTestId(int testid);
-
     Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto);
 
     Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto);
+
+    Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId);
+
+    Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
 }

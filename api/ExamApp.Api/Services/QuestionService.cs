@@ -111,7 +111,7 @@ public class QuestionService : IQuestionService
             .Include(tq => tq.Question)
                 .ThenInclude(q => q.QuestionSubTopics)
                     .ThenInclude(qst => qst.SubTopic)
-            .Where(tq => tq.TestId == testid)
+            .Where(tq => tq.TestId == testid && !tq.IsDeleted)
             .Select(tq => new QuestionDto
             {
                 Id = tq.Question.Id,
@@ -143,7 +143,11 @@ public class QuestionService : IQuestionService
                     Id = tq.Question.Passage.Id,
                     Title = tq.Question.Passage.Title,
                     Text = tq.Question.Passage.Text,
-                    ImageUrl = tq.Question.Passage.ImageUrl
+                    ImageUrl = tq.Question.Passage.ImageUrl,
+                    X = tq.Question.Passage.X,
+                    Y = tq.Question.Passage.Y,
+                    Width = tq.Question.Passage.Width,
+                    Height = tq.Question.Passage.Height,
                 } : null,
                 CorrectAnswerId = tq.Question.CorrectAnswerId,
                 AnswerColCount = tq.Question.AnswerColCount,
@@ -591,6 +595,92 @@ public class QuestionService : IQuestionService
                     Message = "Veri kaydedilirken hata oluştu."
                 };
             }
+        }
+    }
+
+    public async Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId)
+    {
+        try
+        {
+            var question = await _context.Questions
+                .Include(q => q.Answers)
+                .FirstOrDefaultAsync(q => q.Id == questionId);
+
+            if (question == null)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Soru bulunamadı!"
+                };
+            }
+
+            // Verify that the correct answer ID belongs to this question
+            var correctAnswer = question.Answers.FirstOrDefault(a => a.Id == correctAnswerId);
+            if (correctAnswer == null)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Seçilen cevap bu soruya ait değil!"
+                };
+            }
+
+            // Update the correct answer ID
+            question.CorrectAnswerId = correctAnswerId;
+            _context.Questions.Update(question);
+            await _context.SaveChangesAsync();
+
+            return new ResponseBaseDto
+            {
+                Success = true,
+                Message = "Doğru cevap başarıyla güncellendi!"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = $"Doğru cevap güncellenirken hata oluştu: {ex.Message}"
+            };
+        }
+    }
+    public async Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId)
+    {
+        try
+        {
+            var testQuestion = await _context.TestQuestions
+                .FirstOrDefaultAsync(tq => tq.TestId == testId && tq.QuestionId == questionId && !tq.IsDeleted);
+
+            if (testQuestion == null)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Soru bu testte bulunamadı!"
+                };
+            }
+
+            // Soft delete: IsDeleted = true yapıyoruz
+            testQuestion.IsDeleted = true;
+            testQuestion.DeleteTime = DateTime.UtcNow;
+            _context.TestQuestions.Update(testQuestion);
+            await _context.SaveChangesAsync();
+
+            return new ResponseBaseDto
+            {
+                Success = true,
+                Message = "Soru başarıyla testten çıkarıldı!"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = $"Soru testten çıkarılırken hata oluştu: {ex.Message}"
+            };
         }
     }
 }

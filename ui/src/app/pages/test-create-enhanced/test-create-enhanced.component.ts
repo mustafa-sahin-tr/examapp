@@ -84,6 +84,19 @@ export class TestCreateEnhancedComponent implements OnInit {
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
+    if (!this.id) {
+      const navigation = this.router.getCurrentNavigation();
+      this.id = history.state.testValue;
+    }
+    this.reloadComponent(this.id!);
+  }
+
+  public set thisId(value: number | null) {
+    this.id = value;
+  }
+
+  public reloadComponent(id: number) {
+    this.thisId = id;
     this.isEditMode = this.id !== null;
     this.testForm = this.fb.group({
       name: ['', Validators.required],
@@ -307,6 +320,12 @@ export class TestCreateEnhancedComponent implements OnInit {
         }
       });
     }
+  }
+
+  public onCreateAsync() {
+    var payload = this.createTestPayload();
+    payload = { ...payload, id: null }; // id'yi null yaparak yeni bir test oluşturulacağını belirt
+    return this.testService.create(payload);
   }
 
   navigateToTestList() {

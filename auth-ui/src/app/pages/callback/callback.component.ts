@@ -65,57 +65,19 @@ export class CallbackComponent implements OnInit {
     this.updateStep(2);
     await this.delay(100); // Add visual delay for better UX
 
-    if (role === 'Student') {
-      // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
-      this.authService.checkStudentProfile().subscribe({
-        next: async (studentRes) => {
-          await this.delay(100);
-          this.updateStep(3);
-          await this.delay(100);
-
-          if (studentRes.hasStudentRecord) {
-            localStorage.setItem('student', JSON.stringify(studentRes.student));
-            this.router.navigate([`/student-profile`]); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
-          } else {
-            this.router.navigate(['/student-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
-          }
-        },
-        error: () => {
-          this.snackBar.open('Öğrenci bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-        },
-      });
-    } else if (role == 'Teacher') {
-      // 🟢 Öğretmen ise teacher kaydı olup olmadığını kontrol et
-      this.authService.checkTeacherProfile().subscribe({
-        next: async (teacherRes) => {
-          await this.delay(100);
-          this.updateStep(3);
-          await this.delay(100);
-
-          if (teacherRes.hasTeacherRecord) {
-            localStorage.setItem('teacher', JSON.stringify(teacherRes.teacher));
-            this.router.navigate([`/tests`]); // ✅ Öğretmen kaydı varsa Ana Sayfa'ya git
-          } else {
-            this.router.navigate(['/teacher-register']); // ❌ Öğretmen kaydı yoksa kayıt sayfasına git
-          }
-        },
-        error: () => {
-          this.snackBar.open('Öğretmen bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-        },
-      });
-    } else {
+    
       console.log('Unknown role');
       await this.delay(100);
       this.updateStep(3);
       await this.delay(100);
       this.router.navigate(['/tests']);
-    }
   }
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(async (params) => {
       const code = params['code'];
-
+      const navigateTo = params['state'];
+      console.log('Callback params:', params);
       if (code) {
         // Add initial delay for better visual experience
         await this.delay(100);
@@ -124,7 +86,11 @@ export class CallbackComponent implements OnInit {
           next: async (res) => {
             this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
             await this.delay(100);
-            this.checkUserSession(res.profile.role);
+            console.log('Unknown role');
+            await this.delay(100);
+            this.updateStep(3);
+            await this.delay(100);
+            window.location.href = navigateTo || '/login'; // Navigate to the main app or default to /tests
           },
           error: () => {
             this.snackBar.open('Giriş başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });

@@ -25,7 +25,7 @@
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "exam-dotnet-api", "Port": 5079 }
+        { "Host": "auth-api", "Port": 5079 }
       ],
       "UpstreamPathTemplate": "/api/auth/{everything}"      
     },
@@ -138,6 +138,15 @@
       "UpstreamPathTemplate": "/img/{everything}",
       "UpstreamHttpMethod": [ "Get", "Post" ],
       "AddHeadersToRequest": true
+    },
+    {
+      "DownstreamPathTemplate": "/app/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "auth-ui", "Port": 4200 }
+      ],
+      "UpstreamPathTemplate": "/app/{everything}",
+      "Priority": 0
     },
     {
       "DownstreamPathTemplate": "/{everything}",

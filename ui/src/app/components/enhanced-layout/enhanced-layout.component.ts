@@ -169,7 +169,7 @@ export class EnhancedLayoutComponent implements OnInit {
   logout() {
     console.log('Logging out...');
     // Implement logout logic here
-    this.router.navigate(['/logout']);
+    window.location.href = '/app/logout';
   }
 
   // Profile menu actions

@@ -75,41 +75,7 @@ export class LoginComponent implements OnInit {
   }
 
   checkUserSession(role: string) {
-    if (role === 'Student') {
-      // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
-      this.authService.checkStudentProfile().subscribe({
-        next: (studentRes) => {
-          if (studentRes.hasStudentRecord) {
-            localStorage.setItem('student', JSON.stringify(studentRes.student));
-            this.router.navigate([`/student-profile`]); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
-          } else {
-            this.router.navigate(['/student-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
-          }
-        },
-        error: () => {
-          this.isLoading = false;
-          this.snackBar.open('Öğrenci bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-        },
-      });
-    } else if (role == 'Teacher') {
-      // 🟢 Öğrenci ise student kaydı olup olmadığını kontrol et
-      this.authService.checkTeacherProfile().subscribe({
-        next: (teacherRes) => {
-          if (teacherRes.hasTeacherRecord) {
-            localStorage.setItem('teacher', JSON.stringify(teacherRes.teacher));
-            this.router.navigate([`/tests`]); // ✅ Öğrenci kaydı varsa Ana Sayfa'ya git
-          } else {
-            this.router.navigate(['/teacher-register']); // ❌ Öğrenci kaydı yoksa kayıt sayfasına git
-          }
-        },
-        error: () => {
-          this.isLoading = false;
-          this.snackBar.open('Öğretmen bilgileri kontrol edilirken hata oluştu.', 'Kapat', { duration: 3000 });
-        },
-      });
-    } else {
       this.router.navigate(['/tests']); // ✅ Öğretmen veya Veli ise Home sayfasına git
-    }
   }
 
   onSubmit() {

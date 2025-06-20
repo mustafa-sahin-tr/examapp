@@ -91,6 +91,12 @@ Thumbs.db
 /ui/.vscode
 /ui/.idea
 
+/auth-ui/node_modules
+/auth-ui/dist
+/auth-ui/.angular/cache
+/auth-ui/.vscode
+/auth-ui/.idea
+
 minio-data/
 pgadmin-data/
 pgadmin-data/sessions/

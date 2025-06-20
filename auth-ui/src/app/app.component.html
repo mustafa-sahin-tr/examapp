@@ -1,0 +1,87 @@
+<mat-sidenav-container class="container">
+  <!-- Sol Menü -->
+  <mat-sidenav *ngIf="!isLoginPage()" #sidenav mode="side" [opened]="isSidenavOpen()" class="sidenav hidden-scrollable">
+    <mat-nav-list>
+      <!-- <a mat-list-item class="navbar-viewitem svelte" routerLink="/home">Home</a>
+        <a mat-list-item routerLink="/tests">Testler</a>       
+        <a mat-list-item routerLink="/help">Help & Support</a>
+        <a mat-list-item routerLink="/feedback">Send Feedback</a> -->
+      <div class="sidenav">
+        <div class="sidenav-item active" (click)="navigateTo('/tests')">
+          <mat-icon>folder</mat-icon>
+          <span>Sınavlar</span>
+        </div>
+        <!-- <div class="sidenav-divider"></div> -->
+        <!-- <div class="sidenav-item">
+              <mat-icon>stars</mat-icon>
+              <span>Iris</span>
+            </div>
+            <div class="sidenav-item">
+              <mat-icon>work</mat-icon>
+              <span>Hands-on</span>
+            </div>
+            <div class="sidenav-item">
+              <mat-icon>rss_feed</mat-icon>
+              <span>Channels</span>
+            </div>
+            <div class="sidenav-item">
+              <mat-icon>assignment_ind</mat-icon>
+              <span>Role IQ</span>
+            </div> -->
+        <div class="sidenav-divider"></div>
+        <div class="sidenav-item">
+          <mat-icon>verified</mat-icon>
+          <span>Sertifikalar</span>
+        </div>
+        <div class="sidenav-item">
+          <mat-icon>timeline</mat-icon>
+          <span>Parkur</span>
+        </div>
+        <div class="sidenav-item">
+          <mat-icon>track_changes</mat-icon>
+          <span>Sonuçlar</span>
+        </div>
+        <div class="sidenav-divider"></div>
+        <div class="sidenav-item">
+          <mat-icon>help</mat-icon>
+          <span>Destek</span>
+        </div>
+        <div class="sidenav-item">
+          <mat-icon>feedback</mat-icon>
+          <span>Geri Bildirim</span>
+        </div>
+      </div>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <!-- İçerik Alanı -->
+  <mat-sidenav-content class="content hidden-scrollable">
+    <mat-toolbar color="primary" *ngIf="!isFullScreen()">
+      <button mat-button (click)="toggleSidenav()">
+        <mat-icon>list</mat-icon>
+      </button>
+
+      <span class="app-title">Sınav Yönetimi</span>
+
+      <span class="spacer"></span>
+
+      <button mat-button (click)="navigateTo('/questioncanvas')"><mat-icon>add_circle</mat-icon> Soru Ekle</button>
+
+      <button mat-button (click)="navigateTo('/tests')"><mat-icon>list</mat-icon> Testler</button>
+      @if( $isAuthenticated | async) {
+
+      <div class="profile-menu" mat-button [matMenuTriggerFor]="menu" (click)="navigateTo('/student-profile')">
+        <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
+        <span class="username">Mustafa</span>
+      </div>
+      <mat-menu #menu="matMenu">
+        <button mat-menu-item (click)="logout()">Çıkış Yap</button>
+      </mat-menu>
+      }
+    </mat-toolbar>
+
+    <div class="main-content">
+      <router-outlet></router-outlet>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

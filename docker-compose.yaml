@@ -20,6 +20,25 @@ services:
     networks:
       - mynetwork
 
+  auth-api:
+    container_name: auth-api
+    build:
+      context: ./dockerfiles/auth-api
+      dockerfile: Dockerfile.auth-api
+    ports:
+      - "9005:8005"
+      - "6079:5079"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8005
+    volumes:
+      - ./auth-api:/app
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+    networks:
+      - mynetwork      
+
   exam-badge-api:
     container_name: exam-badge-api
     build:
@@ -45,8 +64,8 @@ services:
       context: ./dockerfiles/catalog
       dockerfile: Dockerfile.catalog
     ports:
-      - "8009:8009"
-      - "5089:5089"
+      - "9009:8009"
+      - "6089:5089"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8009
@@ -92,7 +111,25 @@ services:
     networks:
       - mynetwork
     volumes:
-      - ./ui:/app      
+      - ./ui:/app 
+
+
+  auth-ui:
+    container_name: auth-ui
+    build:
+      context: ./dockerfiles/auth-ui
+      dockerfile: Dockerfile.auth-ui
+    image: auth-ui:latest
+    ports:
+      - "4201:4200"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - auth-api
+    networks:
+      - mynetwork
+    volumes:
+      - ./auth-ui:/app
 
   exam-pg-container:
     container_name: exam_pg_container

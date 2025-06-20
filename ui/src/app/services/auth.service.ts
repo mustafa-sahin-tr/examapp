@@ -152,7 +152,7 @@ export class AuthService {
   }
 
   refreshToken(): Observable<string> {
-    return this.http.post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true }).pipe(
+    return this.http.post<{ accessToken: string }>('/app/auth/refresh-token', {}, { withCredentials: true }).pipe(
       map((res) => res.accessToken),
       catchError((error) => {
         console.error('Token yenileme hatası:', error);

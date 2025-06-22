@@ -34,11 +34,8 @@ export class RegisterComponent {
   isLoading = false;
   hidePassword = true;
   hideConfirmPassword = true;
-  roles = [
-    { value: 0, viewValue: 'Öğrenci' },
-    { value: 1, viewValue: 'Öğretmen' },
-    { value: 2, viewValue: 'Veli' },
-  ];
+  roles: { value: string; viewValue: string }[] = [];
+  isLoadingRoles = true;
 
   constructor(
     private fb: FormBuilder,
@@ -57,6 +54,45 @@ export class RegisterComponent {
       },
       { validator: this.passwordMatchValidator }
     );
+
+    this.loadRoles();
+  }
+
+  loadRoles() {
+    this.isLoadingRoles = true;
+
+    // Role control'ü disable et
+    this.registerForm.get('role')?.disable();
+
+    this.authService.getRoles().subscribe({
+      next: (roles) => {
+        this.roles = roles.map((role) => ({
+          value: role.name,
+          viewValue: role.displayName || role.name,
+        }));
+        this.isLoadingRoles = false;
+
+        // Role control'ü enable et
+        this.registerForm.get('role')?.enable();
+      },
+      error: (error) => {
+        console.error('Roller yüklenemedi:', error);
+        // Fallback olarak varsayılan rolleri kullan
+        this.roles = [
+          { value: 'student', viewValue: 'Öğrenci' },
+          { value: 'teacher', viewValue: 'Öğretmen' },
+          { value: 'parent', viewValue: 'Veli' },
+        ];
+        this.isLoadingRoles = false;
+
+        // Role control'ü enable et
+        this.registerForm.get('role')?.enable();
+
+        this.snackBar.open('Roller yüklenirken hata oluştu, varsayılan roller kullanılıyor.', 'Tamam', {
+          duration: 3000,
+        });
+      },
+    });
   }
 
   passwordMatchValidator(group: FormGroup) {

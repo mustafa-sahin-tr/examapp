@@ -16,8 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
-import { jwtDecode } from 'jwt-decode'
-
+import { jwtDecode } from 'jwt-decode';
 
 @Component({
   selector: 'app-login',
@@ -48,9 +47,9 @@ export class LoginComponent implements OnInit {
 
   ngOnInit() {
     const token = localStorage.getItem('access_token');
-    // 
+    //
     if (token && this.isTokenValid(token)) {
-      this.router.navigate(['/tests']);
+      window.location.href = '/dashboard'; // veya /dashboard gibi temiz bir path
     } else {
       window.location.href = '/oidc-login'; // veya /oidc-login gibi temiz bir path
     }
@@ -75,7 +74,7 @@ export class LoginComponent implements OnInit {
   }
 
   checkUserSession(role: string) {
-      this.router.navigate(['/tests']); // ✅ Öğretmen veya Veli ise Home sayfasına git
+    window.location.href = '/dashboard'; // ✅ Öğretmen veya Veli ise Home sayfasına git
   }
 
   onSubmit() {

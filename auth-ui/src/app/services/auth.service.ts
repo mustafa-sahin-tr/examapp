@@ -17,6 +17,7 @@ export interface UserProfile {
 export interface TokenResponse {
   token: string;
   profile: UserProfile;
+  roles: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -34,6 +35,9 @@ export class AuthService {
     return this.http.post('/api/auth/register', userData);
   }
 
+  getRoles(): Observable<any[]> {
+    return this.http.get<any[]>('/api/auth/roles');
+  }
 
   login(credentials: any): Observable<TokenResponse> {
     // const body = new HttpParams()
@@ -122,7 +126,7 @@ export class AuthService {
     return this.http.post<TokenResponse>(`/api/auth/exchange`, { code: code }).pipe(
       tap((res) => {
         localStorage.setItem(this.tokenKey, res.token);
-        // localStorage.setItem(this.roleKey, res.profile.role);
+        localStorage.setItem(this.roleKey, res.roles[0]);
         // localStorage.setItem(this.avatarKey, res.profile.avatar);
         // localStorage.setItem('user', JSON.stringify(res.profile));
         this.isAuthenticatedSubject.next(true);

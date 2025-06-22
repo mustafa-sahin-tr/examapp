@@ -65,12 +65,11 @@ export class CallbackComponent implements OnInit {
     this.updateStep(2);
     await this.delay(100); // Add visual delay for better UX
 
-    
-      console.log('Unknown role');
-      await this.delay(100);
-      this.updateStep(3);
-      await this.delay(100);
-      this.router.navigate(['/tests']);
+    console.log('Unknown role');
+    await this.delay(100);
+    this.updateStep(3);
+    await this.delay(100);
+    this.router.navigate(['/tests']);
   }
 
   ngOnInit(): void {

@@ -1,52 +1,53 @@
 <div class="register-container">
   <mat-card class="register-card">
     <mat-card-title>Kayıt Ol</mat-card-title>
-    <mat-card-content>    
+    <mat-card-content>
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
         <div class="form-container">
-        <div class="form-column">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Ad</mat-label>
-            <input matInput type="text" formControlName="firstName" required />
-            @if (registerForm.controls['firstName'].hasError('required')) {
+          <div class="form-column">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Ad</mat-label>
+              <input matInput type="text" formControlName="firstName" required />
+              @if (registerForm.controls['firstName'].hasError('required')) {
               <mat-error>Ad zorunludur.</mat-error>
-            }
-          </mat-form-field>
-  
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Soyad</mat-label>
-            <input matInput type="text" formControlName="lastName" required />
-            @if (registerForm.controls['lastName'].hasError('required')) {
-              <mat-error>Soyad zorunludur.</mat-error>
-            }
-          </mat-form-field>
-        </div>
-        <div class="form-column">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" required />
-            @if (registerForm.controls['email'].hasError('required')) {
-              <mat-error>Email zorunludur.</mat-error>
-            }
-            @if (registerForm.controls['email'].hasError('email')) {
-              <mat-error>Geçerli bir email giriniz.</mat-error>
-            }
-          </mat-form-field>
-  
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Rol Seçiniz</mat-label>
-            <mat-select formControlName="role" required>
-              @for ( role of roles; track role.value ) {
-              <mat-option [value]="role.value">{{ role.viewValue }}</mat-option>
               }
-            </mat-select>
-            @if(registerForm.controls['role'].hasError('required')){
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Soyad</mat-label>
+              <input matInput type="text" formControlName="lastName" required />
+              @if (registerForm.controls['lastName'].hasError('required')) {
+              <mat-error>Soyad zorunludur.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <div class="form-column">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Email</mat-label>
+              <input matInput type="email" formControlName="email" required />
+              @if (registerForm.controls['email'].hasError('required')) {
+              <mat-error>Email zorunludur.</mat-error>
+              } @if (registerForm.controls['email'].hasError('email')) {
+              <mat-error>Geçerli bir email giriniz.</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Rol Seçiniz</mat-label>
+              <mat-select formControlName="role" required>
+                @if (isLoadingRoles) {
+                <mat-option disabled>Roller yükleniyor...</mat-option>
+                } @else { @for ( role of roles; track role.value ) {
+                <mat-option [value]="role.value">{{ role.viewValue }}</mat-option>
+                } }
+              </mat-select>
+              @if(registerForm.controls['role'].hasError('required')){
               <mat-error>Rol seçimi zorunludur.</mat-error>
-            }
-          </mat-form-field>
+              }
+            </mat-form-field>
+          </div>
         </div>
-      </div>
-        
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Şifre</mat-label>
           <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" required />
@@ -54,18 +55,23 @@
             <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
           @if (registerForm.controls['password'].hasError('required')) {
-            <mat-error>Şifre zorunludur.</mat-error>
+          <mat-error>Şifre zorunludur.</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Şifreyi Tekrar Gir</mat-label>
-          <input matInput [type]="hideConfirmPassword ? 'password' : 'text'" formControlName="confirmPassword" required />
+          <input
+            matInput
+            [type]="hideConfirmPassword ? 'password' : 'text'"
+            formControlName="confirmPassword"
+            required
+          />
           <button mat-icon-button matSuffix (click)="hideConfirmPassword = !hideConfirmPassword">
             <mat-icon>{{ hideConfirmPassword ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
           @if (registerForm.controls['confirmPassword'].hasError('required')) {
-            <mat-error>Şifre zorunludur.</mat-error>
+          <mat-error>Şifre zorunludur.</mat-error>
           }
         </mat-form-field>
 

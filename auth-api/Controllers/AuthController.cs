@@ -117,10 +117,29 @@ namespace ExamApp.Api.Controllers
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
             var email = jwt.Claims.First(c => c.Type == "email").Value;
+
+            var realm_access = jwt.Claims.FirstOrDefault(c => c.Type == "realm_access")?.Value;
+            List<string> roles = new List<string>();
+            if (!string.IsNullOrEmpty(realm_access))
+            {
+                var realmAccess = JsonSerializer.Deserialize<RealmAccess>(realm_access);
+                if (realmAccess != null && realmAccess.roles != null)
+                {
+                    roles = realmAccess.roles.Where(role =>
+                        {
+                            return !string.IsNullOrEmpty(role) && // Boş isimli rolleri hariç tut
+                            (_keycloakSettings.ExcludedRoles == null || !_keycloakSettings.ExcludedRoles.Contains(role)) && // Konfigürasyonda belirtilen rolleri hariç tut
+                            !role.StartsWith("default-roles") && // Default role gruplarını hariç tut
+                            !role.Contains("uma_"); // UMA authorization rollerini hariç tut
+                        })
+                        .ToList();
+                }
+            }
             // return Content(content, "application/json");
             var loginResponseDto = new LoginResponseDto
             {
-                Token = tokenDto.AccessToken
+                Token = tokenDto.AccessToken,
+                Roles = roles
             };
 
             return Ok(loginResponseDto);
@@ -165,7 +184,25 @@ namespace ExamApp.Api.Controllers
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
             var email = jwt.Claims.First(c => c.Type == "email").Value;
-            
+
+            var realm_access = jwt.Claims.FirstOrDefault(c => c.Type == "realm_access")?.Value;
+            List<string> roles = new List<string>();
+            if (!string.IsNullOrEmpty(realm_access))
+            {
+                var realmAccess = JsonSerializer.Deserialize<RealmAccess>(realm_access);
+                if (realmAccess != null && realmAccess.roles != null)
+                {
+                    roles = realmAccess.roles.Where(role =>
+                        {
+                            return !string.IsNullOrEmpty(role) && // Boş isimli rolleri hariç tut
+                            (_keycloakSettings.ExcludedRoles == null || !_keycloakSettings.ExcludedRoles.Contains(role)) && // Konfigürasyonda belirtilen rolleri hariç tut
+                            !role.StartsWith("default-roles") && // Default role gruplarını hariç tut
+                            !role.Contains("uma_"); // UMA authorization rollerini hariç tut
+                        })
+                        .ToList();
+                }
+            }
+
 
             Response.Cookies.Append("refresh_token", tokenDto.RefreshToken, new CookieOptions
             {
@@ -179,10 +216,45 @@ namespace ExamApp.Api.Controllers
             var loginResponseDto = new LoginResponseDto
             {
                 Token = tokenDto.AccessToken,
-                // Profile = profile
+                Roles = roles
             };
 
             return Ok(loginResponseDto);
+        }
+        [HttpGet("roles")]
+        public async Task<IActionResult> GetRoles()
+        {
+            try
+            {
+                Console.WriteLine("🔍 GetRoles endpoint called");
+
+                if (_keycloakService == null)
+                {
+                    Console.WriteLine("❌ KeycloakService is null");
+                    return StatusCode(500, "KeycloakService is not properly configured");
+                }
+
+                if (_keycloakSettings == null)
+                {
+                    Console.WriteLine("❌ KeycloakSettings is null");
+                    return StatusCode(500, "KeycloakSettings is not properly configured");
+                }
+
+                Console.WriteLine($"🔧 Keycloak Host: {_keycloakSettings.Host}");
+                Console.WriteLine($"🔧 Realm Roles URL: {_keycloakSettings.RealmRolesUrl}");
+
+                var roles = await _keycloakService.GetRealmRolesAsync();
+
+                Console.WriteLine($"✅ Found {roles?.Count ?? 0} roles");
+
+                return Ok(roles);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error in GetRoles: {ex.Message}");
+                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
+                return StatusCode(500, $"Failed to fetch roles: {ex.Message}");
+            }
         }
 
         private async Task<UserProfileDto> GetUserProfile(string sub)
@@ -201,7 +273,7 @@ namespace ExamApp.Api.Controllers
                 Role = user.Role.ToString(),
                 FullName = user.FullName,
                 Id = user.Id,
-                KeycloakId = sub                
+                KeycloakId = sub
             };
         }
     }

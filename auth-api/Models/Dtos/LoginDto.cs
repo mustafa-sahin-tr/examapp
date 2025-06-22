@@ -31,7 +31,13 @@ public class CodeDto
     // public string? Department { get; set; } // opsiyonel
 }
 
-public class LoginResponseDto {
-    public string Token { get; set; }
-    public UserProfileDto Profile { get; set; }
+public class RealmAccess
+{
+    public required List<string> roles {get;set;}
+}
+
+public class LoginResponseDto
+{
+    public required string Token { get; set; }
+    public required List<string> Roles {get;set;}
 }

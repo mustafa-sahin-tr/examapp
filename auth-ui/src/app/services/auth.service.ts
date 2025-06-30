@@ -79,6 +79,7 @@ export class AuthService {
   }
 
   logout(): void {
+    console.log('Logging out...');
     // logout işlemi için gerekli olan API çağrısını yapıyoruz
     this.http.post('/api/exam/auth/logout', {}).subscribe(() => {
       console.log('Logout successful');

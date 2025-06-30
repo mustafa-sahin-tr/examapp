@@ -59,7 +59,7 @@ import { defer, from, of, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const excludedUrls = ['/app/logout', '/app/exchange', '/app/refresh-token'];
+  const excludedUrls = ['/app/logout', '/app/exchange', '/app/refresh-token','/api/auth/refresh-token'];
 
   if (excludedUrls.some((url) => req.url.includes(url))) {
     // Bu URL’lerde hiçbir token kontrolü, refresh işlemi yapma
@@ -70,6 +70,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return defer(() => {
     let token = localStorage.getItem('auth_token');
+
+    if(!token) {
+      authService.goLogin();
+      return next(req.clone({ withCredentials: true }));
+    }
 
     if (token && authService.isExpiringSoon(token)) {
       return from(authService.refreshToken()).pipe(

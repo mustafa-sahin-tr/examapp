@@ -5,6 +5,7 @@ import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 import { CheckkTeacherResponse } from '../models/check-teacher-response';
 import { jwtDecode } from 'jwt-decode';
+import { Student } from '../models/student';
 
 export interface UserProfile {
   email: string;
@@ -14,6 +15,7 @@ export interface UserProfile {
   keycloakId: string;
   profileId: number;
   role: string;
+  student?: Student; // Opsiyonel olarak öğrenci bilgisi
 }
 
 export interface TokenResponse {
@@ -28,12 +30,13 @@ export class AuthService {
   private tokenKey = 'auth_token';
   private roleKey = 'user_role';
   private avatarKey = 'user_avatar';
+  private baseUrl = '/api/exam/auth'; // Backend API URL
 
   isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable(); // 🟢 Diğer bileşenler bunu subscribe edebilir
 
   register(userData: any): Observable<any> {
-    return this.http.post('/api/auth/register', userData);
+    return this.http.post(`${this.baseUrl}/register`, userData);
   }
 
   checkStudentProfile(): Observable<CheckStudentResponse> {
@@ -44,30 +47,7 @@ export class AuthService {
     return this.http.get<CheckkTeacherResponse>('/api/exam/teacher/check-teacher');
   }
 
-  login(credentials: any): Observable<TokenResponse> {
-    // const body = new HttpParams()
-    //   .set('grant_type', 'password')
-    //   .set('client_id', 'exam-client')
-    //   .set('username', credentials.email)
-    //   .set('password', credentials.password)
-    //   .set('client_secret', 'yD3joUPCJesjf2Z4NnW1GJqc5wMGJtlg'); // sadece gerekiyorsa
-
-    // return this.http
-    //   .post<TokenResponse>('http://localhost:8081/realms/exam-realm/protocol/openid-connect/token', body.toString(), {
-    //     headers: {
-    //       'Content-Type': 'application/x-www-form-urlencoded',
-    //     },
-    //   })
-    //   .pipe(
-    //     tap((res) => {
-    //       localStorage.setItem(this.tokenKey, res.access_token);
-    //       // localStorage.setItem(this.roleKey, res.role);
-    //       // localStorage.setItem(this.avatarKey, res.avatar);
-    //       // localStorage.setItem('user', JSON.stringify(res.user));
-    //       this.isAuthenticatedSubject.next(true);
-    //     })
-    //   );
-
+  login(credentials: any): Observable<TokenResponse> {    
     return this.http.post<TokenResponse>('/api/auth/login', credentials).pipe(
       tap((res) => {
         localStorage.setItem(this.tokenKey, res.token);
@@ -77,6 +57,11 @@ export class AuthService {
         this.isAuthenticatedSubject.next(true);
       })
     );
+  }
+
+  goLogin(): void {
+    // Giriş yapma işlemi için gerekli olan API çağrısını yapıyoruzw
+    window.location.href = '/app/login';
   }
 
   registerStudent(studentData: any): Observable<any> {
@@ -145,15 +130,22 @@ export class AuthService {
       const now = Math.floor(Date.now() / 1000);
       console.log(' kalan süre : ', decoded.exp - now);
       // token süresi bitmeden 60 saniye içinde yenileme işlemi yap
-      return decoded.exp - now < 200; // 60 saniye içinde bitiyorsa yenile
+      return decoded.exp - now < 100; // 60 saniye içinde bitiyorsa yenile
     } catch {
       return true;
     }
   }
 
+  refresh(): Observable<UserProfile> {
+    return this.http.post<UserProfile>('/api/exam/auth/refresh', {}, { withCredentials: true });    
+  }
+
   refreshToken(): Observable<string> {
-    return this.http.post<{ accessToken: string }>('/app/auth/refresh-token', {}, { withCredentials: true }).pipe(
-      map((res) => res.accessToken),
+    return this.http.post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true }).pipe(
+      map((res) => 
+        {
+          return res.accessToken;
+        }),
       catchError((error) => {
         console.error('Token yenileme hatası:', error);
         localStorage.clear();

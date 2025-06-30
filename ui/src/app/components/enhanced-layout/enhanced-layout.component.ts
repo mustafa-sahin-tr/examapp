@@ -115,6 +115,23 @@ export class EnhancedLayoutComponent implements OnInit {
         this.filteredSuggestions = this.allSuggestions.filter((item) => item.toLowerCase().includes(filterValue));
       }
     });
+
+    var profile = localStorage.getItem('user_role');
+    var user = localStorage.getItem('user');
+    if (!user) {
+      this.authService.refresh().subscribe({
+        next: (res) => {
+          if (res) {
+            localStorage.setItem('user', JSON.stringify(res));
+          }
+        },
+        error: (err) => {
+          console.error('Error refreshing token:', err);
+          // Handle error (e.g., redirect to login)
+          this.authService.goLogin();
+        } 
+      });
+    }
   }
 
   toggleSidenav() {

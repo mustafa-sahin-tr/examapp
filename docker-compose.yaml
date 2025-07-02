@@ -142,8 +142,8 @@ services:
     ports:
       - "5433:5432"
     volumes:
-     - ./postgres/examdata:/var/lib/postgresql/data
-     - ./postgres/init-scripts:/docker-entrypoint-initdb.d
+      - ./postgres/examdata:/var/lib/postgresql/data
+      - ./postgres/init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U examuser -d examination"]
       interval: 10s
@@ -346,6 +346,42 @@ services:
     networks:
       - mynetwork      
 
+  finance-ui:
+    container_name: finance-ui
+    build:
+      context: ./dockerfiles/finance-ui
+      dockerfile: Dockerfile.finance-ui
+    image: finance-ui:latest
+    ports:
+      - "4202:4200"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - auth-api
+    networks:
+      - mynetwork
+    volumes:
+      - ./finance-ui/finance-app:/app      
+
+
+  finance-api:
+    container_name: finance-api
+    build:
+      context: ./dockerfiles/finance-api
+      dockerfile: Dockerfile.finance-api
+    ports:
+      - "9006:8005"
+      - "6080:5079"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8005
+    volumes:
+      - ./finance-api:/app
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+    networks:
+      - mynetwork    
 
 networks:   
   mynetwork:

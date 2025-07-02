@@ -1,0 +1,416 @@
+.portfolio-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+// Profit/Loss Summary
+.profit-loss-summary {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+
+  .summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 15px;
+    flex: 1;
+    min-width: 200px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+
+    &.total {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    &.realized {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    &.unrealized {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    }
+
+    h3, h4 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .amount {
+      font-size: 1.8rem;
+      font-weight: bold;
+      
+      &.profit {
+        color: #00ff88;
+      }
+
+      &.loss {
+        color: #ff4444;
+      }
+    }
+  }
+}
+
+// Portfolio Header
+.portfolio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+
+  h2 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.8rem;
+    font-weight: 600;
+  }
+
+  .toggle-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: transform 0.2s;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+  }
+}
+
+// Section titles
+.current-portfolio, .historical-portfolio {
+  margin-bottom: 30px;
+
+  h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+}
+
+// Table styles
+.table-container {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.portfolio-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+
+  thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+
+    th {
+      padding: 15px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  tbody {
+    tr {
+      transition: all 0.3s ease;
+      border-bottom: 1px solid #f0f0f0;
+
+      &:hover {
+        background-color: #f8f9ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    td {
+      padding: 15px 12px;
+      vertical-align: middle;
+    }
+  }
+
+  .asset-name {
+    strong {
+      display: block;
+      color: #2c3e50;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    small {
+      color: #7f8c8d;
+      font-size: 0.8rem;
+    }
+  }
+
+  .profit {
+    color: #27ae60;
+    font-weight: 600;
+  }
+
+  .loss {
+    color: #e74c3c;
+    font-weight: 600;
+  }
+}
+
+.portfolio-row {
+  cursor: pointer;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7f8c8d;
+
+  p {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+}
+
+// Modal styles
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px 25px;
+  border-radius: 20px 20px 0 0;
+  position: relative;
+
+  h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+.modal-body {
+  padding: 25px;
+}
+
+.portfolio-summary {
+  margin-bottom: 25px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.summary-item {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+
+  label {
+    display: block;
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+
+  span {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 1rem;
+
+    &.profit {
+      color: #27ae60;
+    }
+
+    &.loss {
+      color: #e74c3c;
+    }
+  }
+}
+
+.transactions-section {
+  h4 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+}
+
+.transactions-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.transaction-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  border-left: 4px solid #dee2e6;
+
+  .transaction-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+
+    .transaction-type {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+
+      &.buy {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      &.sell {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    }
+
+    .transaction-date {
+      color: #6c757d;
+      font-size: 0.85rem;
+    }
+  }
+
+  .transaction-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #495057;
+    font-size: 0.9rem;
+
+    .transaction-total {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+  }
+}
+
+// Mobile responsive
+@media (max-width: 768px) {
+  .portfolio-container {
+    padding: 15px;
+  }
+
+  .profit-loss-summary {
+    flex-direction: column;
+    
+    .summary-card {
+      min-width: unset;
+    }
+  }
+
+  .portfolio-header {
+    flex-direction: column;
+    align-items: stretch;
+
+    .toggle-btn {
+      width: 100%;
+    }
+  }
+
+  .portfolio-table {
+    font-size: 0.8rem;
+
+    thead th {
+      padding: 10px 8px;
+      font-size: 0.75rem;
+    }
+
+    tbody td {
+      padding: 10px 8px;
+    }
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}

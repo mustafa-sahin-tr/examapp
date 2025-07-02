@@ -1,0 +1,223 @@
+<div class="portfolio-container">
+  <!-- Total Profit/Loss Summary -->
+  <div class="profit-loss-summary" *ngIf="totalProfitLoss$ | async as summary">
+    <div class="summary-card total">
+      <h3>Toplam Kar/Zarar</h3>
+      <div class="amount" [class.profit]="summary.totalPL > 0" [class.loss]="summary.totalPL < 0">
+        {{ formatCurrency(summary.totalPL) }}
+      </div>
+    </div>
+    <div class="summary-card realized">
+      <h4>Gerçekleşen</h4>
+      <div class="amount" [class.profit]="summary.realizedPL > 0" [class.loss]="summary.realizedPL < 0">
+        {{ formatCurrency(summary.realizedPL) }}
+      </div>
+    </div>
+    <div class="summary-card unrealized">
+      <h4>Gerçekleşmeyen</h4>
+      <div class="amount" [class.profit]="summary.unrealizedPL > 0" [class.loss]="summary.unrealizedPL < 0">
+        {{ formatCurrency(summary.unrealizedPL) }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Portfolio Title and Controls -->
+  <div class="portfolio-header">
+    <h2>{{ title }}</h2>
+    <button class="toggle-btn" (click)="toggleHistoricalView()">
+      {{ showHistorical ? 'Geçmiş Yatırımları Gizle' : 'Geçmiş Yatırımları Göster' }}
+    </button>
+  </div>
+
+  <!-- Current Portfolio Table -->
+  <div class="current-portfolio">
+    <h3>Mevcut Portföy</h3>
+    <div class="table-container">
+      <table class="portfolio-table" *ngIf="portfolios$ | async as portfolios">
+        <thead>
+          <tr>
+            <th>Varlık</th>
+            <th>Adet</th>
+            <th>Ortalama Maliyet</th>
+            <th>Güncel Fiyat</th>
+            <th>Toplam Değer</th>
+            <th>Kar/Zarar</th>
+            <th>%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let portfolio of portfolios" 
+              class="portfolio-row" 
+              (click)="openPortfolioDetail(portfolio)">
+            <td class="asset-name">
+              <strong>{{ portfolio.asset?.symbol }}</strong>
+              <small>{{ portfolio.asset?.name }}</small>
+            </td>
+            <td>{{ portfolio.totalQuantity }}</td>
+            <td>{{ formatCurrency(portfolio.averagePrice, portfolio.asset?.currency) }}</td>
+            <td>{{ formatCurrency(portfolio.asset?.currentPrice || 0, portfolio.asset?.currency || 'TRY') }}</td>
+            <td>{{ formatCurrency(portfolio.currentValue, portfolio.asset?.currency || 'TRY') }}</td>
+            <td [class.profit]="portfolio.profitLoss > 0" 
+                [class.loss]="portfolio.profitLoss < 0">
+              {{ formatCurrency(portfolio.profitLoss, portfolio.asset?.currency || 'TRY') }}
+            </td>
+            <td [class.profit]="portfolio.profitLossPercentage > 0" 
+                [class.loss]="portfolio.profitLossPercentage < 0">
+              {{ formatPercentage(portfolio.profitLossPercentage) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div *ngIf="(portfolios$ | async)?.length === 0" class="empty-state">
+        <p>Bu kategoride henüz yatırımınız bulunmamaktadır.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historical Investments Table -->
+  <div class="historical-portfolio" *ngIf="showHistorical">
+    <h3>Geçmiş Yatırımlar</h3>
+    <div class="table-container">
+      <table class="portfolio-table" *ngIf="historicalInvestments$ | async as historical">
+        <thead>
+          <tr>
+            <th>Varlık</th>
+            <th>Toplam Alım</th>
+            <th>Toplam Satım</th>
+            <th>Ortalama Alış</th>
+            <th>Ortalama Satış</th>
+            <th>Gerçekleşen Kar/Zarar</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let hist of historical" 
+              class="portfolio-row" 
+              (click)="openHistoricalDetail(hist)">
+            <td class="asset-name">
+              <strong>{{ hist.assetSymbol }}</strong>
+              <small>{{ hist.assetName }}</small>
+            </td>
+            <td>{{ formatCurrency(hist.totalBought) }}</td>
+            <td>{{ formatCurrency(hist.totalSold) }}</td>
+            <td>{{ formatCurrency(hist.averageBuyPrice) }}</td>
+            <td>{{ formatCurrency(hist.averageSellPrice) }}</td>
+            <td [class.profit]="hist.realizedProfitLoss > 0" 
+                [class.loss]="hist.realizedProfitLoss < 0">
+              {{ formatCurrency(hist.realizedProfitLoss) }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div *ngIf="(historicalInvestments$ | async)?.length === 0" class="empty-state">
+        <p>Bu kategoride geçmiş yatırım bulunmamaktadır.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Portfolio Detail Modal -->
+<div class="modal-overlay" *ngIf="selectedPortfolio" (click)="closePortfolioDetail()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ selectedPortfolio.asset?.symbol }} - {{ selectedPortfolio.asset?.name }}</h3>
+      <button class="close-btn" (click)="closePortfolioDetail()">&times;</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="portfolio-summary">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <label>Toplam Adet:</label>
+            <span>{{ selectedPortfolio.totalQuantity }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Ortalama Maliyet:</label>
+            <span>{{ formatCurrency(selectedPortfolio.averagePrice, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Güncel Fiyat:</label>
+            <span>{{ formatCurrency(selectedPortfolio.asset?.currentPrice || 0, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Toplam Değer:</label>
+            <span>{{ formatCurrency(selectedPortfolio.currentValue, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Kar/Zarar:</label>
+            <span [class.profit]="selectedPortfolio.profitLoss > 0" 
+                  [class.loss]="selectedPortfolio.profitLoss < 0">
+              {{ formatCurrency(selectedPortfolio.profitLoss, selectedPortfolio.asset?.currency || 'TRY') }}
+            </span>
+          </div>
+          <div class="summary-item">
+            <label>Kar/Zarar %:</label>
+            <span [class.profit]="selectedPortfolio.profitLossPercentage > 0" 
+                  [class.loss]="selectedPortfolio.profitLossPercentage < 0">
+              {{ formatPercentage(selectedPortfolio.profitLossPercentage) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="transactions-section">
+        <h4>İşlem Geçmişi</h4>
+        <div class="transactions-list">
+          <div *ngFor="let transaction of selectedPortfolio.transactions" class="transaction-item">
+            <div class="transaction-info">
+              <span class="transaction-type" [class.buy]="transaction.type === 'BUY'" [class.sell]="transaction.type === 'SELL'">
+                {{ transaction.type === 'BUY' ? 'ALIŞ' : 'SATIŞ' }}
+              </span>
+              <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
+            </div>
+            <div class="transaction-details">
+              <span>{{ transaction.quantity }} adet × {{ formatCurrency(transaction.price, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+              <span class="transaction-total">{{ formatCurrency(transaction.quantity * transaction.price, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Historical Detail Modal -->
+<div class="modal-overlay" *ngIf="selectedHistorical" (click)="closePortfolioDetail()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ selectedHistorical.assetSymbol }} - Geçmiş Yatırım Detayı</h3>
+      <button class="close-btn" (click)="closePortfolioDetail()">&times;</button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="portfolio-summary">
+        <div class="summary-grid">
+          <div class="summary-item">
+            <label>Toplam Alım Tutarı:</label>
+            <span>{{ formatCurrency(selectedHistorical.totalBought) }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Toplam Satım Tutarı:</label>
+            <span>{{ formatCurrency(selectedHistorical.totalSold) }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Ortalama Alış Fiyatı:</label>
+            <span>{{ formatCurrency(selectedHistorical.averageBuyPrice) }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Ortalama Satış Fiyatı:</label>
+            <span>{{ formatCurrency(selectedHistorical.averageSellPrice) }}</span>
+          </div>
+          <div class="summary-item">
+            <label>Gerçekleşen Kar/Zarar:</label>
+            <span [class.profit]="selectedHistorical.realizedProfitLoss > 0" 
+                  [class.loss]="selectedHistorical.realizedProfitLoss < 0">
+              {{ formatCurrency(selectedHistorical.realizedProfitLoss) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

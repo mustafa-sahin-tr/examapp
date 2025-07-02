@@ -1,0 +1,111 @@
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <h1>Portfolio Dashboard</h1>
+    <p class="last-updated">Last updated: {{ (Date.now() | date:'medium') }}</p>
+  </div>
+
+  <div *ngIf="dashboardSummary$ | async as summary" class="dashboard-content">
+    <!-- Overall Summary Cards -->
+    <div class="summary-cards">
+      <div class="summary-card total-value">
+        <div class="card-header">
+          <h3>Total Portfolio Value</h3>
+          <span class="icon">💰</span>
+        </div>
+        <div class="card-value">{{ formatCurrency(summary.totalValue) }}</div>
+        <div class="card-change" [class.positive]="summary.totalProfitLoss >= 0" [class.negative]="summary.totalProfitLoss < 0">
+          {{ formatCurrency(summary.totalProfitLoss) }} ({{ formatPercentage(summary.totalProfitLossPercentage) }})
+        </div>
+      </div>
+
+      <div class="summary-card total-cost">
+        <div class="card-header">
+          <h3>Total Investment</h3>
+          <span class="icon">💳</span>
+        </div>
+        <div class="card-value">{{ formatCurrency(summary.totalCost) }}</div>
+      </div>
+
+      <div class="summary-card profit-loss" [class.positive]="summary.totalProfitLoss >= 0" [class.negative]="summary.totalProfitLoss < 0">
+        <div class="card-header">
+          <h3>Total P&L</h3>
+          <span class="icon">📈</span>
+        </div>
+        <div class="card-value">{{ formatCurrency(summary.totalProfitLoss) }}</div>
+        <div class="card-change">{{ formatPercentage(summary.totalProfitLossPercentage) }}</div>
+      </div>
+    </div>
+
+    <!-- Asset Type Breakdown -->
+    <div class="asset-type-breakdown">
+      <h2>Portfolio by Asset Type</h2>
+      <div class="asset-type-grid">
+        <div *ngFor="let entry of summary.portfoliosByType | keyvalue" class="asset-type-card">
+          <div class="asset-type-header">
+            <h3>{{ getAssetTypeDisplayName(entry.key) }}</h3>
+            <a [routerLink]="getAssetTypeRoute(entry.key)" class="view-details">View Details →</a>
+          </div>
+          
+          <div class="asset-type-stats">
+            <div class="stat">
+              <span class="label">Holdings:</span>
+              <span class="value">{{ entry.value.length }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Total Value:</span>
+              <span class="value">{{ formatCurrency(getTotalValueByType(entry.value)) }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">P&L:</span>
+              <span class="value" [class.positive]="getTotalPLByType(entry.value) >= 0" [class.negative]="getTotalPLByType(entry.value) < 0">
+                {{ formatCurrency(getTotalPLByType(entry.value)) }}
+              </span>
+            </div>
+          </div>
+
+          <div *ngIf="false" class="asset-list">
+            <div *ngFor="let portfolio of entry.value" class="asset-item">
+              <div class="asset-info">
+                <span class="symbol">{{ portfolio.asset?.symbol }}</span>
+                <span class="name">{{ portfolio.asset?.name }}</span>
+              </div>
+              <div class="asset-value">
+                <span class="current-value">{{ formatCurrency(portfolio.currentValue) }}</span>
+                <span class="change" [class.positive]="portfolio.profitLoss >= 0" [class.negative]="portfolio.profitLoss < 0">
+                  {{ formatPercentage(portfolio.profitLossPercentage) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <h2>Quick Actions</h2>
+      <div class="action-buttons">
+        <a routerLink="/add-transaction" class="action-btn primary">
+          <span class="icon">➕</span>
+          Add Transaction
+        </a>
+        <a routerLink="/bist100" class="action-btn">
+          <span class="icon">🏛️</span>
+          BIST 100
+        </a>
+        <a routerLink="/us-stocks" class="action-btn">
+          <span class="icon">🇺🇸</span>
+          US Stocks
+        </a>
+        <a routerLink="/precious-metals" class="action-btn">
+          <span class="icon">🥇</span>
+          Precious Metals
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!(dashboardSummary$ | async)" class="loading">
+    <p>Loading dashboard...</p>
+  </div>
+</div>

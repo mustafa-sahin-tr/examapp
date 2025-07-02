@@ -1,0 +1,20 @@
+<div class="finance-app">
+  <header class="navbar">
+    <div class="nav-container">
+      <h1 class="logo">💰 Finance Tracker</h1>
+      <nav class="nav-links">
+        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/bist100" routerLinkActive="active">BIST 100</a>
+        <a routerLink="/us-stocks" routerLinkActive="active">US Stocks</a>
+        <a routerLink="/precious-metals" routerLinkActive="active">Precious Metals</a>
+        <a routerLink="/funds" routerLinkActive="active">Funds</a>
+        <a routerLink="/futures" routerLinkActive="active">Futures</a>
+        <a routerLink="/add-transaction" routerLinkActive="active">+ Transaction</a>
+      </nav>
+    </div>
+  </header>
+  
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

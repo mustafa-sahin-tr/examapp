@@ -1,0 +1,326 @@
+.add-transaction-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 40px;
+
+  h1 {
+    color: #2c3e50;
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+  }
+
+  p {
+    color: #6c757d;
+    font-size: 1.1rem;
+  }
+}
+
+.transaction-form {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+
+  .form-section {
+    margin-bottom: 35px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid #f1f3f4;
+
+    &:last-of-type {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    h3 {
+      color: #2c3e50;
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+
+    label {
+      font-weight: 500;
+      color: #2c3e50;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    .form-control {
+      padding: 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+
+      &:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      &:disabled {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+      }
+    }
+
+    .input-group {
+      position: relative;
+      display: flex;
+
+      .form-control {
+        flex: 1;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+      }
+
+      .input-addon {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-left: none;
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+        padding: 12px 15px;
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-weight: 500;
+      }
+    }
+
+    .error-message {
+      color: #dc3545;
+      font-size: 0.85rem;
+      margin-top: 5px;
+    }
+  }
+
+  .transaction-type-buttons {
+    display: flex;
+    gap: 10px;
+
+    .transaction-type-option {
+      flex: 1;
+      cursor: pointer;
+
+      input[type="radio"] {
+        display: none;
+      }
+
+      .button {
+        display: block;
+        padding: 15px;
+        text-align: center;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        background: white;
+        color: #6c757d;
+        font-weight: 500;
+        transition: all 0.3s ease;
+
+        &.buy {
+          &:hover {
+            border-color: #28a745;
+            color: #28a745;
+          }
+        }
+
+        &.sell {
+          &:hover {
+            border-color: #dc3545;
+            color: #dc3545;
+          }
+        }
+      }
+
+      &.selected {
+        .button.buy {
+          background: #28a745;
+          border-color: #28a745;
+          color: white;
+        }
+
+        .button.sell {
+          background: #dc3545;
+          border-color: #dc3545;
+          color: white;
+        }
+      }
+    }
+  }
+
+  .asset-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+
+    .current-price {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .label {
+        font-weight: 500;
+        color: #6c757d;
+      }
+
+      .price {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      .change {
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 2px 8px;
+        border-radius: 4px;
+
+        &.positive {
+          background: #d4edda;
+          color: #155724;
+        }
+
+        &.negative {
+          background: #f8d7da;
+          color: #721c24;
+        }
+      }
+    }
+  }
+
+  .summary-card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #e9ecef;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &.total {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-top: 10px;
+        padding-top: 15px;
+        border-top: 2px solid #667eea;
+      }
+
+      .label {
+        color: #6c757d;
+      }
+
+      .value {
+        font-weight: 500;
+        color: #2c3e50;
+      }
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 1px solid #f1f3f4;
+
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 120px;
+
+      &.btn-secondary {
+        background: #6c757d;
+        color: white;
+
+        &:hover {
+          background: #5a6268;
+          transform: translateY(-2px);
+        }
+      }
+
+      &.btn-primary {
+        background: #667eea;
+        color: white;
+
+        &:hover:not(:disabled) {
+          background: #5a6fd8;
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        &:disabled {
+          background: #6c757d;
+          cursor: not-allowed;
+          transform: none;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .add-transaction-container {
+    padding: 15px;
+  }
+
+  .transaction-form {
+    padding: 20px;
+
+    .form-actions {
+      flex-direction: column;
+
+      .btn {
+        width: 100%;
+      }
+    }
+  }
+
+  .asset-info .current-price {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+}

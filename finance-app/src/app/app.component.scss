@@ -1,0 +1,145 @@
+.finance-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.navbar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  .nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+  }
+
+  .logo {
+    color: white;
+    font-size: 1.8rem;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 30px;
+    align-items: center;
+
+    a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 25px;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+      position: relative;
+      overflow: hidden;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+      }
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+
+        &::before {
+          left: 100%;
+        }
+      }
+
+      &.active {
+        background-color: rgba(255, 255, 255, 0.3);
+        font-weight: 600;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+    }
+  }
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px 0;
+  min-height: calc(100vh - 70px);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .navbar .nav-links {
+    gap: 20px;
+
+    a {
+      font-size: 0.9rem;
+      padding: 6px 12px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    .nav-container {
+      flex-direction: column;
+      height: auto;
+      padding: 15px 20px;
+    }
+
+    .logo {
+      margin-bottom: 15px;
+    }
+
+    .nav-links {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+
+      a {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+      }
+    }
+  }
+
+  .main-content {
+    padding: 15px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    .nav-container {
+      padding: 10px 15px;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+    }
+
+    .nav-links {
+      gap: 10px;
+
+      a {
+        font-size: 0.8rem;
+        padding: 5px 10px;
+      }
+    }
+  }
+}

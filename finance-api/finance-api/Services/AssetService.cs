@@ -8,12 +8,14 @@ namespace FinanceApi.Services
     public class AssetService : IAssetService
     {
         private readonly FinanceDbContext _context;
-        private readonly Random _random;
+        private readonly IRealTimeDataService _realTimeDataService;
+        private readonly ILogger<AssetService> _logger;
 
-        public AssetService(FinanceDbContext context)
+        public AssetService(FinanceDbContext context, IRealTimeDataService realTimeDataService, ILogger<AssetService> logger)
         {
             _context = context;
-            _random = new Random();
+            _realTimeDataService = realTimeDataService;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<AssetDto>> GetAllAssetsAsync()
@@ -111,22 +113,35 @@ namespace FinanceApi.Services
 
         public async Task UpdateAssetPricesAsync()
         {
-            var assets = await _context.Assets.ToListAsync();
-
-            foreach (var asset in assets)
+            try
             {
-                // Simulate price changes (-5% to +5%)
-                var changePercent = (_random.NextDouble() - 0.5) * 10; // -5% to +5%
-                var oldPrice = asset.CurrentPrice;
-                var newPrice = oldPrice * (1 + (decimal)(changePercent / 100));
-
-                asset.CurrentPrice = Math.Round(newPrice, 4);
-                asset.ChangePercentage = Math.Round((decimal)changePercent, 2);
-                asset.ChangeValue = Math.Round(newPrice - oldPrice, 4);
-                asset.LastUpdated = DateTime.UtcNow;
+                await _realTimeDataService.UpdateAssetPricesAsync();
+                _logger.LogInformation("Asset prices updated successfully using real-time data");
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update prices with real-time data, falling back to simulation");
 
-            await _context.SaveChangesAsync();
+                // Fallback to simulation if real-time data fails
+                var assets = await _context.Assets.ToListAsync();
+                var random = new Random();
+
+                foreach (var asset in assets)
+                {
+                    // Simulate price changes (-5% to +5%)
+                    var changePercent = (random.NextDouble() - 0.5) * 10; // -5% to +5%
+                    var oldPrice = asset.CurrentPrice;
+                    var newPrice = oldPrice * (1 + (decimal)(changePercent / 100));
+
+                    asset.CurrentPrice = Math.Round(newPrice, 4);
+                    asset.ChangePercentage = Math.Round((decimal)changePercent, 2);
+                    asset.ChangeValue = Math.Round(newPrice - oldPrice, 4);
+                    asset.LastUpdated = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Fallback price simulation completed");
+            }
         }
 
         private static AssetDto MapToDto(Asset asset)

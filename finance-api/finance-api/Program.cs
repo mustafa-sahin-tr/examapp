@@ -32,7 +32,21 @@ builder.Services.AddDbContext<FinanceDbContext>(options =>
 // Services
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<IRealTimeDataService, YahooFinanceService>();
 // builder.Services.AddScoped<IPortfolioService, PortfolioService>();
+
+// HttpClient for Yahoo Finance API
+builder.Services.AddHttpClient<YahooFinanceService>(client =>
+{
+    client.BaseAddress = new Uri("https://query1.finance.yahoo.com/");
+    client.DefaultRequestHeaders.Add("User-Agent", 
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+    client.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
+    client.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+    client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 // CORS
 builder.Services.AddCors(options =>

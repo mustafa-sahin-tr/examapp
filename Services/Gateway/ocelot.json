@@ -33,6 +33,14 @@
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
+        { "Host": "finance-api", "Port": 8005 }
+      ],
+      "UpstreamPathTemplate": "/api/finance/{everything}"
+    },
+    {
+      "DownstreamPathTemplate": "/api/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
         { "Host": "exam-dotnet-api", "Port": 5079 }
       ],
       "UpstreamPathTemplate": "/api/exam/{everything}",
@@ -146,6 +154,15 @@
         { "Host": "auth-ui", "Port": 4200 }
       ],
       "UpstreamPathTemplate": "/app/{everything}",
+      "Priority": 0
+    },
+    {
+      "DownstreamPathTemplate": "/finance/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "finance-ui", "Port": 4200 }
+      ],
+      "UpstreamPathTemplate": "/finance/{everything}",
       "Priority": 0
     },
     {

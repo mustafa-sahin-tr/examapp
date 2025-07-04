@@ -361,7 +361,7 @@ services:
     networks:
       - mynetwork
     volumes:
-      - ./finance-ui/finance-app:/app      
+      - ./finance-app:/app
 
 
   finance-api:

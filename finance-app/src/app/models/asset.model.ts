@@ -4,16 +4,16 @@ export enum AssetType {
   GOLD = 'GOLD',
   SILVER = 'SILVER',
   FUND = 'FUND',
-  FUTURES = 'FUTURES'
+  FUTURES = 'FUTURES',
 }
 
 export enum TransactionType {
   BUY = 'BUY',
-  SELL = 'SELL'
+  SELL = 'SELL',
 }
 
 export interface Asset {
-  id: string;
+  id: number;
   symbol: string;
   name: string;
   type: AssetType;
@@ -25,8 +25,8 @@ export interface Asset {
 }
 
 export interface Transaction {
-  id: string;
-  assetId: string;
+  id: number;
+  assetId: number;
   asset?: Asset;
   type: TransactionType;
   quantity: number;
@@ -37,7 +37,7 @@ export interface Transaction {
 }
 
 export interface Portfolio {
-  assetId: string;
+  assetId: number;
   asset?: Asset;
   totalQuantity: number;
   averagePrice: number;

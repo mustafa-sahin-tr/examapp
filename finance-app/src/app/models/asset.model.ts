@@ -1,10 +1,10 @@
 export enum AssetType {
-  BIST100 = 'BIST100',
-  US_STOCK = 'US_STOCK',
-  GOLD = 'GOLD',
-  SILVER = 'SILVER',
-  FUND = 'FUND',
-  FUTURES = 'FUTURES',
+  BIST100 = 0, // Stock
+  US_STOCK = 1, // USStock
+  GOLD = 2, // Gold
+  SILVER = 3, // Silver
+  FUND = 4, // Fund
+  FUTURES = 5, // Futures (backend'de yoksa eklenebilir)
 }
 
 export enum TransactionType {
@@ -13,7 +13,7 @@ export enum TransactionType {
 }
 
 export interface Asset {
-  id: number;
+  id: string;
   symbol: string;
   name: string;
   type: AssetType;
@@ -25,8 +25,8 @@ export interface Asset {
 }
 
 export interface Transaction {
-  id: number;
-  assetId: number;
+  id: string;
+  assetId: string;
   asset?: Asset;
   type: TransactionType;
   quantity: number;
@@ -37,7 +37,7 @@ export interface Transaction {
 }
 
 export interface Portfolio {
-  assetId: number;
+  assetId: string;
   asset?: Asset;
   totalQuantity: number;
   averagePrice: number;

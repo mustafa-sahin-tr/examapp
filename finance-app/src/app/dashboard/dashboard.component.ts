@@ -9,17 +9,27 @@ import { PortfolioService } from '../services/portfolio.service';
   selector: 'app-dashboard',
   imports: [CommonModule, RouterLink],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent implements OnInit {
   dashboardSummary$!: Observable<DashboardSummary>;
   AssetType = AssetType;
-  Date = Date;
+  lastUpdated = new Date();
 
   constructor(private portfolioService: PortfolioService) {}
 
   ngOnInit(): void {
     this.dashboardSummary$ = this.portfolioService.getDashboardSummary();
+    this.refreshLastUpdated();
+
+    // Debug: API'dan gelen verileri kontrol et
+    this.portfolioService.getPortfolio().subscribe((portfolios) => {
+      console.log('🔍 Portfolio Debug:', portfolios);
+    });
+  }
+
+  refreshLastUpdated(): void {
+    this.lastUpdated = new Date();
   }
 
   getAssetTypeDisplayName(type: AssetType): string {
@@ -29,7 +39,7 @@ export class DashboardComponent implements OnInit {
       [AssetType.GOLD]: 'Gold',
       [AssetType.SILVER]: 'Silver',
       [AssetType.FUND]: 'Funds',
-      [AssetType.FUTURES]: 'Futures'
+      [AssetType.FUTURES]: 'Futures',
     };
     return displayNames[type];
   }
@@ -41,7 +51,7 @@ export class DashboardComponent implements OnInit {
       [AssetType.GOLD]: '/precious-metals',
       [AssetType.SILVER]: '/precious-metals',
       [AssetType.FUND]: '/funds',
-      [AssetType.FUTURES]: '/futures'
+      [AssetType.FUTURES]: '/futures',
     };
     return routes[type];
   }
@@ -57,7 +67,7 @@ export class DashboardComponent implements OnInit {
   formatCurrency(amount: number, currency: string = 'TRY'): string {
     return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
-      currency: currency
+      currency: currency,
     }).format(amount);
   }
 

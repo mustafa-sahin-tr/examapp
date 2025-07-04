@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, BehaviorSubject, catchError } from 'rxjs';
+import { Observable, of, BehaviorSubject, catchError, map } from 'rxjs';
 import { Transaction, TransactionType, AssetType } from '../models/asset.model';
 import { ApiService } from './api.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -55,15 +56,45 @@ export class TransactionService {
   }
 
   addTransaction(transaction: Omit<Transaction, 'id'>): Observable<Transaction> {
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: Date.now().toString(),
+    // Backend'e POST request gönder
+    const transactionDto = {
+      assetId: transaction.assetId,
+      type: transaction.type,
+      quantity: transaction.quantity,
+      price: transaction.price,
+      date: transaction.date.toISOString(),
+      fees: transaction.fees || 0,
+      notes: transaction.notes || '',
     };
 
-    const currentTransactions = this.transactionsSubject.value;
-    this.transactionsSubject.next([...currentTransactions, newTransaction]);
+    console.log('Sending transaction to backend:', transactionDto);
+    console.log('API URL will be:', `${environment.apiUrl || 'http://localhost:5678/api/finance'}/transactions`);
 
-    return of(newTransaction);
+    return this.apiService.post<Transaction>('/transactions', transactionDto).pipe(
+      map((newTransaction: Transaction) => {
+        console.log('Transaction successfully created in backend:', newTransaction);
+        // Backend'den dönen transaction'ı local state'e ekle
+        const currentTransactions = this.transactionsSubject.value;
+        this.transactionsSubject.next([...currentTransactions, newTransaction]);
+        return newTransaction;
+      }),
+      catchError((error) => {
+        console.error('Error adding transaction to backend:', error);
+        console.error('Error details:', error.error, error.status, error.statusText);
+
+        // Backend hata verirse fallback olarak local state'e ekle
+        const newTransaction: Transaction = {
+          ...transaction,
+          id: Date.now().toString(),
+        };
+
+        console.log('Falling back to local storage:', newTransaction);
+        const currentTransactions = this.transactionsSubject.value;
+        this.transactionsSubject.next([...currentTransactions, newTransaction]);
+
+        return of(newTransaction);
+      })
+    );
   }
 
   updateTransaction(id: string, updates: Partial<Transaction>): Observable<Transaction | null> {

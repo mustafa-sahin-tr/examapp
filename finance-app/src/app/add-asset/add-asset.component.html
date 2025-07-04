@@ -1,0 +1,130 @@
+<div class="add-asset-container">
+  <div class="form-header">
+    <h1>Add New Asset</h1>
+    <p>Add an asset to your watchlist for tracking and trading</p>
+  </div>
+
+  <form [formGroup]="assetForm" (ngSubmit)="onSubmit()" class="asset-form">
+    <div class="form-section">
+      <h3>Basic Information</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="symbol">Symbol *</label>
+          <input
+            type="text"
+            id="symbol"
+            formControlName="symbol"
+            class="form-control"
+            placeholder="e.g., AKBNK, AAPL"
+            maxlength="10"
+          />
+          <div class="form-hint">Stock ticker symbol or asset code</div>
+          <div *ngIf="symbol?.invalid && symbol?.touched" class="error-message">
+            <span *ngIf="symbol?.errors?.['required']">Symbol is required</span>
+            <span *ngIf="symbol?.errors?.['minlength']">Symbol must be at least 2 characters</span>
+            <span *ngIf="symbol?.errors?.['maxlength']">Symbol cannot exceed 10 characters</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="name">Name *</label>
+          <input
+            type="text"
+            id="name"
+            formControlName="name"
+            class="form-control"
+            placeholder="e.g., Akbank, Apple Inc."
+            maxlength="200"
+          />
+          <div class="form-hint">Full company or asset name</div>
+          <div *ngIf="name?.invalid && name?.touched" class="error-message">
+            <span *ngIf="name?.errors?.['required']">Name is required</span>
+            <span *ngIf="name?.errors?.['minlength']">Name must be at least 2 characters</span>
+            <span *ngIf="name?.errors?.['maxlength']">Name cannot exceed 200 characters</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="type">Asset Type *</label>
+          <select id="type" formControlName="type" class="form-control">
+            <option value="">Select Asset Type</option>
+            <option *ngFor="let assetType of assetTypes" [value]="assetType.value">
+              {{ assetType.label }}
+            </option>
+          </select>
+          <div class="form-hint">Category of the asset for grouping</div>
+          <div *ngIf="type?.invalid && type?.touched" class="error-message">Asset type is required</div>
+        </div>
+
+        <div class="form-group">
+          <label for="currency">Currency *</label>
+          <select id="currency" formControlName="currency" class="form-control">
+            <option *ngFor="let curr of currencies" [value]="curr.value">
+              {{ curr.label }}
+            </option>
+          </select>
+          <div class="form-hint">Trading currency for this asset</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Price Information</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="currentPrice">Current Price *</label>
+          <div class="input-group">
+            <input
+              type="number"
+              id="currentPrice"
+              formControlName="currentPrice"
+              class="form-control"
+              placeholder="0.00"
+              step="0.01"
+              min="0.01"
+            />
+            <span class="input-addon">{{ getCurrencySymbol(currency?.value || 'TRY') }}</span>
+          </div>
+          <div class="form-hint">Current market price of the asset</div>
+          <div *ngIf="currentPrice?.invalid && currentPrice?.touched" class="error-message">
+            <span *ngIf="currentPrice?.errors?.['required']">Current price is required</span>
+            <span *ngIf="currentPrice?.errors?.['min']">Price must be greater than 0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="assetForm.valid" class="form-section">
+      <h3>Preview</h3>
+      <div class="asset-preview">
+        <div class="preview-header">
+          <div class="asset-symbol">{{ symbol?.value?.toUpperCase() }}</div>
+          <div class="asset-type-badge" [attr.data-type]="getAssetTypeLabel(type?.value)">
+            {{ getAssetTypeLabel(type?.value) }}
+          </div>
+        </div>
+        <div class="asset-name">{{ name?.value }}</div>
+        <div class="asset-price">
+          <span class="price">{{ currentPrice?.value | currency : currency?.value }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="submitError" class="error-alert">
+      <span class="error-icon">⚠️</span>
+      {{ submitError }}
+    </div>
+
+    <div class="form-actions">
+      <button type="button" (click)="onCancel()" class="btn btn-secondary" [disabled]="isSubmitting">Cancel</button>
+      <button type="submit" [disabled]="!assetForm.valid || isSubmitting" class="btn btn-primary">
+        <span *ngIf="isSubmitting" class="loading-spinner">⏳</span>
+        {{ isSubmitting ? 'Adding Asset...' : 'Add Asset' }}
+      </button>
+    </div>
+  </form>
+</div>

@@ -62,11 +62,11 @@ namespace FinanceApi.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<TransactionDto>> CreateTransaction(TransactionDto transactionDto)
+        public async Task<ActionResult<TransactionDto>> CreateTransaction(CreateTransactionDto createTransactionDto)
         {
             try
             {
-                var createdTransaction = await _transactionService.CreateTransactionAsync(transactionDto);
+                var createdTransaction = await _transactionService.CreateTransactionAsync(createTransactionDto);
                 return CreatedAtAction(nameof(GetTransaction), new { id = createdTransaction.Id }, createdTransaction);
             }
             catch (Exception ex)

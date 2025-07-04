@@ -110,4 +110,55 @@ export class AssetService {
   refreshAssets(): void {
     this.loadAssets();
   }
+
+  // Yeni asset ekleme metodu
+  addAsset(asset: Omit<Asset, 'id' | 'lastUpdated' | 'changePercentage' | 'changeValue'>): Observable<Asset> {
+    return this.apiService.post<Asset>('/assets', asset).pipe(
+      map((newAsset) => {
+        // Local state'i güncelle
+        const currentAssets = this.assetsSubject.value;
+        this.assetsSubject.next([...currentAssets, newAsset]);
+        return newAsset;
+      }),
+      catchError((error) => {
+        console.error('Error adding asset:', error);
+        throw error;
+      })
+    );
+  }
+
+  // Asset güncelleme metodu
+  updateAsset(id: string, asset: Partial<Asset>): Observable<Asset> {
+    return this.apiService.put<Asset>(`/assets/${id}`, asset).pipe(
+      map((updatedAsset) => {
+        // Local state'i güncelle
+        const currentAssets = this.assetsSubject.value;
+        const index = currentAssets.findIndex((a) => a.id === id);
+        if (index !== -1) {
+          currentAssets[index] = updatedAsset;
+          this.assetsSubject.next([...currentAssets]);
+        }
+        return updatedAsset;
+      }),
+      catchError((error) => {
+        console.error('Error updating asset:', error);
+        throw error;
+      })
+    );
+  }
+
+  // Asset silme metodu
+  deleteAsset(id: string): Observable<void> {
+    return this.apiService.delete<void>(`/assets/${id}`).pipe(
+      map(() => {
+        // Local state'i güncelle
+        const currentAssets = this.assetsSubject.value.filter((a) => a.id !== id);
+        this.assetsSubject.next(currentAssets);
+      }),
+      catchError((error) => {
+        console.error('Error deleting asset:', error);
+        throw error;
+      })
+    );
+  }
 }

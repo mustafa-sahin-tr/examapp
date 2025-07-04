@@ -1,7 +1,7 @@
 <div class="dashboard-container">
   <div class="dashboard-header">
     <h1>Portfolio Dashboard</h1>
-    <p class="last-updated">Last updated: {{ (Date.now() | date:'medium') }}</p>
+    <p class="last-updated">Last updated: {{ lastUpdated | date : 'medium' }}</p>
   </div>
 
   <div *ngIf="dashboardSummary$ | async as summary" class="dashboard-content">
@@ -13,7 +13,11 @@
           <span class="icon">💰</span>
         </div>
         <div class="card-value">{{ formatCurrency(summary.totalValue) }}</div>
-        <div class="card-change" [class.positive]="summary.totalProfitLoss >= 0" [class.negative]="summary.totalProfitLoss < 0">
+        <div
+          class="card-change"
+          [class.positive]="summary.totalProfitLoss >= 0"
+          [class.negative]="summary.totalProfitLoss < 0"
+        >
           {{ formatCurrency(summary.totalProfitLoss) }} ({{ formatPercentage(summary.totalProfitLossPercentage) }})
         </div>
       </div>
@@ -26,7 +30,11 @@
         <div class="card-value">{{ formatCurrency(summary.totalCost) }}</div>
       </div>
 
-      <div class="summary-card profit-loss" [class.positive]="summary.totalProfitLoss >= 0" [class.negative]="summary.totalProfitLoss < 0">
+      <div
+        class="summary-card profit-loss"
+        [class.positive]="summary.totalProfitLoss >= 0"
+        [class.negative]="summary.totalProfitLoss < 0"
+      >
         <div class="card-header">
           <h3>Total P&L</h3>
           <span class="icon">📈</span>
@@ -45,7 +53,7 @@
             <h3>{{ getAssetTypeDisplayName(entry.key) }}</h3>
             <a [routerLink]="getAssetTypeRoute(entry.key)" class="view-details">View Details →</a>
           </div>
-          
+
           <div class="asset-type-stats">
             <div class="stat">
               <span class="label">Holdings:</span>
@@ -57,7 +65,11 @@
             </div>
             <div class="stat">
               <span class="label">P&L:</span>
-              <span class="value" [class.positive]="getTotalPLByType(entry.value) >= 0" [class.negative]="getTotalPLByType(entry.value) < 0">
+              <span
+                class="value"
+                [class.positive]="getTotalPLByType(entry.value) >= 0"
+                [class.negative]="getTotalPLByType(entry.value) < 0"
+              >
                 {{ formatCurrency(getTotalPLByType(entry.value)) }}
               </span>
             </div>
@@ -71,7 +83,11 @@
               </div>
               <div class="asset-value">
                 <span class="current-value">{{ formatCurrency(portfolio.currentValue) }}</span>
-                <span class="change" [class.positive]="portfolio.profitLoss >= 0" [class.negative]="portfolio.profitLoss < 0">
+                <span
+                  class="change"
+                  [class.positive]="portfolio.profitLoss >= 0"
+                  [class.negative]="portfolio.profitLoss < 0"
+                >
                   {{ formatPercentage(portfolio.profitLossPercentage) }}
                 </span>
               </div>
@@ -85,6 +101,10 @@
     <div class="quick-actions">
       <h2>Quick Actions</h2>
       <div class="action-buttons">
+        <a routerLink="/add-asset" class="action-btn primary">
+          <span class="icon">📋</span>
+          Add Asset
+        </a>
         <a routerLink="/add-transaction" class="action-btn primary">
           <span class="icon">➕</span>
           Add Transaction

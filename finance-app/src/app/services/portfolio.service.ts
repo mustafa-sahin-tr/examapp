@@ -6,7 +6,7 @@ import { TransactionService } from './transaction.service';
 import { ApiService } from './api.service';
 
 export interface HistoricalInvestment {
-  assetId: number;
+  assetId: string;
   assetSymbol: string;
   assetName: string;
   asset?: any;

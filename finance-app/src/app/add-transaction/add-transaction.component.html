@@ -7,7 +7,7 @@
   <form [formGroup]="transactionForm" (ngSubmit)="onSubmit()" class="transaction-form">
     <div class="form-section">
       <h3>Asset Information</h3>
-      
+
       <div class="form-row">
         <div class="form-group">
           <label for="assetType">Asset Type *</label>
@@ -17,20 +17,40 @@
               {{ type.label }}
             </option>
           </select>
-          <div *ngIf="transactionForm.get('assetType')?.invalid && transactionForm.get('assetType')?.touched" class="error-message">
+          <div
+            *ngIf="transactionForm.get('assetType')?.invalid && transactionForm.get('assetType')?.touched"
+            class="error-message"
+          >
             Asset type is required
           </div>
         </div>
 
         <div class="form-group">
           <label for="assetId">Asset *</label>
-          <select id="assetId" formControlName="assetId" class="form-control" [disabled]="!transactionForm.get('assetType')?.value">
-            <option value="">Select Asset</option>
-            <option *ngFor="let asset of filteredAssets" [value]="asset.id">
-              {{ asset.symbol }} - {{ asset.name }}
-            </option>
-          </select>
-          <div *ngIf="transactionForm.get('assetId')?.invalid && transactionForm.get('assetId')?.touched" class="error-message">
+          <div class="asset-select-container">
+            <select
+              id="assetId"
+              formControlName="assetId"
+              class="form-control"
+              [disabled]="!transactionForm.get('assetType')?.value"
+            >
+              <option value="">Select Asset</option>
+              <option *ngFor="let asset of filteredAssets" [value]="asset.id">
+                {{ asset.symbol }} - {{ asset.name }}
+              </option>
+            </select>
+            <a routerLink="/add-asset" class="add-asset-link" title="Add new asset to track">
+              <span class="icon">📋</span>
+              Add Asset
+            </a>
+          </div>
+          <div *ngIf="filteredAssets.length === 0 && transactionForm.get('assetType')?.value" class="info-message">
+            No assets found for this type. <a routerLink="/add-asset">Add a new asset</a> to start tracking.
+          </div>
+          <div
+            *ngIf="transactionForm.get('assetId')?.invalid && transactionForm.get('assetId')?.touched"
+            class="error-message"
+          >
             Asset is required
           </div>
         </div>
@@ -39,9 +59,14 @@
       <div *ngIf="getSelectedAsset()" class="asset-info">
         <div class="current-price">
           <span class="label">Current Price:</span>
-          <span class="price">{{ getSelectedAsset()?.currentPrice | currency:getSelectedAsset()?.currency }}</span>
-          <span class="change" [class.positive]="(getSelectedAsset()?.changePercentage || 0) >= 0" [class.negative]="(getSelectedAsset()?.changePercentage || 0) < 0">
-            {{ ((getSelectedAsset()?.changePercentage || 0) > 0 ? '+' : '') }}{{ (getSelectedAsset()?.changePercentage || 0).toFixed(2) }}%
+          <span class="price">{{ getSelectedAsset()?.currentPrice | currency : getSelectedAsset()?.currency }}</span>
+          <span
+            class="change"
+            [class.positive]="(getSelectedAsset()?.changePercentage || 0) >= 0"
+            [class.negative]="(getSelectedAsset()?.changePercentage || 0) < 0"
+          >
+            {{ (getSelectedAsset()?.changePercentage || 0) > 0 ? '+' : ''
+            }}{{ (getSelectedAsset()?.changePercentage || 0).toFixed(2) }}%
           </span>
         </div>
       </div>
@@ -49,17 +74,23 @@
 
     <div class="form-section">
       <h3>Transaction Details</h3>
-      
+
       <div class="form-row">
         <div class="form-group">
           <label for="transactionType">Transaction Type *</label>
           <div class="transaction-type-buttons">
-            <label class="transaction-type-option" [class.selected]="transactionForm.get('transactionType')?.value === TransactionType.BUY">
-              <input type="radio" [value]="TransactionType.BUY" formControlName="transactionType">
+            <label
+              class="transaction-type-option"
+              [class.selected]="transactionForm.get('transactionType')?.value === TransactionType.BUY"
+            >
+              <input type="radio" [value]="TransactionType.BUY" formControlName="transactionType" />
               <span class="button buy">📈 Buy</span>
             </label>
-            <label class="transaction-type-option" [class.selected]="transactionForm.get('transactionType')?.value === TransactionType.SELL">
-              <input type="radio" [value]="TransactionType.SELL" formControlName="transactionType">
+            <label
+              class="transaction-type-option"
+              [class.selected]="transactionForm.get('transactionType')?.value === TransactionType.SELL"
+            >
+              <input type="radio" [value]="TransactionType.SELL" formControlName="transactionType" />
               <span class="button sell">📉 Sell</span>
             </label>
           </div>
@@ -67,8 +98,11 @@
 
         <div class="form-group">
           <label for="date">Date *</label>
-          <input type="date" id="date" formControlName="date" class="form-control">
-          <div *ngIf="transactionForm.get('date')?.invalid && transactionForm.get('date')?.touched" class="error-message">
+          <input type="date" id="date" formControlName="date" class="form-control" />
+          <div
+            *ngIf="transactionForm.get('date')?.invalid && transactionForm.get('date')?.touched"
+            class="error-message"
+          >
             Date is required
           </div>
         </div>
@@ -77,8 +111,18 @@
       <div class="form-row">
         <div class="form-group">
           <label for="quantity">Quantity *</label>
-          <input type="number" id="quantity" formControlName="quantity" class="form-control" placeholder="0.00" step="0.01">
-          <div *ngIf="transactionForm.get('quantity')?.invalid && transactionForm.get('quantity')?.touched" class="error-message">
+          <input
+            type="number"
+            id="quantity"
+            formControlName="quantity"
+            class="form-control"
+            placeholder="0.00"
+            step="0.01"
+          />
+          <div
+            *ngIf="transactionForm.get('quantity')?.invalid && transactionForm.get('quantity')?.touched"
+            class="error-message"
+          >
             <span *ngIf="transactionForm.get('quantity')?.errors?.['required']">Quantity is required</span>
             <span *ngIf="transactionForm.get('quantity')?.errors?.['min']">Quantity must be greater than 0</span>
           </div>
@@ -87,10 +131,20 @@
         <div class="form-group">
           <label for="price">Price per Unit *</label>
           <div class="input-group">
-            <input type="number" id="price" formControlName="price" class="form-control" placeholder="0.00" step="0.01">
+            <input
+              type="number"
+              id="price"
+              formControlName="price"
+              class="form-control"
+              placeholder="0.00"
+              step="0.01"
+            />
             <span class="input-addon">{{ getSelectedAsset()?.currency || 'TRY' }}</span>
           </div>
-          <div *ngIf="transactionForm.get('price')?.invalid && transactionForm.get('price')?.touched" class="error-message">
+          <div
+            *ngIf="transactionForm.get('price')?.invalid && transactionForm.get('price')?.touched"
+            class="error-message"
+          >
             <span *ngIf="transactionForm.get('price')?.errors?.['required']">Price is required</span>
             <span *ngIf="transactionForm.get('price')?.errors?.['min']">Price must be greater than 0</span>
           </div>
@@ -101,17 +155,26 @@
         <div class="form-group">
           <label for="fees">Transaction Fees</label>
           <div class="input-group">
-            <input type="number" id="fees" formControlName="fees" class="form-control" placeholder="0.00" step="0.01">
+            <input type="number" id="fees" formControlName="fees" class="form-control" placeholder="0.00" step="0.01" />
             <span class="input-addon">{{ getSelectedAsset()?.currency || 'TRY' }}</span>
           </div>
-          <div *ngIf="transactionForm.get('fees')?.invalid && transactionForm.get('fees')?.touched" class="error-message">
+          <div
+            *ngIf="transactionForm.get('fees')?.invalid && transactionForm.get('fees')?.touched"
+            class="error-message"
+          >
             Fees cannot be negative
           </div>
         </div>
 
         <div class="form-group">
           <label for="notes">Notes</label>
-          <input type="text" id="notes" formControlName="notes" class="form-control" placeholder="Optional notes about this transaction">
+          <input
+            type="text"
+            id="notes"
+            formControlName="notes"
+            class="form-control"
+            placeholder="Optional notes about this transaction"
+          />
         </div>
       </div>
     </div>
@@ -121,24 +184,27 @@
       <div class="summary-card">
         <div class="summary-row">
           <span class="label">Subtotal:</span>
-          <span class="value">{{ (transactionForm.get('quantity')?.value * transactionForm.get('price')?.value) | currency:(getSelectedAsset()?.currency || 'TRY') }}</span>
+          <span class="value">{{
+            transactionForm.get('quantity')?.value * transactionForm.get('price')?.value
+              | currency : getSelectedAsset()?.currency || 'TRY'
+          }}</span>
         </div>
         <div class="summary-row">
           <span class="label">Fees:</span>
-          <span class="value">{{ transactionForm.get('fees')?.value | currency:(getSelectedAsset()?.currency || 'TRY') }}</span>
+          <span class="value">{{
+            transactionForm.get('fees')?.value | currency : getSelectedAsset()?.currency || 'TRY'
+          }}</span>
         </div>
         <div class="summary-row total">
           <span class="label">Total:</span>
-          <span class="value">{{ calculateTotal() | currency:(getSelectedAsset()?.currency || 'TRY') }}</span>
+          <span class="value">{{ calculateTotal() | currency : getSelectedAsset()?.currency || 'TRY' }}</span>
         </div>
       </div>
     </div>
 
     <div class="form-actions">
       <button type="button" (click)="onCancel()" class="btn btn-secondary">Cancel</button>
-      <button type="submit" [disabled]="!transactionForm.valid" class="btn btn-primary">
-        Add Transaction
-      </button>
+      <button type="submit" [disabled]="!transactionForm.valid" class="btn btn-primary">Add Transaction</button>
     </div>
   </form>
 </div>

@@ -75,17 +75,18 @@ namespace FinanceApi.Services
             });
         }
 
-        public async Task<TransactionDto> CreateTransactionAsync(TransactionDto transactionDto)
+        public async Task<TransactionDto> CreateTransactionAsync(CreateTransactionDto createTransactionDto)
         {
             var transaction = new Transaction
             {
-                AssetId = transactionDto.AssetId,
-                Type = Enum.Parse<TransactionType>(transactionDto.Type),
-                Quantity = transactionDto.Quantity,
-                Price = transactionDto.Price,
-                Date = transactionDto.Date,
-                Fees = transactionDto.Fees,
-                Notes = transactionDto.Notes
+                AssetId = createTransactionDto.AssetId,
+                Type = Enum.Parse<TransactionType>(createTransactionDto.Type),
+                Quantity = createTransactionDto.Quantity,
+                Price = createTransactionDto.Price,
+                Date = createTransactionDto.Date,
+                Fees = createTransactionDto.Fees,
+                Notes = createTransactionDto.Notes,
+                UserId = "default-user" // TODO: Get from authentication context
             };
 
             _context.Transactions.Add(transaction);

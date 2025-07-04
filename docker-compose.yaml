@@ -7,8 +7,8 @@ services:
       context: ./dockerfiles/api
       dockerfile: Dockerfile.api
     ports:
-      - "8005:8005"
-      - "5079:5079"
+      - '8005:8005'
+      - '5079:5079'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
@@ -26,8 +26,8 @@ services:
       context: ./dockerfiles/auth-api
       dockerfile: Dockerfile.auth-api
     ports:
-      - "9005:8005"
-      - "6079:5079"
+      - '9005:8005'
+      - '6079:5079'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
@@ -37,7 +37,7 @@ services:
       exam-pg-container:
         condition: service_healthy
     networks:
-      - mynetwork      
+      - mynetwork
 
   exam-badge-api:
     container_name: exam-badge-api
@@ -45,8 +45,8 @@ services:
       context: ./dockerfiles/badge
       dockerfile: Dockerfile.badge
     ports:
-      - "8006:8006"
-      - "5080:5080"
+      - '8006:8006'
+      - '5080:5080'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8006
@@ -56,7 +56,7 @@ services:
       exam-pg-container:
         condition: service_healthy
     networks:
-      - mynetwork      
+      - mynetwork
 
   exam-catalog-api:
     container_name: exam-catalog-api
@@ -64,8 +64,8 @@ services:
       context: ./dockerfiles/catalog
       dockerfile: Dockerfile.catalog
     ports:
-      - "9009:8009"
-      - "6089:5089"
+      - '9009:8009'
+      - '6089:5089'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8009
@@ -75,7 +75,7 @@ services:
       exam-pg-container:
         condition: service_healthy
     networks:
-      - mynetwork            
+      - mynetwork
 
   exam-outbox-publisher:
     container_name: exam-outbox-publisher
@@ -83,8 +83,8 @@ services:
       context: ./dockerfiles/outboxpub
       dockerfile: Dockerfile.outboxpub
     ports:
-      - "8007:8007"
-      - "5081:5081"
+      - '8007:8007'
+      - '5081:5081'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8007
@@ -94,7 +94,7 @@ services:
       exam-pg-container:
         condition: service_healthy
     networks:
-      - mynetwork        
+      - mynetwork
 
   angular-app:
     container_name: angular-app
@@ -103,7 +103,7 @@ services:
       dockerfile: Dockerfile.ui
     image: exam-angular:latest
     ports:
-      - "4200:4200"
+      - '4200:4200'
     environment:
       - NODE_ENV=development
     depends_on:
@@ -111,8 +111,7 @@ services:
     networks:
       - mynetwork
     volumes:
-      - ./ui:/app 
-
+      - ./ui:/app
 
   auth-ui:
     container_name: auth-ui
@@ -121,7 +120,7 @@ services:
       dockerfile: Dockerfile.auth-ui
     image: auth-ui:latest
     ports:
-      - "4201:4200"
+      - '4201:4200'
     environment:
       - NODE_ENV=development
     depends_on:
@@ -140,17 +139,17 @@ services:
       POSTGRES_PASSWORD: exampass
       POSTGRES_DB: worksheet
     ports:
-      - "5433:5432"
+      - '5433:5432'
     volumes:
       - ./postgres/examdata:/var/lib/postgresql/data
       - ./postgres/init-scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U examuser -d examination"]
+      test: ['CMD-SHELL', 'pg_isready -U examuser -d examination']
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - mynetwork  
+      - mynetwork
 
   pgadmin:
     image: dpage/pgadmin4
@@ -160,12 +159,12 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@exam.com
       PGADMIN_DEFAULT_PASSWORD: adminpass
     ports:
-      - "5051:80"
+      - '5051:80'
     depends_on:
       exam-pg-container:
         condition: service_healthy
     volumes:
-      - ./pgadmin-data:/var/lib/pgadmin        
+      - ./pgadmin-data:/var/lib/pgadmin
     networks:
       - mynetwork
 
@@ -183,14 +182,13 @@ services:
   #   volumes:
   #     - ./dockerfiles/nginx/nginx.conf:/etc/nginx/nginx.conf
 
-
   minio:
     image: minio/minio
     container_name: minio
     restart: always
     ports:
-      - "9000:9000"  # MinIO API Portu
-      - "9001:9001"  # MinIO Yönetim Paneli
+      - '9000:9000' # MinIO API Portu
+      - '9001:9001' # MinIO Yönetim Paneli
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -211,8 +209,8 @@ services:
     tty: true
     stdin_open: true
     ports:
-      - "8888:8888"  # Jupyter Notebook veya diğer servisler için hazır
-      - "8080:8080"  # FastAPI veya diğer servisler için hazır
+      - '8888:8888' # Jupyter Notebook veya diğer servisler için hazır
+      - '8080:8080' # FastAPI veya diğer servisler için hazır
     environment:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
@@ -223,8 +221,8 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # AMQP portu (backend ile iletişim)
-      - "15672:15672" # Yönetim paneli (browser'dan erişim için)
+      - '5672:5672' # AMQP portu (backend ile iletişim)
+      - '15672:15672' # Yönetim paneli (browser'dan erişim için)
     environment:
       RABBITMQ_DEFAULT_USER: rabbituser
       RABBITMQ_DEFAULT_PASS: rabbitpass
@@ -245,9 +243,9 @@ services:
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: examuser
       KC_DB_PASSWORD: exampass
-      KC_PROXY: edge
+      KC_PROXY: none
     ports:
-      - "8081:8080"
+      - '8081:8080'
     depends_on:
       - exam-pg-container
     networks:
@@ -296,7 +294,7 @@ services:
       context: ./dockerfiles/gateway
       dockerfile: Dockerfile.ocelot
     ports:
-      - "5678:5678" # dış dünya için gateway portu
+      - '5678:5678' # dış dünya için gateway portu
     volumes:
       - ./Services/Gateway:/app
     depends_on:
@@ -306,14 +304,12 @@ services:
     networks:
       - mynetwork
 
-  
-
   redis:
     image: redis:7
     container_name: redis
     restart: always
     ports:
-      - "6379:6379"
+      - '6379:6379'
     command: redis-server --requirepass MyStrongRedisPassword
     networks:
       - mynetwork
@@ -324,16 +320,16 @@ services:
       dockerfile: Dockerfile.k6
     volumes:
       - ./k6:/home/k6/testfiles
-    # entrypoint: ["k6", "run", "/load_test.js"]      
+    # entrypoint: ["k6", "run", "/load_test.js"]
     networks:
       - mynetwork
 
   baget:
     image: loicsharma/baget
-    platform: linux/amd64 
+    platform: linux/amd64
     container_name: baget
     ports:
-      - "8008:80"
+      - '8008:80'
     volumes:
       - ./nuget-packages:/var/baget
     environment:
@@ -344,7 +340,7 @@ services:
       - Database__ConnectionString=Data Source=/var/baget/baget.db
       - Search__Type=Database
     networks:
-      - mynetwork      
+      - mynetwork
 
   finance-ui:
     container_name: finance-ui
@@ -353,7 +349,7 @@ services:
       dockerfile: Dockerfile.finance-ui
     image: finance-ui:latest
     ports:
-      - "4202:4200"
+      - '4202:4200'
     environment:
       - NODE_ENV=development
     depends_on:
@@ -363,15 +359,14 @@ services:
     volumes:
       - ./finance-app:/app
 
-
   finance-api:
     container_name: finance-api
     build:
       context: ./dockerfiles/finance-api
       dockerfile: Dockerfile.finance-api
     ports:
-      - "9006:8005"
-      - "6080:5079"
+      - '9006:8005'
+      - '6080:5079'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
@@ -381,8 +376,8 @@ services:
       exam-pg-container:
         condition: service_healthy
     networks:
-      - mynetwork    
+      - mynetwork
 
-networks:   
+networks:
   mynetwork:
     driver: bridge

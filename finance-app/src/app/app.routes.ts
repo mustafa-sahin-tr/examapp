@@ -6,6 +6,7 @@ import { PreciousMetalsComponent } from './precious-metals/precious-metals.compo
 import { FundsComponent } from './funds/funds.component';
 import { FuturesComponent } from './futures/futures.component';
 import { AddTransactionComponent } from './add-transaction/add-transaction.component';
+import { AddAssetComponent } from './add-asset/add-asset.component';
 import { HomeComponent } from './home/home.component';
 import { DetailpageComponent } from './detailpage/detailpage.component';
 
@@ -18,7 +19,8 @@ export const routes: Routes = [
   { path: 'funds', component: FundsComponent },
   { path: 'futures', component: FuturesComponent },
   { path: 'add-transaction', component: AddTransactionComponent },
+  { path: 'add-asset', component: AddAssetComponent },
   { path: 'home', component: HomeComponent },
   { path: 'detailpage', component: DetailpageComponent },
-  { path: '**', redirectTo: '/dashboard' }
+  { path: '**', redirectTo: '/dashboard' },
 ];

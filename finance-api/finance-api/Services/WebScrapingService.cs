@@ -138,8 +138,19 @@ namespace FinanceApi.Services
         {
             try
             {
-                // Altın için Google Finance URL'i (örnek: GOLD veya GLD)
-                var url = $"https://www.google.com/finance/quote/{code}:NASDAQ";
+                // Altın için Google Finance URL'i - COMEX:GCW00 formatında
+                string url;
+                if (code.Contains(":"))
+                {
+                    // Zaten exchange:symbol formatında ise direkt kullan
+                    url = $"https://www.google.com/finance/quote/{code}";
+                }
+                else
+                {
+                    // Sadece symbol verilmişse COMEX exchange'i ekle
+                    url = $"https://www.google.com/finance/quote/{code}:COMEX";
+                }
+
                 var response = await _httpClient.GetStringAsync(url);
 
                 var doc = new HtmlDocument();
@@ -151,7 +162,7 @@ namespace FinanceApi.Services
                 {
                     var priceText = priceNode.InnerText.Trim();
                     var cleanPrice = Regex.Replace(priceText, @"[^\d,.-]", "");
-                    cleanPrice = cleanPrice.Replace(",", ".");
+                    // cleanPrice = cleanPrice.Replace(",", ".");
 
                     if (decimal.TryParse(cleanPrice, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
                     {
@@ -160,7 +171,7 @@ namespace FinanceApi.Services
                             Type = AssetType.Gold,
                             Code = code,
                             Price = price,
-                            Unit = "USD",
+                            Unit = "USD", // COMEX altın fiyatları USD/oz cinsindendir
                             LastUpdated = DateTime.UtcNow,
                             IsSuccess = true
                         };
@@ -192,52 +203,116 @@ namespace FinanceApi.Services
         {
             try
             {
-                var url = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={code}";
-                var response = await _httpClient.GetStringAsync(url);
+                // TEFAS için özel HttpClient oluştur
+                using var tefasClient = new HttpClient();
 
-                var doc = new HtmlDocument();
-                doc.LoadHtml(response);
+                // Timeout ayarla
+                tefasClient.Timeout = TimeSpan.FromSeconds(30);
 
-                // TEFAS'ta fon fiyatı için selector
-                var priceNodes = doc.DocumentNode.SelectNodes("//ul[@class='top-list']//li");
+                // Gerçek tarayıcı davranışını simüle et - daha güncel headers
+                tefasClient.DefaultRequestHeaders.Add("User-Agent",
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+                tefasClient.DefaultRequestHeaders.Add("Accept",
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7");
+                tefasClient.DefaultRequestHeaders.Add("Accept-Language", "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7");
+                tefasClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
+                tefasClient.DefaultRequestHeaders.Add("Cache-Control", "max-age=0");
+                tefasClient.DefaultRequestHeaders.Add("sec-ch-ua", "\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Google Chrome\";v=\"122\"");
+                tefasClient.DefaultRequestHeaders.Add("sec-ch-ua-mobile", "?0");
+                tefasClient.DefaultRequestHeaders.Add("sec-ch-ua-platform", "\"macOS\"");
+                tefasClient.DefaultRequestHeaders.Add("sec-fetch-dest", "document");
+                tefasClient.DefaultRequestHeaders.Add("sec-fetch-mode", "navigate");
+                tefasClient.DefaultRequestHeaders.Add("sec-fetch-site", "none");
+                tefasClient.DefaultRequestHeaders.Add("sec-fetch-user", "?1");
+                tefasClient.DefaultRequestHeaders.Add("upgrade-insecure-requests", "1");
+                tefasClient.DefaultRequestHeaders.Add("Connection", "keep-alive");
 
-                if (priceNodes != null)
+                // Retry mekanizması ile çoklu deneme
+                var maxRetries = 3;
+                var delay = 1000; // 1 saniye
+
+                for (int attempt = 0; attempt < maxRetries; attempt++)
                 {
-                    foreach (var node in priceNodes)
+                    try
                     {
-                        var text = node.InnerText;
-                        if (text.Contains("Son Fiyat"))
-                        {
-                            var spanNode = node.SelectSingleNode(".//span");
-                            if (spanNode != null)
-                            {
-                                var priceText = spanNode.InnerText.Trim();
-                                var cleanPrice = priceText.Replace(",", ".");
+                        // Her denemede farklı bir yaklaşım
+                        string response = null;
 
-                                if (decimal.TryParse(cleanPrice, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
-                                {
-                                    return new AssetPriceResponseDto
-                                    {
-                                        Type = AssetType.Fund,
-                                        Code = code,
-                                        Price = price,
-                                        Unit = "TRY",
-                                        LastUpdated = DateTime.UtcNow,
-                                        IsSuccess = true
-                                    };
-                                }
-                            }
-                            break;
+                        if (attempt == 0)
+                        {
+                            // İlk deneme: Direkt fon sayfasına git
+                            var fundUrl = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={code}";
+                            response = await tefasClient.GetStringAsync(fundUrl);
                         }
+                        else if (attempt == 1)
+                        {
+                            // İkinci deneme: Önce ana sayfaya git
+                            var mainPageUrl = "https://www.tefas.gov.tr/";
+                            await tefasClient.GetStringAsync(mainPageUrl);
+                            await Task.Delay(800);
+
+                            tefasClient.DefaultRequestHeaders.Remove("Referer");
+                            tefasClient.DefaultRequestHeaders.Add("Referer", mainPageUrl);
+
+                            var fundUrl = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={code}";
+                            response = await tefasClient.GetStringAsync(fundUrl);
+                        }
+                        else
+                        {
+                            // Üçüncü deneme: Alternatif endpoint
+                            var alternateUrl = $"https://www.tefas.gov.tr/FonKarsilastirma.aspx?FonKod={code}";
+                            response = await tefasClient.GetStringAsync(alternateUrl);
+                        }
+
+                        // HTML parsing
+                        var doc = new HtmlDocument();
+                        doc.LoadHtml(response);
+
+                        // TEFAS'ta fon fiyatı için gelişmiş selector'lar
+                        decimal? price = await ExtractTefasPrice(doc, code);
+
+                        if (price.HasValue)
+                        {
+                            return new AssetPriceResponseDto
+                            {
+                                Type = AssetType.Fund,
+                                Code = code,
+                                Price = price.Value,
+                                Unit = "TRY",
+                                LastUpdated = DateTime.UtcNow,
+                                IsSuccess = true
+                            };
+                        }
+
+                        _logger.LogWarning("Attempt {Attempt} failed for TEFAS fund {Code}. Retrying...", attempt + 1, code);
+
+                        // Sonraki deneme için bekleme
+                        if (attempt < maxRetries - 1)
+                        {
+                            await Task.Delay(delay * (attempt + 1));
+                        }
+                    }
+                    catch (HttpRequestException httpEx)
+                    {
+                        _logger.LogWarning("HTTP error on attempt {Attempt} for TEFAS fund {Code}: {Message}",
+                            attempt + 1, code, httpEx.Message);
+
+                        if (attempt == maxRetries - 1)
+                        {
+                            throw; // Son deneme, exception'ı yukarı fırlat
+                        }
+
+                        await Task.Delay(delay * (attempt + 1));
                     }
                 }
 
+                // Tüm denemeler başarısız
                 return new AssetPriceResponseDto
                 {
                     Type = AssetType.Fund,
                     Code = code,
                     IsSuccess = false,
-                    ErrorMessage = "Could not parse fund price from TEFAS"
+                    ErrorMessage = "Could not retrieve fund price from TEFAS after multiple attempts"
                 };
             }
             catch (Exception ex)
@@ -251,6 +326,163 @@ namespace FinanceApi.Services
                     ErrorMessage = ex.Message
                 };
             }
+        }
+
+        private async Task<decimal?> ExtractTefasPrice(HtmlDocument doc, string code)
+        {
+            // Çoklu extraction stratejileri
+            var extractionStrategies = new List<Func<HtmlDocument, decimal?>>
+            {
+            // Strateji 1: TEFAS spesifik yapısından fiyat çekme (main-indicators)
+            (document) => {
+                var mainIndicators = document.DocumentNode.SelectSingleNode("//div[@class='main-indicators']");
+                if (mainIndicators != null)
+                {
+                var topList = mainIndicators.SelectSingleNode(".//ul[@class='top-list']");
+                if (topList != null)
+                {
+                    var firstLi = topList.SelectSingleNode(".//li[1]");
+                    if (firstLi != null)
+                    {
+                    var priceSpan = firstLi.SelectSingleNode(".//span");
+                    if (priceSpan != null)
+                    {
+                        var price = ExtractPriceFromText(priceSpan.InnerText);
+                        if (price.HasValue && price.Value > 0.01m && price.Value < 50000m)
+                        return price;
+                    }
+                    }
+                }
+                }
+                return null;
+            },
+            
+            // Strateji 2: Temel fon bilgilerinden fiyat çekme
+            (document) => {
+                var priceNodes = document.DocumentNode.SelectNodes("//div[contains(@class,'price')]//span | //span[contains(@class,'price')]");
+                if (priceNodes != null)
+                {
+                foreach (var node in priceNodes)
+                {
+                    var price = ExtractPriceFromText(node.InnerText);
+                    if (price.HasValue && price.Value > 0.01m && price.Value < 50000m)
+                    return price;
+                }
+                }
+                return null;
+            },
+            
+            // Strateji 3: Tablo yapısından fiyat çekme
+            (document) => {
+                var tableNodes = document.DocumentNode.SelectNodes("//table//td | //table//th");
+                if (tableNodes != null)
+                {
+                for (int i = 0; i < tableNodes.Count; i++)
+                {
+                    var cellText = tableNodes[i].InnerText.Trim();
+                    if (cellText.Contains("Son Fiyat") || cellText.Contains("Birim Fiyat") || cellText.Contains("Güncel"))
+                    {
+                    // Sonraki hücrede fiyat olabilir
+                    if (i + 1 < tableNodes.Count)
+                    {
+                        var priceCell = tableNodes[i + 1];
+                        var price = ExtractPriceFromText(priceCell.InnerText);
+                        if (price.HasValue && price.Value > 0.01m && price.Value < 50000m)
+                        return price;
+                    }
+                    }
+                }
+                }
+                return null;
+            },
+            
+            // Strateji 4: Label-Value çiftlerinden fiyat çekme
+            (document) => {
+                var labelNodes = document.DocumentNode.SelectNodes("//label | //span | //div");
+                if (labelNodes != null)
+                {
+                foreach (var node in labelNodes)
+                {
+                    var text = node.InnerText.Trim();
+                    if (text.Contains("Son Fiyat") || text.Contains("Birim Fiyat"))
+                    {
+                    // Aynı parent içindeki diğer elementlere bak
+                    var parent = node.ParentNode;
+                    if (parent != null)
+                    {
+                        var siblings = parent.SelectNodes(".//span | .//div | .//td");
+                        if (siblings != null)
+                        {
+                        foreach (var sibling in siblings)
+                        {
+                            var price = ExtractPriceFromText(sibling.InnerText);
+                            if (price.HasValue && price.Value > 0.01m && price.Value < 50000m)
+                            return price;
+                        }
+                        }
+                    }
+                    }
+                }
+                }
+                return null;
+            },
+            
+            // Strateji 5: Regex ile tüm sayısal değerleri tara
+            (document) => {
+                var allText = document.DocumentNode.InnerText;
+                var pricePattern = @"(\d{1,2}[,\.]\d{2,4})";
+                var matches = Regex.Matches(allText, pricePattern);
+
+                foreach (Match match in matches)
+                {
+                var price = ExtractPriceFromText(match.Value);
+                if (price.HasValue && price.Value > 0.5m && price.Value < 5000m)
+                    return price;
+                }
+                return null;
+            }
+            };
+
+            // Stratejileri sırayla dene
+            foreach (var strategy in extractionStrategies)
+            {
+                try
+                {
+                    var price = strategy(doc);
+                    if (price.HasValue)
+                    {
+                        _logger.LogDebug("Successfully extracted price {Price} for fund {Code}", price.Value, code);
+                        return price;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Extraction strategy failed for fund {Code}", code);
+                }
+            }
+
+            return null;
+        }
+
+        private decimal? ExtractPriceFromText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return null;
+
+            var cleanText = text.Trim();
+
+            // Virgülü noktaya çevir
+            cleanText = cleanText.Replace(",", ".");
+
+            // Sadece rakam ve nokta bırak
+            cleanText = Regex.Replace(cleanText, @"[^\d\.]", "");
+
+            if (decimal.TryParse(cleanText, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
+            {
+                return price;
+            }
+
+            return null;
         }
     }
 }

@@ -63,23 +63,28 @@ namespace FinanceApi.Services
 
             try
             {
-                // Tüm asset'leri al
-                var assets = await context.Assets.ToListAsync();
+                // Sadece portföydeki asset'leri al (unique asset'ler)
+                var portfolioAssets = await context.Portfolios
+                    .Where(p => p.TotalQuantity > 0) // Sadece pozitif pozisyonlar
+                    .Include(p => p.Asset)
+                    .Select(p => p.Asset)
+                    .Distinct()
+                    .ToListAsync();
 
-                if (!assets.Any())
+                if (!portfolioAssets.Any())
                 {
-                    _logger.LogDebug("No assets found to update prices");
+                    _logger.LogDebug("No portfolio assets found to update prices");
                     return;
                 }
 
                 // Asset'leri price request'lere çevir
-                var priceRequests = assets.Select(asset => new AssetPriceRequestDto
+                var priceRequests = portfolioAssets.Select(asset => new AssetPriceRequestDto
                 {
                     Type = asset.Type,
                     Symbol = asset.Symbol
                 }).ToList();
 
-                _logger.LogDebug("Updating prices for {Count} assets", priceRequests.Count);
+                _logger.LogDebug("Updating prices for {Count} portfolio assets", priceRequests.Count);
 
                 // Fiyatları al
                 var priceResponses = await webScrapingService.GetAssetPricesAsync(priceRequests);
@@ -95,10 +100,10 @@ namespace FinanceApi.Services
                         continue;
                     }
 
-                    var asset = assets.FirstOrDefault(a => a.Type == priceResponse.Type && a.Symbol == priceResponse.Symbol);
+                    var asset = portfolioAssets.FirstOrDefault(a => a.Type == priceResponse.Type && a.Symbol == priceResponse.Symbol);
                     if (asset == null)
                     {
-                        _logger.LogWarning("Asset not found for {Type}:{Symbol}", priceResponse.Type, priceResponse.Symbol);
+                        _logger.LogWarning("Portfolio asset not found for {Type}:{Symbol}", priceResponse.Type, priceResponse.Symbol);
                         continue;
                     }
 
@@ -107,8 +112,8 @@ namespace FinanceApi.Services
                     var previousPrice = _lastPrices.GetValueOrDefault(priceKey, currentPrice);
 
                     // Fiyat değişmişse güncelle
-                    if (Math.Abs(currentPrice - previousPrice) > 0.001m)
-                    {
+                    // if (Math.Abs(currentPrice - previousPrice) > 0.001m)
+                    // {
                         var change = currentPrice - previousPrice;
                         var changePercent = previousPrice != 0 ? (change / previousPrice) * 100 : 0;
 
@@ -138,15 +143,15 @@ namespace FinanceApi.Services
 
                         _logger.LogDebug("Price updated for {Name} ({Symbol}): {PreviousPrice} -> {CurrentPrice} ({Change:+0.00;-0.00;0})",
                             asset.Name, asset.Symbol, previousPrice, currentPrice, change);
-                    }
-                    else
-                    {
-                        // İlk kez eklenen asset'ler için cache'e ekle
-                        if (!_lastPrices.ContainsKey(priceKey))
-                        {
-                            _lastPrices[priceKey] = currentPrice;
-                        }
-                    }
+                    // }
+                    // else
+                    // {
+                    //     // İlk kez eklenen asset'ler için cache'e ekle
+                    //     if (!_lastPrices.ContainsKey(priceKey))
+                    //     {
+                    //         _lastPrices[priceKey] = currentPrice;
+                    //     }
+                    // }
                 }
 
                 // Veritabanını güncelle

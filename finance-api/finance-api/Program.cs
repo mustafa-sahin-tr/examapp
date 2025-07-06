@@ -33,9 +33,9 @@ builder.Services.AddDbContext<FinanceDbContext>(options =>
 // Services
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
+builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 builder.Services.AddScoped<IRealTimeDataService, YahooFinanceService>();
 builder.Services.AddScoped<IWebScrapingService, WebScrapingService>();
-// builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 
 // HttpClient for Yahoo Finance API
 builder.Services.AddHttpClient<YahooFinanceService>(client =>
@@ -71,7 +71,7 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("SignalRCors", policy =>
     {
-        policy.WithOrigins("http://localhost:4200","http://localhost:5678", "http://localhost:3000")
+        policy.WithOrigins("http://localhost:4200", "http://localhost:5678", "http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();

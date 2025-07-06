@@ -92,6 +92,9 @@ namespace FinanceApi.Services
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
 
+            // Portfolio'yu otomatik olarak güncelle
+            await UpdatePortfolioAsync(transaction);
+
             return new TransactionDto
             {
                 Id = transaction.Id,
@@ -111,6 +114,10 @@ namespace FinanceApi.Services
             if (transaction == null)
                 return null;
 
+            // Eski transaction'ı geri al (portfolio'dan)
+            await RevertPortfolioAsync(transaction);
+
+            // Transaction'ı güncelle
             transaction.AssetId = transactionDto.AssetId;
             transaction.Type = Enum.Parse<TransactionType>(transactionDto.Type);
             transaction.Quantity = transactionDto.Quantity;
@@ -120,6 +127,9 @@ namespace FinanceApi.Services
             transaction.Notes = transactionDto.Notes;
 
             await _context.SaveChangesAsync();
+
+            // Yeni transaction'ı portfolio'ya uygula
+            await UpdatePortfolioAsync(transaction);
 
             return new TransactionDto
             {
@@ -140,9 +150,116 @@ namespace FinanceApi.Services
             if (transaction == null)
                 return false;
 
+            // Transaction'ı portfolio'dan geri al
+            await RevertPortfolioAsync(transaction);
+
             _context.Transactions.Remove(transaction);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        private async Task UpdatePortfolioAsync(Transaction transaction)
+        {
+            // Mevcut portfolio kaydını bul
+            var portfolio = await _context.Portfolios
+                .FirstOrDefaultAsync(p => p.AssetId == transaction.AssetId && p.UserId == transaction.UserId);
+
+            if (portfolio == null)
+            {
+                // Yeni portfolio kaydı oluştur
+                portfolio = new Portfolio
+                {
+                    AssetId = transaction.AssetId,
+                    UserId = transaction.UserId,
+                    TotalQuantity = 0,
+                    AveragePrice = 0,
+                    LastUpdated = DateTime.UtcNow
+                };
+                _context.Portfolios.Add(portfolio);
+            }
+
+            // Transaction tipine göre portfolio'yu güncelle
+            if (transaction.Type == TransactionType.BUY)
+            {
+                // BUY: Weighted average price hesapla
+                var newTotalCost = (portfolio.TotalQuantity * portfolio.AveragePrice) + (transaction.Quantity * transaction.Price);
+                var newTotalQuantity = portfolio.TotalQuantity + transaction.Quantity;
+
+                portfolio.TotalQuantity = newTotalQuantity;
+                portfolio.AveragePrice = newTotalQuantity > 0 ? newTotalCost / newTotalQuantity : 0;
+            }
+            else if (transaction.Type == TransactionType.SELL)
+            {
+                // SELL: Sadece quantity'yi azalt, average price aynı kalır
+                portfolio.TotalQuantity -= transaction.Quantity;
+
+                // Eğer tüm pozisyon satıldıysa portfolio kaydını sil
+                if (portfolio.TotalQuantity <= 0)
+                {
+                    _context.Portfolios.Remove(portfolio);
+                    await _context.SaveChangesAsync();
+                    return;
+                }
+            }
+
+            portfolio.LastUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task RevertPortfolioAsync(Transaction transaction)
+        {
+            var portfolio = await _context.Portfolios
+                .FirstOrDefaultAsync(p => p.AssetId == transaction.AssetId && p.UserId == transaction.UserId);
+
+            if (portfolio == null)
+                return;
+
+            // Transaction tipine göre geri alma işlemi yap
+            if (transaction.Type == TransactionType.BUY)
+            {
+                // BUY işlemini geri al: quantity'yi azalt
+                portfolio.TotalQuantity -= transaction.Quantity;
+
+                // Eğer quantity sıfır veya negatif olursa portfolio'yu sil
+                if (portfolio.TotalQuantity <= 0)
+                {
+                    _context.Portfolios.Remove(portfolio);
+                    await _context.SaveChangesAsync();
+                    return;
+                }
+
+                // Average price yeniden hesapla (tüm işlemleri yeniden hesapla)
+                await RecalculatePortfolioAsync(portfolio);
+            }
+            else if (transaction.Type == TransactionType.SELL)
+            {
+                // SELL işlemini geri al: quantity'yi artır
+                portfolio.TotalQuantity += transaction.Quantity;
+
+                // Average price yeniden hesapla
+                await RecalculatePortfolioAsync(portfolio);
+            }
+
+            portfolio.LastUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task RecalculatePortfolioAsync(Portfolio portfolio)
+        {
+            // Bu asset için tüm BUY transaction'larını al ve average price'ı yeniden hesapla
+            var buyTransactions = await _context.Transactions
+                .Where(t => t.AssetId == portfolio.AssetId &&
+                           t.UserId == portfolio.UserId &&
+                           t.Type == TransactionType.BUY)
+                .ToListAsync();
+
+            if (buyTransactions.Any())
+            {
+                var totalCost = buyTransactions.Sum(t => t.Quantity * t.Price);
+                var totalQuantity = buyTransactions.Sum(t => t.Quantity);
+
+                portfolio.AveragePrice = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+            }
         }
     }
 }

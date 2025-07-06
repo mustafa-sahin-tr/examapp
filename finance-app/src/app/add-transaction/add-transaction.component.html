@@ -80,18 +80,22 @@
           <label for="transactionType">Transaction Type *</label>
           <div class="transaction-type-buttons">
             <label
+              *ngFor="let type of getFilteredTransactionTypes()"
               class="transaction-type-option"
-              [class.selected]="transactionForm.get('transactionType')?.value === TransactionType.BUY"
+              [class.selected]="transactionForm.get('transactionType')?.value === type.value"
             >
-              <input type="radio" [value]="TransactionType.BUY" formControlName="transactionType" />
-              <span class="button buy">📈 Buy</span>
-            </label>
-            <label
-              class="transaction-type-option"
-              [class.selected]="transactionForm.get('transactionType')?.value === TransactionType.SELL"
-            >
-              <input type="radio" [value]="TransactionType.SELL" formControlName="transactionType" />
-              <span class="button sell">📉 Sell</span>
+              <input type="radio" [value]="type.value" formControlName="transactionType" />
+              <span
+                class="button"
+                [class.buy]="
+                  type.value === TransactionType.BUY ||
+                  type.value === TransactionType.DEPOSIT_ADD ||
+                  type.value === TransactionType.DEPOSIT_INCOME
+                "
+                [class.sell]="type.value === TransactionType.SELL || type.value === TransactionType.DEPOSIT_WITHDRAW"
+              >
+                {{ type.label }}
+              </span>
             </label>
           </div>
         </div>

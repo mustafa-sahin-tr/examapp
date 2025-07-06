@@ -4,11 +4,15 @@ export enum AssetType {
   Gold = 2,
   Silver = 3,
   Fund = 4,
+  FixedDeposit = 5,
 }
 
 export enum TransactionType {
   BUY = 'BUY',
   SELL = 'SELL',
+  DEPOSIT_ADD = 'DEPOSIT_ADD',
+  DEPOSIT_WITHDRAW = 'DEPOSIT_WITHDRAW',
+  DEPOSIT_INCOME = 'DEPOSIT_INCOME',
 }
 
 export interface Asset {
@@ -38,12 +42,17 @@ export interface Transaction {
 export interface Portfolio {
   assetId: string;
   asset?: Asset;
+  assetSymbol: string;
+  assetName: string;
   totalQuantity: number;
+  quantity: number; // alias for totalQuantity
   averagePrice: number;
   currentValue: number;
   totalCost: number;
   profitLoss: number;
   profitLossPercentage: number;
+  currency: string;
+  lastUpdated: Date;
   transactions: Transaction[];
 }
 

@@ -179,18 +179,18 @@ namespace FinanceApi.Services
             }
 
             // Transaction tipine göre portfolio'yu güncelle
-            if (transaction.Type == TransactionType.BUY)
+            if (transaction.Type == TransactionType.BUY || transaction.Type == TransactionType.DEPOSIT_ADD)
             {
-                // BUY: Weighted average price hesapla
+                // BUY veya DEPOSIT_ADD: Weighted average price hesapla
                 var newTotalCost = (portfolio.TotalQuantity * portfolio.AveragePrice) + (transaction.Quantity * transaction.Price);
                 var newTotalQuantity = portfolio.TotalQuantity + transaction.Quantity;
 
                 portfolio.TotalQuantity = newTotalQuantity;
                 portfolio.AveragePrice = newTotalQuantity > 0 ? newTotalCost / newTotalQuantity : 0;
             }
-            else if (transaction.Type == TransactionType.SELL)
+            else if (transaction.Type == TransactionType.SELL || transaction.Type == TransactionType.DEPOSIT_WITHDRAW)
             {
-                // SELL: Sadece quantity'yi azalt, average price aynı kalır
+                // SELL veya DEPOSIT_WITHDRAW: Sadece quantity'yi azalt, average price aynı kalır
                 portfolio.TotalQuantity -= transaction.Quantity;
 
                 // Eğer tüm pozisyon satıldıysa portfolio kaydını sil
@@ -200,6 +200,11 @@ namespace FinanceApi.Services
                     await _context.SaveChangesAsync();
                     return;
                 }
+            }
+            else if (transaction.Type == TransactionType.DEPOSIT_INCOME)
+            {
+                // DEPOSIT_INCOME: Gelir olarak ekleme, average price değişmez
+                portfolio.TotalQuantity += transaction.Quantity;
             }
 
             portfolio.LastUpdated = DateTime.UtcNow;
@@ -215,9 +220,9 @@ namespace FinanceApi.Services
                 return;
 
             // Transaction tipine göre geri alma işlemi yap
-            if (transaction.Type == TransactionType.BUY)
+            if (transaction.Type == TransactionType.BUY || transaction.Type == TransactionType.DEPOSIT_ADD)
             {
-                // BUY işlemini geri al: quantity'yi azalt
+                // BUY veya DEPOSIT_ADD işlemini geri al: quantity'yi azalt
                 portfolio.TotalQuantity -= transaction.Quantity;
 
                 // Eğer quantity sıfır veya negatif olursa portfolio'yu sil
@@ -231,13 +236,25 @@ namespace FinanceApi.Services
                 // Average price yeniden hesapla (tüm işlemleri yeniden hesapla)
                 await RecalculatePortfolioAsync(portfolio);
             }
-            else if (transaction.Type == TransactionType.SELL)
+            else if (transaction.Type == TransactionType.SELL || transaction.Type == TransactionType.DEPOSIT_WITHDRAW)
             {
-                // SELL işlemini geri al: quantity'yi artır
+                // SELL veya DEPOSIT_WITHDRAW işlemini geri al: quantity'yi artır
                 portfolio.TotalQuantity += transaction.Quantity;
 
                 // Average price yeniden hesapla
                 await RecalculatePortfolioAsync(portfolio);
+            }
+            else if (transaction.Type == TransactionType.DEPOSIT_INCOME)
+            {
+                // DEPOSIT_INCOME işlemini geri al: quantity'yi azalt
+                portfolio.TotalQuantity -= transaction.Quantity;
+
+                if (portfolio.TotalQuantity <= 0)
+                {
+                    _context.Portfolios.Remove(portfolio);
+                    await _context.SaveChangesAsync();
+                    return;
+                }
             }
 
             portfolio.LastUpdated = DateTime.UtcNow;
@@ -246,11 +263,11 @@ namespace FinanceApi.Services
 
         private async Task RecalculatePortfolioAsync(Portfolio portfolio)
         {
-            // Bu asset için tüm BUY transaction'larını al ve average price'ı yeniden hesapla
+            // Bu asset için tüm BUY ve DEPOSIT_ADD transaction'larını al ve average price'ı yeniden hesapla
             var buyTransactions = await _context.Transactions
                 .Where(t => t.AssetId == portfolio.AssetId &&
                            t.UserId == portfolio.UserId &&
-                           t.Type == TransactionType.BUY)
+                           (t.Type == TransactionType.BUY || t.Type == TransactionType.DEPOSIT_ADD))
                 .ToListAsync();
 
             if (buyTransactions.Any())

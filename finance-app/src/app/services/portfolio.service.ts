@@ -62,13 +62,18 @@ export class PortfolioService {
           if (!portfolioMap.has(transaction.assetId)) {
             portfolioMap.set(transaction.assetId, {
               assetId: transaction.assetId,
+              assetSymbol: asset.symbol,
+              assetName: asset.name,
               asset: asset,
               totalQuantity: 0,
+              quantity: 0,
               averagePrice: 0,
               currentValue: 0,
               totalCost: 0,
               profitLoss: 0,
               profitLossPercentage: 0,
+              currency: asset.currency,
+              lastUpdated: new Date(),
               transactions: [],
             });
           }
@@ -77,17 +82,30 @@ export class PortfolioService {
           portfolio.transactions.push(transaction);
 
           // Calculate portfolio metrics
-          if (transaction.type === TransactionType.BUY) {
+          if (
+            transaction.type === TransactionType.BUY ||
+            transaction.type === TransactionType.DEPOSIT_ADD ||
+            transaction.type === TransactionType.DEPOSIT_INCOME
+          ) {
             const totalCostBefore = portfolio.totalCost;
             const totalQuantityBefore = portfolio.totalQuantity;
 
             portfolio.totalQuantity += transaction.quantity;
-            portfolio.totalCost += transaction.price * transaction.quantity + (transaction.fees || 0);
+
+            // Faiz geliri için cost'a eklemeyelim
+            if (transaction.type !== TransactionType.DEPOSIT_INCOME) {
+              portfolio.totalCost += transaction.price * transaction.quantity + (transaction.fees || 0);
+            }
 
             // Recalculate average price
-            portfolio.averagePrice = portfolio.totalCost / portfolio.totalQuantity;
-          } else {
-            // SELL
+            if (portfolio.totalCost > 0) {
+              portfolio.averagePrice = portfolio.totalCost / portfolio.totalQuantity;
+            }
+          } else if (
+            transaction.type === TransactionType.SELL ||
+            transaction.type === TransactionType.DEPOSIT_WITHDRAW
+          ) {
+            // SELL veya DEPOSIT_WITHDRAW
             portfolio.totalQuantity -= transaction.quantity;
             // For sells, we don't adjust total cost as it represents what we paid
           }
@@ -101,6 +119,7 @@ export class PortfolioService {
           portfolio.profitLoss = portfolio.currentValue - portfolio.averagePrice * portfolio.totalQuantity;
           portfolio.profitLossPercentage =
             (portfolio.currentValue / (portfolio.averagePrice * portfolio.totalQuantity) - 1) * 100;
+          portfolio.quantity = portfolio.totalQuantity; // quantity ile totalQuantity aynı olsun
         });
 
         return portfolios;

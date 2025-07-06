@@ -39,6 +39,7 @@ export class DashboardComponent implements OnInit {
       [AssetType.Gold]: 'Gold',
       [AssetType.Silver]: 'Silver',
       [AssetType.Fund]: 'Funds',
+      [AssetType.FixedDeposit]: 'Vadeli Mevduat',
     };
     return displayNames[type];
   }
@@ -50,6 +51,7 @@ export class DashboardComponent implements OnInit {
       [AssetType.Gold]: '/precious-metals',
       [AssetType.Silver]: '/precious-metals',
       [AssetType.Fund]: '/funds',
+      [AssetType.FixedDeposit]: '/fixed-deposits', // Vadeli mevduat için yeni route
     };
     return routes[type];
   }

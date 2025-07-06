@@ -23,6 +23,7 @@ export class AddAssetComponent implements OnInit {
     { value: AssetType.Gold, label: 'Gold' },
     { value: AssetType.Silver, label: 'Silver' },
     { value: AssetType.Fund, label: 'Fund' },
+    { value: AssetType.FixedDeposit, label: 'Vadeli Mevduat' },
   ];
 
   currencies = [

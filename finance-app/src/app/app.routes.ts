@@ -17,7 +17,8 @@ export const routes: Routes = [
   { path: 'us-stocks', component: UsStocksComponent },
   { path: 'precious-metals', component: PreciousMetalsComponent },
   { path: 'funds', component: FundsComponent },
-  { path: 'futures', component: FuturesComponent },
+  { path: 'fixed-deposits', component: FuturesComponent }, // Vadeli mevduat için futures component'ini kullan
+  { path: 'futures', component: FuturesComponent }, // Backward compatibility
   { path: 'add-transaction', component: AddTransactionComponent },
   { path: 'add-asset', component: AddAssetComponent },
   { path: 'home', component: HomeComponent },

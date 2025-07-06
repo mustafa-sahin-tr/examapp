@@ -1,5 +1,105 @@
-<!-- Futures functionality removed -->
-<div class="container mx-auto p-6">
-  <h2 class="text-2xl font-bold text-gray-800 mb-6">Futures</h2>
-  <p class="text-gray-600">Futures functionality will be implemented in future versions.</p>
+<div class="fixed-deposits-container">
+  <div class="header">
+    <h2>💰 Vadeli Mevduat Portföyü</h2>
+    <a href="/add-transaction" class="add-transaction-btn">
+      <span class="icon">➕</span>
+      Transaction Ekle
+    </a>
+  </div>
+
+  <div class="portfolio-content">
+    <div class="portfolio-summary" *ngIf="fixedDeposits$ | async as deposits">
+      <div class="summary-card">
+        <h3>Toplam Vadeli Mevduat</h3>
+        <div class="summary-stats">
+          <div class="stat">
+            <span class="label">Toplam Değer:</span>
+            <span class="value">{{ getTotalValue(deposits) | currency : 'TRY' : 'symbol' : '1.2-2' }}</span>
+          </div>
+          <div class="stat">
+            <span class="label">Toplam Kar/Zarar:</span>
+            <span
+              class="value"
+              [class.positive]="getTotalPL(deposits) >= 0"
+              [class.negative]="getTotalPL(deposits) < 0"
+            >
+              {{ formatCurrency(getTotalPL(deposits)) }}
+            </span>
+          </div>
+          <div class="stat">
+            <span class="label">Toplam Getiri:</span>
+            <span
+              class="value"
+              [class.positive]="getTotalPLPercentage(deposits) >= 0"
+              [class.negative]="getTotalPLPercentage(deposits) < 0"
+            >
+              {{ formatPercentage(getTotalPLPercentage(deposits)) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="portfolio-table" *ngIf="fixedDeposits$ | async as deposits">
+      <div class="table-header">
+        <h3>Vadeli Mevduat Detayları</h3>
+      </div>
+
+      <div class="table-wrapper" *ngIf="deposits.length > 0; else noDeposits">
+        <table class="portfolio-table-content">
+          <thead>
+            <tr>
+              <th>Mevduat</th>
+              <th>Miktar</th>
+              <th>Ortalama Fiyat</th>
+              <th>Güncel Değer</th>
+              <th>Toplam Maliyet</th>
+              <th>Kar/Zarar</th>
+              <th>Getiri %</th>
+              <th>Son Güncelleme</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let deposit of deposits" class="portfolio-row">
+              <td class="asset-info">
+                <div class="asset-name">{{ deposit.assetSymbol }}</div>
+                <div class="asset-type">{{ deposit.assetName }}</div>
+              </td>
+              <td class="quantity">{{ deposit.totalQuantity | number : '1.2-2' }}</td>
+              <td class="price">{{ formatCurrency(deposit.averagePrice, deposit.currency) }}</td>
+              <td class="current-value">{{ formatCurrency(deposit.currentValue, deposit.currency) }}</td>
+              <td class="total-cost">{{ formatCurrency(deposit.totalCost, deposit.currency) }}</td>
+              <td
+                class="profit-loss"
+                [class.positive]="deposit.profitLoss >= 0"
+                [class.negative]="deposit.profitLoss < 0"
+              >
+                {{ formatCurrency(deposit.profitLoss, deposit.currency) }}
+              </td>
+              <td
+                class="profit-percentage"
+                [class.positive]="deposit.profitLossPercentage >= 0"
+                [class.negative]="deposit.profitLossPercentage < 0"
+              >
+                {{ formatPercentage(deposit.profitLossPercentage) }}
+              </td>
+              <td class="last-updated">{{ deposit.lastUpdated | date : 'short' : 'tr-TR' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #noDeposits>
+        <div class="no-data">
+          <div class="no-data-icon">💰</div>
+          <h3>Henüz vadeli mevduat bulunmuyor</h3>
+          <p>Vadeli mevduat işlemlerinizi takip etmek için transaction ekleyin.</p>
+          <a href="/add-transaction" class="add-transaction-btn">
+            <span class="icon">➕</span>
+            İlk Transaction'ı Ekle
+          </a>
+        </div>
+      </ng-template>
+    </div>
+  </div>
 </div>

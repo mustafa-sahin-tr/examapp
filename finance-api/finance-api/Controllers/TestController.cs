@@ -71,6 +71,26 @@ namespace FinanceApi.Controllers
                         CurrentPrice = 0.125896m,
                         Currency = "TRY",
                         LastUpdated = DateTime.UtcNow
+                    },
+                    new Asset
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Symbol = "TRY",
+                        Name = "Türk Lirası Vadeli Mevduat",
+                        Type = AssetType.FixedDeposit,
+                        CurrentPrice = 1.00m,
+                        Currency = "TRY",
+                        LastUpdated = DateTime.UtcNow
+                    },
+                    new Asset
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Symbol = "USD",
+                        Name = "Dolar Vadeli Mevduat",
+                        Type = AssetType.FixedDeposit,
+                        CurrentPrice = 1.00m,
+                        Currency = "USD",
+                        LastUpdated = DateTime.UtcNow
                     }
                 };
 

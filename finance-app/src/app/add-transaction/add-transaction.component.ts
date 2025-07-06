@@ -27,11 +27,15 @@ export class AddTransactionComponent implements OnInit {
     { value: AssetType.Gold, label: 'Gold' },
     { value: AssetType.Silver, label: 'Silver' },
     { value: AssetType.Fund, label: 'Funds' },
+    { value: AssetType.FixedDeposit, label: 'Vadeli Mevduat' },
   ];
 
   transactionTypes = [
     { value: TransactionType.BUY, label: 'Buy' },
     { value: TransactionType.SELL, label: 'Sell' },
+    { value: TransactionType.DEPOSIT_ADD, label: 'Para Ekle' },
+    { value: TransactionType.DEPOSIT_WITHDRAW, label: 'Para Çıkar' },
+    { value: TransactionType.DEPOSIT_INCOME, label: 'Faiz Geliri' },
   ];
 
   constructor(
@@ -87,7 +91,7 @@ export class AddTransactionComponent implements OnInit {
         }
 
         // Clear asset selection when type changes
-        this.transactionForm.patchValue({ assetId: '' });
+        this.transactionForm.patchValue({ assetId: '', transactionType: '' });
       });
     });
 
@@ -168,5 +172,24 @@ export class AddTransactionComponent implements OnInit {
   isBistTransaction(): boolean {
     const assetType = parseInt(this.transactionForm.get('assetType')?.value);
     return assetType === AssetType.Stock;
+  }
+
+  getFilteredTransactionTypes(): any[] {
+    const assetType = parseInt(this.transactionForm.get('assetType')?.value);
+
+    if (assetType === AssetType.FixedDeposit) {
+      // Vadeli mevduat için özel transaction tipleri
+      return [
+        { value: TransactionType.DEPOSIT_ADD, label: 'Para Ekle' },
+        { value: TransactionType.DEPOSIT_WITHDRAW, label: 'Para Çıkar' },
+        { value: TransactionType.DEPOSIT_INCOME, label: 'Faiz Geliri' },
+      ];
+    } else {
+      // Diğer asset'ler için normal transaction tipleri
+      return [
+        { value: TransactionType.BUY, label: 'Buy' },
+        { value: TransactionType.SELL, label: 'Sell' },
+      ];
+    }
   }
 }

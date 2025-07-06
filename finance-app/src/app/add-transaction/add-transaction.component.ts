@@ -90,6 +90,19 @@ export class AddTransactionComponent implements OnInit {
         this.transactionForm.patchValue({ assetId: '' });
       });
     });
+
+    // Auto-calculate fees for BIST transactions
+    this.transactionForm.get('quantity')?.valueChanges.subscribe(() => {
+      this.calculateBistFees();
+    });
+
+    this.transactionForm.get('price')?.valueChanges.subscribe(() => {
+      this.calculateBistFees();
+    });
+
+    this.transactionForm.get('assetType')?.valueChanges.subscribe(() => {
+      this.calculateBistFees();
+    });
   }
 
   onSubmit(): void {
@@ -132,5 +145,28 @@ export class AddTransactionComponent implements OnInit {
     const price = parseFloat(this.transactionForm.get('price')?.value) || 0;
     const fees = parseFloat(this.transactionForm.get('fees')?.value) || 0;
     return quantity * price + fees;
+  }
+
+  private calculateBistFees(): void {
+    const assetType = parseInt(this.transactionForm.get('assetType')?.value);
+    const quantity = parseFloat(this.transactionForm.get('quantity')?.value) || 0;
+    const price = parseFloat(this.transactionForm.get('price')?.value) || 0;
+
+    // BIST için otomatik fee hesaplama (on binde dört = %0.04)
+    if (assetType === AssetType.Stock && quantity > 0 && price > 0) {
+      const transactionAmount = quantity * price;
+      const bistFee = transactionAmount * 0.0004; // %0.04 = 0.0004
+
+      // Fees input'unu güncelle
+      this.transactionForm.patchValue({ fees: bistFee.toFixed(2) }, { emitEvent: false });
+    } else if (assetType !== AssetType.Stock) {
+      // BIST değilse fee'yi sıfırla
+      this.transactionForm.patchValue({ fees: 0 }, { emitEvent: false });
+    }
+  }
+
+  isBistTransaction(): boolean {
+    const assetType = parseInt(this.transactionForm.get('assetType')?.value);
+    return assetType === AssetType.Stock;
   }
 }

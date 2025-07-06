@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using FinanceApi.Data;
 using FinanceApi.Services;
+using FinanceApi.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,7 +53,13 @@ builder.Services.AddHttpClient<YahooFinanceService>(client =>
 // HttpClient for Web Scraping
 builder.Services.AddHttpClient<WebScrapingService>();
 
-// CORS
+// SignalR
+builder.Services.AddSignalR();
+
+// Background Service
+builder.Services.AddHostedService<PriceUpdateBackgroundService>();
+
+// CORS - SignalR için güncellendi
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -60,6 +67,14 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
+    });
+
+    options.AddPolicy("SignalRCors", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200","http://localhost:5678", "http://localhost:3000")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -76,9 +91,10 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseCors("AllowAll");
+app.UseCors("SignalRCors");
 app.UseRouting();
 app.MapControllers();
+app.MapHub<PriceUpdateHub>("/priceUpdateHub");
 
 // Database migration and seeding
 using (var scope = app.Services.CreateScope())

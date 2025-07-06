@@ -50,7 +50,7 @@ namespace FinanceApi.Controllers
                 var request = new AssetPriceRequestDto
                 {
                     Type = assetType,
-                    Code = code.ToUpper()
+                    Symbol = code.ToUpper()
                 };
 
                 var result = await _webScrapingService.GetSingleAssetPriceAsync(request);
@@ -76,11 +76,11 @@ namespace FinanceApi.Controllers
             {
                 var sampleRequests = new List<AssetPriceRequestDto>
                 {
-                    new() { Type = Models.AssetType.Stock, Code = "AKBNK" },
-                    new() { Type = Models.AssetType.Stock, Code = "TUPRS" },
-                    new() { Type = Models.AssetType.USStock, Code = "AAPL" },
-                    new() { Type = Models.AssetType.Fund, Code = "YHS" },
-                    new() { Type = Models.AssetType.Gold, Code = "GLD" }
+                    new() { Type = Models.AssetType.Stock, Symbol = "AKBNK" },
+                    new() { Type = Models.AssetType.Stock, Symbol = "TUPRS" },
+                    new() { Type = Models.AssetType.USStock, Symbol = "AAPL" },
+                    new() { Type = Models.AssetType.Fund, Symbol = "YHS" },
+                    new() { Type = Models.AssetType.Gold, Symbol = "GLD" }
                 };
 
                 var results = await _webScrapingService.GetAssetPricesAsync(sampleRequests);

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { Observable, BehaviorSubject, interval, switchMap, catchError, of, map } from 'rxjs';
+import { Observable, BehaviorSubject, catchError, of, map } from 'rxjs';
 import { Asset, AssetType } from '../models/asset.model';
 import { ApiService } from './api.service';
+import { SignalRService, PriceUpdate } from './signalr.service';
 
 @Injectable({
   providedIn: 'root',
@@ -10,9 +11,9 @@ export class AssetService {
   private assetsSubject = new BehaviorSubject<Asset[]>([]);
   public assets$ = this.assetsSubject.asObservable();
 
-  constructor(private apiService: ApiService) {
+  constructor(private apiService: ApiService, private signalRService: SignalRService) {
     this.loadAssets();
-    this.startPriceUpdates();
+    this.setupPriceUpdates();
   }
 
   private loadAssets(): void {
@@ -25,6 +26,37 @@ export class AssetService {
         this.assetsSubject.next([]);
       },
     });
+  }
+
+  private setupPriceUpdates(): void {
+    this.signalRService.priceUpdates$.subscribe((priceUpdates: PriceUpdate[]) => {
+      if (priceUpdates.length > 0) {
+        this.updateAssetPrices(priceUpdates);
+      }
+    });
+  }
+
+  private updateAssetPrices(priceUpdates: PriceUpdate[]): void {
+    const currentAssets = this.assetsSubject.value;
+    const updatedAssets = currentAssets.map((asset) => {
+      const priceUpdate = priceUpdates.find(
+        (update) => update.assetId === asset.id || (update.type === asset.type && update.symbol === asset.symbol)
+      );
+
+      if (priceUpdate) {
+        return {
+          ...asset,
+          currentPrice: priceUpdate.currentPrice,
+          changeValue: priceUpdate.change,
+          changePercentage: priceUpdate.changePercent,
+          lastUpdated: new Date(priceUpdate.lastUpdated),
+        };
+      }
+
+      return asset;
+    });
+
+    this.assetsSubject.next(updatedAssets);
   }
 
   private getAssetsFromApi(): Observable<Asset[]> {
@@ -50,25 +82,21 @@ export class AssetService {
   }
 
   getBist100Assets(): Observable<Asset[]> {
-    return this.getAssetsByType(AssetType.BIST100);
+    return this.getAssetsByType(AssetType.Stock);
   }
 
   getUsStocks(): Observable<Asset[]> {
-    return this.getAssetsByType(AssetType.US_STOCK);
+    return this.getAssetsByType(AssetType.USStock);
   }
 
   getPreciousMetals(): Observable<Asset[]> {
     return this.assets$.pipe(
-      map((assets) => assets.filter((asset) => asset.type === AssetType.GOLD || asset.type === AssetType.SILVER))
+      map((assets) => assets.filter((asset) => asset.type === AssetType.Gold || asset.type === AssetType.Silver))
     );
   }
 
   getFunds(): Observable<Asset[]> {
-    return this.getAssetsByType(AssetType.FUND);
-  }
-
-  getFutures(): Observable<Asset[]> {
-    return this.getAssetsByType(AssetType.FUTURES);
+    return this.getAssetsByType(AssetType.Fund);
   }
 
   getAllAssets(): Observable<Asset[]> {
@@ -89,22 +117,6 @@ export class AssetService {
 
   simulatePriceUpdates(): Observable<any> {
     return this.apiService.post('/assets/simulate-price-updates', {});
-  }
-
-  private startPriceUpdates(): void {
-    // Her 30 saniyede bir fiyat güncellemesi simüle et
-    interval(30000)
-      .pipe(
-        switchMap(() => this.simulatePriceUpdates()),
-        switchMap(() => this.getAssetsFromApi()),
-        catchError((error) => {
-          console.error('Error in price updates:', error);
-          return of([]);
-        })
-      )
-      .subscribe((assets) => {
-        this.assetsSubject.next(assets);
-      });
   }
 
   refreshAssets(): void {

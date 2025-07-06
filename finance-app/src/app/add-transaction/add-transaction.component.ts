@@ -22,12 +22,11 @@ export class AddTransactionComponent implements OnInit {
   TransactionType = TransactionType;
 
   assetTypes = [
-    { value: AssetType.BIST100, label: 'BIST 100' },
-    { value: AssetType.US_STOCK, label: 'US Stocks' },
-    { value: AssetType.GOLD, label: 'Gold' },
-    { value: AssetType.SILVER, label: 'Silver' },
-    { value: AssetType.FUND, label: 'Funds' },
-    { value: AssetType.FUTURES, label: 'Futures' },
+    { value: AssetType.Stock, label: 'BIST 100' },
+    { value: AssetType.USStock, label: 'US Stocks' },
+    { value: AssetType.Gold, label: 'Gold' },
+    { value: AssetType.Silver, label: 'Silver' },
+    { value: AssetType.Fund, label: 'Funds' },
   ];
 
   transactionTypes = [

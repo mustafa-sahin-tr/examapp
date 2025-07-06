@@ -30,12 +30,23 @@
       "UpstreamPathTemplate": "/api/auth/{everything}"      
     },
     {
+      "DownstreamPathTemplate": "/priceUpdateHub/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "finance-api", "Port": 8005 }
+      ],
+      "UpstreamPathTemplate": "/api/finance/priceUpdateHub/{everything}",
+      "UseWebSockets": true,
+      "Priority": 1
+    },
+    {
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         { "Host": "finance-api", "Port": 8005 }
       ],
-      "UpstreamPathTemplate": "/api/finance/{everything}"
+      "UpstreamPathTemplate": "/api/finance/{everything}",
+      "Priority": 0
     },
     {
       "DownstreamPathTemplate": "/api/{everything}",

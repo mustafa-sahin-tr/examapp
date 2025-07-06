@@ -34,24 +34,22 @@ export class DashboardComponent implements OnInit {
 
   getAssetTypeDisplayName(type: AssetType): string {
     const displayNames = {
-      [AssetType.BIST100]: 'BIST 100',
-      [AssetType.US_STOCK]: 'US Stocks',
-      [AssetType.GOLD]: 'Gold',
-      [AssetType.SILVER]: 'Silver',
-      [AssetType.FUND]: 'Funds',
-      [AssetType.FUTURES]: 'Futures',
+      [AssetType.Stock]: 'BIST 100',
+      [AssetType.USStock]: 'US Stocks',
+      [AssetType.Gold]: 'Gold',
+      [AssetType.Silver]: 'Silver',
+      [AssetType.Fund]: 'Funds',
     };
     return displayNames[type];
   }
 
   getAssetTypeRoute(type: AssetType): string {
     const routes = {
-      [AssetType.BIST100]: '/bist100',
-      [AssetType.US_STOCK]: '/us-stocks',
-      [AssetType.GOLD]: '/precious-metals',
-      [AssetType.SILVER]: '/precious-metals',
-      [AssetType.FUND]: '/funds',
-      [AssetType.FUTURES]: '/futures',
+      [AssetType.Stock]: '/bist100',
+      [AssetType.USStock]: '/us-stocks',
+      [AssetType.Gold]: '/precious-metals',
+      [AssetType.Silver]: '/precious-metals',
+      [AssetType.Fund]: '/funds',
     };
     return routes[type];
   }

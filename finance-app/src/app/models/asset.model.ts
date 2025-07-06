@@ -1,10 +1,9 @@
 export enum AssetType {
-  BIST100 = 0, // Stock
-  US_STOCK = 1, // USStock
-  GOLD = 2, // Gold
-  SILVER = 3, // Silver
-  FUND = 4, // Fund
-  FUTURES = 5, // Futures (backend'de yoksa eklenebilir)
+  Stock = 0,
+  USStock = 1,
+  Gold = 2,
+  Silver = 3,
+  Fund = 4,
 }
 
 export enum TransactionType {

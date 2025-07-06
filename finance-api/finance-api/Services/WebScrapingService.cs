@@ -40,11 +40,11 @@ namespace FinanceApi.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error scraping price for {Type}:{Code}", request.Type, request.Code);
+                    _logger.LogError(ex, "Error scraping price for {Type}:{Symbol}", request.Type, request.Symbol);
                     results.Add(new AssetPriceResponseDto
                     {
                         Type = request.Type,
-                        Code = request.Code,
+                        Symbol = request.Symbol,
                         IsSuccess = false,
                         ErrorMessage = ex.Message
                     });
@@ -61,25 +61,25 @@ namespace FinanceApi.Services
         {
             return request.Type switch
             {
-                AssetType.Stock => await ScrapeGoogleFinanceStock(request.Code, "IST"),
-                AssetType.USStock => await ScrapeGoogleFinanceStock(request.Code, "NASDAQ"),
-                AssetType.Gold => await ScrapeGoogleFinanceGold(request.Code),
-                AssetType.Fund => await ScrapeTefasFund(request.Code),
+                AssetType.Stock => await ScrapeGoogleFinanceStock(request.Symbol, "IST"),
+                AssetType.USStock => await ScrapeGoogleFinanceStock(request.Symbol, "NASDAQ"),
+                AssetType.Gold => await ScrapeGoogleFinanceGold(request.Symbol),
+                AssetType.Fund => await ScrapeTefasFund(request.Symbol),
                 _ => new AssetPriceResponseDto
                 {
                     Type = request.Type,
-                    Code = request.Code,
+                    Symbol = request.Symbol,
                     IsSuccess = false,
                     ErrorMessage = "Unsupported asset type"
                 }
             };
         }
 
-        private async Task<AssetPriceResponseDto> ScrapeGoogleFinanceStock(string code, string exchange)
+        private async Task<AssetPriceResponseDto> ScrapeGoogleFinanceStock(string symbol, string exchange)
         {
             try
             {
-                var url = $"https://www.google.com/finance/quote/{code}:{exchange}";
+                var url = $"https://www.google.com/finance/quote/{symbol}:{exchange}";
                 var response = await _httpClient.GetStringAsync(url);
 
                 var doc = new HtmlDocument();
@@ -104,7 +104,7 @@ namespace FinanceApi.Services
                         return new AssetPriceResponseDto
                         {
                             Type = exchange == "IST" ? AssetType.Stock : AssetType.USStock,
-                            Code = code,
+                            Symbol = symbol,
                             Price = price,
                             Unit = currency,
                             LastUpdated = DateTime.UtcNow,
@@ -116,39 +116,39 @@ namespace FinanceApi.Services
                 return new AssetPriceResponseDto
                 {
                     Type = exchange == "IST" ? AssetType.Stock : AssetType.USStock,
-                    Code = code,
+                    Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = "Could not parse price from Google Finance"
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error scraping Google Finance for {Code}:{Exchange}", code, exchange);
+                _logger.LogError(ex, "Error scraping Google Finance for {Symbol}:{Exchange}", symbol, exchange);
                 return new AssetPriceResponseDto
                 {
                     Type = exchange == "IST" ? AssetType.Stock : AssetType.USStock,
-                    Code = code,
+                    Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = ex.Message
                 };
             }
         }
 
-        private async Task<AssetPriceResponseDto> ScrapeGoogleFinanceGold(string code)
+        private async Task<AssetPriceResponseDto> ScrapeGoogleFinanceGold(string symbol)
         {
             try
             {
                 // Altın için Google Finance URL'i - COMEX:GCW00 formatında
                 string url;
-                if (code.Contains(":"))
+                if (symbol.Contains(":"))
                 {
                     // Zaten exchange:symbol formatında ise direkt kullan
-                    url = $"https://www.google.com/finance/quote/{code}";
+                    url = $"https://www.google.com/finance/quote/{symbol}";
                 }
                 else
                 {
                     // Sadece symbol verilmişse COMEX exchange'i ekle
-                    url = $"https://www.google.com/finance/quote/{code}:COMEX";
+                    url = $"https://www.google.com/finance/quote/{symbol}:COMEX";
                 }
 
                 var response = await _httpClient.GetStringAsync(url);
@@ -169,7 +169,7 @@ namespace FinanceApi.Services
                         return new AssetPriceResponseDto
                         {
                             Type = AssetType.Gold,
-                            Code = code,
+                            Symbol = symbol,
                             Price = price,
                             Unit = "USD", // COMEX altın fiyatları USD/oz cinsindendir
                             LastUpdated = DateTime.UtcNow,
@@ -181,25 +181,25 @@ namespace FinanceApi.Services
                 return new AssetPriceResponseDto
                 {
                     Type = AssetType.Gold,
-                    Code = code,
+                    Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = "Could not parse gold price from Google Finance"
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error scraping gold price for {Code}", code);
+                _logger.LogError(ex, "Error scraping gold price for {Symbol}", symbol);
                 return new AssetPriceResponseDto
                 {
                     Type = AssetType.Gold,
-                    Code = code,
+                    Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = ex.Message
                 };
             }
         }
 
-        private async Task<AssetPriceResponseDto> ScrapeTefasFund(string code)
+        private async Task<AssetPriceResponseDto> ScrapeTefasFund(string symbol)
         {
             try
             {
@@ -241,7 +241,7 @@ namespace FinanceApi.Services
                         if (attempt == 0)
                         {
                             // İlk deneme: Direkt fon sayfasına git
-                            var fundUrl = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={code}";
+                            var fundUrl = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={symbol}";
                             response = await tefasClient.GetStringAsync(fundUrl);
                         }
                         else if (attempt == 1)
@@ -254,13 +254,13 @@ namespace FinanceApi.Services
                             tefasClient.DefaultRequestHeaders.Remove("Referer");
                             tefasClient.DefaultRequestHeaders.Add("Referer", mainPageUrl);
 
-                            var fundUrl = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={code}";
+                            var fundUrl = $"https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod={symbol}";
                             response = await tefasClient.GetStringAsync(fundUrl);
                         }
                         else
                         {
                             // Üçüncü deneme: Alternatif endpoint
-                            var alternateUrl = $"https://www.tefas.gov.tr/FonKarsilastirma.aspx?FonKod={code}";
+                            var alternateUrl = $"https://www.tefas.gov.tr/FonKarsilastirma.aspx?FonKod={symbol}";
                             response = await tefasClient.GetStringAsync(alternateUrl);
                         }
 
@@ -269,14 +269,14 @@ namespace FinanceApi.Services
                         doc.LoadHtml(response);
 
                         // TEFAS'ta fon fiyatı için gelişmiş selector'lar
-                        decimal? price = await ExtractTefasPrice(doc, code);
+                        decimal? price = await ExtractTefasPrice(doc, symbol);
 
                         if (price.HasValue)
                         {
                             return new AssetPriceResponseDto
                             {
                                 Type = AssetType.Fund,
-                                Code = code,
+                                Symbol = symbol,
                                 Price = price.Value,
                                 Unit = "TRY",
                                 LastUpdated = DateTime.UtcNow,
@@ -284,7 +284,7 @@ namespace FinanceApi.Services
                             };
                         }
 
-                        _logger.LogWarning("Attempt {Attempt} failed for TEFAS fund {Code}. Retrying...", attempt + 1, code);
+                        _logger.LogWarning("Attempt {Attempt} failed for TEFAS fund {Symbol}. Retrying...", attempt + 1, symbol);
 
                         // Sonraki deneme için bekleme
                         if (attempt < maxRetries - 1)
@@ -294,8 +294,8 @@ namespace FinanceApi.Services
                     }
                     catch (HttpRequestException httpEx)
                     {
-                        _logger.LogWarning("HTTP error on attempt {Attempt} for TEFAS fund {Code}: {Message}",
-                            attempt + 1, code, httpEx.Message);
+                        _logger.LogWarning("HTTP error on attempt {Attempt} for TEFAS fund {Symbol}: {Message}",
+                            attempt + 1, symbol, httpEx.Message);
 
                         if (attempt == maxRetries - 1)
                         {
@@ -310,25 +310,25 @@ namespace FinanceApi.Services
                 return new AssetPriceResponseDto
                 {
                     Type = AssetType.Fund,
-                    Code = code,
+                    Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = "Could not retrieve fund price from TEFAS after multiple attempts"
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error scraping TEFAS for fund {Code}", code);
+                _logger.LogError(ex, "Error scraping TEFAS for fund {Symbol}", symbol);
                 return new AssetPriceResponseDto
                 {
                     Type = AssetType.Fund,
-                    Code = code,
+                    Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = ex.Message
                 };
             }
         }
 
-        private async Task<decimal?> ExtractTefasPrice(HtmlDocument doc, string code)
+        private async Task<decimal?> ExtractTefasPrice(HtmlDocument doc, string symbol)
         {
             // Çoklu extraction stratejileri
             var extractionStrategies = new List<Func<HtmlDocument, decimal?>>
@@ -451,13 +451,13 @@ namespace FinanceApi.Services
                     var price = strategy(doc);
                     if (price.HasValue)
                     {
-                        _logger.LogDebug("Successfully extracted price {Price} for fund {Code}", price.Value, code);
+                        _logger.LogDebug("Successfully extracted price {Price} for fund {Symbol}", price.Value, symbol);
                         return price;
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Extraction strategy failed for fund {Code}", code);
+                    _logger.LogDebug(ex, "Extraction strategy failed for fund {Symbol}", symbol);
                 }
             }
 

@@ -30,10 +30,23 @@ builder.Services.AddAuthentication()
         };
     });
 
+// CORS desteği SignalR için
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SignalRCors", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200", "http://localhost:4201", "http://localhost:3000")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddOcelot();
 
 var app = builder.Build();
 
+app.UseCors("SignalRCors");
 app.UseAuthentication();
 app.UseAuthorization();
 

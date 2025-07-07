@@ -29,6 +29,13 @@ export class TransactionService {
 
   private getTransactionsFromApi(): Observable<Transaction[]> {
     return this.apiService.get<Transaction[]>('/transactions').pipe(
+      map((transactions: any[]) => {
+        // Convert date strings to Date objects
+        return transactions.map((t) => ({
+          ...t,
+          date: new Date(t.date),
+        }));
+      }),
       catchError((error) => {
         console.error('Transaction API call failed:', error);
         return of([]);
@@ -37,6 +44,8 @@ export class TransactionService {
   }
 
   getTransactions(): Observable<Transaction[]> {
+    console.log('🔍 TransactionService.getTransactions() called');
+    console.log('📊 Current transactions count:', this.transactionsSubject.value.length);
     return this.transactions$;
   }
 

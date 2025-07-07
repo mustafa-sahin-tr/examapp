@@ -21,8 +21,8 @@ services:
   angular-app:
     command: sh -c "yarn install && yarn start"
 
-  finance-ui:
-    command: sh -c "npm install && npm start"
+  # finance-ui:
+  #   command: sh -c "npm install && npm start"
 
   auth-ui:
     command: sh -c "yarn install && yarn start"

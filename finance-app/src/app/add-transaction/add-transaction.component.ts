@@ -6,6 +6,7 @@ import { Observable, Subject, takeUntil, distinctUntilChanged, map } from 'rxjs'
 import { Asset, AssetType, TransactionType } from '../models/asset.model';
 import { AssetService } from '../services/asset.service';
 import { TransactionService } from '../services/transaction.service';
+import { TransactionExportService } from '../services/transaction-export.service';
 
 @Component({
   selector: 'app-add-transaction',
@@ -18,6 +19,7 @@ export class AddTransactionComponent implements OnInit, OnDestroy {
   assets$!: Observable<Asset[]>;
   filteredAssets: Asset[] = [];
   allAssets: Asset[] = [];
+  importResults: { success: number; errors: string[] } | null = null;
 
   private destroy$ = new Subject<void>();
 
@@ -45,6 +47,7 @@ export class AddTransactionComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private assetService: AssetService,
     private transactionService: TransactionService,
+    private transactionExportService: TransactionExportService,
     private router: Router
   ) {}
 
@@ -220,5 +223,56 @@ export class AddTransactionComponent implements OnInit, OnDestroy {
         { value: TransactionType.SELL, label: 'Sell' },
       ];
     }
+  }
+
+  // Export/Import Methods
+  exportTransactions(): void {
+    this.transactionExportService.exportTransactionsToExcel().subscribe({
+      next: () => {
+        console.log('Transactions exported successfully');
+      },
+      error: (error) => {
+        console.error('Export failed:', error);
+        alert('Export failed: ' + error);
+      },
+    });
+  }
+
+  downloadTemplate(): void {
+    this.transactionExportService.downloadTemplate().catch((error) => {
+      console.error('Template download failed:', error);
+      alert('Template download failed: ' + error);
+    });
+  }
+
+  onFileSelected(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (file) {
+      this.importTransactions(file);
+    }
+  }
+
+  importTransactions(file: File): void {
+    this.importResults = null;
+
+    this.transactionExportService.importTransactionsFromExcel(file).subscribe({
+      next: (results) => {
+        this.importResults = results;
+        console.log('Import completed:', results);
+
+        // Refresh the page data if there were successful imports
+        if (results.success > 0) {
+          // Refresh assets and transactions
+          this.assetService.refreshAssets();
+          // You might want to navigate to dashboard or refresh current view
+        }
+      },
+      error: (error) => {
+        console.error('Import failed:', error);
+        this.importResults = { success: 0, errors: [error.toString()] };
+      },
+    });
   }
 }

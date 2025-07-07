@@ -61,6 +61,13 @@ export class AssetService {
 
   private getAssetsFromApi(): Observable<Asset[]> {
     return this.apiService.get<Asset[]>('/assets').pipe(
+      map((assets: any[]) => {
+        // Convert date strings to Date objects
+        return assets.map((a) => ({
+          ...a,
+          lastUpdated: new Date(a.lastUpdated),
+        }));
+      }),
       catchError((error) => {
         console.error('API call failed:', error);
         return of([]);
@@ -69,6 +76,8 @@ export class AssetService {
   }
 
   getAssets(): Observable<Asset[]> {
+    console.log('🔍 AssetService.getAssets() called');
+    console.log('📈 Current assets count:', this.assetsSubject.value.length);
     return this.assets$;
   }
 

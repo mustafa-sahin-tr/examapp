@@ -11,11 +11,15 @@ export class ApiService {
   constructor(private http: HttpClient) {}
 
   get<T>(endpoint: string) {
-    return this.http.get<T>(`${this.baseUrl}${endpoint}`);
+    const url = `${this.baseUrl}${endpoint}`;
+    console.log('🌐 API GET:', url);
+    return this.http.get<T>(url);
   }
 
   post<T>(endpoint: string, data: any) {
-    return this.http.post<T>(`${this.baseUrl}${endpoint}`, data);
+    const url = `${this.baseUrl}${endpoint}`;
+    console.log('🌐 API POST:', url, data);
+    return this.http.post<T>(url, data);
   }
 
   put<T>(endpoint: string, data: any) {

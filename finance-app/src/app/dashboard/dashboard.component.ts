@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { DashboardSummary, AssetType, Portfolio } from '../models/asset.model';
 import { PortfolioService } from '../services/portfolio.service';
+import { TransactionExportService } from '../services/transaction-export.service';
+import { AssetService } from '../services/asset.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -15,8 +17,13 @@ export class DashboardComponent implements OnInit {
   dashboardSummary$!: Observable<DashboardSummary>;
   AssetType = AssetType;
   lastUpdated = new Date();
+  importResults: { success: number; errors: string[] } | null = null;
 
-  constructor(private portfolioService: PortfolioService) {}
+  constructor(
+    private portfolioService: PortfolioService,
+    private transactionExportService: TransactionExportService,
+    private assetService: AssetService
+  ) {}
 
   ngOnInit(): void {
     this.dashboardSummary$ = this.portfolioService.getDashboardSummary();
@@ -72,6 +79,61 @@ export class DashboardComponent implements OnInit {
   }
 
   formatPercentage(percentage: number): string {
-    return `${percentage > 0 ? '+' : ''}${percentage.toFixed(2)}%`;
+    return `${percentage.toFixed(2)}%`;
+  }
+
+  // Export/Import Methods
+  exportTransactions(): void {
+    console.log('🚀 Export button clicked - starting export process...');
+
+    this.transactionExportService.exportTransactionsToExcel().subscribe({
+      next: () => {
+        console.log('✅ Transactions exported successfully');
+        alert('Transactions exported successfully!');
+      },
+      error: (error) => {
+        console.error('❌ Export failed:', error);
+        alert('Export failed: ' + error);
+      },
+    });
+  }
+
+  downloadTemplate(): void {
+    this.transactionExportService.downloadTemplate().catch((error) => {
+      console.error('Template download failed:', error);
+      alert('Template download failed: ' + error);
+    });
+  }
+
+  onFileSelected(event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (file) {
+      this.importTransactions(file);
+    }
+  }
+
+  importTransactions(file: File): void {
+    this.importResults = null;
+
+    this.transactionExportService.importTransactionsFromExcel(file).subscribe({
+      next: (results) => {
+        this.importResults = results;
+        console.log('Import completed:', results);
+
+        // Refresh the page data if there were successful imports
+        if (results.success > 0) {
+          // Refresh assets and dashboard
+          this.assetService.refreshAssets();
+          this.dashboardSummary$ = this.portfolioService.getDashboardSummary();
+          this.refreshLastUpdated();
+        }
+      },
+      error: (error) => {
+        console.error('Import failed:', error);
+        this.importResults = { success: 0, errors: [error.toString()] };
+      },
+    });
   }
 }

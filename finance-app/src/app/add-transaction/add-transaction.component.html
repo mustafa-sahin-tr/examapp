@@ -2,6 +2,47 @@
   <div class="form-header">
     <h1>Add New Transaction</h1>
     <p>Record your buy or sell transaction</p>
+
+    <!-- Export/Import buttons -->
+    <div class="export-import-buttons">
+      <button type="button" class="btn btn-secondary" (click)="exportTransactions()">
+        <i class="fas fa-download"></i> Export Transactions
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="downloadTemplate()">
+        <i class="fas fa-file-excel"></i> Download Template
+      </button>
+      <div class="file-upload-wrapper">
+        <input
+          type="file"
+          id="fileInput"
+          accept=".xlsx,.xls"
+          (change)="onFileSelected($event)"
+          #fileInput
+          style="display: none"
+        />
+        <button type="button" class="btn btn-primary" (click)="fileInput.click()">
+          <i class="fas fa-upload"></i> Import Transactions
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import progress/results -->
+  <div *ngIf="importResults" class="import-results">
+    <div
+      class="alert"
+      [class.alert-success]="importResults.errors.length === 0"
+      [class.alert-warning]="importResults.errors.length > 0"
+    >
+      <h4>Import Results</h4>
+      <p>Successfully imported: {{ importResults.success }} transactions</p>
+      <div *ngIf="importResults.errors.length > 0">
+        <h5>Errors:</h5>
+        <ul>
+          <li *ngFor="let error of importResults.errors">{{ error }}</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <form [formGroup]="transactionForm" (ngSubmit)="onSubmit()" class="transaction-form">

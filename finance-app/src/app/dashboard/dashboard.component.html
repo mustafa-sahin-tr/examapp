@@ -2,6 +2,47 @@
   <div class="dashboard-header">
     <h1>Portfolio Dashboard</h1>
     <p class="last-updated">Last updated: {{ lastUpdated | date : 'medium' }}</p>
+
+    <!-- Export/Import buttons -->
+    <div class="dashboard-actions">
+      <button type="button" class="btn btn-secondary" (click)="exportTransactions()">
+        <i class="fas fa-download"></i> Export All
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="downloadTemplate()">
+        <i class="fas fa-file-excel"></i> Template
+      </button>
+      <div class="file-upload-wrapper">
+        <input
+          type="file"
+          id="dashboardFileInput"
+          accept=".xlsx,.xls"
+          (change)="onFileSelected($event)"
+          #fileInput
+          style="display: none"
+        />
+        <button type="button" class="btn btn-primary" (click)="fileInput.click()">
+          <i class="fas fa-upload"></i> Import
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import progress/results -->
+  <div *ngIf="importResults" class="import-results">
+    <div
+      class="alert"
+      [class.alert-success]="importResults.errors.length === 0"
+      [class.alert-warning]="importResults.errors.length > 0"
+    >
+      <h4>Import Results</h4>
+      <p>Successfully imported: {{ importResults.success }} transactions</p>
+      <div *ngIf="importResults.errors.length > 0">
+        <h5>Errors:</h5>
+        <ul>
+          <li *ngFor="let error of importResults.errors">{{ error }}</li>
+        </ul>
+      </div>
+    </div>
   </div>
 
   <div *ngIf="dashboardSummary$ | async as summary" class="dashboard-content">

@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, Subject, takeUntil, distinctUntilChanged, map } from 'rxjs';
 import { Asset, AssetType, TransactionType } from '../models/asset.model';
 import { AssetService } from '../services/asset.service';
 import { TransactionService } from '../services/transaction.service';
@@ -13,10 +13,13 @@ import { TransactionService } from '../services/transaction.service';
   templateUrl: './add-transaction.component.html',
   styleUrl: './add-transaction.component.scss',
 })
-export class AddTransactionComponent implements OnInit {
+export class AddTransactionComponent implements OnInit, OnDestroy {
   transactionForm!: FormGroup;
   assets$!: Observable<Asset[]>;
   filteredAssets: Asset[] = [];
+  allAssets: Asset[] = [];
+
+  private destroy$ = new Subject<void>();
 
   AssetType = AssetType;
   TransactionType = TransactionType;
@@ -48,9 +51,24 @@ export class AddTransactionComponent implements OnInit {
   ngOnInit(): void {
     this.initializeForm();
     this.assets$ = this.assetService.getAssets();
-    this.assets$.subscribe((assets) => {
-      this.filteredAssets = assets;
+
+    // Subscribe to asset changes and maintain state
+    this.assets$.pipe(takeUntil(this.destroy$)).subscribe((assets) => {
+      this.allAssets = assets;
+
+      // Re-filter assets if asset type is already selected
+      const selectedAssetType = this.transactionForm.get('assetType')?.value;
+      if (selectedAssetType) {
+        this.filterAssetsByType(selectedAssetType);
+      } else {
+        this.filteredAssets = assets;
+      }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private initializeForm(): void {
@@ -66,47 +84,58 @@ export class AddTransactionComponent implements OnInit {
     });
 
     // Filter assets when asset type changes
-    this.transactionForm.get('assetType')?.valueChanges.subscribe((assetType) => {
-      console.log('Asset type changed:', assetType, typeof assetType);
-
-      this.assets$.subscribe((assets) => {
-        console.log('All assets:', assets);
-
-        if (assetType && assetType !== '') {
-          // Convert string to number for comparison
-          const selectedAssetType = parseInt(assetType);
-          console.log('Selected asset type as number:', selectedAssetType);
-
-          this.filteredAssets = assets.filter((asset) => {
-            console.log(
-              `Comparing asset ${asset.symbol}: ${asset.type} === ${selectedAssetType}`,
-              asset.type === selectedAssetType
-            );
-            return asset.type === selectedAssetType;
-          });
-
-          console.log('Filtered assets:', this.filteredAssets);
-        } else {
-          this.filteredAssets = [];
-        }
-
+    this.transactionForm
+      .get('assetType')
+      ?.valueChanges.pipe(takeUntil(this.destroy$), distinctUntilChanged())
+      .subscribe((assetType) => {
+        console.log('Asset type changed:', assetType, typeof assetType);
+        this.filterAssetsByType(assetType);
         // Clear asset selection when type changes
         this.transactionForm.patchValue({ assetId: '', transactionType: '' });
       });
-    });
 
     // Auto-calculate fees for BIST transactions
-    this.transactionForm.get('quantity')?.valueChanges.subscribe(() => {
-      this.calculateBistFees();
-    });
+    this.transactionForm
+      .get('quantity')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.calculateBistFees();
+      });
 
-    this.transactionForm.get('price')?.valueChanges.subscribe(() => {
-      this.calculateBistFees();
-    });
+    this.transactionForm
+      .get('price')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.calculateBistFees();
+      });
 
-    this.transactionForm.get('assetType')?.valueChanges.subscribe(() => {
-      this.calculateBistFees();
-    });
+    this.transactionForm
+      .get('assetType')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.calculateBistFees();
+      });
+  }
+
+  private filterAssetsByType(assetType: string): void {
+    if (assetType && assetType !== '') {
+      // Convert string to number for comparison
+      const selectedAssetType = parseInt(assetType);
+      console.log('Selected asset type as number:', selectedAssetType);
+
+      // Filter from all assets, not creating new subscription
+      this.filteredAssets = this.allAssets.filter((asset) => {
+        console.log(
+          `Comparing asset ${asset.symbol}: ${asset.type} === ${selectedAssetType}`,
+          asset.type === selectedAssetType
+        );
+        return asset.type === selectedAssetType;
+      });
+
+      console.log('Filtered assets:', this.filteredAssets);
+    } else {
+      this.filteredAssets = [];
+    }
   }
 
   onSubmit(): void {

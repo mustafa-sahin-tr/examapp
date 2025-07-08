@@ -369,6 +369,36 @@
   }
 }
 
+// Sortable header styling
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+  position: relative;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .sort-icon {
+    margin-left: 5px;
+    font-size: 12px;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover .sort-icon {
+    opacity: 1;
+  }
+}
+
+// Sort icon styling  
+.sort-icon {
+  display: inline-block;
+  min-width: 12px;
+  text-align: center;
+}
+
 // Mobile responsive
 @media (max-width: 768px) {
   .portfolio-container {

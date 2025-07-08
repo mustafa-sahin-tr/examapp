@@ -36,19 +36,31 @@
       <table class="portfolio-table" *ngIf="portfolios$ | async as portfolios">
         <thead>
           <tr>
-            <th>Varlık</th>
-            <th>Adet</th>
-            <th>Ortalama Maliyet</th>
-            <th>Güncel Fiyat</th>
-            <th>Toplam Değer</th>
-            <th>Kar/Zarar</th>
-            <th>%</th>
+            <th class="sortable" (click)="sortCurrentPortfolio('asset')">
+              Varlık <span class="sort-icon">{{ getSortIcon('asset') }}</span>
+            </th>
+            <th class="sortable" (click)="sortCurrentPortfolio('quantity')">
+              Adet <span class="sort-icon">{{ getSortIcon('quantity') }}</span>
+            </th>
+            <th class="sortable" (click)="sortCurrentPortfolio('avgPrice')">
+              Ortalama Maliyet <span class="sort-icon">{{ getSortIcon('avgPrice') }}</span>
+            </th>
+            <th class="sortable" (click)="sortCurrentPortfolio('currentPrice')">
+              Güncel Fiyat <span class="sort-icon">{{ getSortIcon('currentPrice') }}</span>
+            </th>
+            <th class="sortable" (click)="sortCurrentPortfolio('totalValue')">
+              Toplam Değer <span class="sort-icon">{{ getSortIcon('totalValue') }}</span>
+            </th>
+            <th class="sortable" (click)="sortCurrentPortfolio('profitLoss')">
+              Kar/Zarar <span class="sort-icon">{{ getSortIcon('profitLoss') }}</span>
+            </th>
+            <th class="sortable" (click)="sortCurrentPortfolio('profitLossPercentage')">
+              % <span class="sort-icon">{{ getSortIcon('profitLossPercentage') }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let portfolio of portfolios" 
-              class="portfolio-row" 
-              (click)="openPortfolioDetail(portfolio)">
+          <tr *ngFor="let portfolio of portfolios" class="portfolio-row" (click)="openPortfolioDetail(portfolio)">
             <td class="asset-name">
               <strong>{{ portfolio.asset?.symbol }}</strong>
               <small>{{ portfolio.asset?.name }}</small>
@@ -57,18 +69,16 @@
             <td>{{ formatCurrency(portfolio.averagePrice, portfolio.asset?.currency) }}</td>
             <td>{{ formatCurrency(portfolio.asset?.currentPrice || 0, portfolio.asset?.currency || 'TRY') }}</td>
             <td>{{ formatCurrency(portfolio.currentValue, portfolio.asset?.currency || 'TRY') }}</td>
-            <td [class.profit]="portfolio.profitLoss > 0" 
-                [class.loss]="portfolio.profitLoss < 0">
+            <td [class.profit]="portfolio.profitLoss > 0" [class.loss]="portfolio.profitLoss < 0">
               {{ formatCurrency(portfolio.profitLoss, portfolio.asset?.currency || 'TRY') }}
             </td>
-            <td [class.profit]="portfolio.profitLossPercentage > 0" 
-                [class.loss]="portfolio.profitLossPercentage < 0">
+            <td [class.profit]="portfolio.profitLossPercentage > 0" [class.loss]="portfolio.profitLossPercentage < 0">
               {{ formatPercentage(portfolio.profitLossPercentage) }}
             </td>
           </tr>
         </tbody>
       </table>
-      
+
       <div *ngIf="(portfolios$ | async)?.length === 0" class="empty-state">
         <p>Bu kategoride henüz yatırımınız bulunmamaktadır.</p>
       </div>
@@ -82,18 +92,28 @@
       <table class="portfolio-table" *ngIf="historicalInvestments$ | async as historical">
         <thead>
           <tr>
-            <th>Varlık</th>
-            <th>Toplam Alım</th>
-            <th>Toplam Satım</th>
-            <th>Ortalama Alış</th>
-            <th>Ortalama Satış</th>
-            <th>Gerçekleşen Kar/Zarar</th>
+            <th class="sortable" (click)="sortHistoricalPortfolio('asset')">
+              Varlık <span class="sort-icon">{{ getSortIcon('asset', true) }}</span>
+            </th>
+            <th class="sortable" (click)="sortHistoricalPortfolio('totalBought')">
+              Toplam Alım <span class="sort-icon">{{ getSortIcon('totalBought', true) }}</span>
+            </th>
+            <th class="sortable" (click)="sortHistoricalPortfolio('totalSold')">
+              Toplam Satım <span class="sort-icon">{{ getSortIcon('totalSold', true) }}</span>
+            </th>
+            <th class="sortable" (click)="sortHistoricalPortfolio('avgBuyPrice')">
+              Ortalama Alış <span class="sort-icon">{{ getSortIcon('avgBuyPrice', true) }}</span>
+            </th>
+            <th class="sortable" (click)="sortHistoricalPortfolio('avgSellPrice')">
+              Ortalama Satış <span class="sort-icon">{{ getSortIcon('avgSellPrice', true) }}</span>
+            </th>
+            <th class="sortable" (click)="sortHistoricalPortfolio('realizedPL')">
+              Gerçekleşen Kar/Zarar <span class="sort-icon">{{ getSortIcon('realizedPL', true) }}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let hist of historical" 
-              class="portfolio-row" 
-              (click)="openHistoricalDetail(hist)">
+          <tr *ngFor="let hist of historical" class="portfolio-row" (click)="openHistoricalDetail(hist)">
             <td class="asset-name">
               <strong>{{ hist.assetSymbol }}</strong>
               <small>{{ hist.assetName }}</small>
@@ -102,14 +122,13 @@
             <td>{{ formatCurrency(hist.totalSold) }}</td>
             <td>{{ formatCurrency(hist.averageBuyPrice) }}</td>
             <td>{{ formatCurrency(hist.averageSellPrice) }}</td>
-            <td [class.profit]="hist.realizedProfitLoss > 0" 
-                [class.loss]="hist.realizedProfitLoss < 0">
+            <td [class.profit]="hist.realizedProfitLoss > 0" [class.loss]="hist.realizedProfitLoss < 0">
               {{ formatCurrency(hist.realizedProfitLoss) }}
             </td>
           </tr>
         </tbody>
       </table>
-      
+
       <div *ngIf="(historicalInvestments$ | async)?.length === 0" class="empty-state">
         <p>Bu kategoride geçmiş yatırım bulunmamaktadır.</p>
       </div>
@@ -124,7 +143,7 @@
       <h3>{{ selectedPortfolio.asset?.symbol }} - {{ selectedPortfolio.asset?.name }}</h3>
       <button class="close-btn" (click)="closePortfolioDetail()">&times;</button>
     </div>
-    
+
     <div class="modal-body">
       <div class="portfolio-summary">
         <div class="summary-grid">
@@ -134,27 +153,34 @@
           </div>
           <div class="summary-item">
             <label>Ortalama Maliyet:</label>
-            <span>{{ formatCurrency(selectedPortfolio.averagePrice, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+            <span>{{
+              formatCurrency(selectedPortfolio.averagePrice, selectedPortfolio.asset?.currency || 'TRY')
+            }}</span>
           </div>
           <div class="summary-item">
             <label>Güncel Fiyat:</label>
-            <span>{{ formatCurrency(selectedPortfolio.asset?.currentPrice || 0, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+            <span>{{
+              formatCurrency(selectedPortfolio.asset?.currentPrice || 0, selectedPortfolio.asset?.currency || 'TRY')
+            }}</span>
           </div>
           <div class="summary-item">
             <label>Toplam Değer:</label>
-            <span>{{ formatCurrency(selectedPortfolio.currentValue, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+            <span>{{
+              formatCurrency(selectedPortfolio.currentValue, selectedPortfolio.asset?.currency || 'TRY')
+            }}</span>
           </div>
           <div class="summary-item">
             <label>Kar/Zarar:</label>
-            <span [class.profit]="selectedPortfolio.profitLoss > 0" 
-                  [class.loss]="selectedPortfolio.profitLoss < 0">
+            <span [class.profit]="selectedPortfolio.profitLoss > 0" [class.loss]="selectedPortfolio.profitLoss < 0">
               {{ formatCurrency(selectedPortfolio.profitLoss, selectedPortfolio.asset?.currency || 'TRY') }}
             </span>
           </div>
           <div class="summary-item">
             <label>Kar/Zarar %:</label>
-            <span [class.profit]="selectedPortfolio.profitLossPercentage > 0" 
-                  [class.loss]="selectedPortfolio.profitLossPercentage < 0">
+            <span
+              [class.profit]="selectedPortfolio.profitLossPercentage > 0"
+              [class.loss]="selectedPortfolio.profitLossPercentage < 0"
+            >
               {{ formatPercentage(selectedPortfolio.profitLossPercentage) }}
             </span>
           </div>
@@ -166,14 +192,23 @@
         <div class="transactions-list">
           <div *ngFor="let transaction of selectedPortfolio.transactions" class="transaction-item">
             <div class="transaction-info">
-              <span class="transaction-type" [class.buy]="transaction.type === 'BUY'" [class.sell]="transaction.type === 'SELL'">
+              <span
+                class="transaction-type"
+                [class.buy]="transaction.type === 'BUY'"
+                [class.sell]="transaction.type === 'SELL'"
+              >
                 {{ transaction.type === 'BUY' ? 'ALIŞ' : 'SATIŞ' }}
               </span>
               <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
             </div>
             <div class="transaction-details">
-              <span>{{ transaction.quantity }} adet × {{ formatCurrency(transaction.price, selectedPortfolio.asset?.currency || 'TRY') }}</span>
-              <span class="transaction-total">{{ formatCurrency(transaction.quantity * transaction.price, selectedPortfolio.asset?.currency || 'TRY') }}</span>
+              <span
+                >{{ transaction.quantity }} adet ×
+                {{ formatCurrency(transaction.price, selectedPortfolio.asset?.currency || 'TRY') }}</span
+              >
+              <span class="transaction-total">{{
+                formatCurrency(transaction.quantity * transaction.price, selectedPortfolio.asset?.currency || 'TRY')
+              }}</span>
             </div>
           </div>
         </div>
@@ -189,7 +224,7 @@
       <h3>{{ selectedHistorical.assetSymbol }} - Geçmiş Yatırım Detayı</h3>
       <button class="close-btn" (click)="closePortfolioDetail()">&times;</button>
     </div>
-    
+
     <div class="modal-body">
       <div class="portfolio-summary">
         <div class="summary-grid">
@@ -211,8 +246,10 @@
           </div>
           <div class="summary-item">
             <label>Gerçekleşen Kar/Zarar:</label>
-            <span [class.profit]="selectedHistorical.realizedProfitLoss > 0" 
-                  [class.loss]="selectedHistorical.realizedProfitLoss < 0">
+            <span
+              [class.profit]="selectedHistorical.realizedProfitLoss > 0"
+              [class.loss]="selectedHistorical.realizedProfitLoss < 0"
+            >
               {{ formatCurrency(selectedHistorical.realizedProfitLoss) }}
             </span>
           </div>

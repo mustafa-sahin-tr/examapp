@@ -118,9 +118,10 @@ export class PortfolioService {
 
         portfolios.forEach((portfolio) => {
           portfolio.currentValue = portfolio.totalQuantity * portfolio.asset!.currentPrice;
-          portfolio.profitLoss = portfolio.currentValue - portfolio.averagePrice * portfolio.totalQuantity;
+          // totalCost kullanarak profit/loss hesapla (fees dahil)
+          portfolio.profitLoss = portfolio.currentValue - portfolio.totalCost;
           portfolio.profitLossPercentage =
-            (portfolio.currentValue / (portfolio.averagePrice * portfolio.totalQuantity) - 1) * 100;
+            portfolio.totalCost > 0 ? (portfolio.profitLoss / portfolio.totalCost) * 100 : 0;
           portfolio.quantity = portfolio.totalQuantity; // quantity ile totalQuantity aynı olsun
         });
 
@@ -234,7 +235,7 @@ export class PortfolioService {
             return of({
               ...portfolio,
               convertedCurrentValue: portfolio.currentValue,
-              convertedTotalCost: portfolio.averagePrice * portfolio.totalQuantity,
+              convertedTotalCost: portfolio.totalCost,
             });
           } else {
             return forkJoin({
@@ -243,7 +244,7 @@ export class PortfolioService {
                 portfolio.currency
               ),
               convertedTotalCost: this.exchangeRateService.convertToSelectedCurrency(
-                portfolio.averagePrice * portfolio.totalQuantity,
+                portfolio.totalCost,
                 portfolio.currency
               ),
             }).pipe(
@@ -273,11 +274,16 @@ export class PortfolioService {
                   portfoliosByType.set(type, []);
                 }
                 // Portfolio'ya dönüştürülmüş değerleri ekle
+                const convertedProfitLoss = portfolio.convertedCurrentValue - portfolio.convertedTotalCost;
+                const convertedProfitLossPercentage =
+                  portfolio.convertedTotalCost > 0 ? (convertedProfitLoss / portfolio.convertedTotalCost) * 100 : 0;
+
                 const portfolioWithConversion = {
                   ...portfolio,
                   currentValue: portfolio.convertedCurrentValue,
                   totalCost: portfolio.convertedTotalCost,
-                  profitLoss: portfolio.convertedCurrentValue - portfolio.convertedTotalCost,
+                  profitLoss: convertedProfitLoss,
+                  profitLossPercentage: convertedProfitLossPercentage,
                   currency: selectedCurrency,
                 };
                 portfoliosByType.get(type)!.push(portfolioWithConversion);

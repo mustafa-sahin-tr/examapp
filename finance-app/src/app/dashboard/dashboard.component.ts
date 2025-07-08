@@ -37,6 +37,11 @@ export class DashboardComponent implements OnInit {
     this.portfolioService.getPortfolio().subscribe((portfolios) => {
       console.log('🔍 Portfolio Debug:', portfolios);
     });
+
+    // Debug: Dashboard summary'yi kontrol et
+    this.dashboardSummary$.subscribe((summary) => {
+      console.log('📊 Dashboard Summary Debug:', summary);
+    });
   }
 
   refreshLastUpdated(): void {
@@ -68,11 +73,15 @@ export class DashboardComponent implements OnInit {
   }
 
   getTotalValueByType(portfolios: Portfolio[]): number {
-    return portfolios.reduce((sum, p) => sum + p.currentValue, 0);
+    const total = portfolios.reduce((sum, p) => sum + p.currentValue, 0);
+    console.log('📊 getTotalValueByType:', total, portfolios);
+    return total;
   }
 
   getTotalPLByType(portfolios: Portfolio[]): number {
-    return portfolios.reduce((sum, p) => sum + p.profitLoss, 0);
+    const total = portfolios.reduce((sum, p) => sum + p.profitLoss, 0);
+    console.log('📈 getTotalPLByType:', total, portfolios);
+    return total;
   }
 
   formatCurrency(amount: number, currency?: string): string {

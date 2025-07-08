@@ -150,6 +150,41 @@ export class ExchangeRateService {
   }
 
   /**
+   * Cache'deki exchange rate'leri kullanarak para birimi dönüşümü yapar
+   * Backend çağrısı yapmaz, sadece local cache'i kullanır
+   */
+  convertAmountWithCachedRate(amount: number, fromCurrency: string, toCurrency: string): number {
+    if (fromCurrency === toCurrency) {
+      return amount;
+    }
+
+    const exchangeRate = this.getCachedExchangeRate(fromCurrency, toCurrency);
+    
+    if (exchangeRate) {
+      return amount * exchangeRate.rate;
+    }
+
+    // Eğer direkt kur bulamazsak, ters yönde deneyelim
+    const reverseRate = this.getCachedExchangeRate(toCurrency, fromCurrency);
+    if (reverseRate && reverseRate.rate > 0) {
+      return amount / reverseRate.rate;
+    }
+
+    // Hiç kur bulamazsak, orijinal değeri döndür ve uyarı ver
+    console.warn(`Exchange rate not found in cache for ${fromCurrency} to ${toCurrency}, returning original amount`);
+    return amount;
+  }
+
+  /**
+   * Belirli miktarı kullanıcının seçtiği para birimine cache'deki rate ile dönüştürür
+   * Backend çağrısı yapmaz
+   */
+  convertToSelectedCurrencyWithCache(amount: number, fromCurrency: string): number {
+    const selectedCurrency = this.getSelectedCurrency();
+    return this.convertAmountWithCachedRate(amount, fromCurrency, selectedCurrency);
+  }
+
+  /**
    * Desteklenen para birimlerini döndürür
    */
   getSupportedCurrencies(): string[] {

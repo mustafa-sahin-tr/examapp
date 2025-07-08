@@ -8,7 +8,7 @@ import {
   AssetProfitLossDto,
 } from '../services/profit-loss.service';
 import { ExchangeRateService } from '../services/exchange-rate.service';
-import { Subject, takeUntil, forkJoin } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-profit-loss-chart',
@@ -228,24 +228,18 @@ export class ProfitLossChartComponent implements OnInit, OnDestroy {
   }
 
   private async convertCurrency(amount: number): Promise<number> {
-    return new Promise((resolve) => {
-      this.exchangeRateService.convertToSelectedCurrency(amount, 'TRY').subscribe(resolve);
-    });
+    // Cache'deki exchange rate ile dönüşüm yap, backend çağrısı yapma
+    return this.exchangeRateService.convertToSelectedCurrencyWithCache(amount, 'TRY');
   }
 
   private convertSummaryValues(summary: ProfitLossHistoryDto): void {
-    forkJoin({
-      totalProfitLoss: this.exchangeRateService.convertToSelectedCurrency(summary.totalProfitLoss, 'TRY'),
-      totalInvestment: this.exchangeRateService.convertToSelectedCurrency(summary.totalInvestment, 'TRY'),
-      totalCurrentValue: this.exchangeRateService.convertToSelectedCurrency(summary.totalCurrentValue, 'TRY'),
-    }).subscribe((converted) => {
-      this.convertedSummary = {
-        ...summary,
-        totalProfitLoss: converted.totalProfitLoss,
-        totalInvestment: converted.totalInvestment,
-        totalCurrentValue: converted.totalCurrentValue,
-      };
-    });
+    // Cache'deki exchange rate'leri kullanarak dönüşüm yap
+    this.convertedSummary = {
+      ...summary,
+      totalProfitLoss: this.exchangeRateService.convertToSelectedCurrencyWithCache(summary.totalProfitLoss, 'TRY'),
+      totalInvestment: this.exchangeRateService.convertToSelectedCurrencyWithCache(summary.totalInvestment, 'TRY'),
+      totalCurrentValue: this.exchangeRateService.convertToSelectedCurrencyWithCache(summary.totalCurrentValue, 'TRY'),
+    };
   }
 
   onTimeFrameChange(event: Event) {
@@ -311,24 +305,16 @@ export class ProfitLossChartComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
-          // Convert all values to selected currency
-          const convertedDataObservables = data.map((item) =>
-            this.exchangeRateService
-              .convertToSelectedCurrency(item.totalProfitLoss, 'TRY')
-              .pipe(takeUntil(this.destroy$))
-          );
-
-          forkJoin(convertedDataObservables).subscribe((convertedValues) => {
-            this.chartData = [
-              {
-                name: 'Toplam Kar/Zarar',
-                series: data.map((item, index) => ({
-                  name: new Date(item.timestamp),
-                  value: convertedValues[index],
-                })),
-              },
-            ];
-          });
+          // Cache'deki exchange rate'leri kullanarak dönüşüm yap, backend çağrısı yapma
+          this.chartData = [
+            {
+              name: 'Toplam Kar/Zarar',
+              series: data.map((item) => ({
+                name: new Date(item.timestamp),
+                value: this.exchangeRateService.convertToSelectedCurrencyWithCache(item.totalProfitLoss, 'TRY'),
+              })),
+            },
+          ];
         },
         error: (error) => console.error('Error loading total profit/loss data:', error),
       });
@@ -340,22 +326,16 @@ export class ProfitLossChartComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
-          // Convert all values to selected currency
-          const convertedDataObservables = data.map((item) =>
-            this.exchangeRateService.convertToSelectedCurrency(item.profitLoss, 'TRY').pipe(takeUntil(this.destroy$))
-          );
-
-          forkJoin(convertedDataObservables).subscribe((convertedValues) => {
-            this.chartData = [
-              {
-                name: `${assetType} Kar/Zarar`,
-                series: data.map((item, index) => ({
-                  name: new Date(item.timestamp),
-                  value: convertedValues[index],
-                })),
-              },
-            ];
-          });
+          // Cache'deki exchange rate'leri kullanarak dönüşüm yap, backend çağrısı yapma
+          this.chartData = [
+            {
+              name: `${assetType} Kar/Zarar`,
+              series: data.map((item) => ({
+                name: new Date(item.timestamp),
+                value: this.exchangeRateService.convertToSelectedCurrencyWithCache(item.profitLoss, 'TRY'),
+              })),
+            },
+          ];
         },
         error: (error) => console.error('Error loading asset type profit/loss data:', error),
       });
@@ -368,22 +348,16 @@ export class ProfitLossChartComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data) => {
           if (data.length > 0) {
-            // Convert all values to selected currency
-            const convertedDataObservables = data.map((item) =>
-              this.exchangeRateService.convertToSelectedCurrency(item.profitLoss, 'TRY').pipe(takeUntil(this.destroy$))
-            );
-
-            forkJoin(convertedDataObservables).subscribe((convertedValues) => {
-              this.chartData = [
-                {
-                  name: `${data[0].assetSymbol} Kar/Zarar`,
-                  series: data.map((item, index) => ({
-                    name: new Date(item.timestamp),
-                    value: convertedValues[index],
-                  })),
-                },
-              ];
-            });
+            // Cache'deki exchange rate'leri kullanarak dönüşüm yap, backend çağrısı yapma
+            this.chartData = [
+              {
+                name: `${data[0].assetSymbol} Kar/Zarar`,
+                series: data.map((item) => ({
+                  name: new Date(item.timestamp),
+                  value: this.exchangeRateService.convertToSelectedCurrencyWithCache(item.profitLoss, 'TRY'),
+                })),
+              },
+            ];
           }
         },
         error: (error) => console.error('Error loading asset profit/loss data:', error),
@@ -393,7 +367,7 @@ export class ProfitLossChartComponent implements OnInit, OnDestroy {
   private prepareAssetTypeBreakdown(summary: ProfitLossHistoryDto) {
     this.assetTypeBreakdown = summary.assetTypeBreakdown.map((item) => ({
       name: this.getAssetTypeLabel(item.assetType),
-      value: Math.abs(item.profitLoss),
+      value: Math.abs(this.exchangeRateService.convertToSelectedCurrencyWithCache(item.profitLoss, 'TRY')),
     }));
   }
 

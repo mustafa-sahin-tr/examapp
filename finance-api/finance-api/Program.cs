@@ -56,8 +56,9 @@ builder.Services.AddHttpClient<WebScrapingService>();
 // SignalR
 builder.Services.AddSignalR();
 
-// Background Service
+// Background Services
 builder.Services.AddHostedService<PriceUpdateBackgroundService>();
+builder.Services.AddHostedService<ProfitLossHistoryService>();
 
 // CORS - SignalR için güncellendi
 builder.Services.AddCors(options =>

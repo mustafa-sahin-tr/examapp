@@ -6,10 +6,11 @@ import { DashboardSummary, AssetType, Portfolio } from '../models/asset.model';
 import { PortfolioService } from '../services/portfolio.service';
 import { TransactionExportService } from '../services/transaction-export.service';
 import { AssetService } from '../services/asset.service';
+import { ProfitLossChartComponent } from '../components/profit-loss-chart.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ProfitLossChartComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })

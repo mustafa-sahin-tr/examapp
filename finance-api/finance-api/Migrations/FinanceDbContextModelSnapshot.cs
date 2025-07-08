@@ -72,7 +72,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 2.08m,
                             Currency = "TRY",
                             CurrentPrice = 85.50m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6606),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(5895),
                             Name = "Tüpraş",
                             Symbol = "TUPRS",
                             Type = 0
@@ -84,7 +84,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.51m,
                             Currency = "TRY",
                             CurrentPrice = 42.30m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6625),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(5956),
                             Name = "Akbank",
                             Symbol = "AKBNK",
                             Type = 0
@@ -96,7 +96,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 4.71m,
                             Currency = "TRY",
                             CurrentPrice = 156.80m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6630),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(5987),
                             Name = "Türk Hava Yolları",
                             Symbol = "THYAO",
                             Type = 0
@@ -108,7 +108,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 2.22m,
                             Currency = "TRY",
                             CurrentPrice = 125.40m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6636),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(5993),
                             Name = "Aselsan",
                             Symbol = "ASELS",
                             Type = 0
@@ -120,7 +120,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.26m,
                             Currency = "TRY",
                             CurrentPrice = 31.85m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6642),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(5999),
                             Name = "Ereğli Demir Çelik",
                             Symbol = "EREGL",
                             Type = 0
@@ -132,7 +132,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 3.42m,
                             Currency = "USD",
                             CurrentPrice = 192.45m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6649),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6007),
                             Name = "Apple Inc.",
                             Symbol = "AAPL",
                             Type = 1
@@ -144,7 +144,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -1.89m,
                             Currency = "USD",
                             CurrentPrice = 378.20m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6653),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6013),
                             Name = "Microsoft Corporation",
                             Symbol = "MSFT",
                             Type = 1
@@ -156,7 +156,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 3.21m,
                             Currency = "USD",
                             CurrentPrice = 142.65m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6659),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6020),
                             Name = "Alphabet Inc.",
                             Symbol = "GOOGL",
                             Type = 1
@@ -168,7 +168,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 1.65m,
                             Currency = "USD",
                             CurrentPrice = 151.94m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6663),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6025),
                             Name = "Amazon.com Inc.",
                             Symbol = "AMZN",
                             Type = 1
@@ -180,7 +180,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -5.32m,
                             Currency = "USD",
                             CurrentPrice = 248.50m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6670),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6031),
                             Name = "Tesla Inc.",
                             Symbol = "TSLA",
                             Type = 1
@@ -192,7 +192,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 15.92m,
                             Currency = "USD",
                             CurrentPrice = 2012.45m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6674),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6037),
                             Name = "Gold",
                             Symbol = "GOLD",
                             Type = 2
@@ -204,7 +204,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.38m,
                             Currency = "USD",
                             CurrentPrice = 24.85m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6680),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6042),
                             Name = "Silver",
                             Symbol = "SILVER",
                             Type = 3
@@ -216,7 +216,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 0.001493m,
                             Currency = "TRY",
                             CurrentPrice = 0.125864m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6685),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6047),
                             Name = "QNB Finans Portföy A.Ş. Hisse Senedi Fonu",
                             Symbol = "QNB001",
                             Type = 4
@@ -228,11 +228,88 @@ namespace FinanceApi.Migrations
                             ChangeValue = 0.000259m,
                             Currency = "TRY",
                             CurrentPrice = 0.086543m,
-                            LastUpdated = new DateTime(2025, 7, 2, 19, 44, 52, 956, DateTimeKind.Utc).AddTicks(6690),
+                            LastUpdated = new DateTime(2025, 7, 8, 8, 31, 55, 9, DateTimeKind.Utc).AddTicks(6052),
                             Name = "Garanti Portföy Özel Sektör Borçlanma Araçları Fonu",
                             Symbol = "GAR001",
                             Type = 4
                         });
+                });
+
+            modelBuilder.Entity("FinanceApi.Models.AssetProfitLoss", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AssetId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("AveragePrice")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("CurrentPrice")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("CurrentValue")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("Investment")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("ProfitLoss")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ProfitLossHistoryId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ProfitLossPercentage")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("ProfitLossHistoryId", "AssetId");
+
+                    b.ToTable("AssetProfitLosses");
+                });
+
+            modelBuilder.Entity("FinanceApi.Models.AssetTypeProfitLoss", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<int>("AssetCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AssetType")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("CurrentValue")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("Investment")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("ProfitLoss")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("ProfitLossHistoryId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("ProfitLossPercentage")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfitLossHistoryId", "AssetType");
+
+                    b.ToTable("AssetTypeProfitLosses");
                 });
 
             modelBuilder.Entity("FinanceApi.Models.Portfolio", b =>
@@ -265,6 +342,47 @@ namespace FinanceApi.Migrations
                         .IsUnique();
 
                     b.ToTable("Portfolios");
+                });
+
+            modelBuilder.Entity("FinanceApi.Models.ProfitLossHistory", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AssetTypeBreakdown")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Hour")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("ProfitLossPercentage")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("TotalCurrentValue")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TotalInvestment")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("TotalProfitLoss")
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date", "Hour");
+
+                    b.ToTable("ProfitLossHistories");
                 });
 
             modelBuilder.Entity("FinanceApi.Models.Transaction", b =>
@@ -311,6 +429,36 @@ namespace FinanceApi.Migrations
                     b.HasIndex("UserId", "AssetId", "Date");
 
                     b.ToTable("Transactions");
+                });
+
+            modelBuilder.Entity("FinanceApi.Models.AssetProfitLoss", b =>
+                {
+                    b.HasOne("FinanceApi.Models.Asset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FinanceApi.Models.ProfitLossHistory", "ProfitLossHistory")
+                        .WithMany()
+                        .HasForeignKey("ProfitLossHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("ProfitLossHistory");
+                });
+
+            modelBuilder.Entity("FinanceApi.Models.AssetTypeProfitLoss", b =>
+                {
+                    b.HasOne("FinanceApi.Models.ProfitLossHistory", "ProfitLossHistory")
+                        .WithMany()
+                        .HasForeignKey("ProfitLossHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ProfitLossHistory");
                 });
 
             modelBuilder.Entity("FinanceApi.Models.Portfolio", b =>

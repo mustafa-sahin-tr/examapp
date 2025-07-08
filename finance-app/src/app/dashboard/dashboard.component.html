@@ -85,6 +85,12 @@
       </div>
     </div>
 
+    <!-- Profit/Loss History Chart -->
+    <div class="chart-section">
+      <app-profit-loss-chart title="Kar/Zarar Geçmişi" [timeFrame]="'daily'" [viewType]="'total'">
+      </app-profit-loss-chart>
+    </div>
+
     <!-- Asset Type Breakdown -->
     <div class="asset-type-breakdown">
       <h2>Portfolio by Asset Type</h2>

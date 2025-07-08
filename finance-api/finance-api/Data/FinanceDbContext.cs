@@ -12,6 +12,9 @@ namespace FinanceApi.Data
         public DbSet<Asset> Assets { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Portfolio> Portfolios { get; set; }
+        public DbSet<ProfitLossHistory> ProfitLossHistories { get; set; }
+        public DbSet<AssetTypeProfitLoss> AssetTypeProfitLosses { get; set; }
+        public DbSet<AssetProfitLoss> AssetProfitLosses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -60,6 +63,60 @@ namespace FinanceApi.Data
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => new { e.UserId, e.AssetId }).IsUnique();
+            });
+
+            // ProfitLossHistory configuration
+            modelBuilder.Entity<ProfitLossHistory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.TotalProfitLoss).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.TotalInvestment).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.TotalCurrentValue).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.ProfitLossPercentage).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.AssetTypeBreakdown).HasColumnType("text");
+                entity.HasIndex(e => new { e.UserId, e.Date, e.Hour });
+            });
+
+            // AssetTypeProfitLoss configuration
+            modelBuilder.Entity<AssetTypeProfitLoss>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ProfitLoss).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Investment).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.CurrentValue).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.ProfitLossPercentage).HasColumnType("decimal(18,4)");
+
+                entity.HasOne(e => e.ProfitLossHistory)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProfitLossHistoryId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.ProfitLossHistoryId, e.AssetType });
+            });
+
+            // AssetProfitLoss configuration
+            modelBuilder.Entity<AssetProfitLoss>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ProfitLoss).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Investment).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.CurrentValue).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.ProfitLossPercentage).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Quantity).HasColumnType("decimal(18,8)");
+                entity.Property(e => e.AveragePrice).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.CurrentPrice).HasColumnType("decimal(18,4)");
+
+                entity.HasOne(e => e.ProfitLossHistory)
+                      .WithMany()
+                      .HasForeignKey(e => e.ProfitLossHistoryId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Asset)
+                      .WithMany()
+                      .HasForeignKey(e => e.AssetId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.ProfitLossHistoryId, e.AssetId });
             });
 
             // Seed data

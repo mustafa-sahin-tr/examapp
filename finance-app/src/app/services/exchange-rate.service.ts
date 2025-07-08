@@ -159,7 +159,7 @@ export class ExchangeRateService {
     }
 
     const exchangeRate = this.getCachedExchangeRate(fromCurrency, toCurrency);
-    
+
     if (exchangeRate) {
       return amount * exchangeRate.rate;
     }

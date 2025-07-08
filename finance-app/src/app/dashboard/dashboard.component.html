@@ -1,4 +1,7 @@
 <div class="dashboard-container">
+  <!-- Currency Selector and Exchange Rates -->
+  <app-currency-selector></app-currency-selector>
+
   <div class="dashboard-header">
     <h1>Portfolio Dashboard</h1>
     <p class="last-updated">Last updated: {{ lastUpdated | date : 'medium' }}</p>
@@ -46,6 +49,13 @@
   </div>
 
   <div *ngIf="dashboardSummary$ | async as summary" class="dashboard-content">
+    <!-- Currency Info -->
+    <div class="currency-info" *ngIf="summary.displayCurrency">
+      <small
+        >💱 All values displayed in: <strong>{{ summary.displayCurrency }}</strong></small
+      >
+    </div>
+
     <!-- Overall Summary Cards -->
     <div class="summary-cards">
       <div class="summary-card total-value">

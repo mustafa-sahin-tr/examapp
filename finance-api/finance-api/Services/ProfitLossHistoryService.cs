@@ -80,6 +80,9 @@ namespace FinanceApi.Services
 
         private async Task CalculateUserProfitLossHistory(FinanceDbContext dbContext, IPortfolioService portfolioService, string userId)
         {
+            using var scope = _serviceProvider.CreateScope();
+            var exchangeRateService = scope.ServiceProvider.GetRequiredService<IExchangeRateService>();
+
             var now = DateTime.UtcNow;
             var portfolios = await portfolioService.GetUserPortfolioAsync(userId);
 
@@ -88,6 +91,9 @@ namespace FinanceApi.Services
                 _logger.LogInformation("No portfolios found for user {UserId}", userId);
                 return;
             }
+
+            // Kullanıcının para birimi tercihini al (varsayılan TRY)
+            var baseCurrency = "TRY"; // Burası daha sonra kullanıcı tercihine göre güncellenecek
 
             // Ana kar/zarar hesaplama
             var totalProfitLoss = 0m;
@@ -113,15 +119,35 @@ namespace FinanceApi.Services
                 {
                     var investment = portfolio.TotalQuantity * portfolio.AveragePrice;
                     var currentValue = portfolio.TotalQuantity * portfolio.CurrentPrice;
-                    var profitLoss = currentValue - investment;
 
-                    assetTypeInvestment += investment;
-                    assetTypeCurrentValue += currentValue;
+                    // Döviz dönüşümü yap
+                    var investmentInBaseCurrency = await exchangeRateService.ConvertCurrencyAsync(investment, portfolio.Currency, baseCurrency);
+                    var currentValueInBaseCurrency = await exchangeRateService.ConvertCurrencyAsync(currentValue, portfolio.Currency, baseCurrency);
+
+                    var profitLoss = currentValueInBaseCurrency - investmentInBaseCurrency;
+
+                    assetTypeInvestment += investmentInBaseCurrency;
+                    assetTypeCurrentValue += currentValueInBaseCurrency;
                     assetTypeProfitLoss += profitLoss;
 
-                    totalInvestment += investment;
-                    totalCurrentValue += currentValue;
+                    totalInvestment += investmentInBaseCurrency;
+                    totalCurrentValue += currentValueInBaseCurrency;
                     totalProfitLoss += profitLoss;
+
+                    // Bireysel asset kar/zarar hesaplama
+                    var profitLossPercentage = investmentInBaseCurrency > 0 ? (profitLoss / investmentInBaseCurrency) * 100 : 0;
+
+                    assetProfitLosses.Add(new AssetProfitLoss
+                    {
+                        AssetId = portfolio.AssetId,
+                        ProfitLoss = profitLoss,
+                        Investment = investmentInBaseCurrency,
+                        CurrentValue = currentValueInBaseCurrency,
+                        ProfitLossPercentage = profitLossPercentage,
+                        Quantity = portfolio.TotalQuantity,
+                        AveragePrice = await exchangeRateService.ConvertCurrencyAsync(portfolio.AveragePrice, portfolio.Currency, baseCurrency),
+                        CurrentPrice = await exchangeRateService.ConvertCurrencyAsync(portfolio.CurrentPrice, portfolio.Currency, baseCurrency)
+                    });
                 }
 
                 var assetTypeProfitLossPercentage = assetTypeInvestment > 0 ? (assetTypeProfitLoss / assetTypeInvestment) * 100 : 0;
@@ -134,27 +160,6 @@ namespace FinanceApi.Services
                     CurrentValue = assetTypeCurrentValue,
                     ProfitLossPercentage = assetTypeProfitLossPercentage,
                     AssetCount = assetTypeGroup.Count()
-                });
-            }
-
-            // Bireysel asset kar/zarar hesaplama
-            foreach (var portfolio in portfolios)
-            {
-                var investment = portfolio.TotalQuantity * portfolio.AveragePrice;
-                var currentValue = portfolio.TotalQuantity * portfolio.CurrentPrice;
-                var profitLoss = currentValue - investment;
-                var profitLossPercentage = investment > 0 ? (profitLoss / investment) * 100 : 0;
-
-                assetProfitLosses.Add(new AssetProfitLoss
-                {
-                    AssetId = portfolio.AssetId,
-                    ProfitLoss = profitLoss,
-                    Investment = investment,
-                    CurrentValue = currentValue,
-                    ProfitLossPercentage = profitLossPercentage,
-                    Quantity = portfolio.TotalQuantity,
-                    AveragePrice = portfolio.AveragePrice,
-                    CurrentPrice = portfolio.CurrentPrice
                 });
             }
 

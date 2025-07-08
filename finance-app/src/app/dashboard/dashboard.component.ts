@@ -7,10 +7,12 @@ import { PortfolioService } from '../services/portfolio.service';
 import { TransactionExportService } from '../services/transaction-export.service';
 import { AssetService } from '../services/asset.service';
 import { ProfitLossChartComponent } from '../components/profit-loss-chart.component';
+import { CurrencySelectorComponent } from '../components/currency-selector-new.component';
+import { ExchangeRateService } from '../services/exchange-rate.service';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, RouterLink, ProfitLossChartComponent],
+  imports: [CommonModule, RouterLink, ProfitLossChartComponent, CurrencySelectorComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -23,7 +25,8 @@ export class DashboardComponent implements OnInit {
   constructor(
     private portfolioService: PortfolioService,
     private transactionExportService: TransactionExportService,
-    private assetService: AssetService
+    private assetService: AssetService,
+    private exchangeRateService: ExchangeRateService
   ) {}
 
   ngOnInit(): void {
@@ -72,10 +75,11 @@ export class DashboardComponent implements OnInit {
     return portfolios.reduce((sum, p) => sum + p.profitLoss, 0);
   }
 
-  formatCurrency(amount: number, currency: string = 'TRY'): string {
-    return new Intl.NumberFormat('tr-TR', {
+  formatCurrency(amount: number, currency?: string): string {
+    const selectedCurrency = currency || this.exchangeRateService.getSelectedCurrency();
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency,
+      currency: selectedCurrency,
     }).format(amount);
   }
 

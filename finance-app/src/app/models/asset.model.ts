@@ -62,4 +62,5 @@ export interface DashboardSummary {
   totalProfitLoss: number;
   totalProfitLossPercentage: number;
   portfoliosByType: Map<AssetType, Portfolio[]>;
+  displayCurrency?: string;
 }

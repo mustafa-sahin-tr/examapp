@@ -36,6 +36,7 @@ builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 builder.Services.AddScoped<IRealTimeDataService, YahooFinanceService>();
 builder.Services.AddScoped<IWebScrapingService, WebScrapingService>();
+builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
 
 // HttpClient for Yahoo Finance API
 builder.Services.AddHttpClient<YahooFinanceService>(client =>
@@ -52,6 +53,9 @@ builder.Services.AddHttpClient<YahooFinanceService>(client =>
 
 // HttpClient for Web Scraping
 builder.Services.AddHttpClient<WebScrapingService>();
+
+// HttpClient for Exchange Rate Service
+builder.Services.AddHttpClient<ExchangeRateService>();
 
 // SignalR
 builder.Services.AddSignalR();

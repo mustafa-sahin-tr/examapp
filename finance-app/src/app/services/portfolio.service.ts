@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
-import { Observable, combineLatest, map, catchError, of } from 'rxjs';
+import { Observable, combineLatest, map, catchError, of, forkJoin, switchMap } from 'rxjs';
 import { Portfolio, DashboardSummary, AssetType, TransactionType } from '../models/asset.model';
 import { AssetService } from './asset.service';
 import { TransactionService } from './transaction.service';
 import { ApiService } from './api.service';
+import { ExchangeRateService } from './exchange-rate.service';
 
 export interface HistoricalInvestment {
   assetId: string;
@@ -26,7 +27,8 @@ export class PortfolioService {
   constructor(
     private assetService: AssetService,
     private transactionService: TransactionService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private exchangeRateService: ExchangeRateService
   ) {}
 
   // Backend'de portfolio endpoint'i hazır olduğunda bu metodu kullanacağız
@@ -222,32 +224,76 @@ export class PortfolioService {
   }
 
   getDashboardSummary(): Observable<DashboardSummary> {
-    return this.getPortfolio().pipe(
-      map((portfolios) => {
-        const totalValue = portfolios.reduce((sum, p) => sum + p.currentValue, 0);
-        const totalCost = portfolios.reduce((sum, p) => sum + p.averagePrice * p.totalQuantity, 0);
-        const totalProfitLoss = totalValue - totalCost;
-        const totalProfitLossPercentage = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+    const selectedCurrency = this.exchangeRateService.getSelectedCurrency();
 
-        // Group by asset type
-        const portfoliosByType = new Map<AssetType, Portfolio[]>();
-        portfolios.forEach((portfolio) => {
-          if (portfolio.asset) {
-            const type = portfolio.asset.type;
-            if (!portfoliosByType.has(type)) {
-              portfoliosByType.set(type, []);
-            }
-            portfoliosByType.get(type)!.push(portfolio);
+    return this.getPortfolio().pipe(
+      switchMap((portfolios) => {
+        // Para birimi dönüşümü için observable array'i oluştur
+        const conversionObservables = portfolios.map((portfolio) => {
+          if (portfolio.currency === selectedCurrency) {
+            return of({
+              ...portfolio,
+              convertedCurrentValue: portfolio.currentValue,
+              convertedTotalCost: portfolio.averagePrice * portfolio.totalQuantity,
+            });
+          } else {
+            return forkJoin({
+              convertedCurrentValue: this.exchangeRateService.convertToSelectedCurrency(
+                portfolio.currentValue,
+                portfolio.currency
+              ),
+              convertedTotalCost: this.exchangeRateService.convertToSelectedCurrency(
+                portfolio.averagePrice * portfolio.totalQuantity,
+                portfolio.currency
+              ),
+            }).pipe(
+              map((converted) => ({
+                ...portfolio,
+                convertedCurrentValue: converted.convertedCurrentValue,
+                convertedTotalCost: converted.convertedTotalCost,
+              }))
+            );
           }
         });
 
-        return {
-          totalValue,
-          totalCost,
-          totalProfitLoss,
-          totalProfitLossPercentage,
-          portfoliosByType,
-        };
+        // Tüm dönüşümler tamamlandığında hesaplama yap
+        return forkJoin(conversionObservables).pipe(
+          map((convertedPortfolios) => {
+            const totalValue = convertedPortfolios.reduce((sum, p) => sum + p.convertedCurrentValue, 0);
+            const totalCost = convertedPortfolios.reduce((sum, p) => sum + p.convertedTotalCost, 0);
+            const totalProfitLoss = totalValue - totalCost;
+            const totalProfitLossPercentage = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+
+            // Group by asset type with converted values
+            const portfoliosByType = new Map<AssetType, Portfolio[]>();
+            convertedPortfolios.forEach((portfolio) => {
+              if (portfolio.asset) {
+                const type = portfolio.asset.type;
+                if (!portfoliosByType.has(type)) {
+                  portfoliosByType.set(type, []);
+                }
+                // Portfolio'ya dönüştürülmüş değerleri ekle
+                const portfolioWithConversion = {
+                  ...portfolio,
+                  currentValue: portfolio.convertedCurrentValue,
+                  totalCost: portfolio.convertedTotalCost,
+                  profitLoss: portfolio.convertedCurrentValue - portfolio.convertedTotalCost,
+                  currency: selectedCurrency,
+                };
+                portfoliosByType.get(type)!.push(portfolioWithConversion);
+              }
+            });
+
+            return {
+              totalValue,
+              totalCost,
+              totalProfitLoss,
+              totalProfitLossPercentage,
+              portfoliosByType,
+              displayCurrency: selectedCurrency,
+            };
+          })
+        );
       })
     );
   }

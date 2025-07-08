@@ -15,6 +15,8 @@ namespace FinanceApi.Data
         public DbSet<ProfitLossHistory> ProfitLossHistories { get; set; }
         public DbSet<AssetTypeProfitLoss> AssetTypeProfitLosses { get; set; }
         public DbSet<AssetProfitLoss> AssetProfitLosses { get; set; }
+        public DbSet<ExchangeRate> ExchangeRates { get; set; }
+        public DbSet<UserCurrencyPreference> UserCurrencyPreferences { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -117,6 +119,27 @@ namespace FinanceApi.Data
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasIndex(e => new { e.ProfitLossHistoryId, e.AssetId });
+            });
+
+            // ExchangeRate configuration
+            modelBuilder.Entity<ExchangeRate>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.FromCurrency).IsRequired().HasMaxLength(3);
+                entity.Property(e => e.ToCurrency).IsRequired().HasMaxLength(3);
+                entity.Property(e => e.Rate).HasColumnType("decimal(18,8)");
+                entity.Property(e => e.ChangePercentage).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.ChangeValue).HasColumnType("decimal(18,8)");
+                entity.HasIndex(e => new { e.FromCurrency, e.ToCurrency }).IsUnique();
+            });
+
+            // UserCurrencyPreference configuration
+            modelBuilder.Entity<UserCurrencyPreference>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.PreferredCurrency).IsRequired().HasMaxLength(3);
+                entity.HasIndex(e => e.UserId).IsUnique();
             });
 
             // Seed data

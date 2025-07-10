@@ -37,7 +37,9 @@
             <span>{{ testInstance.testName }}</span>
           </div>
           <div class="test-meta">
-            <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span>
+            <span class="question-counter"
+              >{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span
+            >
             <div class="progress-container">
               <div class="progress-bar">
                 <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
@@ -86,19 +88,19 @@
         <div class="canvas-question-container">
           <!-- Canvas Overlay Butonları - Sol Üst -->
           <div class="canvas-overlay-actions top-left">
-            <button 
-              mat-mini-fab 
-              [class.active]="isQuestionBookmarked()" 
-              (click)="toggleBookmark()" 
+            <button
+              mat-mini-fab
+              [class.active]="isQuestionBookmarked()"
+              (click)="toggleBookmark()"
               class="overlay-bookmark-btn"
               [attr.aria-label]="isQuestionBookmarked() ? 'İşareti kaldır' : 'İşaretle'"
             >
               <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
             </button>
 
-            <button 
-              mat-mini-fab 
-              (click)="reportQuestion()" 
+            <button
+              mat-mini-fab
+              (click)="reportQuestion()"
               class="overlay-report-btn"
               [attr.aria-label]="'Soruyu bildir'"
             >
@@ -108,9 +110,9 @@
 
           <!-- Canvas Overlay Butonları - Sağ Alt -->
           <div class="canvas-overlay-actions bottom-right">
-            <button 
-              mat-mini-fab 
-              (click)="clearCanvasAnswer()" 
+            <button
+              mat-mini-fab
+              (click)="clearCanvasAnswer()"
               [disabled]="!hasAnswer()"
               class="overlay-clear-btn"
               [attr.aria-label]="'Cevabı temizle'"
@@ -118,7 +120,8 @@
               <mat-icon>check_box_outline_blank</mat-icon>
             </button>
           </div>
-
+          {{ regions()[currentIndex()].id }} -
+          {{ selectedChoices().get(regions()[currentIndex()].id) }}
           <app-question-canvas-view
             #canvasView
             [questionRegion]="regions()[currentIndex()]"

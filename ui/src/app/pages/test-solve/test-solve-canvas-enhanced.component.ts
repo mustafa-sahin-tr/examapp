@@ -36,7 +36,7 @@ import { CountdownComponent } from '../../shared/components/countdown/countdown.
 import { Answer } from '../../models/answer';
 
 @Component({
-  selector: 'app-test-solve',
+  selector: 'app-test-solve-v2',
   standalone: true,
   templateUrl: './test-solve-canvas-enhanced.component.html',
   styleUrls: ['./test-solve-canvas.component.scss'],
@@ -108,7 +108,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public toastType = signal<'success' | 'warning' | 'error' | 'info'>('info');
   public questionStartTimes = signal<Map<number, number>>(new Map());
   public questionDurations = signal<Map<number, number>>(new Map());
-  
+
   // Cevap sayısını takip etmek için signal
   public answeredQuestionsCount = signal(0);
 
@@ -286,7 +286,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // ⏳ Sayaçları başlat
       this.startTimer();
       this.startQuestionTimer();
-      
+
       // 📊 Initial cevaplanan soru sayısını hesapla
       this.updateAnsweredCount();
     } catch (error) {
@@ -355,10 +355,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
-    
+
     // Cevaplanan soru sayısını güncelle
     this.updateAnsweredCount();
-    
+
     if (this.autoNextQuestion()) {
       setTimeout(() => {
         this.nextQuestion();
@@ -503,6 +503,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
             const updatedChoices = new Map(this.selectedChoices());
             updatedChoices.set(q.question.id, selectedChoice);
             this.selectedChoices.set(updatedChoices);
+            console.log('Seçilen şık yüklendi:', selectedChoice);
           }
         }
       });
@@ -623,14 +624,14 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.showToastMessage('Tüm sorular cevaplanmış', 'info');
   }
 
-  clearAnswer() {    
+  clearAnswer() {
     const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
     if (currentQuestion.selectedAnswerId) {
       currentQuestion.selectedAnswerId = undefined as any;
-      
+
       // Cevaplanan soru sayısını güncelle
       this.updateAnsweredCount();
-      
+
       this.showToastMessage('Cevap temizlendi', 'info');
       // Save to backend
       this.saveAnswer(null);
@@ -687,16 +688,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       this.canvasViewComponent.selectedChoice = undefined;
       // Canvas'ı yeniden çiz
       this.canvasViewComponent.drawImageSection();
-      
+
       // Test instance'daki seçimi de temizle
       const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
       currentQuestion.selectedAnswerId = undefined as any;
-      
+
       // Cevaplanan soru sayısını güncelle
       this.updateAnsweredCount();
-      
+
       this.showToastMessage('Canvas cevabı temizlendi', 'success');
-      
+
       // Save to backend
       this.saveAnswer(null);
     }

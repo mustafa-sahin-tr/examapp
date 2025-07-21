@@ -125,9 +125,12 @@
           tbody {
             .portfolio-row {
               transition: all 0.2s ease;
+              cursor: pointer;
 
               &:hover {
                 background: #f7fafc;
+                transform: translateY(-1px);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
               }
 
               td {
@@ -220,6 +223,219 @@
         }
       }
     }
+  }
+}
+
+// Modal styling
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+
+  .modal-content {
+    background: white;
+    border-radius: 20px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease-out;
+
+    .modal-header {
+      padding: 2rem 2rem 1rem 2rem;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h3 {
+        margin: 0;
+        color: #2d3748;
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #a0aec0;
+        transition: color 0.2s;
+
+        &:hover {
+          color: #e53e3e;
+        }
+      }
+    }
+
+    .modal-body {
+      padding: 2rem;
+
+      .deposit-summary {
+        margin-bottom: 2rem;
+
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 1.5rem;
+
+          .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 12px;
+
+            label {
+              font-weight: 500;
+              color: #4a5568;
+            }
+
+            span {
+              font-weight: 600;
+              color: #2d3748;
+
+              &.profit {
+                color: #48bb78;
+              }
+
+              &.loss {
+                color: #f56565;
+              }
+            }
+          }
+        }
+      }
+
+      .transactions-section {
+        h4 {
+          margin: 0 0 1.5rem 0;
+          color: #2d3748;
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+
+        .transactions-list {
+          .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1.25rem;
+            border-bottom: 1px solid #e2e8f0;
+            transition: background 0.2s;
+
+            &:hover {
+              background: #f7fafc;
+            }
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            .transaction-info {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              gap: 0.5rem;
+
+              .transaction-header {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+
+                .transaction-type {
+                  padding: 0.25rem 0.75rem;
+                  border-radius: 6px;
+                  font-size: 0.75rem;
+                  font-weight: 600;
+                  text-transform: uppercase;
+
+                  &.buy {
+                    background: #c6f6d5;
+                    color: #22543d;
+                  }
+
+                  &.sell {
+                    background: #fed7d7;
+                    color: #742a2a;
+                  }
+                }
+
+                .transaction-date {
+                  font-size: 0.875rem;
+                  color: #718096;
+                }
+              }
+
+              .transaction-description {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+
+                .transaction-notes {
+                  display: flex;
+                  align-items: center;
+                  gap: 0.5rem;
+                  padding: 0.5rem;
+                  background: #f0f7ff;
+                  border-left: 3px solid #3182ce;
+                  border-radius: 4px;
+                  font-size: 0.875rem;
+                  color: #2c5282;
+
+                  .notes-icon {
+                    font-size: 0.875rem;
+                  }
+                }
+              }
+            }
+
+            .transaction-details {
+              text-align: right;
+              display: flex;
+              flex-direction: column;
+              align-items: flex-end;
+              gap: 0.25rem;
+
+              .transaction-total {
+                font-weight: 600;
+                color: #2d3748;
+                font-size: 1rem;
+              }
+
+              .transaction-fees {
+                small {
+                  color: #718096;
+                  font-size: 0.75rem;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

@@ -321,52 +321,90 @@
 .transaction-item {
   background: #f8f9fa;
   border-radius: 8px;
-  padding: 12px 15px;
-  margin-bottom: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
   border-left: 4px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
 
   .transaction-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
+    flex: 1;
+    
+    .transaction-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
 
-    .transaction-type {
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
+      .transaction-type {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
 
-      &.buy {
-        background-color: #d4edda;
-        color: #155724;
+        &.buy {
+          background-color: #d4edda;
+          color: #155724;
+        }
+
+        &.sell {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
       }
 
-      &.sell {
-        background-color: #f8d7da;
-        color: #721c24;
+      .transaction-date {
+        color: #6c757d;
+        font-size: 0.85rem;
       }
     }
 
-    .transaction-date {
-      color: #6c757d;
-      font-size: 0.85rem;
+  .transaction-description {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .transaction-notes {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      background: #f0f7ff;
+      border-left: 3px solid #3182ce;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      color: #2c5282;
+
+      .notes-icon {
+        font-size: 0.875rem;
+      }
     }
   }
 
   .transaction-details {
+    text-align: right;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #495057;
-    font-size: 0.9rem;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
 
     .transaction-total {
       font-weight: 600;
       color: #2c3e50;
+      font-size: 1rem;
+    }
+
+    .transaction-fees {
+      small {
+        color: #718096;
+        font-size: 0.75rem;
+      }
     }
   }
+}
 }
 
 // Sortable header styling

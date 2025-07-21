@@ -25,7 +25,7 @@ namespace FinanceApi.Services
         {
             // 10 dakikalık interval (configurasyondan alınabilir)
             var intervalMinutes = _configuration.GetValue<int>("ProfitLossHistory:IntervalMinutes", 10);
-            var interval = TimeSpan.FromSeconds(intervalMinutes);
+            var interval = TimeSpan.FromMinutes(intervalMinutes);
 
             _logger.LogInformation("Profit/Loss history service started with {Interval} minutes interval", intervalMinutes);
 

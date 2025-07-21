@@ -58,12 +58,27 @@ export class PortfolioService {
 
         // Group transactions by asset
         transactions.forEach((transaction) => {
-          const asset = assets.find((a) => a.id === transaction.assetId);
-          if (!asset) return;
+          let asset = null;
+          let portfolioKey = '';
 
-          if (!portfolioMap.has(transaction.assetId)) {
-            portfolioMap.set(transaction.assetId, {
-              assetId: transaction.assetId,
+          if (transaction.assetId) {
+            // Normal asset with ID
+            asset = assets.find((a) => a.id === transaction.assetId);
+            if (!asset) return;
+            portfolioKey = transaction.assetId;
+          } else {
+            // Generic asset (Gold, FixedDeposit) without specific asset ID
+            // Create a virtual asset based on transaction type
+            const assetType = this.getAssetTypeFromTransaction(transaction);
+            if (!assetType) return;
+
+            portfolioKey = `generic_${assetType}`;
+            asset = this.createVirtualAsset(assetType);
+          }
+
+          if (!portfolioMap.has(portfolioKey)) {
+            portfolioMap.set(portfolioKey, {
+              assetId: portfolioKey,
               assetSymbol: asset.symbol,
               assetName: asset.name,
               asset: asset,
@@ -80,7 +95,7 @@ export class PortfolioService {
             });
           }
 
-          const portfolio = portfolioMap.get(transaction.assetId)!;
+          const portfolio = portfolioMap.get(portfolioKey)!;
           portfolio.transactions.push(transaction);
 
           // Calculate portfolio metrics
@@ -215,7 +230,27 @@ export class PortfolioService {
   }
 
   getPortfolioByType(type: AssetType): Observable<Portfolio[]> {
-    return this.getPortfolio().pipe(map((portfolios) => portfolios.filter((p) => p.asset?.type === type)));
+    return this.getPortfolio().pipe(
+      map((portfolios) => {
+        return portfolios.filter((p) => {
+          // Normal asset'ler için type kontrolü
+          if (p.asset?.type === type) {
+            return true;
+          }
+
+          // Virtual asset'ler için özel kontrol
+          if (type === AssetType.FixedDeposit && p.assetId === 'generic_5') {
+            return true;
+          }
+
+          if (type === AssetType.Gold && p.assetId === 'generic_2') {
+            return true;
+          }
+
+          return false;
+        });
+      })
+    );
   }
 
   getHistoricalInvestmentsByType(type: AssetType): Observable<HistoricalInvestment[]> {
@@ -288,5 +323,53 @@ export class PortfolioService {
         };
       })
     );
+  }
+
+  // Helper fonksiyonlar
+  private getAssetTypeFromTransaction(transaction: any): AssetType | null {
+    // Transaction'ın type'ına göre asset type'ını belirle
+    if (
+      transaction.type === TransactionType.DEPOSIT_ADD ||
+      transaction.type === TransactionType.DEPOSIT_WITHDRAW ||
+      transaction.type === TransactionType.DEPOSIT_INCOME
+    ) {
+      return AssetType.FixedDeposit;
+    }
+
+    // Diğer generic asset type'lar için gelecekte eklenebilir
+    // Şimdilik Gold için özel bir logic yok, çünkü Gold da normal asset olarak ekleniyor
+
+    return null;
+  }
+
+  private createVirtualAsset(assetType: AssetType): any {
+    switch (assetType) {
+      case AssetType.FixedDeposit:
+        return {
+          id: 'virtual_fixed_deposit',
+          symbol: 'DEPOSIT',
+          name: 'Vadeli Mevduat',
+          type: AssetType.FixedDeposit,
+          currentPrice: 1, // Vadeli mevduat için fiyat 1 (TRY bazında)
+          currency: 'TRY',
+          lastUpdated: new Date(),
+          changePercentage: 0,
+          changeValue: 0,
+        };
+      case AssetType.Gold:
+        return {
+          id: 'virtual_gold',
+          symbol: 'GOLD',
+          name: 'Altın',
+          type: AssetType.Gold,
+          currentPrice: 2500, // Default gold price - gerçek fiyat API'den alınmalı
+          currency: 'TRY',
+          lastUpdated: new Date(),
+          changePercentage: 0,
+          changeValue: 0,
+        };
+      default:
+        return null;
+    }
   }
 }

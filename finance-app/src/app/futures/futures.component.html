@@ -60,7 +60,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let deposit of deposits" class="portfolio-row">
+            <tr *ngFor="let deposit of deposits" class="portfolio-row" (click)="openDepositDetail(deposit)">
               <td class="asset-info">
                 <div class="asset-name">{{ deposit.assetSymbol }}</div>
                 <div class="asset-type">{{ deposit.assetName }}</div>
@@ -100,6 +100,91 @@
           </a>
         </div>
       </ng-template>
+    </div>
+  </div>
+
+  <!-- Deposit Detail Modal -->
+  <div class="modal-overlay" *ngIf="selectedDeposit" (click)="closeDepositDetail()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ selectedDeposit.asset?.symbol }} - {{ selectedDeposit.asset?.name }}</h3>
+        <button class="close-btn" (click)="closeDepositDetail()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="deposit-summary">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <label>Toplam Miktar:</label>
+              <span>{{ formatCurrency(selectedDeposit.totalQuantity, selectedDeposit.asset?.currency || 'TRY') }}</span>
+            </div>
+            <div class="summary-item">
+              <label>Ortalama Maliyet:</label>
+              <span>{{ formatCurrency(selectedDeposit.averagePrice, selectedDeposit.asset?.currency || 'TRY') }}</span>
+            </div>
+            <div class="summary-item">
+              <label>Güncel Değer:</label>
+              <span>{{ formatCurrency(selectedDeposit.currentValue, selectedDeposit.asset?.currency || 'TRY') }}</span>
+            </div>
+            <div class="summary-item">
+              <label>Toplam Maliyet:</label>
+              <span>{{ formatCurrency(selectedDeposit.totalCost, selectedDeposit.asset?.currency || 'TRY') }}</span>
+            </div>
+            <div class="summary-item">
+              <label>Kar/Zarar:</label>
+              <span [class.profit]="selectedDeposit.profitLoss > 0" [class.loss]="selectedDeposit.profitLoss < 0">
+                {{ formatCurrency(selectedDeposit.profitLoss, selectedDeposit.asset?.currency || 'TRY') }}
+              </span>
+            </div>
+            <div class="summary-item">
+              <label>Kar/Zarar %:</label>
+              <span
+                [class.profit]="selectedDeposit.profitLossPercentage > 0"
+                [class.loss]="selectedDeposit.profitLossPercentage < 0"
+              >
+                {{ formatPercentage(selectedDeposit.profitLossPercentage) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="transactions-section">
+          <h4>İşlem Geçmişi</h4>
+          <div class="transactions-list">
+            <div *ngFor="let transaction of selectedDeposit.transactions" class="transaction-item">
+              <div class="transaction-info">
+                <div class="transaction-header">
+                  <span
+                    class="transaction-type"
+                    [class.buy]="isDepositOrIncome(transaction.type)"
+                    [class.sell]="isWithdraw(transaction.type)"
+                  >
+                    {{ getTransactionTypeLabel(transaction.type) }}
+                  </span>
+                  <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
+                </div>
+                <div class="transaction-description">
+                  <span>{{ getTransactionDetailText(transaction) }}</span>
+                  <div *ngIf="transaction.notes && transaction.notes.trim()" class="transaction-notes">
+                    <i class="notes-icon">📝</i>
+                    <span>{{ transaction.notes }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="transaction-details">
+                <span class="transaction-total">{{
+                  formatCurrency(transaction.quantity * transaction.price, selectedDeposit.asset?.currency || 'TRY')
+                }}</span>
+                <div *ngIf="transaction.fees && transaction.fees > 0" class="transaction-fees">
+                  <small
+                    >Komisyon: {{ formatCurrency(transaction.fees, selectedDeposit.asset?.currency || 'TRY') }}</small
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

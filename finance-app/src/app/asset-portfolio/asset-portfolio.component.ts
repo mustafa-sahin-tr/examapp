@@ -48,6 +48,7 @@ export class AssetPortfolioComponent implements OnInit {
   }
 
   openPortfolioDetail(portfolio: Portfolio): void {
+    console.log('Opening portfolio detail for:', portfolio);
     this.selectedPortfolio = portfolio;
     this.selectedHistorical = null;
     document.body.style.overflow = 'hidden';
@@ -212,5 +213,49 @@ export class AssetPortfolioComponent implements OnInit {
       return currentSortConfig.direction === 'asc' ? '↑' : '↓';
     }
     return '↕'; // Default sort icon
+  }
+
+  // Transaction helper fonksiyonları
+  getTransactionTypeLabel(type: string): string {
+    switch (type) {
+      case 'BUY':
+        return 'ALIŞ';
+      case 'SELL':
+        return 'SATIŞ';
+      case 'DEPOSIT_ADD':
+        return 'PARA EKLE';
+      case 'DEPOSIT_WITHDRAW':
+        return 'PARA ÇIKAR';
+      case 'DEPOSIT_INCOME':
+        return 'FAİZ GELİRİ';
+      default:
+        return type;
+    }
+  }
+
+  isDepositOrIncome(type: string): boolean {
+    return type === 'BUY' || type === 'DEPOSIT_ADD' || type === 'DEPOSIT_INCOME';
+  }
+
+  isWithdraw(type: string): boolean {
+    return type === 'SELL' || type === 'DEPOSIT_WITHDRAW';
+  }
+
+  getTransactionDetailText(transaction: any): string {
+    const currency = this.selectedPortfolio?.asset?.currency || 'TRY';
+
+    switch (transaction.type) {
+      case 'BUY':
+      case 'SELL':
+        return `${transaction.quantity} adet × ${this.formatCurrency(transaction.price, currency)}`;
+      case 'DEPOSIT_ADD':
+        return `${this.formatCurrency(transaction.quantity * transaction.price, currency)} tutar eklendi`;
+      case 'DEPOSIT_WITHDRAW':
+        return `${this.formatCurrency(transaction.quantity * transaction.price, currency)} tutar çekildi`;
+      case 'DEPOSIT_INCOME':
+        return `${this.formatCurrency(transaction.quantity * transaction.price, currency)} faiz geliri`;
+      default:
+        return `${transaction.quantity} × ${this.formatCurrency(transaction.price, currency)}`;
+    }
   }
 }

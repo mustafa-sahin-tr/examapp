@@ -192,23 +192,33 @@
         <div class="transactions-list">
           <div *ngFor="let transaction of selectedPortfolio.transactions" class="transaction-item">
             <div class="transaction-info">
-              <span
-                class="transaction-type"
-                [class.buy]="transaction.type === 'BUY'"
-                [class.sell]="transaction.type === 'SELL'"
-              >
-                {{ transaction.type === 'BUY' ? 'ALIŞ' : 'SATIŞ' }}
-              </span>
-              <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
+              <div class="transaction-header">
+                <span
+                  class="transaction-type"
+                  [class.buy]="isDepositOrIncome(transaction.type)"
+                  [class.sell]="isWithdraw(transaction.type)"
+                >
+                  {{ getTransactionTypeLabel(transaction.type) }}
+                </span>
+                <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
+              </div>
+              <div class="transaction-description">
+                <span>{{ getTransactionDetailText(transaction) }}</span>
+                <div *ngIf="transaction.notes && transaction.notes.trim()" class="transaction-notes">
+                  <i class="notes-icon">📝</i>
+                  <span>{{ transaction.notes }}</span>
+                </div>
+              </div>
             </div>
             <div class="transaction-details">
-              <span
-                >{{ transaction.quantity }} adet ×
-                {{ formatCurrency(transaction.price, selectedPortfolio.asset?.currency || 'TRY') }}</span
-              >
               <span class="transaction-total">{{
                 formatCurrency(transaction.quantity * transaction.price, selectedPortfolio.asset?.currency || 'TRY')
               }}</span>
+              <div *ngIf="transaction.fees && transaction.fees > 0" class="transaction-fees">
+                <small
+                  >Komisyon: {{ formatCurrency(transaction.fees, selectedPortfolio.asset?.currency || 'TRY') }}</small
+                >
+              </div>
             </div>
           </div>
         </div>

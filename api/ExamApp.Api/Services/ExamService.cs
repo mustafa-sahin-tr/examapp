@@ -388,8 +388,7 @@ public class ExamService : IExamService
     {
         var existing = await _context.TestInstances
             .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
-                && ti.EndTime == null
-                && ti.Student.UserId == student.UserId);
+                && ti.EndTime == null);
 
 
         if (existing != null)

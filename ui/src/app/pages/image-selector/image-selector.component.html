@@ -133,7 +133,7 @@
           </quill-editor> -->
             <ul *ngIf="!onlyQuestionMode()">
               <li class="flex-no-wrap border-none" *ngFor="let answer of region.answers; let j = index">
-                <button class="choice-btn" (click)="setCorrectAnswer(i, j)">
+                <button class="choice-btn" (click)="setCorrectAnswer(i, j, 1)">
                   {{ answer.label }} {{ answer.isCorrect ? '✅' : '' }}
                 </button>
                 <button (click)="removeAnswer(i, j)">❌</button>

@@ -17,4 +17,6 @@ public interface IQuestionService
     Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId);
 
     Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
+
+    Task<ResponseBaseDto> ResizeQuestionImage(int questionId, double scale);
 }

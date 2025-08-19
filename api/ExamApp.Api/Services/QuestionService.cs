@@ -476,38 +476,56 @@ public class QuestionService : IQuestionService
 
                 }
                 string imageUrl = string.Empty;
-                // 🔹 1. Resmi MinIO'ya kaydet ve ImageUrl olarak kaydet
-                if (!string.IsNullOrEmpty(soruDto.ImageData) &&
-                        _imageHelper.IsBase64String(soruDto.ImageData))
+                // 🔹 1. Resmi MinIO'ya kaydetmeden önce, her Question ve Passage için crop işlemi yapıp ayrı dosya olarak sakla
+                // Ana görseli byte[] olarak hazırla
+                byte[]? mainImageBytes = null;
+                if (!string.IsNullOrEmpty(soruDto.ImageData) && _imageHelper.IsBase64String(soruDto.ImageData))
                 {
-                    byte[] imageBytes = Convert.FromBase64String(soruDto.ImageData.Split(',')[1]);
-                    await using var imageStream = new MemoryStream(imageBytes);
-                    imageUrl = await _minioService.UploadFileAsync(imageStream, $"questions/{Guid.NewGuid()}.jpg");
+                    mainImageBytes = Convert.FromBase64String(soruDto.ImageData.Split(',')[1]);
                 }
 
-                // 🔹 2. Passage'ları kaydet
-                var passages = soruDto.Passages.Select(p => new Passage
+                // Passage'lar için crop ve upload işlemi
+                var passages = new List<Passage>();
+                foreach (var p in soruDto.Passages)
                 {
-                    X = p.X,
-                    Y = p.Y,
-                    Width = p.Width,
-                    Height = p.Height,
-                    Title = p.Id,
-                    IsCanvasQuestion = true
-                }).ToList();
-
+                    string passageImageUrl = string.Empty;
+                    if (mainImageBytes != null)
+                    {
+                        // Crop işlemi (ImageHelper'da CropImage metodu olmalı: byte[] CropImage(byte[] image, int x, int y, int width, int height))
+                        var croppedPassageImage = _imageHelper.CropImage(mainImageBytes, (int)p.X, (int)p.Y, (int)p.Width, (int)p.Height);
+                        await using var passageStream = new MemoryStream(croppedPassageImage);
+                        passageImageUrl = await _minioService.UploadFileAsync(passageStream, $"passages/{Guid.NewGuid()}.jpg");
+                    }
+                    passages.Add(new Passage
+                    {
+                        X = p.X,
+                        Y = p.Y,
+                        Width = p.Width,
+                        Height = p.Height,
+                        Title = p.Id,
+                        IsCanvasQuestion = true,
+                        ImageUrl = passageImageUrl
+                    });
+                }
                 _context.Passage.AddRange(passages);
                 await _context.SaveChangesAsync();
 
-                // 🔹 3. Soruları kaydet
+                // Sorular için crop ve upload işlemi
                 foreach (var questionDto in soruDto.Questions)
                 {
+                    string questionImageUrl = string.Empty;
+                    if (mainImageBytes != null)
+                    {
+                        var croppedQuestionImage = _imageHelper.CropImage(mainImageBytes, (int)questionDto.X, (int)questionDto.Y, (int)questionDto.Width, (int)questionDto.Height);
+                        await using var questionStream = new MemoryStream(croppedQuestionImage);
+                        questionImageUrl = await _minioService.UploadFileAsync(questionStream, $"questions/{Guid.NewGuid()}.jpg");
+                    }
+
                     var question = new Question
                     {
-                        // Text = questionDto.Name,
-                        ImageUrl = imageUrl,
-                        X = questionDto.X,
-                        Y = questionDto.Y,
+                        ImageUrl = questionImageUrl,
+                        X = 0,
+                        Y = 0,
                         Width = questionDto.Width,
                         Height = questionDto.Height,
                         IsExample = questionDto.IsExample,
@@ -518,12 +536,18 @@ public class QuestionService : IQuestionService
                         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
                     };
 
+                    // Answer'ların X,Y koordinatlarını crop edilen question'a göre modifiye et
+                    foreach (var answer in questionDto.Answers)
+                    {
+                        answer.X = answer.X - questionDto.X;
+                        answer.Y = answer.Y - questionDto.Y;
+                    }
+
                     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
                     {
                         question.QuestionSubTopics = soruDto.Header.Subtopics.Select(subTopicId => new QuestionSubTopic
                         {
                             SubTopicId = subTopicId
-                            // QuestionId will be set automatically when the question is saved
                         }).ToList();
                     }
 
@@ -564,18 +588,109 @@ public class QuestionService : IQuestionService
                         var orderCount = await _context.TestQuestions
                             .Where(tq => tq.TestId == soruDto.Header.TestId.Value)
                             .CountAsync();
-                        // ** WorksheetQuestions tablosuna ekleme **
                         var worksheetQuestion = new WorksheetQuestion
                         {
                             TestId = soruDto.Header.TestId.Value,
                             QuestionId = question.Id,
-                            Order = orderCount + 1 // Varsayılan sıralama
+                            Order = orderCount + 1
                         };
 
                         _context.TestQuestions.Add(worksheetQuestion);
                         await _context.SaveChangesAsync();
                     }
                 }
+
+                // // 🔹 2. Passage'ları kaydet
+                // var passages = soruDto.Passages.Select(p => new Passage
+                // {
+                //     X = p.X,
+                //     Y = p.Y,
+                //     Width = p.Width,
+                //     Height = p.Height,
+                //     Title = p.Id,
+                //     IsCanvasQuestion = true
+                // }).ToList();
+
+                // _context.Passage.AddRange(passages);
+                // await _context.SaveChangesAsync();
+
+                // // 🔹 3. Soruları kaydet
+                // foreach (var questionDto in soruDto.Questions)
+                // {
+                //     var question = new Question
+                //     {
+                //         // Text = questionDto.Name,
+                //         ImageUrl = imageUrl,
+                //         X = questionDto.X,
+                //         Y = questionDto.Y,
+                //         Width = questionDto.Width,
+                //         Height = questionDto.Height,
+                //         IsExample = questionDto.IsExample,
+                //         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
+                //         IsCanvasQuestion = true,
+                //         SubjectId = soruDto.Header.SubjectId,
+                //         TopicId = soruDto.Header.TopicId,
+                //         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
+                //     };
+
+                //     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
+                //     {
+                //         question.QuestionSubTopics = soruDto.Header.Subtopics.Select(subTopicId => new QuestionSubTopic
+                //         {
+                //             SubTopicId = subTopicId
+                //             // QuestionId will be set automatically when the question is saved
+                //         }).ToList();
+                //     }
+
+                //     _context.Questions.Add(question);
+                //     await _context.SaveChangesAsync();
+
+                //     // 🔹 4. Şıkları kaydet
+                //     if (!questionDto.IsExample)
+                //     {
+                //         var answers = questionDto.Answers.Select(a => new Answer
+                //         {
+                //             QuestionId = question.Id,
+                //             Text = a.Label,
+                //             X = a.X,
+                //             Y = a.Y,
+                //             Width = a.Width,
+                //             Height = a.Height,
+                //             IsCanvasQuestion = true
+                //         }).ToList();
+
+                //         var correctLabel = questionDto.Answers.FirstOrDefault(a => a.IsCorrect)?.Label;
+
+                //         if (correctLabel == null)
+                //         {
+                //             throw new InvalidOperationException("Doğru cevap belirtilmemiş." + questionDto.Name);
+                //         }
+
+                //         _context.Answers.AddRange(answers);
+                //         await _context.SaveChangesAsync();
+
+                //         // 🔹 Doğru cevabı kaydet (ilk doğru olanı seç)
+                //         question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
+                //         await _context.SaveChangesAsync();
+                //     }
+
+                //     if (soruDto.Header.TestId.HasValue)
+                //     {
+                //         var orderCount = await _context.TestQuestions
+                //             .Where(tq => tq.TestId == soruDto.Header.TestId.Value)
+                //             .CountAsync();
+                //         // ** WorksheetQuestions tablosuna ekleme **
+                //         var worksheetQuestion = new WorksheetQuestion
+                //         {
+                //             TestId = soruDto.Header.TestId.Value,
+                //             QuestionId = question.Id,
+                //             Order = orderCount + 1 // Varsayılan sıralama
+                //         };
+
+                //         _context.TestQuestions.Add(worksheetQuestion);
+                //         await _context.SaveChangesAsync();
+                //     }
+                // }
 
                 await transaction.CommitAsync();
                 return new ResponseBaseDto
@@ -596,6 +711,108 @@ public class QuestionService : IQuestionService
                 };
             }
         }
+    }
+
+    public async Task<ResponseBaseDto> ResizeQuestionImage(int questionId, double scale)
+    {
+        try
+        {
+            var question = await _context.Questions
+                .FirstOrDefaultAsync(q => q.Id == questionId);
+
+            if (question == null)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Soru bulunamadı!"
+                };
+            }
+            if (string.IsNullOrEmpty(question.ImageUrl))
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Soru resmi bulunamadı!"
+                };
+            }
+            // Resmi MinIO'dan indir
+            var imageStream = await _minioService.GetFileStreamAsync(question.ImageUrl);
+            if (imageStream == null)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Soru resmi indirilemedi!"
+                };
+            }
+
+            // Resmi boyutlandır
+            var resizedImage = await _imageHelper.ResizeImageAsync(imageStream, scale);
+            if (resizedImage == null)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Resim boyutlandırılamadı!"
+                };
+            }
+
+            // Boyutlandırılmış resmi tekrar yükle
+            var newUrl = await _minioService.UploadFileAsync(resizedImage, question.ImageUrl);
+            if (string.IsNullOrEmpty(newUrl))
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Message = "Boyutlandırılmış resim yüklenemedi!"
+                };
+            }
+
+            // Eski resmi silebiliriz.
+            // await _minioService.RemoveFileAsync(question.ImageUrl);
+
+            // Yeni URL'yi güncelle
+            question.ImageUrl = newUrl;
+            question.X *= scale;
+            question.Y *= scale;
+            if (question.Width != null)
+                question.Width = (int)(question.Width * scale);
+            if (question.Height != null)
+                question.Height = (int)(question.Height * scale);
+
+            foreach (var a in question.Answers)
+            {
+                a.X *= scale;
+                a.Y *= scale;
+                if (a.Width != null)
+                    a.Width = (int?)(a.Width * scale);
+                if (a.Height != null)
+                    a.Height = (int?)(a.Height * scale);
+            }
+            _context.Questions.Update(question);
+            await _context.SaveChangesAsync();
+
+            return new ResponseBaseDto
+            {
+                Success = true,
+                Message = "Soru resmi başarıyla boyutlandırıldı!"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = $"Soru resmi boyutlandırılırken hata oluştu: {ex.Message}"
+            };
+        }   
+
+        return new ResponseBaseDto
+        {
+            Success = true,
+            Message = "Soru yeniden boyutlandırıldı!"
+        };
     }
 
     public async Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId)

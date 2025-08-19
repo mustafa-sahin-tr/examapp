@@ -94,6 +94,10 @@ public class QuestionsController : BaseController
         }
 
         var response = await _questionService.UpdateCorrectAnswer(questionId, request.CorrectAnswerId);
+        if(request.Scale != 1)
+        {
+            response = await _questionService.ResizeQuestionImage(questionId, request.Scale);
+        }
 
         if (!response.Success)
         {

@@ -4,4 +4,6 @@ public class UpdateCorrectAnswerDto
 {
     public int CorrectAnswerId { get; set; }
 
+    public double Scale { get; set; }
+
 }

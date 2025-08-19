@@ -1,20 +1,21 @@
 export interface AnswerChoice {
-  label: string;  // "A", "B", "C", "D"
+  label: string; // "A", "B", "C", "D"
   x: number;
   y: number;
   width: number;
   height: number;
   isCorrect?: boolean;
   id: number;
+  scale?: number;
 }
 
 export interface PassageRegion {
-    id: number;
-    title: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+  id: number;
+  title: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export interface QuestionRegion {
@@ -34,6 +35,6 @@ export interface QuestionRegion {
 }
 
 export type RegionOrAnswerHit =
-  | { type: 'answer', value: { questionIndex: number, answerIndex: number } }
-  | { type: 'question', value: { questionIndex: number, answerIndex: null } }
+  | { type: 'answer'; value: { questionIndex: number; answerIndex: number } }
+  | { type: 'question'; value: { questionIndex: number; answerIndex: null } }
   | null;

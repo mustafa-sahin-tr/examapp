@@ -433,7 +433,7 @@ export class ImageSelectorComponent {
         ) {
           const questionIndex = this.regions().findIndex((q) => q.name === region.name);
           const answerIndex = region.answers.findIndex((a) => a.label === answer.label);
-          this.setCorrectAnswer(questionIndex, answerIndex);
+          this.setCorrectAnswer(questionIndex, answerIndex, 1);
         }
       }
     }
@@ -1058,7 +1058,7 @@ export class ImageSelectorComponent {
     this.selectedWarning = null;
   }
 
-  setCorrectAnswer(questionIndex: number, answerIndex: number) {
+  setCorrectAnswer(questionIndex: number, answerIndex: number, scale: number) {
     const region = this.regions()[questionIndex];
 
     // Tüm cevapları yanlış yap
@@ -1075,7 +1075,7 @@ export class ImageSelectorComponent {
       const correctAnswerId = region.answers[answerIndex].id;
 
       if (questionId && correctAnswerId) {
-        this.questionService.updateCorrectAnswer(questionId, correctAnswerId).subscribe({
+        this.questionService.updateCorrectAnswer(questionId, correctAnswerId, scale).subscribe({
           next: (response) => {
             if (response.success) {
               this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
@@ -1101,7 +1101,7 @@ export class ImageSelectorComponent {
     const answerIndex = currentRegion.answers.findIndex((answer) => answer.id === selectedChoice.id);
 
     if (answerIndex !== -1) {
-      this.setCorrectAnswer(this.previewCurrentIndex(), answerIndex);
+      this.setCorrectAnswer(this.previewCurrentIndex(), answerIndex, selectedChoice.scale || 1);
     }
   }
 

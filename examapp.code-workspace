@@ -1,7 +1,9 @@
 {
   "folders": [
-    { "path": "." }
-  ], 
+    { "path": "." },
+    { "path": "/Users/mustafasahin/Downloads/WebPImages" },
+    { "path": "/Users/mustafasahin/Documents/Ozum/Flip" }
+  ],
   "settings": {
     "files.exclude": {      
       "**/nuget-packages": true,

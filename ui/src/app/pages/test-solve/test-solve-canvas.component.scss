@@ -298,6 +298,14 @@
         gap: 8px;
       }
 
+      &.top-right {
+        top: 16px;
+        right: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
       &.bottom-right {
         bottom: 16px;
         right: 16px;

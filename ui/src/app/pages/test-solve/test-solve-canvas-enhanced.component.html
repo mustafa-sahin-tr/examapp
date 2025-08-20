@@ -108,6 +108,21 @@
             </button>
           </div>
 
+          <div class="canvas-overlay-actions top-right">
+            <button
+              mat-mini-fab
+              (click)="enlargeImage()"
+              class="overlay-bookmark-btn"
+              [attr.aria-label]="'Büyüt (+5%)'"
+            >
+              <mat-icon>zoom_in</mat-icon>
+            </button>
+
+            <button mat-mini-fab (click)="shrinkImage()" class="overlay-report-btn" [attr.aria-label]="'Küçült (-5%)'">
+              <mat-icon>zoom_out</mat-icon>
+            </button>
+          </div>
+
           <!-- Canvas Overlay Butonları - Sağ Alt -->
           <div class="canvas-overlay-actions bottom-right">
             <button
@@ -120,8 +135,6 @@
               <mat-icon>check_box_outline_blank</mat-icon>
             </button>
           </div>
-          {{ regions()[currentIndex()].id }} -
-          {{ selectedChoices().get(regions()[currentIndex()].id) }}
           <app-question-canvas-view
             #canvasView
             [questionRegion]="regions()[currentIndex()]"

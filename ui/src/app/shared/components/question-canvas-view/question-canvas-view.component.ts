@@ -200,8 +200,8 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     const region = this._questionRegion();
 
     // Keep canvas fixed sized
-    const targetW = this.baseCanvasWidth ?? region.width;
-    const targetH = this.baseCanvasHeight ?? region.height;
+    const targetW = (this.baseCanvasWidth ?? region.width) * this.contentScale;
+    const targetH = (this.baseCanvasHeight ?? region.height) * this.contentScale;
     canvasEl.width = targetW;
     canvasEl.height = targetH;
 

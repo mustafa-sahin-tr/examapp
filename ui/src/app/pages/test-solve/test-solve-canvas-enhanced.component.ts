@@ -703,6 +703,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     }
   }
 
+  enlargeImage() {
+    if (this.canvasViewComponent) {
+      this.canvasViewComponent.enlargeImage();
+    }
+  }
+
+  shrinkImage() {
+    if (this.canvasViewComponent) {
+      this.canvasViewComponent.shrinkImage();
+    }
+  }
+
   // Cevaplanan soru sayısını güncelle
   private updateAnsweredCount() {
     const count = this.testInstance?.testInstanceQuestions?.filter((q) => q.selectedAnswerId).length || 0;

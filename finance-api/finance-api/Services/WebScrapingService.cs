@@ -170,7 +170,7 @@ namespace FinanceApi.Services
                         {
                             Type = AssetType.Gold,
                             Symbol = symbol,
-                            Price = price,
+                            Price = price - 100,
                             Unit = "USD", // COMEX altın fiyatları USD/oz cinsindendir
                             LastUpdated = DateTime.UtcNow,
                             IsSuccess = true

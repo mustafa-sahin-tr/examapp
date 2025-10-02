@@ -33,4 +33,5 @@ public interface IExamService
 
     Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId);
     Task<List<Grade>> GetGradesAsync();
+    Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId);
 }

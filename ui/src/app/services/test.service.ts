@@ -77,6 +77,10 @@ export class TestService {
     return this.http.post<any>(this.baseUrl, test);
   }
 
+  delete(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/${id}`);
+  }
+
   bulkImport(bulkData: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/bulk-import`, bulkData);
   }

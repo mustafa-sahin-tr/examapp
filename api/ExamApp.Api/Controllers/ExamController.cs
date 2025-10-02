@@ -255,4 +255,38 @@ public class ExamController : BaseController
         return Ok(grades);
     }
 
+    [HttpDelete("{id}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteWorksheet(int id)
+    {
+        try
+        {
+            var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
+            if (profile == null)
+            {
+                return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+            }
+            var result = await _examService.DeleteWorksheetAsync(id, profile.ProfileId);
+
+            if (!result.Success)
+            {
+                return BadRequest(result.Message);
+            }
+
+            return Ok(new { message = result.Message, success = true });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Bir hata oluştu: " + ex.Message, success = false });
+        }
+    }
+
 }

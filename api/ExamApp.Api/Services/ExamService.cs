@@ -6,6 +6,7 @@ using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Globalization;
 using System.Numerics;
 using System.Text.Json;
@@ -1157,5 +1158,30 @@ public class ExamService : IExamService
     public async Task<List<Grade>> GetGradesAsync()
     {
         return await _context.Grades.ToListAsync();
+    }
+
+    public async Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId)
+    {
+        var response = new ResponseBaseDto();
+
+        var worksheet = await _context.Worksheets.FindAsync(worksheetId);
+
+        if (worksheet == null || worksheet.IsDeleted)
+        {
+            response.Success = false;
+            response.Message = "Worksheet bulunamadı.";
+            return response;
+        }
+
+        worksheet.IsDeleted = true;
+        worksheet.DeleteTime = DateTime.UtcNow;
+        worksheet.DeleteUserId = userId;
+
+        await _context.SaveChangesAsync();
+
+        response.Success = true;
+        response.Message = "Worksheet başarıyla silindi.";
+
+        return response;
     }
 }

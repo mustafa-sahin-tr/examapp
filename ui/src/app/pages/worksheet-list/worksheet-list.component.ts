@@ -17,6 +17,13 @@ import { IsStudentDirective } from '../../shared/directives/is-student.directive
 import { toSignal } from '@angular/core/rxjs-interop';
 import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -36,6 +43,9 @@ import { Grade } from '../../models/student';
     FormsModule,
     PaginationComponent,
     IsStudentDirective,
+    MatIconModule,
+    MatMenuModule,
+    MatButtonModule,
   ],
 })
 export class WorksheetListComponent {
@@ -43,8 +53,10 @@ export class WorksheetListComponent {
   searchControl = new FormControl('');
   route = inject(ActivatedRoute);
   router = inject(Router);
+  dialog = inject(MatDialog);
+  snackBar = inject(MatSnackBar);
   subjectService = inject(SubjectService);
-  newestWorksheetsSignal = toSignal(this.testService.getLatest(1));
+  newestWorksheetsSignal = signal<Test[]>([]);
   pagedWorksheetsSignal = signal<Paged<Test>>({
     items: [],
     totalCount: 0,
@@ -61,6 +73,7 @@ export class WorksheetListComponent {
   scrollDistance = 600;
   selectedSubjectIds: number[] = [];
   selectedGradeIds: number[] = [];
+  deletingWorksheetId = signal<number | null>(null);
 
   @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;
 
@@ -97,6 +110,10 @@ export class WorksheetListComponent {
   ngOnInit() {
     const initialWorksheets = this.route.snapshot.data['worksheets'] as Paged<Test>;
     this.pagedWorksheetsSignal.set(initialWorksheets);
+
+    // En yeni testleri yükle
+    this.updateNewestWorksheets();
+
     this.route.queryParams.subscribe((params) => {
       const search = params['search'] ?? '';
       this.searchControl.setValue(search);
@@ -143,6 +160,12 @@ export class WorksheetListComponent {
       .subscribe((results) => {
         this.pagedWorksheetsSignal.set(results);
       });
+  }
+
+  private updateNewestWorksheets(): void {
+    this.testService.getLatest(1).subscribe((latestTests) => {
+      this.newestWorksheetsSignal.set(latestTests);
+    });
   }
 
   onAutocompleteSelect(worksheetName: string) {
@@ -208,4 +231,90 @@ export class WorksheetListComponent {
   totalResults = 288;
   sortOptions = ['Newest', 'Relevance', 'Popularity'];
   selectedSort = 'Relevance';
+
+  onDeleteWorksheet(worksheetId: number) {
+    console.log('Deleting worksheet:', worksheetId);
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '500px',
+      maxWidth: '90vw',
+      disableClose: false,
+      hasBackdrop: true,
+      backdropClass: 'custom-backdrop',
+      panelClass: 'custom-dialog-container',
+      enterAnimationDuration: '300ms',
+      exitAnimationDuration: '200ms',
+      data: {
+        title: 'Testi Sil',
+        message: 'Bu testi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm veriler kaybolacaktır.',
+        confirmText: 'Evet, Sil',
+        cancelText: 'İptal',
+        icon: 'delete_forever',
+        confirmColor: 'warn',
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.performDelete(worksheetId);
+      }
+    });
+  }
+
+  private performDelete(worksheetId: number): void {
+    // Loading state'i başlat
+    this.deletingWorksheetId.set(worksheetId);
+
+    this.testService
+      .delete(worksheetId)
+      .pipe(
+        finalize(() => {
+          // Loading state'i kapat
+          this.deletingWorksheetId.set(null);
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          console.log('Test başarıyla silindi:', response);
+
+          // Başarı mesajı göster
+          this.showSuccessMessage('✅ Test başarıyla silindi!');
+
+          // Listeyi güncelle
+          this.updatePagedWorksheets(this.pageNumber);
+
+          // En yeni testleri de güncelle
+          this.updateNewestWorksheets();
+
+          // Eğer bu sayfada başka test kalmadıysa ve ilk sayfa değilse, önceki sayfaya git
+          const currentItems = this.pagedWorksheetsSignal().items;
+          if (currentItems.length === 1 && this.pageNumber > 1) {
+            this.pageNumber--;
+            this.updatePagedWorksheets(this.pageNumber);
+          }
+        },
+        error: (error) => {
+          console.error('Test silinirken hata oluştu:', error);
+          this.showErrorMessage('❌ Test silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+        },
+      });
+  }
+
+  private showSuccessMessage(message: string): void {
+    this.snackBar.open(message, 'Tamam', {
+      duration: 4000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['success-snackbar'],
+    });
+  }
+
+  private showErrorMessage(message: string): void {
+    this.snackBar.open(message, 'Kapat', {
+      duration: 6000,
+      horizontalPosition: 'end',
+      verticalPosition: 'top',
+      panelClass: ['error-snackbar'],
+    });
+  }
 }

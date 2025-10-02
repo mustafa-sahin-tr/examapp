@@ -82,23 +82,44 @@
                 {{ course.name }}
                 <span *ngIf="course.instance && course.instance.status === 1" class="new-badge">TAMAMLANDI</span>
                 <span class="new-badge"
-                  ><strong> {{ course.questionCount }} Soru</strong>
-                </span>
+                  ><strong> {{ course.questionCount }} Soru</strong></span
+                >
                 <span class="new-badge"
-                  ><strong> {{ course.gradeId }}.Sınıf</strong>
-                </span>
+                  ><strong> {{ course.gradeId }}.Sınıf</strong></span
+                >
                 <span class="new-badge"
-                  ><strong> ⭐ {{ 4.8 }}</strong>
-                </span>
+                  ><strong> ⭐ {{ 4.8 }}</strong></span
+                >
                 <span class="new-badge"
-                  ><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika
-                </span>
+                  ><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika</span
+                >
               </h3>
               <a [routerLink]="['/test', course.id]"
                 ><span>{{ course.subtitle }}</span></a
               >
               <p>{{ course.description }}</p>
             </div>
+            <button
+              class="menu-btn"
+              mat-icon-button
+              [matMenuTriggerFor]="worksheetMenu"
+              [disabled]="deletingWorksheetId() === course.id"
+              (click)="$event.stopPropagation()"
+            >
+              <mat-icon *ngIf="deletingWorksheetId() !== course.id">more_vert</mat-icon>
+              <mat-icon *ngIf="deletingWorksheetId() === course.id" class="loading-icon">hourglass_empty</mat-icon>
+            </button>
+            <mat-menu #worksheetMenu="matMenu">
+              <button
+                mat-menu-item
+                (click)="onDeleteWorksheet(course.id || 0)"
+                [disabled]="deletingWorksheetId() === course.id"
+              >
+                <mat-icon *ngIf="deletingWorksheetId() !== course.id">delete</mat-icon>
+                <mat-icon *ngIf="deletingWorksheetId() === course.id" class="loading-icon">hourglass_empty</mat-icon>
+                <span>{{ deletingWorksheetId() === course.id ? 'Siliniyor...' : 'Sil' }}</span>
+              </button>
+            </mat-menu>
           </li>
         </ul>
       </div>

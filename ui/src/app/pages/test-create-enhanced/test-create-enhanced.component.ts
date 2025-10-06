@@ -26,6 +26,8 @@ import { TestFormComponent } from '../test-form/test-form.component';
 import { TestService } from '../../services/test.service';
 import { Test } from '../../models/test-instance';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
+import { Observable, of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -322,8 +324,14 @@ export class TestCreateEnhancedComponent implements OnInit {
     }
   }
 
-  public onCreateAsync() {
+  public onCreateAsync(): Observable<{ message: string; examId: number }> {
     var payload = this.createTestPayload();
+    if (!payload.subtopicId) {
+      // Observable error olarak dönmek için throwError kullanılır
+      return throwError(
+        () => new HttpErrorResponse({ status: 400, statusText: 'Alt konu seçilmedi', error: 'Alt konu seçilmedi' })
+      );
+    }
     payload = { ...payload, id: null }; // id'yi null yaparak yeni bir test oluşturulacağını belirt
     return this.testService.create(payload);
   }

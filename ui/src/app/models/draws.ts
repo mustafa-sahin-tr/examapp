@@ -16,6 +16,8 @@ export interface PassageRegion {
   y: number;
   width: number;
   height: number;
+  imageUrl: string;
+  imageId: string;
 }
 
 export interface QuestionRegion {

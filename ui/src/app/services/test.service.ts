@@ -143,6 +143,8 @@ export class TestService {
               y: question.passage.y,
               width: question.passage.width,
               height: question.passage.height,
+              imageUrl: question.passage.imageUrl,
+              imageId: question.passage.imageUrl,
             }
           : undefined,
       };
@@ -190,6 +192,8 @@ export class TestService {
               y: question.passage.y,
               width: question.passage.width,
               height: question.passage.height,
+              imageUrl: question.passage.imageUrl,
+              imageId: question.passage.imageUrl,
             }
           : undefined,
       };

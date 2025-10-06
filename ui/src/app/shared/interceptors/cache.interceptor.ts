@@ -17,11 +17,17 @@ export const cacheInterceptor: HttpInterceptorFn = (req, next) => {
     '/api/exam/subject',
     '/api/exam/subject/by-grade/',
     '/api/exam/subject/topics/',
-    '/api/exam/subject/subtopics/',
+    // '/api/exam/subject/subtopics/',
   ];
 
   // Check if the URL is cacheable
-  if (!cacheableUrls.some((cacheableUrl) => req.url.includes(cacheableUrl))) {
+  // Only cache exact matches or allowed prefixes, but exclude more specific subpaths
+  // For example: cache '/api/exam/subject' but NOT '/api/exam/subject/subtopics/'
+  const shouldCache = cacheableUrls.some(
+    (cacheableUrl) => req.url === cacheableUrl || (cacheableUrl.endsWith('/') && req.url.startsWith(cacheableUrl))
+  );
+
+  if (!shouldCache) {
     return next(req);
   }
 

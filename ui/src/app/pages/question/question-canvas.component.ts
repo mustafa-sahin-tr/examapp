@@ -310,7 +310,7 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating test:', error);
-        this.snackBar.open('Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+        this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
       },
     });
   }
@@ -339,7 +339,7 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating test:', error);
-        this.snackBar.open('Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+        this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
       },
     });
   }

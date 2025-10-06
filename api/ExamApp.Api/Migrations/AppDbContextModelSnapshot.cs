@@ -80,7 +80,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("QuestionId");
 
-                    b.ToTable("Answers");
+                    b.ToTable("Answers", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Badge", b =>
@@ -132,7 +132,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Badge");
+                    b.ToTable("Badge", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Book", b =>
@@ -170,7 +170,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Books");
+                    b.ToTable("Books", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.BookTest", b =>
@@ -213,7 +213,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("BookId");
 
-                    b.ToTable("BookTests");
+                    b.ToTable("BookTests", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Leaderboard", b =>
@@ -265,7 +265,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("Leaderboards");
+                    b.ToTable("Leaderboards", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LearningOutcome", b =>
@@ -315,7 +315,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SubTopicId");
 
-                    b.ToTable("LearningOutcomes");
+                    b.ToTable("LearningOutcomes", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.LearningOutcomeDetail", b =>
@@ -358,7 +358,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("LearningOutcomeId");
 
-                    b.ToTable("LearningOutcomeDetails");
+                    b.ToTable("LearningOutcomeDetails", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Parent", b =>
@@ -398,7 +398,7 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Parents");
+                    b.ToTable("Parents", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
@@ -456,7 +456,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Passage");
+                    b.ToTable("Passage", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.ProgramStep", b =>
@@ -504,7 +504,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ProgramSteps");
+                    b.ToTable("ProgramSteps", (string)null);
 
                     b.HasData(
                         new
@@ -623,7 +623,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("ProgramStepId");
 
-                    b.ToTable("ProgramStepActions");
+                    b.ToTable("ProgramStepActions", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.ProgramStepOption", b =>
@@ -680,7 +680,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("ProgramStepId");
 
-                    b.ToTable("ProgramStepOptions");
+                    b.ToTable("ProgramStepOptions", (string)null);
 
                     b.HasData(
                         new
@@ -1099,7 +1099,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("Questions");
+                    b.ToTable("Questions", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.QuestionSubTopic", b =>
@@ -1143,7 +1143,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SubTopicId");
 
-                    b.ToTable("QuestionSubTopics");
+                    b.ToTable("QuestionSubTopics", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Reward", b =>
@@ -1187,7 +1187,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Rewards");
+                    b.ToTable("Rewards", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.SpecialEvent", b =>
@@ -1238,7 +1238,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("SpecialEvents");
+                    b.ToTable("SpecialEvents", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Student", b =>
@@ -1298,7 +1298,7 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentBadge", b =>
@@ -1345,7 +1345,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("StudentBadges");
+                    b.ToTable("StudentBadges", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentPointHistory", b =>
@@ -1394,7 +1394,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("StudentPointHistories");
+                    b.ToTable("StudentPointHistories", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentReward", b =>
@@ -1444,7 +1444,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("StudentRewards");
+                    b.ToTable("StudentRewards", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentSpecialEvent", b =>
@@ -1494,7 +1494,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("StudentId");
 
-                    b.ToTable("StudentSpecialEvents");
+                    b.ToTable("StudentSpecialEvents", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
@@ -1539,7 +1539,7 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Teachers");
+                    b.ToTable("Teachers", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.User", b =>
@@ -1597,7 +1597,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
@@ -1678,7 +1678,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("UserPrograms");
+                    b.ToTable("UserPrograms", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>
@@ -1743,7 +1743,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("UserProgramId");
 
-                    b.ToTable("UserProgramSchedules");
+                    b.ToTable("UserProgramSchedules", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>
@@ -1790,7 +1790,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("TestId");
 
-                    b.ToTable("TestQuestions");
+                    b.ToTable("TestQuestions", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Foundation.Persistence.OutboxMessage", b =>
@@ -1815,7 +1815,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OutboxMessages");
+                    b.ToTable("OutboxMessages", (string)null);
                 });
 
             modelBuilder.Entity("Grade", b =>
@@ -1854,7 +1854,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Grades");
+                    b.ToTable("Grades", (string)null);
 
                     b.HasData(
                         new
@@ -1970,7 +1970,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SubjectId");
 
-                    b.ToTable("GradeSubjects");
+                    b.ToTable("GradeSubjects", (string)null);
 
                     b.HasData(
                         new
@@ -2509,7 +2509,7 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("StudentId")
                         .IsUnique();
 
-                    b.ToTable("StudentPoints");
+                    b.ToTable("StudentPoints", (string)null);
                 });
 
             modelBuilder.Entity("SubTopic", b =>
@@ -2552,7 +2552,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("SubTopics");
+                    b.ToTable("SubTopics", (string)null);
 
                     b.HasData(
                         new
@@ -20449,7 +20449,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Subjects");
+                    b.ToTable("Subjects", (string)null);
 
                     b.HasData(
                         new
@@ -20604,7 +20604,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SubjectId");
 
-                    b.ToTable("Topics");
+                    b.ToTable("Topics", (string)null);
 
                     b.HasData(
                         new
@@ -24981,7 +24981,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("Worksheets");
+                    b.ToTable("Worksheets", (string)null);
                 });
 
             modelBuilder.Entity("WorksheetInstance", b =>
@@ -25034,7 +25034,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("WorksheetId");
 
-                    b.ToTable("TestInstances");
+                    b.ToTable("TestInstances", (string)null);
                 });
 
             modelBuilder.Entity("WorksheetInstanceQuestion", b =>
@@ -25092,7 +25092,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("WorksheetQuestionId");
 
-                    b.ToTable("TestInstanceQuestions");
+                    b.ToTable("TestInstanceQuestions", (string)null);
                 });
 
             modelBuilder.Entity("WorksheetPrototype", b =>
@@ -25138,7 +25138,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("GradeId");
 
-                    b.ToTable("TestPrototypes");
+                    b.ToTable("TestPrototypes", (string)null);
                 });
 
             modelBuilder.Entity("WorksheetPrototypeDetail", b =>
@@ -25185,7 +25185,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("WorksheetPrototypeId");
 
-                    b.ToTable("TestPrototypeDetail");
+                    b.ToTable("TestPrototypeDetail", (string)null);
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Answer", b =>

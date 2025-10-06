@@ -29,8 +29,10 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   private psgctx!: CanvasRenderingContext2D | null;
   private canvasCtx!: CanvasRenderingContext2D | null;
   private img = new Image();
+  private passageImg = new Image();
   public imageCache = new Map<string, HTMLImageElement>();
   public currentImageId = signal<string | null>(null);
+  public currentPassageImageId = signal<string | null>(null);
 
   public _questionRegion = signal<QuestionRegion>({} as QuestionRegion);
   public isImageLoaded = signal(false);
@@ -122,6 +124,16 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
       this.img = cached;
       this.isImageLoaded.set(true);
       this.currentImageId.set(region.imageId);
+
+      if (region?.passage?.imageUrl && region?.passage?.imageId) {
+        const psgCached = this.imageCache.get(region.passage?.imageId || '');
+        if (psgCached) {
+          this.img = psgCached;
+          this.isImageLoaded.set(true);
+          this.currentPassageImageId.set(region.passage?.imageId!);
+        }
+      }
+
       this.drawImageSection();
       return;
     }
@@ -138,13 +150,35 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
       this.img.onerror = () => reject();
     });
 
+    if (region?.passage?.imageUrl && region?.passage?.imageId) {
+      this.passageImg = new Image();
+      this.passageImg.src = region.passage.imageUrl;
+      await new Promise<void>((resolve, reject) => {
+        this.passageImg.onload = () => {
+          this.imageCache.set(region.passage?.imageId!, this.passageImg);
+          this.isImageLoaded.set(true);
+          this.currentPassageImageId.set(region.passage?.imageId!);
+          resolve();
+        };
+        this.passageImg.onerror = () => reject();
+      });
+    }
+
     this.drawImageSection();
   }
 
   private drawPassageSection() {
     const region = this._questionRegion();
     if (!this.psgctx || !this.passageCanvas || !this.isImageLoaded()) return;
-    if (!region?.passage) return;
+    if (!region?.passage) {
+      // Hide passage canvas completely
+      if (this.passageCanvas?.nativeElement) {
+        this.passageCanvas.nativeElement.width = 0;
+        this.passageCanvas.nativeElement.height = 0;
+        this.psgctx?.clearRect(0, 0, 0, 0);
+      }
+      return;
+    }
 
     const passageCanvasEl = this.passageCanvas.nativeElement;
     passageCanvasEl.width = region.passage.width || 0;
@@ -152,9 +186,9 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
 
     this.psgctx.clearRect(0, 0, passageCanvasEl.width, passageCanvasEl.height);
     this.psgctx.drawImage(
-      this.img,
-      region.passage.x || 0,
-      region.passage.y || 0,
+      this.passageImg,
+      0, //region.passage.x || 0,
+      0, //region.passage.y || 0,
       region.passage.width || 0,
       region.passage.height || 0,
       0,

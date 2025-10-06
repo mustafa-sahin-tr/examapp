@@ -186,10 +186,10 @@ export class CacheService {
   getSubtopicsByTopic(topicId: number): Observable<any[]> {
     const cacheMap = this.subtopicCache();
 
-    // Check if we have valid cached data for this topic
-    if (cacheMap[topicId] && this.hasValidCache(cacheMap[topicId])) {
-      return of(cacheMap[topicId].data);
-    }
+    // // Check if we have valid cached data for this topic
+    // if (cacheMap[topicId] && this.hasValidCache(cacheMap[topicId])) {
+    //   return of(cacheMap[topicId].data);
+    // }
 
     // Set loading state
     this.subtopicsLoading.set(true);

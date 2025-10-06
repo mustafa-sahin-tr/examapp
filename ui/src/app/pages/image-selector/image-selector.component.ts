@@ -697,6 +697,15 @@ export class ImageSelectorComponent {
     const height = endY - this.startY;
 
     if (this.selectionMode() === 'passage') {
+      if (questionWidthThreshold > width || questionHeightThreshold > height) {
+        console.log(
+          'Exited  EndSelection questionWidthThreshold > width || questionHeightThreshold > height. IsDrawing :',
+          this.isDrawing
+        );
+        this.isDrawing = false;
+        this.drawImage();
+        return;
+      }
       const id = `p${this.passages().length + 1}`;
       this.passages.set([...this.passages(), { id, x: this.startX, y: this.startY, width, height }]);
     } else if (this.selectionMode() === 'question') {

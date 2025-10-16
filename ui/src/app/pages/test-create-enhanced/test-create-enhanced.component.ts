@@ -73,6 +73,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   bulkImportData: TestRow[] = [];
   selectedBulkIndex: number | null = null;
   lastPatchedBulkFormValue: any = null;
+  selectedImage: string | ArrayBuffer | undefined | null = null;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   testService = inject(TestService);
 
@@ -173,6 +174,18 @@ export class TestCreateEnhancedComponent implements OnInit {
         }
       }
     });
+  }
+
+  onImageSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.selectedImage = e.target?.result;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
   loadTest() {

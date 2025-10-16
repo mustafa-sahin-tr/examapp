@@ -34,6 +34,19 @@
 
     <mat-card class="bulk-import-card form-column-2" style="margin-bottom: 24px">
       <mat-card-title>Excel ile Toplu Test Yükle</mat-card-title>
+      <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()" type="button">
+        <mat-icon>cloud_upload</mat-icon>
+        <span>Yükle</span>
+      </button>
+      <input #fileInput type="file" (change)="onImageSelected($event)" accept="image/*" hidden />
+      <div *ngIf="selectedImage" style="margin-top: 12px">
+        <img
+          [src]="selectedImage"
+          alt="Seçilen Resim"
+          style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #eee"
+        />
+      </div>
+
       <mat-card-content>
         <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
           <input

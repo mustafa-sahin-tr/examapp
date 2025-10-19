@@ -291,9 +291,9 @@
       z-index: 10; // Canvas üzerinde görünsün
 
       &.top-left {
-        top: 16px;
+        top: -16px;
         left: 16px;
-        display: flex;
+        // display: flex;
         flex-direction: column;
         gap: 8px;
       }
@@ -1039,10 +1039,386 @@
       .question-grid-container {
         .question-grid {
           grid-template-columns: repeat(6, 1fr); // Mobilde 6 sütun
-        }
       }
     }
   }
+}
+}
+
+/* =================== Çoklu Soru Görünümü Stilleri =================== */
+
+/* Görünüm Seçici */
+.view-selector {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-bottom: 16px;
+
+  button {
+    &.active {
+      background: var(--accent-color);
+      color: white;
+    }
+  }
+}
+
+/* Çoklu Soru Container */
+.multi-question-container {
+  &.layout-1 {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &.layout-2 {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 1fr 1fr !important;
+    gap: 16px !important;
+    height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+
+  &.layout-4 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: 1fr 1fr !important;
+    gap: 12px !important;
+    height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
+}
+
+/* Soru Panel Düzenlemeleri */
+.question-panel {
+  /* 2 Soru Modu */
+  &.questions-2 {
+    .multi-question-container.layout-2 {
+      display: grid !important;
+      grid-template-columns: 1fr !important;
+      grid-template-rows: 1fr 1fr !important;
+      gap: 16px !important;
+    }
+    
+    .multi-question-container.layout-2 .question-wrapper {
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 12px;
+      transition: all 0.3s ease;
+      position: relative;
+      min-height: 200px;
+
+      &.active {
+        border-color: var(--accent-color);
+        background: rgba(255, 255, 255, 0.12);
+        transform: scale(1.02);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+      }
+    }
+  }
+
+  /* 4 Soru Modu */
+  &.questions-4 {
+    .multi-question-container.layout-4 {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      grid-template-rows: 1fr 1fr !important;
+      gap: 12px !important;
+    }
+    
+    .multi-question-container.layout-4 .question-wrapper {
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 8px; /* 4'lü modda daha az padding */
+      transition: all 0.3s ease;
+      position: relative;
+      min-height: 150px; /* 4'lü modda daha az yükseklik */
+      max-height: 300px; /* Maksimum yükseklik sınırı */
+      overflow-y: auto; /* İçerik taşarsa scroll */
+
+      &.active {
+        border-color: var(--accent-color);
+        background: rgba(255, 255, 255, 0.12);
+        transform: scale(1.01); /* 4'lü modda daha az büyütme */
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+      }
+    }
+  }
+}
+
+/* Soru Başlığı - Çoklu görünümde */
+.question-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+
+  .question-number {
+    background: var(--primary-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .answered-icon {
+    color: var(--success-color);
+    font-size: 20px;
+  }
+}
+
+/* Mini Eylemler - Çoklu görünümde */
+.mini-question-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+
+  .mini-bookmark-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+
+    &.active {
+      background: var(--warning-color);
+      color: white;
+    }
+
+    .mat-icon {
+      font-size: 16px;
+    }
+  }
+}
+
+/* Canvas View Scaling */
+.canvas-view-1 {
+  width: 100%;
+  height: auto;
+}
+
+.canvas-view-2 {
+  width: 100%;
+  height: 250px;
+  overflow: hidden;
+
+  canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
+.canvas-view-4 {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+
+  canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
+/* Question View Scaling */
+.question-view-2 {
+  font-size: 14px;
+
+  .mat-button,
+  .mat-stroked-button {
+    font-size: 12px;
+    padding: 4px 8px;
+    min-width: auto;
+  }
+
+  .question-text {
+    line-height: 1.4;
+  }
+
+  .answer-options {
+    margin-top: 8px;
+
+    .answer-option {
+      margin: 4px 0;
+      padding: 6px 8px;
+    }
+  }
+}
+
+.question-view-4 {
+  font-size: 12px; /* 4'lü modda daha küçük font */
+
+  .mat-button,
+  .mat-stroked-button {
+    font-size: 10px;
+    padding: 2px 6px;
+    min-width: auto;
+    height: 24px; /* Daha kompakt butonlar */
+  }
+
+  .question-text {
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+
+  .answer-options {
+    margin-top: 6px;
+
+    .answer-option {
+      margin: 2px 0;
+      padding: 4px 6px;
+      font-size: 11px;
+    }
+  }
+
+  /* Başlık için özel stil */
+  .question-header {
+    margin-bottom: 6px;
+    
+    .question-number {
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+  }
+}
+
+/* Soru Haritası - Görünür Soru Vurgulaması */
+.question-grid {
+  button {
+    &.visible {
+      background: rgba(var(--accent-color-rgb), 0.2);
+      border: 2px solid var(--accent-color);
+    }
+  }
+}
+
+/* Araçlar - Görünüm Seçenekleri */
+.view-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+
+  .tool-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+    margin-right: 4px;
+  }
+
+  button {
+    &.active {
+      background: var(--accent-color);
+      color: white;
+    }
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .multi-question-container {
+    &.layout-2 {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: 1fr 1fr !important;
+    }
+
+    &.layout-4 {
+      grid-template-columns: 1fr !important;
+      grid-template-rows: repeat(4, 1fr) !important;
+    }
+  }
+
+  .view-selector {
+    .mat-icon-button {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  .question-panel {
+    &.questions-2 .multi-question-container.layout-2 .question-wrapper,
+    &.questions-4 .multi-question-container.layout-4 .question-wrapper {
+      padding: 8px;
+      min-height: 120px; /* Mobilde daha az yükseklik */
+    }
+  }
+}
+
+/* Masaüstü için ek 4'lü mod kuralları */
+@media (min-width: 769px) {
+  .question-panel.questions-4 .multi-question-container.layout-4 {
+    height: calc(100vh - 250px) !important;
+    max-height: 600px !important;
+  }
+}
+
+/* Focus Mode Adjustments for Multi-view */
+.test-solve-container.focus-mode {
+  .view-selector {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Animation için transition'lar */
+.question-wrapper {
+  transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.multi-question-container {
+  transition: all 0.3s ease;
+}
+
+/* Çoklu görünümde passage gizleme */
+.question-panel.questions-2,
+.question-panel.questions-4 {
+  .passage-section {
+    display: none;
+  }
+}
+
+/* Özel 2'li mod zorlaması */
+.multi-question-container[data-questions="2"] {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: 1fr 1fr !important;
+  gap: 16px !important;
+  grid-column-gap: 0px !important;
+  grid-row-gap: 16px !important;
+}
+
+/* Özel 4'lü mod zorlaması */
+.multi-question-container[data-questions="4"] {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  grid-template-rows: 1fr 1fr !important;
+  gap: 12px !important;
 }
 
 @media (max-width: 480px) {
@@ -1061,7 +1437,7 @@
 
   .floating-actions {
     right: 12px;
-
+ 
     .floating-btn {
       width: 40px;
       height: 40px;

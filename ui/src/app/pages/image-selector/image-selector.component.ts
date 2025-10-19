@@ -270,7 +270,10 @@ export class ImageSelectorComponent {
       this.predict();
     } else if (action === 'selectPassage') {
       this.selectionMode.set('passage');
+    } else if (action === 'removeAll') {
+      this.removeAllQuestions();
     }
+
     this.contextMenuVisible = false;
   }
 
@@ -1181,6 +1184,12 @@ export class ImageSelectorComponent {
     this.sortRegionsByName();
     this.removeContextMenu();
     this.drawImage();
+  }
+
+  removeAllQuestions() {
+    for (let i = this.regions().length - 1; i >= 0; i--) {
+      this.removeQuestion(i);
+    }
   }
 
   removeContextMenu() {

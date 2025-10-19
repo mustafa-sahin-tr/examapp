@@ -75,6 +75,10 @@
             <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
             Soru Sil
           </button>
+          <button (click)="handleMenuAction('removeAll', $event)">
+            <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+            Tüm Soruları Sil
+          </button>
           <button (click)="handleMenuAction('alignAnswers', $event)">
             <mat-icon style="vertical-align: middle; margin-right: 8px">format_align_center</mat-icon>
             Cevapları Hizala

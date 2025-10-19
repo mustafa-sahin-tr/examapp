@@ -46,7 +46,7 @@ public class ExamController : BaseController
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
         if (profile == null)
         {
-            return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
         var result = await _examService.GetWorksheetAndInstancesAsync(new Student { Id = profile.ProfileId }, gradeId);
         return Ok(result);
@@ -60,7 +60,7 @@ public class ExamController : BaseController
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
         if (profile == null)
         {
-            return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
         var result = await _examService.GetCompletedTestsAsync(new Student { Id = profile.ProfileId }, pageNumber, pageSize);
         return Ok(result);
@@ -100,7 +100,7 @@ public class ExamController : BaseController
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
         if (profile == null)
         {
-            return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
         if (profile.Role == UserRole.Student.ToString())
         {
@@ -137,7 +137,7 @@ public class ExamController : BaseController
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
         if (profile == null)
         {
-            return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
 
         try
@@ -242,7 +242,7 @@ public class ExamController : BaseController
         var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
         if (profile == null)
         {
-            return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
         var result = await _examService.GetGroupedStudentStatistics(profile.ProfileId);
         return Ok(result);
@@ -264,7 +264,7 @@ public class ExamController : BaseController
             var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
             if (profile == null)
             {
-                return BadRequest("Öğrenci Bilgisine ulaşılamadı");
+                return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
             }
             var result = await _examService.DeleteWorksheetAsync(id, profile.ProfileId);
 

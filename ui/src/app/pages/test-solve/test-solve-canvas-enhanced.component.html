@@ -18,14 +18,14 @@
 
       <!-- Orta: Navigation ve Test Bilgileri -->
       <div class="center-navigation">
-        <!-- Önceki Soru -->
+        <!-- Önceki Soru/Grup -->
         <button
           mat-icon-button
           color="primary"
           (click)="prevQuestion()"
-          [disabled]="currentIndex() === 0"
+          [disabled]="!canGoPrev()"
           class="header-nav-btn prev-btn"
-          [attr.aria-label]="'Önceki soru'"
+          [attr.aria-label]="questionsPerView() === 1 ? 'Önceki soru' : 'Önceki soru grubu'"
         >
           <mat-icon>chevron_left</mat-icon>
         </button>
@@ -37,9 +37,17 @@
             <span>{{ testInstance.testName }}</span>
           </div>
           <div class="test-meta">
+            @if(questionsPerView() === 1) {
             <span class="question-counter"
               >{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}</span
             >
+            } @else {
+            <span class="question-counter"
+              >Görünüm {{ currentViewNumber() }}/{{ totalViews() }} ({{ viewStartIndex() + 1 }}-{{
+                endQuestionIndex()
+              }})</span
+            >
+            }
             <div class="progress-container">
               <div class="progress-bar">
                 <div class="progress-fill" [style.width.%]="progressPercentage()"></div>
@@ -49,14 +57,14 @@
           </div>
         </div>
 
-        <!-- Sonraki Soru -->
+        <!-- Sonraki Soru/Grup -->
         <button
           mat-icon-button
           color="accent"
           (click)="nextQuestion()"
-          [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
+          [disabled]="!canGoNext()"
           class="header-nav-btn next-btn"
-          [attr.aria-label]="'Sonraki soru'"
+          [attr.aria-label]="questionsPerView() === 1 ? 'Sonraki soru' : 'Sonraki soru grubu'"
         >
           <mat-icon>chevron_right</mat-icon>
         </button>
@@ -80,100 +88,173 @@
   <!-- Ana İçerik Alanı -->
   <main class="test-content">
     <!-- Sol Panel: Soru İçeriği -->
-    <section class="question-panel" [class.fullwidth]="focusMode()">
-      <!-- Soru Container -->
-      <div class="question-wrapper">
-        <!-- Canvas Soru Türü -->
-        @if(testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
-        <div class="canvas-question-container">
-          <!-- Canvas Overlay Butonları - Sol Üst -->
-          <div class="canvas-overlay-actions top-left">
-            <button
-              mat-mini-fab
-              [class.active]="isQuestionBookmarked()"
-              (click)="toggleBookmark()"
-              class="overlay-bookmark-btn"
-              [attr.aria-label]="isQuestionBookmarked() ? 'İşareti kaldır' : 'İşaretle'"
-            >
-              <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-            </button>
+    <section class="question-panel" [class.fullwidth]="focusMode()" [class]="'questions-' + questionsPerView()">
+      <!-- Görünüm Seçici -->
+      <div class="view-selector">
+        <button
+          mat-icon-button
+          [class.active]="questionsPerView() === 1"
+          (click)="setQuestionsPerView(1)"
+          [attr.aria-label]="'Tek soru görünümü'"
+        >
+          <mat-icon>crop_16_9</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          [class.active]="questionsPerView() === 2"
+          (click)="setQuestionsPerView(2)"
+          [attr.aria-label]="'İki soru görünümü'"
+        >
+          <mat-icon>view_column</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          [class.active]="questionsPerView() === 4"
+          (click)="setQuestionsPerView(4)"
+          [attr.aria-label]="'Dört soru görünümü'"
+        >
+          <mat-icon>grid_view</mat-icon>
+        </button>
+      </div>
 
-            <button
-              mat-mini-fab
-              (click)="reportQuestion()"
-              class="overlay-report-btn"
-              [attr.aria-label]="'Soruyu bildir'"
-            >
-              <mat-icon>flag</mat-icon>
-            </button>
-          </div>
+      <!-- Çoklu Soru Container -->
+      <div
+        class="multi-question-container"
+        [class]="'layout-' + questionsPerView()"
+        [style.display]="questionsPerView() > 1 ? 'grid' : 'flex'"
+        [style.grid-template-columns]="gridTemplateColumns()"
+        [style.grid-template-rows]="gridTemplateRows()"
+        [style.gap]="gridGap()"
+        [style.flex-direction]="questionsPerView() === 1 ? 'column' : ''"
+        [attr.data-questions]="questionsPerView()"
+        [attr.data-debug]="'computed-grid-' + questionsPerView()"
+      >
+        [attr.data-debug]="'2li-mod-alt-alta'" > @for(questionData of currentQuestions(); track questionData.index) {
+        <div class="question-wrapper" [class.active]="questionData.index === currentIndex()">
+          <!-- Canvas Soru Türü -->
+          @if(questionData.question.question.isCanvasQuestion) {
+          <div class="canvas-question-container">
+            <!-- Canvas Overlay Butonları - Sol Üst -->
+            <div class="canvas-overlay-actions top-left">
+              <button
+                mat-mini-fab
+                [class.active]="isQuestionBookmarked(questionData.index)"
+                (click)="toggleBookmark(); focusOnQuestion(questionData.index)"
+                class="overlay-bookmark-btn"
+                [attr.aria-label]="isQuestionBookmarked(questionData.index) ? 'İşareti kaldır' : 'İşaretle'"
+              >
+                <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+              </button>
 
-          <div class="canvas-overlay-actions top-right">
-            <button
-              mat-mini-fab
-              (click)="enlargeImage()"
-              class="overlay-bookmark-btn"
-              [attr.aria-label]="'Büyüt (+5%)'"
-            >
-              <mat-icon>zoom_in</mat-icon>
-            </button>
+              <button
+                mat-mini-fab
+                (click)="reportQuestion()"
+                class="overlay-report-btn"
+                [attr.aria-label]="'Soruyu bildir'"
+              >
+                <mat-icon>flag</mat-icon>
+              </button>
+            </div>
 
-            <button mat-mini-fab (click)="shrinkImage()" class="overlay-report-btn" [attr.aria-label]="'Küçült (-5%)'">
-              <mat-icon>zoom_out</mat-icon>
-            </button>
-          </div>
+            @if(questionsPerView() === 1) {
+            <div class="canvas-overlay-actions top-right">
+              <button
+                mat-mini-fab
+                (click)="enlargeImage()"
+                class="overlay-bookmark-btn"
+                [attr.aria-label]="'Büyüt (+5%)'"
+              >
+                <mat-icon>zoom_in</mat-icon>
+              </button>
 
-          <!-- Canvas Overlay Butonları - Sağ Alt -->
-          <div class="canvas-overlay-actions bottom-right">
-            <button
-              mat-mini-fab
-              (click)="clearCanvasAnswer()"
-              [disabled]="!hasAnswer()"
-              class="overlay-clear-btn"
-              [attr.aria-label]="'Cevabı temizle'"
-            >
-              <mat-icon>check_box_outline_blank</mat-icon>
-            </button>
-          </div>
-          <app-question-canvas-view
-            #canvasView
-            [questionRegion]="regions()[currentIndex()]"
-            [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
-            (choiceSelected)="selectChoice($event)"
-            (answerOpened)="openAnswer($event)"
-            [correctAnswerVisible]="correctAnswerVisible"
-          >
-          </app-question-canvas-view>
-        </div>
-        } @else {
-        <!-- Metin Tabanlı Soru -->
-        <div class="text-question-container">
-          <!-- Passage Card (Eğer varsa) -->
-          @if(testInstance.testInstanceQuestions[currentIndex()].question.passage) {
-          <div class="passage-section">
-            <app-passage-card [passage]="testInstance.testInstanceQuestions[currentIndex()].question.passage">
-            </app-passage-card>
-          </div>
-          }
+              <button
+                mat-mini-fab
+                (click)="shrinkImage()"
+                class="overlay-report-btn"
+                [attr.aria-label]="'Küçült (-5%)'"
+              >
+                <mat-icon>zoom_out</mat-icon>
+              </button>
+            </div>
+            }
 
-          <!-- Soru İçeriği -->
-          <div class="question-content">
-            <app-question-lite-view
-              [question]="testInstance.testInstanceQuestions[currentIndex()].question"
-              [selectedAnswerId]="testInstance.testInstanceQuestions[currentIndex()].selectedAnswerId"
-              [isPracticeTest]="testInstance.isPracticeTest"
-              (answerSelected)="selectAnswer($event)"
+            <!-- Canvas Overlay Butonları - Sağ Alt -->
+            <div class="canvas-overlay-actions bottom-right">
+              <button
+                mat-mini-fab
+                (click)="clearCanvasAnswer(); focusOnQuestion(questionData.index)"
+                [disabled]="!questionData.question.selectedAnswerId"
+                class="overlay-clear-btn"
+                [attr.aria-label]="'Cevabı temizle'"
+              >
+                <mat-icon>check_box_outline_blank</mat-icon>
+              </button>
+            </div>
+
+            <app-question-canvas-view
+              [questionRegion]="questionData.region"
+              [selectedChoice]="selectedChoices().get(questionData.region.id)"
+              (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
               (answerOpened)="openAnswer($event)"
               [correctAnswerVisible]="correctAnswerVisible"
+              [class]="'canvas-view-' + questionsPerView()"
             >
-            </app-question-lite-view>
+            </app-question-canvas-view>
           </div>
+          } @else {
+          <!-- Metin Tabanlı Soru -->
+          <div class="text-question-container">
+            <!-- Soru Başlığı -->
+            <div class="question-header">
+              <span class="question-number">{{ questionData.index + 1 }}.</span>
+              @if(questionData.question.selectedAnswerId) {
+              <mat-icon class="answered-icon">check_circle</mat-icon>
+              }
+            </div>
+
+            <!-- Passage Card (Eğer varsa) -->
+            @if(questionData.question.question.passage && questionsPerView() === 1) {
+            <div class="passage-section">
+              <app-passage-card [passage]="questionData.question.question.passage"> </app-passage-card>
+            </div>
+            }
+
+            <!-- Soru İçeriği -->
+            <div class="question-content">
+              <app-question-lite-view
+                [question]="questionData.question.question"
+                [selectedAnswerId]="questionData.question.selectedAnswerId"
+                [isPracticeTest]="testInstance.isPracticeTest"
+                (answerSelected)="selectAnswerForQuestion($event, questionData.index)"
+                (answerOpened)="openAnswer($event)"
+                [correctAnswerVisible]="correctAnswerVisible"
+                [class]="'question-view-' + questionsPerView()"
+              >
+              </app-question-lite-view>
+            </div>
+
+            <!-- Çoklu görünümde mini eylemler -->
+            @if(questionsPerView() > 1) {
+            <div class="mini-question-actions">
+              <button
+                mat-icon-button
+                [class.active]="isQuestionBookmarked(questionData.index)"
+                (click)="toggleBookmark(); focusOnQuestion(questionData.index)"
+                class="mini-bookmark-btn"
+              >
+                <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+              </button>
+            </div>
+            }
+          </div>
+          }
         </div>
         }
       </div>
 
-      <!-- Soru Etkileşim Butonları - Sadece Metin Sorularında -->
-      @if(!testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
+      <!-- Tek soru modunda soru etkileşim butonları -->
+      @if(questionsPerView() === 1 && currentQuestions().length > 0 &&
+      !currentQuestions()[0].question.question.isCanvasQuestion) {
       <div class="question-actions">
         <button mat-button [class.active]="isQuestionBookmarked()" (click)="toggleBookmark()" class="bookmark-btn">
           <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
@@ -214,9 +295,10 @@
               <button
                 mat-mini-fab
                 [class.current]="i === currentIndex()"
+                [class.visible]="i >= viewStartIndex() && i < viewStartIndex() + questionsPerView()"
                 [class.answered]="question.selectedAnswerId"
                 [class.bookmarked]="isQuestionBookmarked(i)"
-                (click)="goToQuestion(i)"
+                (click)="focusOnQuestion(i)"
                 [attr.aria-label]="'Soru ' + (i + 1)"
               >
                 {{ i + 1 }}
@@ -278,6 +360,35 @@
         </h3>
 
         <div class="tool-buttons">
+          <!-- Görünüm Seçenekleri -->
+          <div class="view-options">
+            <span class="tool-label">Görünüm:</span>
+            <button
+              mat-icon-button
+              [class.active]="questionsPerView() === 1"
+              (click)="setQuestionsPerView(1)"
+              [attr.aria-label]="'Tek soru'"
+            >
+              <mat-icon>crop_16_9</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              [class.active]="questionsPerView() === 2"
+              (click)="setQuestionsPerView(2)"
+              [attr.aria-label]="'İki soru'"
+            >
+              <mat-icon>view_column</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              [class.active]="questionsPerView() === 4"
+              (click)="setQuestionsPerView(4)"
+              [attr.aria-label]="'Dört soru'"
+            >
+              <mat-icon>grid_view</mat-icon>
+            </button>
+          </div>
+
           <button mat-stroked-button (click)="toggleFocusMode()" class="tool-btn">
             <mat-icon>{{ focusMode() ? 'visibility' : 'visibility_off' }}</mat-icon>
             {{ focusMode() ? 'Normal Mod' : 'Odaklanma Modu' }}
@@ -301,21 +412,22 @@
   <!-- Alt Navigasyon -->
   <footer class="navigation-footer">
     <div class="nav-content">
-      <!-- Sol: Önceki Soru -->
+      <!-- Sol: Önceki Soru/Grup -->
       <button
         mat-icon-button
         (click)="prevQuestion()"
-        [disabled]="currentIndex() === 0"
+        [disabled]="!canGoPrev()"
         class="nav-btn prev-btn"
-        [attr.aria-label]="'Önceki soru'"
+        [attr.aria-label]="questionsPerView() === 1 ? 'Önceki soru' : 'Önceki soru grubu'"
       >
         <mat-icon>chevron_left</mat-icon>
       </button>
 
       <!-- Orta: Hızlı Eylemler -->
       <div class="quick-actions">
-        <!-- Cevabı Temizle - Sadece metin tabanlı sorular için -->
-        @if(!testInstance.testInstanceQuestions[currentIndex()].question.isCanvasQuestion) {
+        <!-- Cevabı Temizle - Sadece tek soru modunda metin tabanlı sorular için -->
+        @if(questionsPerView() === 1 && currentQuestions().length > 0 &&
+        !currentQuestions()[0].question.question.isCanvasQuestion) {
         <button mat-stroked-button (click)="clearAnswer()" [disabled]="!hasAnswer()" class="quick-action-btn">
           <mat-icon>radio_button_unchecked</mat-icon>
           Temizle
@@ -345,13 +457,13 @@
         </button>
       </div>
 
-      <!-- Sağ: Sonraki Soru -->
+      <!-- Sağ: Sonraki Soru/Grup -->
       <button
         mat-icon-button
         (click)="nextQuestion()"
-        [disabled]="currentIndex() === testInstance.testInstanceQuestions.length - 1"
+        [disabled]="!canGoNext()"
         class="nav-btn next-btn"
-        [attr.aria-label]="'Sonraki soru'"
+        [attr.aria-label]="questionsPerView() === 1 ? 'Sonraki soru' : 'Sonraki soru grubu'"
       >
         <mat-icon>chevron_right</mat-icon>
       </button>

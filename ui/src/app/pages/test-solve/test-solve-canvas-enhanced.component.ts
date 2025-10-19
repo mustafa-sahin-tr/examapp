@@ -112,6 +112,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // Cevap sayısını takip etmek için signal
   public answeredQuestionsCount = signal(0);
 
+  // YENİ: Çoklu soru görüntüleme konfigürasyonu
+  public questionsPerView = signal<1 | 2 | 4>(1); // Aynı anda gösterilecek soru sayısı
+  public viewStartIndex = signal(0); // Görünümün başladığı soru indeksi
+
   // Computed properties
   public progressPercentage = computed(() => {
     const total = this.testInstance?.testInstanceQuestions?.length || 1;
@@ -150,6 +154,78 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       info: 'info',
     };
     return icons[this.toastType()];
+  });
+
+  // YENİ: Çoklu soru görüntüleme için computed properties
+  public currentQuestions = computed(() => {
+    const startIndex = this.viewStartIndex();
+    const count = this.questionsPerView();
+    const questions = this.testInstance?.testInstanceQuestions || [];
+
+    return Array.from({ length: count }, (_, i) => {
+      const index = startIndex + i;
+      return index < questions.length
+        ? {
+            question: questions[index],
+            index,
+            region: this.regions()[index],
+          }
+        : null;
+    }).filter((q) => q !== null);
+  });
+
+  public canGoNext = computed(() => {
+    const startIndex = this.viewStartIndex();
+    const count = this.questionsPerView();
+    const totalQuestions = this.testInstance?.testInstanceQuestions?.length || 0;
+    return startIndex + count < totalQuestions;
+  });
+
+  public canGoPrev = computed(() => {
+    return this.viewStartIndex() > 0;
+  });
+
+  public totalViews = computed(() => {
+    const totalQuestions = this.testInstance?.testInstanceQuestions?.length || 0;
+    const questionsPerView = this.questionsPerView();
+    return Math.ceil(totalQuestions / questionsPerView);
+  });
+
+  public currentViewNumber = computed(() => {
+    const startIndex = this.viewStartIndex();
+    const questionsPerView = this.questionsPerView();
+    return Math.floor(startIndex / questionsPerView) + 1;
+  });
+
+  public endQuestionIndex = computed(() => {
+    const startIndex = this.viewStartIndex();
+    const questionsPerView = this.questionsPerView();
+    const totalQuestions = this.testInstance?.testInstanceQuestions?.length || 0;
+    return Math.min(startIndex + questionsPerView, totalQuestions);
+  });
+
+  // Grid style computed properties
+  public gridTemplateColumns = computed(() => {
+    const count = this.questionsPerView();
+    if (count === 1) return '';
+    if (count === 2) return '1fr';
+    if (count === 4) return '1fr 1fr';
+    return '';
+  });
+
+  public gridTemplateRows = computed(() => {
+    const count = this.questionsPerView();
+    if (count === 1) return '';
+    if (count === 2) return '1fr 1fr';
+    if (count === 4) return '1fr 1fr';
+    return '';
+  });
+
+  public gridGap = computed(() => {
+    const count = this.questionsPerView();
+    if (count === 2) return '16px';
+    if (count === 4) return '12px';
+    return '';
   });
 
   constructor(
@@ -444,42 +520,104 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       });
   }
 
-  // Önceki soruya git
+  // Önceki soruya git - Çoklu görünüm desteği ile
   prevQuestion() {
-    this.testInstance.testInstanceQuestions[this.currentIndex()].timeTaken = this.questionDuration;
+    this.saveCurrentAnswers(); // Mevcut cevapları kaydet
     this.correctAnswerVisible = false;
-    if (this.testInstance.isPracticeTest) {
-      this.persistPracticetime();
-    } else {
-      if (this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId) {
-        this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId);
-      }
-    }
 
-    if (this.currentIndex() > 0) {
-      const newIndex = this.currentIndex() - 1;
-      this.currentIndex.set(newIndex);
-      this.startQuestionTimer();
-      // 🔄 Yeni soru için resim yükle
+    if (this.questionsPerView() === 1) {
+      // Tek soru modu - eski davranış
+      if (this.currentIndex() > 0) {
+        const newIndex = this.currentIndex() - 1;
+        this.currentIndex.set(newIndex);
+        this.viewStartIndex.set(newIndex);
+        this.startQuestionTimer();
+      }
+    } else {
+      // Çoklu soru modu - bir grup geriye git
+      const questionsPerView = this.questionsPerView();
+      const currentStart = this.viewStartIndex();
+      if (currentStart > 0) {
+        const newStart = Math.max(0, currentStart - questionsPerView);
+        this.viewStartIndex.set(newStart);
+        this.currentIndex.set(newStart); // İlk görünen soruyu aktif yap
+        this.startQuestionTimer();
+      }
     }
   }
 
-  // Sonraki soruya git
+  // Sonraki soruya git - Çoklu görünüm desteği ile
   nextQuestion() {
-    this.testInstance.testInstanceQuestions[this.currentIndex()].timeTaken = this.questionDuration;
+    this.saveCurrentAnswers(); // Mevcut cevapları kaydet
     this.correctAnswerVisible = false;
-    if (this.testInstance.isPracticeTest) {
+
+    if (this.questionsPerView() === 1) {
+      // Tek soru modu - eski davranış
+      if (this.currentIndex() < this.regions().length - 1) {
+        const newIndex = this.currentIndex() + 1;
+        this.currentIndex.set(newIndex);
+        this.viewStartIndex.set(newIndex);
+        this.startQuestionTimer();
+      }
     } else {
-      if (this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId) {
-        this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId);
+      // Çoklu soru modu - bir grup ileriye git
+      const questionsPerView = this.questionsPerView();
+      const totalQuestions = this.testInstance.testInstanceQuestions.length;
+      const currentStart = this.viewStartIndex();
+
+      if (currentStart + questionsPerView < totalQuestions) {
+        const newStart = currentStart + questionsPerView;
+        this.viewStartIndex.set(newStart);
+        this.currentIndex.set(newStart); // İlk görünen soruyu aktif yap
+        this.startQuestionTimer();
       }
     }
+  }
 
-    if (this.currentIndex() < this.regions().length - 1) {
-      const newIndex = this.currentIndex() + 1;
-      this.currentIndex.set(newIndex);
-      this.startQuestionTimer();
+  // YENİ: Mevcut görünümdeki tüm cevapları kaydet
+  private saveCurrentAnswers() {
+    if (this.questionsPerView() === 1) {
+      // Tek soru için eski davranış
+      const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
+      currentQuestion.timeTaken = this.questionDuration;
+
+      if (this.testInstance.isPracticeTest) {
+        this.persistPracticetime();
+      } else {
+        if (currentQuestion.selectedAnswerId) {
+          this.persistAnswer(currentQuestion.selectedAnswerId);
+        }
+      }
+    } else {
+      // Çoklu soru için tüm görünürdeki soruları kaydet
+      const currentQuestions = this.currentQuestions();
+      currentQuestions.forEach(({ question, index }) => {
+        if (question.selectedAnswerId && !this.testInstance.isPracticeTest) {
+          this.persistAnswerForQuestion(question.selectedAnswerId, index);
+        }
+      });
     }
+  }
+
+  // YENİ: Belirli bir soru için cevap kaydet
+  private persistAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
+    if (this.testInstance.testInstanceQuestions[questionIndex].question.isExample) return;
+
+    this.testService
+      .saveAnswer({
+        testQuestionId: this.testInstance.testInstanceQuestions[questionIndex].id,
+        selectedAnswerId: selectedAnswerId,
+        testInstanceId: this.testInstance.id,
+        timeTaken: this.questionDuration, // Bu her soru için ayrı tutulmalı
+      })
+      .subscribe({
+        next: () => {
+          console.log(`Answer saved for question ${questionIndex}`);
+        },
+        error: (error) => {
+          console.error('Error saving answer for question', questionIndex, error);
+        },
+      });
   }
 
   // Testi durdur (opsiyonel)
@@ -553,6 +691,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
               this.showHint();
             }
             break;
+          case '1':
+            event.preventDefault();
+            this.setQuestionsPerView(1);
+            break;
+          case '2':
+            event.preventDefault();
+            this.setQuestionsPerView(2);
+            break;
+          case '4':
+            event.preventDefault();
+            this.setQuestionsPerView(4);
+            break;
         }
       }
     });
@@ -584,11 +734,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   goToQuestion(index: number) {
-    if (index >= 0 && index < this.testInstance.testInstanceQuestions.length) {
-      this.endQuestionTimer();
-      this.currentIndex.set(index);
-      this.startQuestionTimer();
-    }
+    this.focusOnQuestion(index);
   }
 
   goToNextBookmarked() {
@@ -729,12 +875,104 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   showHelp() {
     // Yardım modalı aç
-    this.showToastMessage('Yardım: Ctrl+← ← soru, Ctrl+→ → soru, Ctrl+B işaretle', 'info');
+    this.showToastMessage('Yardım: Ctrl+← ← grup, Ctrl+→ → grup, Ctrl+B işaretle, Ctrl+1/2/4 görünüm değiştir', 'info');
   }
 
   openSettings() {
     // Ayarlar modalı aç
     this.showToastMessage('Ayarlar geliştiriliyor...', 'info');
+  }
+
+  // YENİ: Görünüm modunu değiştir
+  setQuestionsPerView(count: 1 | 2 | 4) {
+    console.log(`Görünüm modu değiştiriliyor: ${count} soru`);
+    this.questionsPerView.set(count);
+
+    // Mevcut pozisyonu yeni görünüme göre ayarla
+    const currentIdx = this.currentIndex();
+    const newStartIndex = Math.floor(currentIdx / count) * count;
+    this.viewStartIndex.set(newStartIndex);
+
+    console.log(`Yeni başlangıç indeksi: ${newStartIndex}, Mevcut sorular: ${this.currentQuestions().length}`);
+
+    // CSS'i manuel olarak zorla
+    setTimeout(() => {
+      const container = document.querySelector('.multi-question-container') as HTMLElement;
+      if (container) {
+        if (count === 2) {
+          container.style.display = 'grid';
+          container.style.gridTemplateColumns = '1fr';
+          container.style.gridTemplateRows = '1fr 1fr';
+          container.style.gap = '16px';
+          container.style.gridColumnGap = '0px';
+          container.style.gridRowGap = '16px';
+          console.log("2'li mod CSS zorlandı:", container.style.cssText);
+        } else if (count === 4) {
+          container.style.display = 'grid';
+          container.style.gridTemplateColumns = '1fr 1fr';
+          container.style.gridTemplateRows = '1fr 1fr';
+          container.style.gap = '12px';
+          console.log("4'lü mod CSS zorlandı:", container.style.cssText);
+        }
+      }
+    }, 0);
+
+    this.showToastMessage(`${count} soru görünümü aktifleştirildi`, 'info');
+  }
+
+  // YENİ: Belirli bir soruya odaklan (çoklu görünümde)
+  focusOnQuestion(questionIndex: number) {
+    if (this.questionsPerView() === 1) {
+      this.currentIndex.set(questionIndex);
+      this.viewStartIndex.set(questionIndex);
+    } else {
+      const questionsPerView = this.questionsPerView();
+      const newStartIndex = Math.floor(questionIndex / questionsPerView) * questionsPerView;
+      this.viewStartIndex.set(newStartIndex);
+      this.currentIndex.set(questionIndex);
+    }
+    this.startQuestionTimer();
+  }
+
+  // YENİ: Çoklu görünümde belirli bir soruya cevap seç
+  selectAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
+    const question = this.testInstance.testInstanceQuestions[questionIndex];
+    question.selectedAnswerId = selectedAnswerId;
+
+    // Cevaplanan soru sayısını güncelle
+    this.updateAnsweredCount();
+
+    // Canvas soruları için seçimi güncelle
+    if (question.question.isCanvasQuestion) {
+      const region = this.regions()[questionIndex];
+      const selectedChoice = region?.answers.find((a) => a.id === selectedAnswerId);
+      if (selectedChoice) {
+        const updatedChoices = new Map(this.selectedChoices());
+        updatedChoices.set(region.id, selectedChoice);
+        this.selectedChoices.set(updatedChoices);
+      }
+    }
+
+    if (this.autoNextQuestion() && this.questionsPerView() === 1) {
+      setTimeout(() => {
+        this.nextQuestion();
+      }, 300);
+    }
+  }
+
+  // YENİ: Çoklu görünümde belirli bir soruya choice seç
+  selectChoiceForQuestion(answer: AnswerChoice, questionIndex: number) {
+    const region = this.regions()[questionIndex];
+    const updatedChoices = new Map(this.selectedChoices());
+    updatedChoices.set(region.id, answer);
+    this.selectedChoices.set(updatedChoices);
+
+    this.selectAnswerForQuestion(answer.id, questionIndex);
+  }
+
+  // Yardımcı metodlar
+  getMin(a: number, b: number): number {
+    return Math.min(a, b);
   }
 
   private showToastMessage(message: string, type: 'success' | 'warning' | 'error' | 'info') {

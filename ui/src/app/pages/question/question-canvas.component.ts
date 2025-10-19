@@ -370,6 +370,11 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (err) => {
         console.log(err);
+        for (const key in err?.error?.errors) {
+          if (key.startsWith('$.')) {
+            this.snackBar.open('Hatalı alan yolu:', key);
+          }
+        }
       },
     });
   }

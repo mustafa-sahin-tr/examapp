@@ -47,7 +47,7 @@ export class AuthService {
     return this.http.get<CheckkTeacherResponse>('/api/exam/teacher/check-teacher');
   }
 
-  login(credentials: any): Observable<TokenResponse> {    
+  login(credentials: any): Observable<TokenResponse> {
     return this.http.post<TokenResponse>('/api/auth/login', credentials).pipe(
       tap((res) => {
         localStorage.setItem(this.tokenKey, res.token);
@@ -68,17 +68,21 @@ export class AuthService {
     return this.http.post('/api/exam/students/register-student', studentData);
   }
 
+  clearLocalStorage(): void {
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.roleKey);
+    localStorage.removeItem(this.avatarKey);
+    localStorage.removeItem('user');
+    localStorage.removeItem('student');
+    this.isAuthenticatedSubject.next(false);
+    this.goLogin();
+  }
+
   logout(): void {
     // logout işlemi için gerekli olan API çağrısını yapıyoruz
     this.http.post('/api/exam/auth/logout', {}).subscribe(() => {
       console.log('Logout successful');
-      localStorage.removeItem(this.tokenKey);
-      localStorage.removeItem(this.roleKey);
-      localStorage.removeItem(this.avatarKey);
-      localStorage.removeItem('user');
-      localStorage.removeItem('student');
-      this.isAuthenticatedSubject.next(false);
-      this.router.navigate(['/login']);
+      this.clearLocalStorage();
     });
   }
 
@@ -137,20 +141,19 @@ export class AuthService {
   }
 
   refresh(): Observable<UserProfile> {
-    return this.http.post<UserProfile>('/api/exam/auth/refresh', {}, { withCredentials: true });    
+    return this.http.post<UserProfile>('/api/exam/auth/refresh', {}, { withCredentials: true });
   }
 
   refreshToken(): Observable<string> {
     return this.http.post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true }).pipe(
-      map((res) => 
-        {
-          return res.accessToken;
-        }),
+      map((res) => {
+        return res.accessToken;
+      }),
       catchError((error) => {
         console.error('Token yenileme hatası:', error);
         localStorage.clear();
         this.isAuthenticatedSubject.next(false);
-        this.router.navigate(['/login']);
+        this.clearLocalStorage();
         return throwError(() => new Error('Refresh failed'));
       }) // Hata durumunda null döndür
       // tap((res) => {

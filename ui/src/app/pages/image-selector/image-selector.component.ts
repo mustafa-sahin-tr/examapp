@@ -1376,7 +1376,25 @@ export class ImageSelectorComponent {
 
       // Kolon hizalama (x ve width)
       for (let col = 0; col < columnCount; col++) {
-        const columnAnswers = rows.map((row) => row[col]);
+        // Aynı kolondaki şıkları bulmak için: her row'daki şıklar arasında x koordinatları yakın olanları grupla
+        // Her row'daki şıklar arasında, bu kolona en yakın x'e sahip olanı seç
+        const baseRow = rows[0];
+        const baseX = baseRow[col].x;
+        const thresholdX = 15; // X yakınlık toleransı (piksel)
+
+        const columnAnswers = rows.map((row) => {
+          // O satırda baseX'e en yakın x'e sahip olan şıkkı bul
+          let minDiff = Infinity;
+          let closest = row[0];
+          for (const answer of row) {
+            const diff = Math.abs(answer.x - baseX);
+            if (diff < minDiff && diff <= thresholdX) {
+              minDiff = diff;
+              closest = answer;
+            }
+          }
+          return closest;
+        });
         const minX = Math.min(...columnAnswers.map((a) => a.x));
         const maxX = Math.max(...columnAnswers.map((a) => a.x + a.width));
         const w = maxX - minX;

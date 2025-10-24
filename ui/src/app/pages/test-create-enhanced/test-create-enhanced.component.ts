@@ -100,7 +100,7 @@ export class TestCreateEnhancedComponent implements OnInit {
 
   public reloadComponent(id: number) {
     this.thisId = id;
-    this.isEditMode = this.id !== null;
+    this.isEditMode = this.id !== null && this.id !== undefined && this.id > 0;
     this.testForm = this.fb.group({
       name: ['', Validators.required],
       description: [''],
@@ -329,7 +329,7 @@ export class TestCreateEnhancedComponent implements OnInit {
     if (this.testForm.valid) {
       this.testService.create(this.createTestPayload()).subscribe((response) => {
         if (this.isEditMode) {
-          this.ngOnInit(); // Formu güncelle
+          this.reloadComponent(response.examId);
         } else {
           this.router.navigate(['/exam', response.examId]);
         }

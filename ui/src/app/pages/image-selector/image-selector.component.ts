@@ -762,7 +762,8 @@ export class ImageSelectorComponent {
         isCorrect: false,
         id: 0,
       });
-      if (this.regions()[this.selectedQuestionIndex].answers.length === 3) {
+      const answerCount = this.answerCount();
+      if (this.regions()[this.selectedQuestionIndex].answers.length === +answerCount) {
         if (this.autoAlign()) {
           this.alignAnswers(this.selectedQuestionIndex);
         }

@@ -21,33 +21,31 @@ namespace ExamApp.Api.Controllers
         private readonly IMinIoService _minioService;
 
         private readonly IStudentService _studentService;
-        
+
         private readonly IKeycloakService _keycloakService;
 
-        private readonly IUserService _userService;
 
         private readonly KeycloakSettings _keycloakSettings;
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
 
-        public StudentController(IMinIoService minioService,IStudentService studentService,
-             IUserService userService,  UserProfileCacheService userProfileCacheService,
-            IOptions<KeycloakSettings> options,  IKeycloakService keycloakService)
+        public StudentController(IMinIoService minioService, IStudentService studentService,
+             UserProfileCacheService userProfileCacheService,
+            IOptions<KeycloakSettings> options, IKeycloakService keycloakService)
             : base()
         {
             _minioService = minioService;
             _studentService = studentService;
-            _userService = userService;
             _userProfileCacheService = userProfileCacheService;
-             _keycloakService = keycloakService;
-             _keycloakSettings = options.Value;
+            _keycloakService = keycloakService;
+            _keycloakSettings = options.Value;
         }
 
         [HttpPost("update-grade")]
         public async Task<IActionResult> UpdateStudentGrade([FromBody] int newGradeId)
         {
-           var user = await GetAuthenticatedUserAsync();
+            var user = await GetAuthenticatedUserAsync();
             var response = await _studentService.UpdateStudentGrade(user.Id, newGradeId);
             if (response == null)
             {
@@ -63,7 +61,7 @@ namespace ExamApp.Api.Controllers
         [HttpPost("update-avatar")]
         public async Task<IActionResult> UpdateAvatar(IFormFile avatar)
         {
-            var user = await GetAuthenticatedUserAsync();         
+            var user = await GetAuthenticatedUserAsync();
 
             if (avatar == null || avatar.Length == 0)
                 return BadRequest(new { message = "Geçersiz dosya." });
@@ -75,7 +73,6 @@ namespace ExamApp.Api.Controllers
             {
                 await _minioService.UploadFileAsync(stream, filePath, "student-avatars");
             }
-            await _userService.UpdateUserAvatar(user.Id, filePath);
             return await GetStudentProfile();
         }
 
@@ -84,7 +81,7 @@ namespace ExamApp.Api.Controllers
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
         [HttpPost("register")]
         public async Task<IActionResult> RegisterStudent(RegisterStudentDto request)
-        {                    
+        {
             // 🔹 Token’dan UserId'yi al // token var valid ama user
             var user = await GetAuthenticatedUserAsync();
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Student);
@@ -98,12 +95,12 @@ namespace ExamApp.Api.Controllers
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _studentService.Save(user.Id, request);
-            if(response == null)
+            if (response == null)
             {
                 return BadRequest(new { message = "Öğrenci kaydı başarısız." });
             }
 
-            if(response.Success == false)
+            if (response.Success == false)
             {
                 return BadRequest(new { message = response.Message });
             }
@@ -125,7 +122,7 @@ namespace ExamApp.Api.Controllers
                 accessToken = tokenData.AccessToken,
                 expiresIn = tokenData.ExpiresIn
             });
-                 
+
         }
 
 
@@ -134,7 +131,7 @@ namespace ExamApp.Api.Controllers
         public async Task<IActionResult> CheckStudent()
         {
             var user = await _userProfileCacheService.GetAsync(KeyCloakId);
-            if(user == null) 
+            if (user == null)
             {
                 return NotFound(new { message = "Kullanıcı bulunamadı." });
             }

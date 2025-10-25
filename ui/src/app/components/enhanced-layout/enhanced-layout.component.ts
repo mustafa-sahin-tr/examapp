@@ -118,18 +118,24 @@ export class EnhancedLayoutComponent implements OnInit {
 
     var profile = localStorage.getItem('user_role');
     var user = localStorage.getItem('user');
-    if (!user) {
+    debugger;
+    var refresh = !user || (profile == 'Student' && !JSON.parse(user).student);
+
+    if (refresh) {
       this.authService.refresh().subscribe({
         next: (res) => {
           if (res) {
             localStorage.setItem('user', JSON.stringify(res));
+          }
+          if (!res || !res.student) {
+            this.router.navigate(['/student-register']);
           }
         },
         error: (err) => {
           console.error('Error refreshing token:', err);
           // Handle error (e.g., redirect to login)
           this.authService.goLogin();
-        } 
+        },
       });
     }
   }

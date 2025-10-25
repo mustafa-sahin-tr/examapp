@@ -10,8 +10,7 @@ public class Student : BaseEntity
     public int Id { get; set; }
     
     [Required]
-    public int UserId { get; set; }
-    public virtual User User { get; set; }
+    public int UserId { get; set; }    
 
     [Required, MaxLength(50)]
     public string StudentNumber { get; set; }

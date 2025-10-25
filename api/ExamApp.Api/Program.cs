@@ -81,6 +81,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
+// Add IHttpContextAccessor for accessing HTTP context in services
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleTransformer>();
 builder.Services.AddSingleton<IMinIoService, MinIoService>();
@@ -89,7 +92,7 @@ builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
-builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
@@ -118,22 +121,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 var app = builder.Build();
 
 //Seed Data
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        // context.Database.Migrate(); // Apply any pending migrations
-        // Seed TopicSeed data everyitme the application starts       
-        TopicSeed.InitializeSeed(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred seeding the DB.");
-    }
-}
+// using (var scope = app.Services.CreateScope())
+// {
+//     var services = scope.ServiceProvider;
+//     try
+//     {
+//         var context = services.GetRequiredService<AppDbContext>();
+//         // context.Database.Migrate(); // Apply any pending migrations
+//         // Seed TopicSeed data everyitme the application starts       
+//         TopicSeed.InitializeSeed(context);
+//     }
+//     catch (Exception ex)
+//     {
+//         var logger = services.GetRequiredService<ILogger<Program>>();
+//         logger.LogError(ex, "An error occurred seeding the DB.");
+//     }
+// }
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

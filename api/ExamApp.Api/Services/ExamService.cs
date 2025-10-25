@@ -98,10 +98,10 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, UserProfileDto userProfile)
+    public async Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, StudentProfileDto studentProfile)
     {
         var instanceQuery = _context.TestInstances
-           .Where(ti => ti.StudentId == userProfile.ProfileId)
+           .Where(ti => ti.StudentId == studentProfile.Id)
            .Include(ti => ti.WorksheetInstanceQuestions)
            .Include(ti => ti.Worksheet)
            .AsQueryable();
@@ -118,8 +118,8 @@ public class ExamService : IExamService
         {
             if (dto.gradeIds != null && dto.gradeIds.Any())
                 query = query.Where(t => dto.gradeIds.Contains(t.GradeId));
-            else if (userProfile.Student != null && userProfile.Student.GradeId.HasValue)
-                query = query.Where(t => t.GradeId == userProfile.Student.GradeId);
+            else if (studentProfile != null && studentProfile.GradeId.HasValue)
+                query = query.Where(t => t.GradeId == studentProfile.GradeId);
 
             if (dto.subjectIds != null && dto.subjectIds.Any())
                 query = query.Where(t => t.SubjectId.HasValue && dto.subjectIds.Contains(t.SubjectId.Value));
@@ -222,7 +222,7 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(Student student, int pageNumber, int pageSize)
+    public async Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(StudentProfileDto student, int pageNumber, int pageSize)
     {
         var query = await _context.TestInstances
             .Where(wi => wi.StudentId == student.Id && wi.Status == WorksheetInstanceStatus.Completed)
@@ -347,7 +347,7 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<List<WorksheetWithInstanceDto>> GetWorksheetAndInstancesAsync(Student student, int gradeId)
+    public async Task<List<WorksheetWithInstanceDto>> GetWorksheetAndInstancesAsync(StudentProfileDto student, int gradeId)
     {
         var worksheets = await _context.Worksheets
             .Include(w => w.WorksheetQuestions)
@@ -385,7 +385,7 @@ public class ExamService : IExamService
         return result;
     }
 
-    public async Task<TestStartResultDto> StartTestAsync(int testId, Student student)
+    public async Task<TestStartResultDto> StartTestAsync(int testId, StudentProfileDto student)
     {
         var existing = await _context.TestInstances
             .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
@@ -618,7 +618,7 @@ public class ExamService : IExamService
         return response;
     }
 
-    public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, User user)
+    public async Task<ResponseBaseDto> SaveAnswer(SaveAnswerDto dto, UserProfileDto user)
     {
         var testInstanceQuestion = await _context.TestInstanceQuestions
                     .Include(t => t.WorksheetQuestion)

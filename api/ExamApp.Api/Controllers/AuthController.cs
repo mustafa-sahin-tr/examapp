@@ -47,6 +47,25 @@ namespace ExamApp.Api.Controllers
                 return await authApiClient.GetUserProfileAsync();
             });
             await _userProfileCacheService.SetAsync(sub, profile);
+
+            if (profile != null)
+            {
+                if (profile.Role == "Student")
+                {
+                    var student = await _context.Students
+                    .FirstOrDefaultAsync(s => s.UserId == profile.Id);
+
+                    profile.Student = new StudentDto
+                    {
+                        Id = student.Id,
+                        GradeId = student.GradeId,
+                        SchoolName = student.SchoolName,
+                        AvatarUrl = profile.Avatar,
+                        FullName = profile.FullName
+                    };
+                }
+            }
+
             return Ok(profile);
         }
 

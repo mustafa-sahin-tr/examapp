@@ -118,14 +118,14 @@ export class EnhancedLayoutComponent implements OnInit {
 
     var profile = localStorage.getItem('user_role');
     var user = localStorage.getItem('user');
-    debugger;
+    this.setUserInfo();
     var refresh = !user || (profile == 'Student' && !JSON.parse(user).student);
-
     if (refresh) {
       this.authService.refresh().subscribe({
         next: (res) => {
           if (res) {
             localStorage.setItem('user', JSON.stringify(res));
+            this.setUserInfo();
           }
           if (!res || !res.student) {
             this.router.navigate(['/student-register']);
@@ -137,6 +137,16 @@ export class EnhancedLayoutComponent implements OnInit {
           this.authService.goLogin();
         },
       });
+    }
+  }
+
+  public setUserInfo() {
+    var user = localStorage.getItem('user');
+    if (user) {
+      const userObj = JSON.parse(user);
+      this.userName.set(userObj.fullName || 'Kullanıcı');
+      this.userEmail.set(userObj.email || '');
+      this.userAvatarUrl.set(userObj.avatar || '');
     }
   }
 

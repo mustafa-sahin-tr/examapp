@@ -31,7 +31,7 @@ public class UserProfileCacheService
         };
 
         await _cache.SetStringAsync(keycloakId, json, options);
-    }
+    }    
 
     public async Task<UserProfileDto> GetOrSetAsync(string keycloakId, Func<Task<UserProfileDto>> loader, TimeSpan? expiration = null)
     {

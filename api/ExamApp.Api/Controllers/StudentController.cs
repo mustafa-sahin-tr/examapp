@@ -84,6 +84,7 @@ namespace ExamApp.Api.Controllers
         {
             // 🔹 Token’dan UserId'yi al // token var valid ama user
             var user = await GetAuthenticatedUserAsync();
+
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Student);
 
             var refreshToken = Request.Cookies["refresh_token"];
@@ -95,6 +96,7 @@ namespace ExamApp.Api.Controllers
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _studentService.Save(user.Id, request);
+            
             if (response == null)
             {
                 return BadRequest(new { message = "Öğrenci kaydı başarısız." });
@@ -104,7 +106,7 @@ namespace ExamApp.Api.Controllers
             {
                 return BadRequest(new { message = response.Message });
             }
-
+            // _userProfileCacheService.SetAsync(user.KeycloakId, user);
             if (!string.IsNullOrEmpty(tokenData.RefreshToken))
             {
                 Response.Cookies.Append("refresh_token", tokenData.RefreshToken, new CookieOptions

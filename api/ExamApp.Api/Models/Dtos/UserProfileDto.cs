@@ -10,7 +10,7 @@ public class UserProfileDto
     public string Email { get; set; }
     public string Role { get; set; }
     public string Avatar { get; set;}
-    public int ProfileId { get; set;}    
+    // public int ProfileId { get; set;}    
     // public string? SchoolName { get; set; } // Student bilgisi
     // public string? Department { get; set; } // opsiyonel
     public StudentDto Student { get; set; }

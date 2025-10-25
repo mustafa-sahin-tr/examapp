@@ -20,11 +20,16 @@ public class ExamController : BaseController
 
     private readonly UserProfileCacheService _userProfileCacheService;
     private readonly IExamService _examService;
-    public ExamController(IMinIoService minioService, IExamService examService, UserProfileCacheService userProfileCacheService)
+    private readonly IStudentService _studentService;
+    public ExamController(IMinIoService minioService, IExamService examService,
+            UserProfileCacheService userProfileCacheService,
+            IStudentService studentService
+            )
         : base()
     {
         _examService = examService;
         _userProfileCacheService = userProfileCacheService;
+        _studentService = studentService;
     }
 
 
@@ -43,12 +48,15 @@ public class ExamController : BaseController
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetWorksheetAndInstancessAsync(int gradeId)
     {
-        var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if (profile == null)
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
-        var result = await _examService.GetWorksheetAndInstancesAsync(new Student { Id = profile.ProfileId }, gradeId);
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+
+        var result = await _examService.GetWorksheetAndInstancesAsync(student, gradeId);
         return Ok(result);
     }
 
@@ -57,12 +65,14 @@ public class ExamController : BaseController
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetCompletedTests(int pageNumber = 1, int pageSize = 10)
     {
-        var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if (profile == null)
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
-        var result = await _examService.GetCompletedTestsAsync(new Student { Id = profile.ProfileId }, pageNumber, pageSize);
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        var result = await _examService.GetCompletedTestsAsync(student, pageNumber, pageSize);
         return Ok(result);
     }
 
@@ -97,18 +107,20 @@ public class ExamController : BaseController
         };
 
         Paged<WorksheetDto> result = null;
-        var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if (profile == null)
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
-        if (profile.Role == UserRole.Student.ToString())
+        if (user.Role == UserRole.Student.ToString())
         {
-            result = await _examService.GetWorksheetsForStudentsAsync(filterDto, profile);
+            var student = await _studentService.GetStudentProfile(user.Id);
+            result = await _examService.GetWorksheetsForStudentsAsync(filterDto, student);
         }
-        else if (profile.Role == UserRole.Teacher.ToString())
+        else if (user.Role == UserRole.Teacher.ToString())
         {
-            result = await _examService.GetWorksheetsForTeacherAsync(filterDto, profile);
+            // var teacher = await _teacherService.GetTeacherProfile(user.Id);
+            result = await _examService.GetWorksheetsForTeacherAsync(filterDto, user);
         }
         return Ok(result);
     }
@@ -134,15 +146,18 @@ public class ExamController : BaseController
     [HttpPost("start-test/{testId}")]
     public async Task<IActionResult> StartTest(int testId)
     {
-        var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if (profile == null)
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
-        }
+        }    
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+
 
         try
         {
-            var result = await _examService.StartTestAsync(testId, new Student { Id = profile.ProfileId });
+            var result = await _examService.StartTestAsync(testId, student);
             if (result == null)
                 return NotFound(new { message = "Test bulunamadı!" });
 
@@ -238,13 +253,15 @@ public class ExamController : BaseController
     [HttpGet("student/statistics")]
     public async Task<IActionResult> GetGroupedStudentStatistics()
     {
-        var user = await GetAuthenticatedUserAsync();
-        var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-        if (profile == null)
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
-        var result = await _examService.GetGroupedStudentStatistics(profile.ProfileId);
+        var student = await _studentService.GetStudentProfile(user.Id);
+
+
+        var result = await _examService.GetGroupedStudentStatistics(student.Id);
         return Ok(result);
     }
 
@@ -261,12 +278,12 @@ public class ExamController : BaseController
     {
         try
         {
-            var profile = await _userProfileCacheService.GetAsync(KeyCloakId);
-            if (profile == null)
+            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            if (user == null)
             {
                 return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
             }
-            var result = await _examService.DeleteWorksheetAsync(id, profile.ProfileId);
+            var result = await _examService.DeleteWorksheetAsync(id, user.Id);
 
             if (!result.Success)
             {

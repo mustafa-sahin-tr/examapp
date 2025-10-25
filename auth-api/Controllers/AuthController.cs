@@ -41,6 +41,16 @@ namespace ExamApp.Api.Controllers
             return Ok(profile);
         }
 
+        [Authorize]
+        [HttpGet("user-profile")]
+        public async Task<IActionResult> UserProfile()
+        {
+            // 1) Token içindeki Sub claim (user.Id) alınır
+            var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var profile = await GetUserProfile(sub);
+            return Ok(profile);
+        }
+
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto request)

@@ -21,14 +21,13 @@ public class StudentService : IStudentService
     }   
     public async Task<StudentProfileDto> GetStudentProfile(int userId) 
     {
-        var student = await _context.Students
-            .Include(s => s.User)
+        var student = await _context.Students            
             .Where(s => s.UserId == userId)
             .Select(s => new StudentProfileDto
             {
                 Id = s.Id,
-                FullName = s.User.FullName,
-                AvatarUrl = s.User.AvatarUrl,
+                // FullName = s.User.FullName,
+                // AvatarUrl = s.User.AvatarUrl,
                 GradeId = s.GradeId,
                 XP = s.StudentPoints.Sum(sp => sp.XP),
                 Level = s.StudentPoints.OrderByDescending(sp => sp.LastUpdated).Select(sp => sp.Level).FirstOrDefault(), // 🟢 En son seviye

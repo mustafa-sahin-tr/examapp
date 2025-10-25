@@ -54,7 +54,6 @@ public class AppDbContext : DbContext
             }
         }
     }
-    public DbSet<User> Users { get; set; } // Kullanıcı tablosu
     public DbSet<Student> Students { get; set; } // Öğrenci tablosu
     public DbSet<Teacher> Teachers { get; set; } // Öğretmen tablosu
     public DbSet<Parent> Parents { get; set; } // Veli tablosu
@@ -255,7 +254,7 @@ public class AppDbContext : DbContext
 
         // Call Seeders
         // TopicSeed.SeedGradesSubjects(modelBuilder); // Assuming TopicSeed is already using HasData
-        ProgramStepSeed.SeedData(modelBuilder); // New seeder for ProgramSteps
+        // ProgramStepSeed.SeedData(modelBuilder); // New seeder for ProgramSteps
         // CatalogSeed.Initialize(); // Assuming CatalogSeed is already using HasData
 
 

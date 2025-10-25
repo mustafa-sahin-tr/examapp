@@ -140,8 +140,8 @@ export class AuthService {
     }
   }
 
-  refresh(): Observable<UserProfile> {
-    return this.http.post<UserProfile>('/api/exam/auth/refresh', {}, { withCredentials: true });
+  refresh(): Observable<UserProfile | null> {
+    return this.http.post<UserProfile | null>('/api/exam/auth/refresh', {}, { withCredentials: true });
   }
 
   refreshToken(): Observable<string> {

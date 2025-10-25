@@ -73,6 +73,7 @@ export class CallbackComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    debugger;
     this.route.queryParams.subscribe(async (params) => {
       const code = params['code'];
       const navigateTo = params['state'];

@@ -54,7 +54,8 @@ namespace ExamApp.Api.Controllers
                 {
                     var student = await _context.Students
                     .FirstOrDefaultAsync(s => s.UserId == profile.Id);
-
+                    if(student == null)
+                        return Ok(profile);
                     profile.Student = new StudentDto
                     {
                         Id = student.Id,
@@ -62,6 +63,21 @@ namespace ExamApp.Api.Controllers
                         SchoolName = student.SchoolName,
                         AvatarUrl = profile.Avatar,
                         FullName = profile.FullName
+                    };
+                }
+                else if(profile.Role == "Teacher")
+                {
+                    // Teacher için ek bilgiler eklenebilir
+                    var teacher = await _context.Teachers
+                    .FirstOrDefaultAsync(t => t.UserId == profile.Id);
+                    if(teacher == null)
+                        return Ok(profile);
+                    profile.Teacher = new TeacherDto
+                    {
+                        Id = teacher.Id,
+                        AvatarUrl = profile.Avatar,
+                        FullName = profile.FullName,
+                        SchoolName = teacher.SchoolName
                     };
                 }
             }

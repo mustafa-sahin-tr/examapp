@@ -128,8 +128,9 @@
         [style.flex-direction]="questionsPerView() === 1 ? 'column' : ''"
         [attr.data-questions]="questionsPerView()"
         [attr.data-debug]="'computed-grid-' + questionsPerView()"
+        [attr.data-debug]="'2li-mod-alt-alta'"
       >
-        [attr.data-debug]="'2li-mod-alt-alta'" > @for(questionData of currentQuestions(); track questionData.index) {
+        @for(questionData of currentQuestions(); track questionData.index) {
         <div class="question-wrapper" [class.active]="questionData.index === currentIndex()">
           <!-- Canvas Soru Türü -->
           @if(questionData.question.question.isCanvasQuestion) {

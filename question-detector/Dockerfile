@@ -4,12 +4,10 @@ FROM python:3.11-slim
 RUN apt update && apt install -y \
     tree \
     libglib2.0-0 \
-    libgl1 \
+    libgl1-mesa-dri \
     libsm6 \
     libxext6 \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
-    libxrender-dev \    
+    libxrender-dev \
     libzbar0 \
     tesseract-ocr \
     tesseract-ocr-tur \
@@ -19,7 +17,7 @@ RUN apt update && apt install -y \
 WORKDIR /app
 
 # requirements.txt dosyasını kopyala
-COPY ./question-detector/app/requirements.txt .
+COPY ./question-detector/requirements.txt .
 
 # Python bağımlılıklarını yükle
 RUN pip install --upgrade pip && pip install -r requirements.txt

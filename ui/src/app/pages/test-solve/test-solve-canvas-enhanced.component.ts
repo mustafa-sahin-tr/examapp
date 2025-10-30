@@ -507,7 +507,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         testQuestionId: this.testInstance.testInstanceQuestions[this.currentIndex()].id,
         selectedAnswerId: selectedAnswerId,
         testInstanceId: this.testInstance.id,
-        timeTaken: this.questionDuration,
+        timeTaken: this.testInstance.testInstanceQuestions[this.currentIndex()].timeTaken,
       })
       .subscribe({
         next: () => {
@@ -578,8 +578,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   private saveCurrentAnswers() {
     if (this.questionsPerView() === 1) {
       // Tek soru için eski davranış
+      this.endQuestionTimer();
       const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
-      currentQuestion.timeTaken = this.questionDuration;
+      currentQuestion.timeTaken = this.questionDurations().get(this.currentIndex()) || 0;
 
       if (this.testInstance.isPracticeTest) {
         this.persistPracticetime();

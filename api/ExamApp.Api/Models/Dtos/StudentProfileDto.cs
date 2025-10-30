@@ -74,3 +74,10 @@ public class StudentDto {
     public string SchoolName { get; set; } = string.Empty;
     public string StudentNumber { get; set; } = string.Empty;
 }
+
+public class TeacherDto {
+    public int Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string AvatarUrl { get; set; } = string.Empty;
+    public string SchoolName { get; set; } = string.Empty;
+}

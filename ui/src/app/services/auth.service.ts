@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { CheckkTeacherResponse } from '../models/check-teacher-response';
 import { jwtDecode } from 'jwt-decode';
 import { Student } from '../models/student';
+import { Teacher } from '../models/teacher';
 
 export interface UserProfile {
   email: string;
@@ -16,6 +17,7 @@ export interface UserProfile {
   profileId: number;
   role: string;
   student?: Student; // Opsiyonel olarak öğrenci bilgisi
+  teacher?: Teacher; // Opsiyonel olarak öğretmen bilgisi
 }
 
 export interface TokenResponse {

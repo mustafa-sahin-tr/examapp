@@ -14,6 +14,7 @@ public class UserProfileDto
     // public string? SchoolName { get; set; } // Student bilgisi
     // public string? Department { get; set; } // opsiyonel
     public StudentDto Student { get; set; }
+    public TeacherDto Teacher { get; set; }
 }
 
 public class LoginResponseDto {

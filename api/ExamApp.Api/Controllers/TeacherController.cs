@@ -14,15 +14,13 @@ namespace ExamApp.Api.Controllers
 
         private readonly ITeacherService _teacherService;
 
-        private readonly IUserService _userService;
         private readonly UserProfileCacheService _userProfileCacheService;
 
-        public TeacherController( ITeacherService teacherService, IUserService userService,UserProfileCacheService userProfileCacheService)
+        public TeacherController( ITeacherService teacherService, UserProfileCacheService userProfileCacheService)
             : base()
         {
             _userProfileCacheService = userProfileCacheService;
             _teacherService = teacherService;
-            _userService = userService;
         }
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
@@ -44,7 +42,7 @@ namespace ExamApp.Api.Controllers
                 return BadRequest(new { message = response.Message });
             }
 
-            return Ok(new { Message = "Student registered successfully.", 
+            return Ok(new { Message = "Teacher registered successfully.", 
                 TeacherId = response.ObjectId,
                 
                  });

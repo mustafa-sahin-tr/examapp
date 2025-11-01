@@ -131,4 +131,21 @@ public class StudentService : IStudentService
 
     //     return activityData;
     // }
+
+    public async Task<List<StudentLookupDto>> GetStudentLookupsAsync()
+    {
+        return await _context.Students
+            .AsNoTracking()
+            .Select(s => new StudentLookupDto
+            {
+                Id = s.Id,
+                UserId = s.UserId,
+                StudentNumber = s.StudentNumber,
+                SchoolName = s.SchoolName,
+                GradeId = s.GradeId
+            })
+            .OrderBy(s => s.StudentNumber)
+            .ThenBy(s => s.Id)
+            .ToListAsync();
+    }
 }

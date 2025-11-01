@@ -7,7 +7,12 @@ import { Subject } from '../models/subject';
 import { Topic } from '../models/topic';
 import { SubTopic } from '../models/subtopic';
 import { InstanceSummary, Exam, Paged, Test, TestInstance } from '../models/test-instance';
-import { AssignedWorksheet } from '../models/assignment';
+import {
+  ApiResponse,
+  AssignedWorksheet,
+  TeacherWorksheetAssignments,
+  WorksheetAssignmentRequest,
+} from '../models/assignment';
 import { StudentAnswer } from '../models/student-answer';
 import { AnswerChoice, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
@@ -76,6 +81,14 @@ export class TestService {
 
   getActiveAssignments(): Observable<AssignedWorksheet[]> {
     return this.http.get<AssignedWorksheet[]>(`${this.baseUrl}/assignments/active`);
+  }
+
+  getWorksheetAssignmentsForTeacher(worksheetId: number): Observable<TeacherWorksheetAssignments> {
+    return this.http.get<TeacherWorksheetAssignments>(`${this.baseUrl}/${worksheetId}/assignments/overview`);
+  }
+
+  assignWorksheet(request: WorksheetAssignmentRequest): Observable<ApiResponse> {
+    return this.http.post<ApiResponse>(`${this.baseUrl}/assignments`, request);
   }
 
   create(test: Test): Observable<{ message: string; examId: number }> {

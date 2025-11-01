@@ -122,6 +122,180 @@
   </div>
 
   <!-- Main Content Section -->
+  <section class="teacher-assignment-section" *appIsTeacher>
+    <div class="section-header">
+      <div class="section-title">
+        <h2>
+          <mat-icon>assignment_ind</mat-icon>
+          Atama Yönetimi
+        </h2>
+        <p>Bu çalışma sayfasını sınıflarınıza veya seçili öğrencilere hızla atayın.</p>
+      </div>
+      <div class="section-actions">
+        <button mat-flat-button color="primary" (click)="openAssignmentDialog('grade')">
+          <mat-icon>class</mat-icon>
+          Sınıfa Ata
+        </button>
+        <button mat-stroked-button (click)="openAssignmentDialog('student')">
+          <mat-icon>person_add</mat-icon>
+          Öğrenci Seç
+        </button>
+        <button
+          mat-icon-button
+          matTooltip="Yenile"
+          (click)="refreshAssignments()"
+          [disabled]="assignmentPanel() === 'loading'"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-state" *ngIf="assignmentPanel() === 'loading'">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>Atamalar yükleniyor...</span>
+    </div>
+
+    <div class="panel-state error" *ngIf="assignmentPanel() === 'error'">
+      <mat-icon>error_outline</mat-icon>
+      <div class="state-content">
+        <span>{{ teacherError() }}</span>
+        <button mat-stroked-button color="warn" (click)="refreshAssignments()">Tekrar Dene</button>
+      </div>
+    </div>
+
+    <div class="panel-state empty" *ngIf="assignmentPanel() === 'empty' && !assignmentPanelState().loading">
+      <mat-icon>playlist_add</mat-icon>
+      <div class="state-content">
+        <h3>Henüz atama yok</h3>
+        <p>Öğrencilerinizi motive etmek için yeni bir çalışma ataması oluşturabilirsiniz.</p>
+        <div class="cta-buttons">
+          <button mat-flat-button color="primary" (click)="openAssignmentDialog('grade')">
+            <mat-icon>class</mat-icon>
+            Sınıfa Ata
+          </button>
+          <button mat-stroked-button (click)="openAssignmentDialog('student')">
+            <mat-icon>person_add</mat-icon>
+            Öğrenci Seç
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="assignmentPanel() === 'loaded'">
+      <div class="summary-grid" *ngIf="teacherSummary() as summary">
+        <div class="summary-card">
+          <span class="summary-label">Toplam Atama</span>
+          <span class="summary-value">{{ summary.totalAssignments }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Aktif Atama</span>
+          <span class="summary-value">{{ summary.activeAssignments }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Yaklaşan</span>
+          <span class="summary-value">{{ summary.upcomingAssignments }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Öğrenci Sayısı</span>
+          <span class="summary-value">{{ summary.totalStudents }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Tamamlandı</span>
+          <span class="summary-value positive">{{ summary.completedCount }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Devam Eden</span>
+          <span class="summary-value warning">{{ summary.inProgressCount }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Bekleyen</span>
+          <span class="summary-value">{{ summaryPendingCount(summary) }}</span>
+        </div>
+        <div class="summary-card">
+          <span class="summary-label">Süresi Dolan</span>
+          <span class="summary-value critical">{{ summary.expiredCount }}</span>
+        </div>
+      </div>
+
+      <div class="last-refreshed" *ngIf="lastRefreshed() as refreshed">
+        <mat-icon>schedule</mat-icon>
+        <span>Son güncelleme {{ refreshed | date : 'dd MMM yyyy HH:mm' }}</span>
+      </div>
+
+      <mat-accordion class="assignment-accordion" multi>
+        <mat-expansion-panel
+          *ngFor="let assignment of teacherAssignments()"
+          [expanded]="teacherAssignments().length === 1"
+        >
+          <mat-expansion-panel-header>
+            <div class="assignment-header">
+              <div class="assignment-title">
+                <h3>
+                  <mat-icon>{{ assignment.targetType === 'Grade' ? 'groups' : 'person' }}</mat-icon>
+                  {{ assignment.targetName }}
+                </h3>
+                <span class="assignment-time">
+                  <mat-icon>calendar_today</mat-icon>
+                  {{ assignment.startAt | date : 'dd MMM yyyy HH:mm' }}
+                  <ng-container *ngIf="assignment.endAt">
+                    &ndash;
+                    {{ assignment.endAt | date : 'dd MMM yyyy HH:mm' }}
+                  </ng-container>
+                </span>
+              </div>
+              <div class="assignment-metrics">
+                <div class="metric">
+                  <span class="metric-label">Öğrenci</span>
+                  <span class="metric-value">{{ assignment.studentCount }}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Tamamlandı</span>
+                  <span class="metric-value">{{ assignment.completedCount }}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Devam Eden</span>
+                  <span class="metric-value">{{ assignment.inProgressCount }}</span>
+                </div>
+                <div class="metric">
+                  <span class="metric-label">Bekleyen</span>
+                  <span class="metric-value">{{ pendingCount(assignment) }}</span>
+                </div>
+              </div>
+            </div>
+          </mat-expansion-panel-header>
+
+          <div class="assignment-body">
+            <div class="student-status-list" *ngIf="assignment.students?.length; else noStudents">
+              <div class="student-row" *ngFor="let student of assignment.students">
+                <div class="student-info">
+                  <mat-icon>person</mat-icon>
+                  <div>
+                    <span class="student-number">{{ student.studentNumber }}</span>
+                    <span class="student-grade">{{ studentGradeLabel(student) }}</span>
+                  </div>
+                </div>
+                <div class="student-status">
+                  <span [ngClass]="statusClass(student.status)">{{ statusLabel(student.status) }}</span>
+                </div>
+                <div class="student-activity">
+                  <mat-icon matTooltip="Son aktivite">timeline</mat-icon>
+                  <span>{{ lastActivityLabel(student.lastActivity) }}</span>
+                </div>
+              </div>
+            </div>
+            <ng-template #noStudents>
+              <div class="no-students">
+                <mat-icon>info</mat-icon>
+                <span>Bu atama için öğrenci bilgisi bulunamadı.</span>
+              </div>
+            </ng-template>
+          </div>
+        </mat-expansion-panel>
+      </mat-accordion>
+    </ng-container>
+  </section>
+
   <div class="main-content">
     <!-- Content Area - Full Width -->
     <div class="content-area">

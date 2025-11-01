@@ -27,3 +27,66 @@ export interface AssignedWorksheet {
   hasStarted: boolean;
   isCompleted: boolean;
 }
+
+export type AssignmentStudentStatus = 'Scheduled' | 'NotStarted' | 'InProgress' | 'Completed' | 'Expired';
+
+export interface TeacherAssignmentStudentSummary {
+  studentId: number;
+  userId: number;
+  studentNumber: string;
+  gradeId?: number | null;
+  gradeName?: string | null;
+  status: AssignmentStudentStatus;
+  instanceId?: number | null;
+  lastActivity?: string | null;
+}
+
+export interface TeacherWorksheetAssignment {
+  assignmentId: number;
+  targetType: 'Grade' | 'Student';
+  targetName: string;
+  isActive: boolean;
+  startAt: string;
+  endAt?: string | null;
+  studentCount: number;
+  completedCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
+  scheduledCount: number;
+  expiredCount: number;
+  students: TeacherAssignmentStudentSummary[];
+}
+
+export interface AssignmentProgressSummary {
+  totalAssignments: number;
+  activeAssignments: number;
+  upcomingAssignments: number;
+  totalStudents: number;
+  completedCount: number;
+  inProgressCount: number;
+  notStartedCount: number;
+  scheduledCount: number;
+  expiredCount: number;
+}
+
+export interface TeacherWorksheetAssignments {
+  worksheetId: number;
+  worksheetName: string;
+  retrievedAt: string;
+  summary: AssignmentProgressSummary;
+  assignments: TeacherWorksheetAssignment[];
+}
+
+export interface WorksheetAssignmentRequest {
+  worksheetId: number;
+  studentId?: number | null;
+  gradeId?: number | null;
+  startAt: string;
+  endAt?: string | null;
+}
+
+export interface ApiResponse {
+  success: boolean;
+  message: string;
+  objectId?: number | null;
+}

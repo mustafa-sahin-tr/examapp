@@ -570,6 +570,199 @@ public class ExamService : IExamService
         return result;
     }
 
+    public async Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, int teacherUserId)
+    {
+        var worksheet = await _context.Worksheets
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Id == worksheetId);
+
+        if (worksheet == null)
+        {
+            return new TeacherWorksheetAssignmentsDto
+            {
+                WorksheetId = worksheetId,
+                WorksheetName = string.Empty
+            };
+        }
+
+        var assignments = await _context.WorksheetAssignments
+            .AsNoTracking()
+            .Include(wa => wa.Grade)
+            .Include(wa => wa.Student)
+            .Where(wa => wa.WorksheetId == worksheetId && wa.CreateUserId == teacherUserId)
+            .OrderByDescending(wa => wa.StartAt)
+            .ToListAsync();
+
+        if (!assignments.Any())
+        {
+            return new TeacherWorksheetAssignmentsDto
+            {
+                WorksheetId = worksheetId,
+                WorksheetName = worksheet.Name
+            };
+        }
+
+        var now = DateTime.UtcNow;
+
+        var gradeIds = assignments
+            .Where(wa => wa.GradeId.HasValue)
+            .Select(wa => wa.GradeId!.Value)
+            .Distinct()
+            .ToList();
+
+        var directStudentIds = assignments
+            .Where(wa => wa.StudentId.HasValue)
+            .Select(wa => wa.StudentId!.Value)
+            .Distinct()
+            .ToList();
+
+        var studentsQuery = _context.Students
+            .AsNoTracking()
+            .Where(s => directStudentIds.Contains(s.Id) || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)));
+
+        var students = await studentsQuery.ToListAsync();
+        var studentsById = students.ToDictionary(s => s.Id);
+
+        var gradeMap = gradeIds.Any()
+            ? await _context.Grades
+                .AsNoTracking()
+                .Where(g => gradeIds.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Name)
+            : new Dictionary<int, string>();
+
+        var targetStudentIds = new HashSet<int>(students.Select(s => s.Id));
+        foreach (var studentId in directStudentIds)
+        {
+            targetStudentIds.Add(studentId);
+        }
+
+        var instances = targetStudentIds.Count == 0
+            ? new List<WorksheetInstance>()
+            : await _context.TestInstances
+                .AsNoTracking()
+                .Where(ti => ti.WorksheetId == worksheetId && targetStudentIds.Contains(ti.StudentId))
+                .ToListAsync();
+
+        var assignmentDtos = new List<TeacherWorksheetAssignmentDto>();
+        var summary = new AssignmentProgressSummaryDto();
+
+        foreach (var assignment in assignments)
+        {
+            var targetStudents = assignment.StudentId.HasValue
+                ? studentsById.TryGetValue(assignment.StudentId.Value, out var singleStudent)
+                    ? new List<Student> { singleStudent }
+                    : new List<Student>()
+                : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value).ToList();
+
+            var studentDtos = new List<TeacherAssignmentStudentDto>();
+
+            var completedCount = 0;
+            var inProgressCount = 0;
+            var notStartedCount = 0;
+            var scheduledCount = 0;
+            var expiredCount = 0;
+
+            foreach (var student in targetStudents)
+            {
+                var relevantInstance = instances
+                    .Where(ti => ti.StudentId == student.Id && ti.StartTime >= assignment.StartAt
+                        && (!assignment.EndAt.HasValue || ti.StartTime <= assignment.EndAt.Value))
+                    .OrderByDescending(ti => ti.StartTime)
+                    .FirstOrDefault();
+
+                var status = ResolveStudentAssignmentStatus(assignment, relevantInstance, now);
+
+                switch (status)
+                {
+                    case AssignmentStudentStatuses.Completed:
+                        completedCount++;
+                        break;
+                    case AssignmentStudentStatuses.InProgress:
+                        inProgressCount++;
+                        break;
+                    case AssignmentStudentStatuses.Scheduled:
+                        scheduledCount++;
+                        break;
+                    case AssignmentStudentStatuses.Expired:
+                        expiredCount++;
+                        break;
+                    default:
+                        notStartedCount++;
+                        break;
+                }
+
+                studentDtos.Add(new TeacherAssignmentStudentDto
+                {
+                    StudentId = student.Id,
+                    UserId = student.UserId,
+                    StudentNumber = student.StudentNumber,
+                    GradeId = student.GradeId,
+                    GradeName = student.GradeId.HasValue && gradeMap.TryGetValue(student.GradeId.Value, out var gradeName)
+                        ? gradeName
+                        : null,
+                    Status = status,
+                    InstanceId = relevantInstance?.Id,
+                    LastActivity = relevantInstance?.EndTime ?? relevantInstance?.StartTime
+                });
+            }
+
+            var isActive = assignment.StartAt <= now && (!assignment.EndAt.HasValue || assignment.EndAt.Value > now);
+
+            var targetName = assignment.StudentId.HasValue
+                ? studentDtos.FirstOrDefault()?.StudentNumber is { Length: > 0 } studentNumber
+                    ? $"Öğrenci #{studentNumber}"
+                    : $"Öğrenci {assignment.StudentId}"
+                : assignment.GradeId.HasValue && gradeMap.TryGetValue(assignment.GradeId.Value, out var resolvedGradeName)
+                    ? resolvedGradeName
+                    : assignment.Grade?.Name ?? "Tanımlı Sınıf";
+
+            var assignmentDto = new TeacherWorksheetAssignmentDto
+            {
+                AssignmentId = assignment.Id,
+                TargetType = assignment.StudentId.HasValue ? "Student" : "Grade",
+                TargetName = targetName,
+                IsActive = isActive,
+                StartAt = assignment.StartAt,
+                EndAt = assignment.EndAt,
+                StudentCount = studentDtos.Count,
+                CompletedCount = completedCount,
+                InProgressCount = inProgressCount,
+                NotStartedCount = notStartedCount,
+                ScheduledCount = scheduledCount,
+                ExpiredCount = expiredCount,
+                Students = studentDtos
+            };
+
+            assignmentDtos.Add(assignmentDto);
+
+            summary.TotalAssignments++;
+            summary.TotalStudents += assignmentDto.StudentCount;
+            summary.CompletedCount += completedCount;
+            summary.InProgressCount += inProgressCount;
+            summary.NotStartedCount += notStartedCount;
+            summary.ScheduledCount += scheduledCount;
+            summary.ExpiredCount += expiredCount;
+
+            if (assignmentDto.IsActive)
+            {
+                summary.ActiveAssignments++;
+            }
+
+            if (assignment.StartAt > now)
+            {
+                summary.UpcomingAssignments++;
+            }
+        }
+
+        return new TeacherWorksheetAssignmentsDto
+        {
+            WorksheetId = worksheetId,
+            WorksheetName = worksheet.Name,
+            Summary = summary,
+            Assignments = assignmentDtos
+        };
+    }
+
     private static DateTime NormalizeToUtc(DateTime value)
     {
         return value.Kind switch
@@ -593,6 +786,34 @@ public class ExamService : IExamService
             WorksheetInstanceStatus.Expired => "Expired",
             WorksheetInstanceStatus.Started => instance.EndTime.HasValue ? "Completed" : "InProgress",
             _ => instance.Status.ToString()
+        };
+    }
+
+    private static string ResolveStudentAssignmentStatus(WorksheetAssignment assignment, WorksheetInstance? instance, DateTime now)
+    {
+        if (instance == null)
+        {
+            if (assignment.StartAt > now)
+            {
+                return AssignmentStudentStatuses.Scheduled;
+            }
+
+            if (assignment.EndAt.HasValue && assignment.EndAt.Value < now)
+            {
+                return AssignmentStudentStatuses.Expired;
+            }
+
+            return AssignmentStudentStatuses.NotStarted;
+        }
+
+        return instance.Status switch
+        {
+            WorksheetInstanceStatus.Completed => AssignmentStudentStatuses.Completed,
+            WorksheetInstanceStatus.Expired => AssignmentStudentStatuses.Expired,
+            WorksheetInstanceStatus.Started => instance.EndTime.HasValue
+                ? AssignmentStudentStatuses.Completed
+                : AssignmentStudentStatuses.InProgress,
+            _ => AssignmentStudentStatuses.NotStarted
         };
     }
 
@@ -870,7 +1091,7 @@ public class ExamService : IExamService
         testInstanceQuestion.IsCorrect = isCorrect;
 
         var primarySubTopicId = question.QuestionSubTopics?.FirstOrDefault()?.SubTopicId;
-    
+
         _context.TestInstanceQuestions.Update(testInstanceQuestion);
 
         // 1. Event oluştur

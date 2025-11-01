@@ -185,6 +185,14 @@ namespace ExamApp.Api.Controllers
             return Ok(student);
         }
 
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("lookup")]
+        public async Task<IActionResult> GetStudentLookup()
+        {
+            var students = await _studentService.GetStudentLookupsAsync();
+            return Ok(students);
+        }
+
 
     }
 }

@@ -9,7 +9,7 @@ import { SubTopic } from '../models/subtopic';
 import { TestInstance } from '../models/test-instance';
 import { StudentAnswer } from '../models/student-answer';
 import { StudentProfile } from '../models/student-profile';
-import { Grade } from '../models/student';
+import { Grade, StudentLookup } from '../models/student';
 
 @Injectable({
   providedIn: 'root',
@@ -34,6 +34,10 @@ export class StudentService {
 
   loadGrades(): Observable<Grade[]> {
     return this.http.get<Grade[]>(`${this.baseUrl}/grades`);
+  }
+
+  getLookup(): Observable<StudentLookup[]> {
+    return this.http.get<StudentLookup[]>(`${this.baseUrl}/lookup`);
   }
 
   register(student: any): Observable<any> {

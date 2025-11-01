@@ -1,0 +1,75 @@
+<h2 mat-dialog-title>Yeni Atama Oluştur</h2>
+<section mat-dialog-content>
+  <form [formGroup]="form" class="assignment-form">
+    <mat-radio-group formControlName="scope" class="scope-selector">
+      <mat-radio-button value="grade">Sınıfa Ata</mat-radio-button>
+      <mat-radio-button value="student">Öğrenciye Ata</mat-radio-button>
+    </mat-radio-group>
+
+    <div class="field-pair" *ngIf="isGradeScope(); else studentScope">
+      <mat-form-field appearance="outline" class="wide">
+        <mat-label>Sınıf</mat-label>
+        <mat-select formControlName="gradeId">
+          <mat-option *ngFor="let grade of grades" [value]="grade.id">{{ grade.name }}</mat-option>
+        </mat-select>
+        <mat-error>Sınıf seçimi zorunlu</mat-error>
+      </mat-form-field>
+      <div class="helper-text">Seçilen sınıftaki tüm öğrenciler için atama oluşturulur.</div>
+    </div>
+
+    <ng-template #studentScope>
+      <mat-form-field appearance="outline" class="wide">
+        <mat-label>Öğrenci</mat-label>
+        <mat-select formControlName="studentId">
+          <mat-option *ngFor="let student of filteredStudents()" [value]="student.id">
+            {{ student.studentNumber }}
+            <mat-chip *ngIf="gradeLabel(student.gradeId)" color="primary" selected>
+              {{ gradeLabel(student.gradeId) }}
+            </mat-chip>
+          </mat-option>
+        </mat-select>
+        <mat-error>Öğrenci seçimi zorunlu</mat-error>
+      </mat-form-field>
+      <div class="helper-text">İsteğe bağlı olarak önce sınıf seçerek öğrencileri filtreleyebilirsin.</div>
+    </ng-template>
+
+    <div class="datetime-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Başlangıç Tarihi</mat-label>
+        <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+        <mat-datepicker #startPicker></mat-datepicker>
+        <mat-error>Tarih zorunlu</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Başlangıç Saati</mat-label>
+        <input matInput placeholder="09:00" formControlName="startTime" />
+        <mat-error>Geçerli bir saat gir</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-checkbox formControlName="hasEndDate">Bitiş zamanı belirle</mat-checkbox>
+
+    <div class="datetime-grid" *ngIf="form.controls.hasEndDate.value">
+      <mat-form-field appearance="outline">
+        <mat-label>Bitiş Tarihi</mat-label>
+        <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
+        <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+        <mat-datepicker #endPicker></mat-datepicker>
+        <mat-error>Tarih zorunlu</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Bitiş Saati</mat-label>
+        <input matInput placeholder="23:59" formControlName="endTime" />
+        <mat-error>Geçerli bir saat gir</mat-error>
+      </mat-form-field>
+    </div>
+  </form>
+</section>
+
+<section mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Vazgeç</button>
+  <button mat-flat-button color="primary" type="button" (click)="submit()">Kaydet</button>
+</section>

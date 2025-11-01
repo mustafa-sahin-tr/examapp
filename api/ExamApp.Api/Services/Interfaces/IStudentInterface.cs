@@ -13,4 +13,6 @@ public interface IStudentService
     Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto);
 
     Task<ResponseBaseDto> UpdateStudentGrade(int studentId, int gradeId);
+
+    Task<List<StudentLookupDto>> GetStudentLookupsAsync();
 }

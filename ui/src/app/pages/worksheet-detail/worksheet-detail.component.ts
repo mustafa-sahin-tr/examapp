@@ -12,6 +12,32 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 import { GradesService } from '../../services/grades.service';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDialog } from '@angular/material/dialog';
+import {
+  AssignmentProgressSummary,
+  AssignmentStudentStatus,
+  TeacherAssignmentStudentSummary,
+  TeacherWorksheetAssignment,
+} from '../../models/assignment';
+import { StudentService } from '../../services/student.service';
+import { AuthService } from '../../services/auth.service';
+import { Grade, StudentLookup } from '../../models/student';
+import {
+  WorksheetAssignmentDialogComponent,
+  WorksheetAssignmentDialogResult,
+} from './components/assignment-dialog/worksheet-assignment-dialog.component';
+
+interface AssignmentPanelState {
+  loading: boolean;
+  assignments: TeacherWorksheetAssignment[];
+  summary: AssignmentProgressSummary | null;
+  lastRefreshed: Date | null;
+  error: string | null;
+}
 
 @Component({
   selector: 'app-worksheet-detail',
@@ -21,6 +47,10 @@ import { GradesService } from '../../services/grades.service';
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
     MatButtonModule,
+    MatChipsModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule,
+    MatExpansionModule,
     IsStudentDirective,
     IsTeacherDirective,
   ],
@@ -29,6 +59,9 @@ import { GradesService } from '../../services/grades.service';
 })
 export class WorksheetDetailComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
+  private authService = inject(AuthService);
+  private studentService = inject(StudentService);
   @Input() exam!: Test; // Test bilgisi ve sorular
   route = inject(ActivatedRoute);
   testService = inject(TestService);
@@ -36,6 +69,17 @@ export class WorksheetDetailComponent implements OnInit {
   router = inject(Router);
   results!: TestInstance;
   gradeName = signal<string>(''); // Sınıf adı
+  private grades = signal<Grade[]>([]);
+  private studentLookups = signal<StudentLookup[]>([]);
+  private readonly isTeacher = this.authService.hasRole('Teacher');
+  private teacherPanelInitialized = false;
+  protected readonly assignmentPanelState = signal<AssignmentPanelState>({
+    loading: false,
+    assignments: [],
+    summary: null,
+    lastRefreshed: null,
+    error: null,
+  });
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
   public selectedChoices = signal<Map<number, AnswerChoice>>(new Map()); // 🔄 Her soru için seçilen şıkkı sakla
   public correctChoices = signal<Map<number, AnswerChoice>>(new Map()); // 🔄 Her soru için seçilen şıkkı sakla
@@ -90,6 +134,239 @@ export class WorksheetDetailComponent implements OnInit {
     }, 1000);
   }
 
+  protected refreshAssignments(): void {
+    this.loadAssignments();
+  }
+
+  protected openAssignmentDialog(scope: 'grade' | 'student'): void {
+    if (!this.isTeacher || !this.exam?.id) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(WorksheetAssignmentDialogComponent, {
+      width: '520px',
+      data: {
+        worksheetId: this.exam.id,
+        scope,
+        grades: this.grades(),
+        students: this.studentLookups(),
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result: WorksheetAssignmentDialogResult | undefined) => {
+      if (!result) {
+        return;
+      }
+
+      this.assignmentPanelState.update((state) => ({
+        ...state,
+        loading: true,
+        error: null,
+      }));
+
+      this.testService.assignWorksheet(result.request).subscribe({
+        next: (response) => {
+          const success = response?.success ?? false;
+          const message = response?.message ?? (success ? 'Atama oluşturuldu.' : 'Atama oluşturulamadı.');
+          this.snackBar.open(message, 'Tamam', { duration: 3000 });
+          if (success) {
+            this.loadAssignments();
+          } else {
+            this.assignmentPanelState.update((state) => ({
+              ...state,
+              loading: false,
+            }));
+          }
+        },
+        error: (error) => {
+          const message = error?.error?.message ?? 'Atama oluşturulurken bir hata oluştu.';
+          this.snackBar.open(message, 'Kapat', { duration: 4000 });
+          this.assignmentPanelState.update((state) => ({
+            ...state,
+            loading: false,
+            error: message,
+          }));
+        },
+      });
+    });
+  }
+
+  protected statusLabel(status: AssignmentStudentStatus): string {
+    switch (status) {
+      case 'Completed':
+        return 'Tamamlandı';
+      case 'InProgress':
+        return 'Devam ediyor';
+      case 'Scheduled':
+        return 'Planlandı';
+      case 'Expired':
+        return 'Süresi doldu';
+      default:
+        return 'Başlamadı';
+    }
+  }
+
+  protected statusClass(status: AssignmentStudentStatus): string {
+    switch (status) {
+      case 'Completed':
+        return 'status-chip completed';
+      case 'InProgress':
+        return 'status-chip in-progress';
+      case 'Scheduled':
+        return 'status-chip scheduled';
+      case 'Expired':
+        return 'status-chip expired';
+      default:
+        return 'status-chip not-started';
+    }
+  }
+
+  protected pendingCount(assignment: TeacherWorksheetAssignment): number {
+    return assignment.notStartedCount + assignment.scheduledCount;
+  }
+
+  protected summaryPendingCount(summary: AssignmentProgressSummary | null): number {
+    if (!summary) {
+      return 0;
+    }
+
+    return summary.notStartedCount + summary.scheduledCount;
+  }
+
+  protected assignmentPanel(): 'idle' | 'loading' | 'error' | 'empty' | 'loaded' {
+    const state = this.assignmentPanelState();
+
+    if (state.loading) {
+      return 'loading';
+    }
+
+    if (state.error) {
+      return 'error';
+    }
+
+    if (!state.assignments.length) {
+      return 'empty';
+    }
+
+    return 'loaded';
+  }
+
+  protected teacherAssignments(): TeacherWorksheetAssignment[] {
+    return this.assignmentPanelState().assignments;
+  }
+
+  protected teacherSummary(): AssignmentProgressSummary | null {
+    return this.assignmentPanelState().summary;
+  }
+
+  protected lastRefreshed(): Date | null {
+    return this.assignmentPanelState().lastRefreshed;
+  }
+
+  protected teacherError(): string | null {
+    return this.assignmentPanelState().error;
+  }
+
+  protected gradeNameById(gradeId?: number | null): string {
+    if (!gradeId) {
+      return '';
+    }
+
+    const grade = this.grades().find((g) => g.id === gradeId);
+    return grade?.name ?? '';
+  }
+
+  protected studentGradeLabel(student: TeacherAssignmentStudentSummary): string {
+    if (student.gradeName) {
+      return student.gradeName;
+    }
+
+    return this.gradeNameById(student.gradeId);
+  }
+
+  protected lastActivityLabel(lastActivity?: string | null): string {
+    if (!lastActivity) {
+      return '—';
+    }
+
+    const date = new Date(lastActivity);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+
+    return date.toLocaleString('tr-TR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+  }
+
+  private initializeTeacherPanel(): void {
+    if (!this.isTeacher || this.teacherPanelInitialized) {
+      return;
+    }
+
+    this.teacherPanelInitialized = true;
+    this.loadStudentLookup();
+    this.loadAssignments();
+  }
+
+  private loadAssignments(): void {
+    if (!this.isTeacher || !this.testId) {
+      return;
+    }
+
+    this.assignmentPanelState.update((state) => ({
+      ...state,
+      loading: true,
+      error: null,
+    }));
+
+    this.testService.getWorksheetAssignmentsForTeacher(this.testId).subscribe({
+      next: (overview) => {
+        const retrievedAt = overview?.retrievedAt ? new Date(overview.retrievedAt) : new Date();
+        this.assignmentPanelState.set({
+          loading: false,
+          assignments: overview?.assignments ?? [],
+          summary: overview?.summary ?? null,
+          lastRefreshed: retrievedAt,
+          error: null,
+        });
+      },
+      error: (error) => {
+        if (error?.status === 403) {
+          this.assignmentPanelState.set({
+            loading: false,
+            assignments: [],
+            summary: null,
+            lastRefreshed: null,
+            error: null,
+          });
+          return;
+        }
+
+        const message = error?.error?.message ?? 'Atama bilgileri getirilemedi.';
+        this.assignmentPanelState.set({
+          loading: false,
+          assignments: [],
+          summary: null,
+          lastRefreshed: null,
+          error: message,
+        });
+      },
+    });
+  }
+
+  private loadStudentLookup(): void {
+    if (!this.isTeacher) {
+      return;
+    }
+
+    this.studentService.getLookup().subscribe({
+      next: (students) => this.studentLookups.set(students ?? []),
+      error: () => this.studentLookups.set([]),
+    });
+  }
+
   questionSelected(index: number) {
     const question = this.results.testInstanceQuestions[index];
     console.log('Selected question:', question);
@@ -103,13 +380,14 @@ export class WorksheetDetailComponent implements OnInit {
         this.exam = await lastValueFrom(this.testService.get(this.testId));
         if (this.exam) {
           this.gradeService.getGrades().subscribe((grades) => {
+            this.grades.set(grades);
             const grade = grades.find((g) => g.id === this.exam.gradeId);
-            if (grade) {
-              this.gradeName.set(grade.name);
-            } else {
-              this.gradeName.set('Bilinmiyor');
-            }
+            this.gradeName.set(grade ? grade.name : 'Bilinmiyor');
           });
+
+          if (this.isTeacher) {
+            this.initializeTeacherPanel();
+          }
         }
         if (this.exam && this.exam.instance) {
           this.testService.getCanvasTestResults(this.exam.instance.id).subscribe((response: TestInstance) => {

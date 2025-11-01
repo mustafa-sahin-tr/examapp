@@ -90,6 +90,15 @@ public class ExamController : BaseController
         return Ok(assignments);
     }
 
+    [Authorize(Roles = "Teacher")]
+    [HttpGet("{id}/assignments/overview")]
+    public async Task<IActionResult> GetAssignmentsOverview(int id)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        var overview = await _examService.GetWorksheetAssignmentsForTeacherAsync(id, user.Id);
+        return Ok(overview);
+    }
+
 
     [HttpGet("CompletedTests")]
     [Authorize(Roles = "Student")]
@@ -180,7 +189,7 @@ public class ExamController : BaseController
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
-        }    
+        }
 
         var student = await _studentService.GetStudentProfile(user.Id);
 

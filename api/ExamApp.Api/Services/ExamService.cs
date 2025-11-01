@@ -385,6 +385,217 @@ public class ExamService : IExamService
         return result;
     }
 
+    public async Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!request.StudentId.HasValue && !request.GradeId.HasValue)
+        {
+            return new ResponseBaseDto { Success = false, Message = "En az bir hedef (öğrenci veya sınıf) seçilmelidir." };
+        }
+
+        if (request.StudentId.HasValue && request.GradeId.HasValue)
+        {
+            return new ResponseBaseDto { Success = false, Message = "Aynı atamada öğrenci ve sınıf birlikte seçilemez." };
+        }
+
+        var startAtUtc = NormalizeToUtc(request.StartAt);
+        DateTime? endAtUtc = request.EndAt.HasValue ? NormalizeToUtc(request.EndAt.Value) : null;
+
+        if (endAtUtc.HasValue && endAtUtc <= startAtUtc)
+        {
+            return new ResponseBaseDto { Success = false, Message = "Bitiş zamanı başlangıç zamanından sonra olmalıdır." };
+        }
+
+        var worksheet = await _context.Worksheets
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.Id == request.WorksheetId);
+
+        if (worksheet == null)
+        {
+            return new ResponseBaseDto { Success = false, Message = "Worksheet bulunamadı." };
+        }
+
+        Student? student = null;
+        if (request.StudentId.HasValue)
+        {
+            student = await _context.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == request.StudentId.Value);
+
+            if (student == null)
+            {
+                return new ResponseBaseDto { Success = false, Message = "Öğrenci bulunamadı." };
+            }
+        }
+
+        Grade? grade = null;
+        if (request.GradeId.HasValue)
+        {
+            grade = await _context.Grades
+                .AsNoTracking()
+                .FirstOrDefaultAsync(g => g.Id == request.GradeId.Value);
+
+            if (grade == null)
+            {
+                return new ResponseBaseDto { Success = false, Message = "Sınıf bulunamadı." };
+            }
+        }
+
+        var overlapQuery = _context.WorksheetAssignments.AsQueryable();
+        overlapQuery = overlapQuery.Where(wa => wa.WorksheetId == request.WorksheetId);
+
+        if (student != null)
+        {
+            overlapQuery = overlapQuery.Where(wa => wa.StudentId == student.Id);
+        }
+        else if (grade != null)
+        {
+            overlapQuery = overlapQuery.Where(wa => wa.GradeId == grade.Id);
+        }
+
+        overlapQuery = overlapQuery.Where(wa => wa.StartAt < (endAtUtc ?? DateTime.MaxValue)
+            && (wa.EndAt == null || wa.EndAt > startAtUtc));
+
+        var hasOverlap = await overlapQuery.AnyAsync();
+        if (hasOverlap)
+        {
+            return new ResponseBaseDto { Success = false, Message = "Seçilen aralıkta mevcut bir atama bulunuyor." };
+        }
+
+        _context.SetCurrentUser(userId);
+
+        var assignment = new WorksheetAssignment
+        {
+            WorksheetId = worksheet.Id,
+            StudentId = student?.Id,
+            GradeId = grade?.Id,
+            StartAt = startAtUtc,
+            EndAt = endAtUtc
+        };
+
+        _context.WorksheetAssignments.Add(assignment);
+        await _context.SaveChangesAsync();
+
+        return new ResponseBaseDto
+        {
+            Success = true,
+            Message = "Sınav başarıyla atandı.",
+            ObjectId = assignment.Id
+        };
+    }
+
+    public async Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student)
+    {
+        ArgumentNullException.ThrowIfNull(student);
+
+        var now = DateTime.UtcNow;
+        var gradeId = student.GradeId;
+
+        var assignmentsQuery = _context.WorksheetAssignments
+            .Include(wa => wa.Worksheet)
+                .ThenInclude(w => w.WorksheetQuestions)
+            .Include(wa => wa.Worksheet)
+                .ThenInclude(w => w.BookTest)
+            .Where(wa => wa.StartAt <= now && (wa.EndAt == null || wa.EndAt > now));
+
+        assignmentsQuery = assignmentsQuery.Where(wa =>
+            (wa.StudentId.HasValue && wa.StudentId == student.Id) ||
+            (gradeId.HasValue && wa.GradeId.HasValue && wa.GradeId == gradeId));
+
+        var assignments = await assignmentsQuery
+            .OrderBy(wa => wa.StartAt)
+            .ToListAsync();
+
+        if (!assignments.Any())
+        {
+            return new List<AssignedWorksheetDto>();
+        }
+
+        var worksheetIds = assignments
+            .Select(wa => wa.WorksheetId)
+            .Distinct()
+            .ToList();
+
+        var studentInstances = await _context.TestInstances
+            .Where(ti => ti.StudentId == student.Id && worksheetIds.Contains(ti.WorksheetId))
+            .OrderByDescending(ti => ti.StartTime)
+            .ToListAsync();
+
+        var latestInstances = studentInstances
+            .GroupBy(ti => ti.WorksheetId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var result = assignments
+            .Select(wa =>
+            {
+                latestInstances.TryGetValue(wa.WorksheetId, out var instance);
+                var worksheet = wa.Worksheet;
+                var questionCount = worksheet?.WorksheetQuestions?.Count ?? 0;
+                var bookId = worksheet?.BookTestId.HasValue == true
+                    ? worksheet?.BookTest?.BookId
+                    : null;
+
+                return new AssignedWorksheetDto
+                {
+                    AssignmentId = wa.Id,
+                    WorksheetId = wa.WorksheetId,
+                    Name = worksheet?.Name ?? string.Empty,
+                    Description = worksheet?.Description ?? string.Empty,
+                    GradeId = worksheet?.GradeId ?? 0,
+                    SubjectId = worksheet?.SubjectId,
+                    TopicId = worksheet?.TopicId,
+                    SubTopicId = worksheet?.SubTopicId,
+                    MaxDurationSeconds = worksheet?.MaxDurationSeconds ?? 0,
+                    IsPracticeTest = worksheet?.IsPracticeTest ?? false,
+                    Subtitle = worksheet?.Subtitle,
+                    ImageUrl = worksheet?.ImageUrl,
+                    BadgeText = worksheet?.BadgeText,
+                    BookTestId = worksheet?.BookTestId,
+                    BookId = bookId,
+                    QuestionCount = questionCount,
+                    StartAt = wa.StartAt,
+                    EndAt = wa.EndAt,
+                    IsGradeAssignment = wa.GradeId.HasValue && !wa.StudentId.HasValue,
+                    AssignedGradeId = wa.GradeId,
+                    InstanceId = instance?.Id,
+                    InstanceStatus = instance?.Status,
+                    InstanceStartTime = instance?.StartTime,
+                    InstanceEndTime = instance?.EndTime,
+                    AssignmentStatus = ResolveAssignmentStatus(instance)
+                };
+            })
+            .ToList();
+
+        return result;
+    }
+
+    private static DateTime NormalizeToUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
+    private static string ResolveAssignmentStatus(WorksheetInstance? instance)
+    {
+        if (instance == null)
+        {
+            return "NotStarted";
+        }
+
+        return instance.Status switch
+        {
+            WorksheetInstanceStatus.Completed => "Completed",
+            WorksheetInstanceStatus.Expired => "Expired",
+            WorksheetInstanceStatus.Started => instance.EndTime.HasValue ? "Completed" : "InProgress",
+            _ => instance.Status.ToString()
+        };
+    }
+
     public async Task<TestStartResultDto> StartTestAsync(int testId, StudentProfileDto student)
     {
         var existing = await _context.TestInstances

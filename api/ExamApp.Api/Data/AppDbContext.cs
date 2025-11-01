@@ -70,6 +70,7 @@ public class AppDbContext : DbContext
     public DbSet<WorksheetInstanceQuestion> TestInstanceQuestions { get; set; }
     public DbSet<WorksheetPrototype> TestPrototypes { get; set; }
     public DbSet<WorksheetPrototypeDetail> TestPrototypeDetail { get; set; }
+    public DbSet<WorksheetAssignment> WorksheetAssignments { get; set; }
     public DbSet<StudentPoint> StudentPoints { get; set; }
     public DbSet<StudentPointHistory> StudentPointHistories { get; set; }
     public DbSet<Reward> Rewards { get; set; }
@@ -221,6 +222,30 @@ public class AppDbContext : DbContext
             .HasOne(qst => qst.SubTopic)
             .WithMany(st => st.QuestionSubTopics)
             .HasForeignKey(qst => qst.SubTopicId);
+
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasOne(wa => wa.Worksheet)
+            .WithMany()
+            .HasForeignKey(wa => wa.WorksheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasOne(wa => wa.Student)
+            .WithMany()
+            .HasForeignKey(wa => wa.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasOne(wa => wa.Grade)
+            .WithMany()
+            .HasForeignKey(wa => wa.GradeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasIndex(wa => new { wa.StudentId, wa.WorksheetId, wa.StartAt });
+
+        modelBuilder.Entity<WorksheetAssignment>()
+            .HasIndex(wa => new { wa.GradeId, wa.WorksheetId, wa.StartAt });
 
         // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
         modelBuilder.Entity<ProgramStep>()

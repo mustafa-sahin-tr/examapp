@@ -1281,6 +1281,61 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("UserProgramSchedules");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("StartAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorksheetId");
+
+                    b.HasIndex("GradeId", "WorksheetId", "StartAt");
+
+                    b.HasIndex("StudentId", "WorksheetId", "StartAt");
+
+                    b.ToTable("WorksheetAssignments");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>
                 {
                     b.Property<int>("Id")
@@ -2115,6 +2170,31 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("UserProgram");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetAssignment", b =>
+                {
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Worksheet", "Worksheet")
+                        .WithMany()
+                        .HasForeignKey("WorksheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Worksheet");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetQuestion", b =>

@@ -20,6 +20,10 @@ public interface IExamService
 
     Task<List<WorksheetWithInstanceDto>> GetWorksheetAndInstancesAsync(StudentProfileDto student, int gradeId);
 
+    Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId);
+
+    Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student);
+
     Task<TestStartResultDto> StartTestAsync(int testId, StudentProfileDto student);
 
     Task<WorksheetInstanceDto?> GetTestInstanceQuestionsAsync(int testInstanceId, int userId);

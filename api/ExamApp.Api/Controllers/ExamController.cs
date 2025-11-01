@@ -60,6 +60,36 @@ public class ExamController : BaseController
         return Ok(result);
     }
 
+    [Authorize(Roles = "Teacher")]
+    [HttpPost("assignments")]
+    public async Task<IActionResult> AssignWorksheet([FromBody] WorksheetAssignmentRequestDto request)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        var response = await _examService.AssignWorksheetAsync(request, user.Id);
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [Authorize(Roles = "Student")]
+    [HttpGet("assignments/active")]
+    public async Task<IActionResult> GetActiveAssignments()
+    {
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        var assignments = await _examService.GetActiveAssignmentsForStudentAsync(student);
+        return Ok(assignments);
+    }
+
 
     [HttpGet("CompletedTests")]
     [Authorize(Roles = "Student")]

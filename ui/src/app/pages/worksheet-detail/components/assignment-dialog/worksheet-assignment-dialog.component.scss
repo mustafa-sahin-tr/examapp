@@ -37,3 +37,26 @@ mat-chip {
   height: 22px;
   font-size: 0.75rem;
 }
+
+.student-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+
+  .student-option-primary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    .student-name {
+      font-weight: 600;
+      color: var(--ms-text);
+    }
+
+    .student-number {
+      font-size: 0.75rem;
+      color: var(--ms-text-medium);
+    }
+  }
+}

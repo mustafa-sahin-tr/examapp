@@ -22,10 +22,15 @@
         <mat-label>Öğrenci</mat-label>
         <mat-select formControlName="studentId">
           <mat-option *ngFor="let student of filteredStudents()" [value]="student.id">
-            {{ student.studentNumber }}
-            <mat-chip *ngIf="gradeLabel(student.gradeId)" color="primary" selected>
-              {{ gradeLabel(student.gradeId) }}
-            </mat-chip>
+            <div class="student-option">
+              <div class="student-option-primary">
+                <span class="student-name">{{ student.fullName || student.studentNumber }}</span>
+                <span class="student-number" *ngIf="student.studentNumber">{{ student.studentNumber }}</span>
+              </div>
+              <mat-chip *ngIf="gradeLabel(student.gradeId)" color="primary" selected>
+                {{ gradeLabel(student.gradeId) }}
+              </mat-chip>
+            </div>
           </mat-option>
         </mat-select>
         <mat-error>Öğrenci seçimi zorunlu</mat-error>

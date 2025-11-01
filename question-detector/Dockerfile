@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Sistem paketlerini yükle
 RUN apt update && apt install -y \
     tree \
+    libgl1 \
     libglib2.0-0 \
     libgl1-mesa-dri \
     libsm6 \

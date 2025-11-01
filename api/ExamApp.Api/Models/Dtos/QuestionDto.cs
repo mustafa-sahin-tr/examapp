@@ -31,6 +31,8 @@ public class QuestionDto
     public double? Y { get; set; }
     public double? Width { get; set; }
     public double? Height { get; set; }
+
+    public int Order { get; set; }
 }
 
 public class PassageDto
@@ -38,7 +40,7 @@ public class PassageDto
     public int? Id { get; set; }
     public string? Title { get; set; }
     public string? Text { get; set; }
-    public string? ImageUrl { get; set; }    
+    public string? ImageUrl { get; set; }
     public double? X { get; set; }
     public double? Y { get; set; }
     public double? Width { get; set; }
@@ -49,7 +51,7 @@ public class AnswerDto
     public int? Id { get; set; }
     public string? Text { get; set; }
     public string? Image { get; set; } // Base64 formatında geliyor
-    public string? ImageUrl { get; set; }    
+    public string? ImageUrl { get; set; }
 
     public bool IsCorrect { get; set; }
     public double? X { get; set; }

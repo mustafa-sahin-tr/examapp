@@ -18,4 +18,7 @@ export interface StudentLookup {
   studentNumber: string;
   schoolName: string;
   gradeId?: number | null;
+  fullName?: string;
+  email?: string;
+  avatarUrl?: string;
 }

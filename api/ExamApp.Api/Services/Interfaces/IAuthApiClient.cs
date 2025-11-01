@@ -1,5 +1,4 @@
-using System;
-using ExamApp.Api.Data;
+using System.Collections.Generic;
 using ExamApp.Api.Models.Dtos;
 
 namespace ExamApp.Api.Services.Interfaces;
@@ -7,4 +6,5 @@ namespace ExamApp.Api.Services.Interfaces;
 public interface IAuthApiClient
 {
     Task<UserProfileDto> GetUserProfileAsync();
+    Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds);
 }

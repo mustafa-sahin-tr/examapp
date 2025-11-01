@@ -1,13 +1,13 @@
 version: '3.8'
 services:
-  # exam-dotnet-api:
-  #   command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
+  exam-dotnet-api:
+    command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
 
   auth-api:
     command: dotnet watch run --urls=http://+:5079
 
-  # exam-badge-api:
-  #   command: dotnet watch run --urls=http://+:8006
+  exam-badge-api:
+    command: dotnet watch run --urls=http://+:8006
 
   finance-api:
     command: sh -c "cd finance-api && dotnet watch run --urls=http://+:8005"
@@ -15,8 +15,8 @@ services:
   ocelot-gateway:
     command: dotnet watch run --urls=http://+:5678
 
-  # exam-outbox-publisher:
-  #   command: dotnet watch run --urls=http://+:8007
+  exam-outbox-publisher:
+    command: dotnet watch run --urls=http://+:8007
 
   angular-app:
     command: sh -c "yarn install && yarn start"
@@ -27,8 +27,8 @@ services:
   auth-ui:
     command: sh -c "yarn install && yarn start"
 
-  question-detector-dev:
-    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+  # question-detector-dev:
+  #   command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 
   keycloak:
     volumes:

@@ -34,6 +34,7 @@ export interface QuestionRegion {
   imageUrl: string;
   exampleAnswer: string | null | undefined;
   isExample: boolean;
+  order?: number;
 }
 
 export type RegionOrAnswerHit =

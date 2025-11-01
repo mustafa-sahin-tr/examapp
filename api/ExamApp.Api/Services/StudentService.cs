@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
@@ -9,10 +11,12 @@ namespace ExamApp.Api.Services;
 public class StudentService : IStudentService
 {
     private readonly AppDbContext _context;
+    private readonly IAuthApiClient _authApiClient;
 
-    public StudentService(AppDbContext context)
+    public StudentService(AppDbContext context, IAuthApiClient authApiClient)
     {
         _context = context;
+        _authApiClient = authApiClient;
     }
     public async Task<List<Grade>> GetGradesAsync()
     {
@@ -134,7 +138,7 @@ public class StudentService : IStudentService
 
     public async Task<List<StudentLookupDto>> GetStudentLookupsAsync()
     {
-        return await _context.Students
+        var students = await _context.Students
             .AsNoTracking()
             .Select(s => new StudentLookupDto
             {
@@ -147,5 +151,34 @@ public class StudentService : IStudentService
             .OrderBy(s => s.StudentNumber)
             .ThenBy(s => s.Id)
             .ToListAsync();
+
+        if (students.Count == 0)
+        {
+            return students;
+        }
+
+        var userIds = students.Select(s => s.UserId).Distinct().ToList();
+
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(userIds);
+            var userLookup = users.ToDictionary(u => u.Id);
+
+            foreach (var student in students)
+            {
+                if (userLookup.TryGetValue(student.UserId, out var user))
+                {
+                    student.FullName = user.FullName ?? string.Empty;
+                    student.Email = user.Email ?? string.Empty;
+                    student.AvatarUrl = user.Avatar ?? string.Empty;
+                }
+            }
+        }
+        catch
+        {
+            // Auth API erişilemezse mevcut listeyi base bilgilerle döndür.
+        }
+
+        return students;
     }
 }

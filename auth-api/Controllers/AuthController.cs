@@ -3,8 +3,11 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Linq;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Requests;
+using ExamApp.Api.Models.Responses;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -95,6 +98,33 @@ namespace ExamApp.Api.Controllers
             }
 
 
+        }
+
+
+        [Authorize]
+        [HttpPost("users/lookup")]
+        public async Task<IActionResult> GetUsersByIds([FromBody] BulkUserLookupRequest request)
+        {
+            if (request == null || request.UserIds == null || request.UserIds.Count == 0)
+            {
+                return BadRequest("UserIds cannot be empty");
+            }
+
+            var distinctIds = request.UserIds.Distinct().ToList();
+            var users = await _context.Users
+                .Where(u => !u.IsDeleted && distinctIds.Contains(u.Id))
+                .Select(u => new UserLookupResponse
+                {
+                    Id = u.Id,
+                    KeycloakId = u.KeycloakId,
+                    FullName = u.FullName,
+                    Email = u.Email,
+                    Avatar = u.AvatarUrl ?? string.Empty,
+                    Role = u.Role.ToString()
+                })
+                .ToListAsync();
+
+            return Ok(users);
         }
 
 

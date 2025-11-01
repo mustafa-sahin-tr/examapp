@@ -130,43 +130,45 @@ export class TestService {
 
     const imageSrc = testInstance.testInstanceQuestions[0].question.imageUrl;
 
-    const regions: QuestionRegion[] = testInstance.testInstanceQuestions.map((qInstance) => {
-      const question = qInstance.question;
-      return {
-        id: question.id,
-        name: `Soru ${qInstance.order}`,
-        x: question.x,
-        y: question.y,
-        width: question.width,
-        height: question.height,
-        isExample: question.isExample,
-        passageId: question.passage ? question.passage.id.toString() : '',
-        imageId: question.imageUrl,
-        imageUrl: question.imageUrl,
-        exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
-        answers: question.answers.map((answer) => ({
-          id: answer.id,
-          label: answer.text,
-          x: answer.x,
-          y: answer.y,
-          width: answer.width,
-          height: answer.height,
-          isCorrect: question.correctAnswerId === answer.id, // Set isCorrect based on correctAnswerId
-        })),
-        passage: question.passage
-          ? {
-              id: question.passage.id,
-              title: question.passage.title,
-              x: question.passage.x,
-              y: question.passage.y,
-              width: question.passage.width,
-              height: question.passage.height,
-              imageUrl: question.passage.imageUrl,
-              imageId: question.passage.imageUrl,
-            }
-          : undefined,
-      };
-    });
+    const regions: QuestionRegion[] = testInstance.testInstanceQuestions
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((qInstance, index) => {
+        const question = qInstance.question;
+        return {
+          id: question.id,
+          name: `Soru ${qInstance.order ?? index + 1}`,
+          x: question.x,
+          y: question.y,
+          width: question.width,
+          height: question.height,
+          isExample: question.isExample,
+          passageId: question.passage ? question.passage.id.toString() : '',
+          imageId: question.imageUrl,
+          imageUrl: question.imageUrl,
+          exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+          answers: question.answers.map((answer) => ({
+            id: answer.id,
+            label: answer.text,
+            x: answer.x,
+            y: answer.y,
+            width: answer.width,
+            height: answer.height,
+            isCorrect: question.correctAnswerId === answer.id, // Set isCorrect based on correctAnswerId
+          })),
+          passage: question.passage
+            ? {
+                id: question.passage.id,
+                title: question.passage.title,
+                x: question.passage.x,
+                y: question.passage.y,
+                width: question.passage.width,
+                height: question.passage.height,
+                imageUrl: question.passage.imageUrl,
+                imageId: question.passage.imageUrl,
+              }
+            : undefined,
+        };
+      });
 
     return regions;
   }
@@ -180,42 +182,44 @@ export class TestService {
       return [];
     }
 
-    const regions: QuestionRegion[] = qeuestions.map((question, index) => {
-      return {
-        id: question.id,
-        name: `Soru ${index}`,
-        x: question.x,
-        y: question.y,
-        width: question.width,
-        height: question.height,
-        isExample: question.isExample,
-        passageId: question.passage ? question.passage.id.toString() : '',
-        imageId: question.imageUrl,
-        imageUrl: question.imageUrl,
-        exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
-        answers: question.answers.map((answer) => ({
-          id: answer.id,
-          label: answer.text,
-          x: answer.x,
-          y: answer.y,
-          width: answer.width,
-          height: answer.height,
-          isCorrect: question.correctAnswerId === answer.id, // Set isCorrect based on correctAnswerId
-        })),
-        passage: question.passage
-          ? {
-              id: question.passage.id,
-              title: question.passage.title,
-              x: question.passage.x,
-              y: question.passage.y,
-              width: question.passage.width,
-              height: question.passage.height,
-              imageUrl: question.passage.imageUrl,
-              imageId: question.passage.imageUrl,
-            }
-          : undefined,
-      };
-    });
+    const regions: QuestionRegion[] = qeuestions
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((question, index) => {
+        return {
+          id: question.id,
+          name: `Soru ${question.order ?? index + 1}`,
+          x: question.x,
+          y: question.y,
+          width: question.width,
+          height: question.height,
+          isExample: question.isExample,
+          passageId: question.passage ? question.passage.id.toString() : '',
+          imageId: question.imageUrl,
+          imageUrl: question.imageUrl,
+          exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+          answers: question.answers.map((answer) => ({
+            id: answer.id,
+            label: answer.text,
+            x: answer.x,
+            y: answer.y,
+            width: answer.width,
+            height: answer.height,
+            isCorrect: question.correctAnswerId === answer.id, // Set isCorrect based on correctAnswerId
+          })),
+          passage: question.passage
+            ? {
+                id: question.passage.id,
+                title: question.passage.title,
+                x: question.passage.x,
+                y: question.passage.y,
+                width: question.passage.width,
+                height: question.passage.height,
+                imageUrl: question.passage.imageUrl,
+                imageId: question.passage.imageUrl,
+              }
+            : undefined,
+        };
+      });
 
     return regions;
   }

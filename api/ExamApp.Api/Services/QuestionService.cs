@@ -112,6 +112,7 @@ public class QuestionService : IQuestionService
                 .ThenInclude(q => q.QuestionSubTopics)
                     .ThenInclude(qst => qst.SubTopic)
             .Where(tq => tq.TestId == testid && !tq.IsDeleted)
+            .OrderBy(tq => tq.Order)
             .Select(tq => new QuestionDto
             {
                 Id = tq.Question.Id,
@@ -151,6 +152,7 @@ public class QuestionService : IQuestionService
                 } : null,
                 CorrectAnswerId = tq.Question.CorrectAnswerId,
                 AnswerColCount = tq.Question.AnswerColCount,
+                Order = tq.Order
                 // SubTopics = tq.Question.QuestionSubTopics.Select(qst => new
                 // {
                 //     qst.SubTopicId,
@@ -806,7 +808,7 @@ public class QuestionService : IQuestionService
                 Success = false,
                 Message = $"Soru resmi boyutlandırılırken hata oluştu: {ex.Message}"
             };
-        }   
+        }
 
         return new ResponseBaseDto
         {

@@ -1,0 +1,41 @@
+.dashboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.assignment-meta {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.assignment-meta .status {
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.assignment-meta .status.in-progress {
+  color: #f6ad55;
+}
+
+.assignment-meta .status.completed {
+  color: #48bb78;
+}
+
+.assignment-meta .due {
+  color: #718096;
+  font-size: 13px;
+}
+
+.info {
+  color: #718096;
+  font-size: 14px;
+}
+
+.error {
+  color: #e53e3e;
+  font-size: 14px;
+}

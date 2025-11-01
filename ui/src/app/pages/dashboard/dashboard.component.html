@@ -1,0 +1,44 @@
+<div class="dashboard-section">
+  <app-section-header title="Atanmış Testler" icon="/icons/18.svg"></app-section-header>
+
+  <ng-container *ngIf="loading(); else assignmentsContent">
+    <p class="info">Atanmış testler yükleniyor...</p>
+  </ng-container>
+
+  <ng-template #assignmentsContent>
+    <ng-container *ngIf="assignmentCards().length > 0; else noAssignments">
+      <div class="list-container">
+        <button class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
+        <div class="cards hidden-scrollable" #assignmentContainer>
+          <ul class="psds-carousel__track">
+            <li
+              class="psds-carousel__item m-5"
+              style="flex-basis: 377.305px"
+              *ngFor="let vm of assignmentCards(); trackBy: trackAssignment"
+            >
+              <app-worksheet-card [test]="vm.test" (cardClick)="onCardClick(vm)"></app-worksheet-card>
+              <div class="assignment-meta">
+                <span
+                  class="status"
+                  [class.completed]="vm.assignment.isCompleted"
+                  [class.in-progress]="vm.assignment.hasStarted && !vm.assignment.isCompleted"
+                >
+                  {{ getStatusLabel(vm.assignment) }}
+                </span>
+                <span class="due">{{ getDueLabel(vm.assignment) }}</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <button class="nav-btn right" type="button" (click)="handleRightNavigation()">❯</button>
+      </div>
+    </ng-container>
+    <ng-template #noAssignments>
+      <p class="info">Aktif atanmış test bulunmuyor.</p>
+    </ng-template>
+  </ng-template>
+
+  <ng-container *ngIf="error() as errorMessage">
+    <p class="error">{{ errorMessage }}</p>
+  </ng-container>
+</div>

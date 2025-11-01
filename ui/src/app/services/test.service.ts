@@ -7,6 +7,7 @@ import { Subject } from '../models/subject';
 import { Topic } from '../models/topic';
 import { SubTopic } from '../models/subtopic';
 import { InstanceSummary, Exam, Paged, Test, TestInstance } from '../models/test-instance';
+import { AssignedWorksheet } from '../models/assignment';
 import { StudentAnswer } from '../models/student-answer';
 import { AnswerChoice, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
@@ -71,6 +72,10 @@ export class TestService {
 
   getCompleted(pageNumber: number = 1): Observable<Paged<InstanceSummary>> {
     return this.http.get<Paged<InstanceSummary>>(`${this.baseUrl}/CompletedTests?pageNumber=${pageNumber}&pageSize=10`);
+  }
+
+  getActiveAssignments(): Observable<AssignedWorksheet[]> {
+    return this.http.get<AssignedWorksheet[]>(`${this.baseUrl}/assignments/active`);
   }
 
   create(test: Test): Observable<{ message: string; examId: number }> {

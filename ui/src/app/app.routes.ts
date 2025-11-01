@@ -18,6 +18,7 @@ import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
 import { StudyPageComponent } from './components/study-page/study-page.component';
+import { DashboardComponent } from './pages/dashboard/dashboard.component';
 
 export const routes: Routes = [
   {
@@ -25,7 +26,7 @@ export const routes: Routes = [
     component: EnhancedLayoutComponent,
     // canActivate: [authGuard],
     children: [
-      { path: '', redirectTo: 'tests', pathMatch: 'full' },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'student-register', component: StudentRegisterComponent },
       { path: 'teacher-register', component: TeacherRegisterComponent },
       { path: 'question/:id', component: QuestionComponent },
@@ -34,6 +35,7 @@ export const routes: Routes = [
       { path: 'question', component: QuestionComponent },
       { path: 'imageselect', component: ImageSelectorComponent },
       { path: 'tests', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } },
+      { path: 'dashboard', component: DashboardComponent },
       {
         path: 'tests-enhanced',
         component: WorksheetListEnhancedComponent,

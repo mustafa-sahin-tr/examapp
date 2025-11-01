@@ -14,14 +14,14 @@ public class StudentService : IStudentService
     {
         _context = context;
     }
-    public async Task<List<Grade>> GetGradesAsync() 
+    public async Task<List<Grade>> GetGradesAsync()
     {
         var grades = await _context.Grades.ToListAsync();
         return grades;
-    }   
-    public async Task<StudentProfileDto> GetStudentProfile(int userId) 
+    }
+    public async Task<StudentProfileDto> GetStudentProfile(int userId)
     {
-        var student = await _context.Students            
+        var student = await _context.Students
             .Where(s => s.UserId == userId)
             .Select(s => new StudentProfileDto
             {
@@ -37,7 +37,7 @@ public class StudentService : IStudentService
                 TestsCompleted = _context.TestInstances.Count(t => t.StudentId == s.Id),
                 TotalRewards = _context.StudentRewards.Count(r => r.StudentId == s.Id),
                 Badges = _context.StudentBadges
-                    .Where(sb => sb.StudentId == s.Id)                    
+                    .Where(sb => sb.StudentId == s.Id)
                     .ToList(),
                 LeaderboardRank = _context.Leaderboards
                     .Where(lb => lb.StudentId == s.Id)
@@ -50,7 +50,7 @@ public class StudentService : IStudentService
                     .Take(5)
                     .Select(ti => new StudentWorkSheetSummaryDto
                     {
-                        Id = ti.Id,                      
+                        Id = ti.Id,
                         Name = ti.Worksheet.Name,
                         StartTime = ti.StartTime,
                         Score = ti.WorksheetInstanceQuestions.Count(tiq => tiq.IsCorrect) * 10, // 10 puan üzerinden hesaplama
@@ -61,7 +61,7 @@ public class StudentService : IStudentService
             .FirstOrDefaultAsync();
 
         return student;
-            
+
     }
 
     public async Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto)
@@ -72,7 +72,9 @@ public class StudentService : IStudentService
             student.StudentNumber = dto.StudentNumber;
             student.SchoolName = dto.SchoolName;
             student.GradeId = dto.GradeId;
-        } else {
+        }
+        else
+        {
             // 🔹 Yeni öğrenci kaydını ekle
             student = new Student
             {
@@ -81,7 +83,7 @@ public class StudentService : IStudentService
                 SchoolName = dto.SchoolName,
                 GradeId = dto.GradeId
             };
-            _context.Students.Add(student);                
+            _context.Students.Add(student);
         }
 
         await _context.SaveChangesAsync();
@@ -89,7 +91,7 @@ public class StudentService : IStudentService
         {
             Success = true,
             Message = "Öğrenci başarıyla kaydedildi.",
-            ObjectId = student.Id            
+            ObjectId = student.Id
         };
     }
 
@@ -114,4 +116,19 @@ public class StudentService : IStudentService
         };
 
     }
+
+    // public async Task<Dictionary<DateTime, int>> GetStudentActivityHeatmap(int studentId)
+    // {
+    //     var activityData = await _context.StudentActivities
+    //         .Where(sa => sa.StudentId == studentId)
+    //         .GroupBy(sa => sa.ActivityDate.Date)
+    //         .Select(g => new
+    //         {
+    //             Date = g.Key,
+    //             ActivityCount = g.Count()
+    //         })
+    //         .ToDictionaryAsync(x => x.Date, x => x.ActivityCount);
+
+    //     return activityData;
+    // }
 }

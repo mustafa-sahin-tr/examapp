@@ -96,7 +96,7 @@ namespace ExamApp.Api.Controllers
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _studentService.Save(user.Id, request);
-            
+
             if (response == null)
             {
                 return BadRequest(new { message = "Öğrenci kaydı başarısız." });
@@ -126,6 +126,24 @@ namespace ExamApp.Api.Controllers
             });
 
         }
+
+        // [Authorize]
+        // [HttpGet("activity-heatmap")]
+        // public async Task<IActionResult> GetActivityHeatmap()
+        // {
+        //     var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        //     if (user == null)
+        //     {
+        //         return NotFound(new { message = "Kullanıcı bulunamadı." });
+        //     }
+        //     var student = await _studentService.GetStudentProfile(user.Id);
+        //     if (student == null)
+        //     {
+        //         return NotFound(new { message = "Öğrenci bulunamadı." });
+        //     }
+        //     var activityData = await _studentService.GetStudentActivityHeatmap(student.Id);
+        //     return Ok(activityData);
+        // }
 
 
         [Authorize]

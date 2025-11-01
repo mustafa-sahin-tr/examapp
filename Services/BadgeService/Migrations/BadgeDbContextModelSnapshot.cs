@@ -78,7 +78,170 @@ namespace BadgeService.Migrations
                     b.ToTable("BadgeEarned");
                 });
 
+            modelBuilder.Entity("StudentBadgeProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BadgeDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CurrentValue")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TargetValue")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BadgeDefinitionId");
+
+                    b.HasIndex("UserId", "BadgeDefinitionId")
+                        .IsUnique();
+
+                    b.ToTable("StudentBadgeProgresses");
+                });
+
+            modelBuilder.Entity("StudentDailyActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ActivityDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ActivityScore")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CorrectCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastUpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("QuestionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalTimeSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ActivityDate")
+                        .IsUnique();
+
+                    b.ToTable("StudentDailyActivities");
+                });
+
+            modelBuilder.Entity("StudentQuestionAggregate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BestCorrectStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CorrectQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CurrentCorrectStreak")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastAnsweredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastUpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalTimeSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("StudentQuestionAggregates");
+                });
+
+            modelBuilder.Entity("StudentSubjectAggregate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("CorrectQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastUpdatedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SubjectName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalTimeSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("StudentSubjectAggregates");
+                });
+
             modelBuilder.Entity("BadgeEarned", b =>
+                {
+                    b.HasOne("BadgeDefinition", "BadgeDefinition")
+                        .WithMany()
+                        .HasForeignKey("BadgeDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BadgeDefinition");
+                });
+
+            modelBuilder.Entity("StudentBadgeProgress", b =>
                 {
                     b.HasOne("BadgeDefinition", "BadgeDefinition")
                         .WithMany()

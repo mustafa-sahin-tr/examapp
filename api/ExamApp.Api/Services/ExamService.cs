@@ -425,6 +425,8 @@ public class ExamService : IExamService
         // Teste ait soruları TestQuestion tablosundan çekiyoruz
         var testQuestions = await _context.TestQuestions
             .Where(tq => tq.TestId == testId)
+            .Include(tq => tq.Question)
+                .ThenInclude(q => q.QuestionSubTopics)
             .OrderBy(tq => tq.Order)
             .ToListAsync();
 
@@ -622,8 +624,11 @@ public class ExamService : IExamService
     {
         var testInstanceQuestion = await _context.TestInstanceQuestions
                     .Include(t => t.WorksheetQuestion)
-                    .ThenInclude(wq => wq.Question)
-                    .ThenInclude(wiq => wiq.Subject)
+                        .ThenInclude(wq => wq.Question)
+                            .ThenInclude(q => q.Subject)
+                    .Include(t => t.WorksheetQuestion)
+                        .ThenInclude(wq => wq.Question)
+                            .ThenInclude(q => q.QuestionSubTopics)
             .FirstOrDefaultAsync(tiq => tiq.WorksheetInstanceId == dto.TestInstanceId &&
                 tiq.Id == dto.TestQuestionId
                 && tiq.WorksheetInstance.Student.UserId == user.Id);
@@ -638,19 +643,42 @@ public class ExamService : IExamService
         }
         testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId;
         testInstanceQuestion.TimeTaken = dto.TimeTaken;
+
+        var question = testInstanceQuestion.WorksheetQuestion?.Question;
+        if (question == null)
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = "Question data not found for the worksheet."
+            };
+        }
+
+        var correctAnswerId = question.CorrectAnswerId;
+        var isCorrect = correctAnswerId.HasValue && correctAnswerId.Value == dto.SelectedAnswerId;
+        testInstanceQuestion.IsCorrect = isCorrect;
+
+        var primarySubTopicId = question.QuestionSubTopics?.FirstOrDefault()?.SubTopicId;
+    
         _context.TestInstanceQuestions.Update(testInstanceQuestion);
 
         // 1. Event oluştur
         var evt = new AnswerSubmittedEvent
         {
             UserId = user.Id,
-            QuestionId = testInstanceQuestion.WorksheetQuestion.QuestionId,
-            Subject = testInstanceQuestion.WorksheetQuestion.Question.Subject.Name,
-            TestInstanceId = testInstanceQuestion.WorksheetInstanceId,
-            SelectedAnswerId = dto.SelectedAnswerId,
+            QuestionId = question.Id,
+            SubjectId = question.SubjectId,
+            Subject = question.Subject?.Name ?? string.Empty,
+            QuestionPoint = question.Point,
+            DifficultyLevel = question.DifficultyLevel,
             SubmittedAt = DateTime.UtcNow,
             TimeTakenInSeconds = dto.TimeTaken,
-            ClientId = user.KeycloakId
+            ClientId = user.KeycloakId,
+            IsCorrect = isCorrect,
+            SubTopicId = primarySubTopicId,
+            TopicId = question.TopicId,
+            TestInstanceId = dto.TestInstanceId,
+            SelectedAnswerId = dto.SelectedAnswerId
         };
 
         // 2. Outbox'a yaz

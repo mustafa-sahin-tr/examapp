@@ -1,3 +1,7 @@
+using System;
+
+namespace BadgeService.Entities;
+
 public class BadgeDefinition
 {
     public Guid Id { get; set; }

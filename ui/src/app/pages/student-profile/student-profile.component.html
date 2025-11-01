@@ -1,115 +1,121 @@
-@if(student) 
-{
- 
-   <!-- Avatar Component (avatar.component.html) -->
+@if(student) {
 
+<!-- Avatar Component (avatar.component.html) -->
 
-  <mat-tab-group [(selectedIndex)]="activeTab">
-    <mat-tab label="Info">
+<mat-tab-group [(selectedIndex)]="activeTab">
+  <mat-tab label="Info">
+    <app-badge-thropy></app-badge-thropy>
+    <app-badge-thropy></app-badge-thropy>
+  </mat-tab>
 
-      <app-badge-thropy></app-badge-thropy>
-      <app-badge-thropy></app-badge-thropy>
-    </mat-tab>
-      
-    <mat-tab label="What">  
-      <div class="learning-container">
-        <div class="learning-text">
-          <h5>Your premier learning partner</h5>
-          <h3>High-caliber content from industry experts</h3>
-          <p>Our experts know their topics. The proof? We carefully select them at about a 6% acceptance rate. And we’re constantly peer reviewing our content for the freshest, most reliable courses across tech.</p>
-        </div>
-        <div class="learning-image">
-          <img src="/assets/experts.jpg" alt="Experts">
-        </div>
+  <mat-tab label="What">
+    <div class="learning-container">
+      <div class="learning-text">
+        <h5>Your premier learning partner</h5>
+        <h3>High-caliber content from industry experts</h3>
+        <p>
+          Our experts know their topics. The proof? We carefully select them at about a 6% acceptance rate. And we’re
+          constantly peer reviewing our content for the freshest, most reliable courses across tech.
+        </p>
       </div>
-      
-      <div class="features-container">
-        <div class="feature-card">
-          <img src="/assets/certification.svg" alt="Certification">
-          <h3>Top-tier certification exam prep</h3>
-          <p>Prepare for in-demand certs with unlimited practice exams and labs that validate your learning. Get in-moment feedback to maximize your experience and minimize exam-day nerves.</p>
-          <a href="#">Learn more</a>
-        </div>
-        <div class="feature-card">
-          <img src="/assets/learning-path.svg" alt="Learning Path">
-          <h3>Curated learning as unique as you</h3>
-          <p>Take a skill or role assessment to track exactly what you know. With content recommendations and tailor-made learning paths, you can close identified gaps—and make you more hireable, too.</p>
-          <a href="#">Take an assessment</a>
-        </div>
-        <div class="feature-card">
-          <img src="/assets/hands-on.svg" alt="Hands-on">
-          <h3>Hands-on experiences</h3>
-          <p>Dive into our interactive courses, projects, and labs to learn by doing. Then, practice in live sandbox environments and turn your new knowledge into solid skills that stick.</p>
-          <a href="#">See our labs</a>
-        </div>
+      <div class="learning-image">
+        <img src="/assets/experts.jpg" alt="Experts" />
       </div>
-    </mat-tab>
-    <mat-tab label="Info">
-       
-      <mat-card class="profile-card">
-        <mat-card-header>
-          <div class="profile-header stats-container">
-            <div class="avatar-container">
-              <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" />
-              <div class="avatar-overlay" (click)="avatarInput.click()">
-                <span>Change</span>
-              </div>
-              <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
+    </div>
+
+    <div class="features-container">
+      <div class="feature-card">
+        <img src="/assets/certification.svg" alt="Certification" />
+        <h3>Top-tier certification exam prep</h3>
+        <p>
+          Prepare for in-demand certs with unlimited practice exams and labs that validate your learning. Get in-moment
+          feedback to maximize your experience and minimize exam-day nerves.
+        </p>
+        <a href="#">Learn more</a>
+      </div>
+      <div class="feature-card">
+        <img src="/assets/learning-path.svg" alt="Learning Path" />
+        <h3>Curated learning as unique as you</h3>
+        <p>
+          Take a skill or role assessment to track exactly what you know. With content recommendations and tailor-made
+          learning paths, you can close identified gaps—and make you more hireable, too.
+        </p>
+        <a href="#">Take an assessment</a>
+      </div>
+      <div class="feature-card">
+        <img src="/assets/hands-on.svg" alt="Hands-on" />
+        <h3>Hands-on experiences</h3>
+        <p>
+          Dive into our interactive courses, projects, and labs to learn by doing. Then, practice in live sandbox
+          environments and turn your new knowledge into solid skills that stick.
+        </p>
+        <a href="#">See our labs</a>
+      </div>
+    </div>
+  </mat-tab>
+  <mat-tab label="Info">
+    <mat-card class="profile-card">
+      <mat-card-header>
+        <div class="profile-header stats-container">
+          <div class="avatar-container">
+            <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" />
+            <div class="avatar-overlay" (click)="avatarInput.click()">
+              <span>Change</span>
             </div>
-            <div class="stat">
-              <h2>{{ student.fullName }}</h2>        
-            </div>
-            
-            <div class="stat">
-              <mat-select [(value)]="student.gradeId" (selectionChange)="changeGrade()">
-                  @for ( grade of grades ; track grade.id ) 
-                  {
-                    <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
-                  }
-                </mat-select>
-            </div>
-            <div class="stat"><p>Seviye: {{ student.level }} ({{ student.xp }} XP)</p></div>
-            
+            <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
           </div>
-        </mat-card-header>
-          <mat-card-content >
-            
-            <div class="stats-container">
-              <div class="stat">
-                <mat-icon>question_answer</mat-icon>
-                <span>{{ student.totalQuestionsSolved }} Soru Çözüldü</span>
-              </div>
-              <div class="stat">
-                <mat-icon>check_circle</mat-icon>
-                <span>{{ student.correctAnswers }} Doğru Cevap</span>
-              </div>
-              <div class="stat">
-                <mat-icon>highlight_off</mat-icon>
-                <span>{{ student.wrongAnswers }} Yanlış Cevap</span>
-              </div>
-              <div class="stat">
-                <mat-icon>assignment_turned_in</mat-icon>
-                <span>{{ student.testsCompleted }} Tamamlanan Test</span>
-              </div>
-              <div class="stat">
-                <mat-icon>emoji_events</mat-icon>
-                <span>{{ student.totalRewards }} Kazanılan Ödül</span>
-              </div>
-              <div class="stat">
-                <mat-icon>leaderboard</mat-icon>
-                <span>Liderlik Sıralaması: {{ student.leaderboardRank || '-' }}</span>
-              </div>
-            </div>
-      
-            <h3>🎖 Kazanılan Rozetler</h3>
-            <div class="badges-container">
-              @for ( badge of student.badges ; track badge.name ) 
-              {
-                <img [src]="badge.imageUrl" [matTooltip]="badge.name" class="badge" />
+          <div class="stat">
+            <h2>{{ student.fullName }}</h2>
+          </div>
+
+          <div class="stat">
+            <mat-select [(value)]="student.gradeId" (selectionChange)="changeGrade()">
+              @for ( grade of grades ; track grade.id ) {
+              <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
               }
-            </div>
-      
-            <!-- <h3>📌 Son Çözülen Testler</h3>
+            </mat-select>
+          </div>
+          <div class="stat">
+            <p>Seviye: {{ student.level }} ({{ student.xp }} XP)</p>
+          </div>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stats-container">
+          <div class="stat">
+            <mat-icon>question_answer</mat-icon>
+            <span>{{ student.totalQuestionsSolved }} Soru Çözüldü</span>
+          </div>
+          <div class="stat">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ student.correctAnswers }} Doğru Cevap</span>
+          </div>
+          <div class="stat">
+            <mat-icon>highlight_off</mat-icon>
+            <span>{{ student.wrongAnswers }} Yanlış Cevap</span>
+          </div>
+          <div class="stat">
+            <mat-icon>assignment_turned_in</mat-icon>
+            <span>{{ student.testsCompleted }} Tamamlanan Test</span>
+          </div>
+          <div class="stat">
+            <mat-icon>emoji_events</mat-icon>
+            <span>{{ student.totalRewards }} Kazanılan Ödül</span>
+          </div>
+          <div class="stat">
+            <mat-icon>leaderboard</mat-icon>
+            <span>Liderlik Sıralaması: {{ student.leaderboardRank || '-' }}</span>
+          </div>
+        </div>
+
+        <h3>🎖 Kazanılan Rozetler</h3>
+        <div class="badges-container">
+          @for ( badge of student.badges ; track badge.name ) {
+          <img [src]="badge.imageUrl" [matTooltip]="badge.name" class="badge" />
+          }
+        </div>
+
+        <!-- <h3>📌 Son Çözülen Testler</h3>
             <mat-list>
               @for (test of student.recentTests ; track test.name) 
               {
@@ -120,44 +126,41 @@
               }
              
             </mat-list> -->
-          </mat-card-content>
-        </mat-card>
-    </mat-tab>
-    <mat-tab label="Badges">
-        <div class="points-container">
-          <app-point-card title="My Points" value="2,500" icon="whatshot"></app-point-card>
-          <app-point-card title="Class Rank" value="3rd" icon="terrain"></app-point-card>
-          <app-point-card title="Year 12 Rank" value="128" icon="flag"></app-point-card>
-        </div>
-        <app-section-header title="My Badges" icon="assets/icons/badge.png"></app-section-header>
-      
-        <div class="badges-container">
-          <app-badge-box 
-            *ngFor="let badge of badges" 
-            [badgeTitle]="badge.title"
-            [badgeLevel]="badge.level"
-            [badgeIcon]="badge.icon">
-          </app-badge-box>
-        </div>
-      
-        <app-section-header title="Leaderboards" icon="assets/icons/leaderboard.png"></app-section-header>
-      
-      
-        <div class="leaderboards-container">
-          <app-leaderboard 
-            leaderboardTitle="Class Leaderboard"
-            [leaderboardData]="classLeaderboard">
-          </app-leaderboard>
-        
-          <app-leaderboard 
-            leaderboardTitle="Group Level Leaderboard"
-            [leaderboardData]="groupLeaderboard"
-            [showDetails]="true">
-          </app-leaderboard>
-        </div>
-    </mat-tab>
-     <!-- Info Tab (Gelecekte Kullanılabilir) -->
-  
+      </mat-card-content>
+    </mat-card>
+  </mat-tab>
+  <mat-tab label="Badges">
+    <div class="points-container">
+      <app-point-card title="My Points" value="2,500" icon="whatshot"></app-point-card>
+      <app-point-card title="Class Rank" value="3rd" icon="terrain"></app-point-card>
+      <app-point-card title="Year 12 Rank" value="128" icon="flag"></app-point-card>
+    </div>
+    <app-section-header title="My Badges" icon="assets/icons/badge.png"></app-section-header>
+
+    <div class="badges-container">
+      <app-badge-box
+        *ngFor="let badge of badges"
+        [badgeTitle]="badge.title"
+        [badgeLevel]="badge.level"
+        [badgeIcon]="badge.icon"
+      >
+      </app-badge-box>
+    </div>
+
+    <app-section-header title="Leaderboards" icon="assets/icons/leaderboard.png"></app-section-header>
+
+    <div class="leaderboards-container">
+      <app-leaderboard leaderboardTitle="Class Leaderboard" [leaderboardData]="classLeaderboard"> </app-leaderboard>
+
+      <app-leaderboard
+        leaderboardTitle="Group Level Leaderboard"
+        [leaderboardData]="groupLeaderboard"
+        [showDetails]="true"
+      >
+      </app-leaderboard>
+    </div>
+  </mat-tab>
+  <!-- Info Tab (Gelecekte Kullanılabilir) -->
 
   <!-- Assignments and Exams Tab -->
   <mat-tab label="Assignments and Exams">
@@ -171,9 +174,8 @@
   >
   </canvas> -->
 
-
-  <div class="bubble-chart-container">
-    <!-- <ngx-charts-bubble-chart
+    <div class="bubble-chart-container">
+      <!-- <ngx-charts-bubble-chart
   [view]="[700, 200]"
   [scheme]="colorScheme"
   [results]="bubbleData"
@@ -192,40 +194,36 @@
   [maxRadius]="maxRadius">
 </ngx-charts-bubble-chart> -->
 
-<app-bubble-chart></app-bubble-chart>
+      <app-bubble-chart></app-bubble-chart>
+    </div>
 
-  </div>
+    <div class="number-card-container">
+      <ngx-charts-number-card
+        [view]="[700, 200]"
+        [scheme]="colorScheme2"
+        [results]="single"
+        [cardColor]="cardColor"
+        (select)="onSelect($event)"
+      >
+      </ngx-charts-number-card>
+    </div>
 
-  <div class="number-card-container">
-  <ngx-charts-number-card
-  [view]="[700, 200]"
-  [scheme]="colorScheme2"
-  [results]="single"
-  [cardColor]="cardColor"
-  (select)="onSelect($event)">
-</ngx-charts-number-card>
-  </div>
-
-
-  <div class="goal-container">
-    <div class="goal-header">
-      <h2>Weekly Goal</h2>
-      <mat-icon>visibility</mat-icon>
-    </div>    
-    <mat-tab-group [(selectedIndex)]="activeTab2">
-      <mat-tab label="Monthly">
-        <div class="goal-stats">0 weeks</div>
+    <div class="goal-container">
+      <div class="goal-header">
+        <h2>Weekly Goal</h2>
+        <mat-icon>visibility</mat-icon>
+      </div>
+      <mat-tab-group [(selectedIndex)]="activeTab2">
+        <mat-tab label="Monthly">
+          <div class="goal-stats">0 weeks</div>
           <p class="goal-subtext">Longest weekly goal streak</p>
           <div class="goal-divider"></div>
           <h4>March 2025</h4>
           <p class="goal-subtext">No activity</p>
-      </mat-tab>
-      <mat-tab label="Current">
-      </mat-tab>
-    </mat-tab-group>
-    
-  </div>
-
+        </mat-tab>
+        <mat-tab label="Current"> </mat-tab>
+      </mat-tab-group>
+    </div>
   </mat-tab>
 
   <!-- Weekly Calendar Tab -->
@@ -242,20 +240,28 @@
         [showXAxisLabel]="true"
         [showYAxisLabel]="true"
         [gradient]="true"
-        [xAxisTickFormatting]="xAxisTickFormatting">
+        [xAxisTickFormatting]="xAxisTickFormatting"
+      >
       </ngx-charts-heat-map>
-    
-      
     </div>
-    
-    
+
+    <div class="heatmap-container">
+      <h2>Activity Heatmap 2</h2>
+      <ngx-charts-heat-map
+        [view]="[1200, 210]"
+        [scheme]="sunsetScheme"
+        [results]="activityData2"
+        [xAxis]="true"
+        [yAxis]="true"
+        [legend]="false"
+        [showXAxisLabel]="true"
+        [showYAxisLabel]="true"
+        [gradient]="true"
+        [xAxisTickFormatting]="xAxisTickFormatting"
+      >
+      </ngx-charts-heat-map>
+    </div>
   </mat-tab>
-  </mat-tab-group>
-
-  
-  
-  
-
-
+</mat-tab-group>
 
 }

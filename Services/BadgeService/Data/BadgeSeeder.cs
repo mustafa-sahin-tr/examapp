@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json;
+using BadgeService.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace BadgeService.Data;

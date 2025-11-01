@@ -295,6 +295,8 @@ export class StudentProfileComponent implements OnInit {
   // Günlük veriyi haftalara bölüp heatmap formatına uygun hale getiriyoruz
   activityData = this.generateHeatmapData3();
 
+  activityData2 = this.generateHeatmapData();
+
   /**
    * Statik “MUSTAFA” ısı haritası verisi üreten fonksiyon.
    * Harf pikselleri value=10 (koyu), diğerleri value=0 (açık).

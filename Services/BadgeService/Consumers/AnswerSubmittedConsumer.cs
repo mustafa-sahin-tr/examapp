@@ -5,16 +5,20 @@ namespace BadgeService.Consumers;
 
 public class AnswerSubmittedConsumer : IConsumer<AnswerSubmittedEvent>
 {
-     private readonly BadgeEvaluator _evaluator;
+    private readonly AnswerSubmissionAggregationService _aggregationService;
+    private readonly BadgeEvaluator _evaluator;
 
-     public AnswerSubmittedConsumer(BadgeEvaluator evaluator)
+    public AnswerSubmittedConsumer(AnswerSubmissionAggregationService aggregationService, BadgeEvaluator evaluator)
     {
+        _aggregationService = aggregationService;
         _evaluator = evaluator;
     }
+
     public async Task Consume(ConsumeContext<AnswerSubmittedEvent> context)
     {
-        var userId = context.Message.UserId;
-        var clientId = context.Message.ClientId;
-        await _evaluator.EvaluateAnswerSubmittedAsync(userId,clientId);
+        var message = context.Message;
+
+        await _aggregationService.ProcessAsync(message, context.CancellationToken);
+        await _evaluator.EvaluateAnswerSubmittedAsync(message.UserId, message.ClientId, context.CancellationToken);
     }
 }

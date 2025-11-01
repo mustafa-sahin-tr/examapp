@@ -25,6 +25,7 @@ export const routes: Routes = [
     component: EnhancedLayoutComponent,
     // canActivate: [authGuard],
     children: [
+      { path: '', redirectTo: 'tests', pathMatch: 'full' },
       { path: 'student-register', component: StudentRegisterComponent },
       { path: 'teacher-register', component: TeacherRegisterComponent },
       { path: 'question/:id', component: QuestionComponent },

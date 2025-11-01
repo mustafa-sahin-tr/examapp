@@ -24,9 +24,12 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
 
-// BadgeEvaluator service
+// Badge services
+builder.Services.AddScoped<AnswerSubmissionAggregationService>();
 builder.Services.AddScoped<BadgeEvaluator>();
+builder.Services.AddScoped<StudentReportService>();
 
 // Badge DbContext
 builder.Services.AddDbContext<BadgeDbContext>(options =>
@@ -41,7 +44,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.Audience = builder.Configuration["Keycloak:Audience"]; // Angular'ın login olduğu clientId
         options.MetadataAddress = "http://keycloak:8080/realms/exam-realm/.well-known/openid-configuration";
         options.RequireHttpsMetadata = false;
- 
+
         // SignalR bağlantısı için token'ı query string'den çek
         options.Events = new JwtBearerEvents
         {
@@ -113,5 +116,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapHub<BadgeNotificationHub>("/hub/badges");
+app.MapControllers();
 
 app.Run();

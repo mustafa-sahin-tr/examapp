@@ -76,7 +76,7 @@ export class ImageSelectorComponent {
   public previewCurrentIndex = signal(0);
   private startX = 0;
   private startY = 0;
-  private isDrawing = false;
+  protected isDrawing = false;
   private selectionStarted = false;
   private selectedQuestionIndex = -1;
 
@@ -329,6 +329,9 @@ export class ImageSelectorComponent {
   }
 
   nextImage() {
+    if (this.isDrawing) {
+      return;
+    }
     if (this.imageFiles.length === 0) return;
 
     this.currentImageIndex++;
@@ -339,6 +342,9 @@ export class ImageSelectorComponent {
   }
 
   previousImage() {
+    if (this.isDrawing) {
+      return;
+    }
     if (this.imageFiles.length === 0) return;
 
     this.currentImageIndex--;

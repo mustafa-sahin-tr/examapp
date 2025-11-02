@@ -24,9 +24,9 @@
           (contextmenu)="onRightClick($event)"
         ></canvas>
         <!-- Sol bölge – Previous -->
-        <div class="ms-nav-area ms-nav-prev" (click)="previousImage()"></div>
+        <div class="ms-nav-area ms-nav-prev" [class.ms-nav-disabled]="isDrawing" (click)="previousImage()"></div>
         <!-- Sağ bölge – Next -->
-        <div class="ms-nav-area ms-nav-next" (click)="nextImage()"></div>
+        <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing" (click)="nextImage()"></div>
         <!-- Marker'lar -->
         <div
           *ngFor="let marker of warningMarkers"

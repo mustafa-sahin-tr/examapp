@@ -2274,6 +2274,7 @@ h4 {
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
+  line-clamp: 4;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   text-align: left;
@@ -2718,9 +2719,7 @@ h4 {
   font-weight: bold;
 }
 
-.time-out {
-  // background-color: #900c3f;
-}
+
 
 /* Timer statüsü için konumlandırma */
 .status-right {
@@ -3481,6 +3480,16 @@ h4 {
   transition: background 0.2s;
 }
 
+.ms-nav-area.ms-nav-disabled {
+  pointer-events: none;
+  background: transparent !important;
+  cursor: default;
+}
+
+.ms-nav-area.ms-nav-disabled::after {
+  opacity: 0 !important;
+}
+
 /* sol tarafta */
 .ms-nav-prev {
   left: 0;
@@ -3833,6 +3842,7 @@ a {
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+  line-clamp: 2;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 }

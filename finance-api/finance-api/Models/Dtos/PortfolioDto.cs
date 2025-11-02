@@ -30,6 +30,7 @@ namespace FinanceApi.Models.Dtos
         public int AssetCount { get; set; }
         public Dictionary<AssetType, List<PortfolioDto>> PortfoliosByType { get; set; } = new();
         public DateTime LastUpdated { get; set; }
+        public string Currency { get; set; } = "TRY";
     }
 
     public class AssetTypePerformanceDto

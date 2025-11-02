@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FinanceApi.Models;
 using FinanceApi.Models.Dtos;
@@ -8,10 +12,12 @@ namespace FinanceApi.Services
     public class PortfolioService : IPortfolioService
     {
         private readonly FinanceDbContext _context;
+        private readonly IExchangeRateService _exchangeRateService;
 
-        public PortfolioService(FinanceDbContext context)
+        public PortfolioService(FinanceDbContext context, IExchangeRateService exchangeRateService)
         {
             _context = context;
+            _exchangeRateService = exchangeRateService;
         }
 
         public async Task<IEnumerable<PortfolioDto>> GetUserPortfolioAsync(string userId)
@@ -94,8 +100,12 @@ namespace FinanceApi.Services
             };
         }
 
-        public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(string userId)
+        public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(string userId, string targetCurrency = "TRY")
         {
+            var normalizedCurrency = string.IsNullOrWhiteSpace(targetCurrency)
+                ? "TRY"
+                : targetCurrency.ToUpperInvariant();
+
             var portfolioEntities = await _context.Portfolios
                 .Include(p => p.Asset)
                 .Where(p => p.UserId == userId && p.TotalQuantity > 0)
@@ -119,6 +129,11 @@ namespace FinanceApi.Services
                 LastUpdated = p.LastUpdated
             }).ToList();
 
+            if (portfolioDtos.Any())
+            {
+                await ConvertPortfoliosToCurrencyAsync(portfolioDtos, normalizedCurrency);
+            }
+
             var totalValue = portfolioDtos.Sum(p => p.CurrentValue);
             var totalCost = portfolioDtos.Sum(p => p.TotalCost);
             var totalProfitLoss = portfolioDtos.Sum(p => p.ProfitLoss);
@@ -140,8 +155,71 @@ namespace FinanceApi.Services
                 TotalProfitLossPercentage = totalProfitLossPercentage,
                 AssetCount = portfolioDtos.Count,
                 PortfoliosByType = portfoliosByType,
-                LastUpdated = lastUpdated
+                LastUpdated = lastUpdated,
+                Currency = normalizedCurrency
             };
+        }
+
+        private async Task ConvertPortfoliosToCurrencyAsync(List<PortfolioDto> portfolios, string targetCurrency)
+        {
+            var rateCache = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var portfolio in portfolios)
+            {
+                var sourceCurrency = string.IsNullOrWhiteSpace(portfolio.Currency)
+                    ? targetCurrency
+                    : portfolio.Currency.ToUpperInvariant();
+
+                if (sourceCurrency == targetCurrency)
+                {
+                    portfolio.Currency = targetCurrency;
+                    continue;
+                }
+
+                var currentPrice = await ConvertWithCacheAsync(portfolio.CurrentPrice, sourceCurrency, targetCurrency, rateCache);
+                var averagePrice = await ConvertWithCacheAsync(portfolio.AveragePrice, sourceCurrency, targetCurrency, rateCache);
+
+                portfolio.CurrentPrice = Math.Round(currentPrice, 4);
+                portfolio.AveragePrice = Math.Round(averagePrice, 4);
+
+                portfolio.TotalCost = Math.Round(portfolio.TotalQuantity * portfolio.AveragePrice, 2);
+                portfolio.CurrentValue = Math.Round(portfolio.TotalQuantity * portfolio.CurrentPrice, 2);
+                portfolio.ProfitLoss = Math.Round(portfolio.CurrentValue - portfolio.TotalCost, 2);
+                portfolio.ProfitLossPercentage = portfolio.TotalCost > 0
+                    ? Math.Round((portfolio.ProfitLoss / portfolio.TotalCost) * 100, 2)
+                    : 0;
+
+                portfolio.Currency = targetCurrency;
+            }
+        }
+
+        private async Task<decimal> ConvertWithCacheAsync(
+            decimal amount,
+            string fromCurrency,
+            string toCurrency,
+            IDictionary<string, decimal> cache)
+        {
+            if (amount == 0m || fromCurrency == toCurrency)
+            {
+                return amount;
+            }
+
+            var cacheKey = $"{fromCurrency}->{toCurrency}";
+
+            if (!cache.TryGetValue(cacheKey, out var rate))
+            {
+                var convertedUnit = await _exchangeRateService.ConvertCurrencyAsync(1m, fromCurrency, toCurrency);
+
+                if (convertedUnit == 0m)
+                {
+                    return amount;
+                }
+
+                rate = convertedUnit;
+                cache[cacheKey] = rate;
+            }
+
+            return amount * rate;
         }
 
         public async Task<IEnumerable<AssetTypePerformanceDto>> GetAssetTypePerformanceAsync(string userId)

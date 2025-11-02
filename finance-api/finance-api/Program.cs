@@ -35,6 +35,7 @@ builder.Services.AddDbContext<FinanceDbContext>(options =>
 builder.Services.AddScoped<IAssetService, AssetService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IPortfolioService, PortfolioService>();
+builder.Services.AddScoped<IPortfolioPriceUpdateService, PortfolioPriceUpdateService>();
 builder.Services.AddScoped<IRealTimeDataService, YahooFinanceService>();
 builder.Services.AddScoped<IWebScrapingService, WebScrapingService>();
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();

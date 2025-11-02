@@ -13,15 +13,18 @@ namespace FinanceApi.Controllers
     public class PortfolioController : ControllerBase
     {
         private readonly IPortfolioService _portfolioService;
+        private readonly IPortfolioPriceUpdateService _portfolioPriceUpdateService;
         private readonly IEmailService _emailService;
         private readonly ILogger<PortfolioController> _logger;
 
         public PortfolioController(
             IPortfolioService portfolioService,
+            IPortfolioPriceUpdateService portfolioPriceUpdateService,
             IEmailService emailService,
             ILogger<PortfolioController> logger)
         {
             _portfolioService = portfolioService;
+            _portfolioPriceUpdateService = portfolioPriceUpdateService;
             _emailService = emailService;
             _logger = logger;
         }
@@ -56,9 +59,11 @@ namespace FinanceApi.Controllers
         }
 
         [HttpGet("dashboard")]
-        public async Task<ActionResult<DashboardSummaryDto>> GetDashboardSummary([FromQuery] string userId = "default-user")
+        public async Task<ActionResult<DashboardSummaryDto>> GetDashboardSummary(
+            [FromQuery] string userId = "default-user",
+            [FromQuery] string currency = "TRY")
         {
-            var summary = await _portfolioService.GetDashboardSummaryAsync(userId);
+            var summary = await _portfolioService.GetDashboardSummaryAsync(userId, currency);
             return Ok(summary);
         }
 
@@ -93,12 +98,23 @@ namespace FinanceApi.Controllers
                 return BadRequest("Recipient email is required.");
             }
 
-            var summary = await _portfolioService.GetDashboardSummaryAsync(request.UserId);
+            try
+            {
+                await _portfolioPriceUpdateService.RefreshTrackedPortfolioAssetsAsync(
+                    request.UserId,
+                    HttpContext.RequestAborted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to refresh asset prices before sending summary for {UserId}", request.UserId);
+            }
+
+            var summary = await _portfolioService.GetDashboardSummaryAsync(request.UserId, request.Currency);
             var subject = string.IsNullOrWhiteSpace(request.Subject)
                 ? $"Portfolio Summary - {DateTime.UtcNow:yyyy-MM-dd}"
                 : request.Subject!;
 
-            var culture = CultureInfo.GetCultureInfo("tr-TR");
+            var culture = ResolveCulture(summary.Currency);
             var htmlBody = BuildSummaryHtml(summary, request.Message, culture);
             var textBody = BuildSummaryText(summary, request.Message, culture);
 
@@ -115,7 +131,7 @@ namespace FinanceApi.Controllers
             return Ok(new { success = true });
         }
 
-        private static string BuildSummaryHtml(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
+    private static string BuildSummaryHtml(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
         {
             var sb = new StringBuilder();
 
@@ -126,7 +142,7 @@ namespace FinanceApi.Controllers
                 sb.AppendFormat("<p>{0}</p>", introMessage);
             }
 
-            sb.Append("<h2 style=\"color:#2c5282;\">Portfolio Summary</h2>");
+            sb.AppendFormat("<h2 style=\"color:#2c5282;\">Portfolio Summary ({0})</h2>", summary.Currency);
             sb.Append("<table style=\"border-collapse:collapse;width:100%;margin-bottom:24px;background:#f8fafc;border-radius:8px;overflow:hidden;\">");
             sb.Append("<tr style=\"background:#2c5282;color:#fff;\"><th style=\"text-align:left;padding:12px;\">Metric</th><th style=\"text-align:right;padding:12px;\">Value</th></tr>");
             sb.AppendFormat("<tr><td style=\"padding:12px;border-bottom:1px solid #e2e8f0;\">Total Value</td><td style=\"padding:12px;text-align:right;border-bottom:1px solid #e2e8f0;font-weight:600;\">{0}</td></tr>", summary.TotalValue.ToString("C", culture));
@@ -193,7 +209,7 @@ namespace FinanceApi.Controllers
             return sb.ToString();
         }
 
-        private static string BuildSummaryText(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
+    private static string BuildSummaryText(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
         {
             var sb = new StringBuilder();
 
@@ -203,7 +219,7 @@ namespace FinanceApi.Controllers
                 sb.AppendLine();
             }
 
-            sb.AppendLine("Portfolio Summary");
+            sb.AppendLine($"Portfolio Summary ({summary.Currency})");
             sb.AppendLine(new string('-', 40));
             sb.AppendLine($"Total Value: {summary.TotalValue.ToString("C", culture)}");
             sb.AppendLine($"Total Cost: {summary.TotalCost.ToString("C", culture)}");
@@ -263,6 +279,22 @@ namespace FinanceApi.Controllers
                 AssetType.Fund => "Funds",
                 AssetType.FixedDeposit => "Vadeli Mevduat",
                 _ => assetType.ToString()
+            };
+        }
+
+        private static CultureInfo ResolveCulture(string currencyCode)
+        {
+            var normalized = string.IsNullOrWhiteSpace(currencyCode)
+                ? "TRY"
+                : currencyCode.ToUpperInvariant();
+
+            return normalized switch
+            {
+                "TRY" => CultureInfo.GetCultureInfo("tr-TR"),
+                "USD" => CultureInfo.GetCultureInfo("en-US"),
+                "EUR" => CultureInfo.GetCultureInfo("de-DE"),
+                "GBP" => CultureInfo.GetCultureInfo("en-GB"),
+                _ => CultureInfo.InvariantCulture
             };
         }
     }

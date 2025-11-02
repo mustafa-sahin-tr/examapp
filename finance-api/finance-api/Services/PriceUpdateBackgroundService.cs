@@ -1,9 +1,7 @@
-using FinanceApi.Data;
 using FinanceApi.Hubs;
-using FinanceApi.Models.Dtos;
 using FinanceApi.Services;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore;
+using FinanceApi.Models.Dtos;
 
 namespace FinanceApi.Services
 {
@@ -12,7 +10,6 @@ namespace FinanceApi.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly IHubContext<PriceUpdateHub> _hubContext;
         private readonly ILogger<PriceUpdateBackgroundService> _logger;
-        private readonly Dictionary<string, decimal> _lastPrices = new();
         private readonly IConfiguration _configuration;
 
         public PriceUpdateBackgroundService(
@@ -39,7 +36,7 @@ namespace FinanceApi.Services
             {
                 try
                 {
-                    await UpdatePricesAsync();
+                    await UpdatePricesAsync(stoppingToken);
                     await Task.Delay(interval, stoppingToken);
                 }
                 catch (OperationCanceledException)
@@ -55,113 +52,19 @@ namespace FinanceApi.Services
             }
         }
 
-        private async Task UpdatePricesAsync()
+        private async Task UpdatePricesAsync(CancellationToken cancellationToken)
         {
             using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
-            var webScrapingService = scope.ServiceProvider.GetRequiredService<IWebScrapingService>();
+            var priceUpdateService = scope.ServiceProvider.GetRequiredService<IPortfolioPriceUpdateService>();
 
             try
             {
-                // Sadece portföydeki asset'leri al (unique asset'ler)
-                var portfolioAssets = await context.Portfolios
-                    .Where(p => p.TotalQuantity > 0) // Sadece pozitif pozisyonlar
-                    .Include(p => p.Asset)
-                    .Select(p => p.Asset)
-                    .Distinct()
-                    .ToListAsync();
+                var priceUpdates = await priceUpdateService.RefreshTrackedPortfolioAssetsAsync(
+                    cancellationToken: cancellationToken);
 
-                if (!portfolioAssets.Any())
-                {
-                    _logger.LogDebug("No portfolio assets found to update prices");
-                    return;
-                }
-
-                // Asset'leri price request'lere çevir
-                var priceRequests = portfolioAssets.Select(asset => new AssetPriceRequestDto
-                {
-                    Type = asset.Type,
-                    Symbol = asset.Symbol
-                }).ToList();
-
-                _logger.LogDebug("Updating prices for {Count} portfolio assets", priceRequests.Count);
-
-                // Fiyatları al
-                var priceResponses = await webScrapingService.GetAssetPricesAsync(priceRequests);
-
-                var priceUpdates = new List<PriceUpdateDto>();
-
-                foreach (var priceResponse in priceResponses)
-                {
-                    if (!priceResponse.IsSuccess)
-                    {
-                        _logger.LogWarning("Failed to get price for {Type}:{Symbol} - {Error}",
-                            priceResponse.Type, priceResponse.Symbol, priceResponse.ErrorMessage);
-                        continue;
-                    }
-
-                    var asset = portfolioAssets.FirstOrDefault(a => a.Type == priceResponse.Type && a.Symbol == priceResponse.Symbol);
-                    if (asset == null)
-                    {
-                        _logger.LogWarning("Portfolio asset not found for {Type}:{Symbol}", priceResponse.Type, priceResponse.Symbol);
-                        continue;
-                    }
-
-                    var priceKey = $"{priceResponse.Type}:{priceResponse.Symbol}";
-                    var currentPrice = priceResponse.Price;
-                    var previousPrice = _lastPrices.GetValueOrDefault(priceKey, currentPrice);
-
-                    // Fiyat değişmişse güncelle
-                    // if (Math.Abs(currentPrice - previousPrice) > 0.001m)
-                    // {
-                        var change = currentPrice - previousPrice;
-                        var changePercent = previousPrice != 0 ? (change / previousPrice) * 100 : 0;
-
-                        var priceUpdate = new PriceUpdateDto
-                        {
-                            AssetId = asset.Id,
-                            Type = asset.Type,
-                            Symbol = asset.Symbol,
-                            Name = asset.Name,
-                            CurrentPrice = currentPrice,
-                            PreviousPrice = previousPrice,
-                            Change = change,
-                            ChangePercent = changePercent,
-                            Unit = priceResponse.Unit,
-                            LastUpdated = priceResponse.LastUpdated,
-                            IsSuccess = true
-                        };
-
-                        priceUpdates.Add(priceUpdate);
-
-                        // Asset'in son fiyatını güncelle
-                        asset.CurrentPrice = currentPrice;
-                        asset.LastUpdated = priceResponse.LastUpdated;
-
-                        // Cache'i güncelle
-                        _lastPrices[priceKey] = currentPrice;
-
-                        _logger.LogDebug("Price updated for {Name} ({Symbol}): {PreviousPrice} -> {CurrentPrice} ({Change:+0.00;-0.00;0})",
-                            asset.Name, asset.Symbol, previousPrice, currentPrice, change);
-                    // }
-                    // else
-                    // {
-                    //     // İlk kez eklenen asset'ler için cache'e ekle
-                    //     if (!_lastPrices.ContainsKey(priceKey))
-                    //     {
-                    //         _lastPrices[priceKey] = currentPrice;
-                    //     }
-                    // }
-                }
-
-                // Veritabanını güncelle
                 if (priceUpdates.Any())
                 {
-                    await context.SaveChangesAsync();
-
-                    // SignalR ile tüm bağlı client'lara gönder
-                    await _hubContext.Clients.All.SendAsync("PriceUpdated", priceUpdates);
-
+                    await _hubContext.Clients.All.SendAsync("PriceUpdated", priceUpdates, cancellationToken);
                     _logger.LogInformation("Sent {Count} price updates to clients", priceUpdates.Count);
                 }
                 else

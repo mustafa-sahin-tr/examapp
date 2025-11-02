@@ -118,13 +118,22 @@ namespace FinanceApi.Services
             await RevertPortfolioAsync(transaction);
 
             // Transaction'ı güncelle
-            transaction.AssetId = transactionDto.AssetId;
-            transaction.Type = Enum.Parse<TransactionType>(transactionDto.Type);
+            if (!string.IsNullOrEmpty(transactionDto.AssetId))
+                transaction.AssetId = transactionDto.AssetId;
+            if (!string.IsNullOrEmpty(transactionDto.Type))
+                transaction.Type = Enum.Parse<TransactionType>(transactionDto.Type);
             transaction.Quantity = transactionDto.Quantity;
             transaction.Price = transactionDto.Price;
-            transaction.Date = transactionDto.Date;
-            transaction.Fees = transactionDto.Fees;
-            transaction.Notes = transactionDto.Notes;
+            if (transactionDto.Date != null && transactionDto.Date != default(DateTime)
+                && transactionDto.Date != transaction.Date && transactionDto.Date != DateTime.MinValue)
+            {
+                transaction.Date = transactionDto.Date;
+            }
+            if (transactionDto.Fees != null && transactionDto.Fees >= 0)
+                transaction.Fees = transactionDto.Fees;
+
+            if (!string.IsNullOrEmpty(transactionDto.Notes))
+                transaction.Notes = transactionDto.Notes;
 
             await _context.SaveChangesAsync();
 

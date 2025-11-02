@@ -360,26 +360,118 @@
         color: #6c757d;
         font-size: 0.85rem;
       }
+
+      .transaction-edit-btn {
+        background: none;
+        border: 1px solid #667eea;
+        color: #667eea;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-left: 0.75rem;
+
+        &:hover {
+          background: #667eea;
+          color: #fff;
+        }
+      }
     }
 
-  .transaction-description {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-
-    .transaction-notes {
+    .transaction-description {
       display: flex;
-      align-items: center;
+      flex-direction: column;
       gap: 0.5rem;
-      padding: 0.5rem;
-      background: #f0f7ff;
-      border-left: 3px solid #3182ce;
-      border-radius: 4px;
-      font-size: 0.875rem;
-      color: #2c5282;
 
-      .notes-icon {
+      .transaction-notes {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: #f0f7ff;
+        border-left: 3px solid #3182ce;
+        border-radius: 4px;
         font-size: 0.875rem;
+        color: #2c5282;
+
+        .notes-icon {
+          font-size: 0.875rem;
+        }
+      }
+    }
+
+    .transaction-edit-form {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border: 1px dashed #b3b9ff;
+      border-radius: 8px;
+      background: #eef1ff;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+
+      .edit-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+
+        label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #4c51bf;
+        }
+
+        input {
+          border: 1px solid #cbd5f5;
+          border-radius: 6px;
+          padding: 0.4rem 0.6rem;
+          min-width: 120px;
+          font-size: 0.85rem;
+          background: #fff;
+
+          &:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+          }
+        }
+      }
+
+      .edit-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .save-btn,
+        .cancel-btn {
+          border: none;
+          border-radius: 6px;
+          padding: 0.4rem 0.9rem;
+          font-size: 0.8rem;
+          cursor: pointer;
+          transition: opacity 0.2s ease;
+        }
+
+        .save-btn {
+          background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+          color: #0b3d2e;
+
+          &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+        }
+
+        .cancel-btn {
+          background: #fff;
+          color: #4a5568;
+          border: 1px solid #cbd5f5;
+
+          &:hover {
+            border-color: #a0aec0;
+          }
+        }
       }
     }
   }
@@ -404,7 +496,6 @@
       }
     }
   }
-}
 }
 
 // Sortable header styling

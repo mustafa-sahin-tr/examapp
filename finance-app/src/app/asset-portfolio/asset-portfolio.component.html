@@ -201,12 +201,54 @@
                   {{ getTransactionTypeLabel(transaction.type) }}
                 </span>
                 <span class="transaction-date">{{ formatDate(transaction.date) }}</span>
+                <button
+                  class="transaction-edit-btn"
+                  *ngIf="editingTransactionId !== transaction.id"
+                  (click)="startTransactionEdit(transaction, $event)"
+                >
+                  Düzenle
+                </button>
               </div>
               <div class="transaction-description">
                 <span>{{ getTransactionDetailText(transaction) }}</span>
                 <div *ngIf="transaction.notes && transaction.notes.trim()" class="transaction-notes">
                   <i class="notes-icon">📝</i>
                   <span>{{ transaction.notes }}</span>
+                </div>
+              </div>
+
+              <div *ngIf="editingTransactionId === transaction.id" class="transaction-edit-form">
+                <div class="edit-field">
+                  <label for="quantity-{{ transaction.id }}">Adet</label>
+                  <input
+                    id="quantity-{{ transaction.id }}"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [(ngModel)]="editingTransactionValues.quantity"
+                    (click)="$event.stopPropagation()"
+                  />
+                </div>
+                <div class="edit-field">
+                  <label for="price-{{ transaction.id }}">Fiyat</label>
+                  <input
+                    id="price-{{ transaction.id }}"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [(ngModel)]="editingTransactionValues.price"
+                    (click)="$event.stopPropagation()"
+                  />
+                </div>
+                <div class="edit-actions">
+                  <button
+                    class="save-btn"
+                    [disabled]="savingTransaction"
+                    (click)="saveTransactionEdit(transaction, $event)"
+                  >
+                    Kaydet
+                  </button>
+                  <button class="cancel-btn" (click)="cancelTransactionEdit($event)">Vazgeç</button>
                 </div>
               </div>
             </div>

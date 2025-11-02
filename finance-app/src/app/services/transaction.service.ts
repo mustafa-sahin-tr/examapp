@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, BehaviorSubject, catchError, map } from 'rxjs';
+import { Observable, of, BehaviorSubject, catchError, map, tap } from 'rxjs';
 import { Transaction, TransactionType, AssetType } from '../models/asset.model';
 import { ApiService } from './api.service';
 import { environment } from '../../environments/environment';
@@ -114,11 +114,27 @@ export class TransactionService {
       return of(null);
     }
 
-    const updatedTransaction = { ...currentTransactions[index], ...updates };
-    currentTransactions[index] = updatedTransaction;
-    this.transactionsSubject.next([...currentTransactions]);
+    const payload: any = { ...updates };
+    if (updates.date instanceof Date) {
+      payload.date = updates.date.toISOString();
+    }
 
-    return of(updatedTransaction);
+    return this.apiService.put<Transaction>(`/transactions/${id}`, payload).pipe(
+      map((response) => ({ ...response, date: new Date(response.date) } as Transaction)),
+      tap((updatedTransaction) => {
+        const updatedTransactions = [...this.transactionsSubject.value];
+        updatedTransactions[index] = { ...updatedTransactions[index], ...updatedTransaction };
+        this.transactionsSubject.next(updatedTransactions);
+      }),
+      catchError((error) => {
+        console.error('Error updating transaction on backend:', error);
+        const fallbackUpdated = { ...currentTransactions[index], ...updates } as Transaction;
+        const updatedTransactions = [...this.transactionsSubject.value];
+        updatedTransactions[index] = fallbackUpdated;
+        this.transactionsSubject.next(updatedTransactions);
+        return of(fallbackUpdated);
+      })
+    );
   }
 
   deleteTransaction(id: string): Observable<boolean> {

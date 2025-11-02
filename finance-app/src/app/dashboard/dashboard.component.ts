@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, finalize } from 'rxjs';
 import { DashboardSummary, AssetType, Portfolio } from '../models/asset.model';
 import { PortfolioService } from '../services/portfolio.service';
 import { TransactionExportService } from '../services/transaction-export.service';
@@ -21,6 +21,7 @@ export class DashboardComponent implements OnInit {
   AssetType = AssetType;
   lastUpdated = new Date();
   importResults: { success: number; errors: string[] } | null = null;
+  emailSending = false;
 
   constructor(
     private portfolioService: PortfolioService,
@@ -149,5 +150,31 @@ export class DashboardComponent implements OnInit {
         this.importResults = { success: 0, errors: [error.toString()] };
       },
     });
+  }
+
+  sendSummaryEmail(): void {
+    // const recipientEmail = prompt('Gmail adresini girin:');
+    // if (!recipientEmail) {
+    //   return;
+    // }
+
+    const recipientEmail = 'mtafasahin@gmail.com';
+
+    const message = undefined; // prompt('E-postaya eklenecek not (opsiyonel):') ?? undefined;
+    const subject = `Portföy Özeti - ${new Date().toLocaleDateString('tr-TR')}`;
+
+    this.emailSending = true;
+    this.portfolioService
+      .emailDashboardSummary({ recipientEmail, subject, message })
+      .pipe(finalize(() => (this.emailSending = false)))
+      .subscribe({
+        next: () => {
+          alert('Özet e-posta ile gönderildi.');
+        },
+        error: (error) => {
+          console.error('E-posta gönderimi başarısız:', error);
+          alert('E-posta gönderilemedi. Sunucu ayarlarını kontrol edin.');
+        },
+      });
   }
 }

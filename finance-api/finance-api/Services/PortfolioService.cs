@@ -96,15 +96,41 @@ namespace FinanceApi.Services
 
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(string userId)
         {
-            var portfolios = await _context.Portfolios
+            var portfolioEntities = await _context.Portfolios
                 .Include(p => p.Asset)
                 .Where(p => p.UserId == userId && p.TotalQuantity > 0)
                 .ToListAsync();
 
-            var totalValue = portfolios.Sum(p => p.CurrentValue);
-            var totalCost = portfolios.Sum(p => p.TotalCost);
-            var totalProfitLoss = portfolios.Sum(p => p.ProfitLoss);
+            var portfolioDtos = portfolioEntities.Select(p => new PortfolioDto
+            {
+                Id = p.Id,
+                AssetId = p.AssetId,
+                AssetSymbol = p.Asset.Symbol,
+                AssetName = p.Asset.Name,
+                AssetType = p.Asset.Type,
+                TotalQuantity = p.TotalQuantity,
+                AveragePrice = p.AveragePrice,
+                CurrentPrice = p.Asset.CurrentPrice,
+                CurrentValue = p.CurrentValue,
+                TotalCost = p.TotalCost,
+                ProfitLoss = p.ProfitLoss,
+                ProfitLossPercentage = p.ProfitLossPercentage,
+                Currency = p.Asset.Currency,
+                LastUpdated = p.LastUpdated
+            }).ToList();
+
+            var totalValue = portfolioDtos.Sum(p => p.CurrentValue);
+            var totalCost = portfolioDtos.Sum(p => p.TotalCost);
+            var totalProfitLoss = portfolioDtos.Sum(p => p.ProfitLoss);
             var totalProfitLossPercentage = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+
+            var portfoliosByType = portfolioDtos
+                .GroupBy(p => p.AssetType)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var lastUpdated = portfolioDtos.Any()
+                ? portfolioDtos.Max(p => p.LastUpdated)
+                : DateTime.UtcNow;
 
             return new DashboardSummaryDto
             {
@@ -112,7 +138,9 @@ namespace FinanceApi.Services
                 TotalCost = totalCost,
                 TotalProfitLoss = totalProfitLoss,
                 TotalProfitLossPercentage = totalProfitLossPercentage,
-                AssetCount = portfolios.Count()
+                AssetCount = portfolioDtos.Count,
+                PortfoliosByType = portfoliosByType,
+                LastUpdated = lastUpdated
             };
         }
 

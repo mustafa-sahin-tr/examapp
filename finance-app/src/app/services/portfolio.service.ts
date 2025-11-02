@@ -20,6 +20,13 @@ export interface HistoricalInvestment {
   transactions: any[];
 }
 
+export interface EmailSummaryRequest {
+  recipientEmail: string;
+  subject?: string;
+  message?: string;
+  userId?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -49,6 +56,17 @@ export class PortfolioService {
         return this.getDashboardSummary();
       })
     );
+  }
+
+  emailDashboardSummary(request: EmailSummaryRequest): Observable<void> {
+    const body = {
+      recipientEmail: request.recipientEmail,
+      subject: request.subject,
+      message: request.message,
+      userId: request.userId ?? 'default-user',
+    };
+
+    return this.apiService.post<void>('/portfolio/email-summary', body);
   }
 
   getPortfolio(): Observable<Portfolio[]> {

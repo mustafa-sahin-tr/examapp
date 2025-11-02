@@ -1,8 +1,10 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Observable, map } from 'rxjs';
-import { Portfolio, AssetType } from '../models/asset.model';
+import { Portfolio, AssetType, Transaction } from '../models/asset.model';
 import { PortfolioService, HistoricalInvestment } from '../services/portfolio.service';
+import { TransactionService } from '../services/transaction.service';
 
 interface SortConfig {
   column: string;
@@ -11,7 +13,7 @@ interface SortConfig {
 
 @Component({
   selector: 'app-asset-portfolio',
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './asset-portfolio.component.html',
   styleUrl: './asset-portfolio.component.scss',
 })
@@ -31,7 +33,14 @@ export class AssetPortfolioComponent implements OnInit {
   currentSort: SortConfig = { column: '', direction: 'asc' };
   historicalSort: SortConfig = { column: '', direction: 'asc' };
 
-  constructor(private portfolioService: PortfolioService) {}
+  editingTransactionId: string | null = null;
+  editingTransactionValues = {
+    quantity: 0,
+    price: 0,
+  };
+  savingTransaction = false;
+
+  constructor(private portfolioService: PortfolioService, private transactionService: TransactionService) {}
 
   ngOnInit(): void {
     this.portfolios$ = this.portfolioService
@@ -52,6 +61,7 @@ export class AssetPortfolioComponent implements OnInit {
     this.selectedPortfolio = portfolio;
     this.selectedHistorical = null;
     document.body.style.overflow = 'hidden';
+    this.cancelTransactionEdit();
   }
 
   openHistoricalDetail(historical: HistoricalInvestment): void {
@@ -64,6 +74,7 @@ export class AssetPortfolioComponent implements OnInit {
     this.selectedPortfolio = null;
     this.selectedHistorical = null;
     document.body.style.overflow = 'auto';
+    this.cancelTransactionEdit();
   }
 
   formatCurrency(amount: number, currency: string = 'TRY'): string {
@@ -257,5 +268,53 @@ export class AssetPortfolioComponent implements OnInit {
       default:
         return `${transaction.quantity} × ${this.formatCurrency(transaction.price, currency)}`;
     }
+  }
+
+  startTransactionEdit(transaction: Transaction, event?: Event): void {
+    event?.stopPropagation();
+    this.editingTransactionId = transaction.id;
+    this.editingTransactionValues = {
+      quantity: Number(transaction.quantity ?? 0),
+      price: Number(transaction.price ?? 0),
+    };
+  }
+
+  cancelTransactionEdit(event?: Event): void {
+    event?.stopPropagation();
+    this.editingTransactionId = null;
+    this.savingTransaction = false;
+  }
+
+  saveTransactionEdit(transaction: Transaction, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.editingTransactionId || this.editingTransactionId !== transaction.id) {
+      return;
+    }
+
+    const quantity = Number(this.editingTransactionValues.quantity);
+    const price = Number(this.editingTransactionValues.price);
+    if (quantity <= 0 || price <= 0 || Number.isNaN(quantity) || Number.isNaN(price)) {
+      return;
+    }
+
+    this.savingTransaction = true;
+    this.transactionService.updateTransaction(transaction.id, { quantity, price }).subscribe((updated) => {
+      this.savingTransaction = false;
+      if (!updated) {
+        return;
+      }
+
+      if (this.selectedPortfolio) {
+        const updatedTransactions = this.selectedPortfolio.transactions.map((t) =>
+          t.id === updated.id ? { ...t, quantity: updated.quantity, price: updated.price } : t
+        );
+        this.selectedPortfolio = {
+          ...this.selectedPortfolio,
+          transactions: updatedTransactions,
+        };
+      }
+
+      this.editingTransactionId = null;
+    });
   }
 }

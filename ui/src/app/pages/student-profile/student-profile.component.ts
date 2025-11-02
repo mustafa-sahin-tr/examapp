@@ -21,6 +21,7 @@ import { StudentTimeChartComponent } from '../../shared/components/student-time-
 import { FormsModule, NgModel } from '@angular/forms';
 import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
 import { TestService } from '../../services/test.service';
+import { letters } from './letters';
 
 @Component({
   selector: 'app-student-profile',
@@ -305,132 +306,9 @@ export class StudentProfileComponent implements OnInit {
     const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const totalWeeks = 53;
 
-    const letters: Record<string, number[][]> = {
-      Q: [
-        [0, 0, 0, 0, 0],
-        [0, 1, 0, 1, 0],
-        [1, 0, 1, 0, 1],
-        [1, 0, 0, 0, 1],
-        [0, 1, 0, 1, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0],
-      ],
-      M: [
-        [0, 0, 0, 0, 0], // Row 0
-        [1, 1, 0, 1, 1], // Row 1
-        [1, 0, 1, 0, 1], // Row 2
-        [1, 0, 0, 0, 1], // Row 3
-        [1, 0, 0, 0, 1], // Row 4
-        [1, 0, 0, 0, 1], // Row 5
-        [0, 0, 0, 0, 0], // Row 6
-      ],
-      U: [
-        [0, 0, 0, 0, 0],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1],
-        [0, 0, 0, 0, 0],
-      ],
-      S: [
-        [0, 0, 0, 0, 0],
-        [0, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0],
-        [0, 1, 1, 1, 0],
-        [0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 0],
-        [0, 0, 0, 0, 0],
-      ],
-      T: [
-        [0, 0, 0, 0, 0],
-        [1, 1, 1, 1, 1],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 0, 0, 0],
-      ],
-      A: [
-        [0, 0, 0, 0, 0],
-        [0, 1, 1, 1, 0],
-        [1, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [0, 0, 0, 0, 0],
-      ],
-      F: [
-        [0, 0, 0, 0, 0],
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0],
-        [1, 1, 1, 1, 0],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-      ],
-    };
-
-    // 5×7 piksel font desenleri
-    const lettersBig: Record<string, number[][]> = {
-      M: [
-        [1, 0, 0, 0, 1],
-        [1, 1, 0, 1, 1],
-        [1, 0, 1, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-      ],
-      U: [
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [0, 1, 1, 1, 0],
-      ],
-      S: [
-        [0, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [0, 1, 1, 1, 0],
-        [0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 0],
-      ],
-      T: [
-        [1, 1, 1, 1, 1],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-      ],
-      A: [
-        [0, 1, 1, 1, 0],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-      ],
-      F: [
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [1, 1, 1, 1, 0],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-      ],
-    };
-
     // Yazdırmak istediğimiz kelime
-    const word = ['Q', 'M', 'U', 'S', 'T', 'A', 'F', 'A', 'Q'];
+    // const word = ['0', '1', '2', '3', '4', '5', '6', '*', 'k'];
+    const word = Object.keys(letters).slice(-36, -27);
 
     // 7 satır için başlangıç boş matris
     const gridRows: number[][] = Array.from({ length: 7 }, () => []);
@@ -466,7 +344,7 @@ export class StudentProfileComponent implements OnInit {
         name: `Week ${w + 1}`,
         series: daysOfWeek.map((day, rowIdx) => ({
           name: day,
-          value: flippedRows[rowIdx][w] ? 10 : Math.floor(Math.random() * 3) + 1, // boşluklara 1–3 arası rastgele
+          value: flippedRows[rowIdx][w] ? 10 : 2, //Math.floor(Math.random() * 3) + 1, // boşluklara 1–3 arası rastgele
         })),
       });
     }
@@ -479,62 +357,6 @@ export class StudentProfileComponent implements OnInit {
     const totalWeeks = 52;
 
     // 5×7 piksel font desenleri:
-    const letters: { [char: string]: number[][] } = {
-      M: [
-        [1, 0, 0, 0, 1],
-        [1, 1, 0, 1, 1],
-        [1, 0, 1, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-      ],
-      U: [
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [0, 1, 1, 1, 0],
-      ],
-      S: [
-        [0, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [0, 1, 1, 1, 0],
-        [0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 1],
-        [1, 1, 1, 1, 0],
-      ],
-      T: [
-        [1, 1, 1, 1, 1],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-        [0, 0, 1, 0, 0],
-      ],
-      A: [
-        [0, 1, 1, 1, 0],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-        [1, 0, 0, 0, 1],
-      ],
-      F: [
-        [1, 1, 1, 1, 1],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [1, 1, 1, 1, 0],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-        [1, 0, 0, 0, 0],
-      ],
-    };
 
     // Kelime ve harf arası 1 boşluk:
     const word = ['M', 'U', 'S', 'T', 'A', 'F', 'A'];

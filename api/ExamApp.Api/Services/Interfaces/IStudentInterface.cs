@@ -16,5 +16,5 @@ public interface IStudentService
 
     Task<List<StudentLookupDto>> GetStudentLookupsAsync();
 
-    Task<ResponseBaseDto> UpdateStudentTheme(int userId, string themePreset, string? themeCustomConfig);
+    Task<UpdateThemeDto> UpdateStudentTheme(int userId, string themePreset, string? themeCustomConfig);
 }

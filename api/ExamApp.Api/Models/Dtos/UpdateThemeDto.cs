@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ExamApp.Api.Models.Dtos;
 
-public class UpdateThemeDto
+public class UpdateThemeDto : ResponseBaseDto
 {
     [Required]
     [StringLength(20)]

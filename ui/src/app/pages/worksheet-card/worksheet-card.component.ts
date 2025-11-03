@@ -9,6 +9,7 @@ import { CARDSTYLES, StyleConfig } from './worksheet-card-styles';
 import { MatCardModule } from '@angular/material/card';
 import { SafeHtmlPipe } from '../../services/safehtml';
 import { AssignedWorksheet } from '../../models/assignment';
+import { MatIconModule } from '@angular/material/icon';
 import { ThemeConfigService, WorksheetCardThemeConfig } from '../../services/theme-config.service';
 
 @Component({
@@ -16,7 +17,7 @@ import { ThemeConfigService, WorksheetCardThemeConfig } from '../../services/the
   templateUrl: './worksheet-card.component.html',
   styleUrls: ['./worksheet-card.component.scss'],
   standalone: true,
-  imports: [CommonModule, IsStudentDirective, MatCardModule],
+  imports: [CommonModule, IsStudentDirective, MatCardModule, MatIconModule],
 })
 export class WorksheetCardComponent implements OnInit, OnDestroy {
   @Input() test!: Test;
@@ -125,16 +126,17 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
   // 2. Icon Badge
   getAssignmentIcon(): string {
     if (!this.assignment) return '';
-    return this.assignment.isGradeAssignment ? '👥' : '👤';
+    const iconName = this.assignment.isGradeAssignment ? 'group' : 'person';
+    return `${iconName}`;
   }
 
   getStatusIcon(): string {
     if (!this.assignment) return '';
 
-    if (this.isUrgent()) return '🔥';
-    if (this.assignment.isCompleted) return '✅';
-    if (this.assignment.hasStarted && !this.assignment.isCompleted) return '⏳';
-    return '⏸️';
+    if (this.isUrgent()) return 'warning';
+    if (this.assignment.isCompleted) return 'check_circle';
+    if (this.assignment.hasStarted && !this.assignment.isCompleted) return 'schedule';
+    return 'pause_circle';
   }
 
   // 3. Ribbon/Banner Class

@@ -309,8 +309,8 @@ export class StudentProfileComponent implements OnInit {
     const totalWeeks = 53;
 
     // Yazdırmak istediğimiz kelime
-    // const word = ['0', '1', '2', '3', '4', '5', '6', '*', 'k'];
-    const word = Object.keys(letters).slice(-36, -27);
+    const word = ['#', 'G', 'I', 'T', 'H', 'U', 'B', '#', 'G'];
+    // const word = Object.keys(letters).slice(-36, -27);
 
     // 7 satır için başlangıç boş matris
     const gridRows: number[][] = Array.from({ length: 7 }, () => []);
@@ -346,7 +346,7 @@ export class StudentProfileComponent implements OnInit {
         name: `Week ${w + 1}`,
         series: daysOfWeek.map((day, rowIdx) => ({
           name: day,
-          value: flippedRows[rowIdx][w] ? 10 : 2, //Math.floor(Math.random() * 3) + 1, // boşluklara 1–3 arası rastgele
+          value: flippedRows[rowIdx][w] ? 10 : 0, //Math.floor(Math.random() * 3) + 1, // boşluklara 1–3 arası rastgele
         })),
       });
     }

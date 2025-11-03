@@ -51,12 +51,12 @@ public class TeacherService : ITeacherService
         };
     }
 
-    public async Task<ResponseBaseDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig)
+    public async Task<UpdateThemeDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig)
     {
         var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == userId);
         if (teacher == null)
         {
-            return new ResponseBaseDto
+            return new UpdateThemeDto
             {
                 Success = false,
                 Message = "Öğretmen bulunamadı."
@@ -68,11 +68,13 @@ public class TeacherService : ITeacherService
 
         await _context.SaveChangesAsync();
 
-        return new ResponseBaseDto
+        return new UpdateThemeDto
         {
             Success = true,
             Message = "Theme tercihi güncellendi.",
-            ObjectId = teacher.Id
+            ObjectId = teacher.Id,
+            ThemePreset = teacher.ThemePreset,
+            ThemeCustomConfig = teacher.ThemeCustomConfig
         };
     }
 

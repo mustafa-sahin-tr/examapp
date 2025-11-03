@@ -182,12 +182,12 @@ public class StudentService : IStudentService
         return students;
     }
 
-    public async Task<ResponseBaseDto> UpdateStudentTheme(int userId, string themePreset, string? themeCustomConfig)
+    public async Task<UpdateThemeDto> UpdateStudentTheme(int userId, string themePreset, string? themeCustomConfig)
     {
         var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
         if (student == null)
         {
-            return new ResponseBaseDto
+            return new UpdateThemeDto
             {
                 Success = false,
                 Message = "Öğrenci bulunamadı."
@@ -199,10 +199,12 @@ public class StudentService : IStudentService
 
         await _context.SaveChangesAsync();
 
-        return new ResponseBaseDto
+        return new UpdateThemeDto
         {
             Success = true,
-            Message = "Theme tercihi güncellendi."
+            Message = "Theme tercihi güncellendi.",
+            ThemePreset = student.ThemePreset,
+            ThemeCustomConfig = student.ThemeCustomConfig
         };
     }
 }

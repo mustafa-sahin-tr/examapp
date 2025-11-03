@@ -10,5 +10,5 @@ public interface ITeacherService
 
     Task<Teacher?> GetTeacher(int userId);
 
-    Task<ResponseBaseDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig);
+    Task<UpdateThemeDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig);
 }

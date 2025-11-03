@@ -1,7 +1,7 @@
 version: '3.8'
 services:
-  # exam-dotnet-api:
-  #   command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
+  exam-dotnet-api:
+    command: dotnet watch run --project ExamApp.Api --urls=http://+:5079
 
   auth-api:
     command: dotnet watch run --urls=http://+:5079
@@ -9,8 +9,8 @@ services:
   exam-badge-api:
     command: dotnet watch run --urls=http://+:8006
 
-  # finance-api:
-  #   command: sh -c "cd finance-api && dotnet watch run --urls=http://+:8005"
+  finance-api:
+    command: sh -c "cd finance-api && dotnet watch run --urls=http://+:8005"
 
   ocelot-gateway:
     command: dotnet watch run --urls=http://+:5678

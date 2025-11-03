@@ -5,8 +5,12 @@
 >
   <!-- 2. Icon Badge -->
   <div class="icon-badge-container" *ngIf="assignment && themeConfig.iconBadges">
-    <div class="assignment-icon">{{ getAssignmentIcon() }}</div>
-    <div class="status-icon">{{ getStatusIcon() }}</div>
+    <div class="assignment-icon">
+      <mat-icon class="assignment-icon">{{ getAssignmentIcon() }}</mat-icon>
+    </div>
+    <div class="status-icon">
+      <mat-icon class="status-icon">{{ getStatusIcon() }}</mat-icon>
+    </div>
   </div>
 
   <!-- 3. Ribbon/Banner -->

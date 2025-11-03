@@ -75,6 +75,8 @@ public class StudentDto
     public int Level { get; set; } // 🟢 En son seviy
     public string SchoolName { get; set; } = string.Empty;
     public string StudentNumber { get; set; } = string.Empty;
+    public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
+    public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
 }
 
 public class TeacherDto
@@ -83,6 +85,8 @@ public class TeacherDto
     public string FullName { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
     public string SchoolName { get; set; } = string.Empty;
+    public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
+    public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
 }
 
 public class StudentLookupDto

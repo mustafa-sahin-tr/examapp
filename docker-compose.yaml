@@ -247,7 +247,8 @@ services:
     ports:
       - '8081:8080'
     depends_on:
-      - exam-pg-container
+      exam-pg-container:
+        condition: service_healthy
     networks:
       - mynetwork
 

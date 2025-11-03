@@ -1,6 +1,5 @@
 <div class="dashboard-section">
   <app-section-header title="Atanmış Testler" icon="/icons/18.svg"></app-section-header>
-
   <ng-container *ngIf="loading(); else assignmentsContent">
     <p class="info">Atanmış testler yükleniyor...</p>
   </ng-container>
@@ -16,16 +15,10 @@
               style="flex-basis: 377.305px"
               *ngFor="let vm of assignmentCards(); trackBy: trackAssignment"
             >
-              <app-worksheet-card [test]="vm.test" (cardClick)="onCardClick(vm)"></app-worksheet-card>
+              <app-worksheet-card [test]="vm.test" [assignment]="vm.assignment" (cardClick)="onCardClick(vm)">
+              </app-worksheet-card>
               <div class="assignment-meta">
-                <span
-                  class="status"
-                  [class.completed]="vm.assignment.isCompleted"
-                  [class.in-progress]="vm.assignment.hasStarted && !vm.assignment.isCompleted"
-                >
-                  {{ getStatusLabel(vm.assignment) }}
-                </span>
-                <span class="due">{{ getDueLabel(vm.assignment) }}</span>
+                <span class="due" *ngIf="getDueLabel(vm.assignment) as dueLabel">{{ dueLabel }}</span>
               </div>
             </li>
           </ul>

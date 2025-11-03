@@ -9,4 +9,6 @@ public interface ITeacherService
     Task<ResponseBaseDto> Save(int userId, RegisterTeacherDto dto);
 
     Task<Teacher?> GetTeacher(int userId);
+
+    Task<ResponseBaseDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig);
 }

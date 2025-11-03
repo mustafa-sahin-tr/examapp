@@ -1,6 +1,7 @@
 using System;
 
 namespace ExamApp.Api.Data;
+
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -8,20 +9,25 @@ public class Student : BaseEntity
 {
     [Key]
     public int Id { get; set; }
-    
+
     [Required]
-    public int UserId { get; set; }    
+    public int UserId { get; set; }
 
     [Required, MaxLength(50)]
     public string StudentNumber { get; set; }
 
     [Required, MaxLength(100)]
-    public string SchoolName { get; set; }    
- 
+    public string SchoolName { get; set; }
+
     public int? GradeId { get; set; } // 🟢 Grade artık opsiyonel (nullable)
 
     [ForeignKey("GradeId")]
     public Grade? Grade { get; set; } // 🟢 Grade ilişkisi
+
+    [MaxLength(20)]
+    public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi (minimal, standard, enhanced, full)
+
+    public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON format)
 
     // public virtual ICollection<ExamResult> ExamResults { get; set; }
 

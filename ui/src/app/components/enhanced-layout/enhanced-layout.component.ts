@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, computed, inject } from '@angular/core';
+import { Component, signal, OnInit, OnDestroy, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -12,6 +12,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterOutlet, Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { UserThemeService } from '../../services/user-theme.service';
+import { ThemeConfigService } from '../../services/theme-config.service';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 interface MenuItem {
   id: string;
@@ -41,12 +45,17 @@ interface MenuItem {
   templateUrl: './enhanced-layout.component.html',
   styleUrls: ['./enhanced-layout.component.scss'],
 })
-export class EnhancedLayoutComponent implements OnInit {
+export class EnhancedLayoutComponent implements OnInit, OnDestroy {
+  // Cleanup subject for subscriptions
+  private destroy$ = new Subject<void>();
+
   // Signals for state management
   isSidenavCollapsed = signal(false);
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
+  userThemeService = inject(UserThemeService);
+  themeConfigService = inject(ThemeConfigService);
   // Search functionality
   searchControl = new FormControl('');
   searchSuggestions = signal<string[]>(['Dashboard', 'Sınavlar', 'Sorular', 'Öğrenciler', 'Raporlar']);
@@ -55,6 +64,8 @@ export class EnhancedLayoutComponent implements OnInit {
   userName = signal('Mustafa Sahin');
   userEmail = signal('mustafa@examapp.com');
   userAvatarUrl = signal('');
+  userThemePreset = signal<string>('standard');
+  userThemeCustomConfig = signal<string | null>(null);
   isInputFocused: boolean = false;
   searchHistory: string[] = ['Matematik', 'Türkçe', 'Hayat Bilgisi', 'Fen Bilimler'];
   isAuthenticated = this.authService.isAuthenticated();
@@ -119,6 +130,7 @@ export class EnhancedLayoutComponent implements OnInit {
     var profile = localStorage.getItem('user_role');
     var user = localStorage.getItem('user');
     this.setUserInfo();
+
     var refresh =
       !user ||
       (profile == 'Student' && !JSON.parse(user).student) ||
@@ -144,6 +156,16 @@ export class EnhancedLayoutComponent implements OnInit {
         },
       });
     }
+
+    // UserThemeService'den theme değişikliklerini dinle
+    this.userThemeService.userTheme$.pipe(takeUntil(this.destroy$)).subscribe((themeData) => {
+      if (themeData) {
+        this.userThemePreset.set(themeData.themePreset);
+        this.userThemeCustomConfig.set(themeData.themeCustomConfig || null);
+        this.updateUserProfileInLocalStorage(themeData.themePreset, themeData.themeCustomConfig || null);
+        this.applyUserTheme();
+      }
+    });
   }
 
   public setUserInfo() {
@@ -153,6 +175,30 @@ export class EnhancedLayoutComponent implements OnInit {
       this.userName.set(userObj.fullName || 'Kullanıcı');
       this.userEmail.set(userObj.email || '');
       this.userAvatarUrl.set(userObj.avatar || '');
+
+      // Theme bilgisini user profile'dan al
+      let themePreset = 'standard';
+      let themeCustomConfig = null;
+
+      if (userObj.student?.themePreset) {
+        themePreset = userObj.student.themePreset;
+        themeCustomConfig = userObj.student.themeCustomConfig;
+      } else if (userObj.teacher?.themePreset) {
+        themePreset = userObj.teacher.themePreset;
+        themeCustomConfig = userObj.teacher.themeCustomConfig;
+      }
+
+      this.userThemePreset.set(themePreset);
+      this.userThemeCustomConfig.set(themeCustomConfig);
+
+      // LocalStorage'daki user objesini theme bilgisiyle güncelle
+      this.updateUserProfileInLocalStorage(themePreset, themeCustomConfig);
+
+      // Theme config service'i güncelle
+      this.applyUserTheme();
+
+      // UserThemeService'e bildir
+      this.userThemeService.notifyThemeChange(themePreset, themeCustomConfig);
     }
   }
 
@@ -258,5 +304,50 @@ export class EnhancedLayoutComponent implements OnInit {
     if (section === 'search') {
       // this.performSearch();
     }
+  }
+
+  private updateUserProfileInLocalStorage(themePreset: string, themeCustomConfig: string | null) {
+    const user = localStorage.getItem('user');
+    if (user) {
+      try {
+        const userObj = JSON.parse(user);
+
+        // Theme bilgilerini student veya teacher objesine ekle
+        if (userObj.student) {
+          userObj.student.themePreset = themePreset;
+          userObj.student.themeCustomConfig = themeCustomConfig;
+        } else if (userObj.teacher) {
+          userObj.teacher.themePreset = themePreset;
+          userObj.teacher.themeCustomConfig = themeCustomConfig;
+        }
+
+        // LocalStorage'ı güncelle
+        localStorage.setItem('user', JSON.stringify(userObj));
+      } catch (error) {
+        console.warn('Failed to update user profile in localStorage:', error);
+      }
+    }
+  }
+
+  private applyUserTheme() {
+    const themePreset = this.userThemePreset();
+    const customConfig = this.userThemeCustomConfig();
+
+    if (customConfig) {
+      try {
+        const parsedConfig = JSON.parse(customConfig);
+        this.themeConfigService.setCustomTheme(parsedConfig);
+      } catch (error) {
+        console.warn('Invalid custom theme config, using preset:', error);
+        this.themeConfigService.setTheme(themePreset as any);
+      }
+    } else {
+      this.themeConfigService.setTheme(themePreset as any);
+    }
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

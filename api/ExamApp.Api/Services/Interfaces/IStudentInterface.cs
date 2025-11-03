@@ -15,4 +15,6 @@ public interface IStudentService
     Task<ResponseBaseDto> UpdateStudentGrade(int studentId, int gradeId);
 
     Task<List<StudentLookupDto>> GetStudentLookupsAsync();
+
+    Task<ResponseBaseDto> UpdateStudentTheme(int userId, string themePreset, string? themeCustomConfig);
 }

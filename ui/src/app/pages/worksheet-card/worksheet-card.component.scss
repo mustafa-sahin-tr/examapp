@@ -1,0 +1,445 @@
+// ===== MAIN CARD CONTAINER =====
+.ms-card {
+  position: relative;
+  border-radius: 8px;
+  border: 3px solid transparent;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+// ===== 1. BORDER STYLES =====
+// KİŞİSEL ATAMALAR (Daha canlı renkler)
+.border-not-started-personal {
+  border-color: #4a5568; // Koyu gri - Kişisel başlamadı
+}
+
+.border-in-progress-personal {
+  border-color: #ed8936; // Turuncu - Kişisel devam ediyor  
+}
+
+.border-completed-personal {
+  border-color: #38a169; // Yeşil - Kişisel tamamlandı
+}
+
+.border-urgent-personal {
+  border-color: #e53e3e; // Kırmızı - Kişisel acil
+  animation: pulse-urgent-personal 2s infinite;
+}
+
+// SINIF ATAMALARI (Daha yumuşak/pastel renkler)
+.border-not-started-grade {
+  border-color: #a0aec0; // Açık gri - Sınıf başlamadı
+}
+
+.border-in-progress-grade {
+  border-color: #9f7aea; // Mor - Sınıf devam ediyor
+}
+
+.border-completed-grade {
+  border-color: #68d391; // Açık yeşil - Sınıf tamamlandı
+}
+
+.border-urgent-grade {
+  border-color: #fc8181; // Açık kırmızı - Sınıf acil
+  animation: pulse-urgent-grade 2s infinite;
+}
+
+.border-default {
+  border-color: transparent; // Varsayılan - assignment yoksa border yok
+}
+
+// ===== 2. BACKGROUND GRADIENT OVERLAYS =====
+.gradient-not-started-personal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(74, 85, 104, 0.1) 0%, rgba(74, 85, 104, 0.05) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-in-progress-personal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(237, 137, 54, 0.15) 0%, rgba(237, 137, 54, 0.08) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-completed-personal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(56, 161, 105, 0.15) 0%, rgba(56, 161, 105, 0.08) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-urgent-personal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(229, 62, 62, 0.2) 0%, rgba(229, 62, 62, 0.1) 100%);
+  pointer-events: none;
+  z-index: 1;
+  animation: gradient-pulse-personal 2s infinite;
+}
+
+.gradient-not-started-grade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(160, 174, 192, 0.08) 0%, rgba(160, 174, 192, 0.04) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-in-progress-grade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(159, 122, 234, 0.12) 0%, rgba(159, 122, 234, 0.06) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-completed-grade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(104, 211, 145, 0.12) 0%, rgba(104, 211, 145, 0.06) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.gradient-urgent-grade::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(252, 129, 129, 0.15) 0%, rgba(252, 129, 129, 0.08) 100%);
+  pointer-events: none;
+  z-index: 1;
+  animation: gradient-pulse-grade 2s infinite;
+}
+
+// ===== 3. ICON BADGES =====
+.icon-badge-container {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assignment-icon,
+.status-icon {
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+// ===== 4. RIBBON/BANNER =====
+.ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  padding: 4px 12px;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  transform: rotate(-45deg) translate(-25%, 25%);
+  transform-origin: center;
+  min-width: 60px;
+  text-align: center;
+}
+
+.ribbon-text {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.ribbon-not-started-personal { background: #4a5568; }
+.ribbon-in-progress-personal { background: #ed8936; }
+.ribbon-completed-personal { background: #38a169; }
+.ribbon-urgent-personal { 
+  background: #e53e3e; 
+  animation: ribbon-pulse-personal 2s infinite;
+}
+
+.ribbon-not-started-grade { background: #a0aec0; }
+.ribbon-in-progress-grade { background: #9f7aea; }
+.ribbon-completed-grade { background: #68d391; }
+.ribbon-urgent-grade { 
+  background: #fc8181; 
+  animation: ribbon-pulse-grade 2s infinite;
+}
+
+// ===== 5. GLOW/SHADOW EFFECTS =====
+.glow-not-started-personal {
+  box-shadow: 0 0 0 1px rgba(74, 85, 104, 0.2);
+}
+
+.glow-in-progress-personal {
+  box-shadow: 0 0 0 1px rgba(237, 137, 54, 0.3), 0 0 8px rgba(237, 137, 54, 0.1);
+}
+
+.glow-completed-personal {
+  box-shadow: 0 0 0 1px rgba(56, 161, 105, 0.3), 0 0 8px rgba(56, 161, 105, 0.1);
+}
+
+.glow-urgent-personal {
+  box-shadow: 0 0 0 1px rgba(229, 62, 62, 0.4), 0 0 12px rgba(229, 62, 62, 0.2);
+  animation: glow-pulse-personal 2s infinite;
+}
+
+.glow-not-started-grade {
+  box-shadow: 0 0 0 1px rgba(160, 174, 192, 0.15);
+}
+
+.glow-in-progress-grade {
+  box-shadow: 0 0 0 1px rgba(159, 122, 234, 0.25), 0 0 6px rgba(159, 122, 234, 0.08);
+}
+
+.glow-completed-grade {
+  box-shadow: 0 0 0 1px rgba(104, 211, 145, 0.25), 0 0 6px rgba(104, 211, 145, 0.08);
+}
+
+.glow-urgent-grade {
+  box-shadow: 0 0 0 1px rgba(252, 129, 129, 0.3), 0 0 10px rgba(252, 129, 129, 0.15);
+  animation: glow-pulse-grade 2s infinite;
+}
+
+// ===== 6. TRANSFORM EFFECTS =====
+.transform-not-started-personal {
+  transform: none;
+}
+
+.transform-in-progress-personal {
+  transform: rotate(0.5deg);
+}
+
+.transform-completed-personal {
+  transform: scale(1.02);
+}
+
+.transform-urgent-personal {
+  animation: shake-personal 0.5s infinite alternate;
+}
+
+.transform-not-started-grade {
+  transform: none;
+}
+
+.transform-in-progress-grade {
+  transform: rotate(-0.5deg);
+}
+
+.transform-completed-grade {
+  transform: scale(1.01);
+}
+
+.transform-urgent-grade {
+  animation: shake-grade 0.7s infinite alternate;
+}
+
+// ===== 7. PROGRESS BAR =====
+.progress-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress-not-started-personal .progress-fill { background: #4a5568; }
+.progress-in-progress-personal .progress-fill { 
+  background: linear-gradient(90deg, #ed8936, #f6ad55);
+  animation: progress-shimmer 2s infinite;
+}
+.progress-completed-personal .progress-fill { background: #38a169; }
+.progress-urgent-personal .progress-fill { 
+  background: linear-gradient(90deg, #e53e3e, #fc8181);
+  animation: progress-urgent-shimmer 1s infinite;
+}
+
+.progress-not-started-grade .progress-fill { background: #a0aec0; }
+.progress-in-progress-grade .progress-fill { 
+  background: linear-gradient(90deg, #9f7aea, #b794f6);
+  animation: progress-shimmer 2s infinite;
+}
+.progress-completed-grade .progress-fill { background: #68d391; }
+.progress-urgent-grade .progress-fill { 
+  background: linear-gradient(90deg, #fc8181, #feb2b2);
+  animation: progress-urgent-shimmer 1s infinite;
+}
+
+// ===== 8. TYPOGRAPHY EFFECTS =====
+.typography-urgent-personal .course-card,
+.typography-urgent-grade .course-card {
+  font-weight: 600;
+}
+
+.typography-completed-personal .course-card,
+.typography-completed-grade .course-card {
+  opacity: 0.9;
+}
+
+// ===== HOVER EFFECTS =====
+.ms-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+// ===== ANIMATIONS =====
+@keyframes pulse-urgent-personal {
+  0% {
+    border-color: #e53e3e;
+    box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4);
+  }
+  50% {
+    border-color: #fc8181;
+    box-shadow: 0 0 0 8px rgba(229, 62, 62, 0.1);
+  }
+  100% {
+    border-color: #e53e3e;
+    box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4);
+  }
+}
+
+@keyframes pulse-urgent-grade {
+  0% {
+    border-color: #fc8181;
+    box-shadow: 0 0 0 0 rgba(252, 129, 129, 0.4);
+  }
+  50% {
+    border-color: #feb2b2;
+    box-shadow: 0 0 0 8px rgba(252, 129, 129, 0.1);
+  }
+  100% {
+    border-color: #fc8181;
+    box-shadow: 0 0 0 0 rgba(252, 129, 129, 0.4);
+  }
+}
+
+@keyframes gradient-pulse-personal {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes gradient-pulse-grade {
+  0%, 100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes ribbon-pulse-personal {
+  0%, 100% {
+    background: #e53e3e;
+  }
+  50% {
+    background: #fc8181;
+  }
+}
+
+@keyframes ribbon-pulse-grade {
+  0%, 100% {
+    background: #fc8181;
+  }
+  50% {
+    background: #feb2b2;
+  }
+}
+
+@keyframes glow-pulse-personal {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(229, 62, 62, 0.4), 0 0 12px rgba(229, 62, 62, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(229, 62, 62, 0.6), 0 0 16px rgba(229, 62, 62, 0.3);
+  }
+}
+
+@keyframes glow-pulse-grade {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(252, 129, 129, 0.3), 0 0 10px rgba(252, 129, 129, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(252, 129, 129, 0.5), 0 0 14px rgba(252, 129, 129, 0.25);
+  }
+}
+
+@keyframes shake-personal {
+  0% { transform: translateX(-1px) rotate(0.5deg); }
+  100% { transform: translateX(1px) rotate(-0.5deg); }
+}
+
+@keyframes shake-grade {
+  0% { transform: translateX(-0.5px) rotate(0.2deg); }
+  100% { transform: translateX(0.5px) rotate(-0.2deg); }
+}
+
+@keyframes progress-shimmer {
+  0% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+@keyframes progress-urgent-shimmer {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}

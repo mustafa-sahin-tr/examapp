@@ -1,4 +1,4 @@
-import { Grade } from "./student";
+import { Grade } from './student';
 
 export interface StudentProfile {
   fullName: string;
@@ -12,6 +12,7 @@ export interface StudentProfile {
   testsCompleted: number;
   totalRewards: number;
   leaderboardRank: number;
-  badges: { name: string, imageUrl: string }[];
-  recentTests: { name: string, score: number, totalQuestions: number }[];
+  badges: { name: string; imageUrl: string }[];
+  recentTests: { name: string; score: number; totalQuestions: number }[];
+  themePreference?: string; // User'ın tercih ettiği tema
 }

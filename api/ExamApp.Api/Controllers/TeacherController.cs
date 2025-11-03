@@ -16,7 +16,7 @@ namespace ExamApp.Api.Controllers
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
-        public TeacherController( ITeacherService teacherService, UserProfileCacheService userProfileCacheService)
+        public TeacherController(ITeacherService teacherService, UserProfileCacheService userProfileCacheService)
             : base()
         {
             _userProfileCacheService = userProfileCacheService;
@@ -32,20 +32,22 @@ namespace ExamApp.Api.Controllers
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _teacherService.Save(user.Id, request);
-            if(response == null)
+            if (response == null)
             {
                 return BadRequest(new { message = "Öğretmen kaydı başarısız." });
             }
 
-            if(response.Success == false)
+            if (response.Success == false)
             {
                 return BadRequest(new { message = response.Message });
             }
 
-            return Ok(new { Message = "Teacher registered successfully.", 
+            return Ok(new
+            {
+                Message = "Teacher registered successfully.",
                 TeacherId = response.ObjectId,
-                
-                 });
+
+            });
         }
 
 
@@ -54,7 +56,7 @@ namespace ExamApp.Api.Controllers
         public async Task<IActionResult> CheckTeacher()
         {
             var user = await _userProfileCacheService.GetAsync(KeyCloakId);
-            if(user == null) 
+            if (user == null)
             {
                 return NotFound(new { message = "Kullanıcı bulunamadı." });
             }
@@ -68,6 +70,21 @@ namespace ExamApp.Api.Controllers
 
             return Ok(new { HasTeacherRecord = false });
         }
-        
+
+        [Authorize]
+        [HttpPost("update-theme")]
+        public async Task<IActionResult> UpdateTheme([FromBody] UpdateThemeDto request)
+        {
+            var user = await GetAuthenticatedUserAsync();
+            var response = await _teacherService.UpdateTeacherTheme(user.Id, request.ThemePreset, request.ThemeCustomConfig);
+
+            if (response == null || !response.Success)
+            {
+                return BadRequest(new { message = response?.Message ?? "Theme güncellenirken hata oluştu." });
+            }
+
+            return Ok(response);
+        }
+
     }
 }

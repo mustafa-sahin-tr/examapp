@@ -22,6 +22,7 @@ import { FormsModule, NgModel } from '@angular/forms';
 import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
 import { TestService } from '../../services/test.service';
 import { letters } from './letters';
+import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher/user-theme-switcher.component';
 
 @Component({
   selector: 'app-student-profile',
@@ -45,6 +46,7 @@ import { letters } from './letters';
     NgxChartsModule,
     StudentTimeChartComponent,
     BadgeThropyComponent,
+    UserThemeSwitcherComponent,
   ],
 })
 export class StudentProfileComponent implements OnInit {

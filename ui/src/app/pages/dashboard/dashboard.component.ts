@@ -74,19 +74,9 @@ export class DashboardComponent implements OnInit {
     container.scrollBy({ left: this.scrollDistance, behavior: 'smooth' });
   }
 
-  getStatusLabel(assignment: AssignedWorksheet): string {
-    if (assignment.isCompleted) {
-      return 'Tamamlandı';
-    }
-    if (assignment.hasStarted) {
-      return 'Devam ediyor';
-    }
-    return 'Başlamadı';
-  }
-
-  getDueLabel(assignment: AssignedWorksheet): string {
+  getDueLabel(assignment: AssignedWorksheet): string | null {
     if (!assignment.endAt) {
-      return 'Bitiş tarihi: -';
+      return null;
     }
     const dueDate = new Date(assignment.endAt);
     return `Bitiş: ${dueDate.toLocaleDateString()}`;

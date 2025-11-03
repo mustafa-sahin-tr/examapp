@@ -10,6 +10,8 @@ export interface Student {
   studentNumber: string;
   schoolName: string;
   grade: Grade;
+  themePreset?: string; // 🎨 Theme tercihi
+  themeCustomConfig?: string; // 🎨 Custom theme config (JSON)
 }
 
 export interface StudentLookup {

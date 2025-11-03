@@ -54,7 +54,7 @@ namespace ExamApp.Api.Controllers
                 {
                     var student = await _context.Students
                     .FirstOrDefaultAsync(s => s.UserId == profile.Id);
-                    if(student == null)
+                    if (student == null)
                         return Ok(profile);
                     profile.Student = new StudentDto
                     {
@@ -62,22 +62,26 @@ namespace ExamApp.Api.Controllers
                         GradeId = student.GradeId,
                         SchoolName = student.SchoolName,
                         AvatarUrl = profile.Avatar,
-                        FullName = profile.FullName
+                        FullName = profile.FullName,
+                        ThemePreset = student.ThemePreset,
+                        ThemeCustomConfig = student.ThemeCustomConfig
                     };
                 }
-                else if(profile.Role == "Teacher")
+                else if (profile.Role == "Teacher")
                 {
                     // Teacher için ek bilgiler eklenebilir
                     var teacher = await _context.Teachers
                     .FirstOrDefaultAsync(t => t.UserId == profile.Id);
-                    if(teacher == null)
+                    if (teacher == null)
                         return Ok(profile);
                     profile.Teacher = new TeacherDto
                     {
                         Id = teacher.Id,
                         AvatarUrl = profile.Avatar,
                         FullName = profile.FullName,
-                        SchoolName = teacher.SchoolName
+                        SchoolName = teacher.SchoolName,
+                        ThemePreset = teacher.ThemePreset,
+                        ThemeCustomConfig = teacher.ThemeCustomConfig
                     };
                 }
             }

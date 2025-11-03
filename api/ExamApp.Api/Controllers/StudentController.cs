@@ -193,6 +193,21 @@ namespace ExamApp.Api.Controllers
             return Ok(students);
         }
 
+        [Authorize]
+        [HttpPost("update-theme")]
+        public async Task<IActionResult> UpdateTheme([FromBody] UpdateThemeDto request)
+        {
+            var user = await GetAuthenticatedUserAsync();
+            var response = await _studentService.UpdateStudentTheme(user.Id, request.ThemePreset, request.ThemeCustomConfig);
+
+            if (response == null || !response.Success)
+            {
+                return BadRequest(new { message = response?.Message ?? "Theme güncellenirken hata oluştu." });
+            }
+
+            return Ok(response);
+        }
+
 
     }
 }

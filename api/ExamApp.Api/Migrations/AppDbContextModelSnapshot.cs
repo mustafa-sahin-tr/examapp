@@ -879,6 +879,13 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("ThemeCustomConfig")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ThemePreset")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -1120,6 +1127,13 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ThemeCustomConfig")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ThemePreset")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");

@@ -24,7 +24,8 @@ logs/
 
 # User Secrets (Local Configurations)
 secrets.json
-# appsettings.Development.json
+**/appsettings.*.json
+**/appsettings.json
 
 # Database & Migrations
 *.db

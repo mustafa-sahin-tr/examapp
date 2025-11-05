@@ -819,7 +819,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   // Otomatik sonraki soruya geçiş özelliği
-  public autoNextQuestion = signal(false);
+  public autoNextQuestion = signal(true);
 
   toggleAutoNextQuestion() {
     this.autoNextQuestion.set(!this.autoNextQuestion());
@@ -954,9 +954,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }
     }
 
-    if (this.autoNextQuestion() && this.questionsPerView() === 1) {
+    // Multi-question görünümünde de auto-advance çalışsın
+    if (this.autoNextQuestion()) {
       setTimeout(() => {
-        this.nextQuestion();
+        if (this.questionsPerView() === 1) {
+          this.nextQuestion();
+        } else {
+          // Multi-question görünümünde bir sonraki soruya odaklan
+          const nextIndex = questionIndex + 1;
+          if (nextIndex < this.testInstance.testInstanceQuestions.length) {
+            this.focusOnQuestion(nextIndex);
+          }
+        }
       }, 300);
     }
   }

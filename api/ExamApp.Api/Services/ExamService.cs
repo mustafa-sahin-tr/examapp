@@ -1044,7 +1044,8 @@ public class ExamService : IExamService
                         Height = a.Height
                     }).ToList()
                 },
-                SelectedAnswerId = tiq.SelectedAnswerId // Önceden seçilen cevap
+                SelectedAnswerId = tiq.SelectedAnswerId, // Önceden seçilen cevap
+                TimeTaken = tiq.TimeTaken
             }).ToList()
         };
 

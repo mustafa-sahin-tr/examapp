@@ -21,9 +21,56 @@
   <div>
     <mat-card class="course-card" (click)="onClick()">
       <div class="course-info" [style.background-image]="'url(' + getBackgroundImage() + ')'">
-        <h4 class="course-type">
-          {{ test.name }}<span class="new-badge">{{ test.questionCount }} Soru</span>
-        </h4>
+        <div class="header-with-badges">
+          <h4 class="course-type">
+            {{ test.name }}
+          </h4>
+          <div class="progress-badges">
+            <div class="progress-badge-container">
+              <!-- Test başlamamışsa simple badge göster -->
+              <div class="simple-badge" *ngIf="!test.instance">
+                <span class="badge-text">{{ test.questionCount }} Soru</span>
+                <span class="badge-duration">{{ getMaxDurationText() }}</span>
+              </div>
+
+              <!-- Test başlamışsa progress göster -->
+              <ng-container *ngIf="test.instance">
+                <!-- Gauge Style Progress Badge -->
+                <div class="gauge-progress-badge">
+                  <div class="gauge-container">
+                    <!-- SVG Gauge -->
+                    <svg class="gauge-svg" viewBox="0 0 100 100">
+                      <!-- Background circle -->
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" stroke-width="6" />
+                      <!-- Progress circle -->
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="40"
+                        fill="none"
+                        stroke="#10b981"
+                        stroke-width="6"
+                        stroke-linecap="round"
+                        [attr.stroke-dasharray]="getGaugeCircumference()"
+                        [attr.stroke-dashoffset]="getGaugeOffset()"
+                        transform="rotate(-90 50 50)"
+                      />
+                    </svg>
+                    <!-- Center content -->
+                    <div class="gauge-content">
+                      <span class="gauge-number">{{ test.questionCount }}</span>
+                      <span class="gauge-label">SORU</span>
+                    </div>
+                  </div>
+                  <!-- Time display below gauge -->
+                  <div class="gauge-time">
+                    <span class="time-text">{{ getTimeProgress() }}</span>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </div>
 
         <ul class="course-meta">
           <!-- <li class="course-title" style="color: chocolate;" >{{test.name}}</li>         -->

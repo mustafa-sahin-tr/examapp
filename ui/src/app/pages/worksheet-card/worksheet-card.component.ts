@@ -11,6 +11,7 @@ import { SafeHtmlPipe } from '../../services/safehtml';
 import { AssignedWorksheet } from '../../models/assignment';
 import { MatIconModule } from '@angular/material/icon';
 import { ThemeConfigService, WorksheetCardThemeConfig } from '../../services/theme-config.service';
+import { TestService } from '../../services/test.service';
 
 @Component({
   selector: 'app-worksheet-card',
@@ -33,6 +34,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeConfigService);
+  private readonly testService = inject(TestService);
   private readonly destroy$ = new Subject<void>();
 
   themeConfig!: WorksheetCardThemeConfig;
@@ -61,7 +63,37 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.styleConfig = CARDSTYLES[this.getTestColor(this.test)];
+    // Test null veya undefined ise ancak assignment'ın içinde worksheetId dolu ise test'i load et
+    if ((!this.test || this.test === null || this.test === undefined) && this.assignment?.worksheetId) {
+      this.loadTestFromAssignment();
+    } else if (this.test) {
+      this.initializeComponent();
+    }
+  }
+
+  private loadTestFromAssignment(): void {
+    if (!this.assignment?.instanceId) return;
+
+    this.testService
+      .get(this.assignment.instanceId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (test: Test) => {
+          this.test = test;
+          this.initializeComponent();
+        },
+        error: (error) => {
+          console.error('Test yüklenirken hata oluştu:', error);
+          // Hata durumunda varsayılan değerlerle devam et
+          this.initializeComponent();
+        },
+      });
+  }
+
+  private initializeComponent(): void {
+    if (this.test) {
+      this.styleConfig = CARDSTYLES[this.getTestColor(this.test)];
+    }
     this.themeConfig = this.themeService.getCurrentTheme();
 
     // Theme değişikliklerini dinle
@@ -235,5 +267,113 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
     const hoursRemaining = timeDifference / (1000 * 60 * 60);
 
     return hoursRemaining <= 24 && hoursRemaining > 0;
+  }
+
+  // Progress Related Methods
+  getAnsweredQuestions(): number {
+    if (!this.test.instance) return 0;
+    return this.test.instance.correctAnswers + this.test.instance.wrongAnswers;
+  }
+
+  getQuestionProgressPercentage(): number {
+    const totalQuestions = this.test.questionCount || 0;
+    const answeredQuestions = this.getAnsweredQuestions();
+    if (totalQuestions === 0) return 0;
+    return Math.round((answeredQuestions / totalQuestions) * 100);
+  }
+
+  getQuestionProgressBackground(): string {
+    const percentage = this.getQuestionProgressPercentage();
+    const answeredQuestions = this.getAnsweredQuestions();
+    const totalQuestions = this.test.questionCount || 0;
+
+    // Hiç başlamamışsa gri
+    if (answeredQuestions === 0) {
+      return `conic-gradient(#e0e0e0 0deg, #e0e0e0 360deg)`;
+    }
+
+    // Tamamlanmışsa yeşil
+    if (answeredQuestions === totalQuestions) {
+      return `conic-gradient(#4CAF50 0deg, #4CAF50 360deg)`;
+    }
+
+    // Devam ediyorsa mavi-gri karışım
+    const degrees = (percentage / 100) * 360;
+    return `conic-gradient(#2196F3 0deg, #2196F3 ${degrees}deg, #e0e0e0 ${degrees}deg, #e0e0e0 360deg)`;
+  }
+
+  getTimeProgress(): string {
+    if (!this.test.instance) return '0/0dk';
+
+    const spentMinutes = this.test.instance.durationMinutes;
+    const totalMinutes = Math.round(this.test.maxDurationSeconds / 60);
+
+    return `${spentMinutes}/${totalMinutes}dk`;
+  }
+
+  getTimeProgressPercentage(): number {
+    if (!this.test.instance) return 0;
+
+    const spentMinutes = this.test.instance.durationMinutes;
+    const totalMinutes = Math.round(this.test.maxDurationSeconds / 60);
+
+    if (totalMinutes === 0) return 0;
+    return Math.min(Math.round((spentMinutes / totalMinutes) * 100), 100);
+  }
+
+  getTimeProgressBackground(): string {
+    const percentage = this.getTimeProgressPercentage();
+
+    // Hiç başlamamışsa gri
+    if (percentage === 0) {
+      return `conic-gradient(#e0e0e0 0deg, #e0e0e0 360deg)`;
+    }
+
+    // Süre dolmuşsa kırmızı
+    if (percentage >= 100) {
+      return `conic-gradient(#f44336 0deg, #f44336 360deg)`;
+    }
+
+    // %80'den fazlaysa turuncu-kırmızı
+    if (percentage >= 80) {
+      const degrees = (percentage / 100) * 360;
+      return `conic-gradient(#FF9800 0deg, #FF9800 ${degrees}deg, #e0e0e0 ${degrees}deg, #e0e0e0 360deg)`;
+    }
+
+    // Normal ilerlemede yeşil
+    const degrees = (percentage / 100) * 360;
+    return `conic-gradient(#4CAF50 0deg, #4CAF50 ${degrees}deg, #e0e0e0 ${degrees}deg, #e0e0e0 360deg)`;
+  }
+
+  getMaxDurationText(): string {
+    const totalMinutes = Math.round(this.test.maxDurationSeconds / 60);
+    if (totalMinutes < 60) {
+      return `${totalMinutes}dk`;
+    } else {
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return minutes > 0 ? `${hours}s ${minutes}dk` : `${hours}s`;
+    }
+  }
+
+  // Gauge Progress Methods
+  getGaugeCircumference(): number {
+    const radius = 40; // SVG'deki circle radius
+    return 2 * Math.PI * radius;
+  }
+
+  getGaugeOffset(): number {
+    if (!this.test.instance) return this.getGaugeCircumference(); // Hiç başlamamışsa tam kapalı
+
+    const totalQuestions = this.test.questionCount || 0;
+    const answeredQuestions = this.getAnsweredQuestions();
+
+    if (totalQuestions === 0) return this.getGaugeCircumference();
+
+    const progressPercentage = (answeredQuestions / totalQuestions) * 100;
+    const circumference = this.getGaugeCircumference();
+
+    // Progress'i tersine çevir (dashoffset azaldıkça çizgi artar)
+    return circumference - (progressPercentage / 100) * circumference;
   }
 }

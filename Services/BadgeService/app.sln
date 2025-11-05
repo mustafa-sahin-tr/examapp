@@ -1,10 +1,8 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
+Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BadgeService", "BadgeService.csproj", "{37B15746-AABA-D2D6-15AA-0A1E995D60C7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BadgeService.Tests", "BadgeService.Tests\BadgeService.Tests.csproj", "{58158FA4-80F2-448E-B009-37ACFCACEE13}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -16,15 +14,11 @@ Global
 		{37B15746-AABA-D2D6-15AA-0A1E995D60C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37B15746-AABA-D2D6-15AA-0A1E995D60C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37B15746-AABA-D2D6-15AA-0A1E995D60C7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{58158FA4-80F2-448E-B009-37ACFCACEE13}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{58158FA4-80F2-448E-B009-37ACFCACEE13}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{58158FA4-80F2-448E-B009-37ACFCACEE13}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{58158FA4-80F2-448E-B009-37ACFCACEE13}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {37D16430-20AF-4DC9-81FE-E48BC27586D6}
+		SolutionGuid = {B484192A-8CD4-49E6-9B60-3D10BEB37B05}
 	EndGlobalSection
 EndGlobal

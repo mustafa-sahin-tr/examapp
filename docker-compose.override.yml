@@ -6,8 +6,8 @@ services:
   auth-api:
     command: dotnet watch run --urls=http://+:5079
 
-  exam-badge-api:
-    command: dotnet watch run --urls=http://+:8006
+  # exam-badge-api:
+  #   command: dotnet run --urls=http://+:8006
 
   finance-api:
     command: sh -c "cd finance-api && dotnet watch run --urls=http://+:8005"

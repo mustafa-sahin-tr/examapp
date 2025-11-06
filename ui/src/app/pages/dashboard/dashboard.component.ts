@@ -35,6 +35,7 @@ export class DashboardComponent implements OnInit {
   >([]);
   readonly activityApiLoading = signal(false);
   readonly activityApiError = signal(false);
+  readonly activityNumberCardData = signal<Array<{ name: string; value: number }>>([]);
 
   readonly assignmentCards = computed(() => this.assignments());
 
@@ -48,8 +49,17 @@ export class DashboardComponent implements OnInit {
     name: 'sunset',
     selectable: false,
     group: ScaleType.Linear,
-    domain: ['#3a376fff', '#FFB370', '#d07344ff', '#bf5244ff', '#f70814ff'],
+    domain: ['#38346fff', '#FFB370', '#FF7F3F', '#E84F3B', '#f50814ff'],
   };
+
+  readonly activityNumberCardScheme: Color = {
+    name: 'activityNumberCards',
+    selectable: false,
+    group: ScaleType.Linear,
+    domain: ['#4d4892ff', '#E44D25', '#CFC0BB', '#7aa3e5', '#a8385d', '#aae3f5'],
+  };
+
+  readonly activityNumberCardColor = '#232837';
 
   ngOnInit(): void {
     this.testService.getActiveAssignments().subscribe({
@@ -161,6 +171,7 @@ export class DashboardComponent implements OnInit {
 
     this.activityApiLoading.set(true);
     this.activityApiError.set(false);
+    this.activityNumberCardData.set([]);
 
     this.badgeService
       .getUserActivity(userId)
@@ -169,11 +180,13 @@ export class DashboardComponent implements OnInit {
         next: (response) => {
           this.activityLastMonthDisplayed = '';
           this.activityDataFromApi.set(this.transformActivityToHeatmap(response));
+          this.activityNumberCardData.set(this.buildNumberCardData(response));
         },
         error: (error) => {
           console.error('Öğrenci aktivite verisi alınamadı', error);
           this.activityApiError.set(true);
           this.activityDataFromApi.set([]);
+          this.activityNumberCardData.set([]);
         },
       });
   }
@@ -226,6 +239,33 @@ export class DashboardComponent implements OnInit {
     }
 
     return heatmap;
+  }
+
+  private buildNumberCardData(response: UserActivityResponse): Array<{ name: string; value: number }> {
+    const totals = (response?.days ?? []).reduce(
+      (acc, day) => {
+        const questionCount = day?.questionCount ?? 0;
+        const correctCount = day?.correctCount ?? 0;
+        const totalSeconds = day?.totalTimeSeconds ?? 0;
+        const activityScore = day?.activityScore ?? 0;
+
+        acc.questions += questionCount;
+        acc.correct += correctCount;
+        acc.timeSeconds += totalSeconds;
+        acc.activityScore += activityScore;
+        return acc;
+      },
+      { questions: 0, correct: 0, timeSeconds: 0, activityScore: 0 }
+    );
+
+    const totalMinutes = totals.timeSeconds > 0 ? Math.max(1, Math.round(totals.timeSeconds / 60)) : 0;
+
+    return [
+      { name: 'Toplam Soru', value: totals.questions },
+      { name: 'Doğru Cevap', value: totals.correct },
+      { name: 'Çalışma Süresi (dk)', value: totalMinutes },
+      { name: 'Aktivite Skoru', value: totals.activityScore },
+    ];
   }
 
   private addDays(date: Date, days: number): Date {

@@ -43,6 +43,17 @@
     <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
       <ng-container *ngIf="!activityApiError(); else heatmapError">
         <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
+          <ng-container *ngIf="activityNumberCardData().length > 0">
+            <div class="number-card-container">
+              <ngx-charts-number-card
+                [view]="[900, 200]"
+                [scheme]="activityNumberCardScheme"
+                [results]="activityNumberCardData()"
+                [cardColor]="activityNumberCardColor"
+              >
+              </ngx-charts-number-card>
+            </div>
+          </ng-container>
           <ngx-charts-heat-map
             [view]="[1200, 210]"
             [scheme]="activityColorScheme"

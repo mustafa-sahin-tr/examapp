@@ -605,6 +605,10 @@ export class StudentProfileComponent implements OnInit {
         const dayActivity = activityMap.get(key);
         const activityScore = dayActivity?.activityScore ?? 0;
 
+        if (currentDate > rawEndDate) {
+          return null;
+        }
+
         return {
           name: this.formatDayLabel(currentDate),
           value: activityScore,
@@ -617,7 +621,7 @@ export class StudentProfileComponent implements OnInit {
             totalPoints: dayActivity?.totalPoints ?? 0,
           },
         };
-      });
+      }).filter((entry): entry is { name: string; value: number; extra: any } => entry !== null);
 
       heatmap.push({
         name: this.formatWeekLabel(weekStart),

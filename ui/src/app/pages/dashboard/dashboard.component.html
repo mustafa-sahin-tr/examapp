@@ -35,3 +35,42 @@
     <p class="error">{{ errorMessage }}</p>
   </ng-container>
 </div>
+
+<div class="dashboard-section">
+  <app-section-header title="Öğrenme Aktivitesi" icon="/icons/28.svg"></app-section-header>
+
+  <div class="heatmap-container">
+    <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
+      <ng-container *ngIf="!activityApiError(); else heatmapError">
+        <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
+          <ngx-charts-heat-map
+            [view]="[1200, 210]"
+            [scheme]="activityColorScheme"
+            [results]="activityDataFromApi()"
+            [xAxis]="true"
+            [yAxis]="true"
+            [legend]="false"
+            [showXAxisLabel]="true"
+            [showYAxisLabel]="true"
+            [gradient]="true"
+            [xAxisTickFormatting]="activityXAxisTickFormatting"
+            [tooltipText]="activityHeatmapTooltip"
+          >
+          </ngx-charts-heat-map>
+        </ng-container>
+      </ng-container>
+    </ng-container>
+
+    <ng-template #heatmapLoading>
+      <p class="heatmap-state">Aktivite verisi yükleniyor...</p>
+    </ng-template>
+
+    <ng-template #heatmapError>
+      <p class="heatmap-state error">Aktivite verisi alınırken bir hata oluştu.</p>
+    </ng-template>
+
+    <ng-template #heatmapEmpty>
+      <p class="heatmap-state">Son bir yıl için aktivite verisi bulunamadı.</p>
+    </ng-template>
+  </div>
+</div>

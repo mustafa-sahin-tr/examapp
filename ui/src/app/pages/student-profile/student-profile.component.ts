@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { StudentProfile } from '../../models/student-profile';
 import { StudentService } from '../../services/student.service';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -23,6 +24,7 @@ import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge
 import { TestService } from '../../services/test.service';
 import { letters } from './letters';
 import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher/user-theme-switcher.component';
+import { BadgeService, UserActivityResponse } from '../../services/badge.service';
 
 @Component({
   selector: 'app-student-profile',
@@ -299,6 +301,10 @@ export class StudentProfileComponent implements OnInit {
   activityData = this.generateHeatmapData3();
 
   activityData2 = this.generateHeatmapData();
+  activityDataFromApi: Array<{ name: string; series: Array<{ name: string; value: number; extra?: any }> }> = [];
+  activityApiLoading = false;
+  activityApiError = false;
+  readonly demoActivityUserId = 16;
 
   /**
    * Statik “MUSTAFA” ısı haritası verisi üreten fonksiyon.
@@ -470,7 +476,8 @@ export class StudentProfileComponent implements OnInit {
     private studentService: StudentService,
     private route: ActivatedRoute,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private badgeService: BadgeService
   ) {}
 
   onSelect(event: any) {
@@ -488,6 +495,10 @@ export class StudentProfileComponent implements OnInit {
 
     this.studentService.getProfile().subscribe((response) => {
       this.student = response;
+      const resolvedUserId = Number((response as any)?.userId);
+      if (!Number.isNaN(resolvedUserId) && resolvedUserId > 0 && resolvedUserId !== this.demoActivityUserId) {
+        this.loadUserActivityHeatmap(resolvedUserId);
+      }
     });
 
     this.testService.studentStatistics().subscribe((response) => {
@@ -513,6 +524,8 @@ export class StudentProfileComponent implements OnInit {
 
       console.log('Student Statistics:', this.single);
     });
+
+    this.loadUserActivityHeatmap(this.demoActivityUserId);
   }
 
   changeGrade(): void {
@@ -531,5 +544,128 @@ export class StudentProfileComponent implements OnInit {
         this.snackBar.open('Avatar güncellendi!', 'Tamam', { duration: 3000 });
       });
     }
+  }
+
+  activityHeatmapTooltip = (tooltip: any): string => {
+    if (!tooltip) {
+      return '';
+    }
+
+    const cell = tooltip.cell ?? tooltip.data ?? tooltip;
+    const extra = cell?.extra ?? {};
+    const date = extra.date ? new Date(extra.date) : new Date();
+    const dateLabel = extra.label ?? date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+    const duration = this.formatDuration(extra.totalTimeSeconds ?? 0);
+
+    return `${dateLabel}\nSoru: ${extra.questionCount ?? 0}\nDoğru: ${
+      extra.correctCount ?? 0
+    }\nSüre: ${duration}\nAktivite Skoru: ${cell?.value ?? 0}`;
+  };
+
+  private loadUserActivityHeatmap(userId: number): void {
+    this.activityApiLoading = true;
+    this.activityApiError = false;
+
+    this.badgeService
+      .getUserActivity(userId)
+      .pipe(finalize(() => (this.activityApiLoading = false)))
+      .subscribe({
+        next: (response) => {
+          this.lastMonthDisplayed = '';
+          this.activityDataFromApi = this.transformActivityToHeatmap(response);
+        },
+        error: (error) => {
+          console.error('Öğrenci aktivite verisi alınamadı', error);
+          this.activityApiError = true;
+          this.activityDataFromApi = [];
+        },
+      });
+  }
+
+  private transformActivityToHeatmap(response: UserActivityResponse): Array<{ name: string; series: any[] }> {
+    const totalWeeks = 52;
+    const daysPerWeek = 7;
+    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    const endDate = response?.endDateUtc ? this.normalizeDate(response.endDateUtc) : this.normalizeDate(new Date());
+    const startDate = this.addDays(endDate, -(totalWeeks * daysPerWeek - 1));
+
+    const activityMap = new Map<string, (typeof response.days)[number]>();
+    (response?.days ?? []).forEach((day) => {
+      activityMap.set(this.toIsoDateKey(this.normalizeDate(day.dateUtc)), day);
+    });
+
+    const heatmap: Array<{ name: string; series: any[] }> = [];
+
+    for (let weekIndex = 0; weekIndex < totalWeeks; weekIndex++) {
+      const weekStart = this.addDays(startDate, weekIndex * daysPerWeek);
+      const weekSeries = daysOfWeek.map((dayName, dayOffset) => {
+        const currentDate = this.addDays(weekStart, dayOffset);
+        const key = this.toIsoDateKey(currentDate);
+        const dayActivity = activityMap.get(key);
+        const activityScore = dayActivity?.activityScore ?? 0;
+
+        return {
+          name: dayName,
+          value: activityScore,
+          extra: {
+            date: currentDate.toISOString(),
+            label: currentDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+            questionCount: dayActivity?.questionCount ?? 0,
+            correctCount: dayActivity?.correctCount ?? 0,
+            totalTimeSeconds: dayActivity?.totalTimeSeconds ?? 0,
+            totalPoints: dayActivity?.totalPoints ?? 0,
+          },
+        };
+      });
+
+      heatmap.push({
+        name: this.formatWeekLabel(weekStart),
+        series: weekSeries,
+      });
+    }
+
+    return heatmap;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    result.setHours(0, 0, 0, 0);
+    return result;
+  }
+
+  private normalizeDate(date: string | Date): Date {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+  }
+
+  private toIsoDateKey(date: Date): string {
+    const utc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+    return new Date(utc).toISOString().split('T')[0];
+  }
+
+  private formatWeekLabel(weekStart: Date): string {
+    return weekStart.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+  }
+
+  private formatDuration(totalSeconds: number): string {
+    if (!totalSeconds) {
+      return '0 sn';
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes && seconds) {
+      return `${minutes} dk ${seconds} sn`;
+    }
+
+    if (minutes) {
+      return `${minutes} dk`;
+    }
+
+    return `${seconds} sn`;
   }
 }

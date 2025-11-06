@@ -261,6 +261,43 @@
       >
       </ngx-charts-heat-map>
     </div>
+
+    <div class="heatmap-container">
+      <h2>Activity Heatmap (API)</h2>
+
+      <ng-container *ngIf="!activityApiLoading; else activityHeatmapLoading">
+        <ng-container *ngIf="!activityApiError; else activityHeatmapError">
+          <ng-container *ngIf="activityDataFromApi.length > 0; else activityHeatmapEmpty">
+            <ngx-charts-heat-map
+              [view]="[1200, 210]"
+              [scheme]="sunsetScheme"
+              [results]="activityDataFromApi"
+              [xAxis]="true"
+              [yAxis]="true"
+              [legend]="false"
+              [showXAxisLabel]="true"
+              [showYAxisLabel]="true"
+              [gradient]="true"
+              [xAxisTickFormatting]="xAxisTickFormatting"
+              [tooltipText]="activityHeatmapTooltip"
+            >
+            </ngx-charts-heat-map>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+
+      <ng-template #activityHeatmapLoading>
+        <p>Aktivite verisi yükleniyor...</p>
+      </ng-template>
+
+      <ng-template #activityHeatmapError>
+        <p>Aktivite verisi alınırken bir hata oluştu.</p>
+      </ng-template>
+
+      <ng-template #activityHeatmapEmpty>
+        <p>Son bir yıl için aktivite verisi bulunamadı.</p>
+      </ng-template>
+    </div>
   </mat-tab>
 
   <!-- User Theme Settings Tab -->

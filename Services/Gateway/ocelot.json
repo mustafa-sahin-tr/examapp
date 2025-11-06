@@ -63,7 +63,7 @@
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "exam-badge-api", "Port": 5080 }
+        { "Host": "exam-badge-api", "Port": 8006 }
       ],
       "UpstreamPathTemplate": "/api/badge/{everything}",
       "AuthenticationOptions": {

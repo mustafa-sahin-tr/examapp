@@ -48,7 +48,7 @@ export class DashboardComponent implements OnInit {
     name: 'sunset',
     selectable: false,
     group: ScaleType.Linear,
-    domain: ['#FFE5B4', '#FFB370', '#FF7F3F', '#E84F3B', '#A6282E'],
+    domain: ['#3a376fff', '#FFB370', '#d07344ff', '#bf5244ff', '#f70814ff'],
   };
 
   ngOnInit(): void {

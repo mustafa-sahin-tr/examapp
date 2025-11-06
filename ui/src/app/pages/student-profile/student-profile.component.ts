@@ -585,10 +585,10 @@ export class StudentProfileComponent implements OnInit {
   private transformActivityToHeatmap(response: UserActivityResponse): Array<{ name: string; series: any[] }> {
     const totalWeeks = 52;
     const daysPerWeek = 7;
-    const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    const endDate = response?.endDateUtc ? this.normalizeDate(response.endDateUtc) : this.normalizeDate(new Date());
-    const startDate = this.addDays(endDate, -(totalWeeks * daysPerWeek - 1));
+    const rawEndDate = response?.endDateUtc ? this.normalizeDate(response.endDateUtc) : this.normalizeDate(new Date());
+    const alignedEndDate = this.endOfWeek(rawEndDate);
+    const alignedStartDate = this.addDays(alignedEndDate, -(totalWeeks * daysPerWeek - 1));
 
     const activityMap = new Map<string, (typeof response.days)[number]>();
     (response?.days ?? []).forEach((day) => {
@@ -598,15 +598,15 @@ export class StudentProfileComponent implements OnInit {
     const heatmap: Array<{ name: string; series: any[] }> = [];
 
     for (let weekIndex = 0; weekIndex < totalWeeks; weekIndex++) {
-      const weekStart = this.addDays(startDate, weekIndex * daysPerWeek);
-      const weekSeries = daysOfWeek.map((dayName, dayOffset) => {
+      const weekStart = this.addDays(alignedStartDate, weekIndex * daysPerWeek);
+      const weekSeries = Array.from({ length: daysPerWeek }, (_, dayOffset) => {
         const currentDate = this.addDays(weekStart, dayOffset);
         const key = this.toIsoDateKey(currentDate);
         const dayActivity = activityMap.get(key);
         const activityScore = dayActivity?.activityScore ?? 0;
 
         return {
-          name: dayName,
+          name: this.formatDayLabel(currentDate),
           value: activityScore,
           extra: {
             date: currentDate.toISOString(),
@@ -621,7 +621,7 @@ export class StudentProfileComponent implements OnInit {
 
       heatmap.push({
         name: this.formatWeekLabel(weekStart),
-        series: weekSeries,
+        series: weekSeries.slice().reverse(), // reverse so Monday renders on top
       });
     }
 
@@ -646,6 +646,10 @@ export class StudentProfileComponent implements OnInit {
     return new Date(utc).toISOString().split('T')[0];
   }
 
+  private formatDayLabel(date: Date): string {
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  }
+
   private formatWeekLabel(weekStart: Date): string {
     return weekStart.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
   }
@@ -667,5 +671,11 @@ export class StudentProfileComponent implements OnInit {
     }
 
     return `${seconds} sn`;
+  }
+
+  private endOfWeek(date: Date): Date {
+    const target = new Date(date);
+    const distanceToSunday = (7 - target.getDay()) % 7;
+    return this.addDays(target, distanceToSunday);
   }
 }

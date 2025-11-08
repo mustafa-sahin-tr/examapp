@@ -7,8 +7,8 @@
   <ng-template #assignmentsContent>
     <ng-container *ngIf="assignmentCards().length > 0; else noAssignments">
       <div class="list-container">
-        <button class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
-        <div class="cards hidden-scrollable" #assignmentContainer>
+        <button *ngIf="canScrollLeft()" class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
+        <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
           <ul class="psds-carousel__track">
             <li
               class="psds-carousel__item m-5"
@@ -23,7 +23,9 @@
             </li>
           </ul>
         </div>
-        <button class="nav-btn right" type="button" (click)="handleRightNavigation()">❯</button>
+        <button *ngIf="canScrollRight()" class="nav-btn right" type="button" (click)="handleRightNavigation()">
+          ❯
+        </button>
       </div>
     </ng-container>
     <ng-template #noAssignments>

@@ -193,6 +193,7 @@
             </div>
 
             <app-question-canvas-view
+              #canvasView
               [questionRegion]="questionData.region"
               [selectedChoice]="selectedChoices().get(questionData.region.id)"
               (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"

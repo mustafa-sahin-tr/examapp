@@ -1,5 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
@@ -22,7 +32,7 @@ interface AssignmentCardViewModel {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly testService = inject(TestService);
   private readonly router = inject(Router);
   private readonly badgeService = inject(BadgeService);
@@ -38,18 +48,39 @@ export class DashboardComponent implements OnInit {
   readonly activityNumberCardData = signal<Array<{ name: string; value: number }>>([]);
 
   readonly assignmentCards = computed(() => this.assignments());
+  readonly canScrollLeft = signal(false);
+  readonly canScrollRight = signal(false);
 
   readonly scrollDistance = 600;
   private readonly demoActivityUserId = 16;
   private activityLastMonthDisplayed = '';
+  private resizeObserver?: ResizeObserver;
+  private assignmentContainerRef?: ElementRef<HTMLDivElement>;
 
-  @ViewChild('assignmentContainer', { static: false }) assignmentContainer?: ElementRef<HTMLDivElement>;
+  @ViewChild('assignmentContainer', { static: false })
+  set assignmentContainer(ref: ElementRef<HTMLDivElement> | undefined) {
+    if (ref?.nativeElement === this.assignmentContainerRef?.nativeElement) {
+      return;
+    }
+
+    if (this.resizeObserver && this.assignmentContainerRef) {
+      this.resizeObserver.unobserve(this.assignmentContainerRef.nativeElement);
+    }
+
+    this.assignmentContainerRef = ref;
+
+    if (ref && this.resizeObserver) {
+      this.resizeObserver.observe(ref.nativeElement);
+    }
+
+    this.scheduleScrollIndicatorUpdate();
+  }
 
   readonly activityColorScheme: Color = {
     name: 'sunset',
     selectable: false,
     group: ScaleType.Linear,
-    domain: ['#38346fff', '#FFB370', '#FF7F3F', '#E84F3B', '#f50814ff'],
+    domain: ['#38346fff', '#5a5a5aff', '#808080ff', '#b3b3b3ff', '#e6e6e6ff', '#ffffff'],
   };
 
   readonly activityNumberCardScheme: Color = {
@@ -70,6 +101,7 @@ export class DashboardComponent implements OnInit {
         }));
         this.assignments.set(viewModels);
         this.loading.set(false);
+        this.scheduleScrollIndicatorUpdate();
       },
       error: () => {
         this.error.set('Atanmış testler alınırken bir sorun oluştu.');
@@ -81,6 +113,21 @@ export class DashboardComponent implements OnInit {
     this.loadUserActivityHeatmap(resolvedUserId);
   }
 
+  ngAfterViewInit(): void {
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => this.updateScrollIndicators());
+      const element = this.assignmentContainerElement;
+      if (element) {
+        this.resizeObserver.observe(element);
+      }
+    }
+    this.scheduleScrollIndicatorUpdate();
+  }
+
+  ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
+  }
+
   trackAssignment(index: number, item: AssignmentCardViewModel): number {
     return item.assignment.assignmentId;
   }
@@ -90,19 +137,25 @@ export class DashboardComponent implements OnInit {
   }
 
   handleLeftNavigation(): void {
-    if (!this.assignmentContainer) {
+    const container = this.assignmentContainerElement;
+    if (!container) {
       return;
     }
-    const container = this.assignmentContainer.nativeElement;
     container.scrollBy({ left: -this.scrollDistance, behavior: 'smooth' });
+    this.scheduleScrollIndicatorUpdate(250);
   }
 
   handleRightNavigation(): void {
-    if (!this.assignmentContainer) {
+    const container = this.assignmentContainerElement;
+    if (!container) {
       return;
     }
-    const container = this.assignmentContainer.nativeElement;
     container.scrollBy({ left: this.scrollDistance, behavior: 'smooth' });
+    this.scheduleScrollIndicatorUpdate(250);
+  }
+
+  onAssignmentScroll(): void {
+    this.updateScrollIndicators();
   }
 
   getDueLabel(assignment: AssignedWorksheet): string | null {
@@ -189,6 +242,39 @@ export class DashboardComponent implements OnInit {
           this.activityNumberCardData.set([]);
         },
       });
+  }
+
+  private scheduleScrollIndicatorUpdate(delay: number = 0): void {
+    if (delay > 0) {
+      setTimeout(() => this.updateScrollIndicators(), delay);
+    } else {
+      setTimeout(() => this.updateScrollIndicators(), 0);
+    }
+  }
+
+  private updateScrollIndicators(): void {
+    const container = this.assignmentContainerElement;
+    if (!container) {
+      this.canScrollLeft.set(false);
+      this.canScrollRight.set(false);
+      return;
+    }
+
+    const maxScrollLeft = container.scrollWidth - container.clientWidth;
+    if (maxScrollLeft <= 0) {
+      this.canScrollLeft.set(false);
+      this.canScrollRight.set(false);
+      return;
+    }
+
+    const currentScroll = container.scrollLeft;
+    const threshold = 2;
+    this.canScrollLeft.set(currentScroll > threshold);
+    this.canScrollRight.set(currentScroll < maxScrollLeft - threshold);
+  }
+
+  private get assignmentContainerElement(): HTMLDivElement | undefined {
+    return this.assignmentContainerRef?.nativeElement;
   }
 
   private transformActivityToHeatmap(response: UserActivityResponse): Array<{ name: string; series: any[] }> {

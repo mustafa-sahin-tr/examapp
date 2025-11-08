@@ -181,8 +181,10 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     }
 
     const passageCanvasEl = this.passageCanvas.nativeElement;
-    passageCanvasEl.width = region.passage.width || 0;
-    passageCanvasEl.height = region.passage.height || 0;
+    const targetW = region.passage.width * this.contentScale;
+    const targetH = region.passage.height * this.contentScale;
+    passageCanvasEl.width = targetW;
+    passageCanvasEl.height = targetH;
 
     this.psgctx.clearRect(0, 0, passageCanvasEl.width, passageCanvasEl.height);
     this.psgctx.drawImage(
@@ -193,8 +195,8 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
       region.passage.height || 0,
       0,
       0,
-      region.passage.width || 0,
-      region.passage.height || 0
+      targetW, // region.passage.width || 0,
+      targetH // region.passage.height || 0
     );
   }
 

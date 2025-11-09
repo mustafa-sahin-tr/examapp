@@ -16,6 +16,7 @@ import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { SidenavService } from '../../services/sidenav.service';
 
 interface MenuItem {
   id: string;
@@ -50,7 +51,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   // Signals for state management
-  isSidenavCollapsed = signal(false);
+  private readonly sidenavService = inject(SidenavService);
+  isSidenavCollapsed = computed(() => this.sidenavService.isSidenavCollapsed());
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
@@ -203,8 +205,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   }
 
   toggleSidenav() {
-    this.isSidenavCollapsed.set(!this.isSidenavCollapsed());
-    console.log('Sidebar collapsed:', this.isSidenavCollapsed());
+    this.sidenavService.toggleSidenav();
   }
 
   navigateTo(route: string, options: any = {}) {

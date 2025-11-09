@@ -95,6 +95,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public currentImageId = signal<string | null>(null); // 🔄 Mevcut resmin ID'sini takip et
 
   sidenavService = inject(SidenavService);
+  private previousSidenavCollapsed = this.sidenavService.isSidenavCollapsed();
 
   // YENİ: Gelişmiş UX özellikleri
   public focusMode = signal(false);
@@ -385,6 +386,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private startQuestionTimer() {
+    this.canvasViewComponent.retsetImageScale();
     const startTime = Date.now();
     this.questionStartTimes().set(this.currentIndex(), startTime);
   }
@@ -710,8 +712,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   toggleFocusMode() {
-    this.focusMode.set(!this.focusMode());
-    this.showToastMessage(this.focusMode() ? 'Odaklanma modu açıldı' : 'Normal mod açıldı', 'info');
+    const nextState = !this.focusMode();
+    if (nextState) {
+      this.previousSidenavCollapsed = this.sidenavService.isSidenavCollapsed();
+      this.sidenavService.setSidenavCollapsed(true);
+    } else {
+      this.sidenavService.setSidenavCollapsed(this.previousSidenavCollapsed);
+    }
+
+    this.focusMode.set(nextState);
+    this.showToastMessage(nextState ? 'Odaklanma modu açıldı' : 'Normal mod açıldı', 'info');
   }
 
   toggleBookmark() {

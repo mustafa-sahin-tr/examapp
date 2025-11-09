@@ -354,6 +354,11 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     this.rescaleQuestion(0.95);
   }
 
+  retsetImageScale() {
+    this.contentScale = 1;
+    this.drawImageSection();
+  }
+
   private rescaleQuestion(factor: number) {
     // Only scale the drawn content; keep canvas size fixed
     const next = this.contentScale * factor;

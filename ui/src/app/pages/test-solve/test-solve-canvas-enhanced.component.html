@@ -86,7 +86,7 @@
   </header>
 
   <!-- Ana İçerik Alanı -->
-  <main class="test-content">
+  <main class="test-content" #testContent>
     <!-- Sol Panel: Soru İçeriği -->
     <section class="question-panel" [class.fullwidth]="focusMode()" [class]="'questions-' + questionsPerView()">
       <!-- Görünüm Seçici -->
@@ -280,7 +280,7 @@
 
     <!-- Sağ Panel: Navigasyon ve Araçlar -->
     @if(!focusMode()) {
-    <aside class="tools-panel">
+    <aside class="tools-panel" #toolsPanel>
       <!-- Soru Haritası -->
       <div class="question-map">
         <div class="map-content">

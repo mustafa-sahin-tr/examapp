@@ -2,7 +2,6 @@ import {
   AfterViewChecked,
   AfterViewInit,
   Component,
-  computed,
   effect,
   ElementRef,
   EventEmitter,
@@ -365,5 +364,40 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     // Clamp for safety
     this.contentScale = Math.max(0.2, Math.min(3, next));
     this.drawImageSection();
+  }
+  getCanvasHeights(): { questionHeight: number; passageHeight: number; hasPassageImage: boolean } {
+    const region = this._questionRegion();
+    const baseQuestionHeight = this.baseCanvasHeight ?? region?.height ?? 0;
+    const questionHeight = Math.round(baseQuestionHeight * this.contentScale) || 0;
+
+    const passageImageUrl = region?.passage?.imageUrl?.trim() || '';
+    const hasPassageImage = passageImageUrl.length > 0;
+
+    let passageHeight = 0;
+    if (hasPassageImage) {
+      const basePassageHeight = region?.passage?.height || this.passageImg?.naturalHeight || 0;
+      const effectiveBase = basePassageHeight > 0 ? basePassageHeight : this.passageCanvas?.nativeElement?.height ?? 0;
+      passageHeight = Math.round(effectiveBase * this.contentScale) || 0;
+    }
+
+    return { questionHeight, passageHeight, hasPassageImage };
+  }
+
+  getCanvasWidths(): { questionWidth: number; passageWidth: number; hasPassageImage: boolean } {
+    const region = this._questionRegion();
+    const baseQuestionWidth = this.baseCanvasWidth ?? region?.width ?? 0;
+    const questionWidth = Math.round(baseQuestionWidth * this.contentScale) || 0;
+
+    const passageImageUrl = region?.passage?.imageUrl?.trim() || '';
+    const hasPassageImage = passageImageUrl.length > 0;
+
+    let passageWidth = 0;
+    if (hasPassageImage) {
+      const basePassageWidth = region?.passage?.width || this.passageImg?.naturalWidth || 0;
+      const effectiveBase = basePassageWidth > 0 ? basePassageWidth : this.passageCanvas?.nativeElement?.width ?? 0;
+      passageWidth = Math.round(effectiveBase * this.contentScale) || 0;
+    }
+
+    return { questionWidth, passageWidth, hasPassageImage };
   }
 }

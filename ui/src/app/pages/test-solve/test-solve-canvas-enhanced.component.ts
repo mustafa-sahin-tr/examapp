@@ -56,7 +56,9 @@ import { Answer } from '../../models/answer';
 export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(SpinWheelComponent) spinWheelComp!: SpinWheelComponent;
   @ViewChild('spinWheelDialog') spinWheelDialog!: TemplateRef<any>; // 📌 Modal Şablonunu Yakala
-  @ViewChild('canvasView') canvasViewComponent!: QuestionCanvasViewComponent;
+  @ViewChild('testContent') testContentRef?: ElementRef<HTMLElement>;
+  @ViewChild('toolsPanel') toolsPanelRef?: ElementRef<HTMLElement>;
+  @ViewChild('canvasView') canvasViewComponent?: QuestionCanvasViewComponent;
 
   testInstanceId!: number;
   @Input() testInstance!: TestInstance; // Test bilgisi ve sorular
@@ -386,9 +388,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   private startQuestionTimer() {
-    this.canvasViewComponent.retsetImageScale();
+    if (this.canvasViewComponent) {
+      this.canvasViewComponent.retsetImageScale();
+    }
     const startTime = Date.now();
     this.questionStartTimes().set(this.currentIndex(), startTime);
+
+    setTimeout(() => {
+      requestAnimationFrame(() => this.logCanvasFitDebugInfo());
+    }, 0);
   }
 
   private endQuestionTimer() {
@@ -397,6 +405,114 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     if (startTime) {
       const duration = Math.round((Date.now() - startTime) / 1000);
       this.questionDurations().set(currentIdx, duration);
+    }
+  }
+
+  private logCanvasFitDebugInfo(): void {
+    const containerEl = this.testContentRef?.nativeElement;
+    if (!containerEl) {
+      console.log('[CanvasFitDebug] test-content elementi bulunamadı.');
+      return;
+    }
+
+    const containerHeight = Math.round(containerEl.clientHeight);
+    const containerWidth = Math.round(containerEl.clientWidth);
+    const canvasComponent = this.canvasViewComponent;
+
+    if (!canvasComponent) {
+      console.log(
+        `[CanvasFitDebug] test-content yüksekliği=X=${containerHeight}px, ilgili canvas bileşeni bulunamadı (muhtemelen metin tabanlı soru).`
+      );
+      return;
+    }
+
+    const { questionHeight, passageHeight, hasPassageImage } = canvasComponent.getCanvasHeights();
+    const { questionWidth, passageWidth, hasPassageImage: hasPassageForWidth } = canvasComponent.getCanvasWidths();
+    const effectiveHasPassage = hasPassageImage || hasPassageForWidth;
+    const roundedQuestionHeight = Math.round(questionHeight);
+    const roundedPassageHeight = Math.round(passageHeight);
+    const roundedQuestionWidth = Math.round(questionWidth);
+    const roundedPassageWidth = Math.round(passageWidth);
+    const effectivePassageHeight = effectiveHasPassage ? roundedPassageHeight : 0;
+    const effectivePassageWidth = effectiveHasPassage ? roundedPassageWidth : 0;
+    const combinedHeight = roundedQuestionHeight + effectivePassageHeight;
+    const widestCanvas = Math.max(roundedQuestionWidth, effectivePassageWidth);
+
+    if (combinedHeight <= 0) {
+      console.log(
+        `[CanvasFitDebug] test-content yüksekliği=X=${containerHeight}px, soru/passage canvas yükseklikleri hesaplanamadı (combinedHeight=0).`
+      );
+      return;
+    }
+
+    const needsScale = containerHeight > combinedHeight;
+    const scaleFactor = containerHeight / combinedHeight;
+    const scalePercent = ((scaleFactor - 1) * 100).toFixed(2);
+
+    const baseMessage = `[CanvasFitDebug] test-content yüksekliği=X=${containerHeight}px, soru canvas yüksekliği=X1=${roundedQuestionHeight}px, passage canvas yüksekliği=X2=${roundedPassageHeight}px${
+      effectiveHasPassage ? ' (passage imageUrl mevcut)' : ' (passage yok)'
+    }.`;
+
+    if (needsScale) {
+      console.log(
+        `${baseMessage} X > X1 + ${
+          effectiveHasPassage ? 'X2' : '(passage yok)'
+        } olduğu için hedef yüksekliğe yaklaşmak adına yaklaşık ${scaleFactor.toFixed(
+          3
+        )}x (~+${scalePercent}%) büyütmek gerekir.`
+      );
+    } else {
+      const shrinkScale = combinedHeight > 0 ? containerHeight / combinedHeight : 1;
+      const shrinkPercent = ((shrinkScale - 1) * 100).toFixed(2);
+      const shrinkMessage =
+        shrinkScale < 1
+          ? ` hedef yükseklik X, toplam içerik yüksekliğinden küçük; yaklaşık ${shrinkScale.toFixed(
+              3
+            )}x (~${shrinkPercent}%) küçültmek gerekir.`
+          : ' ek ölçekleme gerekmiyor veya alan daha dar.';
+      console.log(`${baseMessage} X <= X1 + ${effectiveHasPassage ? 'X2' : '(passage yok)'};${shrinkMessage}`);
+    }
+
+    if (widestCanvas <= 0) {
+      console.log(
+        `[CanvasFitDebug] test-content genişliği=W=${containerWidth}px, canvas genişlikleri hesaplanamadı (WM=0).`
+      );
+      return;
+    }
+
+    const focusModeActive = this.focusMode();
+    const toolsPanelEl = this.toolsPanelRef?.nativeElement;
+    const toolsPanelWidth = focusModeActive ? 0 : Math.round(toolsPanelEl?.clientWidth ?? 0);
+    const availableWidth = Math.max(containerWidth - toolsPanelWidth, 0);
+    const widthScale = widestCanvas > 0 ? availableWidth / widestCanvas : 1;
+    const widthScalePercent = ((widthScale - 1) * 100).toFixed(2);
+    const baseWidthMessage = `[CanvasFitDebug] test-content genişliği=W=${containerWidth}px, soru canvas genişliği=W1=${roundedQuestionWidth}px, passage canvas genişliği=W2=${roundedPassageWidth}px${
+      effectiveHasPassage ? ' (passage imageUrl mevcut)' : ' (passage yok)'
+    }, WM=Max(W1,W2)=${widestCanvas}px, focusMode=${focusModeActive}, tools-panel genişliği=WA=${toolsPanelWidth}px, kullanılabilir genişlik=W-WA=${availableWidth}px.`;
+
+    if (!focusModeActive && !toolsPanelEl) {
+      console.log(`${baseWidthMessage} tools-panel elementi bulunamadı, WA varsayılan olarak 0 kabul edildi.`);
+    }
+
+    if (availableWidth <= 0) {
+      console.log(`${baseWidthMessage} Kullanılabilir genişlik bulunamadı (W-WA <= 0), yatay ölçekleme yapılamaz.`);
+      return;
+    }
+
+    if (widthScale > 1) {
+      console.log(
+        `${baseWidthMessage} WM'yi mevcut alana yaymak için yaklaşık ${widthScale.toFixed(
+          3
+        )}x (~+${widthScalePercent}%) büyütmek mümkün.`
+      );
+    } else if (widthScale < 1) {
+      console.log(
+        `${baseWidthMessage} WM, kullanılabilir alandan geniş; yaklaşık ${widthScale.toFixed(
+          3
+        )}x (~${widthScalePercent}%) küçültmek gerekir.`
+      );
+    } else {
+      console.log(`${baseWidthMessage} WM ile kullanılabilir genişlik zaten dengede, ek ölçekleme gerekmiyor.`);
     }
   }
 

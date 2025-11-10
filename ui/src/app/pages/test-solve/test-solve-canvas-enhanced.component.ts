@@ -58,6 +58,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   @ViewChild('spinWheelDialog') spinWheelDialog!: TemplateRef<any>; // 📌 Modal Şablonunu Yakala
   @ViewChild('testContent') testContentRef?: ElementRef<HTMLElement>;
   @ViewChild('toolsPanel') toolsPanelRef?: ElementRef<HTMLElement>;
+  @ViewChild('questionPanel') questionPanelRef?: ElementRef<HTMLElement>;
+  @ViewChild('canvasContainer') canvasContainerRef?: ElementRef<HTMLElement>;
   @ViewChild('canvasView') canvasViewComponent?: QuestionCanvasViewComponent;
 
   testInstanceId!: number;
@@ -417,8 +419,42 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     const containerHeight = Math.round(containerEl.clientHeight);
     const containerWidth = Math.round(containerEl.clientWidth);
-    const canvasComponent = this.canvasViewComponent;
+    const defaultView = containerEl.ownerDocument?.defaultView ?? window;
+    const parsePx = (value: string | null | undefined): number => {
+      if (!value) {
+        return 0;
+      }
+      const parsed = Number.parseFloat(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    };
 
+    const containerStyle = defaultView ? defaultView.getComputedStyle(containerEl) : undefined;
+    let containerPaddingTop = 0;
+    let containerPaddingRight = 0;
+    let containerPaddingBottom = 0;
+    let containerPaddingLeft = 0;
+    let containerColumnGap = 0;
+    let containerRowGap = 0;
+    let containerContentHeight = containerHeight;
+    let containerContentWidth = containerWidth;
+
+    if (containerStyle) {
+      containerPaddingTop = parsePx(containerStyle.paddingTop);
+      containerPaddingRight = parsePx(containerStyle.paddingRight);
+      containerPaddingBottom = parsePx(containerStyle.paddingBottom);
+      containerPaddingLeft = parsePx(containerStyle.paddingLeft);
+      containerColumnGap = parsePx(containerStyle.columnGap);
+      containerRowGap = parsePx(containerStyle.rowGap);
+      containerContentHeight = Math.max(containerHeight - containerPaddingTop - containerPaddingBottom, 0);
+      containerContentWidth = Math.max(containerWidth - containerPaddingLeft - containerPaddingRight, 0);
+      console.log(
+        `[CanvasFitDebug] test-content -> width=${containerWidth}px, height=${containerHeight}px, padding(T:${containerPaddingTop}px R:${containerPaddingRight}px B:${containerPaddingBottom}px L:${containerPaddingLeft}px), iç alan≈${containerContentWidth}px x ${containerContentHeight}px, gap(kolon)≈${containerColumnGap}px, gap(satır)≈${containerRowGap}px.`
+      );
+    } else {
+      console.log('[CanvasFitDebug] test-content stil bilgisi alınamadı; padding değerleri 0 varsayıldı.');
+    }
+
+    const canvasComponent = this.canvasViewComponent;
     if (!canvasComponent) {
       console.log(
         `[CanvasFitDebug] test-content yüksekliği=X=${containerHeight}px, ilgili canvas bileşeni bulunamadı (muhtemelen metin tabanlı soru).`
@@ -445,34 +481,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       return;
     }
 
-    const needsScale = containerHeight > combinedHeight;
-    const scaleFactor = containerHeight / combinedHeight;
-    const scalePercent = ((scaleFactor - 1) * 100).toFixed(2);
-
-    const baseMessage = `[CanvasFitDebug] test-content yüksekliği=X=${containerHeight}px, soru canvas yüksekliği=X1=${roundedQuestionHeight}px, passage canvas yüksekliği=X2=${roundedPassageHeight}px${
-      effectiveHasPassage ? ' (passage imageUrl mevcut)' : ' (passage yok)'
-    }.`;
-
-    if (needsScale) {
-      console.log(
-        `${baseMessage} X > X1 + ${
-          effectiveHasPassage ? 'X2' : '(passage yok)'
-        } olduğu için hedef yüksekliğe yaklaşmak adına yaklaşık ${scaleFactor.toFixed(
-          3
-        )}x (~+${scalePercent}%) büyütmek gerekir.`
-      );
-    } else {
-      const shrinkScale = combinedHeight > 0 ? containerHeight / combinedHeight : 1;
-      const shrinkPercent = ((shrinkScale - 1) * 100).toFixed(2);
-      const shrinkMessage =
-        shrinkScale < 1
-          ? ` hedef yükseklik X, toplam içerik yüksekliğinden küçük; yaklaşık ${shrinkScale.toFixed(
-              3
-            )}x (~${shrinkPercent}%) küçültmek gerekir.`
-          : ' ek ölçekleme gerekmiyor veya alan daha dar.';
-      console.log(`${baseMessage} X <= X1 + ${effectiveHasPassage ? 'X2' : '(passage yok)'};${shrinkMessage}`);
-    }
-
     if (widestCanvas <= 0) {
       console.log(
         `[CanvasFitDebug] test-content genişliği=W=${containerWidth}px, canvas genişlikleri hesaplanamadı (WM=0).`
@@ -482,37 +490,278 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     const focusModeActive = this.focusMode();
     const toolsPanelEl = this.toolsPanelRef?.nativeElement;
-    const toolsPanelWidth = focusModeActive ? 0 : Math.round(toolsPanelEl?.clientWidth ?? 0);
-    const availableWidth = Math.max(containerWidth - toolsPanelWidth, 0);
-    const widthScale = widestCanvas > 0 ? availableWidth / widestCanvas : 1;
-    const widthScalePercent = ((widthScale - 1) * 100).toFixed(2);
-    const baseWidthMessage = `[CanvasFitDebug] test-content genişliği=W=${containerWidth}px, soru canvas genişliği=W1=${roundedQuestionWidth}px, passage canvas genişliği=W2=${roundedPassageWidth}px${
-      effectiveHasPassage ? ' (passage imageUrl mevcut)' : ' (passage yok)'
-    }, WM=Max(W1,W2)=${widestCanvas}px, focusMode=${focusModeActive}, tools-panel genişliği=WA=${toolsPanelWidth}px, kullanılabilir genişlik=W-WA=${availableWidth}px.`;
+    const questionPanelEl = this.questionPanelRef?.nativeElement;
+    const canvasContainerEl = this.canvasContainerRef?.nativeElement;
+    const questionWrapperEl = canvasContainerEl
+      ? (canvasContainerEl.closest('.question-wrapper') as HTMLElement | null)
+      : null;
 
-    if (!focusModeActive && !toolsPanelEl) {
-      console.log(`${baseWidthMessage} tools-panel elementi bulunamadı, WA varsayılan olarak 0 kabul edildi.`);
+    const heightLimitCandidates: number[] = [];
+    const widthLimitCandidates: number[] = [];
+    const heightLimitDetails: string[] = [];
+    const widthLimitDetails: string[] = [];
+    const widthContextExtras: string[] = [];
+
+    if (containerContentHeight > 0) {
+      heightLimitCandidates.push(containerContentHeight);
+      heightLimitDetails.push(`test-content iç=${containerContentHeight}px`);
+    }
+    if (containerContentWidth > 0) {
+      widthLimitCandidates.push(containerContentWidth);
+      widthLimitDetails.push(`test-content iç=${containerContentWidth}px`);
     }
 
-    if (availableWidth <= 0) {
-      console.log(`${baseWidthMessage} Kullanılabilir genişlik bulunamadı (W-WA <= 0), yatay ölçekleme yapılamaz.`);
-      return;
-    }
+    let questionPanelContentWidth = 0;
+    let questionPanelContentHeight = 0;
 
-    if (widthScale > 1) {
+    if (questionPanelEl) {
+      const qpClientWidth = Math.round(questionPanelEl.clientWidth);
+      const qpClientHeight = Math.round(questionPanelEl.clientHeight);
+      let qpPaddingTop = 0;
+      let qpPaddingRight = 0;
+      let qpPaddingBottom = 0;
+      let qpPaddingLeft = 0;
+
+      if (defaultView) {
+        const qpStyle = defaultView.getComputedStyle(questionPanelEl);
+        qpPaddingTop = parsePx(qpStyle.paddingTop);
+        qpPaddingRight = parsePx(qpStyle.paddingRight);
+        qpPaddingBottom = parsePx(qpStyle.paddingBottom);
+        qpPaddingLeft = parsePx(qpStyle.paddingLeft);
+      }
+
+      questionPanelContentWidth = Math.max(qpClientWidth - qpPaddingLeft - qpPaddingRight, 0);
+      questionPanelContentHeight = Math.max(qpClientHeight - qpPaddingTop - qpPaddingBottom, 0);
+
+      if (questionPanelContentWidth > 0) {
+        widthLimitCandidates.push(questionPanelContentWidth);
+        widthLimitDetails.push(`question-panel iç=${questionPanelContentWidth}px`);
+      }
+      if (questionPanelContentHeight > 0) {
+        heightLimitCandidates.push(questionPanelContentHeight);
+        heightLimitDetails.push(`question-panel iç=${questionPanelContentHeight}px`);
+      }
+
       console.log(
-        `${baseWidthMessage} WM'yi mevcut alana yaymak için yaklaşık ${widthScale.toFixed(
+        `[CanvasFitDebug] question-panel -> width=${qpClientWidth}px, height=${qpClientHeight}px, padding(T:${qpPaddingTop}px R:${qpPaddingRight}px B:${qpPaddingBottom}px L:${qpPaddingLeft}px), içerik≈${questionPanelContentWidth}px x ${questionPanelContentHeight}px.`
+      );
+    } else {
+      console.log('[CanvasFitDebug] question-panel referansı bulunamadı.');
+    }
+
+    let toolsPanelOuterWidth = 0;
+    if (!focusModeActive) {
+      if (toolsPanelEl) {
+        const toolsClientWidth = Math.round(toolsPanelEl.clientWidth);
+        let toolsPaddingLeft = 0;
+        let toolsPaddingRight = 0;
+        let toolsMarginLeft = 0;
+        let toolsMarginRight = 0;
+
+        if (defaultView) {
+          const toolsStyle = defaultView.getComputedStyle(toolsPanelEl);
+          toolsPaddingLeft = parsePx(toolsStyle.paddingLeft);
+          toolsPaddingRight = parsePx(toolsStyle.paddingRight);
+          toolsMarginLeft = parsePx(toolsStyle.marginLeft);
+          toolsMarginRight = parsePx(toolsStyle.marginRight);
+        }
+
+        toolsPanelOuterWidth = toolsClientWidth + toolsMarginLeft + toolsMarginRight;
+        widthContextExtras.push(`tools-panel dış=${toolsPanelOuterWidth}px`);
+
+        console.log(
+          `[CanvasFitDebug] tools-panel -> clientWidth=${toolsClientWidth}px, paddingLR=${
+            toolsPaddingLeft + toolsPaddingRight
+          }px, marginLR=${toolsMarginLeft + toolsMarginRight}px, dış genişlik≈${toolsPanelOuterWidth}px.`
+        );
+      } else {
+        console.log('[CanvasFitDebug] tools-panel referansı bulunamadı (focus modu dışında).');
+      }
+    }
+
+    let interPanelGap: number | null = null;
+    if (!focusModeActive && questionPanelEl && toolsPanelEl) {
+      const questionRect = questionPanelEl.getBoundingClientRect();
+      const toolsRect = toolsPanelEl.getBoundingClientRect();
+      interPanelGap = Math.round(toolsRect.left - questionRect.right);
+      widthContextExtras.push(`panel-gap≈${interPanelGap}px`);
+      console.log(`[CanvasFitDebug] question-panel ile tools-panel arası boşluk ≈ ${interPanelGap}px.`);
+    } else if (!focusModeActive) {
+      console.log('[CanvasFitDebug] panel arası boşluk ölçülemedi.');
+    }
+
+    let wrapperContentWidth = 0;
+    let wrapperContentHeight = 0;
+
+    if (questionWrapperEl) {
+      const wrapperClientWidth = Math.round(questionWrapperEl.clientWidth);
+      const wrapperClientHeight = Math.round(questionWrapperEl.clientHeight);
+      let wrapperPaddingTop = 0;
+      let wrapperPaddingRight = 0;
+      let wrapperPaddingBottom = 0;
+      let wrapperPaddingLeft = 0;
+
+      if (defaultView) {
+        const wrapperStyle = defaultView.getComputedStyle(questionWrapperEl);
+        wrapperPaddingTop = parsePx(wrapperStyle.paddingTop);
+        wrapperPaddingRight = parsePx(wrapperStyle.paddingRight);
+        wrapperPaddingBottom = parsePx(wrapperStyle.paddingBottom);
+        wrapperPaddingLeft = parsePx(wrapperStyle.paddingLeft);
+      }
+
+      wrapperContentWidth = Math.max(wrapperClientWidth - wrapperPaddingLeft - wrapperPaddingRight, 0);
+      wrapperContentHeight = Math.max(wrapperClientHeight - wrapperPaddingTop - wrapperPaddingBottom, 0);
+
+      if (wrapperContentWidth > 0) {
+        widthLimitCandidates.push(wrapperContentWidth);
+        widthLimitDetails.push(`question-wrapper iç=${wrapperContentWidth}px`);
+      }
+      if (wrapperContentHeight > 0) {
+        heightLimitCandidates.push(wrapperContentHeight);
+        heightLimitDetails.push(`question-wrapper iç=${wrapperContentHeight}px`);
+      }
+
+      console.log(
+        `[CanvasFitDebug] question-wrapper -> width=${wrapperClientWidth}px, height=${wrapperClientHeight}px, padding(T:${wrapperPaddingTop}px R:${wrapperPaddingRight}px B:${wrapperPaddingBottom}px L:${wrapperPaddingLeft}px), içerik≈${wrapperContentWidth}px x ${wrapperContentHeight}px.`
+      );
+    } else {
+      console.log('[CanvasFitDebug] question-wrapper bulunamadı (aktif canvas soru olmayabilir).');
+    }
+
+    let canvasWidthLimitCandidate = 0;
+    let canvasHeightLimitCandidate = 0;
+
+    if (canvasContainerEl) {
+      const canvasClientWidth = Math.round(canvasContainerEl.clientWidth);
+      const canvasClientHeight = Math.round(canvasContainerEl.clientHeight);
+      let canvasPaddingTop = 0;
+      let canvasPaddingRight = 0;
+      let canvasPaddingBottom = 0;
+      let canvasPaddingLeft = 0;
+      let canvasMarginTop = 0;
+      let canvasMarginRight = 0;
+      let canvasMarginBottom = 0;
+      let canvasMarginLeft = 0;
+
+      if (defaultView) {
+        const canvasStyle = defaultView.getComputedStyle(canvasContainerEl);
+        canvasPaddingTop = parsePx(canvasStyle.paddingTop);
+        canvasPaddingRight = parsePx(canvasStyle.paddingRight);
+        canvasPaddingBottom = parsePx(canvasStyle.paddingBottom);
+        canvasPaddingLeft = parsePx(canvasStyle.paddingLeft);
+        canvasMarginTop = parsePx(canvasStyle.marginTop);
+        canvasMarginRight = parsePx(canvasStyle.marginRight);
+        canvasMarginBottom = parsePx(canvasStyle.marginBottom);
+        canvasMarginLeft = parsePx(canvasStyle.marginLeft);
+      }
+
+      const baseWidthCandidates = [wrapperContentWidth, questionPanelContentWidth, containerContentWidth].filter(
+        (v) => v > 0
+      );
+      const baseHeightCandidates = [wrapperContentHeight, questionPanelContentHeight, containerContentHeight].filter(
+        (v) => v > 0
+      );
+      const baseWidthForCanvas = baseWidthCandidates.length ? Math.min(...baseWidthCandidates) : containerContentWidth;
+      const baseHeightForCanvas = baseHeightCandidates.length
+        ? Math.min(...baseHeightCandidates)
+        : containerContentHeight;
+
+      const canvasHorizontalGutters = canvasPaddingLeft + canvasPaddingRight + canvasMarginLeft + canvasMarginRight;
+      const canvasVerticalGutters = canvasPaddingTop + canvasPaddingBottom + canvasMarginTop + canvasMarginBottom;
+
+      canvasWidthLimitCandidate = Math.max(baseWidthForCanvas - canvasHorizontalGutters, 0);
+      canvasHeightLimitCandidate = Math.max(baseHeightForCanvas - canvasVerticalGutters, 0);
+
+      const canvasInnerWidth = Math.max(canvasClientWidth - canvasPaddingLeft - canvasPaddingRight, 0);
+      const canvasInnerHeight = Math.max(canvasClientHeight - canvasPaddingTop - canvasPaddingBottom, 0);
+
+      if (canvasWidthLimitCandidate > 0) {
+        widthLimitCandidates.push(canvasWidthLimitCandidate);
+        widthLimitDetails.push(`canvas-container sınır≈${canvasWidthLimitCandidate}px`);
+      }
+      if (canvasHeightLimitCandidate > 0) {
+        heightLimitCandidates.push(canvasHeightLimitCandidate);
+        heightLimitDetails.push(`canvas-container sınır≈${canvasHeightLimitCandidate}px`);
+      }
+
+      console.log(
+        `[CanvasFitDebug] canvas-container -> clientWidth=${canvasClientWidth}px (iç≈${canvasInnerWidth}px), clientHeight=${canvasClientHeight}px (iç≈${canvasInnerHeight}px), padding(T:${canvasPaddingTop}px R:${canvasPaddingRight}px B:${canvasPaddingBottom}px L:${canvasPaddingLeft}px), margin(T:${canvasMarginTop}px R:${canvasMarginRight}px B:${canvasMarginBottom}px L:${canvasMarginLeft}px), teorik limit≈${canvasWidthLimitCandidate}px x ${canvasHeightLimitCandidate}px.`
+      );
+    } else {
+      console.log('[CanvasFitDebug] canvas-container referansı bulunamadı.');
+    }
+
+    const positiveHeightLimits = heightLimitCandidates.filter((v) => v > 0);
+    const positiveWidthLimits = widthLimitCandidates.filter((v) => v > 0);
+
+    const heightTarget = positiveHeightLimits.length
+      ? Math.min(...positiveHeightLimits)
+      : containerContentHeight > 0
+      ? containerContentHeight
+      : containerHeight;
+    const widthTarget = positiveWidthLimits.length
+      ? Math.min(...positiveWidthLimits)
+      : containerContentWidth > 0
+      ? containerContentWidth
+      : containerWidth;
+
+    const heightTargetRounded = Math.round(heightTarget);
+    const widthTargetRounded = Math.round(widthTarget);
+
+    const heightScale = heightTarget > 0 ? heightTarget / combinedHeight : 1;
+    const widthScale = widthTarget > 0 ? widthTarget / widestCanvas : 1;
+    const heightScalePercent = ((heightScale - 1) * 100).toFixed(2);
+    const widthScalePercent = ((widthScale - 1) * 100).toFixed(2);
+
+    const heightSummary = heightLimitDetails.length ? ` [${heightLimitDetails.join(' · ')}]` : '';
+    console.log(
+      `[CanvasFitDebug] Y ekseni: X=${containerHeight}px, X1=${roundedQuestionHeight}px, X2=${roundedPassageHeight}px${
+        effectiveHasPassage ? '' : ' (passage yok)'
+      }, birleşik=${combinedHeight}px, limit≈${heightTargetRounded}px${heightSummary}.`
+    );
+
+    const widthSummaryDetails = widthLimitDetails.concat(widthContextExtras);
+    const widthSummary = widthSummaryDetails.length ? ` [${widthSummaryDetails.join(' · ')}]` : '';
+    console.log(
+      `[CanvasFitDebug] Genişlik: W=${containerWidth}px, W1=${roundedQuestionWidth}px, W2=${roundedPassageWidth}px${
+        effectiveHasPassage ? '' : ' (passage yok)'
+      }, WM=${widestCanvas}px, limit≈${widthTargetRounded}px, focusMode=${focusModeActive}${widthSummary}.`
+    );
+
+    if (heightTarget <= 0) {
+      console.log('[CanvasFitDebug] Y ekseni için kullanılabilir limit hesaplanamadı.');
+    } else if (heightScale > 1) {
+      console.log(
+        `[CanvasFitDebug] Y ekseni: limit içerikten büyük; yaklaşık ${heightScale.toFixed(
           3
-        )}x (~+${widthScalePercent}%) büyütmek mümkün.`
+        )}x (~+${heightScalePercent}%) büyütmek mümkün.`
+      );
+    } else if (heightScale < 1) {
+      console.log(
+        `[CanvasFitDebug] Y ekseni: limit içerikten küçük; yaklaşık ${heightScale.toFixed(
+          3
+        )}x (~${heightScalePercent}%) küçültmek gerekir.`
+      );
+    } else {
+      console.log('[CanvasFitDebug] Y ekseni: içerik mevcut sınırlara yakın, ek ölçekleme gerekmiyor.');
+    }
+
+    if (widthTarget <= 0) {
+      console.log('[CanvasFitDebug] Genişlik için kullanılabilir limit hesaplanamadı.');
+    } else if (widthScale > 1) {
+      console.log(
+        `[CanvasFitDebug] Genişlik: kullanılabilir alan daha geniş; yaklaşık ${widthScale.toFixed(
+          3
+        )}x (~+${widthScalePercent}%) büyütme yapabilirsin.`
       );
     } else if (widthScale < 1) {
       console.log(
-        `${baseWidthMessage} WM, kullanılabilir alandan geniş; yaklaşık ${widthScale.toFixed(
+        `[CanvasFitDebug] Genişlik: alan daha dar; yaklaşık ${widthScale.toFixed(
           3
         )}x (~${widthScalePercent}%) küçültmek gerekir.`
       );
     } else {
-      console.log(`${baseWidthMessage} WM ile kullanılabilir genişlik zaten dengede, ek ölçekleme gerekmiyor.`);
+      console.log('[CanvasFitDebug] Genişlik: içerik mevcut sınırlara uyuyor, ek ölçekleme gerekmiyor.');
     }
   }
 

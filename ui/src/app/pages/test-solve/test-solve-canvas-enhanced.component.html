@@ -88,7 +88,12 @@
   <!-- Ana İçerik Alanı -->
   <main class="test-content" #testContent>
     <!-- Sol Panel: Soru İçeriği -->
-    <section class="question-panel" [class.fullwidth]="focusMode()" [class]="'questions-' + questionsPerView()">
+    <section
+      class="question-panel"
+      #questionPanel
+      [class.fullwidth]="focusMode()"
+      [class]="'questions-' + questionsPerView()"
+    >
       <!-- Görünüm Seçici -->
       <!-- <div class="view-selector">
         <button
@@ -134,7 +139,7 @@
         <div class="question-wrapper" [class.active]="questionData.index === currentIndex()">
           <!-- Canvas Soru Türü -->
           @if(questionData.question.question.isCanvasQuestion) {
-          <div class="canvas-question-container">
+          <div class="canvas-question-container" #canvasContainer>
             <!-- Canvas Overlay Butonları - Sol Üst -->
             <div class="canvas-overlay-actions top-left">
               <button

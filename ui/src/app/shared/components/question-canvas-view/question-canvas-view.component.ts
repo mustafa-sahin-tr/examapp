@@ -39,7 +39,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   // Keep canvas size fixed; scale content inside
   private baseCanvasWidth?: number;
   private baseCanvasHeight?: number;
-  private contentScale = 1;
+  public contentScale = 1;
 
   private shouldInitCanvas = false;
 
@@ -358,7 +358,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     this.drawImageSection();
   }
 
-  private rescaleQuestion(factor: number) {
+  public rescaleQuestion(factor: number) {
     // Only scale the drawn content; keep canvas size fixed
     const next = this.contentScale * factor;
     // Clamp for safety

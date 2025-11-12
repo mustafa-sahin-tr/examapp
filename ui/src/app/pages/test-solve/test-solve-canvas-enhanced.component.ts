@@ -34,6 +34,7 @@ import { SidenavService } from '../../services/sidenav.service';
 import { MatIconModule } from '@angular/material/icon';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { Answer } from '../../models/answer';
+import { QuestionCanvasViewComponentv2 } from '../../shared/components/question-canvas-view-v2/question-canvas-view-v2.component';
 
 @Component({
   selector: 'app-test-solve-v2',
@@ -51,6 +52,7 @@ import { Answer } from '../../models/answer';
     QuestionCanvasViewComponent,
     MatIconModule,
     CountdownComponent,
+    QuestionCanvasViewComponentv2,
   ],
 })
 export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDestroy {
@@ -742,6 +744,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
           3
         )}x (~${heightScalePercent}%) küçültmek gerekir.`
       );
+      // this.canvasViewComponent?.rescaleQuestion(+heightScalePercent);
     } else {
       console.log('[CanvasFitDebug] Y ekseni: içerik mevcut sınırlara yakın, ek ölçekleme gerekmiyor.');
     }
@@ -754,6 +757,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
           3
         )}x (~+${widthScalePercent}%) büyütme yapabilirsin.`
       );
+      this.canvasViewComponent?.rescaleQuestion(+widthScale.toFixed(3));
     } else if (widthScale < 1) {
       console.log(
         `[CanvasFitDebug] Genişlik: alan daha dar; yaklaşık ${widthScale.toFixed(

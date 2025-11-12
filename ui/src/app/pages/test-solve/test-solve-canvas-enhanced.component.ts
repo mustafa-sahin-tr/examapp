@@ -757,7 +757,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
           3
         )}x (~+${widthScalePercent}%) büyütme yapabilirsin.`
       );
-      this.canvasViewComponent?.rescaleQuestion(+widthScale.toFixed(3));
+      //this.canvasViewComponent?.rescaleQuestion(+widthScale.toFixed(3));
     } else if (widthScale < 1) {
       console.log(
         `[CanvasFitDebug] Genişlik: alan daha dar; yaklaşık ${widthScale.toFixed(

@@ -7,8 +7,10 @@ import {
   EventEmitter,
   Input,
   Output,
+  QueryList,
   signal,
   ViewChild,
+  ViewChildren,
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { SafeHtmlPipe } from '../../../services/safehtml';
@@ -24,6 +26,7 @@ import { MatIconModule } from '@angular/material/icon';
 export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewChecked {
   @ViewChild('passagecanvas', { static: false }) passageCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('canvas', { static: true }) canvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChildren('answerCanvas') answerCanvasList!: QueryList<ElementRef<HTMLCanvasElement>>;
 
   private psgctx!: CanvasRenderingContext2D | null;
   private canvasCtx!: CanvasRenderingContext2D | null;
@@ -33,13 +36,13 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
   public currentImageId = signal<string | null>(null);
   public currentPassageImageId = signal<string | null>(null);
 
-  public _questionRegion = signal<QuestionRegion>({} as QuestionRegion);
+  public _questionRegion = signal<QuestionRegion>({ answers: [] as AnswerChoice[] } as QuestionRegion);
   public isImageLoaded = signal(false);
 
   // Keep canvas size fixed; scale content inside
   private baseCanvasWidth?: number;
   private baseCanvasHeight?: number;
-  private contentScale = 1;
+  public contentScale = 1;
 
   private shouldInitCanvas = false;
 
@@ -51,7 +54,7 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
     // Fix canvas to initial region size and reset scale
     if (value) {
       this.baseCanvasWidth = value.width;
-      this.baseCanvasHeight = value.height;
+      this.baseCanvasHeight = this.computeQuestionContentHeight(value);
       this.contentScale = 1;
     }
 
@@ -63,6 +66,8 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
         this._correctChoice.set(correctAnswer);
       }
     }
+
+    this.requestAnswerRedraw(true);
   }
 
   @Input() correctAnswerVisible: boolean = false;
@@ -70,14 +75,17 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
 
   @Input() set selectedChoice(choice: AnswerChoice | undefined) {
     this._selectedChoice.set(choice);
+    this.requestAnswerRedraw();
   }
 
   @Input() set correctChoice(choice: AnswerChoice | undefined) {
     this._correctChoice.set(choice);
+    this.requestAnswerRedraw();
   }
 
   @Input() set mode(m: 'exam' | 'result' | null) {
     this._mode.set(m || 'exam');
+    this.requestAnswerRedraw();
   }
 
   @Output() hoverRegion = new EventEmitter<MouseEvent>();
@@ -97,7 +105,7 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
       if (!region || !region.imageUrl) return;
       // Initialize base canvas dims if not set
       this.baseCanvasWidth = this.baseCanvasWidth ?? region.width;
-      this.baseCanvasHeight = this.baseCanvasHeight ?? region.height;
+      this.baseCanvasHeight = this.baseCanvasHeight ?? this.computeQuestionContentHeight(region);
       this.loadImageForQuestion();
     });
   }
@@ -112,6 +120,13 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
   ngAfterViewInit() {
     if (this.passageCanvas) this.psgctx = this.passageCanvas.nativeElement.getContext('2d');
     if (this.canvas) this.canvasCtx = this.canvas.nativeElement.getContext('2d');
+
+    // defer initial draw until answer canvases materialize
+    requestAnimationFrame(() => this.drawImageSection());
+
+    this.answerCanvasList?.changes.subscribe(() => {
+      this.requestAnswerRedraw(true);
+    });
   }
 
   private async loadImageForQuestion() {
@@ -127,8 +142,7 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
       if (region?.passage?.imageUrl && region?.passage?.imageId) {
         const psgCached = this.imageCache.get(region.passage?.imageId || '');
         if (psgCached) {
-          this.img = psgCached;
-          this.isImageLoaded.set(true);
+          this.passageImg = psgCached;
           this.currentPassageImageId.set(region.passage?.imageId!);
         }
       }
@@ -155,7 +169,6 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
       await new Promise<void>((resolve, reject) => {
         this.passageImg.onload = () => {
           this.imageCache.set(region.passage?.imageId!, this.passageImg);
-          this.isImageLoaded.set(true);
           this.currentPassageImageId.set(region.passage?.imageId!);
           resolve();
         };
@@ -164,6 +177,14 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
     }
 
     this.drawImageSection();
+  }
+
+  private computeQuestionContentHeight(region: QuestionRegion): number {
+    if (!region.answers?.length) return region.height;
+    const topAnswerY = Math.min(...region.answers.map((answer) => answer.y));
+    const rawHeight = topAnswerY - region.y;
+    if (rawHeight <= 0) return region.height;
+    return Math.min(rawHeight, region.height);
   }
 
   private drawPassageSection() {
@@ -199,142 +220,99 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
     );
   }
 
-  private drawAnswer(answer: AnswerChoice, color: string) {
-    if (!this.canvasCtx) return;
-    const region = this._questionRegion();
-    const scale = this.contentScale;
-
-    const x = (answer.x - region.x) * scale;
-    const y = (answer.y - region.y) * scale;
-    const w = answer.width * scale;
-    const h = answer.height * scale;
-
-    const gradient = this.canvasCtx.createLinearGradient(x, y, x + w, y + h);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, color);
-
-    this.canvasCtx.fillStyle = gradient;
-    this.canvasCtx.fillRect(x, y, w, h);
-    this.canvasCtx.fill();
-
-    this.canvasCtx.strokeStyle = 'black';
-    this.canvasCtx.lineWidth = 2;
-    this.canvasCtx.strokeRect(x, y, w, h);
-    this.canvasCtx.stroke();
-  }
-
   drawImageSection() {
     if (!this.isImageLoaded()) return;
     this.drawPassageSection();
+    this.drawQuestionCanvas();
+    this.drawAnswerCanvases();
+  }
+
+  private drawQuestionCanvas() {
+    if (!this.canvas) return;
+    const region = this._questionRegion();
+    if (!region) return;
 
     const canvasEl = this.canvas.nativeElement;
     this.canvasCtx = canvasEl.getContext('2d');
-
     if (!this.canvasCtx) return;
 
-    const region = this._questionRegion();
+    const sourceHeight = this.baseCanvasHeight ?? this.computeQuestionContentHeight(region);
+    const targetW = Math.round((this.baseCanvasWidth ?? region.width) * this.contentScale);
+    const targetH = Math.max(1, Math.round(sourceHeight * this.contentScale));
 
-    // Keep canvas fixed sized
-    const targetW = (this.baseCanvasWidth ?? region.width) * this.contentScale;
-    const targetH = (this.baseCanvasHeight ?? region.height) * this.contentScale;
     canvasEl.width = targetW;
     canvasEl.height = targetH;
 
     this.canvasCtx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+    this.canvasCtx.drawImage(this.img, region.x, region.y, region.width, sourceHeight, 0, 0, targetW, targetH);
+  }
 
-    // Draw scaled image section
-    const dstW = Math.round(region.width * this.contentScale);
-    const dstH = Math.round(region.height * this.contentScale);
+  private drawAnswerCanvases() {
+    if (!this.answerCanvasList?.length || !this.isImageLoaded()) return;
 
-    this.canvasCtx.drawImage(this.img, region.x, region.y, region.width, region.height, 0, 0, dstW, dstH);
+    const region = this._questionRegion();
+    if (!region?.answers?.length) return;
 
-    // Overlays
-    for (const answer of region.answers || []) {
+    const answers = region.answers;
+
+    this.answerCanvasList.forEach((canvasRef, index) => {
+      const answer = answers[index];
+      if (!answer) return;
+
+      const canvasEl = canvasRef.nativeElement;
+      const ctx = canvasEl.getContext('2d');
+      if (!ctx) return;
+
+      const targetW = Math.max(1, Math.round(answer.width * this.contentScale));
+      const targetH = Math.max(1, Math.round(answer.height * this.contentScale));
+
+      canvasEl.width = targetW;
+      canvasEl.height = targetH;
+
+      ctx.clearRect(0, 0, targetW, targetH);
+      ctx.drawImage(this.img, answer.x, answer.y, answer.width, answer.height, 0, 0, targetW, targetH);
+
       const isSelected = this._selectedChoice() === answer;
       const isHovered = this.hoveredChoice() === answer;
       const isCorrect = !!answer.isCorrect;
 
       if (this._mode() === 'exam') {
         if (isCorrect || isSelected) {
-          this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)');
+          this.paintAnswerOverlay(ctx, targetW, targetH, 'rgba(76, 195, 80, 0.3)');
         } else if (isHovered) {
-          const scale = this.contentScale;
-          const x = (answer.x - region.x) * scale;
-          const y = (answer.y - region.y) * scale;
-          const w = answer.width * scale;
-          const h = answer.height * scale;
-          this.canvasCtx.fillStyle = 'rgba(0, 0, 255, 0.3)';
-          this.canvasCtx.fillRect(x, y, w, h);
+          this.paintAnswerOverlay(ctx, targetW, targetH, 'rgba(0, 0, 255, 0.3)');
         }
       } else if (this._mode() === 'result') {
-        if (isCorrect) this.drawAnswer(answer, 'rgba(76, 195, 80, 0.3)');
-        if (isSelected && !isCorrect) this.drawAnswer(answer, 'rgba(234, 21, 21, 0.46)');
+        if (isCorrect) this.paintAnswerOverlay(ctx, targetW, targetH, 'rgba(76, 195, 80, 0.3)');
+        if (isSelected && !isCorrect) this.paintAnswerOverlay(ctx, targetW, targetH, 'rgba(234, 21, 21, 0.46)');
       }
-    }
+    });
   }
 
-  onMouseMove(event: MouseEvent) {
-    if (!this.canvas?.nativeElement) return;
-
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    // Normalize to unscaled coordinate space
-    const scale = this.contentScale || 1;
-    const nx = mouseX / scale;
-    const ny = mouseY / scale;
-
-    let found = false;
-
-    for (const answer of this._questionRegion().answers || []) {
-      if (
-        nx >= answer.x - this._questionRegion().x &&
-        nx <= answer.x - this._questionRegion().x + answer.width &&
-        ny >= answer.y - this._questionRegion().y &&
-        ny <= answer.y - this._questionRegion().y + answer.height
-      ) {
-        this.hoveredChoice.set(answer);
-        this.canvas.nativeElement.style.cursor = 'pointer';
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      this.hoveredChoice.set(null);
-      this.canvas.nativeElement.style.cursor = 'auto';
-    }
-
-    this.drawImageSection();
+  private paintAnswerOverlay(ctx: CanvasRenderingContext2D, width: number, height: number, color: string) {
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, width, height);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'black';
+    ctx.strokeRect(0, 0, width, height);
+    ctx.restore();
   }
 
-  selectChoice(event: MouseEvent) {
-    if (!this.canvas?.nativeElement) return;
+  hoverAnswer(answer: AnswerChoice | null) {
+    this.hoveredChoice.set(answer);
+    this.requestAnswerRedraw();
+  }
 
-    const rect = this.canvas.nativeElement.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
+  selectAnswer(index: number) {
+    const region = this._questionRegion();
+    const answer = region?.answers?.[index];
+    if (!answer) return;
 
-    const scale = this.contentScale || 1;
-    const nx = mouseX / scale;
-    const ny = mouseY / scale;
-
-    for (const answer of this._questionRegion().answers || []) {
-      if (
-        nx >= answer.x - this._questionRegion().x &&
-        nx <= answer.x - this._questionRegion().x + answer.width &&
-        ny >= answer.y - this._questionRegion().y &&
-        ny <= answer.y - this._questionRegion().y + answer.height
-      ) {
-        answer.scale = this.contentScale;
-        this._selectedChoice.set(answer);
-        this.choiceSelected.emit(answer);
-        break;
-      }
-    }
-
-    this.drawImageSection();
+    answer.scale = this.contentScale;
+    this._selectedChoice.set(answer);
+    this.choiceSelected.emit(answer);
+    this.requestAnswerRedraw();
   }
 
   showCorrectAnswer() {
@@ -365,6 +343,16 @@ export class QuestionCanvasViewComponentv2 implements AfterViewInit, AfterViewCh
     this.contentScale = Math.max(0.2, Math.min(3, next));
     console.log(`[QuestionCanvasView] Rescaled content to ${this.contentScale.toFixed(2)}x`);
     this.drawImageSection();
+  }
+
+  private requestAnswerRedraw(force: boolean = false) {
+    if (!this.isImageLoaded()) return;
+    if (force) {
+      requestAnimationFrame(() => this.drawAnswerCanvases());
+      return;
+    }
+
+    requestAnimationFrame(() => this.drawAnswerCanvases());
   }
   getCanvasHeights(): { questionHeight: number; passageHeight: number; hasPassageImage: boolean } {
     const region = this._questionRegion();

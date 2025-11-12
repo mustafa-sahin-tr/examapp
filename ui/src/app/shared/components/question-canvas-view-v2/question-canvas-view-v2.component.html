@@ -1,6 +1,23 @@
 <div class="canvas-container">
-  <canvas #passagecanvas></canvas>
-  <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
+  <span>{{ contentScale }}</span>
+  <div class="question-panel">
+    <canvas #passagecanvas></canvas>
+    <canvas #canvas></canvas>
+  </div>
+
+  @if(_questionRegion().answers.length) {
+  <div class="answers-panel">
+    @for (answer of _questionRegion().answers; track idx; let idx = $index) {
+    <canvas
+      #answerCanvas
+      (click)="selectAnswer(idx)"
+      (mouseenter)="hoverAnswer(answer)"
+      (mouseleave)="hoverAnswer(null)"
+      [attr.aria-label]="'Şık ' + (idx + 1)"
+    ></canvas>
+    }
+  </div>
+  }
 </div>
 
 @if(isPreviewMode) {

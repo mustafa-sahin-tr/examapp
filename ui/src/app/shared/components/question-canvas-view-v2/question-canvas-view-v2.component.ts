@@ -205,21 +205,22 @@ export class QuestionCanvasViewComponentv2 {
   }
 
   public getQuestionWrapperStyle(): Record<string, string> {
-    const baseWidth = this.imageNaturalWidth || this._questionRegion().width || 0;
-    const baseHeight = this.imageNaturalHeight || this._questionRegion().height || 0;
-    const scale = this.contentScale;
-
     return {
-      width: baseWidth > 0 ? this.toSize(baseWidth * scale) : '100%',
-      maxWidth: '100%',
-      height: baseHeight > 0 ? this.toSize(baseHeight * scale) : 'auto',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'auto',
     };
   }
 
   public getQuestionImageStyle(): Record<string, string> {
+    const scaleValue = this.toSizeValue(this.contentScale);
     return {
-      width: '100%',
-      height: 'auto',
+      height: `calc(${scaleValue} * 100%)`,
+      width: 'auto',
+      maxWidth: `calc(${scaleValue} * 100%)`,
       objectFit: 'contain',
     };
   }

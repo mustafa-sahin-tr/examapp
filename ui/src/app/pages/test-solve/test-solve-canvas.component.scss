@@ -263,6 +263,28 @@
     // artık içerik doğal boyutunda büyüyebilir
   }
 
+  &.questions-1 {
+    .question-wrapper {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .canvas-question-container {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+
+      app-question-canvas-view-v2 {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+      }
+    }
+  }
+
   .canvas-question-container,
   .text-question-container {
     display: flex;

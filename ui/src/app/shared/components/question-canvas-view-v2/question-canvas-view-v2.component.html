@@ -3,12 +3,22 @@
   <div class="question-panel">
     @if(hasPassageImage()) {
     <div class="image-slice passage-image" [ngStyle]="getPassageWrapperStyle()">
-      <img [src]="passageImageSource()" [ngStyle]="getPassageImageStyle()" alt="Passaj görseli" />
+      <img
+        class="passage-image-element"
+        [src]="passageImageSource()"
+        [ngStyle]="getPassageImageStyle()"
+        alt="Passaj görseli"
+      />
     </div>
     }
 
-    <div class="image-slice" [ngStyle]="getQuestionWrapperStyle()">
-      <img [src]="questionImageSource()" [ngStyle]="getQuestionImageStyle()" alt="Soru görseli" />
+    <div class="image-slice question-image-slice" [ngStyle]="getQuestionWrapperStyle()">
+      <img
+        class="question-image"
+        [src]="questionImageSource()"
+        [ngStyle]="getQuestionImageStyle()"
+        alt="Soru görseli"
+      />
     </div>
   </div>
 
@@ -24,7 +34,12 @@
       [ngClass]="getAnswerClasses(answer)"
       [attr.aria-label]="'Şık ' + (idx + 1)"
     >
-      <img [src]="answer.imageUrl" [ngStyle]="getAnswerImageStyle(answer)" [attr.alt]="'Şık ' + (idx + 1)" />
+      <img
+        class="answer-image"
+        [src]="answer.imageUrl"
+        [ngStyle]="getAnswerImageStyle(answer)"
+        [attr.alt]="'Şık ' + (idx + 1)"
+      />
     </div>
     }
   </div>

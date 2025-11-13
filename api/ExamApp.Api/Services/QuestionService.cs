@@ -515,12 +515,79 @@ public class QuestionService : IQuestionService
                 // Sorular için crop ve upload işlemi
                 foreach (var questionDto in soruDto.Questions)
                 {
+                    var questionFolderId = Guid.NewGuid().ToString();
+                    var questionFolderPath = $"questions/{questionFolderId}";
+
+                    byte[]? croppedQuestionImage = null;
                     string questionImageUrl = string.Empty;
+
+                    var answerCropInfos = (questionDto.Answers ?? new List<BulkAnswerDto>()).Select(answer => (
+                        Dto: answer,
+                        RelativeX: answer.X - questionDto.X,
+                        RelativeY: answer.Y - questionDto.Y,
+                        Width: answer.Width,
+                        Height: answer.Height
+                    )).ToList();
+
+                    var answerImagePayloads = new List<byte[]?>(answerCropInfos.Count);
+                    for (var i = 0; i < answerCropInfos.Count; i++)
+                    {
+                        answerImagePayloads.Add(null);
+                    }
+
                     if (mainImageBytes != null)
                     {
-                        var croppedQuestionImage = _imageHelper.CropImage(mainImageBytes, (int)questionDto.X, (int)questionDto.Y, (int)questionDto.Width, (int)questionDto.Height);
-                        await using var questionStream = new MemoryStream(croppedQuestionImage);
-                        questionImageUrl = await _minioService.UploadFileAsync(questionStream, $"questions/{Guid.NewGuid()}.jpg");
+                        croppedQuestionImage = _imageHelper.CropImage(mainImageBytes, (int)questionDto.X, (int)questionDto.Y, questionDto.Width, questionDto.Height);
+
+                        await using (var questionStream = new MemoryStream(croppedQuestionImage))
+                        {
+                            questionImageUrl = await _minioService.UploadFileAsync(questionStream, $"{questionFolderPath}/question.jpg");
+                        }
+
+                        byte[] questionV2Image = croppedQuestionImage;
+                        if (answerCropInfos.Any())
+                        {
+                            var topAnswerRelativeY = answerCropInfos.Min(a => a.RelativeY);
+                            var sanitizedHeight = (int)Math.Round(topAnswerRelativeY);
+                            sanitizedHeight = Math.Clamp(sanitizedHeight, 1, questionDto.Height);
+
+                            if (sanitizedHeight > 0 && sanitizedHeight < questionDto.Height)
+                            {
+                                questionV2Image = _imageHelper.CropImage(croppedQuestionImage, 0, 0, questionDto.Width, sanitizedHeight);
+                            }
+                        }
+
+                        await using (var questionV2Stream = new MemoryStream(questionV2Image))
+                        {
+                            await _minioService.UploadFileAsync(questionV2Stream, $"{questionFolderPath}/question-v2.jpg");
+                        }
+
+                        for (var index = 0; index < answerCropInfos.Count; index++)
+                        {
+                            var answerInfo = answerCropInfos[index];
+
+                            int cropX = (int)Math.Round(answerInfo.RelativeX);
+                            int cropY = (int)Math.Round(answerInfo.RelativeY);
+                            cropX = Math.Clamp(cropX, 0, Math.Max(0, questionDto.Width - 1));
+                            cropY = Math.Clamp(cropY, 0, Math.Max(0, questionDto.Height - 1));
+
+                            var cropWidth = Math.Min(answerInfo.Width, questionDto.Width - cropX);
+                            var cropHeight = Math.Min(answerInfo.Height, questionDto.Height - cropY);
+
+                            if (cropWidth <= 0 || cropHeight <= 0)
+                            {
+                                continue;
+                            }
+
+                            var croppedAnswerImage = _imageHelper.CropImage(croppedQuestionImage, cropX, cropY, cropWidth, cropHeight);
+                            answerImagePayloads[index] = croppedAnswerImage;
+                        }
+                    }
+
+                    foreach (var info in answerCropInfos)
+                    {
+                        info.Dto.X = info.RelativeX;
+                        info.Dto.Y = info.RelativeY;
                     }
 
                     var question = new Question
@@ -538,13 +605,6 @@ public class QuestionService : IQuestionService
                         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
                     };
 
-                    // Answer'ların X,Y koordinatlarını crop edilen question'a göre modifiye et
-                    foreach (var answer in questionDto.Answers)
-                    {
-                        answer.X = answer.X - questionDto.X;
-                        answer.Y = answer.Y - questionDto.Y;
-                    }
-
                     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
                     {
                         question.QuestionSubTopics = soruDto.Header.Subtopics.Select(subTopicId => new QuestionSubTopic
@@ -556,10 +616,10 @@ public class QuestionService : IQuestionService
                     _context.Questions.Add(question);
                     await _context.SaveChangesAsync();
 
-                    // 🔹 4. Şıkları kaydet
                     if (!questionDto.IsExample)
                     {
-                        var answers = questionDto.Answers.Select(a => new Answer
+                        var sourceAnswers = questionDto.Answers ?? new List<BulkAnswerDto>();
+                        var answers = sourceAnswers.Select(a => new Answer
                         {
                             QuestionId = question.Id,
                             Text = a.Label,
@@ -570,7 +630,7 @@ public class QuestionService : IQuestionService
                             IsCanvasQuestion = true
                         }).ToList();
 
-                        var correctLabel = questionDto.Answers.FirstOrDefault(a => a.IsCorrect)?.Label;
+                        var correctLabel = sourceAnswers.FirstOrDefault(a => a.IsCorrect)?.Label;
 
                         if (correctLabel == null)
                         {
@@ -580,7 +640,24 @@ public class QuestionService : IQuestionService
                         _context.Answers.AddRange(answers);
                         await _context.SaveChangesAsync();
 
-                        // 🔹 Doğru cevabı kaydet (ilk doğru olanı seç)
+                        if (croppedQuestionImage != null && answerImagePayloads.Count == answers.Count)
+                        {
+                            for (var index = 0; index < answers.Count; index++)
+                            {
+                                var answerImage = answerImagePayloads[index];
+                                if (answerImage == null)
+                                {
+                                    continue;
+                                }
+
+                                await using var answerStream = new MemoryStream(answerImage);
+                                var answerImageUrl = await _minioService.UploadFileAsync(answerStream, $"{questionFolderPath}/{answers[index].Id}.jpg");
+                                answers[index].ImageUrl = answerImageUrl;
+                            }
+
+                            await _context.SaveChangesAsync();
+                        }
+
                         question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
                         await _context.SaveChangesAsync();
                     }
@@ -705,11 +782,10 @@ public class QuestionService : IQuestionService
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                // return StatusCode(500, new { error = "Veri kaydedilirken hata oluştu.", details = ex.Message });
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Veri kaydedilirken hata oluştu."
+                    Message = $"Veri kaydedilirken hata oluştu: {ex.Message}"
                 };
             }
         }
@@ -809,12 +885,6 @@ public class QuestionService : IQuestionService
                 Message = $"Soru resmi boyutlandırılırken hata oluştu: {ex.Message}"
             };
         }
-
-        return new ResponseBaseDto
-        {
-            Success = true,
-            Message = "Soru yeniden boyutlandırıldı!"
-        };
     }
 
     public async Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId)

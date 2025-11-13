@@ -7,6 +7,7 @@ export interface AnswerChoice {
   isCorrect?: boolean;
   id: number;
   scale?: number;
+  imageUrl: string;
 }
 
 export interface PassageRegion {

@@ -363,6 +363,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     const next = this.contentScale * factor;
     // Clamp for safety
     this.contentScale = Math.max(0.2, Math.min(3, next));
+    console.log(`[QuestionCanvasView] Rescaled content to ${this.contentScale.toFixed(2)}x`);
     this.drawImageSection();
   }
   getCanvasHeights(): { questionHeight: number; passageHeight: number; hasPassageImage: boolean } {

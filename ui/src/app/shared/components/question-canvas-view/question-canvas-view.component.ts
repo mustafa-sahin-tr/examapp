@@ -39,7 +39,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   // Keep canvas size fixed; scale content inside
   private baseCanvasWidth?: number;
   private baseCanvasHeight?: number;
-  private contentScale = 1;
+  public contentScale = 1;
 
   private shouldInitCanvas = false;
 

@@ -90,6 +90,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public imageSrc = signal<string>('test5.png'); // Saklanan resmin yolu
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
   public currentIndex = signal(0);
+  public currentScale = signal(0);
   public isImageLoaded = signal(false); // Resim yüklendi mi?
   public hoveredRegion = signal<QuestionRegion | null>(null); // Mouse'un üzerinde olduğu soru veya şık
   public selectedRegion = signal<QuestionRegion | null>(null); // Kullanıcının seçtiği soru veya şık
@@ -594,6 +595,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     let wrapperContentWidth = 0;
     let wrapperContentHeight = 0;
+    let questionWrapperVerticalPadding = 0;
 
     if (questionWrapperEl) {
       const wrapperClientWidth = Math.round(questionWrapperEl.clientWidth);
@@ -611,6 +613,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         wrapperPaddingLeft = parsePx(wrapperStyle.paddingLeft);
       }
 
+      questionWrapperVerticalPadding = wrapperPaddingTop + wrapperPaddingBottom + 48; // 20 canvas'ın margin'inden geliyor.
       wrapperContentWidth = Math.max(wrapperClientWidth - wrapperPaddingLeft - wrapperPaddingRight, 0);
       wrapperContentHeight = Math.max(wrapperClientHeight - wrapperPaddingTop - wrapperPaddingBottom, 0);
 
@@ -696,11 +699,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     const positiveHeightLimits = heightLimitCandidates.filter((v) => v > 0);
     const positiveWidthLimits = widthLimitCandidates.filter((v) => v > 0);
 
-    const heightTarget = positiveHeightLimits.length
+    const questionPanelAdjustedHeight =
+      questionPanelContentHeight > 0 ? Math.max(questionPanelContentHeight - questionWrapperVerticalPadding, 0) : 0;
+
+    const baseHeightTarget = positiveHeightLimits.length
       ? Math.min(...positiveHeightLimits)
       : containerContentHeight > 0
       ? containerContentHeight
       : containerHeight;
+    const heightTarget = questionPanelAdjustedHeight > 0 ? questionPanelAdjustedHeight : baseHeightTarget;
+
     const widthTarget = positiveWidthLimits.length
       ? Math.min(...positiveWidthLimits)
       : containerContentWidth > 0
@@ -715,7 +723,18 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     const heightScalePercent = ((heightScale - 1) * 100).toFixed(2);
     const widthScalePercent = ((widthScale - 1) * 100).toFixed(2);
 
-    const heightSummary = heightLimitDetails.length ? ` [${heightLimitDetails.join(' · ')}]` : '';
+    const heightSummaryEntries: string[] =
+      questionPanelContentHeight > 0
+        ? [
+            `üst limit=question-panel iç ${questionPanelContentHeight}px`,
+            questionWrapperVerticalPadding > 0
+              ? `question-wrapper padding düşüldü -> ${questionPanelAdjustedHeight}px`
+              : undefined,
+          ]
+            .filter((entry): entry is string => Boolean(entry))
+            .concat(heightLimitDetails)
+        : heightLimitDetails;
+    const heightSummary = heightSummaryEntries.length ? ` [${heightSummaryEntries.join(' · ')}]` : '';
     console.log(
       `[CanvasFitDebug] Y ekseni: X=${containerHeight}px, X1=${roundedQuestionHeight}px, X2=${roundedPassageHeight}px${
         effectiveHasPassage ? '' : ' (passage yok)'
@@ -767,6 +786,41 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     } else {
       console.log('[CanvasFitDebug] Genişlik: içerik mevcut sınırlara uyuyor, ek ölçekleme gerekmiyor.');
     }
+
+    const scaleCandidates = [
+      { dimension: 'height', scale: heightScale, limit: heightTargetRounded },
+      { dimension: 'width', scale: widthScale, limit: widthTargetRounded },
+    ].filter((entry) => Number.isFinite(entry.scale) && entry.scale > 0);
+
+    if (scaleCandidates.length === 0) {
+      console.log('[CanvasFitDebug] Nihai ölçek hesaplanamadı (geçerli ölçek adayı yok).');
+      return;
+    }
+
+    const shrinkCandidates = scaleCandidates.filter((entry) => entry.scale < 1);
+    const limitingEntry =
+      shrinkCandidates.length > 0
+        ? shrinkCandidates.reduce((prev, curr) => (curr.scale < prev.scale ? curr : prev))
+        : scaleCandidates.reduce((prev, curr) => (curr.scale < prev.scale ? curr : prev));
+
+    const finalScale = limitingEntry.scale;
+    const mixedDemand = shrinkCandidates.length > 0 && shrinkCandidates.length !== scaleCandidates.length;
+
+    if (mixedDemand) {
+      console.log(
+        `[CanvasFitDebug] Ölçek yönleri karışık; küçültme önceliklendirildi (${shrinkCandidates
+          .map((entry) => `${entry.dimension}≈${entry.scale.toFixed(3)}`)
+          .join(', ')}).`
+      );
+    }
+
+    console.log(
+      `[CanvasFitDebug] Nihai ölçek ≈ ${finalScale.toFixed(3)} (sınırlayan eksen=${limitingEntry.dimension}, limit≈${
+        limitingEntry.limit
+      }px).`
+    );
+    this.currentScale.set(finalScale);
+    this.canvasViewComponent?.rescaleQuestion(finalScale);
   }
 
   // Süreyi formatla (mm:ss)
@@ -1238,6 +1292,12 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   shrinkImage() {
     if (this.canvasViewComponent) {
       this.canvasViewComponent.shrinkImage();
+    }
+  }
+
+  retsetImageScale() {
+    if (this.canvasViewComponent) {
+      this.canvasViewComponent.retsetImageScale();
     }
   }
 

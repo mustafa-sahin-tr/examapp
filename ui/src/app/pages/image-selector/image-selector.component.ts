@@ -767,6 +767,7 @@ export class ImageSelectorComponent {
         height,
         isCorrect: false,
         id: 0,
+        imageUrl: '',
       });
       const answerCount = this.answerCount();
       if (this.regions()[this.selectedQuestionIndex].answers.length === +answerCount) {

@@ -120,6 +120,7 @@ export class TestService {
       y: answer.y,
       width: answer.width,
       height: answer.height,
+      imageUrl: answer.imageUrl,
     };
   }
 
@@ -153,6 +154,7 @@ export class TestService {
             y: answer.y,
             width: answer.width,
             height: answer.height,
+            imageUrl: answer.imageUrl,
             isCorrect: question.correctAnswerId === answer.id, // Set isCorrect based on correctAnswerId
           })),
           passage: question.passage
@@ -204,6 +206,7 @@ export class TestService {
             y: answer.y,
             width: answer.width,
             height: answer.height,
+            imageUrl: answer.imageUrl,
             isCorrect: question.correctAnswerId === answer.id, // Set isCorrect based on correctAnswerId
           })),
           passage: question.passage

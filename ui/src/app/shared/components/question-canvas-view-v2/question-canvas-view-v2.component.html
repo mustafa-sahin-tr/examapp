@@ -1,22 +1,35 @@
 <div class="canvas-container">
-  <span>{{ contentScale }}</span>
+  @if(isImageLoaded()) {
   <div class="question-panel">
-    <canvas #passagecanvas></canvas>
-    <canvas #canvas></canvas>
+    @if(hasPassageImage()) {
+    <div class="image-slice passage-image" [ngStyle]="getPassageWrapperStyle()">
+      <img [src]="passageImageSource()" [ngStyle]="getPassageImageStyle()" alt="Passaj görseli" />
+    </div>
+    }
+
+    <div class="image-slice" [ngStyle]="getQuestionWrapperStyle()">
+      <img [src]="questionImageSource()" [ngStyle]="getQuestionImageStyle()" alt="Soru görseli" />
+    </div>
   </div>
 
   @if(_questionRegion().answers.length) {
   <div class="answers-panel">
     @for (answer of _questionRegion().answers; track idx; let idx = $index) {
-    <canvas
-      #answerCanvas
-      (click)="selectAnswer(idx)"
+    <div
+      class="answer-wrapper image-slice"
+      [ngStyle]="getAnswerWrapperStyle(answer)"
       (mouseenter)="hoverAnswer(answer)"
       (mouseleave)="hoverAnswer(null)"
+      (click)="selectAnswer(idx)"
+      [ngClass]="getAnswerClasses(answer)"
       [attr.aria-label]="'Şık ' + (idx + 1)"
-    ></canvas>
+    >
+      <img [src]="answer.imageUrl" [ngStyle]="getAnswerImageStyle(answer)" [attr.alt]="'Şık ' + (idx + 1)" />
+    </div>
     }
   </div>
+  } } @else {
+  <div class="image-loading">Görsel yükleniyor…</div>
   }
 </div>
 

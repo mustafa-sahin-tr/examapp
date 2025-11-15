@@ -44,8 +44,8 @@ export const routes: Routes = [
       },
       { path: 'questions/view', component: QuestionViewComponent },
       // { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
-      { path: 'testsolve/v3/:testInstanceId', component: TestSolveCanvasComponentv3 }, // 🆕 Test çözme sayfası
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3 }, // 🆕 Test çözme sayfası
+      { path: 'testsolve/v2/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
       { path: 'test/:testId', component: WorksheetDetailComponent }, // 🆕 Test çözme sayfası
       { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
       // { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası

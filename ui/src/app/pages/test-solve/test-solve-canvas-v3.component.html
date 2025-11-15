@@ -85,6 +85,9 @@
               <button mat-icon-button matTooltip="Büyüt (+5%)" (click)="enlargeImage()">
                 <mat-icon>zoom_in</mat-icon>
               </button>
+              <button mat-icon-button matTooltip="Orijinale dön" (click)="retsetImageScale()">
+                <mat-icon>refresh</mat-icon>
+              </button>
               <button mat-icon-button matTooltip="Küçült (-5%)" (click)="shrinkImage()">
                 <mat-icon>zoom_out</mat-icon>
               </button>
@@ -108,7 +111,7 @@
                 [correctAnswerVisible]="correctAnswerVisible"
               ></app-question-canvas-view-v3>
             </div>
-            <div class="canvas-controls">
+            <!-- <div class="canvas-controls">
               <div class="canvas-zoom">
                 <button mat-icon-button matTooltip="Orijinale dön" (click)="retsetImageScale()">
                   <mat-icon>refresh</mat-icon>
@@ -120,7 +123,7 @@
                   <mat-icon>zoom_out</mat-icon>
                 </button>
               </div>
-            </div>
+            </div> -->
             } @else {
             <div class="text-question">
               <div class="text-question__content">

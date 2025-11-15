@@ -113,6 +113,9 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   }
 
   public getAnswerGridColumn(answer: AnswerChoice): string | undefined {
+    const columns = this.resolveAnswerColumnCount();
+    if (columns <= 1) return undefined;
+
     const questionWidth = this.getScaledQuestionWidth();
     const answerWidth = this.getScaledAnswerWidth(answer);
 
@@ -121,9 +124,14 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const ratio = answerWidth / questionWidth;
 
     if (ratio >= 0.75) return '1 / -1';
-    if (ratio >= 0.55) return 'span 2';
+    if (ratio >= 0.55 && columns >= 2) return `span ${Math.min(columns, 2)}`;
 
     return undefined;
+  }
+
+  public getAnswerGridTemplate(): string {
+    const columns = this.resolveAnswerColumnCount();
+    return `repeat(${columns}, minmax(0, 1fr))`;
   }
 
   private formatSize(value: number): string {
@@ -148,5 +156,40 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   private getScaledAnswerWidth(answer: AnswerChoice): number {
     if (!answer) return 0;
     return (answer.width || 0) * this.contentScale;
+  }
+
+  private resolveAnswerColumnCount(): number {
+    const region = this._questionRegion();
+    const answers = region?.answers || [];
+    const answerCount = answers.length;
+    if (answerCount === 0) return 1;
+
+    const questionWidth = this.getScaledQuestionWidth();
+    const gap = 16;
+    const widths = answers
+      .map((answer) => this.getScaledAnswerWidth(answer))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    const maxAnswerWidth = widths.length ? Math.max(...widths) : 0;
+    const minColumnWidth = Math.max(180, maxAnswerWidth);
+
+    const maxColumns =
+      questionWidth > 0 && minColumnWidth > 0
+        ? Math.max(1, Math.floor((questionWidth + gap) / (minColumnWidth + gap)))
+        : Math.max(1, answerCount);
+
+    let columns = Math.max(1, Math.min(answerCount, maxColumns));
+
+    if (answerCount === 4) {
+      if (maxColumns >= 4) {
+        columns = 4;
+      } else if (columns === 3) {
+        columns = maxColumns >= 2 ? 2 : 1;
+      }
+    } else if (answerCount === 5) {
+      columns = Math.min(2, Math.max(1, maxColumns));
+    }
+
+    return Math.max(1, Math.min(answerCount, columns));
   }
 }

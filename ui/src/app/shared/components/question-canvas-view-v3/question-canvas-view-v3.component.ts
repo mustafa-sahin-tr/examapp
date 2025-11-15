@@ -26,13 +26,16 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const questionWidth = widths.questionWidth || region?.width || 0;
     const questionHeight = heights.questionHeight || region?.height || 0;
 
+    const maxWidth = questionWidth > 0 ? this.formatSize(questionWidth) : '100%';
+    const maxHeight = questionHeight > 0 ? this.formatSize(questionHeight) : 'auto';
+
     return {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: this.formatSize(questionWidth),
-      height: this.formatSize(questionHeight),
-      maxWidth: '100%',
+      width: '100%',
+      maxWidth,
+      maxHeight,
       overflow: 'hidden',
       margin: '0 auto',
     };
@@ -45,12 +48,15 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const questionWidth = widths.questionWidth || region?.width || 0;
     const questionHeight = heights.questionHeight || region?.height || 0;
 
+    const maxWidth = questionWidth > 0 ? this.formatSize(questionWidth) : '100%';
+    const maxHeight = questionHeight > 0 ? this.formatSize(questionHeight) : 'auto';
+
     return {
-      width: this.formatSize(questionWidth),
-      height: this.formatSize(questionHeight),
+      width: '100%',
+      height: 'auto',
       objectFit: 'contain',
-      maxWidth: '100%',
-      maxHeight: '100%',
+      maxWidth,
+      maxHeight,
     };
   }
 

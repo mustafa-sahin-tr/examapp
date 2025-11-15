@@ -7,8 +7,7 @@
   [style.--canvas-question-height.px]="canvasHeights.questionHeight || 720"
   [style.--canvas-passage-width.px]="canvasWidths.passageWidth || 0"
 >
-  @if (isImageLoaded()) {
-  @if (hasPassageImage()) {
+  @if (isImageLoaded()) { @if (hasPassageImage()) {
   <div class="canvas-v3__passage-header" [ngStyle]="getPassageWrapperStyle()">
     <img
       class="canvas-v3__passage-image"

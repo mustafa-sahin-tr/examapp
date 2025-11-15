@@ -820,7 +820,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }px).`
     );
     this.currentScale.set(finalScale);
-    this.canvasViewComponent?.rescaleQuestion(finalScale);
+    // this.canvasViewComponent?.rescaleQuestion(finalScale);
   }
 
   // Süreyi formatla (mm:ss)

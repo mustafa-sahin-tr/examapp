@@ -65,15 +65,23 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const height = (_answer.height || 0) * this.contentScale;
 
     const base = super.getAnswerWrapperStyle(_answer);
-    return {
+    const styles: Record<string, string> = {
       ...base,
-      width: this.formatSize(width),
-      maxWidth: '100%',
-      height: this.formatSize(height),
+      width: '100%',
       margin: '0',
-      alignSelf: 'flex-start',
+      alignSelf: 'stretch',
       overflow: 'hidden',
     };
+
+    if (width > 0) {
+      styles['max-width'] = this.formatSize(width);
+    }
+
+    if (height > 0) {
+      styles['max-height'] = this.formatSize(height);
+    }
+
+    return styles;
   }
 
   public override getAnswerImageStyle(_answer?: AnswerChoice): Record<string, string> {
@@ -87,13 +95,35 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const width = (_answer.width || 0) * this.contentScale;
     const height = (_answer.height || 0) * this.contentScale;
 
-    return {
-      width: this.formatSize(width),
-      height: this.formatSize(height),
-      maxWidth: '100%',
-      maxHeight: '100%',
+    const styles: Record<string, string> = {
+      width: '100%',
+      height: 'auto',
       objectFit: 'contain',
     };
+
+    if (width > 0) {
+      styles['max-width'] = this.formatSize(width);
+    }
+
+    if (height > 0) {
+      styles['max-height'] = this.formatSize(height);
+    }
+
+    return styles;
+  }
+
+  public getAnswerGridColumn(answer: AnswerChoice): string | undefined {
+    const questionWidth = this.getScaledQuestionWidth();
+    const answerWidth = this.getScaledAnswerWidth(answer);
+
+    if (!questionWidth || !answerWidth) return undefined;
+
+    const ratio = answerWidth / questionWidth;
+
+    if (ratio >= 0.75) return '1 / -1';
+    if (ratio >= 0.55) return 'span 2';
+
+    return undefined;
   }
 
   private formatSize(value: number): string {
@@ -103,5 +133,20 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     }
 
     return `${Math.max(Math.round(safe), 1)}px`;
+  }
+
+  private getScaledQuestionWidth(): number {
+    const widths = this.getCanvasWidths();
+    if (widths.questionWidth && widths.questionWidth > 0) {
+      return widths.questionWidth;
+    }
+
+    const region = this._questionRegion();
+    return (region?.width || 0) * this.contentScale;
+  }
+
+  private getScaledAnswerWidth(answer: AnswerChoice): number {
+    if (!answer) return 0;
+    return (answer.width || 0) * this.contentScale;
   }
 }

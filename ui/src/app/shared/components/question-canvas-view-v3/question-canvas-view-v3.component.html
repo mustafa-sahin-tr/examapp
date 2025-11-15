@@ -42,6 +42,7 @@
         (click)="selectAnswer(idx)"
         [ngClass]="getAnswerClasses(answer)"
         [attr.aria-label]="'Şık ' + (idx + 1)"
+        [style.gridColumn]="getAnswerGridColumn(answer)"
       >
         <img
           class="answer-image"

@@ -22,6 +22,7 @@
     <div class="canvas-v3__visual">
       <div class="canvas-v3__question" [ngStyle]="getQuestionWrapperStyle()">
         <img
+          #questionImage
           class="canvas-v3__question-image"
           [src]="questionImageSource()"
           [ngStyle]="getQuestionImageStyle()"

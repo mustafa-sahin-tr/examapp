@@ -1,4 +1,13 @@
-import { Component } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  NgZone,
+  OnDestroy,
+  ViewChild,
+  effect,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,10 +22,80 @@ import { QuestionCanvasViewComponentv2 } from '../question-canvas-view-v2/questi
   styleUrls: ['./question-canvas-view-v3.component.scss'],
   imports: [CommonModule, MatButtonModule, MatIconModule, SafeHtmlPipe],
 })
-export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2 {
+export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2 implements AfterViewInit, OnDestroy {
+  @ViewChild('questionImage')
+  set questionImageRef(value: ElementRef<HTMLImageElement> | undefined) {
+    const native = value?.nativeElement ?? null;
+
+    if (native === this.questionImageEl) {
+      return;
+    }
+
+    if (this.questionImageEl && this.resizeObserver) {
+      this.resizeObserver.unobserve(this.questionImageEl);
+    }
+
+    this.questionImageEl = native;
+
+    if (this.questionImageEl && this.resizeObserver) {
+      this.resizeObserver.observe(this.questionImageEl);
+    }
+  }
+
+  private questionImageEl: HTMLImageElement | null = null;
+
+  private resizeObserver?: ResizeObserver;
+  private layoutScale = 1;
+  private userScale = 1;
+  private lastBaseQuestionWidth = 0;
+  private currentRegionId: number | null = null;
+
+  constructor(private readonly ngZone: NgZone, private readonly cdr: ChangeDetectorRef) {
+    super();
+
+    effect(() => {
+      const regionId = this._questionRegion()?.id ?? null;
+      if (this.currentRegionId === regionId) {
+        return;
+      }
+
+      this.currentRegionId = regionId;
+      this.userScale = 1;
+      this.layoutScale = 1;
+      this.lastBaseQuestionWidth = 0;
+      this.applyEffectiveScale();
+    });
+  }
   // Canvas v1 API'si ile uyum için boş bir yeniden çizim metodu bırakıyoruz.
   public drawImageSection(): void {
     // Görseller doğrudan <img> etiketleriyle render edildiği için manuel redraw gerekli değil.
+  }
+
+  public ngAfterViewInit(): void {
+    this.ngZone.runOutsideAngular(() => {
+      if (typeof ResizeObserver === 'undefined' || this.resizeObserver) {
+        return;
+      }
+
+      this.resizeObserver = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        const { width } = entry.contentRect;
+        if (!Number.isFinite(width) || width <= 0) return;
+
+        this.ngZone.run(() => this.updateLayoutScale(width));
+      });
+
+      if (this.questionImageEl) {
+        this.resizeObserver.observe(this.questionImageEl);
+      }
+    });
+  }
+
+  public ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = undefined;
   }
 
   public override getQuestionWrapperStyle(): Record<string, string> {
@@ -228,5 +307,76 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     }
 
     return Math.max(1, Math.min(answerCount, columns));
+  }
+
+  public override rescaleQuestion(factor: number): void {
+    const nextUserScale = this.clampScale(this.userScale * factor);
+    if (Math.abs(nextUserScale - this.userScale) < 0.001) {
+      return;
+    }
+
+    this.userScale = nextUserScale;
+    this.applyEffectiveScale();
+  }
+
+  public override retsetImageScale(): void {
+    this.userScale = 1;
+    this.applyEffectiveScale();
+  }
+
+  private updateLayoutScale(displayWidth: number): void {
+    const widths = super.getCanvasWidths();
+    const baseQuestionWidth = this.safeBaseSize(widths.questionWidth);
+    if (baseQuestionWidth <= 0) {
+      return;
+    }
+
+    const nextLayoutScale = this.clampScale(displayWidth / baseQuestionWidth);
+    if (Math.abs(nextLayoutScale - this.layoutScale) < 0.001) {
+      return;
+    }
+
+    this.layoutScale = nextLayoutScale;
+    this.applyEffectiveScale();
+  }
+
+  private applyEffectiveScale(): void {
+    const effectiveScale = this.clampScale(this.layoutScale * this.userScale);
+    if (Math.abs(effectiveScale - this.contentScale) < 0.001) {
+      return;
+    }
+
+    this.contentScale = effectiveScale;
+    this.cdr.markForCheck();
+  }
+
+  private clampScale(value: number): number {
+    const MIN_SCALE = 0.2;
+    const MAX_SCALE = 3;
+    if (!Number.isFinite(value) || value <= 0) {
+      return MIN_SCALE;
+    }
+
+    return Math.min(Math.max(value, MIN_SCALE), MAX_SCALE);
+  }
+
+  private safeBaseSize(currentSize: number): number {
+    if (!Number.isFinite(currentSize) || currentSize <= 0) {
+      const regionWidth = this._questionRegion()?.width ?? 0;
+      if (Number.isFinite(regionWidth) && regionWidth > 0) {
+        this.lastBaseQuestionWidth = regionWidth;
+        return regionWidth;
+      }
+
+      return this.lastBaseQuestionWidth;
+    }
+
+    const base = currentSize / (this.contentScale || 1);
+    if (Number.isFinite(base) && base > 0) {
+      this.lastBaseQuestionWidth = base;
+      return base;
+    }
+
+    return this.lastBaseQuestionWidth;
   }
 }

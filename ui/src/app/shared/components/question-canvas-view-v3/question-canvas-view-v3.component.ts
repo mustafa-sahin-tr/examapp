@@ -112,6 +112,37 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     return styles;
   }
 
+  public override getPassageWrapperStyle(): Record<string, string> {
+    const widths = this.getCanvasWidths();
+    const passageWidth = widths.passageWidth || widths.questionWidth || 0;
+
+    const widthValue = passageWidth > 0 ? this.formatSize(passageWidth) : '100%';
+
+    return {
+      width: widthValue,
+      maxWidth: '100%',
+    };
+  }
+
+  public override getPassageImageStyle(): Record<string, string> {
+    const widths = this.getCanvasWidths();
+    const heights = this.getCanvasHeights();
+
+    const passageWidth = widths.passageWidth || widths.questionWidth || 0;
+    const passageHeight = heights.passageHeight || 0;
+
+    const maxWidthValue = passageWidth > 0 ? this.formatSize(passageWidth) : '100%';
+    const maxHeightValue = passageHeight > 0 ? this.formatSize(passageHeight) : 'auto';
+
+    return {
+      width: '100%',
+      height: 'auto',
+      objectFit: 'contain',
+      maxWidth: maxWidthValue,
+      maxHeight: maxHeightValue,
+    };
+  }
+
   public getAnswerGridColumn(answer: AnswerChoice): string | undefined {
     const columns = this.resolveAnswerColumnCount();
     if (columns <= 1) return undefined;

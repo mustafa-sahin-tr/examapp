@@ -181,6 +181,7 @@
 
 .question-grid[data-layout='1'] .question-card {
   max-width: min(100%, clamp(680px, 78vw, 1180px));
+  min-height: clamp(640px, 72vh, 900px);
   margin: 0 auto;
 }
 
@@ -234,6 +235,7 @@
   flex-direction: column;
   gap: 18px;
   min-height: 0;
+  flex: 1 1 auto;
 }
 
 .question-card__body--canvas {
@@ -289,7 +291,7 @@
 }
 
 .question-card__dock {
-  margin-top: 12px;
+  margin-top: auto;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -524,6 +526,10 @@
   .question-grid[data-layout='2'],
   .question-grid[data-layout='4'] {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .question-grid[data-layout='1'] .question-card {
+    min-height: auto;
   }
 
   .main-stage__footer {

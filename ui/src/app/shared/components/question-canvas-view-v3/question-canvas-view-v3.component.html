@@ -8,19 +8,19 @@
   [style.--canvas-passage-width.px]="canvasWidths.passageWidth || 0"
 >
   @if (isImageLoaded()) {
+  @if (hasPassageImage()) {
+  <div class="canvas-v3__passage-header" [ngStyle]="getPassageWrapperStyle()">
+    <img
+      class="canvas-v3__passage-image"
+      [src]="passageImageSource()"
+      [ngStyle]="getPassageImageStyle()"
+      alt="Pasaj görseli"
+    />
+  </div>
+  }
+
   <div class="canvas-v3__surface">
     <div class="canvas-v3__visual">
-      @if (hasPassageImage()) {
-      <div class="canvas-v3__passage" [ngStyle]="getPassageWrapperStyle()">
-        <img
-          class="canvas-v3__passage-image"
-          [src]="passageImageSource()"
-          [ngStyle]="getPassageImageStyle()"
-          alt="Pasaj görseli"
-        />
-      </div>
-      }
-
       <div class="canvas-v3__question" [ngStyle]="getQuestionWrapperStyle()">
         <img
           class="canvas-v3__question-image"

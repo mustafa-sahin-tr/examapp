@@ -20,35 +20,87 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   }
 
   public override getQuestionWrapperStyle(): Record<string, string> {
-    const base = super.getQuestionWrapperStyle();
-    return {
-      ...base,
-      maxWidth: 'min(var(--canvas-question-width, 960px), 100%)',
-    };
-  }
+    const widths = this.getCanvasWidths();
+    const heights = this.getCanvasHeights();
+    const region = this._questionRegion();
+    const questionWidth = widths.questionWidth || region?.width || 0;
+    const questionHeight = heights.questionHeight || region?.height || 0;
 
-  public override getQuestionImageStyle(): Record<string, string> {
-    const base = super.getQuestionImageStyle();
     return {
-      ...base,
-      maxHeight: 'clamp(360px, 72vh, var(--canvas-question-height, 820px))',
-    };
-  }
-
-  public override getAnswerWrapperStyle(_answer?: AnswerChoice): Record<string, string> {
-    const base = super.getAnswerWrapperStyle(_answer);
-    return {
-      ...base,
-      maxWidth: 'min(var(--canvas-question-width, 780px), 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: this.formatSize(questionWidth),
+      height: this.formatSize(questionHeight),
+      maxWidth: '100%',
+      overflow: 'hidden',
       margin: '0 auto',
     };
   }
 
-  public override getAnswerImageStyle(_answer?: AnswerChoice): Record<string, string> {
-    const base = super.getAnswerImageStyle(_answer);
+  public override getQuestionImageStyle(): Record<string, string> {
+    const widths = this.getCanvasWidths();
+    const heights = this.getCanvasHeights();
+    const region = this._questionRegion();
+    const questionWidth = widths.questionWidth || region?.width || 0;
+    const questionHeight = heights.questionHeight || region?.height || 0;
+
+    return {
+      width: this.formatSize(questionWidth),
+      height: this.formatSize(questionHeight),
+      objectFit: 'contain',
+      maxWidth: '100%',
+      maxHeight: '100%',
+    };
+  }
+
+  public override getAnswerWrapperStyle(_answer?: AnswerChoice): Record<string, string> {
+    if (!_answer) {
+      return {
+        width: '100%',
+      };
+    }
+
+    const width = (_answer.width || 0) * this.contentScale;
+    const height = (_answer.height || 0) * this.contentScale;
+
+    const base = super.getAnswerWrapperStyle(_answer);
     return {
       ...base,
-      maxHeight: 'clamp(120px, 42vh, var(--canvas-question-height, 780px))',
+      width: this.formatSize(width),
+      maxWidth: '100%',
+      height: this.formatSize(height),
+      margin: '0 auto',
+      overflow: 'hidden',
     };
+  }
+
+  public override getAnswerImageStyle(_answer?: AnswerChoice): Record<string, string> {
+    if (!_answer) {
+      return {
+        width: '100%',
+        height: 'auto',
+      };
+    }
+
+    const width = (_answer.width || 0) * this.contentScale;
+    const height = (_answer.height || 0) * this.contentScale;
+
+    return {
+      width: this.formatSize(width),
+      height: this.formatSize(height),
+      maxWidth: '100%',
+      maxHeight: '100%',
+      objectFit: 'contain',
+    };
+  }
+
+  private formatSize(value: number): string {
+    const safe = Number.isFinite(value) && value > 0 ? value : 0;
+    if (!safe) {
+      return 'auto';
+    }
+
+    return `${Math.max(Math.round(safe), 1)}px`;
   }
 }

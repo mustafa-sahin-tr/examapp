@@ -71,6 +71,7 @@
   box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
   max-height: clamp(320px, 70vh, var(--canvas-question-height, 820px));
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
 }
 
@@ -87,6 +88,8 @@
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   max-width: min(var(--canvas-question-width, 780px), 100%);
   min-height: 64px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .answer-wrapper:hover {
@@ -131,6 +134,7 @@
 .answer-image {
   display: block;
   width: 100%;
+  max-width: 100%;
   height: auto;
   max-height: clamp(120px, 42vh, var(--canvas-question-height, 780px));
   object-fit: contain;

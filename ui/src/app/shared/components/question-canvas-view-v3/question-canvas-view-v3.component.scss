@@ -73,13 +73,14 @@
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
+  align-items: flex-start;
 }
 
 .answer-wrapper {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   padding: 12px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.92);
@@ -138,6 +139,7 @@
   height: auto;
   max-height: clamp(120px, 42vh, var(--canvas-question-height, 780px));
   object-fit: contain;
+  margin: 0;
 }
 
 .canvas-v3__loading {

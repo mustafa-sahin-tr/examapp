@@ -70,7 +70,8 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       width: this.formatSize(width),
       maxWidth: '100%',
       height: this.formatSize(height),
-      margin: '0 auto',
+      margin: '0',
+      alignSelf: 'flex-start',
       overflow: 'hidden',
     };
   }

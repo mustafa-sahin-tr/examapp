@@ -49,7 +49,6 @@ import { QuestionCanvasViewComponentv2 } from '../../shared/components/question-
     MatCardModule,
     PassageCardComponent,
     SpinWheelComponent,
-    QuestionCanvasViewComponent,
     MatIconModule,
     CountdownComponent,
     QuestionCanvasViewComponentv2,
@@ -114,6 +113,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public showToast = signal(false);
   public toastMessage = signal('');
   public toastType = signal<'success' | 'warning' | 'error' | 'info'>('info');
+  public questionDockPosition = signal<'bottom' | 'side'>('bottom');
   public questionStartTimes = signal<Map<number, number>>(new Map());
   public questionDurations = signal<Map<number, number>>(new Map());
 
@@ -1311,6 +1311,12 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     this.highContrast.set(!this.highContrast());
     document.body.classList.toggle('high-contrast', this.highContrast());
     this.showToastMessage(this.highContrast() ? 'Yüksek kontrast açıldı' : 'Normal renk modu', 'info');
+  }
+
+  toggleQuestionDockPosition() {
+    const next = this.questionDockPosition() === 'bottom' ? 'side' : 'bottom';
+    this.questionDockPosition.set(next);
+    this.showToastMessage(next === 'side' ? 'Araçlar sağ tarafa taşındı' : 'Araçlar alta taşındı', 'info');
   }
 
   showHelp() {

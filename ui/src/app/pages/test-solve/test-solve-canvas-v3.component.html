@@ -52,66 +52,67 @@
 
   <div class="solve-v3__body" #testContent>
     <section class="main-stage" [class.main-stage--focus]="focusMode()" #questionPanel>
-      <div class="question-grid" [attr.data-layout]="questionsPerView()">
-        @for (questionData of currentQuestions(); track questionData.index) {
-        <article class="question-card" [class.question-card--active]="questionData.index === currentIndex()">
-          <header class="question-card__header">
-            <div class="question-card__meta">
-              <span class="chip chip--index">Soru {{ questionData.index + 1 }}</span>
-              @if (isQuestionBookmarked(questionData.index)) {
-              <span class="chip chip--bookmark">
-                <mat-icon>bookmark</mat-icon>
-                İşaretli
-              </span>
-              }
-            </div>
-            <div class="question-card__actions">
-              <button
-                mat-icon-button
-                matTooltip="Soruyu işaretle"
-                [class.is-active]="isQuestionBookmarked(questionData.index)"
-                (click)="focusOnQuestion(questionData.index); toggleBookmark()"
-              >
-                <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                matTooltip="Soruyu bildir"
-                (click)="focusOnQuestion(questionData.index); reportQuestion()"
-              >
-                <mat-icon>flag</mat-icon>
-              </button>
-              @if (questionData.question.question.isCanvasQuestion && questionsPerView() === 1) {
-              <button mat-icon-button matTooltip="Büyüt (+5%)" (click)="enlargeImage()">
-                <mat-icon>zoom_in</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Orijinale dön" (click)="retsetImageScale()">
-                <mat-icon>refresh</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Küçült (-5%)" (click)="shrinkImage()">
-                <mat-icon>zoom_out</mat-icon>
-              </button>
-              }
-            </div>
-          </header>
+      <div class="question-stage" [class.question-stage--multi]="questionsPerView() > 1">
+        <div class="question-grid" [attr.data-layout]="questionsPerView()">
+          @for (questionData of currentQuestions(); track questionData.index) {
+          <article class="question-card" [class.question-card--active]="questionData.index === currentIndex()">
+            <header class="question-card__header">
+              <div class="question-card__meta">
+                <span class="chip chip--index">Soru {{ questionData.index + 1 }}</span>
+                @if (isQuestionBookmarked(questionData.index)) {
+                <span class="chip chip--bookmark">
+                  <mat-icon>bookmark</mat-icon>
+                  İşaretli
+                </span>
+                }
+              </div>
+              <div class="question-card__actions">
+                <button
+                  mat-icon-button
+                  matTooltip="Soruyu işaretle"
+                  [class.is-active]="isQuestionBookmarked(questionData.index)"
+                  (click)="focusOnQuestion(questionData.index); toggleBookmark()"
+                >
+                  <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  matTooltip="Soruyu bildir"
+                  (click)="focusOnQuestion(questionData.index); reportQuestion()"
+                >
+                  <mat-icon>flag</mat-icon>
+                </button>
+                @if (questionData.question.question.isCanvasQuestion && questionsPerView() === 1) {
+                <button mat-icon-button matTooltip="Büyüt (+5%)" (click)="enlargeImage()">
+                  <mat-icon>zoom_in</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Orijinale dön" (click)="retsetImageScale()">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Küçült (-5%)" (click)="shrinkImage()">
+                  <mat-icon>zoom_out</mat-icon>
+                </button>
+                }
+              </div>
+            </header>
 
-          <div
-            class="question-card__body"
-            [class.question-card__body--canvas]="questionData.question.question.isCanvasQuestion"
-          >
-            @if (questionData.question.question.isCanvasQuestion) {
-            <div class="canvas-zone" #canvasContainer>
-              <app-question-canvas-view-v3
-                #canvasView
-                class="canvas-stage"
-                [questionRegion]="questionData.region"
-                [selectedChoice]="selectedChoices().get(questionData.region.id)"
-                (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
-                (answerOpened)="openAnswer($event)"
-                [correctAnswerVisible]="correctAnswerVisible"
-              ></app-question-canvas-view-v3>
-            </div>
-            <!-- <div class="canvas-controls">
+            <div
+              class="question-card__body"
+              [class.question-card__body--canvas]="questionData.question.question.isCanvasQuestion"
+            >
+              @if (questionData.question.question.isCanvasQuestion) {
+              <div class="canvas-zone" #canvasContainer>
+                <app-question-canvas-view-v3
+                  #canvasView
+                  class="canvas-stage"
+                  [questionRegion]="questionData.region"
+                  [selectedChoice]="selectedChoices().get(questionData.region.id)"
+                  (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
+                  (answerOpened)="openAnswer($event)"
+                  [correctAnswerVisible]="correctAnswerVisible"
+                ></app-question-canvas-view-v3>
+              </div>
+              <!-- <div class="canvas-controls">
               <div class="canvas-zoom">
                 <button mat-icon-button matTooltip="Orijinale dön" (click)="retsetImageScale()">
                   <mat-icon>refresh</mat-icon>
@@ -124,35 +125,116 @@
                 </button>
               </div>
             </div> -->
-            } @else {
-            <div class="text-question">
-              <div class="text-question__content">
-                <app-question-lite-view
-                  [question]="questionData.question.question"
-                  [selectedAnswerId]="questionData.question.selectedAnswerId"
-                  [isPracticeTest]="testInstance.isPracticeTest"
-                  (answerSelected)="selectAnswerForQuestion($event, questionData.index)"
-                  (answerOpened)="openAnswer($event)"
-                  [correctAnswerVisible]="correctAnswerVisible"
-                ></app-question-lite-view>
-              </div>
-              @if (testInstance.isPracticeTest) {
-              <div class="text-question__controls">
-                <button mat-stroked-button (click)="showHint()" [disabled]="!hasHint()">
-                  <mat-icon>lightbulb</mat-icon>
-                  İpucu Göster
-                </button>
+              } @else {
+              <div class="text-question">
+                <div class="text-question__content">
+                  <app-question-lite-view
+                    [question]="questionData.question.question"
+                    [selectedAnswerId]="questionData.question.selectedAnswerId"
+                    [isPracticeTest]="testInstance.isPracticeTest"
+                    (answerSelected)="selectAnswerForQuestion($event, questionData.index)"
+                    (answerOpened)="openAnswer($event)"
+                    [correctAnswerVisible]="correctAnswerVisible"
+                  ></app-question-lite-view>
+                </div>
+                @if (testInstance.isPracticeTest) {
+                <div class="text-question__controls">
+                  <button mat-stroked-button (click)="showHint()" [disabled]="!hasHint()">
+                    <mat-icon>lightbulb</mat-icon>
+                    İpucu Göster
+                  </button>
+                </div>
+                }
               </div>
               }
             </div>
-            }
-          </div>
-        </article>
-        }
+          </article>
+          }
+        </div>
+
+        @if (questionsPerView() === 1 && questionDockPosition() === 'side') { @let activeQuestion =
+        currentQuestions().length ? currentQuestions()[0] : null; @if (activeQuestion) {
+        <div class="question-card__dock question-card__dock--side">
+          <button
+            mat-icon-button
+            matTooltip="Önceki soru"
+            aria-label="Önceki soru"
+            (click)="prevQuestion()"
+            [disabled]="!canGoPrev()"
+          >
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Sonraki soru"
+            aria-label="Sonraki soru"
+            (click)="nextQuestion()"
+            [disabled]="!canGoNext()"
+          >
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Otomatik geçiş {{ autoNextQuestion() ? 'kapat' : 'aç' }}"
+            [attr.aria-label]="autoNextQuestion() ? 'Otomatik geçiş kapat' : 'Otomatik geçiş aç'"
+            (click)="toggleAutoNextQuestion()"
+            [class.is-active]="autoNextQuestion()"
+          >
+            <mat-icon>{{ autoNextQuestion() ? 'pause_circle_outline' : 'play_circle' }}</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Odak modu {{ focusMode() ? 'kapat' : 'aç' }}"
+            [attr.aria-label]="focusMode() ? 'Odak modunu kapat' : 'Odak modunu aç'"
+            (click)="toggleFocusMode()"
+            [class.is-active]="focusMode()"
+          >
+            <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Kontrast modu"
+            aria-label="Kontrast modu"
+            (click)="toggleHighContrast()"
+            [class.is-active]="highContrast()"
+          >
+            <mat-icon>contrast</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Araçları alta taşı"
+            aria-label="Araçları alta taşı"
+            (click)="toggleQuestionDockPosition()"
+          >
+            <mat-icon>view_stream</mat-icon>
+          </button>
+          @if (activeQuestion.question.question.isCanvasQuestion) {
+          <button
+            mat-icon-button
+            matTooltip="Cevabı temizle"
+            aria-label="Cevabı temizle"
+            (click)="focusOnQuestion(activeQuestion.index); clearCanvasAnswer()"
+            [disabled]="!activeQuestion.question.selectedAnswerId"
+          >
+            <mat-icon>check_box_outline_blank</mat-icon>
+          </button>
+          } @else {
+          <button
+            mat-icon-button
+            matTooltip="Cevabı temizle"
+            aria-label="Cevabı temizle"
+            (click)="focusOnQuestion(activeQuestion.index); clearAnswer()"
+            [disabled]="!activeQuestion.question.selectedAnswerId"
+          >
+            <mat-icon>backspace</mat-icon>
+          </button>
+          }
+        </div>
+        } }
       </div>
 
-      @if (questionsPerView() === 1) { @let activeQuestion = currentQuestions().length ? currentQuestions()[0] : null;
-      @if (activeQuestion) {
+      @if (questionsPerView() === 1 && questionDockPosition() === 'bottom') { @let activeQuestion =
+      currentQuestions().length ? currentQuestions()[0] : null; @if (activeQuestion) {
       <div class="question-card__dock">
         <button
           mat-mini-fab
@@ -184,6 +266,11 @@
           <button mat-stroked-button class="dock-toggle" (click)="toggleHighContrast()">
             <mat-icon>contrast</mat-icon>
             Kontrast
+          </button>
+
+          <button mat-stroked-button class="dock-toggle" (click)="toggleQuestionDockPosition()">
+            <mat-icon>view_sidebar</mat-icon>
+            Araçları sağa al
           </button>
 
           @if (activeQuestion.question.question.isCanvasQuestion) {

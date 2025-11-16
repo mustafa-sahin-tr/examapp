@@ -17,6 +17,24 @@
   align-items: flex-start;
 }
 
+/*
+returns strings such as canvas-layout--passage-stack--cols-2. That exact class isn’t defined verbatim; instead, the SCSS targets patterns using attribute selectors:
+
+So when the component adds canvas-layout--passage-stack--cols-2, the root element has the substring --stack, making those rules apply. We can keep the verbose name for debugging, but only the --stack/--inline fragments matter. Let me know if you’d prefer we simplify the class naming.
+*/
+
+.canvas-v3[class*='--stack'] .canvas-v3__surface {
+  grid-template-columns: 1fr;
+}
+
+.canvas-v3[class*='--stack'] .canvas-v3__answers {
+  max-height: none;
+}
+
+.canvas-v3[class*='--inline'] .canvas-v3__surface {
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
+}
+
 @media (max-width: 1280px) {
   .canvas-v3__surface {
     grid-template-columns: 1fr;

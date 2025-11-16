@@ -81,6 +81,11 @@ public class QuestionService : IQuestionService
             })
             .FirstOrDefaultAsync();
 
+        if (question != null)
+        {
+            question.LayoutPlan = BuildUiLayoutPlanPayload(question);
+        }
+
         return question;
     }
 
@@ -166,6 +171,11 @@ public class QuestionService : IQuestionService
             })
             .ToListAsync();
 
+        foreach (var question in questionList)
+        {
+            question.LayoutPlan = BuildUiLayoutPlanPayload(question);
+        }
+
         return questionList;
     }
 
@@ -198,7 +208,8 @@ public class QuestionService : IQuestionService
                 // question.SubjectId = questionDto.SubjectId;
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
-                if (!string.IsNullOrWhiteSpace(questionDto.LayoutPlan))
+                if (!string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
+                    questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase))
                 {
                     question.LayoutPlan = questionDto.LayoutPlan;
                 }
@@ -304,7 +315,10 @@ public class QuestionService : IQuestionService
                     // SubjectId = questionDto.SubjectId,
                     // TopicId = questionDto.TopicId,
                     AnswerColCount = questionDto.AnswerColCount,
-                    LayoutPlan = questionDto.LayoutPlan
+                    LayoutPlan = !string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
+                                 questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase)
+                        ? questionDto.LayoutPlan
+                        : null
                 };
 
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -1049,5 +1063,24 @@ public class QuestionService : IQuestionService
         public double RelativeY { get; }
         public int EffectiveWidth { get; set; }
         public int EffectiveHeight { get; set; }
+    }
+
+    private static string BuildUiLayoutPlanPayload(QuestionDto question)
+    {
+        if (question == null)
+        {
+            return string.Empty;
+        }
+
+        var fallbackColumns = question.AnswerColCount > 0
+            ? question.AnswerColCount
+            : Math.Max(1, Math.Min(question.Answers?.Count ?? 0, 4));
+
+        var uiPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
+            question.LayoutPlan,
+            fallbackColumns,
+            question.Passage != null);
+
+        return uiPlan;
     }
 }

@@ -23,6 +23,13 @@ internal static class QuestionLayoutAnalyzer
         WriteIndented = false
     };
 
+    private static readonly JsonSerializerOptions UiSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        WriteIndented = false
+    };
+
     public static QuestionLayoutPlan Analyze(QuestionLayoutInput input)
     {
         if (input == null)
@@ -70,6 +77,37 @@ internal static class QuestionLayoutAnalyzer
         }
 
         return JsonSerializer.Serialize(plan, SerializerOptions);
+    }
+
+    public static string BuildUiPlanPayload(string? storedPlanJson, int fallbackColumns, bool hasPassage)
+    {
+        var uiPlan = CreateUiPlan(storedPlanJson, fallbackColumns, hasPassage);
+        return SerializeUiPlan(uiPlan);
+    }
+
+    public static QuestionLayoutUiPlan CreateUiPlan(string? storedPlanJson, int fallbackColumns, bool hasPassage)
+    {
+        var sanitizedColumns = Math.Max(1, fallbackColumns);
+        if (!string.IsNullOrWhiteSpace(storedPlanJson) && storedPlanJson.Contains("breakpoints", StringComparison.OrdinalIgnoreCase))
+        {
+            var plan = DeserializePlan(storedPlanJson);
+            if (plan != null)
+            {
+                return ProjectUiPlan(plan);
+            }
+        }
+
+        return BuildFallbackUiPlan(sanitizedColumns, hasPassage);
+    }
+
+    public static string SerializeUiPlan(QuestionLayoutUiPlan plan)
+    {
+        if (plan == null)
+        {
+            return string.Empty;
+        }
+
+        return JsonSerializer.Serialize(plan, UiSerializerOptions);
     }
 
     public static QuestionLayoutPlan? DeserializePlan(string? json)
@@ -120,6 +158,32 @@ internal static class QuestionLayoutAnalyzer
             AnswerRows = summary.AnswerRows,
             AnswerMaxWidth = answers.Count > 0 ? Round(answers.Max(a => a.Width) * scale) : 0,
             AnswerMaxHeight = answers.Count > 0 ? Round(answers.Max(a => a.Height) * scale) : 0
+        };
+    }
+
+    private static QuestionLayoutUiPlan ProjectUiPlan(QuestionLayoutPlan plan)
+    {
+        if (plan == null)
+        {
+            throw new ArgumentNullException(nameof(plan));
+        }
+
+        var columns = Math.Max(1, plan.RecommendedAnswerColumns);
+        var hasPassage = plan.Passage.HasValue;
+        var desktopVariant = plan.Breakpoints?.Desktop ?? new QuestionLayoutVariant
+        {
+            TargetWidth = DesktopTarget.Width,
+            TargetHeight = DesktopTarget.Height
+        };
+
+        var inlineAnswers = ShouldInlineAnswers(desktopVariant, plan.Passage, columns);
+        var layoutClass = BuildLayoutClass(hasPassage, inlineAnswers, columns);
+
+        return new QuestionLayoutUiPlan
+        {
+            LayoutClass = layoutClass,
+            AnswerColumns = columns,
+            HasPassage = hasPassage
         };
     }
 
@@ -284,7 +348,78 @@ internal static class QuestionLayoutAnalyzer
         return Math.Round(value, 2, MidpointRounding.AwayFromZero);
     }
 
+    private static bool ShouldInlineAnswers(QuestionLayoutVariant variant, PassageLayoutSize? passage, int columns)
+    {
+        if (variant == null)
+        {
+            return false;
+        }
+
+        var availableWidth = variant.TargetWidth > 0 ? variant.TargetWidth : DesktopTarget.Width;
+        if (availableWidth <= 0)
+        {
+            return false;
+        }
+
+        if (variant.EffectiveAnswersWidth <= 0 || variant.EffectiveQuestionWidth <= 0)
+        {
+            return false;
+        }
+
+        var combinedWidth = variant.EffectiveQuestionWidth + AnswerGap + variant.EffectiveAnswersWidth;
+        var inlineCandidate = combinedWidth <= availableWidth && variant.Scale >= 0.8;
+
+        if (!inlineCandidate)
+        {
+            return false;
+        }
+
+        if (passage.HasValue && variant.EffectivePassageWidth.HasValue && variant.EffectivePassageWidth.Value > 0)
+        {
+            // Passage çok genişse yan yana yerine üst üste yerleşmek daha güvenli
+            var passageShare = variant.EffectivePassageWidth.Value / availableWidth;
+            if (passageShare >= 0.55)
+            {
+                return false;
+            }
+        }
+
+        // Çok fazla sütun varsa, sıkışmayı önlemek için üst üste yerleşime zorla
+        if (columns >= 3 && variant.EffectiveAnswersWidth < variant.EffectiveQuestionWidth * 0.66)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string BuildLayoutClass(bool hasPassage, bool inlineAnswers, int columns)
+    {
+        var passageSegment = hasPassage ? "passage" : "solo";
+        var flowSegment = inlineAnswers ? "inline" : "stack";
+        var sanitizedColumns = Math.Max(1, Math.Min(columns, 4));
+        return $"canvas-layout--{passageSegment}-{flowSegment}--cols-{sanitizedColumns}";
+    }
+
+    private static QuestionLayoutUiPlan BuildFallbackUiPlan(int columns, bool hasPassage)
+    {
+        var sanitizedColumns = Math.Max(1, Math.Min(columns, 4));
+        return new QuestionLayoutUiPlan
+        {
+            LayoutClass = BuildLayoutClass(hasPassage, false, sanitizedColumns),
+            AnswerColumns = sanitizedColumns,
+            HasPassage = hasPassage
+        };
+    }
+
     private readonly record struct LayoutTarget(string Key, double Width, double Height);
+}
+
+internal sealed class QuestionLayoutUiPlan
+{
+    public string LayoutClass { get; set; } = string.Empty;
+    public int AnswerColumns { get; set; }
+    public bool HasPassage { get; set; }
 }
 
 internal sealed class QuestionLayoutPlan

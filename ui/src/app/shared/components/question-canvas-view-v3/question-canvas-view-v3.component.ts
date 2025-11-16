@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SafeHtmlPipe } from '../../../services/safehtml';
-import { AnswerChoice } from '../../../models/draws';
+import { AnswerChoice, CanvasLayoutPlan } from '../../../models/draws';
 import { QuestionCanvasViewComponentv2 } from '../question-canvas-view-v2/question-canvas-view-v2.component';
 
 @Component({
@@ -250,6 +250,17 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     return `repeat(${columns}, minmax(0, 1fr))`;
   }
 
+  public getCanvasLayoutClass(): string {
+    const plan = this.getLayoutPlanHint();
+    if (plan?.layoutClass) {
+      console.log('Using layout plan class:', plan.layoutClass);
+      return plan.layoutClass;
+    }
+
+    console.log('Using fallback layout class:', this.buildFallbackLayoutClass());
+    return this.buildFallbackLayoutClass();
+  }
+
   private formatSize(value: number): string {
     const safe = Number.isFinite(value) && value > 0 ? value : 0;
     if (!safe) {
@@ -275,6 +286,15 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   }
 
   private resolveAnswerColumnCount(): number {
+    const planColumns = this.getLayoutPlanHint()?.answerColumns;
+    if (planColumns && Number.isFinite(planColumns) && planColumns > 0) {
+      return Math.max(1, Math.round(planColumns));
+    }
+
+    return this.computeAutoAnswerColumns();
+  }
+
+  private computeAutoAnswerColumns(): number {
     const region = this._questionRegion();
     const answers = region?.answers || [];
     const answerCount = answers.length;
@@ -378,5 +398,23 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     }
 
     return this.lastBaseQuestionWidth;
+  }
+
+  private getLayoutPlanHint(): CanvasLayoutPlan | undefined {
+    const region = this._questionRegion();
+    return region?.layoutPlan;
+  }
+
+  private buildFallbackLayoutClass(): string {
+    const region = this._questionRegion();
+    const columns = this.computeAutoAnswerColumns();
+    return this.composeLayoutClass(!!region?.passage, false, columns);
+  }
+
+  private composeLayoutClass(hasPassage: boolean, inlineAnswers: boolean, columns: number): string {
+    const prefix = hasPassage ? 'canvas-layout--passage' : 'canvas-layout--solo';
+    const flow = inlineAnswers ? 'inline' : 'stack';
+    const sanitizedColumns = Math.max(1, Math.min(columns, 4));
+    return `${prefix}-${flow}--cols-${sanitizedColumns}`;
   }
 }

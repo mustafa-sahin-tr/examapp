@@ -36,6 +36,13 @@ export interface QuestionRegion {
   exampleAnswer: string | null | undefined;
   isExample: boolean;
   order?: number;
+  layoutPlan?: CanvasLayoutPlan;
+}
+
+export interface CanvasLayoutPlan {
+  layoutClass: string;
+  answerColumns: number;
+  hasPassage?: boolean;
 }
 
 export type RegionOrAnswerHit =

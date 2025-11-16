@@ -14,7 +14,7 @@ import {
   WorksheetAssignmentRequest,
 } from '../models/assignment';
 import { StudentAnswer } from '../models/student-answer';
-import { AnswerChoice, QuestionRegion } from '../models/draws';
+import { AnswerChoice, CanvasLayoutPlan, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
 import { StudentStatisticsResponse } from '../models/statistics';
 import { Question } from '../models/question';
@@ -147,6 +147,7 @@ export class TestService {
           imageId: question.imageUrl,
           imageUrl: question.imageUrl,
           exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+          layoutPlan: this.parseLayoutPlan(question.layoutPlan),
           answers: question.answers.map((answer) => ({
             id: answer.id,
             label: answer.text,
@@ -199,6 +200,7 @@ export class TestService {
           imageId: question.imageUrl,
           imageUrl: question.imageUrl,
           exampleAnswer: question.isExample ? question.practiceCorrectAnswer : null,
+          layoutPlan: this.parseLayoutPlan(question.layoutPlan),
           answers: question.answers.map((answer) => ({
             id: answer.id,
             label: answer.text,
@@ -225,5 +227,27 @@ export class TestService {
       });
 
     return regions;
+  }
+
+  private parseLayoutPlan(layoutPlan?: string | null): CanvasLayoutPlan | undefined {
+    if (!layoutPlan || typeof layoutPlan !== 'string') {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(layoutPlan) as Partial<CanvasLayoutPlan>;
+      if (!parsed || typeof parsed.layoutClass !== 'string') {
+        return undefined;
+      }
+
+      const answerColumns = Math.max(1, Number(parsed.answerColumns) || 0);
+      return {
+        layoutClass: parsed.layoutClass,
+        answerColumns,
+        hasPassage: typeof parsed.hasPassage === 'boolean' ? parsed.hasPassage : undefined,
+      };
+    } catch {
+      return undefined;
+    }
   }
 }

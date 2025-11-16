@@ -19,6 +19,7 @@ import { QuestionCanvasViewComponent } from '../../shared/components/question-ca
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { MatDialog } from '@angular/material/dialog';
+import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-canvas-view-v3/question-canvas-view-v3.component';
 
 interface WarningMarker {
   id: number;
@@ -41,6 +42,7 @@ interface WarningMarker {
     MatSlideToggleModule,
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
+    QuestionCanvasViewComponentv3,
   ],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss'],

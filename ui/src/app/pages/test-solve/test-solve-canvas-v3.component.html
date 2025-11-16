@@ -147,81 +147,80 @@
             </div>
             }
           </div>
-
-          @if (questionsPerView() === 1) {
-          <div class="question-card__dock">
-            <button
-              mat-mini-fab
-              color="primary"
-              class="dock-nav dock-nav--prev"
-              (click)="prevQuestion()"
-              [disabled]="!canGoPrev()"
-              matTooltip="Önceki"
-            >
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-
-            <div class="question-card__dock-controls">
-              <button
-                mat-stroked-button
-                class="dock-toggle"
-                (click)="toggleAutoNextQuestion()"
-                [class.is-active]="autoNextQuestion()"
-              >
-                <mat-icon>{{ autoNextQuestion() ? 'play_arrow' : 'pause' }}</mat-icon>
-                Otomatik geçiş {{ autoNextQuestion() ? 'açık' : 'kapalı' }}
-              </button>
-
-              <button mat-stroked-button class="dock-toggle" (click)="toggleFocusMode()">
-                <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-                Odak Modu
-              </button>
-
-              <button mat-stroked-button class="dock-toggle" (click)="toggleHighContrast()">
-                <mat-icon>contrast</mat-icon>
-                Kontrast
-              </button>
-
-              @if (questionData.question.question.isCanvasQuestion) {
-              <button
-                mat-stroked-button
-                class="dock-toggle"
-                (click)="focusOnQuestion(questionData.index); clearCanvasAnswer()"
-                [disabled]="!questionData.question.selectedAnswerId"
-              >
-                <mat-icon>check_box_outline_blank</mat-icon>
-                Cevabı Temizle
-              </button>
-              } @else {
-              <button
-                mat-stroked-button
-                class="dock-toggle"
-                (click)="focusOnQuestion(questionData.index); clearAnswer()"
-                [disabled]="!questionData.question.selectedAnswerId"
-              >
-                <mat-icon>backspace</mat-icon>
-                Cevabı Temizle
-              </button>
-              }
-            </div>
-
-            <button
-              mat-mini-fab
-              color="accent"
-              class="dock-nav dock-nav--next"
-              (click)="nextQuestion()"
-              [disabled]="!canGoNext()"
-              matTooltip="Sonraki"
-            >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>
-          }
         </article>
         }
       </div>
 
-      @if (questionsPerView() > 1) {
+      @if (questionsPerView() === 1) { @let activeQuestion = currentQuestions().length ? currentQuestions()[0] : null;
+      @if (activeQuestion) {
+      <div class="question-card__dock">
+        <button
+          mat-mini-fab
+          color="primary"
+          class="dock-nav dock-nav--prev"
+          (click)="prevQuestion()"
+          [disabled]="!canGoPrev()"
+          matTooltip="Önceki"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+
+        <div class="question-card__dock-controls">
+          <button
+            mat-stroked-button
+            class="dock-toggle"
+            (click)="toggleAutoNextQuestion()"
+            [class.is-active]="autoNextQuestion()"
+          >
+            <mat-icon>{{ autoNextQuestion() ? 'play_arrow' : 'pause' }}</mat-icon>
+            Otomatik geçiş {{ autoNextQuestion() ? 'açık' : 'kapalı' }}
+          </button>
+
+          <button mat-stroked-button class="dock-toggle" (click)="toggleFocusMode()">
+            <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+            Odak Modu
+          </button>
+
+          <button mat-stroked-button class="dock-toggle" (click)="toggleHighContrast()">
+            <mat-icon>contrast</mat-icon>
+            Kontrast
+          </button>
+
+          @if (activeQuestion.question.question.isCanvasQuestion) {
+          <button
+            mat-stroked-button
+            class="dock-toggle"
+            (click)="focusOnQuestion(activeQuestion.index); clearCanvasAnswer()"
+            [disabled]="!activeQuestion.question.selectedAnswerId"
+          >
+            <mat-icon>check_box_outline_blank</mat-icon>
+            Cevabı Temizle
+          </button>
+          } @else {
+          <button
+            mat-stroked-button
+            class="dock-toggle"
+            (click)="focusOnQuestion(activeQuestion.index); clearAnswer()"
+            [disabled]="!activeQuestion.question.selectedAnswerId"
+          >
+            <mat-icon>backspace</mat-icon>
+            Cevabı Temizle
+          </button>
+          }
+        </div>
+
+        <button
+          mat-mini-fab
+          color="accent"
+          class="dock-nav dock-nav--next"
+          (click)="nextQuestion()"
+          [disabled]="!canGoNext()"
+          matTooltip="Sonraki"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+      } } @if (questionsPerView() > 1) {
       <footer class="main-stage__footer">
         <button
           mat-fab
@@ -280,7 +279,7 @@
 
     @if (!focusMode()) {
     <aside class="insight-panel" #toolsPanel>
-      <section class="insight-panel__section">
+      <section class="insight-panel__section insight-panel__section--map">
         <div class="section-header">
           <mat-icon>map</mat-icon>
           <span>Soru Haritası</span>
@@ -332,21 +331,43 @@
           <span>Hızlı Araçlar</span>
         </div>
         <div class="tool-grid">
-          <button mat-stroked-button (click)="toggleBookmark()">
-            <mat-icon>bookmark_border</mat-icon>
-            Aktif soruyu işaretle
+          <button
+            mat-icon-button
+            type="button"
+            (click)="toggleBookmark()"
+            [matTooltip]="isQuestionBookmarked(currentIndex()) ? 'İşareti kaldır' : 'Aktif soruyu işaretle'"
+            [attr.aria-label]="isQuestionBookmarked(currentIndex()) ? 'İşareti kaldır' : 'Aktif soruyu işaretle'"
+            [class.is-active]="isQuestionBookmarked(currentIndex())"
+          >
+            <mat-icon>{{ isQuestionBookmarked(currentIndex()) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
           </button>
-          <button mat-stroked-button (click)="goToNextBookmarked()">
+          <button
+            mat-icon-button
+            type="button"
+            (click)="goToNextBookmarked()"
+            matTooltip="İşaretliye git"
+            aria-label="İşaretliye git"
+          >
             <mat-icon>turn_slight_right</mat-icon>
-            İşaretliye git
           </button>
-          <button mat-stroked-button (click)="goToNextUnanswered()">
+          <button
+            mat-icon-button
+            type="button"
+            (click)="goToNextUnanswered()"
+            matTooltip="Boş soruya git"
+            aria-label="Boş soruya git"
+          >
             <mat-icon>help_outline</mat-icon>
-            Boş soruya git
           </button>
-          <button mat-stroked-button (click)="toggleAutoNextQuestion()">
-            <mat-icon>autorenew</mat-icon>
-            Otomatik geçiş {{ autoNextQuestion() ? 'kapat' : 'aç' }}
+          <button
+            mat-icon-button
+            type="button"
+            (click)="toggleAutoNextQuestion()"
+            [matTooltip]="autoNextQuestion() ? 'Otomatik geçiş kapat' : 'Otomatik geçiş aç'"
+            [attr.aria-label]="autoNextQuestion() ? 'Otomatik geçiş kapat' : 'Otomatik geçiş aç'"
+            [class.is-active]="autoNextQuestion()"
+          >
+            <mat-icon>{{ autoNextQuestion() ? 'pause_circle' : 'play_circle' }}</mat-icon>
           </button>
         </div>
       </section>

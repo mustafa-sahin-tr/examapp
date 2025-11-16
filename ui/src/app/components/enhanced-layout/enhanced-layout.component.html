@@ -53,7 +53,7 @@
     <mat-sidenav-content class="main-content-wrapper" [class.sidebar-collapsed]="isSidenavCollapsed()">
       <!-- Enhanced Toolbar -->
 
-      <mat-toolbar color="primary" *ngIf="!isSidenavCollapsed()">
+      <mat-toolbar color="primary" *ngIf="!isFullScreen() && !isSidenavCollapsed()">
         <div class="section-nav">
           <button
             class="section-nav-btn"

@@ -8,7 +8,7 @@ namespace ExamApp.Api.Services.Layout;
 
 internal static class QuestionLayoutAnalyzer
 {
-    private const double MinScale = 1.0 / 1.6; // UI shrink limit ≈ 0.625x
+    private const double MinScale = 1.0 / 1.9; // UI shrink limit ≈ 0.625x
     private const double AnswerGap = 16;
     private const double SectionGap = 24;
 

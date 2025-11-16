@@ -53,6 +53,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Signals for state management
   private readonly sidenavService = inject(SidenavService);
   isSidenavCollapsed = computed(() => this.sidenavService.isSidenavCollapsed());
+  isFullScreen = computed(() => this.sidenavService.isFullScreen());
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);

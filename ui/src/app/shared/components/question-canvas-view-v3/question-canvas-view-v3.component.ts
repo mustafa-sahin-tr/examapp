@@ -48,7 +48,10 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   private layoutScale = 1;
   private userScale = 1;
   private lastBaseQuestionWidth = 0;
+  private lastBaseQuestionHeight = 0;
   private currentRegionId: number | null = null;
+  private readonly maxQuestionViewportHeight = 500;
+  private readonly maxPassageViewportHeight = 360;
 
   constructor(private readonly ngZone: NgZone, private readonly cdr: ChangeDetectorRef) {
     super();
@@ -103,7 +106,7 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const heights = this.getCanvasHeights();
     const region = this._questionRegion();
     const questionWidth = widths.questionWidth || region?.width || 0;
-    const questionHeight = heights.questionHeight || region?.height || 0;
+    const questionHeight = this.capQuestionHeight(heights.questionHeight || region?.height || 0);
 
     const maxWidth = questionWidth > 0 ? this.formatSize(questionWidth) : '100%';
     const maxHeight = questionHeight > 0 ? this.formatSize(questionHeight) : 'auto';
@@ -125,7 +128,7 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const heights = this.getCanvasHeights();
     const region = this._questionRegion();
     const questionWidth = widths.questionWidth || region?.width || 0;
-    const questionHeight = heights.questionHeight || region?.height || 0;
+    const questionHeight = this.capQuestionHeight(heights.questionHeight || region?.height || 0);
 
     const maxWidth = questionWidth > 0 ? this.formatSize(questionWidth) : '100%';
     const maxHeight = questionHeight > 0 ? this.formatSize(questionHeight) : 'auto';
@@ -214,7 +217,7 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const heights = this.getCanvasHeights();
 
     const passageWidth = widths.passageWidth || widths.questionWidth || 0;
-    const passageHeight = heights.passageHeight || 0;
+    const passageHeight = this.capPassageHeight(heights.passageHeight || 0);
 
     const maxWidthValue = passageWidth > 0 ? this.formatSize(passageWidth) : '100%';
     const maxHeightValue = passageHeight > 0 ? this.formatSize(passageHeight) : 'auto';
@@ -250,14 +253,26 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     return `repeat(${columns}, minmax(0, 1fr))`;
   }
 
+  public override getCanvasHeights(): { questionHeight: number; passageHeight: number; hasPassageImage: boolean } {
+    const baseHeights = super.getCanvasHeights();
+    const baseQuestionHeight = this.estimateBaseQuestionHeight(baseHeights.questionHeight);
+    if (baseQuestionHeight > 0) {
+      this.lastBaseQuestionHeight = baseQuestionHeight;
+    }
+
+    return {
+      ...baseHeights,
+      questionHeight: this.capQuestionHeight(baseHeights.questionHeight),
+      passageHeight: this.capPassageHeight(baseHeights.passageHeight),
+    };
+  }
+
   public getCanvasLayoutClass(): string {
     const plan = this.getLayoutPlanHint();
     if (plan?.layoutClass) {
-      console.log('Using layout plan class:', plan.layoutClass);
       return plan.layoutClass;
     }
 
-    console.log('Using fallback layout class:', this.buildFallbackLayoutClass());
     return this.buildFallbackLayoutClass();
   }
 
@@ -361,7 +376,9 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   }
 
   private applyEffectiveScale(): void {
-    const effectiveScale = this.clampScale(this.layoutScale * this.userScale);
+    let effectiveScale = this.clampScale(this.layoutScale * this.userScale);
+    effectiveScale = this.limitScaleByHeight(effectiveScale);
+
     if (Math.abs(effectiveScale - this.contentScale) < 0.001) {
       return;
     }
@@ -416,5 +433,72 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const flow = inlineAnswers ? 'inline' : 'stack';
     const sanitizedColumns = Math.max(1, Math.min(columns, 4));
     return `${prefix}-${flow}--cols-${sanitizedColumns}`;
+  }
+
+  private capQuestionHeight(value: number): number {
+    if (!Number.isFinite(value) || value <= 0) {
+      return value;
+    }
+
+    return Math.min(value, this.maxQuestionViewportHeight);
+  }
+
+  private capPassageHeight(value: number): number {
+    if (!Number.isFinite(value) || value <= 0) {
+      return value;
+    }
+
+    return Math.min(value, this.maxPassageViewportHeight);
+  }
+
+  private limitScaleByHeight(scale: number): number {
+    const baseHeight = this.getBaseQuestionHeight();
+    if (!Number.isFinite(baseHeight) || baseHeight <= 0) {
+      return scale;
+    }
+
+    const heightLimit = this.maxQuestionViewportHeight;
+    if (!Number.isFinite(heightLimit) || heightLimit <= 0) {
+      return scale;
+    }
+
+    const heightScale = heightLimit / baseHeight;
+    if (!Number.isFinite(heightScale) || heightScale <= 0) {
+      return scale;
+    }
+
+    const limited = Math.min(scale, heightScale);
+    return this.clampScale(limited);
+  }
+
+  private getBaseQuestionHeight(): number {
+    const regionHeight = this._questionRegion()?.height ?? 0;
+    if (Number.isFinite(regionHeight) && regionHeight > 0) {
+      return regionHeight;
+    }
+
+    if (Number.isFinite(this.lastBaseQuestionHeight) && this.lastBaseQuestionHeight > 0) {
+      return this.lastBaseQuestionHeight;
+    }
+
+    return 0;
+  }
+
+  private estimateBaseQuestionHeight(scaledHeight: number): number {
+    if (!Number.isFinite(scaledHeight) || scaledHeight <= 0) {
+      return 0;
+    }
+
+    const currentScale = this.contentScale;
+    if (!Number.isFinite(currentScale) || currentScale <= 0) {
+      return 0;
+    }
+
+    const normalized = scaledHeight / currentScale;
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+      return 0;
+    }
+
+    return normalized;
   }
 }

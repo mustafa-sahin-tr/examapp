@@ -652,6 +652,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsExample")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("LayoutPlan")
+                        .HasColumnType("text");
+
                     b.Property<int?>("PassageId")
                         .HasColumnType("integer");
 

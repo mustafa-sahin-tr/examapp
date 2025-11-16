@@ -1033,6 +1033,7 @@ public class ExamService : IExamService
                     Y = tiq.WorksheetQuestion.Question.Y,
                     Width = tiq.WorksheetQuestion.Question.Width,
                     Height = tiq.WorksheetQuestion.Question.Height,
+                    LayoutPlan = tiq.WorksheetQuestion.Question.LayoutPlan,
                     Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new AnswerDto
                     {
                         Id = a.Id,

@@ -26,6 +26,7 @@ public class QuestionDto
 
     public int? CorrectAnswerId { get; set; } // Doğru cevap ID'si
     public string? CorrectAnswer { get; set; } // Doğru cevap ID'si
+    public string? LayoutPlan { get; set; }
 
     public double? X { get; set; }
     public double? Y { get; set; }

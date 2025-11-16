@@ -128,6 +128,7 @@
                   class="canvas-stage"
                   [questionRegion]="questionData.region"
                   [selectedChoice]="selectedChoices().get(questionData.region.id)"
+                  [dockPosition]="questionDockPosition()"
                   (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
                   (answerOpened)="openAnswer($event)"
                   [correctAnswerVisible]="correctAnswerVisible"

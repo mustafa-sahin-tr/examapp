@@ -3,6 +3,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Input,
   NgZone,
   OnDestroy,
   ViewChild,
@@ -50,8 +51,21 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   private lastBaseQuestionWidth = 0;
   private lastBaseQuestionHeight = 0;
   private currentRegionId: number | null = null;
-  private readonly maxQuestionViewportHeight = 500;
+  private readonly baseQuestionViewportHeight = 600;
+  private readonly sideDockQuestionViewportHeight = 650;
   private readonly maxPassageViewportHeight = 360;
+  private dockMode: 'bottom' | 'side' = 'bottom';
+
+  @Input()
+  set dockPosition(value: 'bottom' | 'side' | null) {
+    const nextMode = value === 'side' ? 'side' : 'bottom';
+    if (this.dockMode === nextMode) {
+      return;
+    }
+
+    this.dockMode = nextMode;
+    this.applyEffectiveScale();
+  }
 
   constructor(private readonly ngZone: NgZone, private readonly cdr: ChangeDetectorRef) {
     super();
@@ -515,7 +529,8 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
 
   private getQuestionHeightLimit(): number {
     const scaleBoost = Math.max(this.userScale, 1);
-    return this.maxQuestionViewportHeight * scaleBoost;
+    const baseLimit = this.dockMode === 'side' ? this.sideDockQuestionViewportHeight : this.baseQuestionViewportHeight;
+    return baseLimit * scaleBoost;
   }
 
   private getPassageHeightLimit(): number {

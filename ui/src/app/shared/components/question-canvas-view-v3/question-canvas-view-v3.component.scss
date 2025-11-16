@@ -103,7 +103,7 @@ So when the component adds canvas-layout--passage-stack--cols-2, the root elemen
   background: rgba(248, 250, 252, 0.9);
   border: 1px solid rgba(148, 163, 184, 0.25);
   box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
-  max-height: clamp(320px, 70vh, var(--canvas-question-height, 820px));
+  max-height: clamp(620px, 70vh, var(--canvas-question-height, 820px));
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;

@@ -167,3 +167,27 @@ END $$;
 
 
 
+
+
+/*
+
+-- override ekleme örneği
+UPDATE  public."Questions" 
+SET "LayoutPlan" =
+  jsonb_set(
+    jsonb_set(
+      COALESCE(NULLIF("LayoutPlan", '')::jsonb, '{}'::jsonb),
+      '{overrides}',
+      jsonb_build_object(
+        'initialScale', 1.1,
+        'answerScale', 1.2,
+        'question', jsonb_build_object('maxHeight', 780, 'maxWidth', 850),
+        'answers',  jsonb_build_object('maxHeight', 40, 'maxWidth', 150)
+      )
+    ),
+    '{answerColumns}',
+    '1'::jsonb,
+    true
+  )::text
+WHERE "Id" = 6668 -- target question_region row
+*/

@@ -14,7 +14,7 @@ import {
   WorksheetAssignmentRequest,
 } from '../models/assignment';
 import { StudentAnswer } from '../models/student-answer';
-import { AnswerChoice, CanvasLayoutPlan, QuestionRegion } from '../models/draws';
+import { AnswerChoice, CanvasLayoutPlan, CanvasLayoutPlanOverrides, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
 import { StudentStatisticsResponse } from '../models/statistics';
 import { Question } from '../models/question';
@@ -241,13 +241,80 @@ export class TestService {
       }
 
       const answerColumns = Math.max(1, Number(parsed.answerColumns) || 0);
+      const overrides = this.normalizeLayoutOverrides(parsed.overrides);
       return {
         layoutClass: parsed.layoutClass,
         answerColumns,
         hasPassage: typeof parsed.hasPassage === 'boolean' ? parsed.hasPassage : undefined,
+        overrides,
       };
     } catch {
       return undefined;
     }
+  }
+
+  private normalizeLayoutOverrides(raw: unknown): CanvasLayoutPlanOverrides | undefined {
+    if (!raw || typeof raw !== 'object') {
+      return undefined;
+    }
+
+    const source = raw as Record<string, unknown>;
+    const overrides: CanvasLayoutPlanOverrides = {};
+
+    const initialScale = Number(source['initialScale']);
+    if (Number.isFinite(initialScale) && initialScale > 0) {
+      overrides.initialScale = initialScale;
+    }
+
+    const minScale = Number(source['minScale']);
+    if (Number.isFinite(minScale) && minScale > 0) {
+      overrides.minScale = minScale;
+    }
+
+    const maxScale = Number(source['maxScale']);
+    if (Number.isFinite(maxScale) && maxScale > 0) {
+      overrides.maxScale = maxScale;
+    }
+
+    const answerScale = Number(source['answerScale']);
+    if (Number.isFinite(answerScale) && answerScale > 0) {
+      overrides.answerScale = answerScale;
+    }
+
+    if (source['question'] && typeof source['question'] === 'object') {
+      const questionRaw = source['question'] as Record<string, unknown>;
+      const question: NonNullable<CanvasLayoutPlanOverrides['question']> = {};
+      const maxHeight = Number(questionRaw['maxHeight']);
+      if (Number.isFinite(maxHeight) && maxHeight > 0) {
+        question.maxHeight = maxHeight;
+      }
+      const maxWidth = Number(questionRaw['maxWidth']);
+      if (Number.isFinite(maxWidth) && maxWidth > 0) {
+        question.maxWidth = maxWidth;
+      }
+
+      if (Object.keys(question).length > 0) {
+        overrides.question = question;
+      }
+    }
+
+    if (source['answers'] && typeof source['answers'] === 'object') {
+      const answersRaw = source['answers'] as Record<string, unknown>;
+      const answers: NonNullable<CanvasLayoutPlanOverrides['answers']> = {};
+      const maxHeight = Number(answersRaw['maxHeight']);
+      if (Number.isFinite(maxHeight) && maxHeight > 0) {
+        answers.maxHeight = maxHeight;
+      }
+      const maxWidth = Number(answersRaw['maxWidth']);
+      if (Number.isFinite(maxWidth) && maxWidth > 0) {
+        answers.maxWidth = maxWidth;
+      }
+
+      if (Object.keys(answers).length > 0) {
+        overrides.answers = answers;
+      }
+    }
+
+    return Object.keys(overrides).length > 0 ? overrides : undefined;
   }
 }

@@ -183,7 +183,8 @@ internal static class QuestionLayoutAnalyzer
         {
             LayoutClass = layoutClass,
             AnswerColumns = columns,
-            HasPassage = hasPassage
+            HasPassage = hasPassage,
+            Overrides = CloneOverrides(plan.Overrides)
         };
     }
 
@@ -408,7 +409,38 @@ internal static class QuestionLayoutAnalyzer
         {
             LayoutClass = BuildLayoutClass(hasPassage, false, sanitizedColumns),
             AnswerColumns = sanitizedColumns,
-            HasPassage = hasPassage
+            HasPassage = hasPassage,
+            Overrides = null
+        };
+    }
+
+    private static QuestionLayoutOverrides? CloneOverrides(QuestionLayoutOverrides? source)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        return new QuestionLayoutOverrides
+        {
+            InitialScale = source.InitialScale,
+            MinScale = source.MinScale,
+            MaxScale = source.MaxScale,
+            AnswerScale = source.AnswerScale,
+            Question = source.Question == null
+                ? null
+                : new QuestionLayoutOverrideDimensions
+                {
+                    MaxHeight = source.Question.MaxHeight,
+                    MaxWidth = source.Question.MaxWidth
+                },
+            Answers = source.Answers == null
+                ? null
+                : new QuestionLayoutOverrideDimensions
+                {
+                    MaxHeight = source.Answers.MaxHeight,
+                    MaxWidth = source.Answers.MaxWidth
+                }
         };
     }
 
@@ -420,6 +452,7 @@ internal sealed class QuestionLayoutUiPlan
     public string LayoutClass { get; set; } = string.Empty;
     public int AnswerColumns { get; set; }
     public bool HasPassage { get; set; }
+    public QuestionLayoutOverrides? Overrides { get; set; }
 }
 
 internal sealed class QuestionLayoutPlan
@@ -432,6 +465,7 @@ internal sealed class QuestionLayoutPlan
     public PassageLayoutSize? Passage { get; set; }
     public LayoutDimensionSummary Summary { get; set; } = new();
     public QuestionLayoutBreakpoints Breakpoints { get; set; } = new();
+    public QuestionLayoutOverrides? Overrides { get; set; }
 }
 
 internal sealed class QuestionLayoutBreakpoints
@@ -439,6 +473,22 @@ internal sealed class QuestionLayoutBreakpoints
     public QuestionLayoutVariant Desktop { get; set; } = new();
     public QuestionLayoutVariant Tablet { get; set; } = new();
     public QuestionLayoutVariant Mobile { get; set; } = new();
+}
+
+internal sealed class QuestionLayoutOverrides
+{
+    public double? InitialScale { get; set; }
+    public double? MinScale { get; set; }
+    public double? MaxScale { get; set; }
+    public double? AnswerScale { get; set; }
+    public QuestionLayoutOverrideDimensions? Question { get; set; }
+    public QuestionLayoutOverrideDimensions? Answers { get; set; }
+}
+
+internal sealed class QuestionLayoutOverrideDimensions
+{
+    public double? MaxHeight { get; set; }
+    public double? MaxWidth { get; set; }
 }
 
 internal sealed class QuestionLayoutVariant

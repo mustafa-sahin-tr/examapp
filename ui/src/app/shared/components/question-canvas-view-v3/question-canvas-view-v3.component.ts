@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SafeHtmlPipe } from '../../../services/safehtml';
-import { AnswerChoice, CanvasLayoutPlan } from '../../../models/draws';
+import { AnswerChoice, CanvasLayoutPlan, CanvasLayoutPlanOverrides } from '../../../models/draws';
 import { QuestionCanvasViewComponentv2 } from '../question-canvas-view-v2/question-canvas-view-v2.component';
 
 @Component({
@@ -51,8 +51,8 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   private lastBaseQuestionWidth = 0;
   private lastBaseQuestionHeight = 0;
   private currentRegionId: number | null = null;
-  private readonly baseQuestionViewportHeight = 600;
-  private readonly sideDockQuestionViewportHeight = 650;
+  private readonly baseQuestionViewportHeight = 690;
+  private readonly sideDockQuestionViewportHeight = 690;
   private readonly maxPassageViewportHeight = 360;
   private dockMode: 'bottom' | 'side' = 'bottom';
 
@@ -77,7 +77,7 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       }
 
       this.currentRegionId = regionId;
-      this.userScale = 1;
+      this.userScale = this.resolveInitialUserScale();
       this.layoutScale = 1;
       this.lastBaseQuestionWidth = 0;
       this.applyEffectiveScale();
@@ -122,7 +122,13 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const questionWidth = widths.questionWidth || region?.width || 0;
     const questionHeight = this.capQuestionHeight(heights.questionHeight || region?.height || 0);
 
-    const maxWidth = questionWidth > 0 ? this.formatSize(questionWidth) : '100%';
+    const widthLimit = this.getQuestionWidthLimit();
+    const maxWidth =
+      widthLimit && widthLimit > 0
+        ? this.formatSize(widthLimit)
+        : questionWidth > 0
+        ? this.formatSize(questionWidth)
+        : '100%';
     const maxHeight = questionHeight > 0 ? this.formatSize(questionHeight) : 'auto';
 
     return {
@@ -144,7 +150,13 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     const questionWidth = widths.questionWidth || region?.width || 0;
     const questionHeight = this.capQuestionHeight(heights.questionHeight || region?.height || 0);
 
-    const maxWidth = questionWidth > 0 ? this.formatSize(questionWidth) : '100%';
+    const widthLimit = this.getQuestionWidthLimit();
+    const maxWidth =
+      widthLimit && widthLimit > 0
+        ? this.formatSize(widthLimit)
+        : questionWidth > 0
+        ? this.formatSize(questionWidth)
+        : '100%';
     const maxHeight = questionHeight > 0 ? this.formatSize(questionHeight) : 'auto';
 
     return {
@@ -163,8 +175,9 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       };
     }
 
-    const width = (_answer.width || 0) * this.contentScale;
-    const height = (_answer.height || 0) * this.contentScale;
+    const answerScale = this.getAnswerScale();
+    const width = (_answer.width || 0) * this.contentScale * answerScale;
+    const height = (_answer.height || 0) * this.contentScale * answerScale;
 
     const base = super.getAnswerWrapperStyle(_answer);
     const styles: Record<string, string> = {
@@ -175,11 +188,17 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       overflow: 'hidden',
     };
 
-    if (width > 0) {
+    const overrideWidth = this.getAnswerWidthLimit();
+    if (overrideWidth > 0) {
+      styles['max-width'] = this.formatSize(overrideWidth);
+    } else if (width > 0) {
       styles['max-width'] = this.formatSize(width);
     }
 
-    if (height > 0) {
+    const overrideHeight = this.getAnswerHeightLimit();
+    if (overrideHeight > 0) {
+      styles['max-height'] = this.formatSize(overrideHeight);
+    } else if (height > 0) {
       styles['max-height'] = this.formatSize(height);
     }
 
@@ -194,8 +213,9 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       };
     }
 
-    const width = (_answer.width || 0) * this.contentScale;
-    const height = (_answer.height || 0) * this.contentScale;
+    const answerScale = this.getAnswerScale();
+    const width = (_answer.width || 0) * this.contentScale * answerScale;
+    const height = (_answer.height || 0) * this.contentScale * answerScale;
 
     const styles: Record<string, string> = {
       width: '100%',
@@ -203,11 +223,17 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       objectFit: 'contain',
     };
 
-    if (width > 0) {
+    const overrideWidth = this.getAnswerWidthLimit();
+    if (overrideWidth > 0) {
+      styles['max-width'] = this.formatSize(overrideWidth);
+    } else if (width > 0) {
       styles['max-width'] = this.formatSize(width);
     }
 
-    if (height > 0) {
+    const overrideHeight = this.getAnswerHeightLimit();
+    if (overrideHeight > 0) {
+      styles['max-height'] = this.formatSize(overrideHeight);
+    } else if (height > 0) {
       styles['max-height'] = this.formatSize(height);
     }
 
@@ -312,7 +338,7 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
 
   private getScaledAnswerWidth(answer: AnswerChoice): number {
     if (!answer) return 0;
-    return (answer.width || 0) * this.contentScale;
+    return (answer.width || 0) * this.contentScale * this.getAnswerScale();
   }
 
   private resolveAnswerColumnCount(): number {
@@ -403,13 +429,14 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   }
 
   private clampScale(value: number): number {
-    const MIN_SCALE = 0.2;
-    const MAX_SCALE = 3;
+    const minScale = this.getMinScale();
+    const maxScale = this.getMaxScale();
     if (!Number.isFinite(value) || value <= 0) {
-      return MIN_SCALE;
+      return minScale;
     }
 
-    return Math.min(Math.max(value, MIN_SCALE), MAX_SCALE);
+    const constrained = Math.min(Math.max(value, minScale), maxScale);
+    return Number.isFinite(constrained) ? constrained : minScale;
   }
 
   private safeBaseSize(currentSize: number): number {
@@ -435,6 +462,114 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   private getLayoutPlanHint(): CanvasLayoutPlan | undefined {
     const region = this._questionRegion();
     return region?.layoutPlan;
+  }
+
+  private getLayoutOverrides(): CanvasLayoutPlanOverrides | undefined {
+    return this.getLayoutPlanHint()?.overrides;
+  }
+
+  private resolveInitialUserScale(): number {
+    const initialScale = this.getLayoutOverrides()?.initialScale;
+    if (Number.isFinite(initialScale) && initialScale && initialScale > 0) {
+      return this.clampScale(initialScale);
+    }
+
+    return 1;
+  }
+
+  private getMinScale(): number {
+    const override = this.getLayoutOverrides()?.minScale;
+    if (Number.isFinite(override) && override && override > 0) {
+      return Math.max(0.05, override);
+    }
+
+    return 0.2;
+  }
+
+  private getMaxScale(): number {
+    const override = this.getLayoutOverrides()?.maxScale;
+    const minScale = this.getMinScale();
+    if (Number.isFinite(override) && override && override > minScale) {
+      return override;
+    }
+
+    return Math.max(minScale, 3);
+  }
+
+  private getAnswerScale(): number {
+    const override = this.getLayoutOverrides()?.answerScale;
+    if (Number.isFinite(override) && override && override > 0) {
+      return override;
+    }
+
+    return 1;
+  }
+
+  private getQuestionHeightOverride(): number | undefined {
+    const override = this.getLayoutOverrides()?.question?.maxHeight;
+    if (Number.isFinite(override) && override && override > 0) {
+      return override;
+    }
+
+    return undefined;
+  }
+
+  private resolveStaticQuestionHeightLimit(): number {
+    return this.dockMode === 'side' ? this.sideDockQuestionViewportHeight : this.baseQuestionViewportHeight;
+  }
+
+  private getQuestionWidthOverride(): number | undefined {
+    const override = this.getLayoutOverrides()?.question?.maxWidth;
+    if (Number.isFinite(override) && override && override > 0) {
+      return override;
+    }
+
+    return undefined;
+  }
+
+  private getQuestionWidthLimit(): number | undefined {
+    const override = this.getQuestionWidthOverride();
+    if (override && override > 0) {
+      return override * Math.max(this.userScale, 1);
+    }
+
+    return undefined;
+  }
+
+  private getAnswerHeightOverride(): number | undefined {
+    const override = this.getLayoutOverrides()?.answers?.maxHeight;
+    if (Number.isFinite(override) && override && override > 0) {
+      return override;
+    }
+
+    return undefined;
+  }
+
+  private getAnswerWidthOverride(): number | undefined {
+    const override = this.getLayoutOverrides()?.answers?.maxWidth;
+    if (Number.isFinite(override) && override && override > 0) {
+      return override;
+    }
+
+    return undefined;
+  }
+
+  private getAnswerHeightLimit(): number {
+    const override = this.getAnswerHeightOverride();
+    if (override && override > 0) {
+      return override * Math.max(this.userScale, 1);
+    }
+
+    return 0;
+  }
+
+  private getAnswerWidthLimit(): number {
+    const override = this.getAnswerWidthOverride();
+    if (override && override > 0) {
+      return override * Math.max(this.userScale, 1);
+    }
+
+    return 0;
   }
 
   private buildFallbackLayoutClass(): string {
@@ -529,7 +664,8 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
 
   private getQuestionHeightLimit(): number {
     const scaleBoost = Math.max(this.userScale, 1);
-    const baseLimit = this.dockMode === 'side' ? this.sideDockQuestionViewportHeight : this.baseQuestionViewportHeight;
+    const override = this.getQuestionHeightOverride();
+    const baseLimit = override && override > 0 ? override : this.resolveStaticQuestionHeightLimit();
     return baseLimit * scaleBoost;
   }
 

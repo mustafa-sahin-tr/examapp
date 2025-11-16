@@ -43,6 +43,22 @@ export interface CanvasLayoutPlan {
   layoutClass: string;
   answerColumns: number;
   hasPassage?: boolean;
+  overrides?: CanvasLayoutPlanOverrides;
+}
+
+export interface CanvasLayoutPlanOverrides {
+  initialScale?: number;
+  minScale?: number;
+  maxScale?: number;
+  answerScale?: number;
+  question?: {
+    maxHeight?: number;
+    maxWidth?: number;
+  };
+  answers?: {
+    maxHeight?: number;
+    maxWidth?: number;
+  };
 }
 
 export type RegionOrAnswerHit =

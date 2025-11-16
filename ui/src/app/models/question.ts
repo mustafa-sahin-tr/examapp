@@ -29,6 +29,7 @@ export interface Question {
   subTopics?: SubTopic[];
   correctAnswer?: Answer;
   answerColCount: number;
+  layoutPlan?: string;
   x: number;
   y: number;
   width: number;

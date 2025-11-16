@@ -19,6 +19,7 @@ import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-l
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
 import { StudyPageComponent } from './components/study-page/study-page.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
 
 export const routes: Routes = [
   {
@@ -43,7 +44,8 @@ export const routes: Routes = [
       },
       { path: 'questions/view', component: QuestionViewComponent },
       // { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3 }, // 🆕 Test çözme sayfası
+      { path: 'testsolve/v2/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
       { path: 'test/:testId', component: WorksheetDetailComponent }, // 🆕 Test çözme sayfası
       { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
       // { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası

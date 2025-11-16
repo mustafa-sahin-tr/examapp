@@ -33,7 +33,7 @@ public class Question : BaseEntity
     public int? CorrectAnswerId { get; set; }
 
     [ForeignKey("CorrectAnswerId")]
-    public Answer CorrectAnswer { get; set; }   
+    public Answer CorrectAnswer { get; set; }
 
     public int? PassageId { get; set; } // 🟢 Kapsam ID (Opsiyonel)
 
@@ -42,10 +42,12 @@ public class Question : BaseEntity
 
     public string? PracticeCorrectAnswer { get; set; } // Eğer çalışma testi ise bu alan kullanılacak
     public bool IsExample { get; set; } = false;// Eğer true ise bu soru örnek sorudur ve cevabı otomatik gösterilir.
-    public int AnswerColCount {get; set;} = 3; 
+    public int AnswerColCount { get; set; } = 3;
     // Şıkların kaç sütun olacağı. 
     // 3 demek yan yana 3 şık olacak demektir.
     // 1 demek cevaplar alt alta sıralanacak demektir.
+
+    public string? LayoutPlan { get; set; }
 
     public double? X { get; set; }
 

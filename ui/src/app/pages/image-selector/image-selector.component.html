@@ -6,12 +6,12 @@
           [questions]="previewQuestions"
           (questionSelected)="questionSelected($event)"
         ></app-question-navigator>
-        <app-question-canvas-view
+        <app-question-canvas-view-v3
           [questionRegion]="regions()[previewCurrentIndex()]"
           [isPreviewMode]="true"
           (choiceSelected)="onPreviewChoiceSelected($event)"
           (questionRemove)="onQuestionRemove($event)"
-        ></app-question-canvas-view>
+        ></app-question-canvas-view-v3>
       </ng-container>
 
       <div *ngIf="!previewMode() && imageSrc()" class="ms-canvas-wrapper">

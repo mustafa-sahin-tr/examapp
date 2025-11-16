@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Layout;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services;
@@ -68,7 +71,8 @@ public class QuestionService : IQuestionService
                     Height = q.Passage.Height,
                 } : null,
                 CorrectAnswerId = q.CorrectAnswerId,
-                AnswerColCount = q.AnswerColCount
+                AnswerColCount = q.AnswerColCount,
+                LayoutPlan = q.LayoutPlan
                 // Subtopics = q.QuestionSubTopics.Select(qst => new Sub
                 // {
                 //     qst.SubTopicId,
@@ -76,6 +80,11 @@ public class QuestionService : IQuestionService
                 // }).ToList()
             })
             .FirstOrDefaultAsync();
+
+        if (question != null)
+        {
+            question.LayoutPlan = BuildUiLayoutPlanPayload(question);
+        }
 
         return question;
     }
@@ -152,6 +161,7 @@ public class QuestionService : IQuestionService
                 } : null,
                 CorrectAnswerId = tq.Question.CorrectAnswerId,
                 AnswerColCount = tq.Question.AnswerColCount,
+                LayoutPlan = tq.Question.LayoutPlan,
                 Order = tq.Order
                 // SubTopics = tq.Question.QuestionSubTopics.Select(qst => new
                 // {
@@ -160,6 +170,11 @@ public class QuestionService : IQuestionService
                 // }).ToList()
             })
             .ToListAsync();
+
+        foreach (var question in questionList)
+        {
+            question.LayoutPlan = BuildUiLayoutPlanPayload(question);
+        }
 
         return questionList;
     }
@@ -193,6 +208,11 @@ public class QuestionService : IQuestionService
                 // question.SubjectId = questionDto.SubjectId;
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
+                if (!string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
+                    questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase))
+                {
+                    question.LayoutPlan = questionDto.LayoutPlan;
+                }
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -294,7 +314,11 @@ public class QuestionService : IQuestionService
                     Point = questionDto.Point,
                     // SubjectId = questionDto.SubjectId,
                     // TopicId = questionDto.TopicId,
-                    AnswerColCount = questionDto.AnswerColCount
+                    AnswerColCount = questionDto.AnswerColCount,
+                    LayoutPlan = !string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
+                                 questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase)
+                        ? questionDto.LayoutPlan
+                        : null
                 };
 
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -511,6 +535,9 @@ public class QuestionService : IQuestionService
                 }
                 _context.Passage.AddRange(passages);
                 await _context.SaveChangesAsync();
+                var passageLookup = passages
+                    .Where(p => !string.IsNullOrWhiteSpace(p.Title))
+                    .ToDictionary(p => p.Title!, p => p, StringComparer.OrdinalIgnoreCase);
 
                 // Sorular için crop ve upload işlemi
                 foreach (var questionDto in soruDto.Questions)
@@ -521,19 +548,19 @@ public class QuestionService : IQuestionService
                     byte[]? croppedQuestionImage = null;
                     string questionImageUrl = string.Empty;
 
-                    var answerCropInfos = (questionDto.Answers ?? new List<BulkAnswerDto>()).Select(answer => (
-                        Dto: answer,
-                        RelativeX: answer.X - questionDto.X,
-                        RelativeY: answer.Y - questionDto.Y,
-                        Width: answer.Width,
-                        Height: answer.Height
-                    )).ToList();
+                    var sourceAnswers = questionDto.Answers ?? new List<BulkAnswerDto>();
+                    var answerInfos = sourceAnswers
+                        .Select(answer => new AnswerCropInfo(answer, answer.X - questionDto.X, answer.Y - questionDto.Y))
+                        .ToList();
 
-                    var answerImagePayloads = new List<byte[]?>(answerCropInfos.Count);
-                    for (var i = 0; i < answerCropInfos.Count; i++)
+                    var answerImagePayloads = new List<byte[]?>(answerInfos.Count);
+                    for (var i = 0; i < answerInfos.Count; i++)
                     {
                         answerImagePayloads.Add(null);
                     }
+
+                    int effectiveQuestionHeight = questionDto.Height;
+                    byte[]? questionV2Image = null;
 
                     if (mainImageBytes != null)
                     {
@@ -544,51 +571,96 @@ public class QuestionService : IQuestionService
                             questionImageUrl = await _minioService.UploadFileAsync(questionStream, $"{questionFolderPath}/question.jpg");
                         }
 
-                        byte[] questionV2Image = croppedQuestionImage;
-                        if (answerCropInfos.Any())
+                        questionV2Image = croppedQuestionImage;
+                        if (answerInfos.Any())
                         {
-                            var topAnswerRelativeY = answerCropInfos.Min(a => a.RelativeY);
+                            var topAnswerRelativeY = answerInfos.Min(a => a.RelativeY);
                             var sanitizedHeight = (int)Math.Round(topAnswerRelativeY);
                             sanitizedHeight = Math.Clamp(sanitizedHeight, 1, questionDto.Height);
 
                             if (sanitizedHeight > 0 && sanitizedHeight < questionDto.Height)
                             {
+                                effectiveQuestionHeight = sanitizedHeight;
                                 questionV2Image = _imageHelper.CropImage(croppedQuestionImage, 0, 0, questionDto.Width, sanitizedHeight);
                             }
                         }
 
-                        await using (var questionV2Stream = new MemoryStream(questionV2Image))
+                        if (questionV2Image != null)
                         {
+                            await using var questionV2Stream = new MemoryStream(questionV2Image);
                             await _minioService.UploadFileAsync(questionV2Stream, $"{questionFolderPath}/question-v2.jpg");
                         }
 
-                        for (var index = 0; index < answerCropInfos.Count; index++)
+                        for (var index = 0; index < answerInfos.Count; index++)
                         {
-                            var answerInfo = answerCropInfos[index];
+                            var info = answerInfos[index];
 
-                            int cropX = (int)Math.Round(answerInfo.RelativeX);
-                            int cropY = (int)Math.Round(answerInfo.RelativeY);
-                            cropX = Math.Clamp(cropX, 0, Math.Max(0, questionDto.Width - 1));
-                            cropY = Math.Clamp(cropY, 0, Math.Max(0, questionDto.Height - 1));
+                            int cropX = Math.Clamp((int)Math.Round(info.RelativeX), 0, Math.Max(0, questionDto.Width - 1));
+                            int cropY = Math.Clamp((int)Math.Round(info.RelativeY), 0, Math.Max(0, questionDto.Height - 1));
 
-                            var cropWidth = Math.Min(answerInfo.Width, questionDto.Width - cropX);
-                            var cropHeight = Math.Min(answerInfo.Height, questionDto.Height - cropY);
+                            var cropWidth = Math.Min(info.Source.Width, questionDto.Width - cropX);
+                            var cropHeight = Math.Min(info.Source.Height, questionDto.Height - cropY);
 
                             if (cropWidth <= 0 || cropHeight <= 0)
                             {
+                                info.EffectiveWidth = Math.Max(info.EffectiveWidth, 0);
+                                info.EffectiveHeight = Math.Max(info.EffectiveHeight, 0);
                                 continue;
                             }
+
+                            info.EffectiveWidth = cropWidth;
+                            info.EffectiveHeight = cropHeight;
 
                             var croppedAnswerImage = _imageHelper.CropImage(croppedQuestionImage, cropX, cropY, cropWidth, cropHeight);
                             answerImagePayloads[index] = croppedAnswerImage;
                         }
                     }
 
-                    foreach (var info in answerCropInfos)
+                    foreach (var info in answerInfos)
                     {
-                        info.Dto.X = info.RelativeX;
-                        info.Dto.Y = info.RelativeY;
+                        info.Source.X = info.RelativeX;
+                        info.Source.Y = info.RelativeY;
+
+                        if (info.EffectiveWidth > 0)
+                        {
+                            info.Source.Width = info.EffectiveWidth;
+                        }
+
+                        if (info.EffectiveHeight > 0)
+                        {
+                            info.Source.Height = info.EffectiveHeight;
+                        }
                     }
+
+                    Passage? matchedPassage = null;
+                    if (!string.IsNullOrWhiteSpace(questionDto.PassageId))
+                    {
+                        passageLookup.TryGetValue(questionDto.PassageId, out matchedPassage);
+                    }
+
+                    PassageLayoutSize? passageLayoutSize = null;
+                    if (matchedPassage?.Width is int passageWidth && passageWidth > 0 &&
+                        matchedPassage.Height is int passageHeight && passageHeight > 0)
+                    {
+                        passageLayoutSize = new PassageLayoutSize(passageWidth, passageHeight);
+                    }
+
+                    var layoutInput = new QuestionLayoutInput
+                    {
+                        QuestionWidth = questionDto.Width,
+                        QuestionHeight = effectiveQuestionHeight,
+                        Answers = answerInfos
+                            .Where(a => a.EffectiveWidth > 0 && a.EffectiveHeight > 0)
+                            .Select(a => new AnswerLayoutSize(a.EffectiveWidth, a.EffectiveHeight))
+                            .ToList(),
+                        Passage = passageLayoutSize
+                    };
+
+                    var layoutPlan = QuestionLayoutAnalyzer.Analyze(layoutInput);
+                    var layoutPlanJson = QuestionLayoutAnalyzer.SerializePlan(layoutPlan);
+                    var recommendedColumns = layoutPlan.RecommendedAnswerColumns > 0
+                        ? layoutPlan.RecommendedAnswerColumns
+                        : 1;
 
                     var question = new Question
                     {
@@ -602,7 +674,9 @@ public class QuestionService : IQuestionService
                         IsCanvasQuestion = true,
                         SubjectId = soruDto.Header.SubjectId,
                         TopicId = soruDto.Header.TopicId,
-                        PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
+                        PassageId = matchedPassage?.Id,
+                        AnswerColCount = recommendedColumns,
+                        LayoutPlan = layoutPlanJson
                     };
 
                     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
@@ -618,7 +692,6 @@ public class QuestionService : IQuestionService
 
                     if (!questionDto.IsExample)
                     {
-                        var sourceAnswers = questionDto.Answers ?? new List<BulkAnswerDto>();
                         var answers = sourceAnswers.Select(a => new Answer
                         {
                             QuestionId = question.Id,
@@ -789,6 +862,7 @@ public class QuestionService : IQuestionService
                 };
             }
         }
+
     }
 
     public async Task<ResponseBaseDto> ResizeQuestionImage(int questionId, double scale)
@@ -971,5 +1045,42 @@ public class QuestionService : IQuestionService
                 Message = $"Soru testten çıkarılırken hata oluştu: {ex.Message}"
             };
         }
+    }
+
+    private sealed class AnswerCropInfo
+    {
+        public AnswerCropInfo(BulkAnswerDto source, double relativeX, double relativeY)
+        {
+            Source = source ?? throw new ArgumentNullException(nameof(source));
+            RelativeX = relativeX;
+            RelativeY = relativeY;
+            EffectiveWidth = source.Width;
+            EffectiveHeight = source.Height;
+        }
+
+        public BulkAnswerDto Source { get; }
+        public double RelativeX { get; }
+        public double RelativeY { get; }
+        public int EffectiveWidth { get; set; }
+        public int EffectiveHeight { get; set; }
+    }
+
+    private static string BuildUiLayoutPlanPayload(QuestionDto question)
+    {
+        if (question == null)
+        {
+            return string.Empty;
+        }
+
+        var fallbackColumns = question.AnswerColCount > 0
+            ? question.AnswerColCount
+            : Math.Max(1, Math.Min(question.Answers?.Count ?? 0, 4));
+
+        var uiPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
+            question.LayoutPlan,
+            fallbackColumns,
+            question.Passage != null);
+
+        return uiPlan;
     }
 }

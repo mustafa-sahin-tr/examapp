@@ -3,6 +3,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Layout;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -900,7 +901,7 @@ public class ExamService : IExamService
         if (instance == null)
             return null;
 
-        return new WorksheetInstanceDto
+        var worksheetInstanceDto = new WorksheetInstanceDto
         {
             Id = instance.Id,
             TestName = instance.Worksheet.Name,
@@ -921,6 +922,7 @@ public class ExamService : IExamService
                     IsExample = tiq.WorksheetQuestion?.Question?.IsExample ?? false,
                     PracticeCorrectAnswer = tiq.WorksheetQuestion?.Question?.PracticeCorrectAnswer,
                     AnswerColCount = tiq.WorksheetQuestion?.Question?.AnswerColCount ?? 0,
+                    LayoutPlan = tiq.WorksheetQuestion.Question.LayoutPlan,
                     Passage = tiq.WorksheetQuestion?.Question?.PassageId != null
                         ? new PassageDto
                         {
@@ -939,6 +941,21 @@ public class ExamService : IExamService
                 }
             }).ToList()
         };
+
+        foreach (var question in worksheetInstanceDto.TestInstanceQuestions)
+        {
+            var dto = question.Question;
+            var fallbackColumns = dto.AnswerColCount > 0
+                ? dto.AnswerColCount
+                : Math.Max(1, Math.Min(dto.Answers?.Count ?? 0, 4));
+
+            dto.LayoutPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
+                dto.LayoutPlan,
+                fallbackColumns,
+                dto.Passage != null);
+        }
+
+        return worksheetInstanceDto;
     }
 
     public async Task<List<WorksheetInstanceQuestionDto>> GetAllCanvasQuestions(bool includeAnswers = false, int maxId = 0)
@@ -956,6 +973,7 @@ public class ExamService : IExamService
                     Width = q.Width,
                     Height = q.Height,
                     ImageUrl = q.ImageUrl,
+                    LayoutPlan = q.LayoutPlan,
                     Answers = includeAnswers ? q.Answers.Select(a => new AnswerDto
                     {
                         X = a.X,
@@ -967,6 +985,19 @@ public class ExamService : IExamService
             }
             )
             .ToListAsync();
+
+        foreach (var question in questions)
+        {
+            var dto = question.Question;
+            var fallbackColumns = dto.AnswerColCount > 0
+                ? dto.AnswerColCount
+                : Math.Max(1, Math.Min(dto.Answers?.Count ?? 0, 4));
+
+            dto.LayoutPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
+                dto.LayoutPlan,
+                fallbackColumns,
+                dto.Passage != null);
+        }
 
         return questions;
     }
@@ -1003,37 +1034,37 @@ public class ExamService : IExamService
             Status = testInstance.Status,
             MaxDurationSeconds = testInstance.Worksheet.MaxDurationSeconds,
             IsPracticeTest = testInstance.Worksheet.IsPracticeTest,
-            TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq => new WorksheetInstanceQuestionDto
+            TestInstanceQuestions = testInstance.WorksheetInstanceQuestions.Select(tiq =>
             {
-                Id = tiq.Id,
-                Order = tiq.WorksheetQuestion.Order,
-                Question = new QuestionDto
+                var questionEntity = tiq.WorksheetQuestion.Question;
+                var questionDto = new QuestionDto
                 {
-                    Id = tiq.WorksheetQuestion.Question.Id,
-                    Text = tiq.WorksheetQuestion?.Question?.Text ?? string.Empty,
-                    SubText = tiq.WorksheetQuestion.Question.SubText,
-                    ImageUrl = tiq.WorksheetQuestion.Question.ImageUrl,
-                    IsExample = tiq.WorksheetQuestion.Question.IsExample,
-                    CorrectAnswerId = includeCorrectAnswer ? tiq.WorksheetQuestion.Question.CorrectAnswerId : null,
-                    Passage = tiq.WorksheetQuestion.Question.PassageId.HasValue ? new PassageDto
+                    Id = questionEntity.Id,
+                    Text = questionEntity?.Text ?? string.Empty,
+                    SubText = questionEntity.SubText,
+                    ImageUrl = questionEntity.ImageUrl,
+                    IsExample = questionEntity.IsExample,
+                    CorrectAnswerId = includeCorrectAnswer ? questionEntity.CorrectAnswerId : null,
+                    Passage = questionEntity.PassageId.HasValue ? new PassageDto
                     {
-                        Id = tiq.WorksheetQuestion.Question.Passage?.Id,
-                        Title = tiq.WorksheetQuestion.Question.Passage?.Title,
-                        Text = tiq.WorksheetQuestion.Question.Passage?.Text,
-                        ImageUrl = tiq.WorksheetQuestion.Question.Passage?.ImageUrl,
-                        X = tiq.WorksheetQuestion.Question.Passage?.X,
-                        Y = tiq.WorksheetQuestion.Question.Passage?.Y,
-                        Width = tiq.WorksheetQuestion.Question.Passage?.Width,
-                        Height = tiq.WorksheetQuestion.Question.Passage?.Height
+                        Id = questionEntity.Passage?.Id,
+                        Title = questionEntity.Passage?.Title,
+                        Text = questionEntity.Passage?.Text,
+                        ImageUrl = questionEntity.Passage?.ImageUrl,
+                        X = questionEntity.Passage?.X,
+                        Y = questionEntity.Passage?.Y,
+                        Width = questionEntity.Passage?.Width,
+                        Height = questionEntity.Passage?.Height
                     } : null,
-                    PracticeCorrectAnswer = tiq.WorksheetQuestion.Question.PracticeCorrectAnswer,
-                    AnswerColCount = tiq.WorksheetQuestion.Question.AnswerColCount,
-                    IsCanvasQuestion = tiq.WorksheetQuestion.Question.IsCanvasQuestion,
-                    X = tiq.WorksheetQuestion.Question.X,
-                    Y = tiq.WorksheetQuestion.Question.Y,
-                    Width = tiq.WorksheetQuestion.Question.Width,
-                    Height = tiq.WorksheetQuestion.Question.Height,
-                    Answers = tiq.WorksheetQuestion.Question.Answers.Select(a => new AnswerDto
+                    PracticeCorrectAnswer = questionEntity.PracticeCorrectAnswer,
+                    AnswerColCount = questionEntity.AnswerColCount,
+                    IsCanvasQuestion = questionEntity.IsCanvasQuestion,
+                    X = questionEntity.X,
+                    Y = questionEntity.Y,
+                    Width = questionEntity.Width,
+                    Height = questionEntity.Height,
+                    LayoutPlan = questionEntity.LayoutPlan,
+                    Answers = questionEntity.Answers.Select(a => new AnswerDto
                     {
                         Id = a.Id,
                         Text = a.Text,
@@ -1043,9 +1074,25 @@ public class ExamService : IExamService
                         Width = a.Width,
                         Height = a.Height
                     }).ToList()
-                },
-                SelectedAnswerId = tiq.SelectedAnswerId, // Önceden seçilen cevap
-                TimeTaken = tiq.TimeTaken
+                };
+
+                var fallbackColumns = questionDto.AnswerColCount > 0
+                    ? questionDto.AnswerColCount
+                    : Math.Max(1, Math.Min(questionDto.Answers.Count, 4));
+
+                questionDto.LayoutPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
+                    questionDto.LayoutPlan,
+                    fallbackColumns,
+                    questionDto.Passage != null);
+
+                return new WorksheetInstanceQuestionDto
+                {
+                    Id = tiq.Id,
+                    Order = tiq.WorksheetQuestion.Order,
+                    Question = questionDto,
+                    SelectedAnswerId = tiq.SelectedAnswerId,
+                    TimeTaken = tiq.TimeTaken
+                };
             }).ToList()
         };
 

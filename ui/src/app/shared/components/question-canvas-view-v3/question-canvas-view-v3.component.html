@@ -1,0 +1,85 @@
+@let canvasWidths = getCanvasWidths(); @let canvasHeights = getCanvasHeights();
+
+<div
+  class="canvas-v3"
+  [ngClass]="getCanvasLayoutClass()"
+  [class.canvas-v3--loading]="!isImageLoaded()"
+  [style.--canvas-question-width.px]="canvasWidths.questionWidth || 680"
+  [style.--canvas-question-height.px]="canvasHeights.questionHeight || 720"
+  [style.--canvas-passage-width.px]="canvasWidths.passageWidth || 0"
+>
+  @if (isImageLoaded()) { @if (hasPassageImage()) {
+  <div class="canvas-v3__passage-header" [ngStyle]="getPassageWrapperStyle()">
+    <img
+      class="canvas-v3__passage-image"
+      [src]="passageImageSource()"
+      [ngStyle]="getPassageImageStyle()"
+      alt="Pasaj görseli"
+    />
+  </div>
+  }
+
+  <div class="canvas-v3__surface">
+    <div class="canvas-v3__visual">
+      <div class="canvas-v3__question" [ngStyle]="getQuestionWrapperStyle()">
+        <img
+          #questionImage
+          class="canvas-v3__question-image"
+          [src]="questionImageSource()"
+          [ngStyle]="getQuestionImageStyle()"
+          alt="Soru görseli"
+        />
+      </div>
+    </div>
+
+    @if (_questionRegion().answers.length) {
+    <aside class="canvas-v3__answers" [style.gridTemplateColumns]="getAnswerGridTemplate()">
+      @for (answer of _questionRegion().answers; track idx; let idx = $index) {
+      <div
+        class="answer-wrapper"
+        [ngStyle]="getAnswerWrapperStyle(answer)"
+        (mouseenter)="hoverAnswer(answer)"
+        (mouseleave)="hoverAnswer(null)"
+        (click)="selectAnswer(idx)"
+        [ngClass]="getAnswerClasses(answer)"
+        [attr.aria-label]="'Şık ' + (idx + 1)"
+        [style.gridColumn]="getAnswerGridColumn(answer)"
+      >
+        <img
+          class="answer-image"
+          [src]="answer.imageUrl"
+          [ngStyle]="getAnswerImageStyle(answer)"
+          [attr.alt]="'Şık ' + (idx + 1)"
+        />
+      </div>
+      }
+    </aside>
+    }
+  </div>
+  } @else {
+  <div class="canvas-v3__loading">Görsel yükleniyor…</div>
+  } @if (isPreviewMode) {
+  <div class="preview-actions">
+    <button mat-raised-button color="warn" (click)="removeQuestion()">
+      <mat-icon>delete</mat-icon>
+      Soruyu Testten Çıkar
+    </button>
+    <button mat-raised-button (click)="shrinkImage()">
+      <mat-icon>zoom_out</mat-icon>
+      Küçült (-5%)
+    </button>
+    <button mat-raised-button (click)="enlargeImage()">
+      <mat-icon>zoom_in</mat-icon>
+      Büyüt (+5%)
+    </button>
+  </div>
+  } @if (_questionRegion() && _questionRegion().isExample) {
+  <div class="correct-answer">
+    @if (correctAnswerVisible) {
+    <div class="correct-answer__label">Doğru Cevap</div>
+    <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>
+    }
+    <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+  </div>
+  }
+</div>

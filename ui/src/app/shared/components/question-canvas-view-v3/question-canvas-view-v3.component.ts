@@ -270,9 +270,10 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
   public getCanvasLayoutClass(): string {
     const plan = this.getLayoutPlanHint();
     if (plan?.layoutClass) {
+      console.log('layout class v3:', plan.layoutClass);
       return plan.layoutClass;
     }
-
+    console.log('fallback layout class v3:', this.buildFallbackLayoutClass());
     return this.buildFallbackLayoutClass();
   }
 
@@ -440,7 +441,12 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       return value;
     }
 
-    return Math.min(value, this.maxQuestionViewportHeight);
+    const limit = this.getQuestionHeightLimit();
+    if (!Number.isFinite(limit) || limit <= 0) {
+      return value;
+    }
+
+    return Math.min(value, limit);
   }
 
   private capPassageHeight(value: number): number {
@@ -448,7 +454,12 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       return value;
     }
 
-    return Math.min(value, this.maxPassageViewportHeight);
+    const limit = this.getPassageHeightLimit();
+    if (!Number.isFinite(limit) || limit <= 0) {
+      return value;
+    }
+
+    return Math.min(value, limit);
   }
 
   private limitScaleByHeight(scale: number): number {
@@ -457,7 +468,7 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       return scale;
     }
 
-    const heightLimit = this.maxQuestionViewportHeight;
+    const heightLimit = this.getQuestionHeightLimit();
     if (!Number.isFinite(heightLimit) || heightLimit <= 0) {
       return scale;
     }
@@ -500,5 +511,15 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
     }
 
     return normalized;
+  }
+
+  private getQuestionHeightLimit(): number {
+    const scaleBoost = Math.max(this.userScale, 1);
+    return this.maxQuestionViewportHeight * scaleBoost;
+  }
+
+  private getPassageHeightLimit(): number {
+    const scaleBoost = Math.max(this.userScale, 1);
+    return this.maxPassageViewportHeight * scaleBoost;
   }
 }

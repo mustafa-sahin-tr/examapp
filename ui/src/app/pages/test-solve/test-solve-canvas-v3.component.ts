@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TestSolveCanvasComponentv2 } from './test-solve-canvas-enhanced.component';
 import { TestService } from '../../services/test.service';
 import { MatDialog } from '@angular/material/dialog';
@@ -24,10 +25,15 @@ import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-
     QuestionLiteViewComponent,
     CountdownComponent,
     QuestionCanvasViewComponentv3,
+    MatProgressSpinnerModule,
   ],
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   constructor(route: ActivatedRoute, testService: TestService, router: Router, dialog: MatDialog) {
     super(route, testService, router, dialog);
+  }
+
+  public sideDockActive(): boolean {
+    return this.questionsPerView() === 1 && this.questionDockPosition() === 'side';
   }
 }

@@ -1,14 +1,12 @@
 @if (testInstance) {
-<div class="solve-v3">
+<div class="solve-v3" [class.solve-v3--side-dock]="sideDockActive()">
   <header class="solve-v3__header">
     <div class="header-block header-block--primary">
       <div class="test-ident">
         <mat-icon class="test-ident__icon">quiz</mat-icon>
         <div class="test-ident__text">
           <h1 class="test-ident__title">{{ testInstance.testName }}</h1>
-          <p class="test-ident__subtitle">
-            Soru {{ currentIndex() + 1 }} / {{ testInstance.testInstanceQuestions.length }}
-          </p>
+          <p class="test-ident__subtitle">Toplam {{ testInstance.testInstanceQuestions.length }} soru</p>
         </div>
       </div>
       <div class="header-tags">
@@ -17,7 +15,27 @@
       </div>
     </div>
 
-    <div class="header-block header-block--progress">
+    <div class="header-block header-block--progress" [class.header-block--gauge]="sideDockActive()">
+      @if (sideDockActive()) {
+      <div class="header-gauge" aria-label="İlerleme göstergesi">
+        <mat-progress-spinner
+          class="header-gauge__spinner"
+          mode="determinate"
+          [value]="progressPercentage()"
+          [strokeWidth]="6"
+          [diameter]="64"
+          color="primary"
+          aria-label="İlerleme yüzdesi"
+        ></mat-progress-spinner>
+        <div class="header-gauge__overlay">
+          <span class="header-gauge__value">%{{ progressPercentage() | number : '1.0-0' }}</span>
+          <span class="header-gauge__label">İlerleme</span>
+        </div>
+      </div>
+      <div class="header-gauge__summary">
+        <span>{{ answeredCount() }} / {{ testInstance.testInstanceQuestions.length }} cevaplandı</span>
+      </div>
+      } @else {
       <div class="progress-label">
         <span>İlerleme</span>
         <span class="progress-value">%{{ progressPercentage() | number : '1.0-0' }}</span>
@@ -25,6 +43,7 @@
       <div class="progress-rail">
         <div class="progress-rail__fill" [style.width.%]="progressPercentage()"></div>
       </div>
+      }
     </div>
 
     <div class="header-block header-block--actions">
@@ -58,7 +77,9 @@
           <article class="question-card" [class.question-card--active]="questionData.index === currentIndex()">
             <header class="question-card__header">
               <div class="question-card__meta">
-                <span class="chip chip--index">Soru {{ questionData.index + 1 }}</span>
+                <span class="chip chip--index">
+                  Soru {{ questionData.index + 1 }} / {{ testInstance.testInstanceQuestions.length }}
+                </span>
                 @if (isQuestionBookmarked(questionData.index)) {
                 <span class="chip chip--bookmark">
                   <mat-icon>bookmark</mat-icon>
@@ -157,6 +178,7 @@
         <div class="question-card__dock question-card__dock--side">
           <button
             mat-icon-button
+            class="dock-nav dock-nav--prev"
             matTooltip="Önceki soru"
             aria-label="Önceki soru"
             (click)="prevQuestion()"
@@ -166,6 +188,7 @@
           </button>
           <button
             mat-icon-button
+            class="dock-nav dock-nav--next"
             matTooltip="Sonraki soru"
             aria-label="Sonraki soru"
             (click)="nextQuestion()"

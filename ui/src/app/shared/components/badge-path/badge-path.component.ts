@@ -204,8 +204,10 @@ export class BadgePathComponent implements OnChanges {
       return { ...point };
     });
 
-    const height = (rowCount === 1 ? 200 : 200) + Math.max(0, rowCount - 1) * 120;
-    const maskRadius = 8;
+    const baseHeight = 220;
+    const perRowIncrement = 140;
+    const height = baseHeight + Math.max(0, rowCount - 1) * perRowIncrement;
+    const maskRadius = rowCount > 1 ? 9 : 8;
 
     return {
       viewBox: '0 0 100 100',

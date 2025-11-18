@@ -17,7 +17,7 @@ import { TestService } from '../../services/test.service';
 import { AssignedWorksheet } from '../../models/assignment';
 import { Test } from '../../models/test-instance';
 import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
-import { BadgeService, UserActivityResponse } from '../../services/badge.service';
+import { BadgeProgressItem, BadgeService, UserActivityResponse } from '../../services/badge.service';
 import { finalize } from 'rxjs';
 
 interface AssignmentCardViewModel {
@@ -46,10 +46,20 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly activityApiLoading = signal(false);
   readonly activityApiError = signal(false);
   readonly activityNumberCardData = signal<Array<{ name: string; value: number }>>([]);
+  readonly badgeProgressLoading = signal(false);
+  readonly badgeProgressError = signal(false);
+  readonly earnedBadges = signal<BadgeProgressItem[]>([]);
 
   readonly assignmentCards = computed(() => this.assignments());
   readonly canScrollLeft = signal(false);
   readonly canScrollRight = signal(false);
+  readonly showActivitySummary = computed(
+    () =>
+      this.activityNumberCardData().length > 0 ||
+      this.badgeProgressLoading() ||
+      this.badgeProgressError() ||
+      this.earnedBadges().length > 0
+  );
 
   readonly scrollDistance = 600;
   private readonly demoActivityUserId = 16;
@@ -111,6 +121,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const resolvedUserId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
     this.loadUserActivityHeatmap(resolvedUserId);
+    this.loadUserBadgeProgress(resolvedUserId);
   }
 
   ngAfterViewInit(): void {
@@ -130,6 +141,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   trackAssignment(index: number, item: AssignmentCardViewModel): number {
     return item.assignment.assignmentId;
+  }
+
+  trackBadge(index: number, badge: BadgeProgressItem): string {
+    return badge.badgeDefinitionId;
   }
 
   onCardClick(assignment: AssignmentCardViewModel): void {
@@ -240,6 +255,37 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           this.activityApiError.set(true);
           this.activityDataFromApi.set([]);
           this.activityNumberCardData.set([]);
+        },
+      });
+  }
+
+  private loadUserBadgeProgress(userId: number): void {
+    if (!userId || userId <= 0) {
+      return;
+    }
+
+    this.badgeProgressLoading.set(true);
+    this.badgeProgressError.set(false);
+    this.earnedBadges.set([]);
+
+    this.badgeService
+      .getUserBadgeProgress(userId)
+      .pipe(finalize(() => this.badgeProgressLoading.set(false)))
+      .subscribe({
+        next: (response) => {
+          const earned = (response?.badgeProgress ?? [])
+            .filter((badge) => badge.isCompleted && !!badge.earnedDateUtc)
+            .sort((a, b) => {
+              const aTime = a.earnedDateUtc ? new Date(a.earnedDateUtc).getTime() : 0;
+              const bTime = b.earnedDateUtc ? new Date(b.earnedDateUtc).getTime() : 0;
+              return bTime - aTime;
+            });
+          this.earnedBadges.set(earned);
+        },
+        error: (error) => {
+          console.error('Kullanıcı rozeti bilgisi alınamadı', error);
+          this.badgeProgressError.set(true);
+          this.earnedBadges.set([]);
         },
       });
   }

@@ -45,15 +45,17 @@
     <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
       <ng-container *ngIf="!activityApiError(); else heatmapError">
         <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
-          <ng-container *ngIf="activityNumberCardData().length > 0">
-            <div class="number-card-container">
-              <ngx-charts-number-card
-                [view]="[900, 200]"
-                [scheme]="activityNumberCardScheme"
-                [results]="activityNumberCardData()"
-                [cardColor]="activityNumberCardColor"
-              >
-              </ngx-charts-number-card>
+          <ng-container *ngIf="showActivitySummary()">
+            <div class="activity-summary">
+              <div class="number-card-container" *ngIf="activityNumberCardData().length > 0">
+                <ngx-charts-number-card
+                  [view]="[900, 200]"
+                  [scheme]="activityNumberCardScheme"
+                  [results]="activityNumberCardData()"
+                  [cardColor]="activityNumberCardColor"
+                >
+                </ngx-charts-number-card>
+              </div>
             </div>
           </ng-container>
           <ngx-charts-heat-map
@@ -70,6 +72,39 @@
             [tooltipText]="activityHeatmapTooltip"
           >
           </ngx-charts-heat-map>
+          <div class="earned-badges-container">
+            <h3 class="earned-badges-heading">Kazanılan Rozetler</h3>
+            <ng-container *ngIf="badgeProgressLoading(); else badgesResolved">
+              <p class="badges-state">Rozetler yükleniyor...</p>
+            </ng-container>
+
+            <ng-template #badgesResolved>
+              <ng-container *ngIf="badgeProgressError(); else badgesList">
+                <p class="badges-state error">Kazanılmış rozetler yüklenirken bir sorun oluştu.</p>
+              </ng-container>
+            </ng-template>
+
+            <ng-template #badgesList>
+              <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
+                <div class="earned-badges-grid">
+                  <div
+                    class="badge-icon"
+                       *ngFor="let badge of earnedBadges(); trackBy: trackBadge"
+                  >
+                    <img [src]="badge.iconUrl" [alt]="badge.name" />
+                       <div class="badge-tooltip" *ngIf="badge.name || badge.description">
+                         <span class="badge-tooltip-name">{{ badge.name }}</span>
+                         <span class="badge-tooltip-desc" *ngIf="badge.description">{{ badge.description }}</span>
+                       </div>
+                  </div>
+                </div>
+              </ng-container>
+            </ng-template>
+
+            <ng-template #badgesEmpty>
+              <p class="badges-state">Henüz kazanılmış rozet bulunmuyor.</p>
+            </ng-template>
+          </div>
         </ng-container>
       </ng-container>
     </ng-container>

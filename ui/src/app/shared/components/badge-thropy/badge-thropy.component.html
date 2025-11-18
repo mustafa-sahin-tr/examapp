@@ -12,30 +12,38 @@
       </header>
 
       <div class="ms-badge-path-track">
-        <ng-container *ngFor="let badge of path.badges; let i = index; let last = last">
-          <div class="ms-badge-path-node-wrapper">
-            <button
-              type="button"
-              class="ms-badge-node"
-              [class.ms-badge-node-selected]="selectedBadge()?.id === badge.id"
-              [class.ms-badge-node-completed]="badge.isCompleted"
-              (click)="selectBadge(badge)"
-            >
-              <span class="ms-badge-node-icon">
-                <img [src]="badge.iconUrl" [alt]="badge.name" />
-              </span>
-              <span class="ms-badge-node-label">{{ badge.name }}</span>
-              <span class="ms-badge-node-progress">{{ badge.completedLabel }} / {{ badge.totalLabel }}</span>
-            </button>
+        <div class="ms-badge-path-row" *ngFor="let row of path.rows; let rowIndex = index">
+          <ng-container *ngFor="let badge of row; let i = index; let last = last">
+            <div class="ms-badge-path-node-wrapper">
+              <div class="ms-badge-vertical-connector" *ngIf="rowIndex > 0 && i === 0">
+                <div class="ms-badge-vertical-line"></div>
+                <div class="ms-badge-vertical-arrow"></div>
+              </div>
 
-            <div class="ms-badge-connector" *ngIf="!last">
-              <div
-                class="ms-badge-connector-line"
-                [class.ms-badge-connector-active]="badge.isCompleted && path.badges[i + 1]?.isCompleted"
-              ></div>
+              <button
+                type="button"
+                class="ms-badge-node"
+                [class.ms-badge-node-selected]="selectedBadge()?.id === badge.id"
+                [class.ms-badge-node-completed]="badge.isCompleted"
+                (click)="selectBadge(badge)"
+              >
+                <span class="ms-badge-node-icon">
+                  <img [src]="badge.iconUrl" [alt]="badge.name" />
+                </span>
+                <span class="ms-badge-node-label">{{ badge.name }}</span>
+                <span class="ms-badge-node-progress">{{ badge.completedLabel }} / {{ badge.totalLabel }}</span>
+              </button>
+
+              <div class="ms-badge-connector" *ngIf="!last">
+                <div
+                  class="ms-badge-connector-line"
+                  [class.ms-badge-connector-active]="badge.isCompleted && row[i + 1]?.isCompleted"
+                ></div>
+                <div class="ms-badge-connector-arrow"></div>
+              </div>
             </div>
-          </div>
-        </ng-container>
+          </ng-container>
+        </div>
       </div>
 
       <ng-container *ngIf="selectedBadge() as selected">

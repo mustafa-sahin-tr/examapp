@@ -38,6 +38,7 @@ interface BadgeThropyPath {
   badges: BadgeThropyItem[];
   completedCount: number;
   completionPercent: number;
+  rows: BadgeThropyItem[][];
 }
 
 @Component({
@@ -179,6 +180,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
             badges: [],
             completedCount: 0,
             completionPercent: 0,
+            rows: [],
           };
           pathMap.set(key, group);
         }
@@ -205,6 +207,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
       const totalCount = Math.max(path.badges.length, 1);
       path.completedCount = completedCount;
       path.completionPercent = Math.round((completedCount / totalCount) * 100);
+      path.rows = this.chunkBadges(path.badges);
 
       if (!path.name && path.badges.length) {
         path.name = path.badges[0].pathName || path.badges[0].name;
@@ -225,6 +228,35 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     standalone.sort((a, b) => a.name.localeCompare(b.name));
 
     return { paths, standalone };
+  }
+
+  private chunkBadges(items: BadgeThropyItem[]): BadgeThropyItem[][] {
+    if (!Array.isArray(items) || items.length === 0) {
+      return [];
+    }
+
+    const chunkSize = this.resolveChunkSize();
+    const rows: BadgeThropyItem[][] = [];
+    for (let i = 0; i < items.length; i += chunkSize) {
+      rows.push(items.slice(i, i + chunkSize));
+    }
+
+    return rows;
+  }
+
+  private resolveChunkSize(): number {
+    if (typeof window === 'undefined') {
+      return 3;
+    }
+
+    const width = window.innerWidth;
+    if (width >= 1440) {
+      return 4;
+    }
+    if (width >= 1200) {
+      return 3;
+    }
+    return 2;
   }
 
   private resolveInitialSelection(paths: BadgeThropyPath[], standalone: BadgeThropyItem[]): BadgeThropyItem | null {

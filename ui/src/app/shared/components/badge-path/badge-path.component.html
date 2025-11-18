@@ -1,0 +1,43 @@
+<div class="ms-single-path" *ngIf="layout() as layout">
+  <div class="ms-single-path-track" [style.height.px]="layout.height">
+    <svg class="ms-single-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient [attr.id]="gradientId" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#60a5fa" />
+          <stop offset="100%" stop-color="#38bdf8" />
+        </linearGradient>
+      </defs>
+
+      <path
+        class="ms-single-path-line"
+        [attr.d]="layout.pathD"
+        fill="none"
+        [attr.stroke]="'url(#' + gradientId + ')'"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      ></path>
+    </svg>
+
+    <div class="ms-single-path-nodes">
+      <ng-container *ngFor="let item of items; index as index; trackBy: trackById">
+        <div
+          class="ms-path-node"
+          [class.ms-path-node-complete]="item.isCompleted"
+          [style.left.%]="layout.nodePoints[index]?.xPercent ?? 50"
+          [style.top.%]="layout.nodePoints[index]?.yPercent ?? 50"
+        >
+          <span class="ms-path-node-icon">
+            <img [src]="item.iconUrl" [alt]="item.name" />
+          </span>
+          <span class="ms-path-node-name">{{ item.name }}</span>
+          <span class="ms-path-node-progress">{{ item.completedLabel }} / {{ item.totalLabel }}</span>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<div class="ms-single-path-empty" *ngIf="!layout()">
+  <span>Rozet yolu bulunamadı.</span>
+</div>

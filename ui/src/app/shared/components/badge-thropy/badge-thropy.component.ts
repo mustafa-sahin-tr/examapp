@@ -14,49 +14,12 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BadgeProgressItem, BadgeService } from '../../../services/badge.service';
 import { AuthService } from '../../../services/auth.service';
-
-interface BadgeThropyItem {
-  id: string;
-  name: string;
-  iconUrl: string;
-  description: string;
-  currentValue: number;
-  targetValue: number;
-  progressPercent: number;
-  completedLabel: string;
-  totalLabel: string;
-  isCompleted: boolean;
-  earnedDateUtc: string | null;
-  pathKey?: string | null;
-  pathName?: string | null;
-  pathOrder?: number | null;
-}
-
-interface BadgeThropyPath {
-  key: string;
-  name: string;
-  badges: BadgeThropyItem[];
-  completedCount: number;
-  completionPercent: number;
-  layout: BadgePathLayout | null;
-}
-
-interface BadgePathLayout {
-  viewBox: string;
-  height: number;
-  pathD: string;
-  arrowId: string;
-  points: BadgePathPoint[];
-}
-
-interface BadgePathPoint {
-  xPercent: number;
-  yPercent: number;
-}
+import { BadgePathComponent } from '../badge-path/badge-path.component';
+import { BadgeThropyItem, BadgeThropyPath, BadgePathLayout, BadgePathPoint } from './badge-thropy.types';
 
 @Component({
   selector: 'app-badge-thropy',
-  imports: [CommonModule],
+  imports: [CommonModule, BadgePathComponent],
   templateUrl: './badge-thropy.component.html',
   styleUrls: ['./badge-thropy.component.scss'],
 })

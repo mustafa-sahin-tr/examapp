@@ -3,7 +3,11 @@
     <h2 class="ms-badge-title">{{ title }}</h2>
     <p class="ms-badge-subtitle">{{ subtitle }}</p>
   </div>
-
+  <section class="ms-badge-paths" *ngIf="badgePaths().length">
+    <article class="ms-badge-path" *ngFor="let path of badgePaths()">
+      <app-badge-path [items]="path.badges" [maxPerRow]="5"> </app-badge-path>
+    </article>
+  </section>
   <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
       <header class="ms-badge-path-header">

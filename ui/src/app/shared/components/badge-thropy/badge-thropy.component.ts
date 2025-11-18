@@ -38,7 +38,20 @@ interface BadgeThropyPath {
   badges: BadgeThropyItem[];
   completedCount: number;
   completionPercent: number;
-  rows: BadgeThropyItem[][];
+  layout: BadgePathLayout | null;
+}
+
+interface BadgePathLayout {
+  viewBox: string;
+  height: number;
+  pathD: string;
+  arrowId: string;
+  points: BadgePathPoint[];
+}
+
+interface BadgePathPoint {
+  xPercent: number;
+  yPercent: number;
 }
 
 @Component({
@@ -180,7 +193,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
             badges: [],
             completedCount: 0,
             completionPercent: 0,
-            rows: [],
+            layout: null,
           };
           pathMap.set(key, group);
         }
@@ -207,7 +220,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
       const totalCount = Math.max(path.badges.length, 1);
       path.completedCount = completedCount;
       path.completionPercent = Math.round((completedCount / totalCount) * 100);
-      path.rows = this.chunkBadges(path.badges);
+      path.layout = this.createLoopLayout(path.badges, path.key);
 
       if (!path.name && path.badges.length) {
         path.name = path.badges[0].pathName || path.badges[0].name;
@@ -230,33 +243,77 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     return { paths, standalone };
   }
 
-  private chunkBadges(items: BadgeThropyItem[]): BadgeThropyItem[][] {
-    if (!Array.isArray(items) || items.length === 0) {
-      return [];
+  private createLoopLayout(badges: BadgeThropyItem[], pathKey: string): BadgePathLayout {
+    const total = badges.length;
+
+    if (!total) {
+      return {
+        viewBox: '0 0 100 100',
+        height: 280,
+        pathD: 'M 10 50 C 10 20 90 20 90 50 C 90 80 10 80 10 50',
+        arrowId: 'badge-path-arrow-default',
+        points: [],
+      };
     }
 
-    const chunkSize = this.resolveChunkSize();
-    const rows: BadgeThropyItem[][] = [];
-    for (let i = 0; i < items.length; i += chunkSize) {
-      rows.push(items.slice(i, i + chunkSize));
+    const viewBox = '0 0 100 100';
+    const height = total > 6 ? 360 : total > 4 ? 320 : 280;
+    const safeKey = (pathKey || 'default').replace(/[^a-zA-Z0-9_-]/g, '-');
+    const arrowId = `badge-path-arrow-${safeKey}`;
+
+    const left = 12;
+    const right = 88;
+    const horizontal = right - left;
+    const topBase = 30;
+    const bottomBase = 70;
+    const curveSpread = 6;
+
+    const topCount = Math.ceil(total / 2);
+    const bottomCount = total - topCount;
+    const points: BadgePathPoint[] = [];
+
+    const createPoint = (ratio: number, yBase: number, invert?: boolean): BadgePathPoint => {
+      const curve = Math.sin(ratio * Math.PI) * curveSpread;
+      const xPercent = invert ? right - horizontal * ratio : left + horizontal * ratio;
+      const yPercent = yBase + (invert ? curve : -curve);
+      return { xPercent, yPercent };
+    };
+
+    if (topCount === total) {
+      for (let index = 0; index < total; index++) {
+        const ratio = total > 1 ? index / (total - 1) : 0.5;
+        const curve = total > 2 ? Math.sin(ratio * Math.PI) * curveSpread : 0;
+        const xPercent = left + horizontal * ratio;
+        const yPercent = 50 - curve;
+        points.push({ xPercent, yPercent });
+      }
+    } else {
+      for (let index = 0; index < topCount; index++) {
+        const ratio = topCount > 1 ? index / (topCount - 1) : 0.5;
+        points.push(createPoint(ratio, topBase, false));
+      }
+
+      for (let index = 0; index < bottomCount; index++) {
+        const ratio = bottomCount > 1 ? index / (bottomCount - 1) : 0.5;
+        points.push(createPoint(ratio, bottomBase, true));
+      }
     }
 
-    return rows;
-  }
+    const topCurveY = 18;
+    const bottomCurveY = 82;
+    const pathD = [
+      `M ${left + 0.01} 50`,
+      `C ${left} ${topCurveY} ${right} ${topCurveY} ${right} 50`,
+      `C ${right} ${bottomCurveY} ${left} ${bottomCurveY} ${left} 50`,
+    ].join(' ');
 
-  private resolveChunkSize(): number {
-    if (typeof window === 'undefined') {
-      return 3;
-    }
-
-    const width = window.innerWidth;
-    if (width >= 1440) {
-      return 4;
-    }
-    if (width >= 1200) {
-      return 3;
-    }
-    return 2;
+    return {
+      viewBox,
+      height,
+      pathD,
+      arrowId,
+      points,
+    };
   }
 
   private resolveInitialSelection(paths: BadgeThropyPath[], standalone: BadgeThropyItem[]): BadgeThropyItem | null {

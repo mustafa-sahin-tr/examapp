@@ -7,42 +7,56 @@
   <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
       <header class="ms-badge-path-header">
-        <h3>{{ path.name }}</h3>
-        <span class="ms-badge-path-progress"> {{ path.completedCount }} / {{ path.badges.length }} tamamlandı </span>
+        <div class="ms-badge-path-info">
+          <h3>{{ path.name }}</h3>
+          <span class="ms-badge-path-progress">{{ path.completedCount }} / {{ path.badges.length }} tamamlandı</span>
+        </div>
+        <span class="ms-badge-path-percent">%{{ path.completionPercent }}</span>
       </header>
 
-      <div class="ms-badge-path-track">
-        <div class="ms-badge-path-row" *ngFor="let row of path.rows; let rowIndex = index">
-          <ng-container *ngFor="let badge of row; let i = index; let last = last">
-            <div class="ms-badge-path-node-wrapper">
-              <div class="ms-badge-vertical-connector" *ngIf="rowIndex > 0 && i === 0">
-                <div class="ms-badge-vertical-line"></div>
-                <div class="ms-badge-vertical-arrow"></div>
-              </div>
+      <div class="ms-badge-path-track" *ngIf="path.layout as layout">
+        <div class="ms-badge-path-canvas" [style.height.px]="layout.height">
+          <div class="ms-badge-path-start-arrow" aria-hidden="true"></div>
+          <svg class="ms-badge-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient [attr.id]="layout.arrowId + '-gradient'" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#60a5fa"></stop>
+                <stop offset="100%" stop-color="#38bdf8"></stop>
+              </linearGradient>
+            </defs>
 
+            <path
+              class="ms-badge-path-line"
+              [attr.d]="layout.pathD"
+              fill="none"
+              [attr.stroke]="'url(#' + layout.arrowId + '-gradient)'"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+
+          <div class="ms-badge-path-nodes">
+            <ng-container *ngFor="let badge of path.badges; index as i">
               <button
                 type="button"
                 class="ms-badge-node"
                 [class.ms-badge-node-selected]="selectedBadge()?.id === badge.id"
                 [class.ms-badge-node-completed]="badge.isCompleted"
+                [class.ms-badge-node-top]="(layout.points[i]?.yPercent ?? 50) < 50"
+                [style.left.%]="layout.points[i]?.xPercent ?? 50"
+                [style.top.%]="layout.points[i]?.yPercent ?? 50"
                 (click)="selectBadge(badge)"
               >
+                <span class="ms-badge-node-halo" aria-hidden="true"></span>
                 <span class="ms-badge-node-icon">
                   <img [src]="badge.iconUrl" [alt]="badge.name" />
                 </span>
                 <span class="ms-badge-node-label">{{ badge.name }}</span>
                 <span class="ms-badge-node-progress">{{ badge.completedLabel }} / {{ badge.totalLabel }}</span>
               </button>
-
-              <div class="ms-badge-connector" *ngIf="!last">
-                <div
-                  class="ms-badge-connector-line"
-                  [class.ms-badge-connector-active]="badge.isCompleted && row[i + 1]?.isCompleted"
-                ></div>
-                <div class="ms-badge-connector-arrow"></div>
-              </div>
-            </div>
-          </ng-container>
+            </ng-container>
+          </div>
         </div>
       </div>
 

@@ -64,6 +64,7 @@
 
 .badge-icon:hover {
   transform: translateY(-2px);
+  z-index: 20;
 }
 
 .badge-icon img {
@@ -92,7 +93,7 @@
   flex-direction: column;
   gap: 6px;
   transition: opacity 160ms ease, transform 160ms ease;
-  z-index: 5;
+  z-index: 1200;
 }
 
 .badge-tooltip::after {

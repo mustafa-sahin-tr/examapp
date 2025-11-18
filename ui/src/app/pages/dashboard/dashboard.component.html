@@ -87,15 +87,12 @@
             <ng-template #badgesList>
               <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
                 <div class="earned-badges-grid">
-                  <div
-                    class="badge-icon"
-                       *ngFor="let badge of earnedBadges(); trackBy: trackBadge"
-                  >
+                  <div class="badge-icon" *ngFor="let badge of earnedBadges(); trackBy: trackBadge">
                     <img [src]="badge.iconUrl" [alt]="badge.name" />
-                       <div class="badge-tooltip" *ngIf="badge.name || badge.description">
-                         <span class="badge-tooltip-name">{{ badge.name }}</span>
-                         <span class="badge-tooltip-desc" *ngIf="badge.description">{{ badge.description }}</span>
-                       </div>
+                    <div class="badge-tooltip" *ngIf="badge.name || badge.description">
+                      <span class="badge-tooltip-name">{{ badge.name }}</span>
+                      <span class="badge-tooltip-desc" *ngIf="badge.description">{{ badge.description }}</span>
+                    </div>
                   </div>
                 </div>
               </ng-container>

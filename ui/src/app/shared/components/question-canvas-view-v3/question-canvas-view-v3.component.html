@@ -3,7 +3,6 @@
 <div
   class="canvas-v3"
   [ngClass]="getCanvasLayoutClass()"
-  [class.canvas-v3--loading]="!isImageLoaded()"
   [style.--canvas-question-width.px]="canvasWidths.questionWidth || 680"
   [style.--canvas-question-height.px]="canvasHeights.questionHeight || 720"
   [style.--canvas-passage-width.px]="canvasWidths.passageWidth || 0"
@@ -55,11 +54,6 @@
       }
     </aside>
     }
-  </div>
-
-  <div class="canvas-v3__loading-overlay" *ngIf="!isImageLoaded()">
-    <span class="canvas-v3__spinner" aria-hidden="true"></span>
-    <span class="sr-only">Görsel yükleniyor</span>
   </div>
 
   @if (isPreviewMode) {

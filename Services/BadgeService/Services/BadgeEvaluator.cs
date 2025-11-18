@@ -24,14 +24,21 @@ public class BadgeEvaluator
 
     public async Task EvaluateAnswerSubmittedAsync(int userId, string clientId, CancellationToken cancellationToken = default)
     {
-        var aggregate = await _context.StudentQuestionAggregates
+        var questionAggregate = await _context.StudentQuestionAggregates
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
 
-        if (aggregate == null)
-        {
-            return;
-        }
+        var subjectAggregates = await _context.StudentSubjectAggregates
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var dailyActivities = await _context.StudentDailyActivities
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var activitySummary = ActivityAnalytics.Calculate(dailyActivities);
 
         var badgeDefinitions = await _context.BadgeDefinitions
             .AsNoTracking()
@@ -58,17 +65,10 @@ public class BadgeEvaluator
 
         foreach (var definition in badgeDefinitions)
         {
-            if (!TryResolveRule(definition, out var rule, out var targetValue))
+            if (!TryEvaluateRule(definition, questionAggregate, subjectAggregates, activitySummary, out var currentValue, out var targetValue))
             {
                 continue;
             }
-
-            var currentValue = rule switch
-            {
-                BadgeRule.AnswerCount => aggregate.TotalQuestions,
-                BadgeRule.CorrectStreak => aggregate.BestCorrectStreak,
-                _ => 0
-            };
 
             if (!progressMap.TryGetValue(definition.Id, out var progress))
             {
@@ -122,53 +122,248 @@ public class BadgeEvaluator
         }
     }
 
-    private static bool TryResolveRule(BadgeDefinition definition, out BadgeRule rule, out int target)
+    private static bool TryEvaluateRule(
+        BadgeDefinition definition,
+        StudentQuestionAggregate? questionAggregate,
+        IReadOnlyList<StudentSubjectAggregate> subjectAggregates,
+        ActivitySummary activitySummary,
+        out int currentValue,
+        out int targetValue)
     {
-        rule = BadgeRule.Unknown;
-        target = 0;
+        currentValue = 0;
+        targetValue = 0;
 
-        if (string.Equals(definition.RuleType, "AnswerCount", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(definition.RuleType) || string.IsNullOrWhiteSpace(definition.RuleConfigJson))
         {
-            var config = JsonSerializer.Deserialize<AnswerCountRuleConfig>(definition.RuleConfigJson);
-            if (config?.Count > 0)
-            {
-                rule = BadgeRule.AnswerCount;
-                target = config.Count;
-                return true;
-            }
             return false;
         }
 
-        if (string.Equals(definition.RuleType, "CorrectStreak", StringComparison.OrdinalIgnoreCase))
+        JsonElement config;
+        try
         {
-            var config = JsonSerializer.Deserialize<CorrectStreakRuleConfig>(definition.RuleConfigJson);
-            if (config?.Streak > 0)
-            {
-                rule = BadgeRule.CorrectStreak;
-                target = config.Streak;
-                return true;
-            }
+            using var document = JsonDocument.Parse(definition.RuleConfigJson);
+            config = document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
             return false;
+        }
+
+        switch (definition.RuleType.Trim().ToLowerInvariant())
+        {
+            case "answercount":
+                if (!TryReadInt(config, out targetValue, "target", "count"))
+                {
+                    return false;
+                }
+                currentValue = questionAggregate?.TotalQuestions ?? 0;
+                break;
+
+            case "correctstreak":
+                if (!TryReadInt(config, out targetValue, "target", "streak"))
+                {
+                    return false;
+                }
+                currentValue = questionAggregate?.BestCorrectStreak ?? 0;
+                break;
+
+            case "totalstudytimeminutes":
+                if (!TryReadInt(config, out targetValue, "target", "minutes", "targetMinutes"))
+                {
+                    return false;
+                }
+                currentValue = (int)Math.Floor((questionAggregate?.TotalTimeSeconds ?? 0) / 60d);
+                break;
+
+            case "totalcorrectanswers":
+                if (!TryReadInt(config, out targetValue, "target", "count", "correct"))
+                {
+                    return false;
+                }
+                currentValue = questionAggregate?.CorrectQuestions ?? 0;
+                break;
+
+            case "subjectanswercount":
+                if (!TryReadInt(config, out targetValue, "target", "count"))
+                {
+                    return false;
+                }
+
+                if (!TryGetSubjectCriteria(config, out var answerCountSubject))
+                {
+                    return false;
+                }
+
+                currentValue = FindSubjectAggregate(subjectAggregates, answerCountSubject)?.TotalQuestions ?? 0;
+                break;
+
+            case "subjectcorrectcount":
+                if (!TryReadInt(config, out targetValue, "target", "count", "correct"))
+                {
+                    return false;
+                }
+
+                if (!TryGetSubjectCriteria(config, out var correctSubject))
+                {
+                    return false;
+                }
+
+                currentValue = FindSubjectAggregate(subjectAggregates, correctSubject)?.CorrectQuestions ?? 0;
+                break;
+
+            case "subjectstudytimeminutes":
+                if (!TryReadInt(config, out targetValue, "target", "minutes", "targetMinutes"))
+                {
+                    return false;
+                }
+
+                if (!TryGetSubjectCriteria(config, out var timeSubject))
+                {
+                    return false;
+                }
+
+                var subjectForTime = FindSubjectAggregate(subjectAggregates, timeSubject);
+                currentValue = subjectForTime == null ? 0 : (int)Math.Floor(subjectForTime.TotalTimeSeconds / 60d);
+                break;
+
+            case "activedays":
+                if (!TryReadInt(config, out targetValue, "target", "days"))
+                {
+                    return false;
+                }
+                currentValue = activitySummary.TotalActiveDays;
+                break;
+
+            case "dailystreak":
+            case "studystreak":
+            case "activitystreak":
+                if (!TryReadInt(config, out targetValue, "target", "days", "streak"))
+                {
+                    return false;
+                }
+                currentValue = activitySummary.BestStreak;
+                break;
+
+            default:
+                return false;
+        }
+
+        targetValue = Math.Max(targetValue, 0);
+        currentValue = Math.Max(currentValue, 0);
+
+        return targetValue > 0;
+    }
+
+    private static bool TryReadInt(JsonElement element, out int value, params string[] propertyNames)
+    {
+        value = 0;
+
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out value))
+        {
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.String && int.TryParse(element.GetString(), out value))
+        {
+            return true;
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (element.TryGetProperty(propertyName, out var property))
+                {
+                    if (property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out value))
+                    {
+                        return true;
+                    }
+
+                    if (property.ValueKind == JsonValueKind.String && int.TryParse(property.GetString(), out value))
+                    {
+                        return true;
+                    }
+                }
+            }
         }
 
         return false;
     }
 
-    private enum BadgeRule
+    private static bool TryReadString(JsonElement element, out string? value, params string[] propertyNames)
     {
-        Unknown = 0,
-        AnswerCount = 1,
-        CorrectStreak = 2
+        value = null;
+
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            value = element.GetString();
+            return !string.IsNullOrWhiteSpace(value);
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String)
+                {
+                    var candidate = property.GetString();
+                    if (!string.IsNullOrWhiteSpace(candidate))
+                    {
+                        value = candidate;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
-    private class AnswerCountRuleConfig
+    private static bool TryGetSubjectCriteria(JsonElement config, out SubjectCriteria criteria)
     {
-        public int Count { get; set; }
+        criteria = new SubjectCriteria(null, null);
+
+        int? subjectId = null;
+        string? subjectName = null;
+
+        if (TryReadInt(config, out var subjectIdValue, "subjectId"))
+        {
+            subjectId = subjectIdValue;
+        }
+
+        if (TryReadString(config, out var subjectNameValue, "subjectName", "subject"))
+        {
+            subjectName = subjectNameValue?.Trim();
+        }
+
+        if (subjectId.HasValue || !string.IsNullOrWhiteSpace(subjectName))
+        {
+            criteria = new SubjectCriteria(subjectId, subjectName);
+            return true;
+        }
+
+        return false;
     }
 
-    private class CorrectStreakRuleConfig
+    private static StudentSubjectAggregate? FindSubjectAggregate(IReadOnlyList<StudentSubjectAggregate> aggregates, SubjectCriteria criteria)
     {
-        public int Streak { get; set; }
+        if (criteria.SubjectId.HasValue)
+        {
+            var byId = aggregates.FirstOrDefault(x => x.SubjectId == criteria.SubjectId.Value);
+            if (byId != null)
+            {
+                return byId;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.SubjectName))
+        {
+            return aggregates.FirstOrDefault(x => string.Equals(x.SubjectName, criteria.SubjectName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return null;
     }
+
+    private sealed record SubjectCriteria(int? SubjectId, string? SubjectName);
 }
 

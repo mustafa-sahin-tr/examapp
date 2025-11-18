@@ -4,10 +4,136 @@
   gap: 16px;
 }
 
-.heatmap-container .number-card-container {
+.activity-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.activity-summary .number-card-container {
+  flex: 1 1 600px;
+  min-width: 280px;
+}
+
+.earned-badges-container {
+  flex: 0 1 320px;
+  min-width: 220px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #1f2636;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.earned-badges-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f7fafc;
+  margin: 0;
+}
+
+.badges-state {
+  font-size: 13px;
+  color: #a0aec0;
+  margin: 0;
+}
+
+.earned-badges-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.badge-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  transition: transform 160ms ease;
+  position: relative;
+}
+
+.badge-icon:hover {
+  transform: translateY(-2px);
+  z-index: 20;
+}
+
+.badge-icon img {
   width: 100%;
-  max-width: 900px;
-  margin-bottom: 20px;
+  height: 100%;
+  object-fit: contain;
+}
+
+.badge-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  transform-origin: bottom;
+  opacity: 0;
+  pointer-events: none;
+  padding: 12px 14px;
+  border-radius: 14px;
+  min-width: 220px;
+  max-width: 280px;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.92), rgba(56, 189, 248, 0.92));
+  color: #0b1324;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(6px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity 160ms ease, transform 160ms ease;
+  z-index: 1200;
+}
+
+.badge-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 8px;
+  background: inherit;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+
+.badge-icon:hover .badge-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.badge-tooltip-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.badge-tooltip-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(11, 19, 36, 0.8);
+}
+
+@media (max-width: 960px) {
+  .activity-summary {
+    gap: 16px;
+  }
+
+  .earned-badges-container {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 }
 
 

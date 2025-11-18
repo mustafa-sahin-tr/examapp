@@ -1,36 +1,126 @@
+<div class="ms-badge-list-container" [class.ms-badge-loading]="isLoading()">
+  <div class="ms-badge-header">
+    <h2 class="ms-badge-title">{{ title }}</h2>
+    <p class="ms-badge-subtitle">{{ subtitle }}</p>
+  </div>
+  <section class="ms-badge-paths" *ngIf="badgePaths().length">
+    <article class="ms-badge-path" *ngFor="let path of badgePaths()">
+      <app-badge-path [items]="path.badges" [maxPerRow]="6"> </app-badge-path>
+    </article>
+  </section>
+  <!-- <section class="ms-badge-paths" *ngIf="badgePaths().length">
+    <article class="ms-badge-path" *ngFor="let path of badgePaths()">
+      <header class="ms-badge-path-header">
+        <div class="ms-badge-path-info">
+          <h3>{{ path.name }}</h3>
+          <span class="ms-badge-path-progress">{{ path.completedCount }} / {{ path.badges.length }} tamamlandı</span>
+        </div>
+        <span class="ms-badge-path-percent">%{{ path.completionPercent }}</span>
+      </header>
 
-<div class="ms-badge-list-container">
-    <div class="ms-badge-header">
-        <h2 class="ms-badge-title">{{ title }}</h2>
-        <p class="ms-badge-subtitle">{{ subtitle }}</p>
-    </div>
+      <div class="ms-badge-path-track" *ngIf="path.layout as layout">
+        <div class="ms-badge-path-canvas" [style.height.px]="layout.height">
+          <div class="ms-badge-path-start-arrow" aria-hidden="true"></div>
+          <svg class="ms-badge-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient [attr.id]="layout.arrowId + '-gradient'" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#60a5fa"></stop>
+                <stop offset="100%" stop-color="#38bdf8"></stop>
+              </linearGradient>
+            </defs>
+
+            <path
+              class="ms-badge-path-line"
+              [attr.d]="layout.pathD"
+              fill="none"
+              [attr.stroke]="'url(#' + layout.arrowId + '-gradient)'"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+
+          <div class="ms-badge-path-nodes">
+            <ng-container *ngFor="let badge of path.badges; index as i">
+              <button
+                type="button"
+                class="ms-badge-node"
+                [class.ms-badge-node-selected]="selectedBadge()?.id === badge.id"
+                [class.ms-badge-node-completed]="badge.isCompleted"
+                [class.ms-badge-node-top]="(layout.points[i]?.yPercent ?? 50) < 50"
+                [style.left.%]="layout.points[i]?.xPercent ?? 50"
+                [style.top.%]="layout.points[i]?.yPercent ?? 50"
+                (click)="selectBadge(badge)"
+              >
+                <span class="ms-badge-node-halo" aria-hidden="true"></span>
+                <span class="ms-badge-node-icon">
+                  <img [src]="badge.iconUrl" [alt]="badge.name" />
+                </span>
+                <span class="ms-badge-node-label">{{ badge.name }}</span>
+                <span class="ms-badge-node-progress">{{ badge.completedLabel }} / {{ badge.totalLabel }}</span>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="selectedBadge() as selected">
+        <ng-container *ngIf="selected.pathKey === path.key">
+          <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
+        </ng-container>
+      </ng-container>
+    </article>
+  </section>
+
+  <section class="ms-badge-standalone" *ngIf="standaloneBadges().length">
+    <h3 class="ms-badge-standalone-title">Tekil Rozetler</h3>
     <div class="ms-badge-list">
-        <div
-        *ngFor="let badge of badges"
+      <div
+        *ngFor="let badge of standaloneBadges(); trackBy: trackByBadgeId"
         class="ms-badge-item"
         [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
+        [class.ms-badge-completed]="badge.isCompleted"
+        [class.ms-badge-pending]="!badge.isCompleted"
         (click)="selectBadge(badge)"
-        >
-        <img [src]="badge.icon" [alt]="badge.name" class="ms-badge-icon">
+      >
+        <img [src]="badge.iconUrl" [alt]="badge.name" class="ms-badge-icon" />
         <h3 class="ms-badge-name">{{ badge.name }}</h3>
-        <p class="ms-badge-time">{{ badge.time }}</p>
-    
-        <!-- Üçgen sadece seçili badge için gösterilecek -->
+        <p class="ms-badge-time">{{ badge.completedLabel }} / {{ badge.totalLabel }}</p>
+
         <div *ngIf="badge.id === selectedBadge()?.id" class="ms-badge-arrow"></div>
-        </div>
+      </div>
     </div>
-    
-    <!-- Seçili badge için detay paneli -->
-    <div *ngIf="selectedBadge()" class="ms-badge-detail">
-        <div class="ms-badge-content">
-        <img [src]="selectedBadge()?.icon" class="ms-badge-large-icon">
-        <h1 class="ms-badge-title">{{ selectedBadge()?.name }}</h1>
-        <p class="ms-badge-description">{{ selectedBadge()?.description }}</p>
-        <span>{{ selectedBadge()?.completed }} of {{ selectedBadge()?.total }} completed</span>
+
+    <ng-container *ngIf="selectedBadge() as selected">
+      <ng-container *ngIf="!selected.pathKey">
+        <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
+      </ng-container>
+    </ng-container>
+  </section>
+
+  <div *ngIf="!badgePaths().length && !standaloneBadges().length && !isLoading()" class="ms-badge-empty">
+    Rozet bilgisi bulunamadı.
+  </div>
+
+  <ng-template #badgeDetail let-badge>
+    <div class="ms-badge-detail">
+      <div class="ms-badge-content" [class.ms-badge-content-completed]="badge?.isCompleted">
+        <div class="ms-badge-content-top">
+          <h1 class="ms-badge-title">{{ badge?.name }}</h1>
+
+          <div class="ms-badge-meta" *ngIf="badge?.pathName">
+            <span class="ms-badge-chip">{{ badge?.pathName }}</span>
+            <span class="ms-badge-chip" *ngIf="badge?.pathOrder as step">Adım {{ step }}</span>
+          </div>
+
+          <span class="ms-badge-description">{{ badge?.description }}</span>
+          <span class="ms-badge-progress-text">{{ badge?.completedLabel }} / {{ badge?.totalLabel }} tamamlandı</span>
+        </div>
+
         <div class="ms-badge-progress">
-            <div class="ms-badge-progress-bar" [style.width.%]="selectedBadge()?.progress"></div>
-            
+          <div class="ms-badge-progress-bar" [style.width.%]="badge?.progressPercent"></div>
         </div>
-        </div>
+      </div>
     </div>
+  </ng-template> -->
 </div>

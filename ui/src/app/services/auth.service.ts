@@ -70,6 +70,29 @@ export class AuthService {
     return this.http.post('/api/exam/students/register-student', studentData);
   }
 
+  getUserIdFromLocalStorage(): number | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    try {
+      const stored = window.localStorage.getItem('user');
+      console.log('LocalStorage user verisi:', stored);
+      if (!stored) {
+        return null;
+      }
+
+      const parsed = JSON.parse(stored);
+      const userId = Number(parsed?.id);
+      const finalId = Number.isFinite(userId) && userId > 0 ? userId : null;
+      console.log('Çözümlenen userId:', finalId);
+      return finalId;
+    } catch (error) {
+      console.warn('LocalStorage user bilgisi okunamadı', error);
+      return null;
+    }
+  }
+
   clearLocalStorage(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.roleKey);

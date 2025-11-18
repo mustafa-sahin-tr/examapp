@@ -1,0 +1,90 @@
+<div class="ms-single-path" *ngIf="layout() as layout">
+  <div class="ms-single-path-track" [style.height.px]="layout.height">
+    <svg class="ms-single-path-svg" [attr.viewBox]="layout.viewBox" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient [attr.id]="gradientId" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#60a5fa" />
+          <stop offset="100%" stop-color="#38bdf8" />
+        </linearGradient>
+        <mask [attr.id]="gradientId + '-mask'">
+          <rect x="0" y="0" width="100" height="100" fill="white" />
+          <ng-container *ngFor="let point of layout.nodePoints; index as index">
+            <circle [attr.cx]="point.xPercent" [attr.cy]="point.yPercent" [attr.r]="layout.maskRadius" fill="black" />
+          </ng-container>
+        </mask>
+      </defs>
+
+      <path
+        class="ms-single-path-line"
+        [attr.d]="layout.pathD"
+        fill="none"
+        [attr.stroke]="'url(#' + gradientId + ')'"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        [attr.mask]="'url(#' + gradientId + '-mask)'"
+      ></path>
+      <ng-container *ngFor="let segment of layout.pathSegments; index as i">
+        <text
+          [attr.x]="segment.midX"
+          [attr.y]="segment.midY"
+          class="ms-path-arrow"
+          text-anchor="middle"
+          dominant-baseline="middle"
+          [attr.transform]="'rotate(' + segment.angle + ' ' + segment.midX + ' ' + segment.midY + ')'"
+        >
+          →
+        </text>
+      </ng-container>
+    </svg>
+
+    <div class="ms-single-path-nodes">
+      <ng-container *ngFor="let item of items; index as index; trackBy: trackById">
+        <div
+          class="ms-path-node"
+          [class.ms-path-node-complete]="item.isCompleted"
+          [style.left.%]="layout.nodePoints[index]?.xPercent ?? 50"
+          [style.top.%]="layout.nodePoints[index]?.yPercent ?? 50"
+        >
+          <div class="ms-path-node-upper">
+            <span class="ms-path-node-icon" (click)="selectBadge(item)">
+              <img [src]="item.iconUrl" [alt]="item.name" />
+            </span>
+          </div>
+          <span class="ms-path-node-name">{{ item.name }}</span>
+          <div class="ms-path-node-lower">
+            <span class="ms-path-node-progress">{{ item.completedLabel }} / {{ item.totalLabel }}</span>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>
+<ng-container *ngIf="selectedBadge() as selected">
+  <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
+</ng-container>
+<div class="ms-single-path-empty" *ngIf="!layout()">
+  <span>Rozet yolu bulunamadı.</span>
+</div>
+
+<ng-template #badgeDetail let-badge>
+  <div class="ms-badge-detail">
+    <div class="ms-badge-content" [class.ms-badge-content-completed]="badge?.isCompleted">
+      <div class="ms-badge-content-top">
+        <h1 class="ms-badge-title">{{ badge?.name }}</h1>
+
+        <div class="ms-badge-meta" *ngIf="badge?.pathName">
+          <span class="ms-badge-chip">{{ badge?.pathName }}</span>
+          <span class="ms-badge-chip" *ngIf="badge?.pathOrder as step">Adım {{ step }}</span>
+        </div>
+
+        <span class="ms-badge-description">{{ badge?.description }}</span>
+        <span class="ms-badge-progress-text">{{ badge?.completedLabel }} / {{ badge?.totalLabel }} tamamlandı</span>
+      </div>
+
+      <div class="ms-badge-progress">
+        <div class="ms-badge-progress-bar" [style.width.%]="badge?.progressPercent"></div>
+      </div>
+    </div>
+  </div>
+</ng-template>

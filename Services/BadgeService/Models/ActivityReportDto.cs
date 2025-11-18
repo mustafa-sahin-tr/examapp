@@ -8,6 +8,9 @@ public class ActivityReportDto
     public int UserId { get; set; }
     public DateTime StartDateUtc { get; set; }
     public DateTime EndDateUtc { get; set; }
+    public int TotalActiveDays { get; set; }
+    public int CurrentStreakDays { get; set; }
+    public int BestStreakDays { get; set; }
     public List<ActivityDayDto> Days { get; set; } = new();
 }
 

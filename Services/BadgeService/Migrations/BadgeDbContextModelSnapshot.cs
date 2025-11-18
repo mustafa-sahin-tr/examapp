@@ -22,7 +22,7 @@ namespace BadgeService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("BadgeDefinition", b =>
+            modelBuilder.Entity("BadgeService.Entities.BadgeDefinition", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -43,6 +43,15 @@ namespace BadgeService.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PathKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PathName")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("PathOrder")
+                        .HasColumnType("integer");
+
                     b.Property<string>("RuleConfigJson")
                         .IsRequired()
                         .HasColumnType("text");
@@ -56,7 +65,7 @@ namespace BadgeService.Migrations
                     b.ToTable("BadgeDefinitions");
                 });
 
-            modelBuilder.Entity("BadgeEarned", b =>
+            modelBuilder.Entity("BadgeService.Entities.BadgeEarned", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -78,7 +87,7 @@ namespace BadgeService.Migrations
                     b.ToTable("BadgeEarned");
                 });
 
-            modelBuilder.Entity("StudentBadgeProgress", b =>
+            modelBuilder.Entity("BadgeService.Entities.StudentBadgeProgress", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -112,7 +121,7 @@ namespace BadgeService.Migrations
                     b.ToTable("StudentBadgeProgresses");
                 });
 
-            modelBuilder.Entity("StudentDailyActivity", b =>
+            modelBuilder.Entity("BadgeService.Entities.StudentDailyActivity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -150,7 +159,7 @@ namespace BadgeService.Migrations
                     b.ToTable("StudentDailyActivities");
                 });
 
-            modelBuilder.Entity("StudentQuestionAggregate", b =>
+            modelBuilder.Entity("BadgeService.Entities.StudentQuestionAggregate", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -191,7 +200,7 @@ namespace BadgeService.Migrations
                     b.ToTable("StudentQuestionAggregates");
                 });
 
-            modelBuilder.Entity("StudentSubjectAggregate", b =>
+            modelBuilder.Entity("BadgeService.Entities.StudentSubjectAggregate", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -230,9 +239,9 @@ namespace BadgeService.Migrations
                     b.ToTable("StudentSubjectAggregates");
                 });
 
-            modelBuilder.Entity("BadgeEarned", b =>
+            modelBuilder.Entity("BadgeService.Entities.BadgeEarned", b =>
                 {
-                    b.HasOne("BadgeDefinition", "BadgeDefinition")
+                    b.HasOne("BadgeService.Entities.BadgeDefinition", "BadgeDefinition")
                         .WithMany()
                         .HasForeignKey("BadgeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -241,9 +250,9 @@ namespace BadgeService.Migrations
                     b.Navigation("BadgeDefinition");
                 });
 
-            modelBuilder.Entity("StudentBadgeProgress", b =>
+            modelBuilder.Entity("BadgeService.Entities.StudentBadgeProgress", b =>
                 {
-                    b.HasOne("BadgeDefinition", "BadgeDefinition")
+                    b.HasOne("BadgeService.Entities.BadgeDefinition", "BadgeDefinition")
                         .WithMany()
                         .HasForeignKey("BadgeDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)

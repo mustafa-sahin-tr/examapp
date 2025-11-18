@@ -68,7 +68,7 @@ export class BadgePathComponent implements OnChanges {
     rows.forEach((row, rowIndex) => {
       const rowLength = row.length;
       const isSingleRow = rowCount === 1;
-      const fixedGap = 22;
+      const fixedGap = 28;
       const rowSlotSpacing = isSingleRow ? fixedGap : slotSpacing;
       const rowSpan = rowSlotSpacing * Math.max(rowLength - 1, 0);
       const rowStart = left;
@@ -114,6 +114,7 @@ export class BadgePathComponent implements OnChanges {
 
     const verticalBend = Math.max(rowSpacing * 0.6, 8);
     const horizontalBend = Math.max(Math.min(slotSpacing * 1.1, width * 0.2), 6);
+    const singleRowBend = rowCount === 1 ? Math.max(horizontalBend, 8) : horizontalBend;
     let pathD = `M ${orderedPoints[0].xPercent} ${orderedPoints[0].yPercent}`;
 
     for (let index = 1; index < pointCount; index++) {
@@ -128,9 +129,14 @@ export class BadgePathComponent implements OnChanges {
 
       if (prevMeta.row === currentMeta.row) {
         const direction = prevMeta.row % 2 === 0 ? 1 : -1;
-        const cp1x = this.clamp(prevPoint.xPercent + horizontalBend * direction, left, right);
-        const cp2x = this.clamp(currentPoint.xPercent - horizontalBend * direction, left, right);
-        pathD += ` C ${cp1x} ${prevPoint.yPercent} ${cp2x} ${currentPoint.yPercent} ${currentPoint.xPercent} ${currentPoint.yPercent}`;
+        const bendAmount = rowCount === 1 ? singleRowBend : horizontalBend;
+        const cp1x = this.clamp(prevPoint.xPercent + bendAmount * direction, left, right);
+        const cp2x = this.clamp(currentPoint.xPercent - bendAmount * direction, left, right);
+        // Add a slight vertical bend even for single rows to ensure the path is drawn
+        const yBend = rowCount === 1 ? 2 : 0;
+        const cp1y = prevPoint.yPercent - yBend;
+        const cp2y = currentPoint.yPercent - yBend;
+        pathD += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${currentPoint.xPercent} ${currentPoint.yPercent}`;
       } else {
         const verticalDir = currentMeta.row > prevMeta.row ? 1 : -1;
         const prevDirection = prevMeta.row % 2 === 0 ? 1 : -1;

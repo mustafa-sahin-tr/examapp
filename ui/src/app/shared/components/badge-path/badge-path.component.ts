@@ -1,15 +1,33 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  signal,
+} from '@angular/core';
 import { BadgePathPoint, BadgeThropyItem } from '../badge-thropy/badge-thropy.types';
+
+interface BadgePathSegment {
+  path: string;
+  midX: number;
+  midY: number;
+  angle: number;
+}
 
 interface BadgePathRenderLayout {
   viewBox: string;
   height: number;
   pathD: string;
+  pathSegments: BadgePathSegment[];
   points: BadgePathPoint[];
   nodePoints: BadgePathPoint[];
   rowCount: number;
   isMultiRow: boolean;
+  maskRadius: number;
 }
 
 @Component({
@@ -25,6 +43,8 @@ export class BadgePathComponent implements OnChanges {
 
   @Input({ required: true }) items: BadgeThropyItem[] = [];
   @Input() maxPerRow: number = 4;
+  @Output() badgeSelected = new EventEmitter<string>();
+  readonly selectedBadge = signal<BadgeThropyItem | null>(null);
 
   readonly layout = signal<BadgePathRenderLayout | null>(null);
   readonly gradientId = `badge-path-gradient-${BadgePathComponent.nextInstanceId++}`;
@@ -37,6 +57,19 @@ export class BadgePathComponent implements OnChanges {
 
   trackById(_: number, item: BadgeThropyItem): string {
     return item.id;
+  }
+
+  selectBadge(badge: BadgeThropyItem): void {
+    if (!badge) {
+      return;
+    }
+
+    const isSame = this.selectedBadge()?.id === badge.id;
+    this.selectedBadge.set(isSame ? null : badge);
+
+    if (!isSame) {
+      this.badgeSelected.emit(badge.id);
+    }
   }
 
   private buildLayout(items: BadgeThropyItem[]): BadgePathRenderLayout | null {
@@ -68,7 +101,7 @@ export class BadgePathComponent implements OnChanges {
     rows.forEach((row, rowIndex) => {
       const rowLength = row.length;
       const isSingleRow = rowCount === 1;
-      const fixedGap = 28;
+      const fixedGap = 22;
       const rowSlotSpacing = isSingleRow ? fixedGap : slotSpacing;
       const rowSpan = rowSlotSpacing * Math.max(rowLength - 1, 0);
       const rowStart = left;
@@ -116,6 +149,7 @@ export class BadgePathComponent implements OnChanges {
     const horizontalBend = Math.max(Math.min(slotSpacing * 1.1, width * 0.2), 6);
     const singleRowBend = rowCount === 1 ? Math.max(horizontalBend, 8) : horizontalBend;
     let pathD = `M ${orderedPoints[0].xPercent} ${orderedPoints[0].yPercent}`;
+    const pathSegments: BadgePathSegment[] = [];
 
     for (let index = 1; index < pointCount; index++) {
       const prevPoint = orderedPoints[index - 1];
@@ -127,6 +161,7 @@ export class BadgePathComponent implements OnChanges {
         continue;
       }
 
+      let segmentPath = '';
       if (prevMeta.row === currentMeta.row) {
         const direction = prevMeta.row % 2 === 0 ? 1 : -1;
         const bendAmount = rowCount === 1 ? singleRowBend : horizontalBend;
@@ -136,7 +171,7 @@ export class BadgePathComponent implements OnChanges {
         const yBend = rowCount === 1 ? 2 : 0;
         const cp1y = prevPoint.yPercent - yBend;
         const cp2y = currentPoint.yPercent - yBend;
-        pathD += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${currentPoint.xPercent} ${currentPoint.yPercent}`;
+        segmentPath = `M ${prevPoint.xPercent} ${prevPoint.yPercent} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${currentPoint.xPercent} ${currentPoint.yPercent}`;
       } else {
         const verticalDir = currentMeta.row > prevMeta.row ? 1 : -1;
         const prevDirection = prevMeta.row % 2 === 0 ? 1 : -1;
@@ -145,43 +180,43 @@ export class BadgePathComponent implements OnChanges {
         const cp1y = prevPoint.yPercent + verticalBend * verticalDir;
         const cp2x = this.clamp(currentPoint.xPercent - horizontalBend * nextDirection, left, right);
         const cp2y = currentPoint.yPercent - verticalBend * verticalDir;
-        pathD += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${currentPoint.xPercent} ${currentPoint.yPercent}`;
+        segmentPath = `M ${prevPoint.xPercent} ${prevPoint.yPercent} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${currentPoint.xPercent} ${currentPoint.yPercent}`;
+      }
+
+      if (segmentPath) {
+        // Calculate midpoint and angle for arrow
+        const midX = (prevPoint.xPercent + currentPoint.xPercent) / 2;
+        const midY = (prevPoint.yPercent + currentPoint.yPercent) / 2;
+        const dx = currentPoint.xPercent - prevPoint.xPercent;
+        const dy = currentPoint.yPercent - prevPoint.yPercent;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+        pathSegments.push({
+          path: segmentPath,
+          midX,
+          midY,
+          angle,
+        });
       }
     }
 
-    const multiRowNodeOffset = 6;
-    const singleRowNodeOffset = 14;
-    const nodePoints = orderedPoints.slice(0, pointCount).map((point, index) => {
-      const meta = orderedMetas[index];
-      if (!meta) {
-        return { ...point };
-      }
-      if (rowCount === 1) {
-        const direction = -1;
-        const offset = singleRowNodeOffset;
-        return {
-          xPercent: point.xPercent,
-          yPercent: this.clamp(point.yPercent + offset * direction, 5, 95),
-        };
-      }
-
-      const direction = meta.row % 2 === 0 ? -1 : 1;
-      return {
-        xPercent: point.xPercent,
-        yPercent: this.clamp(point.yPercent + multiRowNodeOffset * direction, 5, 95),
-      };
+    const nodePoints = orderedPoints.slice(0, pointCount).map((point) => {
+      return { ...point };
     });
 
     const height = (rowCount === 1 ? 200 : 200) + Math.max(0, rowCount - 1) * 120;
+    const maskRadius = 8;
 
     return {
       viewBox: '0 0 100 100',
       height,
       pathD,
+      pathSegments,
       points: orderedPoints.slice(0, pointCount),
       nodePoints,
       rowCount,
       isMultiRow: rowCount > 1,
+      maskRadius,
     };
   }
 

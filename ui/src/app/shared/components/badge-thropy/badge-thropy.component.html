@@ -5,10 +5,10 @@
   </div>
   <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
-      <app-badge-path [items]="path.badges" [maxPerRow]="5"> </app-badge-path>
+      <app-badge-path [items]="path.badges" [maxPerRow]="6"> </app-badge-path>
     </article>
   </section>
-  <section class="ms-badge-paths" *ngIf="badgePaths().length">
+  <!-- <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
       <header class="ms-badge-path-header">
         <div class="ms-badge-path-info">
@@ -122,5 +122,5 @@
         </div>
       </div>
     </div>
-  </ng-template>
+  </ng-template> -->
 </div>

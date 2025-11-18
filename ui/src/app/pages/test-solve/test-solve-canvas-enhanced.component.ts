@@ -124,6 +124,8 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   public questionsPerView = signal<1 | 2 | 4>(1); // Aynı anda gösterilecek soru sayısı
   public viewStartIndex = signal(0); // Görünümün başladığı soru indeksi
 
+  private readonly imagePreloadCache = new Map<string, Promise<void>>();
+
   // Computed properties
   public progressPercentage = computed(() => {
     const total = this.testInstance?.testInstanceQuestions?.length || 1;
@@ -366,6 +368,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }
 
       await this.loadQuestions();
+      await this.ensureQuestionAssetsLoaded(this.currentIndex());
 
       // ⏳ Sayaçları başlat
       this.startTimer();
@@ -862,7 +865,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     if (this.autoNextQuestion()) {
       setTimeout(() => {
-        this.nextQuestion();
+        void this.nextQuestion();
       }, 300); // Kısa bir gecikme ile otomatik geçiş
     }
   }
@@ -914,7 +917,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       .subscribe({
         next: () => {
           if (this.autoPlay) {
-            this.nextQuestion();
+            void this.nextQuestion();
           }
         },
         error: (error) => {
@@ -946,7 +949,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   // Önceki soruya git - Çoklu görünüm desteği ile
-  prevQuestion() {
+  async prevQuestion(): Promise<void> {
     this.saveCurrentAnswers(); // Mevcut cevapları kaydet
     this.correctAnswerVisible = false;
 
@@ -954,6 +957,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // Tek soru modu - eski davranış
       if (this.currentIndex() > 0) {
         const newIndex = this.currentIndex() - 1;
+        await this.ensureQuestionAssetsLoaded(newIndex);
         this.currentIndex.set(newIndex);
         this.viewStartIndex.set(newIndex);
         this.startQuestionTimer();
@@ -964,6 +968,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       const currentStart = this.viewStartIndex();
       if (currentStart > 0) {
         const newStart = Math.max(0, currentStart - questionsPerView);
+        await this.preloadQuestionRange(newStart, questionsPerView);
         this.viewStartIndex.set(newStart);
         this.currentIndex.set(newStart); // İlk görünen soruyu aktif yap
         this.startQuestionTimer();
@@ -972,7 +977,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   // Sonraki soruya git - Çoklu görünüm desteği ile
-  nextQuestion() {
+  async nextQuestion(): Promise<void> {
     this.saveCurrentAnswers(); // Mevcut cevapları kaydet
     this.correctAnswerVisible = false;
 
@@ -980,6 +985,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // Tek soru modu - eski davranış
       if (this.currentIndex() < this.regions().length - 1) {
         const newIndex = this.currentIndex() + 1;
+        await this.ensureQuestionAssetsLoaded(newIndex);
         this.currentIndex.set(newIndex);
         this.viewStartIndex.set(newIndex);
         this.startQuestionTimer();
@@ -992,6 +998,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
       if (currentStart + questionsPerView < totalQuestions) {
         const newStart = currentStart + questionsPerView;
+        await this.preloadQuestionRange(newStart, questionsPerView);
         this.viewStartIndex.set(newStart);
         this.currentIndex.set(newStart); // İlk görünen soruyu aktif yap
         this.startQuestionTimer();
@@ -1076,6 +1083,80 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     }
   }
 
+  private async ensureQuestionAssetsLoaded(index: number): Promise<void> {
+    const regions = this.regions();
+    if (!regions || index < 0 || index >= regions.length) {
+      return;
+    }
+
+    const region = regions[index];
+    const tasks: Promise<void>[] = [];
+
+    tasks.push(this.preloadImage(region.imageId ?? region.imageUrl ?? `question-${region.id}`, region.imageUrl));
+
+    const passageUrl = region?.passage?.imageUrl ?? null;
+    if (passageUrl) {
+      const passageKey = region.passage?.imageId ?? `${region.id}-passage`;
+      tasks.push(this.preloadImage(passageKey, passageUrl));
+    }
+
+    await Promise.all(tasks);
+  }
+
+  private preloadImage(cacheKey: string, url: string | null | undefined): Promise<void> {
+    if (!url || url.trim().length === 0) {
+      return Promise.resolve();
+    }
+
+    const key = cacheKey || url;
+    const existing = this.imagePreloadCache.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const promise = new Promise<void>((resolve) => {
+      const image = new Image();
+      const finalize = () => {
+        image.onload = null;
+        image.onerror = null;
+        resolve();
+      };
+
+      image.onload = finalize;
+      image.onerror = finalize;
+      image.src = url;
+
+      if (image.complete && image.naturalWidth > 0) {
+        finalize();
+      }
+    });
+
+    this.imagePreloadCache.set(key, promise);
+    return promise;
+  }
+
+  private async preloadQuestionRange(startIndex: number, count: number): Promise<void> {
+    if (count <= 0) {
+      return;
+    }
+
+    const regions = this.regions();
+    if (!regions || !regions.length) {
+      return;
+    }
+
+    const tasks: Promise<void>[] = [];
+    for (let i = 0; i < count; i++) {
+      const targetIndex = startIndex + i;
+      if (targetIndex >= regions.length) {
+        break;
+      }
+      tasks.push(this.ensureQuestionAssetsLoaded(targetIndex));
+    }
+
+    await Promise.all(tasks);
+  }
+
   selectChoice(answer: AnswerChoice) {
     const region = this.regions()[this.currentIndex()];
     const updatedChoices = new Map(this.selectedChoices());
@@ -1097,11 +1178,11 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         switch (event.key) {
           case 'ArrowLeft':
             event.preventDefault();
-            this.prevQuestion();
+            void this.prevQuestion();
             break;
           case 'ArrowRight':
             event.preventDefault();
-            this.nextQuestion();
+            void this.nextQuestion();
             break;
           case 'b':
             event.preventDefault();
@@ -1168,7 +1249,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   goToQuestion(index: number) {
-    this.focusOnQuestion(index);
+    void this.focusOnQuestion(index);
   }
 
   goToNextBookmarked() {
@@ -1338,6 +1419,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     const currentIdx = this.currentIndex();
     const newStartIndex = Math.floor(currentIdx / count) * count;
     this.viewStartIndex.set(newStartIndex);
+    void this.preloadQuestionRange(newStartIndex, count);
 
     console.log(`Yeni başlangıç indeksi: ${newStartIndex}, Mevcut sorular: ${this.currentQuestions().length}`);
 
@@ -1367,13 +1449,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   // YENİ: Belirli bir soruya odaklan (çoklu görünümde)
-  focusOnQuestion(questionIndex: number) {
+  async focusOnQuestion(questionIndex: number): Promise<void> {
     if (this.questionsPerView() === 1) {
+      await this.ensureQuestionAssetsLoaded(questionIndex);
       this.currentIndex.set(questionIndex);
       this.viewStartIndex.set(questionIndex);
     } else {
       const questionsPerView = this.questionsPerView();
       const newStartIndex = Math.floor(questionIndex / questionsPerView) * questionsPerView;
+      await this.preloadQuestionRange(newStartIndex, questionsPerView);
       this.viewStartIndex.set(newStartIndex);
       this.currentIndex.set(questionIndex);
     }
@@ -1403,12 +1487,12 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     if (this.autoNextQuestion()) {
       setTimeout(() => {
         if (this.questionsPerView() === 1) {
-          this.nextQuestion();
+          void this.nextQuestion();
         } else {
           // Multi-question görünümünde bir sonraki soruya odaklan
           const nextIndex = questionIndex + 1;
           if (nextIndex < this.testInstance.testInstanceQuestions.length) {
-            this.focusOnQuestion(nextIndex);
+            void this.focusOnQuestion(nextIndex);
           }
         }
       }, 300);

@@ -8,6 +8,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
+  position: relative;
 }
 
 .canvas-v3__surface {
@@ -15,6 +16,52 @@
   grid-template-columns: minmax(0, 1.3fr) minmax(240px, 1fr);
   gap: 24px;
   align-items: flex-start;
+}
+
+.canvas-v3--loading .canvas-v3__surface {
+  pointer-events: none;
+  filter: blur(2px);
+  opacity: 0.45;
+}
+
+.canvas-v3__loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.75), rgba(224, 231, 255, 0.6));
+  backdrop-filter: blur(6px);
+  transition: opacity 160ms ease;
+  pointer-events: all;
+  z-index: 4;
+}
+
+.canvas-v3__spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 4px solid rgba(79, 70, 229, 0.2);
+  border-top-color: rgba(79, 70, 229, 0.85);
+  animation: canvas-v3-spin 900ms linear infinite;
+}
+
+@keyframes canvas-v3-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /*

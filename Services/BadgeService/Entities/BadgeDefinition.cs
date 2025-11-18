@@ -11,4 +11,7 @@ public class BadgeDefinition
     public string Category { get; set; } = default!;
     public string RuleType { get; set; } = default!; // "AnswerCount", "CorrectStreak" vb.
     public string RuleConfigJson { get; set; } = default!;
+    public string? PathKey { get; set; }
+    public string? PathName { get; set; }
+    public int? PathOrder { get; set; }
 }

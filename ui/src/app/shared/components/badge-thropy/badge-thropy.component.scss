@@ -1,0 +1,357 @@
+.ms-badge-list-container {
+	display: grid;
+	gap: 1.5rem;
+	padding: 1.5rem;
+	border-radius: 1.25rem;
+	background: rgba(17, 24, 39, 0.6);
+	backdrop-filter: blur(12px);
+	border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.ms-badge-loading {
+	opacity: 0.7;
+	pointer-events: none;
+}
+
+.ms-badge-header {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.ms-badge-title {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 600;
+	color: #f1f5f9;
+}
+
+.ms-badge-subtitle {
+	margin: 0;
+	font-size: 0.9rem;
+	color: #cbd5f5;
+	opacity: 0.8;
+}
+
+.ms-badge-paths {
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.ms-badge-path {
+	padding: 1.25rem;
+	border-radius: 1.25rem;
+	background: rgba(15, 23, 42, 0.65);
+	border: 1px solid rgba(96, 165, 250, 0.18);
+	box-shadow: inset 0 0 0 1px rgba(30, 64, 175, 0.12);
+}
+
+.ms-badge-path-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.ms-badge-path-header h3 {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 600;
+	color: #f8fafc;
+}
+
+.ms-badge-path-progress {
+	font-size: 0.85rem;
+	color: rgba(148, 197, 255, 0.85);
+	padding: 0.25rem 0.75rem;
+	border-radius: 999px;
+	background: rgba(37, 99, 235, 0.18);
+}
+
+.ms-badge-path-track {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	overflow-x: auto;
+	padding-bottom: 1.75rem;
+}
+
+.ms-badge-path-node-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.ms-badge-node {
+	border: 1px solid rgba(148, 163, 184, 0.25);
+	background: rgba(30, 41, 59, 0.85);
+	color: #e2e8f0;
+	border-radius: 1rem;
+	padding: 0.75rem 1rem;
+	min-width: 180px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.5rem;
+	cursor: pointer;
+	transition: border 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+	position: relative;
+}
+
+.ms-badge-node:hover {
+	transform: translateY(-2px);
+	border-color: rgba(96, 165, 250, 0.45);
+}
+
+.ms-badge-node-completed {
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(14, 165, 233, 0.25));
+	color: #f8fafc;
+}
+
+.ms-badge-node-selected {
+	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45), 0 10px 25px rgba(14, 116, 233, 0.25);
+	border-color: rgba(96, 165, 250, 0.9);
+}
+
+.ms-badge-node-selected::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	bottom: -16px;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 12px solid transparent;
+	border-right: 12px solid transparent;
+	border-top: 16px solid rgba(96, 165, 250, 0.85);
+}
+
+.ms-badge-node-icon {
+	width: 48px;
+	height: 48px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 16px;
+	background: rgba(15, 23, 42, 0.55);
+}
+
+.ms-badge-node-icon img {
+	width: 40px;
+	height: 40px;
+	object-fit: contain;
+}
+
+.ms-badge-node-label {
+	font-size: 0.95rem;
+	font-weight: 600;
+}
+
+.ms-badge-node-progress {
+	font-size: 0.8rem;
+	color: rgba(226, 232, 240, 0.8);
+}
+
+.ms-badge-connector {
+	flex: 1 0 60px;
+	height: 2px;
+	background: transparent;
+	display: flex;
+	align-items: center;
+}
+
+.ms-badge-connector-line {
+	width: 100%;
+	height: 2px;
+	background: rgba(148, 163, 184, 0.25);
+	border-radius: 999px;
+	transition: background 160ms ease;
+}
+
+.ms-badge-connector-active {
+	background: linear-gradient(90deg, rgba(59, 130, 246, 0.9), rgba(14, 165, 233, 0.9));
+}
+
+.ms-badge-standalone {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.ms-badge-standalone-title {
+	margin: 0;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: rgba(226, 232, 240, 0.9);
+}
+
+.ms-badge-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: 1rem;
+}
+
+.ms-badge-item {
+	position: relative;
+	padding: 1rem;
+	border-radius: 1rem;
+	cursor: pointer;
+	transition: transform 120ms ease, box-shadow 120ms ease, border 120ms ease;
+	border: 1px solid transparent;
+	min-height: 160px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: flex-start;
+	gap: 0.5rem;
+}
+
+.ms-badge-item:hover {
+	transform: translateY(-2px);
+}
+
+.ms-badge-item.ms-badge-pending {
+	background: rgba(148, 163, 184, 0.12);
+	color: #cbd5f5;
+}
+
+.ms-badge-item.ms-badge-completed {
+	background: linear-gradient(145deg, rgba(59, 130, 246, 0.3), rgba(2, 132, 199, 0.45));
+	color: #f8fafc;
+}
+
+.ms-badge-item.ms-badge-selected {
+	border-color: rgba(96, 165, 250, 0.9);
+	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+}
+
+.ms-badge-icon {
+	width: 48px;
+	height: 48px;
+	object-fit: contain;
+}
+
+.ms-badge-name {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+.ms-badge-time {
+	margin: 0;
+	font-size: 0.85rem;
+	opacity: 0.85;
+}
+
+.ms-badge-arrow {
+	position: absolute;
+	bottom: -14px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 12px solid transparent;
+	border-right: 12px solid transparent;
+	border-top: 14px solid rgba(96, 165, 250, 0.8);
+}
+
+.ms-badge-detail {
+	padding: 1.25rem;
+	border-radius: 1.25rem;
+	background: rgba(15, 23, 42, 0.7);
+	border: 1px solid rgba(100, 116, 139, 0.25);
+	margin-top: 0.5rem;
+}
+
+.ms-badge-content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	align-items: flex-start;
+}
+
+.ms-badge-content-top {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	width: 100%;
+}
+
+.ms-badge-content-completed {
+	background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(59, 130, 246, 0.15));
+	padding: 1.25rem;
+	border-radius: 1rem;
+	width: 100%;
+}
+
+.ms-badge-description {
+	font-size: 0.95rem;
+	color: #e2e8f0;
+}
+
+.ms-badge-meta {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.ms-badge-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.25rem 0.75rem;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	background: rgba(59, 130, 246, 0.2);
+	color: rgba(191, 219, 254, 0.95);
+}
+
+.ms-badge-progress-text {
+	font-size: 0.85rem;
+	color: rgba(191, 219, 254, 0.85);
+}
+
+.ms-badge-progress {
+	width: 100%;
+	height: 8px;
+	border-radius: 999px;
+	background: rgba(148, 163, 184, 0.25);
+	overflow: hidden;
+}
+
+.ms-badge-progress-bar {
+	height: 100%;
+	background: linear-gradient(90deg, rgba(59, 130, 246, 0.85), rgba(14, 165, 233, 0.85));
+	transition: width 160ms ease;
+}
+
+.ms-badge-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem;
+	border-radius: 1rem;
+	background: rgba(148, 163, 184, 0.1);
+	color: #cbd5f5;
+	font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+	.ms-badge-list {
+		grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	}
+
+	.ms-badge-list-container {
+		padding: 1rem;
+	}
+
+	.ms-badge-path-track {
+		overflow-x: auto;
+	}
+}

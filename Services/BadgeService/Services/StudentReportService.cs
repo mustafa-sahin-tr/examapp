@@ -33,13 +33,19 @@ public class StudentReportService
             .AsNoTracking()
             .Include(x => x.BadgeDefinition)
             .Where(x => x.UserId == userId)
-            .OrderBy(x => x.BadgeDefinition.Name)
+            .OrderBy(x => x.BadgeDefinition.PathKey == null)
+            .ThenBy(x => x.BadgeDefinition.PathName)
+            .ThenBy(x => x.BadgeDefinition.PathOrder)
+            .ThenBy(x => x.BadgeDefinition.Name)
             .Select(x => new BadgeProgressItemDto
             {
                 BadgeDefinitionId = x.BadgeDefinitionId,
                 Name = x.BadgeDefinition.Name,
                 Description = x.BadgeDefinition.Description,
                 IconUrl = x.BadgeDefinition.IconUrl,
+                PathKey = x.BadgeDefinition.PathKey,
+                PathName = x.BadgeDefinition.PathName,
+                PathOrder = x.BadgeDefinition.PathOrder,
                 CurrentValue = x.CurrentValue,
                 TargetValue = x.TargetValue,
                 IsCompleted = x.IsCompleted,
@@ -49,6 +55,13 @@ public class StudentReportService
                     .FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
+
+        var dailyActivities = await _context.StudentDailyActivities
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var activitySummary = ActivityAnalytics.Calculate(dailyActivities);
 
         var subjects = await _context.StudentSubjectAggregates
             .AsNoTracking()
@@ -77,6 +90,10 @@ public class StudentReportService
                 TotalPoints = summary.TotalPoints,
                 CurrentCorrectStreak = summary.CurrentCorrectStreak,
                 BestCorrectStreak = summary.BestCorrectStreak,
+                TotalTimeSeconds = summary.TotalTimeSeconds,
+                TotalActiveDays = activitySummary.TotalActiveDays,
+                CurrentActivityStreak = activitySummary.CurrentStreak,
+                BestActivityStreak = activitySummary.BestStreak,
                 LastAnsweredAtUtc = summary.LastAnsweredAtUtc,
                 LastUpdatedUtc = summary.LastUpdatedUtc
             },
@@ -95,9 +112,15 @@ public class StudentReportService
             (start, end) = (end, start);
         }
 
-        var days = await _context.StudentDailyActivities
+        var allActivities = await _context.StudentDailyActivities
             .AsNoTracking()
-            .Where(x => x.UserId == userId && x.ActivityDate >= start && x.ActivityDate <= end)
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var activitySummary = ActivityAnalytics.Calculate(allActivities);
+
+        var days = allActivities
+            .Where(x => x.ActivityDate >= start && x.ActivityDate <= end)
             .OrderBy(x => x.ActivityDate)
             .Select(x => new ActivityDayDto
             {
@@ -108,13 +131,16 @@ public class StudentReportService
                 TotalPoints = x.TotalPoints,
                 ActivityScore = x.ActivityScore
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return new ActivityReportDto
         {
             UserId = userId,
             StartDateUtc = start,
             EndDateUtc = end,
+            TotalActiveDays = activitySummary.TotalActiveDays,
+            CurrentStreakDays = activitySummary.CurrentStreak,
+            BestStreakDays = activitySummary.BestStreak,
             Days = days
         };
     }

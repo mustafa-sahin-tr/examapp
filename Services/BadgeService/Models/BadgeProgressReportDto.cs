@@ -19,6 +19,10 @@ public class StudentSummaryDto
     public int TotalPoints { get; set; }
     public int CurrentCorrectStreak { get; set; }
     public int BestCorrectStreak { get; set; }
+    public int TotalTimeSeconds { get; set; }
+    public int TotalActiveDays { get; set; }
+    public int CurrentActivityStreak { get; set; }
+    public int BestActivityStreak { get; set; }
     public DateTime? LastAnsweredAtUtc { get; set; }
     public DateTime LastUpdatedUtc { get; set; }
 }
@@ -29,6 +33,9 @@ public class BadgeProgressItemDto
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string? IconUrl { get; set; }
+    public string? PathKey { get; set; }
+    public string? PathName { get; set; }
+    public int? PathOrder { get; set; }
     public int CurrentValue { get; set; }
     public int TargetValue { get; set; }
     public bool IsCompleted { get; set; }

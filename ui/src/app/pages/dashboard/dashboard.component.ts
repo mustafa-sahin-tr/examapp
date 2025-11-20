@@ -228,7 +228,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       questionCount: assignment.questionCount,
       subjectId: assignment.subjectId ?? undefined,
       topicId: assignment.topicId ?? undefined,
-      subtopicId: assignment.subTopicId ?? undefined,
+      subTopicId: assignment.subTopicId ?? undefined,
     };
   }
 

@@ -70,7 +70,7 @@ export interface Test {
   newBookTestName?: string;
   subjectId?: number;
   topicId?: number;
-  subtopicId?: number;
+  subTopicId?: number;
 }
 
 export interface InstanceSummary {

@@ -219,7 +219,7 @@ export class TestCreateEnhancedComponent implements OnInit {
 
               this.subjectService.getSubTopicsByTopic(exam.topicId || 0).subscribe((subtopics) => {
                 this.subtopics = subtopics;
-                this.testForm.patchValue({ subtopicId: exam.subtopicId || null }, { emitEvent: false });
+                this.testForm.patchValue({ subtopicId: exam.subTopicId || null }, { emitEvent: false });
               });
             });
           } else {
@@ -311,7 +311,7 @@ export class TestCreateEnhancedComponent implements OnInit {
       bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
       subjectId: this.testForm.value.subjectId ? this.testForm.value.subjectId : null,
       topicId: this.testForm.value.topicId ? this.testForm.value.topicId : null,
-      subtopicId: this.testForm.value.subtopicId ? this.testForm.value.subtopicId : null,
+      subTopicId: this.testForm.value.subtopicId ? this.testForm.value.subtopicId : null,
     };
   }
 
@@ -339,7 +339,7 @@ export class TestCreateEnhancedComponent implements OnInit {
 
   public onCreateAsync(): Observable<{ message: string; examId: number }> {
     var payload = this.createTestPayload();
-    if (!payload.subtopicId) {
+    if (!payload.subTopicId) {
       // Observable error olarak dönmek için throwError kullanılır
       return throwError(
         () => new HttpErrorResponse({ status: 400, statusText: 'Alt konu seçilmedi', error: 'Alt konu seçilmedi' })

@@ -295,15 +295,15 @@ export class QuestionCanvasComponent implements OnInit {
           next: (testData) => {
             console.log('Test fetched:', testData);
             this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
-            this.resetFormWithDefaultValues({
-              subjectId: null,
-              topicId: null,
-              subtopicId: null,
-              testId: testData.subtitle,
-              bookId: testData.bookId,
-              bookTestId: testData.bookTestId,
-              testValue: testData.id,
-            });
+            // this.resetFormWithDefaultValues({
+            //   subjectId: null,
+            //   topicId: null,
+            //   subtopicId: null,
+            //   testId: testData.subtitle,
+            //   bookId: testData.bookId,
+            //   bookTestId: testData.bookTestId,
+            //   testValue: testData.id,
+            // });
             this.onSave(true);
           },
         });

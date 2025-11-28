@@ -41,7 +41,7 @@ interface WarningMarker {
     MatButtonModule,
     MatSlideToggleModule,
     QuestionNavigatorComponent,
-    QuestionCanvasViewComponent,
+    // QuestionCanvasViewComponent,
     QuestionCanvasViewComponentv3,
   ],
   templateUrl: './image-selector.component.html',

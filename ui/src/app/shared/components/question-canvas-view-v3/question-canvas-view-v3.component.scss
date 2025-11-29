@@ -1,3 +1,243 @@
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-answers {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+}
+/*
+ * Soru solda, cevaplar sağda (tek kolon, alt alta), oran korunarak stretch
+ * Kullanmak için: .canvas-layout--left-image-right-answers class'ı question-grid/canvas-container'a eklenmeli
+ */
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-surface {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-rows: 1fr;
+  width: 100%;
+  height: 100%;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-question {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-question-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  aspect-ratio: unset;
+  display: block;
+}
+
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-answers {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-answer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+}
+
+.canvas-layout--left-image-right-answers .canvas-v3-stretch-answer-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  aspect-ratio: unset;
+  display: block;
+}
+
+/* Soru ve cevaplar aynı oranda büyüsün: her iki tarafta da en büyük oranı bulup uygula (CSS ile tam otomatik mümkün değil, ama max-width/max-height ve flex ile oran korunur, cevaplar alanında boşluk kalabilir) */
+
+.canvas-v3-stretch-surface {
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 0;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  transition: grid-template-columns 0.2s, grid-template-rows 0.2s;
+}
+
+/* Dikey veya dar ekran: soru üstte, cevaplar altta */
+@media (max-width: 900px), (max-aspect-ratio: 4/5) {
+  .canvas-v3-stretch-surface {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1.2fr 1fr;
+  }
+  .canvas-v3-stretch-question {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .canvas-v3-stretch-answers {
+    grid-row: 2;
+    grid-column: 1;
+  }
+}
+
+
+.canvas-v3-stretch-answers {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  gap: 12px;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+  justify-items: stretch;
+  grid-template-columns: 1fr;
+  grid-auto-rows: 1fr;
+}
+
+@media (min-width: 600px) {
+  .canvas-v3-stretch-answers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 599px) {
+  .canvas-v3-stretch-answers {
+    grid-template-columns: 1fr;
+  }
+}
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-v3-stretch-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.canvas-v3-stretch-passage {
+  flex: 0 0 auto;
+  width: 100%;
+  max-height: 18vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.canvas-v3-stretch-passage-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  max-height: 100%;
+}
+
+.canvas-v3-stretch-surface {
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 0;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+}
+
+@media (max-aspect-ratio: 4/3) {
+  .canvas-v3-stretch-surface {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .canvas-v3-stretch-question {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .canvas-v3-stretch-answers {
+    grid-row: 2;
+    grid-column: 1;
+  }
+}
+
+.canvas-v3-stretch-question {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+.canvas-v3-stretch-question-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.canvas-v3-stretch-answers {
+  display: grid;
+  align-items: stretch;
+  justify-items: stretch;
+  width: 100%;
+  height: 100%;
+  gap: 12px;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  /* Cevap sayısına göre kolon/satır */
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+}
+
+.canvas-v3-stretch-answer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+.canvas-v3-stretch-answer-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
 :host {
   display: block;
   width: 100%;

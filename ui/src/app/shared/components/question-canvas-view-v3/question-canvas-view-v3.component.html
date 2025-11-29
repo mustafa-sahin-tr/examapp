@@ -1,61 +1,21 @@
-@let canvasWidths = getCanvasWidths(); @let canvasHeights = getCanvasHeights();
-
-<div
-  class="canvas-v3"
-  [ngClass]="getCanvasLayoutClass()"
-  [style.--canvas-question-width.px]="canvasWidths.questionWidth || 680"
-  [style.--canvas-question-height.px]="canvasHeights.questionHeight || 720"
-  [style.--canvas-passage-width.px]="canvasWidths.passageWidth || 0"
->
+<div class="canvas-v3-stretch-root">
   @if (hasPassageImage()) {
-  <div class="canvas-v3__passage-header" [ngStyle]="getPassageWrapperStyle()">
-    <img
-      class="canvas-v3__passage-image"
-      [src]="passageImageSource()"
-      [ngStyle]="getPassageImageStyle()"
-      alt="Pasaj görseli"
-    />
+  <div class="canvas-v3-stretch-passage">
+    <img class="canvas-v3-stretch-passage-image" [src]="passageImageSource()" alt="Pasaj görseli" />
   </div>
   }
-
-  <div class="canvas-v3__surface">
-    <div class="canvas-v3__visual">
-      <div class="canvas-v3__question" [ngStyle]="getQuestionWrapperStyle()">
-        <img
-          #questionImage
-          class="canvas-v3__question-image"
-          [src]="questionImageSource()"
-          [ngStyle]="getQuestionImageStyle()"
-          alt="Soru görseli"
-        />
-      </div>
+  <div class="canvas-v3-stretch-surface">
+    <div class="canvas-v3-stretch-question">
+      <img #questionImage class="canvas-v3-stretch-question-image" [src]="questionImageSource()" alt="Soru görseli" />
     </div>
-
-    @if (_questionRegion().answers.length) {
-    <aside class="canvas-v3__answers" [style.gridTemplateColumns]="getAnswerGridTemplate()">
+    <div class="canvas-v3-stretch-answers">
       @for (answer of _questionRegion().answers; track idx; let idx = $index) {
-      <div
-        class="answer-wrapper"
-        [ngStyle]="getAnswerWrapperStyle(answer)"
-        (mouseenter)="hoverAnswer(answer)"
-        (mouseleave)="hoverAnswer(null)"
-        (click)="selectAnswer(idx)"
-        [ngClass]="getAnswerClasses(answer)"
-        [attr.aria-label]="'Şık ' + (idx + 1)"
-        [style.gridColumn]="getAnswerGridColumn(answer)"
-      >
-        <img
-          class="answer-image"
-          [src]="answer.imageUrl"
-          [ngStyle]="getAnswerImageStyle(answer)"
-          [attr.alt]="'Şık ' + (idx + 1)"
-        />
+      <div class="canvas-v3-stretch-answer">
+        <img class="canvas-v3-stretch-answer-image" [src]="answer.imageUrl" [attr.alt]="'Şık ' + (idx + 1)" />
       </div>
       }
-    </aside>
-    }
+    </div>
   </div>
-
   @if (isPreviewMode) {
   <div class="preview-actions">
     <button mat-raised-button color="warn" (click)="removeQuestion()">

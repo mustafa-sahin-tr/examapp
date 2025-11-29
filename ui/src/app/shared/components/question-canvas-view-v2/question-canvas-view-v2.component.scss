@@ -1,3 +1,53 @@
+// Backend'den gelebilecek tüm layoutClass kombinasyonları için grid/flex kuralları
+// passage/solo × inline/stack × cols-1/2/3/4
+.canvas-layout--solo-stack--cols-1 .answers-panel,
+.canvas-layout--passage-stack--cols-1 .answers-panel {
+	display: flex !important;
+	flex-direction: column;
+	gap: 12px;
+}
+.canvas-layout--solo-stack--cols-2 .answers-panel,
+.canvas-layout--passage-stack--cols-2 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+}
+.canvas-layout--solo-stack--cols-3 .answers-panel,
+.canvas-layout--passage-stack--cols-3 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 12px;
+}
+.canvas-layout--solo-stack--cols-4 .answers-panel,
+.canvas-layout--passage-stack--cols-4 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
+.canvas-layout--solo-inline--cols-1 .answers-panel,
+.canvas-layout--passage-inline--cols-1 .answers-panel {
+	display: flex !important;
+	flex-direction: row;
+	gap: 12px;
+}
+.canvas-layout--solo-inline--cols-2 .answers-panel,
+.canvas-layout--passage-inline--cols-2 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+}
+.canvas-layout--solo-inline--cols-3 .answers-panel,
+.canvas-layout--passage-inline--cols-3 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 12px;
+}
+.canvas-layout--solo-inline--cols-4 .answers-panel,
+.canvas-layout--passage-inline--cols-4 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
+}
 :host {
 	display: flex;
 	width: 100%;
@@ -73,7 +123,9 @@
 
 .question-image {
 	max-width: none;
-	object-fit: contain;
+	/* min-height ve height kaldırıldı, sadece padding ile ayrışma sağlanacak */
+	padding: 4px 0;
+	box-sizing: border-box;
 }
 
 .passage-image-element {
@@ -82,19 +134,52 @@
 	object-fit: contain;
 }
 
+
+
 .answers-panel {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
 	flex: 2 2 0;
 	min-width: 240px;
 	height: 100%;
 	align-self: stretch;
+	/* Panel yüksekliğinde şıkları tam ortalamak için: */
 	justify-content: center;
-	align-items: stretch;
+	align-items: flex-start; // stretch yerine içerik kadar yükseklik
 	max-height: 100%;
 	overflow-y: auto;
 	overflow-x: hidden;
+}
+
+// Grid layout'larda satır yüksekliği otomatik olsun, şıklar panelin ortasında olsun
+.answers-panel[style*='display: grid'] {
+	align-items: start !important;
+	grid-auto-rows: auto !important;
+	align-content: center !important;
+}
+
+// Flex layout'ta da dikeyde ortalamak için
+.answers-panel[style*='display: flex'] {
+	flex-direction: column;
+	justify-content: center;
+}
+
+
+// Grid layout'larda satır yüksekliği otomatik olsun, hücreler stretch olmasın
+.answers-panel[style*='display: grid'] {
+	align-items: start !important;
+	grid-auto-rows: auto !important;
+}
+
+
+// Grid layout class'ları (backend'den gelen layoutClass ile eşleşir)
+.canvas-layout--solo-stack--cols-2 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+}
+.canvas-layout--solo-stack--cols-4 .answers-panel {
+	display: grid !important;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 12px;
 }
 
 .answer-wrapper {
@@ -105,7 +190,7 @@
 	align-items: center;
 	justify-content: center;
 	min-width: 48px;
-	min-height: 32px;
+	/* min-height kaldırıldı, sadece içerik kadar yükseklik */
 }
 
 .answer-image {
@@ -113,7 +198,30 @@
 	height: auto;
 	object-fit: contain;
 }
-
+// Flex veya grid farketmeksizin cevapları panelin ortasında (dikeyde) hizala
+.canvas-layout--solo-stack--cols-1 .answers-panel,
+.canvas-layout--passage-stack--cols-1 .answers-panel,
+.canvas-layout--solo-stack--cols-2 .answers-panel,
+.canvas-layout--passage-stack--cols-2 .answers-panel,
+.canvas-layout--solo-stack--cols-3 .answers-panel,
+.canvas-layout--passage-stack--cols-3 .answers-panel,
+.canvas-layout--solo-stack--cols-4 .answers-panel,
+.canvas-layout--passage-stack--cols-4 .answers-panel,
+.canvas-layout--solo-inline--cols-1 .answers-panel,
+.canvas-layout--passage-inline--cols-1 .answers-panel,
+.canvas-layout--solo-inline--cols-2 .answers-panel,
+.canvas-layout--passage-inline--cols-2 .answers-panel,
+.canvas-layout--solo-inline--cols-3 .answers-panel,
+.canvas-layout--passage-inline--cols-3 .answers-panel,
+.canvas-layout--solo-inline--cols-4 .answers-panel,
+.canvas-layout--passage-inline--cols-4 .answers-panel {
+	justify-content: center;
+}
+.answers-panel[style*='display: grid'] {
+	align-items: start !important;
+	grid-auto-rows: auto !important;
+	justify-content: center !important;
+}
 .answer-wrapper:hover {
 	box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
 }

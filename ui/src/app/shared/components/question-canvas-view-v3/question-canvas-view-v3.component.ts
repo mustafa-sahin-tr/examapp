@@ -42,7 +42,6 @@ export class QuestionCanvasViewComponentv3 extends QuestionCanvasViewComponentv2
       this.resizeObserver.observe(this.questionImageEl);
     }
   }
-
   private questionImageEl: HTMLImageElement | null = null;
 
   private resizeObserver?: ResizeObserver;

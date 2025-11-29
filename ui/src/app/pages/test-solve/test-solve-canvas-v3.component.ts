@@ -11,6 +11,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-canvas-view-v3/question-canvas-view-v3.component';
+import { QuestionCanvasViewComponentv2 } from '../../shared/components/question-canvas-view-v2/question-canvas-view-v2.component';
 
 @Component({
   selector: 'app-test-solve-v3',
@@ -24,7 +25,7 @@ import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-
     MatTooltipModule,
     QuestionLiteViewComponent,
     CountdownComponent,
-    QuestionCanvasViewComponentv3,
+    QuestionCanvasViewComponentv2,
     MatProgressSpinnerModule,
   ],
 })

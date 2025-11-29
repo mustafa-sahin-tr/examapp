@@ -45,6 +45,31 @@ export class QuestionCanvasViewComponentv2 {
   private questionContentWidth = 0;
   private questionContentHeight = 0;
 
+  /**
+   * Cevap paneli için grid/flex ayarlarını döndürür.
+   * Backend'den gelen answerColumns değerine göre otomatik ayarlanır.
+   */
+  public getAnswersPanelStyle(): Record<string, string> {
+    const columns = this._questionRegion().layoutPlan?.answerColumns || 1;
+    if (columns > 1) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gap: '12px',
+        width: '100%',
+        height: '100%',
+      };
+    } else {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        width: '100%',
+        height: '100%',
+      };
+    }
+  }
+
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const region = value ?? EMPTY_REGION;
     this._questionRegion.set(region);
@@ -231,11 +256,28 @@ export class QuestionCanvasViewComponentv2 {
     };
   }
 
+  /**
+   * Returns the scale ratio of the question image: (displayed width / natural width)
+   * If natural width is 0, returns 1.
+   */
+  public get questionImageScaleRatio(): number {
+    // Use getCanvasWidths to get the displayed width
+    const naturalWidth = this.imageNaturalWidth || this.questionContentWidth || this._questionRegion().width || 1;
+    const displayedWidth = this.getCanvasWidths().questionWidth;
+    if (!naturalWidth || !displayedWidth) return 1;
+    return displayedWidth / naturalWidth;
+  }
+
   public getAnswerImageStyle(_answer?: AnswerChoice): Record<string, string> {
+    // Cevap görselleri, soru görselinin ekrana sığdırılmasıyla aynı oranda küçülmeli/büyümeli
+    const scaleRatio = this.questionImageScaleRatio;
     return {
-      width: '100%',
+      width: 'auto',
       height: 'auto',
       objectFit: 'contain',
+      maxWidth: scaleRatio < 1 ? `${Math.round(scaleRatio * 100)}%` : '100%',
+      maxHeight: scaleRatio < 1 ? `${Math.round(scaleRatio * 100)}%` : '100%',
+      // Not: Eğer scaleRatio > 1 ise, 100% ile sınırla (taşmayı önle)
     };
   }
 

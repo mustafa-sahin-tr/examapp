@@ -179,12 +179,26 @@ internal static class QuestionLayoutAnalyzer
         var inlineAnswers = ShouldInlineAnswers(desktopVariant, plan.Passage, columns);
         var layoutClass = BuildLayoutClass(hasPassage, inlineAnswers, columns);
 
+        double? questionFlex = null;
+        double? answersFlex = null;
+        if (inlineAnswers && desktopVariant.EffectiveQuestionWidth > 0 && desktopVariant.EffectiveAnswersWidth > 0)
+        {
+            var total = desktopVariant.EffectiveQuestionWidth + desktopVariant.EffectiveAnswersWidth;
+            if (total > 0)
+            {
+                questionFlex = Math.Round(desktopVariant.EffectiveQuestionWidth / total * 10, 2, MidpointRounding.AwayFromZero);
+                answersFlex = Math.Round(desktopVariant.EffectiveAnswersWidth / total * 10, 2, MidpointRounding.AwayFromZero);
+            }
+        }
+
         return new QuestionLayoutUiPlan
         {
             LayoutClass = layoutClass,
             AnswerColumns = columns,
             HasPassage = hasPassage,
-            Overrides = CloneOverrides(plan.Overrides)
+            Overrides = CloneOverrides(plan.Overrides),
+            QuestionFlex = questionFlex,
+            AnswersFlex = answersFlex
         };
     }
 
@@ -453,6 +467,9 @@ internal sealed class QuestionLayoutUiPlan
     public int AnswerColumns { get; set; }
     public bool HasPassage { get; set; }
     public QuestionLayoutOverrides? Overrides { get; set; }
+    // Flex ratios for question and answers panels (for inline layouts)
+    public double? QuestionFlex { get; set; }
+    public double? AnswersFlex { get; set; }
 }
 
 internal sealed class QuestionLayoutPlan

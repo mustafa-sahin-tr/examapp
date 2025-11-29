@@ -395,6 +395,39 @@ export class QuestionCanvasViewComponentv2 {
     return { questionWidth, passageWidth, hasPassageImage };
   }
 
+  /**
+   * Ana container'ın flex yönünü backend'den gelen layoutClass'a göre ayarlar.
+   * stack => column, inline => row
+   */
+  public getContainerStyle(): Record<string, string> {
+    const layoutClass = this._questionRegion().layoutPlan?.layoutClass || '';
+    if (layoutClass.includes('-stack-')) {
+      return { display: 'flex', flexDirection: 'column', width: '100%', height: '100%' };
+    }
+    // inline veya default
+    return { display: 'flex', flexDirection: 'row', width: '100%', height: '100%' };
+  }
+
+  /**
+   * Backend'den gelen flex oranlarını uygular. Inline layout'ta backend planı varsa kullanılır.
+   * @param panel 'question' | 'answers'
+   */
+  public getPanelFlex(panel: 'question' | 'answers'): string {
+    const plan = this._questionRegion().layoutPlan;
+    if (plan) {
+      if (panel === 'question' && plan.questionFlex) {
+        return `${plan.questionFlex} ${plan.questionFlex} 0`;
+      }
+      if (panel === 'answers' && plan.answersFlex) {
+        return `${plan.answersFlex} ${plan.answersFlex} 0`;
+      }
+    }
+    // Fallback: eski oranlar
+    if (panel === 'question') return '3 3 0';
+    if (panel === 'answers') return '2 2 0';
+    return '';
+  }
+
   private toSize(value: number): string {
     return `${this.toSizeValue(value)}px`;
   }

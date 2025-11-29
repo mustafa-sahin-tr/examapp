@@ -1,6 +1,6 @@
-<div class="canvas-container" [ngClass]="_questionRegion().layoutPlan?.layoutClass">
+<div class="canvas-container" [ngClass]="_questionRegion().layoutPlan?.layoutClass" [ngStyle]="getContainerStyle()">
   @if(isImageLoaded()) {
-  <div class="question-panel">
+  <div class="question-panel" [style.flex]="getPanelFlex('question')">
     @if(hasPassageImage()) {
     <div class="image-slice passage-image" [ngStyle]="getPassageWrapperStyle()">
       <img
@@ -23,7 +23,7 @@
   </div>
 
   @if(_questionRegion().answers.length) {
-  <div class="answers-panel" [ngStyle]="getAnswersPanelStyle()">
+  <div class="answers-panel" [ngStyle]="getAnswersPanelStyle()" [style.flex]="getPanelFlex('answers')">
     @for (answer of _questionRegion().answers; track idx; let idx = $index) {
     <div
       class="answer-wrapper image-slice"

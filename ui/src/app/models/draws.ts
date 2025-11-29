@@ -44,6 +44,8 @@ export interface CanvasLayoutPlan {
   answerColumns: number;
   hasPassage?: boolean;
   overrides?: CanvasLayoutPlanOverrides;
+  questionFlex?: number;
+  answersFlex?: number;
 }
 
 export interface CanvasLayoutPlanOverrides {

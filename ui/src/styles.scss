@@ -1600,7 +1600,6 @@ select:focus {
 }
 
 
-
 /* ---- Styles from /mnt/data/app_extracted/app/pages/question/question.component.scss ---- */
 .question-card {
   max-width: 960px;
@@ -2458,7 +2457,7 @@ h4 {
     display: flex;
     font-family: inherit;
     gap: .75rem;
-    margin-bottom: 0;
+       margin-bottom: 0;
     margin-inline-end: 0;
     opacity: 1;
     text-align: start;
@@ -4005,4 +4004,10 @@ input:-webkit-autofill:focus {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+html, body, app-root, .main-content, #main-content, .app-content, #app-content {
+  height: 100% !important;
+  min-height: 0 !important;
+  width: 100%;
 }

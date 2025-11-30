@@ -5,6 +5,8 @@
 	display: flex !important;
 	flex-direction: column;
 	gap: 12px;
+	min-height: 0;
+	overflow-y: auto;
 }
 .canvas-layout--solo-stack--cols-2 .answers-panel,
 .canvas-layout--passage-stack--cols-2 .answers-panel {
@@ -63,12 +65,12 @@
 	align-items: stretch;
 	gap: 16px;
 	flex: 1 1 auto;
-	min-height: 0;
+	min-height: 0 !important;
 	width: 100%;
 	max-width: 100%;
 	min-width: 0;
-	min-height: 0;
-	height: 100%;
+	height: 100% !important;
+	max-height: 100%;
 }
 
 .question-panel {
@@ -77,9 +79,9 @@
 	gap: 12px;
 	/* flex will be set dynamically via [style.flex] */
 	min-width: 0;
-	min-height: 0;
+	min-height: 0 !important;
 	max-height: 100%;
-	height: 100%;
+	height: 100% !important;
 	justify-content: flex-start;
 	align-items: stretch;
 	overflow: hidden;
@@ -139,14 +141,15 @@
 .answers-panel {
 	/* flex will be set dynamically via [style.flex] */
 	min-width: 240px;
-	height: 100%;
+	height: 100% !important;
+	min-height: 0 !important;
 	align-self: stretch;
-	/* Panel yüksekliğinde şıkları tam ortalamak için: */
 	justify-content: center;
-	align-items: flex-start; // stretch yerine içerik kadar yükseklik
-	max-height: 100%;
+	align-items: flex-start;
+	max-height: 100% !important;
 	overflow-y: auto;
 	overflow-x: hidden;
+	min-height: 0;
 }
 
 // Grid layout'larda satır yüksekliği otomatik olsun, şıklar panelin ortasında olsun

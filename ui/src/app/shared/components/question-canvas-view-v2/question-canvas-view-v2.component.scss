@@ -4,9 +4,25 @@
 .canvas-layout--passage-stack--cols-1 .answers-panel {
 	display: flex !important;
 	flex-direction: column;
-	gap: 12px;
-	min-height: 0;
-	overflow-y: auto;
+	gap: 1px !important;
+	width: 100%;
+	min-height: 0 !important;
+	max-height: 100% !important;
+	overflow: hidden !important;
+	justify-content: stretch;
+	flex: 1 1 0;
+	margin-top: -8px !important;
+}
+.canvas-layout--solo-stack--cols-1 .answer-wrapper,
+.canvas-layout--passage-stack--cols-1 .answer-wrapper {
+	flex: 1 1 0 !important; 
+	min-height: 0 !important;
+	height: auto !important;
+}
+.canvas-layout--solo-stack--cols-1 .answer-wrapper,
+.canvas-layout--passage-stack--cols-1 .answer-wrapper {
+	flex: 0 0 auto !important;
+	min-height: 0 !important;
 }
 .canvas-layout--solo-stack--cols-2 .answers-panel,
 .canvas-layout--passage-stack--cols-2 .answers-panel {
@@ -63,7 +79,7 @@
 	flex-direction: row;
 	flex-wrap: nowrap;
 	align-items: stretch;
-	gap: 16px;
+	gap: 4px;
 	flex: 1 1 auto;
 	min-height: 0 !important;
 	width: 100%;
@@ -71,6 +87,12 @@
 	min-width: 0;
 	height: 100% !important;
 	max-height: 100%;
+	margin-top: 4px !important;
+}
+
+.canvas-layout--solo-stack--cols-1 .canvas-container,
+.canvas-layout--passage-stack--cols-1 .canvas-container {
+	gap: 4px !important;
 }
 
 .question-panel {
@@ -193,13 +215,19 @@
 	align-items: center;
 	justify-content: center;
 	min-width: 48px;
-	/* min-height kaldırıldı, sadece içerik kadar yükseklik */
+	min-height: 0;
+	flex: 1 1 0;
 }
 
 .answer-image {
-	width: 100%;
-	height: auto;
+	display: block;
+	width: auto;
+	height: 100%;
+	max-height: 100%;
 	object-fit: contain;
+	margin: 0 auto;
+	padding: 0;
+	border: none;
 }
 // Flex veya grid farketmeksizin cevapları panelin ortasında (dikeyde) hizala
 .canvas-layout--solo-stack--cols-1 .answers-panel,

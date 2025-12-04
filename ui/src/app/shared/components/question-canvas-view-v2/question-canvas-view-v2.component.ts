@@ -51,6 +51,20 @@ export class QuestionCanvasViewComponentv2 {
    */
   public getAnswersPanelStyle(): Record<string, string> {
     const columns = this._questionRegion().layoutPlan?.answerColumns || 1;
+    const layoutClass = this._questionRegion().layoutPlan?.layoutClass || '';
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1')) {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        width: '100%',
+        minHeight: '0',
+        maxHeight: '100%',
+        flexShrink: '1',
+        alignItems: 'stretch',
+        overflowY: 'auto',
+      };
+    }
     if (columns > 1) {
       return {
         display: 'grid',
@@ -250,7 +264,16 @@ export class QuestionCanvasViewComponentv2 {
     };
   }
 
-  public getAnswerWrapperStyle(_answer?: AnswerChoice): Record<string, string> {
+  public getAnswerWrapperStyle(_answer?: AnswerChoice, answerCount?: number): Record<string, string> {
+    // Stack/cols-1 modunda dinamik yükseklik uygula
+    const region = this._questionRegion();
+    const layoutClass = region.layoutPlan?.layoutClass || '';
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1') && answerCount && answerCount > 0) {
+      return {
+        width: '100%',
+        height: `${100 / answerCount}%`,
+      };
+    }
     return {
       width: '100%',
     };
@@ -402,6 +425,16 @@ export class QuestionCanvasViewComponentv2 {
   public getContainerStyle(): Record<string, string> {
     const layoutClass = this._questionRegion().layoutPlan?.layoutClass || '';
     if (layoutClass.includes('-stack-')) {
+      if (layoutClass.includes('cols-1')) {
+        return {
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          height: 'auto',
+          maxHeight: '100%',
+          minHeight: '0',
+        };
+      }
       return { display: 'flex', flexDirection: 'column', width: '100%', height: '100%' };
     }
     // inline veya default

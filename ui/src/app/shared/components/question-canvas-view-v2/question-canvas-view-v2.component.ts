@@ -62,7 +62,7 @@ export class QuestionCanvasViewComponentv2 {
         maxHeight: '100%',
         flexShrink: '1',
         alignItems: 'stretch',
-        overflowY: 'auto',
+        overflow: 'visible',
       };
     }
     if (columns > 1) {
@@ -265,13 +265,16 @@ export class QuestionCanvasViewComponentv2 {
   }
 
   public getAnswerWrapperStyle(_answer?: AnswerChoice, answerCount?: number): Record<string, string> {
-    // Stack/cols-1 modunda dinamik yükseklik uygula
+    // Stack/cols-1 modunda her cevabın height özelliğini kullan
     const region = this._questionRegion();
     const layoutClass = region.layoutPlan?.layoutClass || '';
-    if (layoutClass.includes('stack') && layoutClass.includes('cols-1') && answerCount && answerCount > 0) {
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1') && _answer) {
+      // Cevabın height özelliği varsa onu kullan, yoksa fallback 48px
+      const answerHeight = typeof _answer.height === 'number' && _answer.height > 0 ? _answer.height : 48;
       return {
         width: '100%',
-        height: `${100 / answerCount}%`,
+        minHeight: `${answerHeight}px`,
+        boxSizing: 'border-box',
       };
     }
     return {
@@ -292,15 +295,32 @@ export class QuestionCanvasViewComponentv2 {
   }
 
   public getAnswerImageStyle(_answer?: AnswerChoice): Record<string, string> {
-    // Cevap görselleri, soru görselinin ekrana sığdırılmasıyla aynı oranda küçülmeli/büyümeli
-    const scaleRatio = this.questionImageScaleRatio;
+    // Cevap görselleri, answer-panel'in yüksekliğine göre orantılı scale edilmeli
+    // Stack+cols-1 modunda, parent answer-panel'in yüksekliği ve toplam cevap yüksekliği ile orantı alınır
+    const region = this._questionRegion();
+    const layoutClass = region.layoutPlan?.layoutClass || '';
+    let scaleRatio = this.questionImageScaleRatio;
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1') && _answer) {
+      // Parent answer-panel yüksekliği
+      const answersPanel = document.querySelector('.answers-panel');
+      let panelHeight = 0;
+      if (answersPanel) {
+        panelHeight = (answersPanel as HTMLElement).offsetHeight;
+      }
+      // Toplam cevap yüksekliği (gap dahil)
+      const answers = region.answers || [];
+      const totalAnswersHeight =
+        answers.reduce((sum, a) => sum + (typeof a.height === 'number' && a.height > 0 ? a.height : 48), 0) +
+        (answers.length > 1 ? (answers.length - 1) * 12 : 0);
+      // Oran
+      scaleRatio = panelHeight > 0 && totalAnswersHeight > 0 ? panelHeight / totalAnswersHeight : 1;
+    }
     return {
       width: 'auto',
       height: 'auto',
       objectFit: 'contain',
       maxWidth: scaleRatio < 1 ? `${Math.round(scaleRatio * 100)}%` : '100%',
       maxHeight: scaleRatio < 1 ? `${Math.round(scaleRatio * 100)}%` : '100%',
-      // Not: Eğer scaleRatio > 1 ise, 100% ile sınırla (taşmayı önle)
     };
   }
 
@@ -447,6 +467,32 @@ export class QuestionCanvasViewComponentv2 {
    */
   public getPanelFlex(panel: 'question' | 'answers'): string {
     const plan = this._questionRegion().layoutPlan;
+    const answerCount = this._questionRegion().answers?.length ?? 0;
+    const layoutClass = plan?.layoutClass || '';
+    // Stack + cols-1 modunda cevap paneli ve soru paneli için dinamik flex oranı
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1')) {
+      // Backend'den flex oranı geliyorsa onu kullan
+      if (typeof plan?.questionFlex === 'number' && typeof plan?.answersFlex === 'number') {
+        if (panel === 'question') return `${plan.questionFlex} ${plan.questionFlex} 0`;
+        if (panel === 'answers') return `${plan.answersFlex} ${plan.answersFlex} 0`;
+      }
+      // Dinamik oran: soru resminin gerçek yüksekliği ve cevapların toplam yüksekliği
+      // Cevapların height özelliği varsa onları topla, yoksa 48px fallback kullan
+      const answers = this._questionRegion().answers || [];
+      const answersTotalHeight =
+        answers.reduce((sum, a) => sum + (typeof a.height === 'number' && a.height > 0 ? a.height : 48), 0) +
+        (answers.length > 1 ? (answers.length - 1) * 12 : 0); // 12px gap
+      // Soru resmi yüksekliği (imageNaturalHeight) + padding
+      const questionImageHeight = this._questionRegion().height; // this.imageNaturalHeight || 200; // fallback 200px
+      // Toplam yükseklik
+      const totalHeight = questionImageHeight + answersTotalHeight;
+      // Flex oranları
+      const questionFlex = Math.max(1, Math.round((questionImageHeight / totalHeight) * 10));
+      const answersFlex = Math.max(1, Math.round((answersTotalHeight / totalHeight) * 10));
+      if (panel === 'question') return `${questionFlex} ${questionFlex} 0`;
+      if (panel === 'answers') return `${answersFlex} ${answersFlex} 0`;
+    }
+    // Diğer modlarda backend'den gelen flex oranı varsa kullanılır
     if (plan) {
       if (panel === 'question' && plan.questionFlex) {
         return `${plan.questionFlex} ${plan.questionFlex} 0`;

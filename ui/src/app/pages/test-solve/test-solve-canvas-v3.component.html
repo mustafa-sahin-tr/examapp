@@ -123,7 +123,7 @@
             >
               @if (questionData.question.question.isCanvasQuestion) {
               <div class="canvas-zone canvas-layout--left-image-right-answers" #canvasContainer>
-                <app-question-canvas-view-v2
+                <app-question-canvas-view-v4
                   #canvasView
                   class="canvas-stage"
                   [questionRegion]="questionData.region"
@@ -131,7 +131,7 @@
                   (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
                   (answerOpened)="openAnswer($event)"
                   [correctAnswerVisible]="correctAnswerVisible"
-                ></app-question-canvas-view-v2>
+                ></app-question-canvas-view-v4>
               </div>
               <!-- <div class="canvas-controls">
               <div class="canvas-zoom">

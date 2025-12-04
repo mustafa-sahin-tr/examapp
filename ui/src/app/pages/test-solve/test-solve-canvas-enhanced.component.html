@@ -207,7 +207,7 @@
               </button>
             </div>
 
-            <app-question-canvas-view-v2
+            <app-question-canvas-view-v4
               #canvasView
               [questionRegion]="questionData.region"
               [selectedChoice]="selectedChoices().get(questionData.region.id)"
@@ -216,7 +216,7 @@
               [correctAnswerVisible]="correctAnswerVisible"
               [class]="'canvas-view-' + questionsPerView()"
             >
-            </app-question-canvas-view-v2>
+            </app-question-canvas-view-v4>
           </div>
           } @else {
           <!-- Metin Tabanlı Soru -->

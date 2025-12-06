@@ -59,6 +59,10 @@ public class AnswerDto
     public double? Y { get; set; }
     public double? Width { get; set; }
     public double? Height { get; set; }
+
+    // Sıralama ve etiket
+    public string? Tag { get; set; } // A, B, C, D, E
+    public int? Order { get; set; } // 0, 1, 2, ...
 }
 
 public class QuestionSavedDto : ResponseBaseDto

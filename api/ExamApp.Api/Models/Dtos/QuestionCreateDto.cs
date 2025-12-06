@@ -40,10 +40,13 @@ public class BulkAnswerDto
     public int Width { get; set; }
     public int Height { get; set; }
     public bool IsCorrect { get; set; }
+    public string? Tag { get; set; }
+    public int? Order { get; set; }
 }
 
 
-public class HeaderInfo {
+public class HeaderInfo
+{
     public int? TestId { get; set; }
     public int? TopicId { get; set; }
 

@@ -30,6 +30,17 @@ const EMPTY_REGION: QuestionRegion = {
 export class QuestionCanvasViewComponentv4 {
   public questionImageSource = signal<string | null>(null);
   public _questionRegion = signal<QuestionRegion>(EMPTY_REGION);
+
+  // Sıralı cevaplar getter'ı: order > tag > id
+  public get sortedAnswers(): AnswerChoice[] {
+    const answers = this._questionRegion().answers || [];
+    return [...answers].sort((a, b) => {
+      // Öncelik: order, sonra label, sonra id
+      if (a.order != null && b.order != null && a.order !== b.order) return a.order - b.order;
+      if (a.label && b.label && a.label !== b.label) return a.label.localeCompare(b.label);
+      return (a.id ?? 0) - (b.id ?? 0);
+    });
+  }
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const region = value ?? EMPTY_REGION;
     this._questionRegion.set(region);
@@ -90,7 +101,7 @@ export class QuestionCanvasViewComponentv4 {
   }
 
   selectAnswer(index: number) {
-    const answer = this._questionRegion().answers?.[index];
+    const answer = this.sortedAnswers?.[index];
     if (!answer) return;
     this._selectedChoice.set(answer);
     this.choiceSelected.emit(answer);

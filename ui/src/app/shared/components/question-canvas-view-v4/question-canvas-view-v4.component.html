@@ -9,7 +9,7 @@
     [style.flex]="getPanelFlex('answers')"
     [ngStyle]="{ 'grid-template-columns': answerColumns > 1 ? 'repeat(' + answerColumns + ', 1fr)' : null }"
   >
-    <ng-container *ngFor="let answer of _questionRegion().answers; let idx = index">
+    <ng-container *ngFor="let answer of sortedAnswers; let idx = index">
       <div
         class="qcv4-answer-wrapper"
         [ngClass]="getAnswerClasses(answer)"

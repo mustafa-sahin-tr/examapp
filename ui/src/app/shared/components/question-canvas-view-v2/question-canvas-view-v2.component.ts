@@ -45,6 +45,45 @@ export class QuestionCanvasViewComponentv2 {
   private questionContentWidth = 0;
   private questionContentHeight = 0;
 
+  /**
+   * Cevap paneli için grid/flex ayarlarını döndürür.
+   * Backend'den gelen answerColumns değerine göre otomatik ayarlanır.
+   */
+  public getAnswersPanelStyle(): Record<string, string> {
+    const columns = this._questionRegion().layoutPlan?.answerColumns || 1;
+    const layoutClass = this._questionRegion().layoutPlan?.layoutClass || '';
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1')) {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        width: '100%',
+        minHeight: '0',
+        maxHeight: '100%',
+        flexShrink: '1',
+        alignItems: 'stretch',
+        overflow: 'visible',
+      };
+    }
+    if (columns > 1) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gap: '12px',
+        width: '100%',
+        height: '100%',
+      };
+    } else {
+      return {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        width: '100%',
+        height: '100%',
+      };
+    }
+  }
+
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const region = value ?? EMPTY_REGION;
     this._questionRegion.set(region);
@@ -225,17 +264,63 @@ export class QuestionCanvasViewComponentv2 {
     };
   }
 
-  public getAnswerWrapperStyle(_answer?: AnswerChoice): Record<string, string> {
+  public getAnswerWrapperStyle(_answer?: AnswerChoice, answerCount?: number): Record<string, string> {
+    // Stack/cols-1 modunda her cevabın height özelliğini kullan
+    const region = this._questionRegion();
+    const layoutClass = region.layoutPlan?.layoutClass || '';
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1') && _answer) {
+      // Cevabın height özelliği varsa onu kullan, yoksa fallback 48px
+      const answerHeight = typeof _answer.height === 'number' && _answer.height > 0 ? _answer.height : 48;
+      return {
+        width: '100%',
+        minHeight: `${answerHeight}px`,
+        boxSizing: 'border-box',
+      };
+    }
     return {
       width: '100%',
     };
   }
 
+  /**
+   * Returns the scale ratio of the question image: (displayed width / natural width)
+   * If natural width is 0, returns 1.
+   */
+  public get questionImageScaleRatio(): number {
+    // Use getCanvasWidths to get the displayed width
+    const naturalWidth = this.imageNaturalWidth || this.questionContentWidth || this._questionRegion().width || 1;
+    const displayedWidth = this.getCanvasWidths().questionWidth;
+    if (!naturalWidth || !displayedWidth) return 1;
+    return displayedWidth / naturalWidth;
+  }
+
   public getAnswerImageStyle(_answer?: AnswerChoice): Record<string, string> {
+    // Cevap görselleri, answer-panel'in yüksekliğine göre orantılı scale edilmeli
+    // Stack+cols-1 modunda, parent answer-panel'in yüksekliği ve toplam cevap yüksekliği ile orantı alınır
+    const region = this._questionRegion();
+    const layoutClass = region.layoutPlan?.layoutClass || '';
+    let scaleRatio = this.questionImageScaleRatio;
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1') && _answer) {
+      // Parent answer-panel yüksekliği
+      const answersPanel = document.querySelector('.answers-panel');
+      let panelHeight = 0;
+      if (answersPanel) {
+        panelHeight = (answersPanel as HTMLElement).offsetHeight;
+      }
+      // Toplam cevap yüksekliği (gap dahil)
+      const answers = region.answers || [];
+      const totalAnswersHeight =
+        answers.reduce((sum, a) => sum + (typeof a.height === 'number' && a.height > 0 ? a.height : 48), 0) +
+        (answers.length > 1 ? (answers.length - 1) * 12 : 0);
+      // Oran
+      scaleRatio = panelHeight > 0 && totalAnswersHeight > 0 ? panelHeight / totalAnswersHeight : 1;
+    }
     return {
-      width: '100%',
+      width: 'auto',
       height: 'auto',
       objectFit: 'contain',
+      maxWidth: scaleRatio < 1 ? `${Math.round(scaleRatio * 100)}%` : '100%',
+      maxHeight: scaleRatio < 1 ? `${Math.round(scaleRatio * 100)}%` : '100%',
     };
   }
 
@@ -351,6 +436,75 @@ export class QuestionCanvasViewComponentv2 {
     }
 
     return { questionWidth, passageWidth, hasPassageImage };
+  }
+
+  /**
+   * Ana container'ın flex yönünü backend'den gelen layoutClass'a göre ayarlar.
+   * stack => column, inline => row
+   */
+  public getContainerStyle(): Record<string, string> {
+    const layoutClass = this._questionRegion().layoutPlan?.layoutClass || '';
+    if (layoutClass.includes('-stack-')) {
+      if (layoutClass.includes('cols-1')) {
+        return {
+          display: 'flex',
+          flexDirection: 'column',
+          width: '100%',
+          height: 'auto',
+          maxHeight: '100%',
+          minHeight: '0',
+        };
+      }
+      return { display: 'flex', flexDirection: 'column', width: '100%', height: '100%' };
+    }
+    // inline veya default
+    return { display: 'flex', flexDirection: 'row', width: '100%', height: '100%' };
+  }
+
+  /**
+   * Backend'den gelen flex oranlarını uygular. Inline layout'ta backend planı varsa kullanılır.
+   * @param panel 'question' | 'answers'
+   */
+  public getPanelFlex(panel: 'question' | 'answers'): string {
+    const plan = this._questionRegion().layoutPlan;
+    const answerCount = this._questionRegion().answers?.length ?? 0;
+    const layoutClass = plan?.layoutClass || '';
+    // Stack + cols-1 modunda cevap paneli ve soru paneli için dinamik flex oranı
+    if (layoutClass.includes('stack') && layoutClass.includes('cols-1')) {
+      // Backend'den flex oranı geliyorsa onu kullan
+      if (typeof plan?.questionFlex === 'number' && typeof plan?.answersFlex === 'number') {
+        if (panel === 'question') return `${plan.questionFlex} ${plan.questionFlex} 0`;
+        if (panel === 'answers') return `${plan.answersFlex} ${plan.answersFlex} 0`;
+      }
+      // Dinamik oran: soru resminin gerçek yüksekliği ve cevapların toplam yüksekliği
+      // Cevapların height özelliği varsa onları topla, yoksa 48px fallback kullan
+      const answers = this._questionRegion().answers || [];
+      const answersTotalHeight =
+        answers.reduce((sum, a) => sum + (typeof a.height === 'number' && a.height > 0 ? a.height : 48), 0) +
+        (answers.length > 1 ? (answers.length - 1) * 12 : 0); // 12px gap
+      // Soru resmi yüksekliği (imageNaturalHeight) + padding
+      const questionImageHeight = this._questionRegion().height; // this.imageNaturalHeight || 200; // fallback 200px
+      // Toplam yükseklik
+      const totalHeight = questionImageHeight + answersTotalHeight;
+      // Flex oranları
+      const questionFlex = Math.max(1, Math.round((questionImageHeight / totalHeight) * 10));
+      const answersFlex = Math.max(1, Math.round((answersTotalHeight / totalHeight) * 10));
+      if (panel === 'question') return `${questionFlex} ${questionFlex} 0`;
+      if (panel === 'answers') return `${answersFlex} ${answersFlex} 0`;
+    }
+    // Diğer modlarda backend'den gelen flex oranı varsa kullanılır
+    if (plan) {
+      if (panel === 'question' && plan.questionFlex) {
+        return `${plan.questionFlex} ${plan.questionFlex} 0`;
+      }
+      if (panel === 'answers' && plan.answersFlex) {
+        return `${plan.answersFlex} ${plan.answersFlex} 0`;
+      }
+    }
+    // Fallback: eski oranlar
+    if (panel === 'question') return '3 3 0';
+    if (panel === 'answers') return '2 2 0';
+    return '';
   }
 
   private toSize(value: number): string {

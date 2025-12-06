@@ -54,8 +54,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("Order")
+                        .HasColumnType("integer");
+
                     b.Property<int>("QuestionId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Tag")
+                        .HasColumnType("text");
 
                     b.Property<string>("Text")
                         .IsRequired()

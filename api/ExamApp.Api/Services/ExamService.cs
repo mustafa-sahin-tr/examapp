@@ -936,7 +936,9 @@ public class ExamService : IExamService
                     {
                         Id = a.Id,
                         Text = a.Text,
-                        ImageUrl = a.ImageUrl
+                        ImageUrl = a.ImageUrl,
+                        Tag = a.Tag,
+                        Order = a.Order
                     })?.ToList() ?? new List<AnswerDto>()
                 }
             }).ToList()
@@ -1072,7 +1074,9 @@ public class ExamService : IExamService
                         X = a.X,
                         Y = a.Y,
                         Width = a.Width,
-                        Height = a.Height
+                        Height = a.Height,
+                        Tag = a.Tag,
+                        Order = a.Order
                     }).ToList()
                 };
 

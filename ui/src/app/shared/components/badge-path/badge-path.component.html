@@ -43,8 +43,8 @@
         <div
           class="ms-path-node"
           [class.ms-path-node-complete]="item.isCompleted"
-          [style.left.%]="layout.nodePoints[index]?.xPercent ?? 50"
-          [style.top.%]="layout.nodePoints[index]?.yPercent ?? 50"
+          [style.left.%]="layout.nodePoints[index].xPercent"
+          [style.top.%]="layout.nodePoints[index].yPercent"
         >
           <div class="ms-path-node-upper">
             <span class="ms-path-node-icon" (click)="selectBadge(item)">

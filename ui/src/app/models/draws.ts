@@ -1,5 +1,7 @@
 export interface AnswerChoice {
   label: string; // "A", "B", "C", "D"
+  tag?: string; // Backend tag (A,B,C,D,E)
+  order?: number; // Backend order (0,1,2,...)
   x: number;
   y: number;
   width: number;
@@ -44,6 +46,8 @@ export interface CanvasLayoutPlan {
   answerColumns: number;
   hasPassage?: boolean;
   overrides?: CanvasLayoutPlanOverrides;
+  questionFlex?: number;
+  answersFlex?: number;
 }
 
 export interface CanvasLayoutPlanOverrides {

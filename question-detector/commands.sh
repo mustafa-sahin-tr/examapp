@@ -93,7 +93,21 @@ apt-get update
 apt-get install libzbar0 
 
 
-!yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/app/data/dataset-answers.yaml cache=True model=/content/drive/Othercomputers/PersonalMacBookPro/app/runs/detect/train-answers-v2/weights/best.pt epochs=50 imgsz=640 name=train-answers-v4 project=/content/drive/Othercomputers/PersonalMacBookPro/app/data/answers/runs
+
+
+
+# save_period parametresi ile her N epoch'ta bir ağırlıkları kaydedebilirsiniz (ör: save_period=5 her 5 epoch'ta bir kaydeder)
+!yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/app/data/dataset-answers.yaml cache=True model=/content/drive/Othercomputers/PersonalMacBookPro/app/runs/detect/train-answers-v2/weights/best.pt epochs=50 imgsz=640 name=train-answers-v4 project=/content/drive/Othercomputers/PersonalMacBookPro/app/data/answers/runs save_period=5
 !yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/app/data/dataset.yaml cache=True model=/content/drive/Othercomputers/PersonalMacBookPro/app/runs/detect/train2/weights/best.pt epochs=50 imgsz=640 name=train3 project=/content/drive/Othercomputers/PersonalMacBookPro/app/data/questions/runs
 
 !yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/app/data/dataset-answers.yaml cache=True  save_period=1 model=/content/drive/Othercomputers/PersonalMacBookPro/app/data/answers/runs/train-answers-v6/weights/best.pt epochs=50 imgsz=640 name=train-answers-v8 project=/content/drive/Othercomputers/PersonalMacBookPro/app/data/answers/runs
+
+
+
+!pip install ultralytics
+
+!python /content/drive/Othercomputers/PersonalMacBookPro/question-detector/scripts/json_to_yolo_answers.py
+
+!python /content/drive/Othercomputers/PersonalMacBookPro/question-detector/scripts/json_to_yolo_only_questions.py
+
+  !yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/dataset.yaml cache=True model=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/questions/runs/train5/weights/best.pt epochs=50 imgsz=640 name=train20251206-2 project=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/questions/runs

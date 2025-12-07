@@ -4,9 +4,9 @@ from PIL import Image
 from collections import defaultdict
 
 # 📁 Dosya yolları
-JSON_PATH = "/content/drive/Othercomputers/PersonalMacBookPro/app/data/json/answers.json"
-IMAGES_FOLDER = "/content/drive/Othercomputers/PersonalMacBookPro/app/data/answers/images"
-LABELS_FOLDER = "/content/drive/Othercomputers/PersonalMacBookPro/app/data/answers/labels"
+JSON_PATH = "/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/json/answers.json"
+IMAGES_FOLDER = "/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/answers/images"
+LABELS_FOLDER = "/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/answers/labels"
 
 # 📁 Çıktı klasörünü oluştur
 os.makedirs(LABELS_FOLDER, exist_ok=True)

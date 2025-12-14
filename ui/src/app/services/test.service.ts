@@ -247,6 +247,8 @@ export class TestService {
         answerColumns,
         hasPassage: typeof parsed.hasPassage === 'boolean' ? parsed.hasPassage : undefined,
         overrides,
+        questionFlex: typeof parsed.questionFlex === 'number' ? Math.floor(parsed.questionFlex) : undefined,
+        answersFlex: typeof parsed.answersFlex === 'number' ? parsed.answersFlex : undefined,
       };
     } catch {
       return undefined;

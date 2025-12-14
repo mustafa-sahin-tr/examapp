@@ -77,9 +77,11 @@ app.add_middleware(
 # model = YOLO("data/questions/runs/train32/weights/best.pt")
 # sub_model = YOLO("data/answers/runs/train-answers-v4/weights/best.pt")  # <--- Alt modelin yolu
 # model = YOLO("data/questions/runs/train5/weights/best.pt")
-sub_model = YOLO("data/answers/runs/train-answers-v10/weights/best.pt")  # <--- Alt modelin yolu
+# sub_model = YOLO("data/answers/runs/train-answers-v10/weights/best.pt")  # <--- Alt modelin yolu
 
 model = YOLO("data/questions/runs/train20251206-22/weights/best.pt")
+sub_model = YOLO("data/answers/runs/train-answers-v11/weights/best.pt")  # <--- Alt modelin yolu
+
 
 
 class ImageData(BaseModel):

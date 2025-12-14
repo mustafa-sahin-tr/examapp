@@ -190,6 +190,15 @@ internal static class QuestionLayoutAnalyzer
                 answersFlex = Math.Round(desktopVariant.EffectiveAnswersWidth / total * 10, 2, MidpointRounding.AwayFromZero);
             }
         }
+        else if (!inlineAnswers && desktopVariant.EffectiveQuestionHeight > 0 && desktopVariant.EffectiveAnswersHeight > 0)
+        {
+            var total = desktopVariant.EffectiveQuestionHeight + desktopVariant.EffectiveAnswersHeight;
+            if (total > 0)
+            {
+                questionFlex = Math.Round(desktopVariant.EffectiveQuestionHeight / total * 10, 2, MidpointRounding.AwayFromZero);
+                answersFlex = Math.Round(desktopVariant.EffectiveAnswersHeight / total * 10, 2, MidpointRounding.AwayFromZero);
+            }
+        }
 
         return new QuestionLayoutUiPlan
         {
@@ -382,7 +391,7 @@ internal static class QuestionLayoutAnalyzer
         }
 
         var combinedWidth = variant.EffectiveQuestionWidth + AnswerGap + variant.EffectiveAnswersWidth;
-        var inlineCandidate = combinedWidth <= availableWidth && variant.Scale >= 0.8;
+        var inlineCandidate = combinedWidth <= availableWidth && variant.Scale >= 0.51;
 
         if (!inlineCandidate)
         {

@@ -271,7 +271,7 @@
 .solve-v3__body {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 175px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 24px;
   padding: 24px 16px 16px;
   min-height: 0;
@@ -325,7 +325,7 @@
 
 .question-grid[data-layout='1'] .question-card {
   max-width: min(100%, clamp(680px, 78vw, 1180px));
-  min-height: clamp(640px, 72vh, 900px);
+  min-height: clamp(680px, 72vh, 900px);
   margin: 0 auto;
 }
 
@@ -620,8 +620,8 @@
   color: #f8fafc;
   box-shadow: 0 32px 60px rgba(15, 23, 42, 0.45);
   overflow: hidden;
-  min-height: 0;
-  width: 150px;
+  // min-height: 0;
+  width: 250px;
   min-width: 0;
 }
 
@@ -636,7 +636,7 @@
 }
 
 .insight-panel__section--map .question-map-grid {
-  max-height: 220px;
+  // max-height: 220px;
   overflow-y: auto;
   padding-right: 4px;
   margin-right: -4px;

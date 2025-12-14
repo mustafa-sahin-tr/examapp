@@ -28,6 +28,9 @@ const EMPTY_REGION: QuestionRegion = {
   styleUrls: ['./question-canvas-view-v4.component.scss'],
 })
 export class QuestionCanvasViewComponentv4 {
+  public get layoutClass(): string {
+    return this._questionRegion().layoutPlan?.layoutClass || '';
+  }
   public questionImageSource = signal<string | null>(null);
   public _questionRegion = signal<QuestionRegion>(EMPTY_REGION);
 
@@ -44,7 +47,9 @@ export class QuestionCanvasViewComponentv4 {
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const region = value ?? EMPTY_REGION;
     this._questionRegion.set(region);
+    console.log('Input Question Region:', region);
     const transformedQuestionUrl = this.transformQuestionImageUrl(region.imageUrl);
+    console.log('Transformed Question URL:', transformedQuestionUrl);
     this.questionImageSource.set(transformedQuestionUrl);
   }
   @Input() correctAnswerVisible: boolean = false;
@@ -74,13 +79,20 @@ export class QuestionCanvasViewComponentv4 {
     return this._questionRegion().layoutPlan?.answerColumns || 1;
   }
 
+  public isInlineLayout(): boolean {
+    return this._questionRegion().layoutPlan?.layoutClass?.includes('inline') || false;
+  }
+
   public getPanelFlex(panel: 'question' | 'answers'): string {
+    if (!this._questionRegion()) {
+      return panel === 'question' ? '7 7 0' : '2 2 0';
+    }
     const plan = this._questionRegion().layoutPlan;
     if (plan && typeof plan.questionFlex === 'number' && typeof plan.answersFlex === 'number') {
       if (panel === 'question') return `${plan.questionFlex} ${plan.questionFlex} 0`;
       if (panel === 'answers') return `${plan.answersFlex} ${plan.answersFlex} 0`;
     }
-    return panel === 'question' ? '3 3 0' : '2 2 0';
+    return panel === 'question' ? '7 7 0' : '2 2 0';
   }
 
   public getAnswerClasses(answer: AnswerChoice): Record<string, boolean> {

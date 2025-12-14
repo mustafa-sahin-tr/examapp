@@ -13,6 +13,7 @@ import { CountdownComponent } from '../../shared/components/countdown/countdown.
 import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-canvas-view-v3/question-canvas-view-v3.component';
 import { QuestionCanvasViewComponentv2 } from '../../shared/components/question-canvas-view-v2/question-canvas-view-v2.component';
 import { QuestionCanvasViewComponentv4 } from '../../shared/components/question-canvas-view-v4/question-canvas-view-v4.component';
+import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 
 @Component({
   selector: 'app-test-solve-v3',
@@ -26,7 +27,7 @@ import { QuestionCanvasViewComponentv4 } from '../../shared/components/question-
     MatTooltipModule,
     QuestionLiteViewComponent,
     CountdownComponent,
-    QuestionCanvasViewComponentv4,
+    QuestionCanvasViewComponent,
     MatProgressSpinnerModule,
   ],
 })

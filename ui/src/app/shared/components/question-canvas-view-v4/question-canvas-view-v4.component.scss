@@ -31,6 +31,18 @@
   overflow: hidden;
 }
 
+// Stack (alt alta) modunda scroll ekle
+.canvas-layout--solo-stack--cols-1.qcv4-canvas-root,
+.canvas-layout--solo-stack--cols-2.qcv4-canvas-root,
+.canvas-layout--solo-stack--cols-3.qcv4-canvas-root,
+.canvas-layout--solo-stack--cols-4.qcv4-canvas-root,
+.canvas-layout--passage-stack--cols-1.qcv4-canvas-root,
+.canvas-layout--passage-stack--cols-2.qcv4-canvas-root,
+.canvas-layout--passage-stack--cols-3.qcv4-canvas-root,
+.canvas-layout--passage-stack--cols-4.qcv4-canvas-root {
+  overflow-y: auto;
+}
+
 .qcv4-question-panel {
   display: flex;
   flex: 3 3 0;
@@ -64,6 +76,19 @@
   align-items: stretch;
   justify-items: stretch;
   background: #fff;
+}
+
+// Stack modunda cevap paneline de scroll ekle
+.canvas-layout--solo-stack--cols-1 .qcv4-answers-panel,
+.canvas-layout--solo-stack--cols-2 .qcv4-answers-panel,
+.canvas-layout--solo-stack--cols-3 .qcv4-answers-panel,
+.canvas-layout--solo-stack--cols-4 .qcv4-answers-panel,
+.canvas-layout--passage-stack--cols-1 .qcv4-answers-panel,
+.canvas-layout--passage-stack--cols-2 .qcv4-answers-panel,
+.canvas-layout--passage-stack--cols-3 .qcv4-answers-panel,
+.canvas-layout--passage-stack--cols-4 .qcv4-answers-panel {
+  overflow-y: auto;
+  max-height: 50vh;
 }
 
 .qcv4-answer-wrapper {

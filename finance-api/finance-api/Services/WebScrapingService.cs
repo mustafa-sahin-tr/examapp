@@ -1,6 +1,7 @@
 using HtmlAgilityPack;
 using FinanceApi.Models;
 using FinanceApi.Models.Dtos;
+using System.Text.Json;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -16,11 +17,13 @@ namespace FinanceApi.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<WebScrapingService> _logger;
+        private readonly IAllowedCryptoService _allowedCryptoService;
 
-        public WebScrapingService(HttpClient httpClient, ILogger<WebScrapingService> logger)
+        public WebScrapingService(HttpClient httpClient, ILogger<WebScrapingService> logger, IAllowedCryptoService allowedCryptoService)
         {
             _httpClient = httpClient;
             _logger = logger;
+            _allowedCryptoService = allowedCryptoService;
 
             // Google Finance için User-Agent ayarı
             _httpClient.DefaultRequestHeaders.Add("User-Agent",
@@ -65,6 +68,7 @@ namespace FinanceApi.Services
                 AssetType.USStock => await ScrapeGoogleFinanceStock(request.Symbol, "NASDAQ"),
                 AssetType.Gold => await ScrapeGoogleFinanceGold(request.Symbol),
                 AssetType.Fund => await ScrapeTefasFund(request.Symbol),
+                AssetType.Crypto => await ScrapeCoinGeckoCrypto(request.Symbol),
                 _ => new AssetPriceResponseDto
                 {
                     Type = request.Type,
@@ -73,6 +77,99 @@ namespace FinanceApi.Services
                     ErrorMessage = "Unsupported asset type"
                 }
             };
+        }
+
+        private async Task<AssetPriceResponseDto> ScrapeCoinGeckoCrypto(string symbol)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(symbol))
+                {
+                    return new AssetPriceResponseDto
+                    {
+                        Type = AssetType.Crypto,
+                        Symbol = symbol,
+                        IsSuccess = false,
+                        ErrorMessage = "Symbol is required"
+                    };
+                }
+
+                // Accept either CoinGecko id (e.g. "bitcoin") or ticker (e.g. "BTC").
+                var normalizedInput = symbol.Trim();
+                var allowed = await _allowedCryptoService.FindByAnyKeyAsync(normalizedInput);
+                if (allowed == null)
+                {
+                    return new AssetPriceResponseDto
+                    {
+                        Type = AssetType.Crypto,
+                        Symbol = normalizedInput,
+                        IsSuccess = false,
+                        ErrorMessage = "Crypto is not allowed"
+                    };
+                }
+
+                var coinId = allowed.CoinGeckoId;
+
+                var url = $"https://api.coingecko.com/api/v3/simple/price?ids={Uri.EscapeDataString(coinId)}&vs_currencies=usd&include_last_updated_at=true";
+                using var response = await _httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                using var document = JsonDocument.Parse(json);
+
+                if (!document.RootElement.TryGetProperty(coinId, out var coinElement))
+                {
+                    return new AssetPriceResponseDto
+                    {
+                        Type = AssetType.Crypto,
+                        Symbol = normalizedInput,
+                        IsSuccess = false,
+                        ErrorMessage = $"Coin not found: {coinId}"
+                    };
+                }
+
+                if (!coinElement.TryGetProperty("usd", out var priceElement))
+                {
+                    return new AssetPriceResponseDto
+                    {
+                        Type = AssetType.Crypto,
+                        Symbol = normalizedInput,
+                        IsSuccess = false,
+                        ErrorMessage = "Could not parse crypto price"
+                    };
+                }
+
+                var price = priceElement.GetDecimal();
+
+                var lastUpdated = DateTime.UtcNow;
+                if (coinElement.TryGetProperty("last_updated_at", out var lastUpdatedElement) &&
+                    lastUpdatedElement.ValueKind == JsonValueKind.Number &&
+                    lastUpdatedElement.TryGetInt64(out var unixSeconds))
+                {
+                    lastUpdated = DateTimeOffset.FromUnixTimeSeconds(unixSeconds).UtcDateTime;
+                }
+
+                return new AssetPriceResponseDto
+                {
+                    Type = AssetType.Crypto,
+                    Symbol = allowed.Symbol,
+                    Price = price,
+                    Unit = "USD",
+                    LastUpdated = lastUpdated,
+                    IsSuccess = true
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error scraping CoinGecko for crypto {Symbol}", symbol);
+                return new AssetPriceResponseDto
+                {
+                    Type = AssetType.Crypto,
+                    Symbol = symbol,
+                    IsSuccess = false,
+                    ErrorMessage = ex.Message
+                };
+            }
         }
 
         private async Task<AssetPriceResponseDto> ScrapeGoogleFinanceStock(string symbol, string exchange)

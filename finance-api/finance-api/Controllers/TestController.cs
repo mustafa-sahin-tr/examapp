@@ -91,6 +91,26 @@ namespace FinanceApi.Controllers
                         CurrentPrice = 1.00m,
                         Currency = "USD",
                         LastUpdated = DateTime.UtcNow
+                    },
+                    new Asset
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Symbol = "BTC",
+                        Name = "Bitcoin",
+                        Type = AssetType.Crypto,
+                        CurrentPrice = 0m,
+                        Currency = "USD",
+                        LastUpdated = DateTime.UtcNow
+                    },
+                    new Asset
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Symbol = "ETH",
+                        Name = "Ethereum",
+                        Type = AssetType.Crypto,
+                        CurrentPrice = 0m,
+                        Currency = "USD",
+                        LastUpdated = DateTime.UtcNow
                     }
                 };
 

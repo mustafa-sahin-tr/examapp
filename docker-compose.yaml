@@ -379,6 +379,23 @@ services:
     networks:
       - mynetwork
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: always
+    ports:
+      - '5679:5678' # n8n container portu 5678, host'ta 5679 (ocelot-gateway 5678'i kullanıyor)
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - GENERIC_TIMEZONE=Europe/Istanbul
+      # Local kullanım için öneri (istersen düzenle):
+      # - WEBHOOK_URL=http://localhost:5679/
+    volumes:
+      - ./n8n-data:/home/node/.n8n
+    networks:
+      - mynetwork
+
 networks:
   mynetwork:
     driver: bridge

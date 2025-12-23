@@ -10,6 +10,7 @@ namespace FinanceApi.Data
         }
 
         public DbSet<Asset> Assets { get; set; }
+        public DbSet<AllowedCrypto> AllowedCryptos { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Portfolio> Portfolios { get; set; }
         public DbSet<ProfitLossHistory> ProfitLossHistories { get; set; }
@@ -33,6 +34,17 @@ namespace FinanceApi.Data
                 entity.Property(e => e.ChangePercentage).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.ChangeValue).HasColumnType("decimal(18,4)");
                 entity.HasIndex(e => new { e.Symbol, e.Type }).IsUnique();
+            });
+
+            modelBuilder.Entity<AllowedCrypto>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Symbol).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.CoinGeckoId).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.YahooSymbol).IsRequired().HasMaxLength(30);
+                entity.Property(e => e.IsEnabled).HasDefaultValue(true);
+                entity.HasIndex(e => e.Symbol).IsUnique();
             });
 
             // Transaction configuration
@@ -148,6 +160,36 @@ namespace FinanceApi.Data
 
         private void SeedData(ModelBuilder modelBuilder)
         {
+            // Seed allowed cryptos (minimal defaults)
+            var allowedCryptoSeedTime = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var allowedCryptos = new List<AllowedCrypto>
+            {
+                new AllowedCrypto
+                {
+                    Id = "crypto-btc",
+                    Symbol = "BTC",
+                    Name = "Bitcoin",
+                    CoinGeckoId = "bitcoin",
+                    YahooSymbol = "BTC-USD",
+                    IsEnabled = true,
+                    CreatedAt = allowedCryptoSeedTime,
+                    UpdatedAt = allowedCryptoSeedTime
+                },
+                new AllowedCrypto
+                {
+                    Id = "crypto-eth",
+                    Symbol = "ETH",
+                    Name = "Ethereum",
+                    CoinGeckoId = "ethereum",
+                    YahooSymbol = "ETH-USD",
+                    IsEnabled = true,
+                    CreatedAt = allowedCryptoSeedTime,
+                    UpdatedAt = allowedCryptoSeedTime
+                }
+            };
+
+            modelBuilder.Entity<AllowedCrypto>().HasData(allowedCryptos);
+
             // Seed Assets based on frontend mock data
             var assets = new List<Asset>
             {

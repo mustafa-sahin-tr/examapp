@@ -7,7 +7,8 @@ namespace FinanceApi.Models
         Gold = 2,       // Altın
         Silver = 3,     // Gümüş
         Fund = 4,       // Fon
-        FixedDeposit = 5 // Vadeli Mevduat
+        FixedDeposit = 5, // Vadeli Mevduat
+        Crypto = 6      // Kripto (BTC, ETH, ...)
     }
 
     public enum TransactionType

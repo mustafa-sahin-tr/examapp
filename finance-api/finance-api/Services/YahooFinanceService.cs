@@ -10,19 +10,21 @@ namespace FinanceApi.Services
         private readonly HttpClient _httpClient;
         private readonly FinanceDbContext _context;
         private readonly ILogger<YahooFinanceService> _logger;
+        private readonly IAllowedCryptoService _allowedCryptoService;
 
-        public YahooFinanceService(HttpClient httpClient, FinanceDbContext context, ILogger<YahooFinanceService> logger)
+        public YahooFinanceService(HttpClient httpClient, FinanceDbContext context, ILogger<YahooFinanceService> logger, IAllowedCryptoService allowedCryptoService)
         {
             _httpClient = httpClient;
             _context = context;
             _logger = logger;
+            _allowedCryptoService = allowedCryptoService;
         }
 
         public async Task<decimal?> GetCurrentPriceAsync(string symbol, string market = "BIST")
         {
             try
             {
-                var yahooSymbol = GetYahooSymbol(symbol, market);
+                var yahooSymbol = await GetYahooSymbolAsync(symbol, market);
                 if (string.IsNullOrEmpty(yahooSymbol))
                 {
                     _logger.LogWarning($"Symbol mapping not found for {symbol} in {market}");
@@ -62,10 +64,25 @@ namespace FinanceApi.Services
 
             try
             {
-                var yahooSymbols = symbols
-                    .Select(s => GetYahooSymbol(s, market))
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .ToList();
+                Dictionary<string, string>? cryptoReverseLookup = null;
+
+                var yahooSymbols = new List<string>(symbols.Count);
+                foreach (var symbol in symbols)
+                {
+                    var yahooSymbol = await GetYahooSymbolAsync(symbol, market);
+                    if (string.IsNullOrWhiteSpace(yahooSymbol))
+                    {
+                        continue;
+                    }
+
+                    yahooSymbols.Add(yahooSymbol);
+
+                    if (market.ToUpperInvariant() == "CRYPTO")
+                    {
+                        cryptoReverseLookup ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        cryptoReverseLookup[yahooSymbol] = symbol.Trim().ToUpperInvariant();
+                    }
+                }
 
                 if (!yahooSymbols.Any())
                 {
@@ -90,7 +107,9 @@ namespace FinanceApi.Services
                     try
                     {
                         var yahooSymbol = result.GetProperty("symbol").GetString() ?? "";
-                        var originalSymbol = GetOriginalSymbol(yahooSymbol, market);
+                        var originalSymbol = market.ToUpperInvariant() == "CRYPTO"
+                            ? (cryptoReverseLookup != null && cryptoReverseLookup.TryGetValue(yahooSymbol, out var original) ? original : string.Empty)
+                            : GetOriginalSymbol(yahooSymbol, market);
 
                         if (string.IsNullOrEmpty(originalSymbol)) continue;
 
@@ -186,8 +205,26 @@ namespace FinanceApi.Services
                 "US" => symbol,           // US stock'ları direkt kullan
                 "GOLD" => "GC=F",        // Gold futures
                 "SILVER" => "SI=F",      // Silver futures
+                "CRYPTO" => BuildYahooCryptoSymbol(symbol),
                 _ => symbol
             };
+        }
+
+        private async Task<string> GetYahooSymbolAsync(string symbol, string market)
+        {
+            if (market.ToUpperInvariant() != "CRYPTO")
+            {
+                return GetYahooSymbol(symbol, market);
+            }
+
+            var input = (symbol ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return string.Empty;
+            }
+
+            var allowed = await _allowedCryptoService.FindByAnyKeyAsync(input);
+            return allowed?.YahooSymbol ?? string.Empty;
         }
 
         private string GetOriginalSymbol(string yahooSymbol, string market)
@@ -198,6 +235,7 @@ namespace FinanceApi.Services
                 "US" => yahooSymbol,
                 "GOLD" => "GOLD",
                 "SILVER" => "SILVER",
+                "CRYPTO" => StripYahooCryptoSuffix(yahooSymbol),
                 _ => yahooSymbol
             };
         }
@@ -211,8 +249,27 @@ namespace FinanceApi.Services
                 AssetType.Gold => "US",
                 AssetType.Silver => "US",
                 AssetType.Fund => "BIST",
+                AssetType.Crypto => "CRYPTO",
                 _ => "BIST"
             };
+        }
+
+        private static string BuildYahooCryptoSymbol(string symbol)
+        {
+            // Kept only for backwards compatibility; CRYPTO resolution should go through AllowedCryptos.
+            var trimmed = (symbol ?? string.Empty).Trim().ToUpperInvariant();
+            return trimmed is "BTC-USD" or "ETH-USD" ? trimmed : string.Empty;
+        }
+
+        private static string StripYahooCryptoSuffix(string yahooSymbol)
+        {
+            var trimmed = (yahooSymbol ?? string.Empty).Trim().ToUpperInvariant();
+            if (trimmed.EndsWith("-USD", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed[..^4];
+            }
+
+            return trimmed;
         }
     }
 }

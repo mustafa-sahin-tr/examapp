@@ -1,0 +1,6 @@
+date,symbol,market,currency,side,qty,price,fee,note
+2025-01-02,AKBNK,BIST,TRY,BUY,10,5,0,ilk alım
+2025-01-03,AKBNK,BIST,TRY,BUY,2,7,0,ek alım
+2025-01-10,AKBNK,BIST,TRY,SELL,3,8,0,kısmi satış
+2025-01-05,AAPL,US,USD,BUY,1,185.50,0,
+2025-01-12,AAPL,US,USD,BUY,1,190.00,0,

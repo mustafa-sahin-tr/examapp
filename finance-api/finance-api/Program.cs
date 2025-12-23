@@ -38,6 +38,7 @@ builder.Services.AddScoped<IPortfolioService, PortfolioService>();
 builder.Services.AddScoped<IPortfolioPriceUpdateService, PortfolioPriceUpdateService>();
 builder.Services.AddScoped<IRealTimeDataService, YahooFinanceService>();
 builder.Services.AddScoped<IWebScrapingService, WebScrapingService>();
+builder.Services.AddScoped<IAllowedCryptoService, AllowedCryptoService>();
 builder.Services.AddScoped<IExchangeRateService, ExchangeRateService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 

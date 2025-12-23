@@ -131,7 +131,7 @@ namespace FinanceApi.Controllers
             return Ok(new { success = true });
         }
 
-    private static string BuildSummaryHtml(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
+        private static string BuildSummaryHtml(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
         {
             var sb = new StringBuilder();
 
@@ -209,7 +209,7 @@ namespace FinanceApi.Controllers
             return sb.ToString();
         }
 
-    private static string BuildSummaryText(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
+        private static string BuildSummaryText(DashboardSummaryDto summary, string? introMessage, CultureInfo culture)
         {
             var sb = new StringBuilder();
 
@@ -278,6 +278,7 @@ namespace FinanceApi.Controllers
                 AssetType.Silver => "Silver",
                 AssetType.Fund => "Funds",
                 AssetType.FixedDeposit => "Vadeli Mevduat",
+                AssetType.Crypto => "Crypto",
                 _ => assetType.ToString()
             };
         }

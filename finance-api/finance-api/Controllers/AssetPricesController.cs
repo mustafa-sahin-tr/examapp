@@ -80,7 +80,9 @@ namespace FinanceApi.Controllers
                     new() { Type = Models.AssetType.Stock, Symbol = "TUPRS" },
                     new() { Type = Models.AssetType.USStock, Symbol = "AAPL" },
                     new() { Type = Models.AssetType.Fund, Symbol = "YHS" },
-                    new() { Type = Models.AssetType.Gold, Symbol = "GLD" }
+                    new() { Type = Models.AssetType.Gold, Symbol = "GLD" },
+                    new() { Type = Models.AssetType.Crypto, Symbol = "BTC" },
+                    new() { Type = Models.AssetType.Crypto, Symbol = "ETH" }
                 };
 
                 var results = await _webScrapingService.GetAssetPricesAsync(sampleRequests);

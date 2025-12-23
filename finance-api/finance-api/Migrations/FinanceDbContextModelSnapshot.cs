@@ -22,6 +22,74 @@ namespace FinanceApi.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FinanceApi.Models.AllowedCrypto", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CoinGeckoId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("YahooSymbol")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Symbol")
+                        .IsUnique();
+
+                    b.ToTable("AllowedCryptos");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "crypto-btc",
+                            CoinGeckoId = "bitcoin",
+                            CreatedAt = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9230),
+                            IsEnabled = true,
+                            Name = "Bitcoin",
+                            Symbol = "BTC",
+                            UpdatedAt = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9240),
+                            YahooSymbol = "BTC-USD"
+                        },
+                        new
+                        {
+                            Id = "crypto-eth",
+                            CoinGeckoId = "ethereum",
+                            CreatedAt = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9240),
+                            IsEnabled = true,
+                            Name = "Ethereum",
+                            Symbol = "ETH",
+                            UpdatedAt = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9250),
+                            YahooSymbol = "ETH-USD"
+                        });
+                });
+
             modelBuilder.Entity("FinanceApi.Models.Asset", b =>
                 {
                     b.Property<string>("Id")
@@ -72,7 +140,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 2.08m,
                             Currency = "TRY",
                             CurrentPrice = 85.50m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7504),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9310),
                             Name = "Tüpraş",
                             Symbol = "TUPRS",
                             Type = 0
@@ -84,7 +152,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.51m,
                             Currency = "TRY",
                             CurrentPrice = 42.30m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7521),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9330),
                             Name = "Akbank",
                             Symbol = "AKBNK",
                             Type = 0
@@ -96,7 +164,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 4.71m,
                             Currency = "TRY",
                             CurrentPrice = 156.80m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7527),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9340),
                             Name = "Türk Hava Yolları",
                             Symbol = "THYAO",
                             Type = 0
@@ -108,7 +176,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 2.22m,
                             Currency = "TRY",
                             CurrentPrice = 125.40m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7533),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9340),
                             Name = "Aselsan",
                             Symbol = "ASELS",
                             Type = 0
@@ -120,7 +188,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.26m,
                             Currency = "TRY",
                             CurrentPrice = 31.85m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7540),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9350),
                             Name = "Ereğli Demir Çelik",
                             Symbol = "EREGL",
                             Type = 0
@@ -132,7 +200,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 3.42m,
                             Currency = "USD",
                             CurrentPrice = 192.45m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7547),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9360),
                             Name = "Apple Inc.",
                             Symbol = "AAPL",
                             Type = 1
@@ -144,7 +212,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -1.89m,
                             Currency = "USD",
                             CurrentPrice = 378.20m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7553),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9360),
                             Name = "Microsoft Corporation",
                             Symbol = "MSFT",
                             Type = 1
@@ -156,7 +224,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 3.21m,
                             Currency = "USD",
                             CurrentPrice = 142.65m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7559),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9370),
                             Name = "Alphabet Inc.",
                             Symbol = "GOOGL",
                             Type = 1
@@ -168,7 +236,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 1.65m,
                             Currency = "USD",
                             CurrentPrice = 151.94m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7565),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9370),
                             Name = "Amazon.com Inc.",
                             Symbol = "AMZN",
                             Type = 1
@@ -180,7 +248,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -5.32m,
                             Currency = "USD",
                             CurrentPrice = 248.50m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7571),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9380),
                             Name = "Tesla Inc.",
                             Symbol = "TSLA",
                             Type = 1
@@ -192,7 +260,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 15.92m,
                             Currency = "USD",
                             CurrentPrice = 2012.45m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7578),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9410),
                             Name = "Gold",
                             Symbol = "GOLD",
                             Type = 2
@@ -204,7 +272,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.38m,
                             Currency = "USD",
                             CurrentPrice = 24.85m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7583),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9410),
                             Name = "Silver",
                             Symbol = "SILVER",
                             Type = 3
@@ -216,7 +284,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 0.001493m,
                             Currency = "TRY",
                             CurrentPrice = 0.125864m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7671),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9420),
                             Name = "QNB Finans Portföy A.Ş. Hisse Senedi Fonu",
                             Symbol = "QNB001",
                             Type = 4
@@ -228,7 +296,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 0.000259m,
                             Currency = "TRY",
                             CurrentPrice = 0.086543m,
-                            LastUpdated = new DateTime(2025, 7, 8, 9, 46, 1, 622, DateTimeKind.Utc).AddTicks(7676),
+                            LastUpdated = new DateTime(2025, 12, 23, 7, 56, 54, 74, DateTimeKind.Utc).AddTicks(9430),
                             Name = "Garanti Portföy Özel Sektör Borçlanma Araçları Fonu",
                             Symbol = "GAR001",
                             Type = 4

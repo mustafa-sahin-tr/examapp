@@ -27,6 +27,15 @@
           </div>
         </div>
 
+        <div class="form-group" *ngIf="isCryptoSelected">
+          <label for="allowedCrypto">Allowed Crypto *</label>
+          <select id="allowedCrypto" class="form-control" (change)="onAllowedCryptoChange($event)">
+            <option value="">Select Crypto</option>
+            <option *ngFor="let c of enabledAllowedCryptos" [value]="c.symbol">{{ c.symbol }} - {{ c.name }}</option>
+          </select>
+          <div class="form-hint">Only allowed cryptos (e.g., BTC/ETH) can be added</div>
+        </div>
+
         <div class="form-group">
           <label for="name">Name *</label>
           <input

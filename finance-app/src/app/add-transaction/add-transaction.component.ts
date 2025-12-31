@@ -33,6 +33,7 @@ export class AddTransactionComponent implements OnInit, OnDestroy {
     { value: AssetType.Silver, label: 'Silver' },
     { value: AssetType.Fund, label: 'Funds' },
     { value: AssetType.FixedDeposit, label: 'Vadeli Mevduat' },
+    { value: AssetType.Crypto, label: 'Crypto' },
   ];
 
   transactionTypes = [

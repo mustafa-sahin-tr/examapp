@@ -40,6 +40,7 @@ import { Subject, takeUntil } from 'rxjs';
             <option value="Silver">Silver</option>
             <option value="Fund">Funds</option>
             <option value="FixedDeposit">Vadeli Mevduat</option>
+            <option value="Crypto">Crypto</option>
           </select>
         </div>
       </div>
@@ -379,6 +380,7 @@ export class ProfitLossChartComponent implements OnInit, OnDestroy {
       Silver: 'Gümüş',
       Fund: 'Fonlar',
       FixedDeposit: 'Vadeli Mevduat',
+      Crypto: 'Crypto',
     };
     return labels[assetType] || assetType;
   }

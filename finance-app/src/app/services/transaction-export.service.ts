@@ -4,6 +4,7 @@ import { Transaction, TransactionType, AssetType, Asset } from '../models/asset.
 import { ApiService } from './api.service';
 import { AssetService } from './asset.service';
 import { TransactionService } from './transaction.service';
+import { AllowedCryptoService } from './allowed-crypto.service';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -15,6 +16,7 @@ export const ASSET_TYPE_LABELS = {
   [AssetType.Silver]: 'Silver',
   [AssetType.Fund]: 'Funds',
   [AssetType.FixedDeposit]: 'Vadeli Mevduat',
+  [AssetType.Crypto]: 'Crypto',
 };
 
 export const TRANSACTION_TYPE_LABELS = {
@@ -56,7 +58,8 @@ export class TransactionExportService {
   constructor(
     private apiService: ApiService,
     private assetService: AssetService,
-    private transactionService: TransactionService
+    private transactionService: TransactionService,
+    private allowedCryptoService: AllowedCryptoService
   ) {}
 
   /**
@@ -360,7 +363,8 @@ export class TransactionExportService {
       // First try to find existing asset
       this.assetService.getAssets().subscribe({
         next: (assets) => {
-          const existingAsset = assets.find((a) => a.symbol === row['Asset Symbol'] && a.type === assetType);
+          const symbol = (row['Asset Symbol'] || '').toString().trim().toUpperCase();
+          const existingAsset = assets.find((a) => a.symbol === symbol && a.type === assetType);
 
           if (existingAsset) {
             observer.next(existingAsset);
@@ -368,22 +372,42 @@ export class TransactionExportService {
             return;
           }
 
-          // Create new asset if not found
-          const newAsset = {
-            symbol: row['Asset Symbol'],
-            name: row['Asset Name'] || row['Asset Symbol'],
-            type: assetType,
-            currentPrice: row['Price'],
-            currency: row['Currency'] || 'TRY',
+          const createAsset = () => {
+            // Create new asset if not found
+            const newAsset = {
+              symbol,
+              name: row['Asset Name'] || symbol,
+              type: assetType,
+              currentPrice: row['Price'],
+              currency: assetType === AssetType.Crypto ? 'USD' : row['Currency'] || 'TRY',
+            };
+
+            this.assetService.addAsset(newAsset).subscribe({
+              next: (createdAsset) => {
+                observer.next(createdAsset);
+                observer.complete();
+              },
+              error: (error) => observer.error(error),
+            });
           };
 
-          this.assetService.addAsset(newAsset).subscribe({
-            next: (createdAsset) => {
-              observer.next(createdAsset);
-              observer.complete();
-            },
-            error: (error) => observer.error(error),
-          });
+          if (assetType === AssetType.Crypto) {
+            this.allowedCryptoService.getEnabled().subscribe({
+              next: (allowed) => {
+                const isAllowed = allowed.some((c) => c.symbol === symbol);
+                if (!isAllowed) {
+                  observer.error(`Crypto is not allowed: ${symbol}`);
+                  return;
+                }
+
+                createAsset();
+              },
+              error: (error) => observer.error(error),
+            });
+            return;
+          }
+
+          createAsset();
         },
         error: (error) => observer.error(error),
       });
@@ -444,6 +468,32 @@ export class TransactionExportService {
         Date: '2024-01-16',
         Fees: 1.0,
         Notes: 'Apple hisse alımı',
+        Currency: 'USD',
+      },
+
+      // Crypto Examples
+      {
+        'Asset Symbol': 'BTC',
+        'Asset Name': 'Bitcoin',
+        'Asset Type': 'Crypto',
+        'Transaction Type': 'Buy',
+        Quantity: 0.01,
+        Price: 40000,
+        Date: '2024-01-10',
+        Fees: 0,
+        Notes: 'BTC alımı',
+        Currency: 'USD',
+      },
+      {
+        'Asset Symbol': 'ETH',
+        'Asset Name': 'Ethereum',
+        'Asset Type': 'Crypto',
+        'Transaction Type': 'Buy',
+        Quantity: 0.25,
+        Price: 2000,
+        Date: '2024-01-12',
+        Fees: 0,
+        Notes: 'ETH alımı',
         Currency: 'USD',
       },
       {

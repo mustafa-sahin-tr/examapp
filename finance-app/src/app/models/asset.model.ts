@@ -5,6 +5,7 @@ export enum AssetType {
   Silver = 3,
   Fund = 4,
   FixedDeposit = 5,
+  Crypto = 6,
 }
 
 export enum TransactionType {

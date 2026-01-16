@@ -5,6 +5,7 @@ import { Observable, map } from 'rxjs';
 import { Portfolio, AssetType, Transaction } from '../models/asset.model';
 import { PortfolioService, HistoricalInvestment } from '../services/portfolio.service';
 import { TransactionService } from '../services/transaction.service';
+import { FundTaxRateService } from '../services/fund-tax-rate.service';
 
 interface SortConfig {
   column: string;
@@ -20,6 +21,8 @@ interface SortConfig {
 export class AssetPortfolioComponent implements OnInit {
   @Input() assetType!: AssetType;
   @Input() title!: string;
+
+  AssetType = AssetType;
 
   portfolios$!: Observable<Portfolio[]>;
   historicalInvestments$!: Observable<HistoricalInvestment[]>;
@@ -40,7 +43,19 @@ export class AssetPortfolioComponent implements OnInit {
   };
   savingTransaction = false;
 
-  constructor(private portfolioService: PortfolioService, private transactionService: TransactionService) {}
+  // Funds: stopaj oranı düzenleme
+  fundTaxRatePercentInput: number = 0;
+  savingFundTaxRate = false;
+
+  // Funds: tablo içinde (satır bazlı) stopaj düzenleme
+  fundTaxRateEdits: Record<string, number | undefined> = {};
+  savingFundTaxRateAssetIds = new Set<string>();
+
+  constructor(
+    private portfolioService: PortfolioService,
+    private transactionService: TransactionService,
+    private fundTaxRateService: FundTaxRateService
+  ) {}
 
   ngOnInit(): void {
     this.portfolios$ = this.portfolioService
@@ -62,6 +77,10 @@ export class AssetPortfolioComponent implements OnInit {
     this.selectedHistorical = null;
     document.body.style.overflow = 'hidden';
     this.cancelTransactionEdit();
+
+    if (this.selectedPortfolio.asset?.type === AssetType.Fund) {
+      this.fundTaxRatePercentInput = Number(this.selectedPortfolio.withholdingTaxRatePercent ?? 0);
+    }
   }
 
   openHistoricalDetail(historical: HistoricalInvestment): void {
@@ -75,6 +94,106 @@ export class AssetPortfolioComponent implements OnInit {
     this.selectedHistorical = null;
     document.body.style.overflow = 'auto';
     this.cancelTransactionEdit();
+  }
+
+  saveFundTaxRate(event?: Event): void {
+    event?.stopPropagation();
+    if (!this.selectedPortfolio || this.selectedPortfolio.asset?.type !== AssetType.Fund) {
+      return;
+    }
+
+    const assetId = this.selectedPortfolio.assetId;
+    const ratePercent = Number(this.fundTaxRatePercentInput);
+    if (!assetId || Number.isNaN(ratePercent) || ratePercent < 0 || ratePercent > 100) {
+      return;
+    }
+
+    this.savingFundTaxRate = true;
+    this.fundTaxRateService.upsert(assetId, ratePercent).subscribe({
+      next: () => {
+        this.savingFundTaxRate = false;
+
+        const gross = Number(
+          this.selectedPortfolio?.grossProfitLoss ??
+            this.selectedPortfolio!.currentValue - this.selectedPortfolio!.totalCost
+        );
+        const net = this.applyWithholdingTax(gross, ratePercent);
+        const netPct = this.selectedPortfolio!.totalCost > 0 ? (net / this.selectedPortfolio!.totalCost) * 100 : 0;
+
+        this.selectedPortfolio = {
+          ...this.selectedPortfolio!,
+          withholdingTaxRatePercent: ratePercent,
+          grossProfitLoss: gross,
+          grossProfitLossPercentage:
+            this.selectedPortfolio!.totalCost > 0 ? (gross / this.selectedPortfolio!.totalCost) * 100 : 0,
+          netProfitLoss: net,
+          netProfitLossPercentage: netPct,
+          profitLoss: net,
+          profitLossPercentage: netPct,
+        };
+      },
+      error: (err) => {
+        console.error('Failed to update fund tax rate:', err);
+        this.savingFundTaxRate = false;
+      },
+    });
+  }
+
+  saveFundTaxRateForPortfolio(portfolio: Portfolio, event?: Event): void {
+    event?.stopPropagation();
+    if (portfolio.asset?.type !== AssetType.Fund) {
+      return;
+    }
+
+    const assetId = portfolio.assetId;
+    const key = portfolio.asset?.id ?? portfolio.assetId;
+    const ratePercent = Number(this.fundTaxRateEdits[key] ?? portfolio.withholdingTaxRatePercent ?? 0);
+
+    if (!assetId || Number.isNaN(ratePercent) || ratePercent < 0 || ratePercent > 100) {
+      return;
+    }
+
+    this.savingFundTaxRateAssetIds.add(assetId);
+    this.fundTaxRateService.upsert(assetId, ratePercent).subscribe({
+      next: () => {
+        this.savingFundTaxRateAssetIds.delete(assetId);
+
+        // Modal açıksa ve aynı fon ise orayı da anlık güncelle
+        if (this.selectedPortfolio?.assetId === assetId && this.selectedPortfolio.asset?.type === AssetType.Fund) {
+          this.fundTaxRatePercentInput = ratePercent;
+          const gross = Number(
+            this.selectedPortfolio.grossProfitLoss ??
+              this.selectedPortfolio.currentValue - this.selectedPortfolio.totalCost
+          );
+          const net = this.applyWithholdingTax(gross, ratePercent);
+          const netPct = this.selectedPortfolio.totalCost > 0 ? (net / this.selectedPortfolio.totalCost) * 100 : 0;
+
+          this.selectedPortfolio = {
+            ...this.selectedPortfolio,
+            withholdingTaxRatePercent: ratePercent,
+            grossProfitLoss: gross,
+            grossProfitLossPercentage:
+              this.selectedPortfolio.totalCost > 0 ? (gross / this.selectedPortfolio.totalCost) * 100 : 0,
+            netProfitLoss: net,
+            netProfitLossPercentage: netPct,
+            profitLoss: net,
+            profitLossPercentage: netPct,
+          };
+        }
+      },
+      error: (err) => {
+        console.error('Failed to update fund tax rate:', err);
+        this.savingFundTaxRateAssetIds.delete(assetId);
+      },
+    });
+  }
+
+  private applyWithholdingTax(grossProfitLoss: number, ratePercent: number): number {
+    if (grossProfitLoss <= 0) {
+      return grossProfitLoss;
+    }
+    const rate = Math.min(100, Math.max(0, Number(ratePercent ?? 0))) / 100;
+    return grossProfitLoss * (1 - rate);
   }
 
   formatCurrency(amount: number, currency: string = 'TRY'): string {

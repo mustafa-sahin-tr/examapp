@@ -5,6 +5,7 @@ import { AssetService } from './asset.service';
 import { TransactionService } from './transaction.service';
 import { ApiService } from './api.service';
 import { ExchangeRateService } from './exchange-rate.service';
+import { FundTaxRateService } from './fund-tax-rate.service';
 
 export interface HistoricalInvestment {
   assetId: string;
@@ -35,7 +36,8 @@ export class PortfolioService {
     private assetService: AssetService,
     private transactionService: TransactionService,
     private apiService: ApiService,
-    private exchangeRateService: ExchangeRateService
+    private exchangeRateService: ExchangeRateService,
+    private fundTaxRateService: FundTaxRateService
   ) {}
 
   // Backend'de portfolio endpoint'i hazır olduğunda bu metodu kullanacağız
@@ -70,8 +72,12 @@ export class PortfolioService {
   }
 
   getPortfolio(): Observable<Portfolio[]> {
-    return combineLatest([this.assetService.getAssets(), this.transactionService.getTransactions()]).pipe(
-      map(([assets, transactions]) => {
+    return combineLatest([
+      this.assetService.getAssets(),
+      this.transactionService.getTransactions(),
+      this.fundTaxRateService.getRateMap(),
+    ]).pipe(
+      map(([assets, transactions, fundTaxRates]) => {
         const portfolioMap = new Map<string, Portfolio>();
 
         // Group transactions by asset
@@ -105,6 +111,11 @@ export class PortfolioService {
               averagePrice: 0,
               currentValue: 0,
               totalCost: 0,
+              grossProfitLoss: 0,
+              grossProfitLossPercentage: 0,
+              withholdingTaxRatePercent: 0,
+              netProfitLoss: 0,
+              netProfitLossPercentage: 0,
               profitLoss: 0,
               profitLossPercentage: 0,
               currency: asset.currency,
@@ -151,16 +162,47 @@ export class PortfolioService {
 
         portfolios.forEach((portfolio) => {
           portfolio.currentValue = portfolio.totalQuantity * portfolio.asset!.currentPrice;
-          // totalCost kullanarak profit/loss hesapla (fees dahil)
-          portfolio.profitLoss = portfolio.currentValue - portfolio.totalCost;
+
+          const grossProfitLoss = portfolio.currentValue - portfolio.totalCost;
+          const grossProfitLossPercentage = portfolio.totalCost > 0 ? (grossProfitLoss / portfolio.totalCost) * 100 : 0;
+
+          const assetType = portfolio.asset?.type;
+          const withholdingRatePercent =
+            assetType === AssetType.Fund ? Number(fundTaxRates.get(portfolio.asset!.id) ?? 0) : 0;
+
+          const netProfitLoss = this.applyWithholdingTax(grossProfitLoss, assetType, withholdingRatePercent);
+          const netProfitLossPercentage = portfolio.totalCost > 0 ? (netProfitLoss / portfolio.totalCost) * 100 : 0;
+
+          portfolio.grossProfitLoss = grossProfitLoss;
+          portfolio.grossProfitLossPercentage = grossProfitLossPercentage;
+          portfolio.withholdingTaxRatePercent = withholdingRatePercent;
+          portfolio.netProfitLoss = netProfitLoss;
+          portfolio.netProfitLossPercentage = netProfitLossPercentage;
+
+          // UI: profitLoss alanı fonlar için net, diğerleri için brüt
+          portfolio.profitLoss = assetType === AssetType.Fund ? netProfitLoss : grossProfitLoss;
           portfolio.profitLossPercentage =
-            portfolio.totalCost > 0 ? (portfolio.profitLoss / portfolio.totalCost) * 100 : 0;
+            assetType === AssetType.Fund ? netProfitLossPercentage : grossProfitLossPercentage;
           portfolio.quantity = portfolio.totalQuantity; // quantity ile totalQuantity aynı olsun
         });
 
         return portfolios;
       })
     );
+  }
+
+  private applyWithholdingTax(grossProfitLoss: number, assetType: AssetType | undefined, ratePercent: number): number {
+    if (assetType !== AssetType.Fund) {
+      return grossProfitLoss;
+    }
+
+    // zarar varsa stopaj uygulanmaz
+    if (grossProfitLoss <= 0) {
+      return grossProfitLoss;
+    }
+
+    const rate = Math.min(100, Math.max(0, Number(ratePercent ?? 0))) / 100;
+    return grossProfitLoss * (1 - rate);
   }
 
   getHistoricalInvestments(): Observable<HistoricalInvestment[]> {
@@ -314,15 +356,33 @@ export class PortfolioService {
             if (!portfoliosByType.has(type)) {
               portfoliosByType.set(type, []);
             }
-            // Portfolio'ya dönüştürülmüş değerleri ekle
-            const convertedProfitLoss = portfolio.convertedCurrentValue - portfolio.convertedTotalCost;
+
+            // Portfolio'ya dönüştürülmüş değerleri ekle (fonlarda net kâr/zarar korunur)
+            const convertedGrossProfitLoss = portfolio.convertedCurrentValue - portfolio.convertedTotalCost;
+            const convertedGrossProfitLossPercentage =
+              portfolio.convertedTotalCost > 0 ? (convertedGrossProfitLoss / portfolio.convertedTotalCost) * 100 : 0;
+
+            const withholdingRatePercent = Number((portfolio as any).withholdingTaxRatePercent ?? 0);
+            const convertedNetProfitLoss = this.applyWithholdingTax(
+              convertedGrossProfitLoss,
+              type,
+              withholdingRatePercent
+            );
+            const convertedNetProfitLossPercentage =
+              portfolio.convertedTotalCost > 0 ? (convertedNetProfitLoss / portfolio.convertedTotalCost) * 100 : 0;
+
+            const convertedProfitLoss = type === AssetType.Fund ? convertedNetProfitLoss : convertedGrossProfitLoss;
             const convertedProfitLossPercentage =
-              portfolio.convertedTotalCost > 0 ? (convertedProfitLoss / portfolio.convertedTotalCost) * 100 : 0;
+              type === AssetType.Fund ? convertedNetProfitLossPercentage : convertedGrossProfitLossPercentage;
 
             const portfolioWithConversion = {
               ...portfolio,
               currentValue: portfolio.convertedCurrentValue,
               totalCost: portfolio.convertedTotalCost,
+              grossProfitLoss: convertedGrossProfitLoss,
+              grossProfitLossPercentage: convertedGrossProfitLossPercentage,
+              netProfitLoss: convertedNetProfitLoss,
+              netProfitLossPercentage: convertedNetProfitLossPercentage,
               profitLoss: convertedProfitLoss,
               profitLossPercentage: convertedProfitLossPercentage,
               currency: selectedCurrency,

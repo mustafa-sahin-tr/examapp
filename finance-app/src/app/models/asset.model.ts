@@ -50,6 +50,14 @@ export interface Portfolio {
   averagePrice: number;
   currentValue: number;
   totalCost: number;
+
+  // Funds: stopaj dahil brüt/net kâr/zarar alanları
+  grossProfitLoss?: number;
+  grossProfitLossPercentage?: number;
+  withholdingTaxRatePercent?: number;
+  netProfitLoss?: number;
+  netProfitLossPercentage?: number;
+
   profitLoss: number;
   profitLossPercentage: number;
   currency: string;

@@ -51,6 +51,7 @@
             <th class="sortable" (click)="sortCurrentPortfolio('totalValue')">
               Toplam Değer <span class="sort-icon">{{ getSortIcon('totalValue') }}</span>
             </th>
+            <th *ngIf="assetType === AssetType.Fund">Stopaj %</th>
             <th class="sortable" (click)="sortCurrentPortfolio('profitLoss')">
               Kar/Zarar <span class="sort-icon">{{ getSortIcon('profitLoss') }}</span>
             </th>
@@ -69,6 +70,29 @@
             <td>{{ formatCurrency(portfolio.averagePrice, portfolio.asset?.currency) }}</td>
             <td>{{ formatCurrency(portfolio.asset?.currentPrice || 0, portfolio.asset?.currency || 'TRY') }}</td>
             <td>{{ formatCurrency(portfolio.currentValue, portfolio.asset?.currency || 'TRY') }}</td>
+            <td *ngIf="assetType === AssetType.Fund" (click)="$event.stopPropagation()">
+              <div class="inline-controls">
+                <input
+                  class="rate-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  [ngModel]="
+                    fundTaxRateEdits[portfolio.asset?.id ?? portfolio.assetId] ??
+                    (portfolio.withholdingTaxRatePercent ?? 0)
+                  "
+                  (ngModelChange)="fundTaxRateEdits[portfolio.asset?.id ?? portfolio.assetId] = $event"
+                />
+                <button
+                  class="rate-save-btn"
+                  (click)="saveFundTaxRateForPortfolio(portfolio, $event)"
+                  [disabled]="savingFundTaxRateAssetIds.has(portfolio.assetId)"
+                >
+                  {{ savingFundTaxRateAssetIds.has(portfolio.assetId) ? '…' : 'Kaydet' }}
+                </button>
+              </div>
+            </td>
             <td [class.profit]="portfolio.profitLoss > 0" [class.loss]="portfolio.profitLoss < 0">
               {{ formatCurrency(portfolio.profitLoss, portfolio.asset?.currency || 'TRY') }}
             </td>
@@ -184,6 +208,50 @@
               {{ formatPercentage(selectedPortfolio.profitLossPercentage) }}
             </span>
           </div>
+
+          <ng-container *ngIf="selectedPortfolio.asset?.type === AssetType.Fund">
+            <div class="summary-item">
+              <label>Stopaj (%):</label>
+              <div class="inline-controls">
+                <input
+                  class="rate-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  [(ngModel)]="fundTaxRatePercentInput"
+                  (click)="$event.stopPropagation()"
+                />
+                <button class="rate-save-btn" (click)="saveFundTaxRate($event)" [disabled]="savingFundTaxRate">
+                  {{ savingFundTaxRate ? 'Kaydediliyor…' : 'Kaydet' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="summary-item">
+              <label>Brüt Kar/Zarar:</label>
+              <span>
+                {{
+                  formatCurrency(
+                    selectedPortfolio.grossProfitLoss ?? selectedPortfolio.currentValue - selectedPortfolio.totalCost,
+                    selectedPortfolio.asset?.currency || 'TRY'
+                  )
+                }}
+              </span>
+            </div>
+
+            <div class="summary-item">
+              <label>Net Kar/Zarar:</label>
+              <span>
+                {{
+                  formatCurrency(
+                    selectedPortfolio.netProfitLoss ?? selectedPortfolio.profitLoss,
+                    selectedPortfolio.asset?.currency || 'TRY'
+                  )
+                }}
+              </span>
+            </div>
+          </ng-container>
         </div>
       </div>
 

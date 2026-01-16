@@ -18,6 +18,7 @@ namespace FinanceApi.Data
         public DbSet<AssetProfitLoss> AssetProfitLosses { get; set; }
         public DbSet<ExchangeRate> ExchangeRates { get; set; }
         public DbSet<UserCurrencyPreference> UserCurrencyPreferences { get; set; }
+        public DbSet<FundTaxRate> FundTaxRates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -152,6 +153,22 @@ namespace FinanceApi.Data
                 entity.Property(e => e.UserId).IsRequired();
                 entity.Property(e => e.PreferredCurrency).IsRequired().HasMaxLength(3);
                 entity.HasIndex(e => e.UserId).IsUnique();
+            });
+
+            // FundTaxRate configuration
+            modelBuilder.Entity<FundTaxRate>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.RatePercent).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.UpdatedAt).IsRequired();
+
+                entity.HasOne(e => e.Asset)
+                      .WithMany()
+                      .HasForeignKey(e => e.AssetId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.UserId, e.AssetId }).IsUnique();
             });
 
             // Seed data

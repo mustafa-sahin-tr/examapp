@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+using FinanceApi.Data;
 using FinanceApi.Models;
 using FinanceApi.Models.Dtos;
-using FinanceApi.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceApi.Services
 {
@@ -22,82 +22,46 @@ namespace FinanceApi.Services
 
         public async Task<IEnumerable<PortfolioDto>> GetUserPortfolioAsync(string userId)
         {
+            var fundTaxRates = await GetFundTaxRateMapAsync(userId);
+
             var portfolios = await _context.Portfolios
+                .AsNoTracking()
                 .Include(p => p.Asset)
                 .Where(p => p.UserId == userId && p.TotalQuantity > 0)
+                .OrderBy(p => p.Asset.Symbol)
                 .ToListAsync();
 
-            return portfolios.Select(p => new PortfolioDto
-            {
-                Id = p.Id,
-                AssetId = p.AssetId,
-                AssetSymbol = p.Asset.Symbol,
-                AssetName = p.Asset.Name,
-                AssetType = p.Asset.Type,
-                TotalQuantity = p.TotalQuantity,
-                AveragePrice = p.AveragePrice,
-                CurrentPrice = p.Asset.CurrentPrice,
-                CurrentValue = p.CurrentValue,
-                TotalCost = p.TotalCost,
-                ProfitLoss = p.ProfitLoss,
-                ProfitLossPercentage = p.ProfitLossPercentage,
-                Currency = p.Asset.Currency,
-                LastUpdated = p.LastUpdated
-            });
+            return portfolios.Select(p => MapPortfolio(p, fundTaxRates)).ToList();
         }
 
         public async Task<IEnumerable<PortfolioDto>> GetUserPortfolioByTypeAsync(string userId, AssetType type)
         {
+            var fundTaxRates = await GetFundTaxRateMapAsync(userId);
+
             var portfolios = await _context.Portfolios
+                .AsNoTracking()
                 .Include(p => p.Asset)
-                .Where(p => p.UserId == userId && p.Asset.Type == type && p.TotalQuantity > 0)
+                .Where(p => p.UserId == userId && p.TotalQuantity > 0 && p.Asset.Type == type)
+                .OrderBy(p => p.Asset.Symbol)
                 .ToListAsync();
 
-            return portfolios.Select(p => new PortfolioDto
-            {
-                Id = p.Id,
-                AssetId = p.AssetId,
-                AssetSymbol = p.Asset.Symbol,
-                AssetName = p.Asset.Name,
-                AssetType = p.Asset.Type,
-                TotalQuantity = p.TotalQuantity,
-                AveragePrice = p.AveragePrice,
-                CurrentPrice = p.Asset.CurrentPrice,
-                CurrentValue = p.CurrentValue,
-                TotalCost = p.TotalCost,
-                ProfitLoss = p.ProfitLoss,
-                ProfitLossPercentage = p.ProfitLossPercentage,
-                Currency = p.Asset.Currency,
-                LastUpdated = p.LastUpdated
-            });
+            return portfolios.Select(p => MapPortfolio(p, fundTaxRates)).ToList();
         }
 
         public async Task<PortfolioDto?> GetUserPortfolioByAssetAsync(string userId, string assetId)
         {
             var portfolio = await _context.Portfolios
+                .AsNoTracking()
                 .Include(p => p.Asset)
                 .FirstOrDefaultAsync(p => p.UserId == userId && p.AssetId == assetId);
 
             if (portfolio == null)
-                return null;
-
-            return new PortfolioDto
             {
-                Id = portfolio.Id,
-                AssetId = portfolio.AssetId,
-                AssetSymbol = portfolio.Asset.Symbol,
-                AssetName = portfolio.Asset.Name,
-                AssetType = portfolio.Asset.Type,
-                TotalQuantity = portfolio.TotalQuantity,
-                AveragePrice = portfolio.AveragePrice,
-                CurrentPrice = portfolio.Asset.CurrentPrice,
-                CurrentValue = portfolio.CurrentValue,
-                TotalCost = portfolio.TotalCost,
-                ProfitLoss = portfolio.ProfitLoss,
-                ProfitLossPercentage = portfolio.ProfitLossPercentage,
-                Currency = portfolio.Asset.Currency,
-                LastUpdated = portfolio.LastUpdated
-            };
+                return null;
+            }
+
+            var fundTaxRates = await GetFundTaxRateMapAsync(userId);
+            return MapPortfolio(portfolio, fundTaxRates);
         }
 
         public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(string userId, string targetCurrency = "TRY")
@@ -106,34 +70,22 @@ namespace FinanceApi.Services
                 ? "TRY"
                 : targetCurrency.ToUpperInvariant();
 
+            var fundTaxRates = await GetFundTaxRateMapAsync(userId);
+
             var portfolioEntities = await _context.Portfolios
+                .AsNoTracking()
                 .Include(p => p.Asset)
                 .Where(p => p.UserId == userId && p.TotalQuantity > 0)
                 .ToListAsync();
 
-            var portfolioDtos = portfolioEntities.Select(p => new PortfolioDto
-            {
-                Id = p.Id,
-                AssetId = p.AssetId,
-                AssetSymbol = p.Asset.Symbol,
-                AssetName = p.Asset.Name,
-                AssetType = p.Asset.Type,
-                TotalQuantity = p.TotalQuantity,
-                AveragePrice = p.AveragePrice,
-                CurrentPrice = p.Asset.CurrentPrice,
-                CurrentValue = p.CurrentValue,
-                TotalCost = p.TotalCost,
-                ProfitLoss = p.ProfitLoss,
-                ProfitLossPercentage = p.ProfitLossPercentage,
-                Currency = p.Asset.Currency,
-                LastUpdated = p.LastUpdated
-            }).ToList();
+            var portfolioDtos = portfolioEntities.Select(p => MapPortfolio(p, fundTaxRates)).ToList();
 
             if (portfolioDtos.Any())
             {
                 await ConvertPortfoliosToCurrencyAsync(portfolioDtos, normalizedCurrency);
             }
 
+            // ProfitLoss: net P&L (fonlarda stopaj sonrası)
             var totalValue = portfolioDtos.Sum(p => p.CurrentValue);
             var totalCost = portfolioDtos.Sum(p => p.TotalCost);
             var totalProfitLoss = portfolioDtos.Sum(p => p.ProfitLoss);
@@ -160,6 +112,90 @@ namespace FinanceApi.Services
             };
         }
 
+        public async Task<IEnumerable<AssetTypePerformanceDto>> GetAssetTypePerformanceAsync(string userId)
+        {
+            var fundTaxRates = await GetFundTaxRateMapAsync(userId);
+
+            var portfolios = await _context.Portfolios
+                .AsNoTracking()
+                .Include(p => p.Asset)
+                .Where(p => p.UserId == userId && p.TotalQuantity > 0)
+                .ToListAsync();
+
+            var portfolioDtos = portfolios.Select(p => MapPortfolio(p, fundTaxRates)).ToList();
+
+            return portfolioDtos
+                .GroupBy(p => p.AssetType)
+                .Select(g => new AssetTypePerformanceDto
+                {
+                    AssetType = g.Key,
+                    TotalValue = g.Sum(p => p.CurrentValue),
+                    TotalCost = g.Sum(p => p.TotalCost),
+                    TotalProfitLoss = g.Sum(p => p.ProfitLoss),
+                    TotalProfitLossPercentage = g.Sum(p => p.TotalCost) > 0
+                        ? (g.Sum(p => p.ProfitLoss) / g.Sum(p => p.TotalCost)) * 100
+                        : 0,
+                    AssetCount = g.Count()
+                })
+                .ToList();
+        }
+
+        public async Task RecalculatePortfolioAsync(string userId, string assetId)
+        {
+            var portfolio = await _context.Portfolios
+                .FirstOrDefaultAsync(p => p.UserId == userId && p.AssetId == assetId);
+
+            if (portfolio == null)
+            {
+                return;
+            }
+
+            // Basit ortalama maliyet: tüm BUY işlemlerinin ortalaması.
+            // SELL işlemleri sadece quantity azaltır.
+            var buyTransactions = await _context.Transactions
+                .Where(t => t.AssetId == assetId && t.UserId == userId && t.Type == TransactionType.BUY)
+                .ToListAsync();
+
+            var sellTransactions = await _context.Transactions
+                .Where(t => t.AssetId == assetId && t.UserId == userId && t.Type == TransactionType.SELL)
+                .ToListAsync();
+
+            if (buyTransactions.Any())
+            {
+                var totalBuyQuantity = buyTransactions.Sum(t => t.Quantity);
+                var totalSellQuantity = sellTransactions.Sum(t => t.Quantity);
+                var totalCost = buyTransactions.Sum(t => t.Quantity * t.Price);
+
+                portfolio.TotalQuantity = totalBuyQuantity - totalSellQuantity;
+                portfolio.AveragePrice = totalBuyQuantity > 0 ? totalCost / totalBuyQuantity : 0;
+            }
+            else
+            {
+                portfolio.TotalQuantity = 0;
+                portfolio.AveragePrice = 0;
+            }
+
+            if (portfolio.TotalQuantity <= 0)
+            {
+                _context.Portfolios.Remove(portfolio);
+            }
+
+            portfolio.LastUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RecalculateAllPortfoliosAsync(string userId)
+        {
+            var portfolios = await _context.Portfolios
+                .Where(p => p.UserId == userId)
+                .ToListAsync();
+
+            foreach (var portfolio in portfolios)
+            {
+                await RecalculatePortfolioAsync(userId, portfolio.AssetId);
+            }
+        }
+
         private async Task ConvertPortfoliosToCurrencyAsync(List<PortfolioDto> portfolios, string targetCurrency)
         {
             var rateCache = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
@@ -184,10 +220,25 @@ namespace FinanceApi.Services
 
                 portfolio.TotalCost = Math.Round(portfolio.TotalQuantity * portfolio.AveragePrice, 2);
                 portfolio.CurrentValue = Math.Round(portfolio.TotalQuantity * portfolio.CurrentPrice, 2);
-                portfolio.ProfitLoss = Math.Round(portfolio.CurrentValue - portfolio.TotalCost, 2);
-                portfolio.ProfitLossPercentage = portfolio.TotalCost > 0
-                    ? Math.Round((portfolio.ProfitLoss / portfolio.TotalCost) * 100, 2)
+
+                var grossProfitLoss = Math.Round(portfolio.CurrentValue - portfolio.TotalCost, 2);
+                var grossProfitLossPercentage = portfolio.TotalCost > 0
+                    ? Math.Round((grossProfitLoss / portfolio.TotalCost) * 100, 2)
                     : 0;
+
+                var netProfitLoss = ApplyWithholdingTax(grossProfitLoss, portfolio.AssetType, portfolio.WithholdingTaxRatePercent);
+                var netProfitLossPercentage = portfolio.TotalCost > 0
+                    ? Math.Round((netProfitLoss / portfolio.TotalCost) * 100, 2)
+                    : 0;
+
+                portfolio.GrossProfitLoss = grossProfitLoss;
+                portfolio.GrossProfitLossPercentage = grossProfitLossPercentage;
+                portfolio.NetProfitLoss = netProfitLoss;
+                portfolio.NetProfitLossPercentage = netProfitLossPercentage;
+
+                // Back-compat: UI halen ProfitLoss alanını kullanıyor (net)
+                portfolio.ProfitLoss = netProfitLoss;
+                portfolio.ProfitLossPercentage = netProfitLossPercentage;
 
                 portfolio.Currency = targetCurrency;
             }
@@ -209,7 +260,6 @@ namespace FinanceApi.Services
             if (!cache.TryGetValue(cacheKey, out var rate))
             {
                 var convertedUnit = await _exchangeRateService.ConvertCurrencyAsync(1m, fromCurrency, toCurrency);
-
                 if (convertedUnit == 0m)
                 {
                     return amount;
@@ -222,84 +272,73 @@ namespace FinanceApi.Services
             return amount * rate;
         }
 
-        public async Task<IEnumerable<AssetTypePerformanceDto>> GetAssetTypePerformanceAsync(string userId)
+        private static decimal ApplyWithholdingTax(decimal grossProfitLoss, AssetType assetType, decimal ratePercent)
         {
-            var portfolios = await _context.Portfolios
-                .Include(p => p.Asset)
-                .Where(p => p.UserId == userId && p.TotalQuantity > 0)
-                .ToListAsync();
+            if (assetType != AssetType.Fund)
+            {
+                return grossProfitLoss;
+            }
 
-            var assetTypeGroups = portfolios
-                .GroupBy(p => p.Asset.Type)
-                .Select(g => new AssetTypePerformanceDto
-                {
-                    AssetType = g.Key,
-                    TotalValue = g.Sum(p => p.CurrentValue),
-                    TotalCost = g.Sum(p => p.TotalCost),
-                    TotalProfitLoss = g.Sum(p => p.ProfitLoss),
-                    TotalProfitLossPercentage = g.Sum(p => p.TotalCost) > 0 ? (g.Sum(p => p.ProfitLoss) / g.Sum(p => p.TotalCost)) * 100 : 0,
-                    AssetCount = g.Count()
-                });
+            // Zarar varsa stopaj yok.
+            if (grossProfitLoss <= 0m)
+            {
+                return grossProfitLoss;
+            }
 
-            return assetTypeGroups;
+            var rate = Math.Clamp(ratePercent, 0m, 100m) / 100m;
+            return grossProfitLoss * (1m - rate);
         }
 
-        public async Task RecalculatePortfolioAsync(string userId, string assetId)
+        private async Task<Dictionary<string, decimal>> GetFundTaxRateMapAsync(string userId)
         {
-            var portfolio = await _context.Portfolios
-                .FirstOrDefaultAsync(p => p.UserId == userId && p.AssetId == assetId);
-
-            if (portfolio == null)
-                return;
-
-            // Tüm BUY transaction'larını al ve average price'ı yeniden hesapla
-            var buyTransactions = await _context.Transactions
-                .Where(t => t.AssetId == assetId &&
-                           t.UserId == userId &&
-                           t.Type == TransactionType.BUY)
-                .ToListAsync();
-
-            var sellTransactions = await _context.Transactions
-                .Where(t => t.AssetId == assetId &&
-                           t.UserId == userId &&
-                           t.Type == TransactionType.SELL)
-                .ToListAsync();
-
-            if (buyTransactions.Any())
-            {
-                var totalBuyQuantity = buyTransactions.Sum(t => t.Quantity);
-                var totalSellQuantity = sellTransactions.Sum(t => t.Quantity);
-                var totalCost = buyTransactions.Sum(t => t.Quantity * t.Price);
-
-                portfolio.TotalQuantity = totalBuyQuantity - totalSellQuantity;
-                portfolio.AveragePrice = totalBuyQuantity > 0 ? totalCost / totalBuyQuantity : 0;
-            }
-            else
-            {
-                portfolio.TotalQuantity = 0;
-                portfolio.AveragePrice = 0;
-            }
-
-            // Eğer quantity sıfır veya negatif olursa portfolio'yu sil
-            if (portfolio.TotalQuantity <= 0)
-            {
-                _context.Portfolios.Remove(portfolio);
-            }
-
-            portfolio.LastUpdated = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            return await _context.FundTaxRates
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .ToDictionaryAsync(x => x.AssetId, x => x.RatePercent);
         }
 
-        public async Task RecalculateAllPortfoliosAsync(string userId)
+        private PortfolioDto MapPortfolio(Portfolio portfolio, IReadOnlyDictionary<string, decimal> fundTaxRates)
         {
-            var portfolios = await _context.Portfolios
-                .Where(p => p.UserId == userId)
-                .ToListAsync();
+            var totalCost = portfolio.TotalCost;
+            var currentValue = portfolio.CurrentValue;
 
-            foreach (var portfolio in portfolios)
+            var grossProfitLoss = currentValue - totalCost;
+            var grossProfitLossPercentage = totalCost > 0 ? (grossProfitLoss / totalCost) * 100 : 0;
+
+            var rate = 0m;
+            if (portfolio.Asset.Type == AssetType.Fund && fundTaxRates.TryGetValue(portfolio.AssetId, out var configuredRate))
             {
-                await RecalculatePortfolioAsync(userId, portfolio.AssetId);
+                rate = configuredRate;
             }
+
+            var netProfitLoss = ApplyWithholdingTax(grossProfitLoss, portfolio.Asset.Type, rate);
+            var netProfitLossPercentage = totalCost > 0 ? (netProfitLoss / totalCost) * 100 : 0;
+
+            return new PortfolioDto
+            {
+                Id = portfolio.Id,
+                AssetId = portfolio.AssetId,
+                AssetSymbol = portfolio.Asset.Symbol,
+                AssetName = portfolio.Asset.Name,
+                AssetType = portfolio.Asset.Type,
+                TotalQuantity = portfolio.TotalQuantity,
+                AveragePrice = portfolio.AveragePrice,
+                CurrentPrice = portfolio.Asset.CurrentPrice,
+                CurrentValue = currentValue,
+                TotalCost = totalCost,
+
+                GrossProfitLoss = grossProfitLoss,
+                GrossProfitLossPercentage = grossProfitLossPercentage,
+                WithholdingTaxRatePercent = rate,
+                NetProfitLoss = netProfitLoss,
+                NetProfitLossPercentage = netProfitLossPercentage,
+
+                ProfitLoss = netProfitLoss,
+                ProfitLossPercentage = netProfitLossPercentage,
+
+                Currency = portfolio.Asset.Currency,
+                LastUpdated = portfolio.LastUpdated
+            };
         }
     }
 }

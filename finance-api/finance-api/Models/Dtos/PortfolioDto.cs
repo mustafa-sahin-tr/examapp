@@ -14,6 +14,19 @@ namespace FinanceApi.Models.Dtos
         public decimal CurrentPrice { get; set; }
         public decimal CurrentValue { get; set; }
         public decimal TotalCost { get; set; }
+
+        // Brüt (stopajsız) kar/zarar
+        public decimal GrossProfitLoss { get; set; }
+        public decimal GrossProfitLossPercentage { get; set; }
+
+        // Fonlar için stopaj oranı (%). Diğer tiplerde 0.
+        public decimal WithholdingTaxRatePercent { get; set; }
+
+        // Net (stopaj sonrası) kar/zarar
+        public decimal NetProfitLoss { get; set; }
+        public decimal NetProfitLossPercentage { get; set; }
+
+        // Geriye dönük uyumluluk: UI bu alanı kullanıyor
         public decimal ProfitLoss { get; set; }
         public decimal ProfitLossPercentage { get; set; }
         public string Currency { get; set; } = "TRY";

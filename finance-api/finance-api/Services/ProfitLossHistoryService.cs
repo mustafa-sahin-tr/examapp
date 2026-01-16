@@ -83,6 +83,11 @@ namespace FinanceApi.Services
             using var scope = _serviceProvider.CreateScope();
             var exchangeRateService = scope.ServiceProvider.GetRequiredService<IExchangeRateService>();
 
+            var fundTaxRates = await dbContext.FundTaxRates
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .ToDictionaryAsync(x => x.AssetId, x => x.RatePercent);
+
             var now = DateTime.UtcNow;
             var portfolios = await portfolioService.GetUserPortfolioAsync(userId);
 
@@ -125,6 +130,18 @@ namespace FinanceApi.Services
                     var currentValueInBaseCurrency = await exchangeRateService.ConvertCurrencyAsync(currentValue, portfolio.Currency, baseCurrency);
 
                     var profitLoss = currentValueInBaseCurrency - investmentInBaseCurrency;
+
+                    // Fonlar için stopajı (sadece pozitif kar üzerinden) uygula
+                    if (assetType == AssetType.Fund && profitLoss > 0m)
+                    {
+                        if (!fundTaxRates.TryGetValue(portfolio.AssetId, out var ratePercent))
+                        {
+                            ratePercent = 0m;
+                        }
+
+                        var rate = Math.Clamp(ratePercent, 0m, 100m) / 100m;
+                        profitLoss = profitLoss * (1m - rate);
+                    }
 
                     assetTypeInvestment += investmentInBaseCurrency;
                     assetTypeCurrentValue += currentValueInBaseCurrency;

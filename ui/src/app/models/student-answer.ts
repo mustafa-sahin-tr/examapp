@@ -1,6 +1,7 @@
 export interface StudentAnswer {
-    testInstanceId: number;
-    testQuestionId: number;
-    selectedAnswerId: number;
-    timeTaken: number;
+  testInstanceId: number;
+  testQuestionId: number;
+  selectedAnswerId: number;
+  answerPayload?: string;
+  timeTaken: number;
 }

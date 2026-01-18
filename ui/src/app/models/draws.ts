@@ -68,4 +68,5 @@ export interface CanvasLayoutPlanOverrides {
 export type RegionOrAnswerHit =
   | { type: 'answer'; value: { questionIndex: number; answerIndex: number } }
   | { type: 'question'; value: { questionIndex: number; answerIndex: null } }
+  | { type: 'dropzone'; value: { questionIndex: number; dropZoneId: string } }
   | null;

@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   exam-dotnet-api:
-    command: sh -c "dotnet ef database update --project ExamApp.Api && dotnet watch run --project ExamApp.Api --urls=http://+:5079"
+    # command: sh -c "dotnet ef database update --project ExamApp.Api && dotnet watch run --project ExamApp.Api --urls=http://+:5079"
 
   auth-api:
     command: dotnet watch run --urls=http://+:5079

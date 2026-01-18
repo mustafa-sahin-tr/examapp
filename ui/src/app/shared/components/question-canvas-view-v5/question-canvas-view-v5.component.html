@@ -1,0 +1,25 @@
+<div class="qcv4-canvas-root" [ngClass]="layoutClass" [style.flex-direction]="isInlineLayout() ? 'row' : 'column'">
+  <div class="qcv4-question-panel" [style.flex]="getPanelFlex('question')">
+    <div class="qcv4-question-image-wrapper">
+      <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
+    </div>
+  </div>
+  <div
+    class="qcv4-answers-panel"
+    [style.flex]="getPanelFlex('answers')"
+    [ngStyle]="{ 'grid-template-columns': answerColumns > 1 ? 'repeat(' + answerColumns + ', 1fr)' : null }"
+    [style.gap]="'2px'"
+  >
+    <ng-container *ngFor="let answer of sortedAnswers; let idx = index">
+      <div
+        class="qcv4-answer-wrapper"
+        [ngClass]="getAnswerClasses(answer)"
+        (mouseenter)="hoverAnswer(answer)"
+        (mouseleave)="hoverAnswer(null)"
+        (click)="selectAnswer(idx)"
+      >
+        <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ idx + 1 }}" />
+      </div>
+    </ng-container>
+  </div>
+</div>

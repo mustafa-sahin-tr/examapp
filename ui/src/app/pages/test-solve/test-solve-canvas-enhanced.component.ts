@@ -138,7 +138,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     // Signal'dan değeri al, böylece reaktif olur
     this.answeredQuestionsCount();
     // Gerçek sayımı yap
-    return this.testInstance?.testInstanceQuestions?.filter((q) => q.selectedAnswerId).length || 0;
+    return this.testInstance?.testInstanceQuestions?.filter((q) => this.isQuestionAnswered(q)).length || 0;
   });
 
   public remainingCount = computed(() => {
@@ -709,15 +709,15 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     const baseHeightTarget = positiveHeightLimits.length
       ? Math.min(...positiveHeightLimits)
       : containerContentHeight > 0
-      ? containerContentHeight
-      : containerHeight;
+        ? containerContentHeight
+        : containerHeight;
     const heightTarget = questionPanelAdjustedHeight > 0 ? questionPanelAdjustedHeight : baseHeightTarget;
 
     const widthTarget = positiveWidthLimits.length
       ? Math.min(...positiveWidthLimits)
       : containerContentWidth > 0
-      ? containerContentWidth
-      : containerWidth;
+        ? containerContentWidth
+        : containerWidth;
 
     const heightTargetRounded = Math.round(heightTarget);
     const widthTargetRounded = Math.round(widthTarget);
@@ -844,8 +844,11 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   completeTest() {
     // son soru kaydedilmemiş olaiblir.
     this.autoPlay = false;
-    if (this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId) {
-      this.persistAnswer(this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId);
+    const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
+    if (currentQuestion.selectedAnswerId) {
+      this.persistAnswer(currentQuestion.selectedAnswerId);
+    } else if (this.isNonEmptyPayload(currentQuestion.answerPayload)) {
+      this.persistDragDropPayloadForQuestion(currentQuestion.answerPayload!, this.currentIndex());
     }
     this.testService.completeTest(this.testInstance.id).subscribe({
       next: () => {
@@ -860,6 +863,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
+    if (selectedIndex) {
+      this.testInstance.testInstanceQuestions[this.currentIndex()].answerPayload = undefined;
+    }
 
     // Cevaplanan soru sayısını güncelle
     this.updateAnsweredCount();
@@ -1020,14 +1026,25 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       } else {
         if (currentQuestion.selectedAnswerId) {
           this.persistAnswer(currentQuestion.selectedAnswerId);
+        } else if (this.isNonEmptyPayload(currentQuestion.answerPayload)) {
+          this.persistDragDropPayloadForQuestion(currentQuestion.answerPayload!, this.currentIndex());
         }
       }
     } else {
       // Çoklu soru için tüm görünürdeki soruları kaydet
       const currentQuestions = this.currentQuestions();
       currentQuestions.forEach(({ question, index }) => {
-        if (question.selectedAnswerId && !this.testInstance.isPracticeTest) {
+        if (this.testInstance.isPracticeTest) {
+          return;
+        }
+
+        if (question.selectedAnswerId) {
           this.persistAnswerForQuestion(question.selectedAnswerId, index);
+          return;
+        }
+
+        if (this.isNonEmptyPayload(question.answerPayload)) {
+          this.persistDragDropPayloadForQuestion(question.answerPayload!, index);
         }
       });
     }
@@ -1050,6 +1067,44 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         },
         error: (error) => {
           console.error('Error saving answer for question', questionIndex, error);
+        },
+      });
+  }
+
+  public saveDragDropAnswerForQuestion(answerPayloadJson: string, questionIndex: number) {
+    const question = this.testInstance.testInstanceQuestions[questionIndex];
+    question.answerPayload = answerPayloadJson;
+    // Drag-drop sorular MCQ gibi selectedAnswerId kullanmıyor; progress için 0 kalsın.
+    question.selectedAnswerId = 0;
+
+    this.updateAnsweredCount();
+
+    if (this.testInstance.isPracticeTest || question.question.isExample) {
+      return;
+    }
+
+    this.persistDragDropPayloadForQuestion(answerPayloadJson, questionIndex);
+  }
+
+  private persistDragDropPayloadForQuestion(answerPayloadJson: string, questionIndex: number) {
+    if (this.testInstance.testInstanceQuestions[questionIndex].question.isExample) return;
+
+    const timeTaken = this.questionDurations().get(questionIndex) ?? this.questionDuration;
+
+    this.testService
+      .saveAnswer({
+        testQuestionId: this.testInstance.testInstanceQuestions[questionIndex].id,
+        selectedAnswerId: 0,
+        answerPayload: answerPayloadJson,
+        testInstanceId: this.testInstance.id,
+        timeTaken,
+      })
+      .subscribe({
+        next: () => {
+          console.log(`Answer payload saved for question ${questionIndex}`);
+        },
+        error: (error) => {
+          console.error('Error saving answer payload for question', questionIndex, error);
         },
       });
   }
@@ -1269,7 +1324,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     // Sonraki boş soruyu bul
     for (let i = current + 1; i < questions.length; i++) {
-      if (!questions[i].selectedAnswerId) {
+      if (!this.isQuestionAnswered(questions[i])) {
         this.goToQuestion(i);
         return;
       }
@@ -1277,7 +1332,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     // Baştan boş soru bul
     for (let i = 0; i < current; i++) {
-      if (!questions[i].selectedAnswerId) {
+      if (!this.isQuestionAnswered(questions[i])) {
         this.goToQuestion(i);
         return;
       }
@@ -1288,8 +1343,9 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   clearAnswer() {
     const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
-    if (currentQuestion.selectedAnswerId) {
+    if (this.isQuestionAnswered(currentQuestion)) {
       currentQuestion.selectedAnswerId = undefined as any;
+      currentQuestion.answerPayload = undefined;
 
       // Cevaplanan soru sayısını güncelle
       this.updateAnsweredCount();
@@ -1301,7 +1357,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   }
 
   hasAnswer(): boolean {
-    return !!this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId;
+    return this.isQuestionAnswered(this.testInstance.testInstanceQuestions[this.currentIndex()]);
   }
 
   showHint() {
@@ -1354,6 +1410,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // Test instance'daki seçimi de temizle
       const currentQuestion = this.testInstance.testInstanceQuestions[this.currentIndex()];
       currentQuestion.selectedAnswerId = undefined as any;
+      currentQuestion.answerPayload = undefined;
 
       // Cevaplanan soru sayısını güncelle
       this.updateAnsweredCount();
@@ -1385,8 +1442,16 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   // Cevaplanan soru sayısını güncelle
   private updateAnsweredCount() {
-    const count = this.testInstance?.testInstanceQuestions?.filter((q) => q.selectedAnswerId).length || 0;
+    const count = this.testInstance?.testInstanceQuestions?.filter((q) => this.isQuestionAnswered(q)).length || 0;
     this.answeredQuestionsCount.set(count);
+  }
+
+  private isQuestionAnswered(question: TestInstanceQuestion): boolean {
+    return !!question.selectedAnswerId || this.isNonEmptyPayload(question.answerPayload);
+  }
+
+  private isNonEmptyPayload(payload: string | undefined): boolean {
+    return !!payload && payload.trim().length > 0;
   }
 
   toggleHighContrast() {
@@ -1469,6 +1534,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   selectAnswerForQuestion(selectedAnswerId: number, questionIndex: number) {
     const question = this.testInstance.testInstanceQuestions[questionIndex];
     question.selectedAnswerId = selectedAnswerId;
+    // MCQ seçildiyse varsa payload'u temizle.
+    if (selectedAnswerId) {
+      question.answerPayload = undefined;
+    }
 
     // Cevaplanan soru sayısını güncelle
     this.updateAnsweredCount();

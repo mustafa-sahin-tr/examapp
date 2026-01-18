@@ -649,6 +649,12 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("InteractionPlan")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InteractionType")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsCanvasQuestion")
                         .HasColumnType("boolean");
 
@@ -1835,6 +1841,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnswerPayload")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");

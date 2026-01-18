@@ -1,0 +1,51 @@
+<div class="dd-root">
+  <div class="dd-canvas">
+    <div class="dd-image-wrap" *ngIf="imageUrl() as url">
+      <img class="dd-image" [src]="url" alt="Soru görseli" />
+
+      <div class="dd-overlay" *ngIf="plan() as p">
+        <ng-container *ngFor="let z of zones()">
+          <div
+            class="dd-zone"
+            [ngClass]="zoneClass()(z.id)"
+            [ngStyle]="zoneStyle()(z)"
+            cdkDropList
+            [id]="'zone-' + z.id"
+            [cdkDropListData]="zoneState()[z.id]"
+            [cdkDropListConnectedTo]="allDropListIds()"
+            (cdkDropListDropped)="dropToZone(z.id, $event)"
+          >
+            <div class="dd-zone__slot" *ngIf="(zoneState()[z.id] || []).length === 0"></div>
+
+            <div class="dd-chip" *ngFor="let item of zoneState()[z.id] || []" cdkDrag [cdkDragData]="item">
+              {{ draggableLabel()(item) }}
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+  <div class="dd-pool">
+    <div class="dd-pool__header">
+      <div class="dd-pool__title">Etiketler</div>
+      <button mat-stroked-button type="button" (click)="clearAll()">
+        <mat-icon>restart_alt</mat-icon>
+        Temizle
+      </button>
+    </div>
+
+    <div
+      class="dd-pool__list"
+      cdkDropList
+      id="pool"
+      [cdkDropListData]="pool()"
+      [cdkDropListConnectedTo]="zoneDropListIds()"
+      (cdkDropListDropped)="dropToPool($event)"
+    >
+      <div class="dd-chip" *ngFor="let item of pool()" cdkDrag [cdkDragData]="item">
+        {{ draggableLabel()(item) }}
+      </div>
+    </div>
+  </div>
+</div>

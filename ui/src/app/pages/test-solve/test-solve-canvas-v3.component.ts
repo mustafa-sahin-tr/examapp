@@ -14,6 +14,8 @@ import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-
 import { QuestionCanvasViewComponentv2 } from '../../shared/components/question-canvas-view-v2/question-canvas-view-v2.component';
 import { QuestionCanvasViewComponentv4 } from '../../shared/components/question-canvas-view-v4/question-canvas-view-v4.component';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
+import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components/question-canvas-dragdrop-labeling/question-canvas-dragdrop-labeling.component';
 
 @Component({
   selector: 'app-test-solve-v3',
@@ -27,13 +29,19 @@ import { QuestionCanvasViewComponent } from '../../shared/components/question-ca
     MatTooltipModule,
     QuestionLiteViewComponent,
     CountdownComponent,
-    QuestionCanvasViewComponent,
     MatProgressSpinnerModule,
+    QuestionCanvasViewComponentv5,
+    QuestionCanvasDragDropLabelingComponent,
   ],
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   constructor(route: ActivatedRoute, testService: TestService, router: Router, dialog: MatDialog) {
     super(route, testService, router, dialog);
+  }
+
+  // Explicitly re-expose on v3 for Angular template type-checking.
+  public override saveDragDropAnswerForQuestion(answerPayloadJson: string, questionIndex: number) {
+    super.saveDragDropAnswerForQuestion(answerPayloadJson, questionIndex);
   }
 
   public sideDockActive(): boolean {

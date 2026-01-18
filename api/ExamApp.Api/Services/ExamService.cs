@@ -1046,6 +1046,8 @@ public class ExamService : IExamService
                     SubText = questionEntity.SubText,
                     ImageUrl = questionEntity.ImageUrl,
                     IsExample = questionEntity.IsExample,
+                    InteractionType = questionEntity.InteractionType,
+                    InteractionPlan = questionEntity.InteractionPlan,
                     CorrectAnswerId = includeCorrectAnswer ? questionEntity.CorrectAnswerId : null,
                     Passage = questionEntity.PassageId.HasValue ? new PassageDto
                     {
@@ -1095,6 +1097,7 @@ public class ExamService : IExamService
                     Order = tiq.WorksheetQuestion.Order,
                     Question = questionDto,
                     SelectedAnswerId = tiq.SelectedAnswerId,
+                    AnswerPayload = tiq.AnswerPayload,
                     TimeTaken = tiq.TimeTaken
                 };
             }).ToList()
@@ -1125,7 +1128,9 @@ public class ExamService : IExamService
                 Message = "Test instance question not found."
             };
         }
-        testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId;
+        // Store MCQ selection and/or structured answer payload
+        testInstanceQuestion.SelectedAnswerId = dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null;
+        testInstanceQuestion.AnswerPayload = string.IsNullOrWhiteSpace(dto.AnswerPayload) ? null : dto.AnswerPayload;
         testInstanceQuestion.TimeTaken = dto.TimeTaken;
 
         var question = testInstanceQuestion.WorksheetQuestion?.Question;
@@ -1138,8 +1143,21 @@ public class ExamService : IExamService
             };
         }
 
-        var correctAnswerId = question.CorrectAnswerId;
-        var isCorrect = correctAnswerId.HasValue && correctAnswerId.Value == dto.SelectedAnswerId;
+        var interactionType = question.InteractionType ?? "mcq";
+        var isDragDropLabeling = interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase);
+
+        bool isCorrect;
+        if (isDragDropLabeling)
+        {
+            // For dragDropLabeling, correctness is determined client-side for practice (IsExample)
+            // and server-side evaluation can be added later. For now, we store payload and mark unknown as false.
+            isCorrect = false;
+        }
+        else
+        {
+            var correctAnswerId = question.CorrectAnswerId;
+            isCorrect = correctAnswerId.HasValue && correctAnswerId.Value == dto.SelectedAnswerId;
+        }
         testInstanceQuestion.IsCorrect = isCorrect;
 
         var primarySubTopicId = question.QuestionSubTopics?.FirstOrDefault()?.SubTopicId;
@@ -1162,7 +1180,7 @@ public class ExamService : IExamService
             SubTopicId = primarySubTopicId,
             TopicId = question.TopicId,
             TestInstanceId = dto.TestInstanceId,
-            SelectedAnswerId = dto.SelectedAnswerId
+            SelectedAnswerId = dto.SelectedAnswerId > 0 ? dto.SelectedAnswerId : null
         };
 
         // 2. Outbox'a yaz

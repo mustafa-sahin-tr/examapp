@@ -75,6 +75,45 @@
             <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
             Soru Sil
           </button>
+          <button (click)="handleMenuAction('selectAnswerMode', $event)">
+            <mat-icon style="vertical-align: middle; margin-right: 8px">crop_square</mat-icon>
+            Şık Çiz (MCQ)
+          </button>
+          <button (click)="handleMenuAction('selectDropZoneMode', $event)">
+            <mat-icon style="vertical-align: middle; margin-right: 8px">radio_button_unchecked</mat-icon>
+            Zone Çiz (dragDropLabeling)
+          </button>
+
+          <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
+          <ng-container
+            *ngIf="
+              selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
+            "
+          >
+            <mat-divider></mat-divider>
+            <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">dragDropLabeling</div>
+
+            <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              style="margin: 0 8px 6px; width: calc(100% - 16px)"
+              [value]="getLabelCount(regions()[selectedRegion || 0].name)"
+              (click)="$event.stopPropagation()"
+              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)"
+            />
+
+            <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
+              Etiketleri Oluştur
+            </button>
+            <button (click)="autoAssignSolutionSequential(regions()[selectedRegion || 0].name)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">auto_fix_high</mat-icon>
+              Auto Solution
+            </button>
+          </ng-container>
+
           <button (click)="handleMenuAction('removeAll', $event)">
             <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
             Tüm Soruları Sil
@@ -109,6 +148,46 @@
           </button>
         </ng-container>
 
+        <!-- DropZone için menü -->
+        <ng-container *ngIf="contextMenuType === 'dropzone'">
+          <ng-container *ngIf="selectedRegion! >= 0 && selectedDropZoneId as zoneId">
+            <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">Zone: {{ zoneId }}</div>
+
+            <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              style="margin: 0 8px 6px; width: calc(100% - 16px)"
+              [value]="getLabelCount(regions()[selectedRegion || 0].name)"
+              (click)="$event.stopPropagation()"
+              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)"
+            />
+
+            <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
+              Etiketleri Oluştur
+            </button>
+
+            <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">Doğru Etiket</label>
+            <select
+              (click)="$event.stopPropagation()"
+              [value]="getZoneAssignedDraggable(regions()[selectedRegion || 0].name, zoneId)"
+              (change)="setZoneSolutionFromMenu(regions()[selectedRegion || 0].name, zoneId, $any($event.target).value)"
+            >
+              <option value="0">(boş)</option>
+              <option *ngFor="let d of getDraggables(regions()[selectedRegion || 0].name)" [value]="d.id">
+                {{ d.label }}
+              </option>
+            </select>
+
+            <button (click)="handleMenuAction('removeDropZone', $event)">
+              <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+              Zone Sil
+            </button>
+          </ng-container>
+        </ng-container>
+
         <!-- Answer için menü -->
         <ng-container *ngIf="contextMenuType === 'worksheet'">
           <button (click)="handleMenuAction('selectQuestion', $event)">
@@ -129,13 +208,29 @@
       <!-- <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*"> -->
       {{ imagName() }}
 
+      <div style="margin: 8px 0">
+        <button mat-button (click)="toggleShowRegions()">
+          {{ showRegions() ? 'Sağ Paneli Gizle' : 'Sağ Paneli Göster' }}
+        </button>
+      </div>
+
       <div *ngIf="showRegions()" class="regions-list">
         <h3>Seçilen Bölgeler:</h3>
         <ul class="regions">
           <li *ngFor="let region of regions(); let i = index">
             <!-- <quill-editor *ngIf="isExample(region.name)" [ngModel]="exampleAnswers.get(region.name)" (ngModelChange)="onTextChanged(region.name, $event)">
           </quill-editor> -->
-            <ul *ngIf="!onlyQuestionMode()">
+            <div class="flex-no-wrap border-none" style="margin: 6px 0">
+              <label style="display: block; font-size: 12px; opacity: 0.8">Interaction Type</label>
+              <select (change)="onInteractionTypeChange($event, region.name)">
+                <option value="mcq" [selected]="getInteractionType(region.name) === 'mcq'">MCQ</option>
+                <option value="dragDropLabeling" [selected]="getInteractionType(region.name) === 'dragDropLabeling'">
+                  dragDropLabeling
+                </option>
+              </select>
+            </div>
+
+            <ul *ngIf="!onlyQuestionMode() && getInteractionType(region.name) !== 'dragDropLabeling'">
               <li class="flex-no-wrap border-none" *ngFor="let answer of region.answers; let j = index">
                 <button class="choice-btn" (click)="setCorrectAnswer(i, j, 1)">
                   {{ answer.label }} {{ answer.isCorrect ? '✅' : '' }}
@@ -143,6 +238,39 @@
                 <button (click)="removeAnswer(i, j)">❌</button>
               </li>
             </ul>
+
+            <div *ngIf="getInteractionType(region.name) === 'dragDropLabeling'" style="margin: 8px 0">
+              <div class="flex-no-wrap border-none" style="gap: 8px; align-items: center">
+                <button (click)="selectDropZoneMode(i)">🟧 Drop Zone Çiz</button>
+                <button (click)="removeLastDropZone(region.name)">↩︎ Son Zone</button>
+                <button (click)="clearDropZones(region.name)">🗑 Zone Temizle</button>
+                <label style="font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  [value]="getLabelCount(region.name)"
+                  (change)="setLabelCount(region.name, $any($event.target).value)"
+                  style="width: 70px"
+                />
+                <button (click)="generateDraggables(region.name)">Etiketleri Oluştur</button>
+                <button (click)="autoAssignSolutionSequential(region.name)">Auto Solution</button>
+              </div>
+
+              <div style="margin-top: 8px">
+                <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px">Solution (DropZone → Etiket)</div>
+                <div *ngFor="let z of getDropZones(region.name)" class="flex-no-wrap border-none" style="gap: 8px">
+                  <span style="min-width: 38px">{{ z.id }}</span>
+                  <select
+                    [value]="getZoneAssignedDraggable(region.name, z.id)"
+                    (change)="setZoneSolution(region.name, z.id, $any($event.target).value)"
+                  >
+                    <option value="0">(boş)</option>
+                    <option *ngFor="let d of getDraggables(region.name)" [value]="d.id">{{ d.label }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             <ul>
               <li class="flex-no-wrap border-none">
                 <button (click)="removeQuestion(i)">❌ Soru Sil</button>

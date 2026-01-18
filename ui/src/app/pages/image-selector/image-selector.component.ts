@@ -29,6 +29,25 @@ interface WarningMarker {
   messages: string[];
   type?: 'error' | 'warning' | 'info';
 }
+
+type QuestionInteractionType = 'mcq' | 'dragDropLabeling';
+
+interface DragDropLabelingPlanV1 {
+  version: 1;
+  type: 'dragDropLabeling';
+  dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+  draggables: Array<{ id: string; label: string }>;
+  solution?: {
+    placements: Array<{ draggableId: string; dropZoneId: string }>;
+  };
+}
+
+interface DragDropLabelingAuthoringState {
+  labelCount: number;
+  dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+  draggables: Array<{ id: string; label: string }>;
+  placements: Array<{ draggableId: string; dropZoneId: string }>;
+}
 @Component({
   selector: 'app-image-selector',
   standalone: true,
@@ -63,8 +82,8 @@ export class ImageSelectorComponent {
   public showRegions = signal<boolean>(false);
   public onlyQuestionMode = signal<boolean>(false);
   public answerCount = signal<number>(3);
-  public selectionMode = signal<'passage' | 'question' | 'answer' | null>(null);
-  public selectionModeLocked = signal<'passage' | 'question' | 'answer' | null>(null);
+  public selectionMode = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
+  public selectionModeLocked = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
   public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
   public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
@@ -83,14 +102,19 @@ export class ImageSelectorComponent {
   private selectionStarted = false;
   private selectedQuestionIndex = -1;
 
-  contextMenuType: 'region' | 'answer' | 'worksheet' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
+  selectedDropZoneId: string | null = null;
   previewMode = signal(false); // ✅ Önizleme açma durumu
   currentTestId = signal<number | null>(null); // Test ID'yi sakla
 
   public exampleAnswers = new Map<string, string>(); // 📜 Her soru için örnek cevapları sakla
   public exampleFlags = new Map<string, boolean>(); // ✅ Her soru için "isExample" flag'ini sakla
+
+  // Interaction authoring (per region.name)
+  public interactionTypes = new Map<string, QuestionInteractionType>();
+  public labelingState = new Map<string, DragDropLabelingAuthoringState>();
 
   private currentX = 0;
   private currentY = 0;
@@ -175,6 +199,27 @@ export class ImageSelectorComponent {
     for (let qi = 0; qi < regions.length; qi++) {
       const region = regions[qi];
 
+      // DragDropLabeling: check drop-zones first
+      if (this.getInteractionType(region.name) === 'dragDropLabeling') {
+        const plan = this.buildInteractionPlan(region.name);
+        const dropZones = plan?.dropZones ?? [];
+        for (const z of dropZones) {
+          const zx1 = region.x + z.x;
+          const zy1 = region.y + z.y;
+          const zx2 = zx1 + z.width;
+          const zy2 = zy1 + z.height;
+          if (x >= zx1 && x <= zx2 && y >= zy1 && y <= zy2) {
+            return {
+              type: 'dropzone',
+              value: {
+                questionIndex: qi,
+                dropZoneId: z.id,
+              },
+            };
+          }
+        }
+      }
+
       // Önce answer'ları kontrol edelim
       for (let ai = 0; ai < region.answers.length; ai++) {
         const answer = region.answers[ai];
@@ -228,6 +273,7 @@ export class ImageSelectorComponent {
       this.contextMenuType = 'worksheet';
       this.selectedRegion = null;
       this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
       console.log('Exited  onRightClick hit === null. IsDrawing :', this.isDrawing);
       this.contextMenuVisible = true;
       return;
@@ -237,10 +283,17 @@ export class ImageSelectorComponent {
       this.contextMenuType = 'answer';
       this.selectedAnswer = hit.value.answerIndex;
       this.selectedRegion = hit.value.questionIndex;
+      this.selectedDropZoneId = null;
+    } else if (hit.type === 'dropzone') {
+      this.contextMenuType = 'dropzone';
+      this.selectedRegion = hit.value.questionIndex;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = hit.value.dropZoneId;
     } else if (hit.type === 'question') {
       this.contextMenuType = 'region';
       this.selectedRegion = hit.value.questionIndex;
       this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
     }
     console.log('Exited  onRightClick hit.type === question. IsDrawing :', this.isDrawing);
 
@@ -251,6 +304,7 @@ export class ImageSelectorComponent {
     this.contextMenuVisible = false;
     this.selectedRegion = null; // Seçili bölgeyi sıfırla
     this.selectedAnswer = null; // Seçili cevabı sıfırla
+    this.selectedDropZoneId = null;
   }
 
   stopEvent(event?: MouseEvent) {
@@ -267,6 +321,18 @@ export class ImageSelectorComponent {
       this.removeAnswer(this.selectedRegion!, this.selectedAnswer!);
     } else if (action === 'selectQuestion') {
       this.selectionMode.set('question');
+    } else if (action === 'selectAnswerMode') {
+      this.selectAnswerMode(this.selectedRegion!);
+    } else if (action === 'selectDropZoneMode') {
+      this.selectDropZoneMode(this.selectedRegion!);
+    } else if (action === 'removeDropZone') {
+      const idx = this.selectedRegion ?? -1;
+      if (idx >= 0 && this.selectedDropZoneId) {
+        const regionName = this.regions()[idx]?.name;
+        if (regionName) {
+          this.removeDropZone(regionName, this.selectedDropZoneId);
+        }
+      }
     } else if (action === 'alignAnswers') {
       this.alignAnswers(this.selectedRegion!, true);
     } else if (action === 'predict') {
@@ -278,6 +344,29 @@ export class ImageSelectorComponent {
     }
 
     this.contextMenuVisible = false;
+  }
+
+  public ensureDraggables(regionName: string) {
+    const state = this.ensureLabelingState(regionName);
+    if (state.draggables.length > 0) return;
+    this.generateDraggables(regionName);
+  }
+
+  public setZoneSolutionFromMenu(regionName: string, dropZoneId: string, draggableId: string) {
+    this.setZoneSolution(regionName, dropZoneId, draggableId);
+    this.drawImage();
+  }
+
+  public removeDropZone(regionName: string, dropZoneId: string) {
+    const state = this.ensureLabelingState(regionName);
+    state.dropZones = state.dropZones.filter((z) => z.id !== dropZoneId);
+    state.placements = state.placements.filter((p) => p.dropZoneId !== dropZoneId);
+    this.labelingState.set(regionName, { ...state });
+    this.drawImage();
+  }
+
+  public toggleShowRegions() {
+    this.showRegions.set(!this.showRegions());
   }
 
   handleFilesInput2(event: Event) {
@@ -416,7 +505,7 @@ export class ImageSelectorComponent {
     this.autoAlign.set(!this.autoAlign());
   }
 
-  lockSelectionMode(mode: 'passage' | 'question' | 'answer' | null) {
+  lockSelectionMode(mode: 'passage' | 'question' | 'answer' | 'dropzone' | null) {
     this.selectionModeLocked.set(mode);
     this.toggleSelectionMode(mode);
   }
@@ -515,6 +604,8 @@ export class ImageSelectorComponent {
         return 'red';
       case 'answer':
         return 'blue';
+      case 'dropzone':
+        return 'orange';
       default:
         return 'black';
     }
@@ -527,11 +618,29 @@ export class ImageSelectorComponent {
     }
     let messages: string[] = [];
 
-    if (region.answers.length != this.answerCount()) {
-      messages.push(`Şık sayısı ${this.answerCount()} olmalı`);
-    }
-    if (!region.answers.find((a) => a.isCorrect)) {
-      messages.push(`Doğru cevap yok`);
+    const interactionType = this.getInteractionType(region.name);
+
+    if (interactionType === 'dragDropLabeling') {
+      const plan = this.buildInteractionPlan(region.name);
+      if (!plan || plan.dropZones.length === 0) {
+        messages.push('Drop zone eklenmemiş');
+      }
+      if (!plan || plan.draggables.length === 0) {
+        messages.push('Etiketler (draggables) oluşturulmamış');
+      }
+      if (region.isExample) {
+        const placements = plan?.solution?.placements ?? [];
+        if (placements.length === 0) {
+          messages.push('Örnek soru için solution placements yok');
+        }
+      }
+    } else {
+      if (region.answers.length != this.answerCount()) {
+        messages.push(`Şık sayısı ${this.answerCount()} olmalı`);
+      }
+      if (!region.answers.find((a) => a.isCorrect)) {
+        messages.push(`Doğru cevap yok`);
+      }
     }
 
     if (messages.length > 0) {
@@ -572,6 +681,11 @@ export class ImageSelectorComponent {
       // 🟦 **Şık alanlarını mavi renkte çiz**
       if (!this.onlyQuestionMode()) {
         for (const region of this.regions()) {
+          // dragDropLabeling sorularda şık çizimi gerekmiyor
+          if (this.getInteractionType(region.name) === 'dragDropLabeling') {
+            continue;
+          }
+
           for (const answer of region.answers) {
             if (answer.isCorrect) {
               this.ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
@@ -589,6 +703,21 @@ export class ImageSelectorComponent {
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
           }
+        }
+      }
+
+      // 🟧 **DragDropLabeling drop-zone'larını turuncu çiz**
+      for (const region of this.regions()) {
+        if (this.getInteractionType(region.name) !== 'dragDropLabeling') {
+          continue;
+        }
+
+        const plan = this.buildInteractionPlan(region.name);
+        const dropZones = plan?.dropZones ?? [];
+        for (const z of dropZones) {
+          this.ctx.strokeStyle = 'orange';
+          this.ctx.lineWidth = 2;
+          this.ctx.strokeRect(region.x + z.x, region.y + z.y, z.width, z.height);
         }
       }
     }
@@ -659,7 +788,9 @@ export class ImageSelectorComponent {
       // }
       if (hit.type === 'question') {
         this.selectedQuestionIndex = hit.value.questionIndex;
-        this.selectionMode.set('answer');
+        const regionName = this.regions()[this.selectedQuestionIndex]?.name;
+        const interactionType = regionName ? this.getInteractionType(regionName) : 'mcq';
+        this.selectionMode.set(interactionType === 'dragDropLabeling' ? 'dropzone' : 'answer');
       }
     } else {
       // bir hit yoksa cevap giremesin. Cevap girmen için hit olmalı ve question olmalı
@@ -779,6 +910,35 @@ export class ImageSelectorComponent {
         }
         // this.toggleSelectionMode('question');
       }
+    } else if (this.selectionMode() === 'dropzone' && this.selectedQuestionIndex !== -1) {
+      const region = this.regions()[this.selectedQuestionIndex];
+      const minW = 10;
+      const minH = 10;
+      if (minW > Math.abs(width) || minH > Math.abs(height)) {
+        this.isDrawing = false;
+        this.drawImage();
+        return;
+      }
+
+      // normalize width/height to positive
+      const absX1 = Math.min(this.startX, endX);
+      const absY1 = Math.min(this.startY, endY);
+      const absX2 = Math.max(this.startX, endX);
+      const absY2 = Math.max(this.startY, endY);
+      const absW = absX2 - absX1;
+      const absH = absY2 - absY1;
+
+      // must be inside question region
+      const within =
+        absX1 >= region.x && absY1 >= region.y && absX2 <= region.x + region.width && absY2 <= region.y + region.height;
+
+      if (!within) {
+        this.snackBar.open('Drop zone soru alanının içinde olmalı.', 'Tamam', { duration: 2000 });
+      } else {
+        const relX = absX1 - region.x;
+        const relY = absY1 - region.y;
+        this.addDropZone(region.name, relX, relY, absW, absH);
+      }
     }
 
     this.isDrawing = false;
@@ -787,7 +947,7 @@ export class ImageSelectorComponent {
     console.log('Exited  EndSelection. IsDrawing :', this.isDrawing);
   }
 
-  toggleSelectionMode(mode: 'question' | 'answer' | 'passage' | null) {
+  toggleSelectionMode(mode: 'question' | 'answer' | 'passage' | 'dropzone' | null) {
     if (this.selectionModeLocked()) {
       this.selectionMode.set(this.selectionModeLocked());
       return;
@@ -800,9 +960,181 @@ export class ImageSelectorComponent {
     }
   }
 
+  // -------- Interaction authoring helpers --------
+  public getInteractionType(regionName: string): QuestionInteractionType {
+    return this.interactionTypes.get(regionName) ?? 'mcq';
+  }
+
+  public onInteractionTypeChange(event: Event, regionName: string) {
+    const select = event.target as HTMLSelectElement;
+    const type = (select.value as QuestionInteractionType) || 'mcq';
+    this.interactionTypes.set(regionName, type);
+
+    if (type === 'dragDropLabeling') {
+      this.ensureLabelingState(regionName);
+    }
+
+    this.drawImage();
+  }
+
+  public selectDropZoneMode(questionIndex: number) {
+    if (questionIndex < 0 || questionIndex >= this.regions().length) {
+      return;
+    }
+    this.selectedQuestionIndex = questionIndex;
+    const regionName = this.regions()[questionIndex].name;
+    this.interactionTypes.set(regionName, 'dragDropLabeling');
+    this.ensureLabelingState(regionName);
+    this.selectionMode.set('dropzone');
+    this.drawImage();
+  }
+
+  public selectAnswerMode(questionIndex: number) {
+    if (questionIndex < 0 || questionIndex >= this.regions().length) {
+      return;
+    }
+    this.selectedQuestionIndex = questionIndex;
+    const regionName = this.regions()[questionIndex].name;
+    this.interactionTypes.set(regionName, 'mcq');
+    this.selectionMode.set('answer');
+    this.drawImage();
+  }
+
+  private ensureLabelingState(regionName: string): DragDropLabelingAuthoringState {
+    const existing = this.labelingState.get(regionName);
+    if (existing) return existing;
+    const created: DragDropLabelingAuthoringState = {
+      labelCount: 4,
+      dropZones: [],
+      draggables: [],
+      placements: [],
+    };
+    this.labelingState.set(regionName, created);
+    return created;
+  }
+
+  public getLabelCount(regionName: string): number {
+    return this.ensureLabelingState(regionName).labelCount;
+  }
+
+  public setLabelCount(regionName: string, rawValue: string) {
+    const parsed = Number(rawValue);
+    const next = Number.isFinite(parsed) ? Math.max(1, Math.min(30, Math.floor(parsed))) : 4;
+    const state = this.ensureLabelingState(regionName);
+    state.labelCount = next;
+    this.labelingState.set(regionName, { ...state });
+  }
+
+  public generateDraggables(regionName: string) {
+    const state = this.ensureLabelingState(regionName);
+    state.draggables = Array.from({ length: state.labelCount }, (_, i) => {
+      const idx = i + 1;
+      return { id: `d${idx}`, label: `${idx}` };
+    });
+
+    // Keep placements only for existing draggables
+    const draggableIds = new Set(state.draggables.map((d) => d.id));
+    state.placements = state.placements.filter((p) => draggableIds.has(p.draggableId));
+    this.labelingState.set(regionName, { ...state });
+    this.drawImage();
+  }
+
+  public getDropZones(regionName: string) {
+    return this.ensureLabelingState(regionName).dropZones;
+  }
+
+  public getDraggables(regionName: string) {
+    return this.ensureLabelingState(regionName).draggables;
+  }
+
+  public setZoneSolution(regionName: string, dropZoneId: string, draggableId: string) {
+    const state = this.ensureLabelingState(regionName);
+
+    // remove old assignment for this zone
+    state.placements = state.placements.filter((p) => p.dropZoneId !== dropZoneId);
+
+    if (draggableId && draggableId !== '0') {
+      // ensure draggable is not used elsewhere (unique)
+      state.placements = state.placements.filter((p) => p.draggableId !== draggableId);
+      state.placements.push({ dropZoneId, draggableId });
+    }
+
+    this.labelingState.set(regionName, { ...state });
+  }
+
+  public getZoneAssignedDraggable(regionName: string, dropZoneId: string): string {
+    const state = this.ensureLabelingState(regionName);
+    return state.placements.find((p) => p.dropZoneId === dropZoneId)?.draggableId ?? '0';
+  }
+
+  private addDropZone(regionName: string, x: number, y: number, width: number, height: number) {
+    const state = this.ensureLabelingState(regionName);
+    const nextId = `z${state.dropZones.length + 1}`;
+    state.dropZones.push({ id: nextId, x, y, width, height });
+    this.labelingState.set(regionName, { ...state });
+  }
+
+  public removeLastDropZone(regionName: string) {
+    const state = this.ensureLabelingState(regionName);
+    const removed = state.dropZones.pop();
+    if (!removed) {
+      return;
+    }
+
+    state.placements = state.placements.filter((p) => p.dropZoneId !== removed.id);
+    this.labelingState.set(regionName, { ...state });
+    this.drawImage();
+  }
+
+  public clearDropZones(regionName: string) {
+    const state = this.ensureLabelingState(regionName);
+    state.dropZones = [];
+    state.placements = [];
+    this.labelingState.set(regionName, { ...state });
+    this.drawImage();
+  }
+
+  public autoAssignSolutionSequential(regionName: string) {
+    const state = this.ensureLabelingState(regionName);
+    if (!state.dropZones.length || !state.draggables.length) {
+      return;
+    }
+
+    const placements: Array<{ draggableId: string; dropZoneId: string }> = [];
+    const count = Math.min(state.dropZones.length, state.draggables.length);
+    for (let i = 0; i < count; i++) {
+      placements.push({ dropZoneId: state.dropZones[i].id, draggableId: state.draggables[i].id });
+    }
+
+    state.placements = placements;
+    this.labelingState.set(regionName, { ...state });
+  }
+
+  private buildInteractionPlan(regionName: string): DragDropLabelingPlanV1 | null {
+    if (this.getInteractionType(regionName) !== 'dragDropLabeling') return null;
+    const state = this.ensureLabelingState(regionName);
+    return {
+      version: 1,
+      type: 'dragDropLabeling',
+      dropZones: state.dropZones,
+      draggables: state.draggables,
+      solution: {
+        placements: state.placements,
+      },
+    };
+  }
+
+  private buildInteractionPlanJson(regionName: string): string | null {
+    const plan = this.buildInteractionPlan(regionName);
+    if (!plan) return null;
+    return JSON.stringify(plan);
+  }
+
   selectQuestion(index: number) {
     this.selectedQuestionIndex = index;
-    this.toggleSelectionMode('answer');
+    const regionName = this.regions()[index]?.name;
+    const interactionType = regionName ? this.getInteractionType(regionName) : 'mcq';
+    this.toggleSelectionMode(interactionType === 'dragDropLabeling' ? 'dropzone' : 'answer');
   }
 
   selectQuestionByName(name: string) {
@@ -828,10 +1160,18 @@ export class ImageSelectorComponent {
     const imageData = { image_base64: this.imageData() };
     const regionData = { question: this.regions() };
     const answerCount = this.answerCount();
+
+    // dragDropLabeling questions are not MCQ and should not be sent to the
+    // fix/training endpoint that expects answers + correct answer.
+    const mcqQuestions = regionData.question.filter((q: any) => this.getInteractionType(q.name) !== 'dragDropLabeling');
+    if (mcqQuestions.length === 0) {
+      return;
+    }
+
     var data = {
       answerCount: answerCount,
       imageData: imageData,
-      questions: regionData.question.map((q: any) => ({
+      questions: mcqQuestions.map((q: any) => ({
         x: q.x,
         y: q.y,
         width: q.width,
@@ -862,9 +1202,14 @@ export class ImageSelectorComponent {
   public sendToFixForAnswer() {
     const imageData = { image_base64: this.imageData() };
     const regionData = { question: this.regions() };
+
+    const firstMcq = regionData.question.find((q: any) => this.getInteractionType(q.name) !== 'dragDropLabeling');
+    if (!firstMcq) {
+      return;
+    }
     var data = {
       imageData: imageData,
-      questions: regionData.question[0].answers.map((q: any) => ({
+      questions: firstMcq.answers.map((q: any) => ({
         x: q.x,
         y: q.y,
         width: q.width,
@@ -1041,6 +1386,8 @@ export class ImageSelectorComponent {
         ...region,
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,
+        interactionType: this.getInteractionType(region.name),
+        interactionPlan: this.buildInteractionPlanJson(region.name),
       })),
       header: header,
     };
@@ -1061,6 +1408,8 @@ export class ImageSelectorComponent {
         ...region,
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,
+        interactionType: this.getInteractionType(region.name),
+        interactionPlan: this.buildInteractionPlanJson(region.name),
       })),
       header: header,
     };
@@ -1074,6 +1423,8 @@ export class ImageSelectorComponent {
     this.exampleAnswers.clear();
     this.exampleFlags.clear();
     this.selectedPassageMap.clear();
+    this.interactionTypes.clear();
+    this.labelingState.clear();
     this.warningMarkers = [];
     this.selectedQuestionIndex = -1;
     this.selectedAnswer = -1;
@@ -1189,6 +1540,8 @@ export class ImageSelectorComponent {
     this.exampleAnswers.delete(regionName);
     this.exampleFlags.delete(regionName);
     this.selectedPassageMap.delete(regionName);
+    this.interactionTypes.delete(regionName);
+    this.labelingState.delete(regionName);
     this.warningMarkers = this.warningMarkers.filter((w) => w.id !== this.regions()[questionIndex].id);
     this.regions.set(this.regions().filter((_, index) => index !== questionIndex));
 

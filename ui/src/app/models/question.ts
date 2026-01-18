@@ -30,6 +30,8 @@ export interface Question {
   correctAnswer?: Answer;
   answerColCount: number;
   layoutPlan?: string;
+  interactionType?: string;
+  interactionPlan?: string;
   x: number;
   y: number;
   width: number;

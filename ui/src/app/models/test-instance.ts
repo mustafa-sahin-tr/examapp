@@ -21,6 +21,7 @@ export interface TestInstanceQuestion {
   question: Question;
   order: number;
   selectedAnswerId: number;
+  answerPayload?: string;
   timeTaken: number;
 }
 export interface TestInstance {

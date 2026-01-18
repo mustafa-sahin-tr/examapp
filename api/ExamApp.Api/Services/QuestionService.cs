@@ -46,6 +46,8 @@ public class QuestionService : IQuestionService
                 Y = q.Y,
                 Width = q.Width,
                 Height = q.Height,
+                InteractionType = q.InteractionType,
+                InteractionPlan = q.InteractionPlan,
                 Answers = q.Answers.Select(a => new AnswerDto
                 {
                     Id = a.Id,
@@ -136,6 +138,8 @@ public class QuestionService : IQuestionService
                 Y = tq.Question.Y,
                 Width = tq.Question.Width,
                 Height = tq.Question.Height,
+                InteractionType = tq.Question.InteractionType,
+                InteractionPlan = tq.Question.InteractionPlan,
                 Answers = tq.Question.Answers.Select(a => new AnswerDto
                 {
                     Id = a.Id,
@@ -208,6 +212,8 @@ public class QuestionService : IQuestionService
                 // question.SubjectId = questionDto.SubjectId;
                 // question.TopicId = questionDto.TopicId;
                 question.AnswerColCount = questionDto.AnswerColCount;
+                question.InteractionType = questionDto.InteractionType;
+                question.InteractionPlan = questionDto.InteractionPlan;
                 if (!string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
                     questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase))
                 {
@@ -545,6 +551,10 @@ public class QuestionService : IQuestionService
                     var questionFolderId = Guid.NewGuid().ToString();
                     var questionFolderPath = $"questions/{questionFolderId}";
 
+                    var interactionType = string.IsNullOrWhiteSpace(questionDto.InteractionType)
+                        ? "mcq"
+                        : questionDto.InteractionType.Trim();
+
                     byte[]? croppedQuestionImage = null;
                     string questionImageUrl = string.Empty;
 
@@ -572,7 +582,9 @@ public class QuestionService : IQuestionService
                         }
 
                         questionV2Image = croppedQuestionImage;
-                        if (answerInfos.Any())
+                        // For MCQ we trim question-v2 above the answer block to improve UI.
+                        // For dragDropLabeling, drop zones are inside the question image, so we must keep full height.
+                        if (!interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase) && answerInfos.Any())
                         {
                             var topAnswerRelativeY = answerInfos.Min(a => a.RelativeY);
                             var sanitizedHeight = (int)Math.Round(topAnswerRelativeY);
@@ -672,6 +684,10 @@ public class QuestionService : IQuestionService
                         IsExample = questionDto.IsExample,
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,
+                        InteractionType = interactionType,
+                        InteractionPlan = string.IsNullOrWhiteSpace(questionDto.InteractionPlan)
+                            ? null
+                            : questionDto.InteractionPlan,
                         SubjectId = soruDto.Header.SubjectId,
                         TopicId = soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,
@@ -703,9 +719,12 @@ public class QuestionService : IQuestionService
                             IsCanvasQuestion = true
                         }).ToList();
 
-                        var correctLabel = sourceAnswers.FirstOrDefault(a => a.IsCorrect)?.Label;
+                        var isLabeling = interactionType.Equals("dragDropLabeling", StringComparison.OrdinalIgnoreCase);
+                        var correctLabel = isLabeling
+                            ? null
+                            : sourceAnswers.FirstOrDefault(a => a.IsCorrect)?.Label;
 
-                        if (correctLabel == null)
+                        if (!isLabeling && correctLabel == null)
                         {
                             throw new InvalidOperationException("Doğru cevap belirtilmemiş." + questionDto.Name);
                         }
@@ -731,8 +750,11 @@ public class QuestionService : IQuestionService
                             await _context.SaveChangesAsync();
                         }
 
-                        question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
-                        await _context.SaveChangesAsync();
+                        if (!isLabeling)
+                        {
+                            question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
+                            await _context.SaveChangesAsync();
+                        }
                     }
 
                     if (soruDto.Header.TestId.HasValue)

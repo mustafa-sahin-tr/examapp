@@ -49,6 +49,12 @@ public class Question : BaseEntity
 
     public string? LayoutPlan { get; set; }
 
+    // Canvas interaction type (e.g. mcq, dragDropLabeling)
+    public string? InteractionType { get; set; }
+
+    // Optional interaction metadata (JSON)
+    public string? InteractionPlan { get; set; }
+
     public double? X { get; set; }
 
     public double? Y { get; set; }

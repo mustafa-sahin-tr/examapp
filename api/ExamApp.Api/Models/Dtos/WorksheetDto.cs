@@ -50,6 +50,7 @@ public class WorksheetInstanceQuestionDto
     public int Order { get; set; }
     public QuestionDto Question { get; set; } = default!;
     public int? SelectedAnswerId { get; set; }
+    public string? AnswerPayload { get; set; }
     public int? TimeTaken { get; set; }
 }
 

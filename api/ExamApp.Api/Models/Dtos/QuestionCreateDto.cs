@@ -26,6 +26,8 @@ public class BulkQuestionDto
     public double Y { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
+    public string? InteractionType { get; set; }
+    public string? InteractionPlan { get; set; }
     public bool IsExample { get; set; } // EF'de `IsExample`
     public string? ExampleAnswer { get; set; } // EF'de `PracticeCorrectAnswer`
     public List<BulkAnswerDto> Answers { get; set; } = new List<BulkAnswerDto>();

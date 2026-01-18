@@ -21,6 +21,9 @@ public class WorksheetInstanceQuestion : BaseEntity
 
     public int? SelectedAnswerId { get; set; }
 
+    // Non-MCQ answers (e.g. drag-drop) stored as JSON payload
+    public string? AnswerPayload { get; set; }
+
     [ForeignKey("SelectedAnswerId")]
     public Answer SelectedAnswer { get; set; }
 

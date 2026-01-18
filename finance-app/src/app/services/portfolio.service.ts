@@ -335,15 +335,32 @@ export class PortfolioService {
             portfolio.currency
           );
 
+          // Funds için dashboard'da "toplam değer" stopaj sonrası net değer olmalı:
+          // netValue = totalCost + netProfitLoss
+          const type = portfolio.asset?.type;
+          const convertedGrossProfitLoss = convertedCurrentValue - convertedTotalCost;
+          const withholdingRatePercent = Number((portfolio as any).withholdingTaxRatePercent ?? 0);
+          const convertedNetProfitLoss = this.applyWithholdingTax(
+            convertedGrossProfitLoss,
+            type,
+            withholdingRatePercent
+          );
+          const convertedNetValue =
+            type === AssetType.Fund ? convertedTotalCost + convertedNetProfitLoss : convertedCurrentValue;
+
           return {
             ...portfolio,
             convertedCurrentValue,
             convertedTotalCost,
+            convertedNetValue,
           };
         });
 
         // Toplam hesaplamalar
-        const totalValue = convertedPortfolios.reduce((sum, p) => sum + p.convertedCurrentValue, 0);
+        const totalValue = convertedPortfolios.reduce(
+          (sum, p) => sum + (p.convertedNetValue ?? p.convertedCurrentValue),
+          0
+        );
         const totalCost = convertedPortfolios.reduce((sum, p) => sum + p.convertedTotalCost, 0);
         const totalProfitLoss = totalValue - totalCost;
         const totalProfitLossPercentage = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
@@ -375,9 +392,14 @@ export class PortfolioService {
             const convertedProfitLossPercentage =
               type === AssetType.Fund ? convertedNetProfitLossPercentage : convertedGrossProfitLossPercentage;
 
+            const convertedValueAfterTax =
+              type === AssetType.Fund
+                ? portfolio.convertedTotalCost + convertedNetProfitLoss
+                : portfolio.convertedCurrentValue;
+
             const portfolioWithConversion = {
               ...portfolio,
-              currentValue: portfolio.convertedCurrentValue,
+              currentValue: convertedValueAfterTax,
               totalCost: portfolio.convertedTotalCost,
               grossProfitLoss: convertedGrossProfitLoss,
               grossProfitLossPercentage: convertedGrossProfitLossPercentage,

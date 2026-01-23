@@ -65,6 +65,10 @@ export class QuestionCanvasDragDropLabelingComponent {
 
   public imageUrl = computed(() => this._region()?.imageUrl ?? null);
 
+  public passageImageUrl = computed(() => this._region()?.passage?.imageUrl ?? null);
+
+  public passageTitle = computed(() => this._region()?.passage?.title ?? null);
+
   public zones = computed(() => this._plan()?.dropZones ?? []);
 
   // Angular templates don't support inline arrow functions like `.map(z => ...)`.

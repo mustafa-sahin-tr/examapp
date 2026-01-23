@@ -1,6 +1,13 @@
 <div class="qcv4-canvas-root" [ngClass]="layoutClass" [style.flex-direction]="isInlineLayout() ? 'row' : 'column'">
   <div class="qcv4-question-panel" [style.flex]="getPanelFlex('question')">
     <div class="qcv4-question-image-wrapper">
+      <div class="qcv4-passage" *ngIf="passageImageSource() as pUrl">
+        <div class="qcv4-passage__title" *ngIf="_questionRegion().passage?.title">
+          {{ _questionRegion().passage?.title }}
+        </div>
+        <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
+      </div>
+
       <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
     </div>
   </div>

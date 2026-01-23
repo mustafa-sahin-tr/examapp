@@ -188,6 +188,21 @@
           </ng-container>
         </ng-container>
 
+        <!-- Passage için menü -->
+        <ng-container *ngIf="contextMenuType === 'passage'">
+          <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">Passage: {{ selectedPassageId }}</div>
+          <button (click)="handleMenuAction('toggleShowPassageFirst', $event)">
+            <mat-icon style="vertical-align: middle; margin-right: 8px">
+              {{ isPassageFirstEnabledForPassage(selectedPassageId) ? 'visibility_off' : 'view_agenda' }}
+            </mat-icon>
+            {{ isPassageFirstEnabledForPassage(selectedPassageId) ? 'Passage önce çıkmasın' : 'Passage önce çıksın' }}
+          </button>
+          <button (click)="handleMenuAction('removePassage', $event)">
+            <mat-icon style="vertical-align: middle; margin-right: 8px">delete</mat-icon>
+            Passage Sil
+          </button>
+        </ng-container>
+
         <!-- Answer için menü -->
         <ng-container *ngIf="contextMenuType === 'worksheet'">
           <button (click)="handleMenuAction('selectQuestion', $event)">

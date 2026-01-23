@@ -1048,6 +1048,7 @@ public class ExamService : IExamService
                     IsExample = questionEntity.IsExample,
                     InteractionType = questionEntity.InteractionType,
                     InteractionPlan = questionEntity.InteractionPlan,
+                    ShowPassageFirst = questionEntity.ShowPassageFirst,
                     CorrectAnswerId = includeCorrectAnswer ? questionEntity.CorrectAnswerId : null,
                     Passage = questionEntity.PassageId.HasValue ? new PassageDto
                     {

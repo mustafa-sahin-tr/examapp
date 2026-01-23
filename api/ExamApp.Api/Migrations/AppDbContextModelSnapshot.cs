@@ -676,6 +676,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("PracticeCorrectAnswer")
                         .HasColumnType("text");
 
+                    b.Property<bool>("ShowPassageFirst")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("SubText")
                         .HasColumnType("text");
 

@@ -48,6 +48,7 @@ public class QuestionService : IQuestionService
                 Height = q.Height,
                 InteractionType = q.InteractionType,
                 InteractionPlan = q.InteractionPlan,
+                ShowPassageFirst = q.ShowPassageFirst,
                 Answers = q.Answers.Select(a => new AnswerDto
                 {
                     Id = a.Id,
@@ -140,6 +141,7 @@ public class QuestionService : IQuestionService
                 Height = tq.Question.Height,
                 InteractionType = tq.Question.InteractionType,
                 InteractionPlan = tq.Question.InteractionPlan,
+                ShowPassageFirst = tq.Question.ShowPassageFirst,
                 Answers = tq.Question.Answers.Select(a => new AnswerDto
                 {
                     Id = a.Id,
@@ -214,6 +216,7 @@ public class QuestionService : IQuestionService
                 question.AnswerColCount = questionDto.AnswerColCount;
                 question.InteractionType = questionDto.InteractionType;
                 question.InteractionPlan = questionDto.InteractionPlan;
+                question.ShowPassageFirst = questionDto.ShowPassageFirst;
                 if (!string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
                     questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase))
                 {
@@ -688,6 +691,7 @@ public class QuestionService : IQuestionService
                         InteractionPlan = string.IsNullOrWhiteSpace(questionDto.InteractionPlan)
                             ? null
                             : questionDto.InteractionPlan,
+                        ShowPassageFirst = questionDto.ShowPassageFirst,
                         SubjectId = soruDto.Header.SubjectId,
                         TopicId = soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,

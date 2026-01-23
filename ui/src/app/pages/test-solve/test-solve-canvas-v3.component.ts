@@ -35,8 +35,45 @@ import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components
   ],
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
+  private passageOnlyByQuestionIndex = new Map<number, boolean>();
+
   constructor(route: ActivatedRoute, testService: TestService, router: Router, dialog: MatDialog) {
     super(route, testService, router, dialog);
+  }
+
+  public override async loadTest(testId: number) {
+    await super.loadTest(testId);
+    this.initializePassageFirstState();
+  }
+
+  private initializePassageFirstState() {
+    this.passageOnlyByQuestionIndex.clear();
+
+    const questions = this.testInstance?.testInstanceQuestions ?? [];
+    questions.forEach((q, index) => {
+      const hasPassage = !!q.question?.passage;
+      const showPassageFirst = !!q.question?.showPassageFirst;
+      this.passageOnlyByQuestionIndex.set(index, hasPassage && showPassageFirst);
+    });
+  }
+
+  public isPassageFirstActive(questionIndex: number): boolean {
+    const q = this.testInstance?.testInstanceQuestions?.[questionIndex]?.question;
+    return !!q?.showPassageFirst && !!q?.passage;
+  }
+
+  public isShowingPassageOnly(questionIndex: number): boolean {
+    if (!this.isPassageFirstActive(questionIndex)) return false;
+    return this.passageOnlyByQuestionIndex.get(questionIndex) ?? false;
+  }
+
+  public showQuestion(questionIndex: number) {
+    this.passageOnlyByQuestionIndex.set(questionIndex, false);
+  }
+
+  public showPassageOnly(questionIndex: number) {
+    if (!this.isPassageFirstActive(questionIndex)) return;
+    this.passageOnlyByQuestionIndex.set(questionIndex, true);
   }
 
   // Explicitly re-expose on v3 for Angular template type-checking.

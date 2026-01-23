@@ -40,6 +40,9 @@ public class Question : BaseEntity
     [ForeignKey("PassageId")]
     public Passage Passage { get; set; } // 🟢 Navigation Property
 
+    // If true, UI can show passage first, then reveal the question.
+    public bool ShowPassageFirst { get; set; } = false;
+
     public string? PracticeCorrectAnswer { get; set; } // Eğer çalışma testi ise bu alan kullanılacak
     public bool IsExample { get; set; } = false;// Eğer true ise bu soru örnek sorudur ve cevabı otomatik gösterilir.
     public int AnswerColCount { get; set; } = 3;

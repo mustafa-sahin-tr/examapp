@@ -186,6 +186,40 @@
   color: #c05621;
 }
 
+.passage-first-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 0;
+}
+
+.passage-only {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.passage-only__header {
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.passage-only__text {
+  color: rgba(15, 23, 42, 0.75);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.passage-only__image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+}
+
 .progress-label {
   display: flex;
   justify-content: space-between;

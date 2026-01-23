@@ -84,7 +84,9 @@ export class ImageSelectorComponent {
   public answerCount = signal<number>(3);
   public selectionMode = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
-  public passages = signal<{ id: string; x: number; y: number; width: number; height: number }[]>([]);
+  public passages = signal<
+    { id: string; x: number; y: number; width: number; height: number; showPassageFirst?: boolean }[]
+  >([]);
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
   public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
   public regions = signal<QuestionRegion[]>([]);
@@ -102,7 +104,7 @@ export class ImageSelectorComponent {
   private selectionStarted = false;
   private selectedQuestionIndex = -1;
 
-  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' = 'region'; // ✅ Sağ tıklama menüsünün türü
+  contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
   selectedAnswer: number | null = null; // ✅ Seçili cevap indeksi
   selectedDropZoneId: string | null = null;
@@ -128,6 +130,7 @@ export class ImageSelectorComponent {
   contextMenuVisible = false;
   contextMenuX = 0;
   contextMenuY = 0;
+  selectedPassageId: string | null = null;
   warningMarkers: WarningMarker[] = [];
   selectedWarning: WarningMarker | null = null;
   warningMenuVisible = false;
@@ -194,6 +197,18 @@ export class ImageSelectorComponent {
   }
 
   getRegionOrAnswerAtPosition(x: number, y: number): RegionOrAnswerHit {
+    // Passage hit-test first (so passage context menu works even if it overlaps other drawings)
+    for (const passage of this.passages()) {
+      if (x >= passage.x && x <= passage.x + passage.width && y >= passage.y && y <= passage.y + passage.height) {
+        return {
+          type: 'passage',
+          value: {
+            passageId: String(passage.id),
+          },
+        };
+      }
+    }
+
     const regions = this.regions();
 
     for (let qi = 0; qi < regions.length; qi++) {
@@ -269,12 +284,23 @@ export class ImageSelectorComponent {
     this.contextMenuX = event.clientX;
     this.contextMenuY = event.clientY;
 
-    if (!hit) {
+    if (hit === null) {
       this.contextMenuType = 'worksheet';
       this.selectedRegion = null;
       this.selectedAnswer = null;
       this.selectedDropZoneId = null;
       console.log('Exited  onRightClick hit === null. IsDrawing :', this.isDrawing);
+      this.selectedPassageId = null;
+      this.contextMenuVisible = true;
+      return;
+    }
+
+    if (hit.type === 'passage') {
+      this.contextMenuType = 'passage';
+      this.selectedPassageId = hit.value.passageId;
+      this.selectedRegion = null;
+      this.selectedAnswer = null;
+      this.selectedDropZoneId = null;
       this.contextMenuVisible = true;
       return;
     }
@@ -283,14 +309,17 @@ export class ImageSelectorComponent {
       this.contextMenuType = 'answer';
       this.selectedAnswer = hit.value.answerIndex;
       this.selectedRegion = hit.value.questionIndex;
+      this.selectedPassageId = null;
       this.selectedDropZoneId = null;
     } else if (hit.type === 'dropzone') {
       this.contextMenuType = 'dropzone';
       this.selectedRegion = hit.value.questionIndex;
       this.selectedAnswer = null;
       this.selectedDropZoneId = hit.value.dropZoneId;
+      this.selectedPassageId = null;
     } else if (hit.type === 'question') {
       this.contextMenuType = 'region';
+      this.selectedPassageId = null;
       this.selectedRegion = hit.value.questionIndex;
       this.selectedAnswer = null;
       this.selectedDropZoneId = null;
@@ -305,6 +334,7 @@ export class ImageSelectorComponent {
     this.selectedRegion = null; // Seçili bölgeyi sıfırla
     this.selectedAnswer = null; // Seçili cevabı sıfırla
     this.selectedDropZoneId = null;
+    this.selectedPassageId = null;
   }
 
   stopEvent(event?: MouseEvent) {
@@ -339,11 +369,73 @@ export class ImageSelectorComponent {
       this.predict();
     } else if (action === 'selectPassage') {
       this.selectionMode.set('passage');
+    } else if (action === 'removePassage') {
+      if (this.selectedPassageId) {
+        this.removePassageById(this.selectedPassageId);
+      }
+    } else if (action === 'toggleShowPassageFirst') {
+      if (this.selectedPassageId) {
+        this.toggleShowPassageFirstForPassage(this.selectedPassageId);
+      }
     } else if (action === 'removeAll') {
       this.removeAllQuestions();
     }
 
     this.contextMenuVisible = false;
+  }
+
+  private removePassageById(passageId: string) {
+    const normalizedId = String(passageId);
+    // Remove passage region
+    this.passages.set(this.passages().filter((p) => String(p.id) !== normalizedId));
+
+    // Unassign from questions and clear the flag
+    const nextRegions = this.regions().map((r) => {
+      if (String(r.passageId) !== normalizedId) return r;
+
+      // Keep selectedPassageMap consistent
+      this.selectedPassageMap.delete(r.name);
+
+      return {
+        ...r,
+        passageId: '0',
+        showPassageFirst: false,
+      };
+    });
+
+    this.regions.set(nextRegions);
+    this.drawImage();
+  }
+
+  private toggleShowPassageFirstForPassage(passageId: string) {
+    const normalizedId = String(passageId);
+    const passages = this.passages();
+    const target = passages.find((p) => String(p.id) === normalizedId);
+    if (!target) return;
+
+    const currentlyEnabled = !!target.showPassageFirst;
+    const desired = !currentlyEnabled;
+
+    // 1) Persist on passage itself (menu label uses this)
+    this.passages.set(passages.map((p) => (String(p.id) === normalizedId ? { ...p, showPassageFirst: desired } : p)));
+
+    // 2) Propagate to any questions linked to this passage
+    const nextRegions = this.regions().map((r) => {
+      if (String(r.passageId) !== normalizedId) return r;
+      return {
+        ...r,
+        showPassageFirst: desired,
+      };
+    });
+
+    this.regions.set(nextRegions);
+    this.drawImage();
+  }
+
+  public isPassageFirstEnabledForPassage(passageId: string | null): boolean {
+    if (!passageId) return false;
+    const normalizedId = String(passageId);
+    return this.passages().some((p) => String(p.id) === normalizedId && !!p.showPassageFirst);
   }
 
   public ensureDraggables(regionName: string) {
@@ -724,17 +816,26 @@ export class ImageSelectorComponent {
   }
 
   setPassageForQuestion(questionId: string, passageId: string) {
-    this.selectedPassageMap.set(questionId, passageId);
+    const normalizedPassageId = String(passageId);
+    this.selectedPassageMap.set(questionId, normalizedPassageId);
+
+    const passage = this.passages().find((p) => String(p.id) === normalizedPassageId);
+    const inheritedShowPassageFirst = normalizedPassageId !== '0' ? !!passage?.showPassageFirst : false;
 
     // 🔄 Soruların içindeki passageId'yi güncelle
     const updatedRegions = this.regions().map((region) => {
       if (region.name === questionId) {
-        return { ...region, passageId }; // ✅ Yeni passageId ile güncelle
+        return {
+          ...region,
+          passageId: normalizedPassageId, // ✅ Yeni passageId ile güncelle
+          showPassageFirst: inheritedShowPassageFirst,
+        };
       }
       return region;
     });
 
     this.regions.set(updatedRegions); // 📌 Güncellenmiş listeyi kaydet
+    this.drawImage();
   }
 
   onPassageChange(event: Event, questionId: string) {
@@ -850,7 +951,10 @@ export class ImageSelectorComponent {
         return;
       }
       const id = `p${this.passages().length + 1}`;
-      this.passages.set([...this.passages(), { id, x: this.startX, y: this.startY, width, height }]);
+      this.passages.set([
+        ...this.passages(),
+        { id, x: this.startX, y: this.startY, width, height, showPassageFirst: false },
+      ]);
     } else if (this.selectionMode() === 'question') {
       const name = this.generateFirstAvailableName();
       if (questionWidthThreshold > width || questionHeightThreshold > height) {

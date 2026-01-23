@@ -22,6 +22,10 @@ public class QuestionDto
 
     public bool IsCanvasQuestion { get; set; } // Canvas sorusu mu? (Evet/Hayır)
     public PassageDto? Passage { get; set; }
+
+    // If true, the UI may show only the passage first and reveal the question on demand.
+    public bool ShowPassageFirst { get; set; }
+
     public List<AnswerDto> Answers { get; set; } = new();
 
     public int? CorrectAnswerId { get; set; } // Doğru cevap ID'si

@@ -125,26 +125,58 @@
                 >
                   @if (questionData.question.question.isCanvasQuestion) {
                     <div class="canvas-zone canvas-layout--left-image-right-answers" #canvasContainer>
-                      @if ((questionData.question.question.interactionType || 'mcq') === 'dragDropLabeling') {
-                        <app-question-canvas-dragdrop-labeling
-                          class="canvas-stage"
-                          [questionRegion]="questionData.region"
-                          [interactionPlanJson]="questionData.question.question.interactionPlan || null"
-                          [answerPayloadJson]="questionData.question.answerPayload || null"
-                          [practiceFeedback]="questionData.question.question.isExample"
-                          (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
-                          (answered)="focusOnQuestion(questionData.index)"
-                        ></app-question-canvas-dragdrop-labeling>
+                      @if (isPassageFirstActive(questionData.index)) {
+                        <div class="passage-first-toolbar">
+                          @if (isShowingPassageOnly(questionData.index)) {
+                            <button mat-stroked-button color="primary" (click)="showQuestion(questionData.index)">
+                              <mat-icon>help_outline</mat-icon>
+                              Soruyu Göster
+                            </button>
+                          } @else {
+                            <button mat-stroked-button (click)="showPassageOnly(questionData.index)">
+                              <mat-icon>assignment</mat-icon>
+                              Pasaja Dön
+                            </button>
+                          }
+                        </div>
+                      }
+
+                      @if (isShowingPassageOnly(questionData.index)) {
+                        <div class="passage-only">
+                          <div class="passage-only__header">{{ getPassageTitle(questionData.index) }}</div>
+                          @if (getPassageText(questionData.index)) {
+                            <div class="passage-only__text">{{ getPassageText(questionData.index) }}</div>
+                          }
+                          @if (getPassageImage(questionData.index)) {
+                            <img
+                              class="passage-only__image"
+                              [src]="getPassageImage(questionData.index)"
+                              alt="Passage"
+                            />
+                          }
+                        </div>
                       } @else {
-                        <app-question-canvas-view-v5
-                          #canvasView
-                          class="canvas-stage"
-                          [questionRegion]="questionData.region"
-                          [selectedChoice]="selectedChoices().get(questionData.region.id)"
-                          (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
-                          (answerOpened)="openAnswer($event)"
-                          [correctAnswerVisible]="correctAnswerVisible"
-                        ></app-question-canvas-view-v5>
+                        @if ((questionData.question.question.interactionType || 'mcq') === 'dragDropLabeling') {
+                          <app-question-canvas-dragdrop-labeling
+                            class="canvas-stage"
+                            [questionRegion]="questionData.region"
+                            [interactionPlanJson]="questionData.question.question.interactionPlan || null"
+                            [answerPayloadJson]="questionData.question.answerPayload || null"
+                            [practiceFeedback]="questionData.question.question.isExample"
+                            (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
+                            (answered)="focusOnQuestion(questionData.index)"
+                          ></app-question-canvas-dragdrop-labeling>
+                        } @else {
+                          <app-question-canvas-view-v5
+                            #canvasView
+                            class="canvas-stage"
+                            [questionRegion]="questionData.region"
+                            [selectedChoice]="selectedChoices().get(questionData.region.id)"
+                            (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
+                            (answerOpened)="openAnswer($event)"
+                            [correctAnswerVisible]="correctAnswerVisible"
+                          ></app-question-canvas-view-v5>
+                        }
                       }
                     </div>
                     <!-- <div class="canvas-controls">

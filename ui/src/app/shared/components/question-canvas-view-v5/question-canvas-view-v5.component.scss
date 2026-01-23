@@ -56,8 +56,37 @@
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
+}
+
+.qcv4-passage {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.qcv4-passage__title {
+  width: 100%;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.85);
+  text-align: left;
+}
+
+.qcv4-passage__image {
+  max-width: 100%;
+  max-height: 35vh;
+  object-fit: contain;
+  display: block;
 }
 
 .qcv4-question-image {

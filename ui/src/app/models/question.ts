@@ -22,6 +22,7 @@ export interface Question {
   category: Subject;
   answers: Answer[];
   passage?: Passage;
+  showPassageFirst?: boolean;
   practiceCorrectAnswer?: string;
   isExample: boolean;
   subjectId: number;

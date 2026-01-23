@@ -1,7 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
-import { SafeHtmlPipe } from '../../../services/safehtml';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -23,7 +22,7 @@ const EMPTY_REGION: QuestionRegion = {
 @Component({
   selector: 'app-question-canvas-view-v5',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   templateUrl: './question-canvas-view-v5.component.html',
   styleUrls: ['./question-canvas-view-v5.component.scss'],
 })
@@ -32,6 +31,7 @@ export class QuestionCanvasViewComponentv5 {
     return this._questionRegion().layoutPlan?.layoutClass || '';
   }
   public questionImageSource = signal<string | null>(null);
+  public passageImageSource = signal<string | null>(null);
   public _questionRegion = signal<QuestionRegion>(EMPTY_REGION);
 
   // Sıralı cevaplar getter'ı: order > tag > id
@@ -51,6 +51,9 @@ export class QuestionCanvasViewComponentv5 {
     const transformedQuestionUrl = this.transformQuestionImageUrl(region.imageUrl);
     console.log('Transformed Question URL:', transformedQuestionUrl);
     this.questionImageSource.set(transformedQuestionUrl);
+
+    const passageUrl = region?.passage?.imageUrl ?? null;
+    this.passageImageSource.set(passageUrl && passageUrl.trim().length > 0 ? passageUrl : null);
   }
   @Input() correctAnswerVisible: boolean = false;
   @Input() isPreviewMode: boolean = false;

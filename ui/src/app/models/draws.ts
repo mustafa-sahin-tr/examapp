@@ -33,6 +33,8 @@ export interface QuestionRegion {
   passageId: string;
   answers: AnswerChoice[];
   passage?: PassageRegion;
+  // Optional authoring/solve hint: show passage first, then reveal question.
+  showPassageFirst?: boolean;
   imageId: string;
   imageUrl: string;
   exampleAnswer: string | null | undefined;
@@ -68,5 +70,6 @@ export interface CanvasLayoutPlanOverrides {
 export type RegionOrAnswerHit =
   | { type: 'answer'; value: { questionIndex: number; answerIndex: number } }
   | { type: 'question'; value: { questionIndex: number; answerIndex: null } }
+  | { type: 'passage'; value: { passageId: string } }
   | { type: 'dropzone'; value: { questionIndex: number; dropZoneId: string } }
   | null;

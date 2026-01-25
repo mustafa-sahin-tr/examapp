@@ -67,6 +67,28 @@ export class QuestionCanvasComponent implements OnInit {
   public inProgress = signal<boolean>(false);
   public previewModeText = signal<string>('Önizleme Modu');
   public dropdownVisible = signal<boolean>(false);
+
+  // Used by ImageSelector preview mode to send current classification updates along with correct-answer updates.
+  public previewMetaProvider = () => {
+    const toNullableNumber = (x: any): number | null => {
+      const n = Number(x);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    // Prefer the local form (questionForm) if it has values; fall back to testCreateEnhancedComponent form.
+    const q = this.questionForm?.value as any;
+    const v = this.testCreateEnhancedComponent?.testForm?.value as any;
+
+    const subjectId = toNullableNumber(q?.subjectId) ?? toNullableNumber(v?.subjectId);
+    const topicId = toNullableNumber(q?.topicId) ?? toNullableNumber(v?.topicId);
+    const subtopicId = toNullableNumber(q?.subtopicId) ?? toNullableNumber(v?.subtopicId);
+
+    return {
+      subjectId,
+      topicId,
+      subtopicId,
+    };
+  };
   router = inject(Router);
   route = inject(ActivatedRoute);
   questionService = inject(QuestionService);

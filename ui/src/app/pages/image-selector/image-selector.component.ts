@@ -1,4 +1,14 @@
-import { Component, ElementRef, EventEmitter, HostListener, Output, ViewChild, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  EventEmitter,
+  HostListener,
+  Input,
+  Output,
+  ViewChild,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion, AnswerChoice, RegionOrAnswerHit } from '../../models/draws';
 import { QuestionCanvasForm } from '../../models/question-form';
@@ -68,6 +78,11 @@ interface DragDropLabelingAuthoringState {
   styleUrls: ['./image-selector.component.scss'],
 })
 export class ImageSelectorComponent {
+  @Input() previewMetaProvider?: () => {
+    subjectId?: number | null;
+    topicId?: number | null;
+    subtopicId?: number | null;
+  };
   @ViewChild('canvas', { static: false }) canvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;
   @ViewChild('menuTrigger') menuTrigger!: MatMenuTrigger;
@@ -1552,20 +1567,27 @@ export class ImageSelectorComponent {
       const questionId = region.id;
       const correctAnswerId = region.answers[answerIndex].id;
 
+      const meta = this.previewMetaProvider?.() ?? {};
+      const subjectId = meta.subjectId ?? null;
+      const topicId = meta.topicId ?? null;
+      const subTopicId = meta.subtopicId ?? null;
+
       if (questionId && correctAnswerId) {
-        this.questionService.updateCorrectAnswer(questionId, correctAnswerId, scale).subscribe({
-          next: (response) => {
-            if (response.success) {
-              this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
-            } else {
-              this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
-            }
-          },
-          error: (error) => {
-            console.error('Error updating correct answer:', error);
-            this.snackBar.open('Doğru cevap güncellenirken hata oluştu!', 'Tamam', { duration: 3000 });
-          },
-        });
+        this.questionService
+          .updateCorrectAnswer(questionId, correctAnswerId, scale, subjectId, topicId, subTopicId)
+          .subscribe({
+            next: (response) => {
+              if (response.success) {
+                this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
+              } else {
+                this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
+              }
+            },
+            error: (error) => {
+              console.error('Error updating correct answer:', error);
+              this.snackBar.open('Doğru cevap güncellenirken hata oluştu!', 'Tamam', { duration: 3000 });
+            },
+          });
       }
     }
 

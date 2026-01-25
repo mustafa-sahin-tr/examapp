@@ -93,8 +93,14 @@ public class QuestionsController : BaseController
             return BadRequest(new { message = "Geçersiz doğru cevap ID'si." });
         }
 
-        var response = await _questionService.UpdateCorrectAnswer(questionId, request.CorrectAnswerId);
-        if(request.Scale != 1)
+        var response = await _questionService.UpdateCorrectAnswer(
+            questionId,
+            request.CorrectAnswerId,
+            request.SubjectId,
+            request.TopicId,
+            request.SubTopicId
+        );
+        if (request.Scale != 1)
         {
             response = await _questionService.ResizeQuestionImage(questionId, request.Scale);
         }

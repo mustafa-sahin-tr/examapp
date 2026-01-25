@@ -987,12 +987,13 @@ public class QuestionService : IQuestionService
         }
     }
 
-    public async Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId)
+    public async Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId, int? subjectId = null, int? topicId = null, int? subTopicId = null)
     {
         try
         {
             var question = await _context.Questions
                 .Include(q => q.Answers)
+                .Include(q => q.QuestionSubTopics)
                 .FirstOrDefaultAsync(q => q.Id == questionId);
 
             if (question == null)
@@ -1017,6 +1018,77 @@ public class QuestionService : IQuestionService
 
             // Update the correct answer ID
             question.CorrectAnswerId = correctAnswerId;
+
+            // Optional classification updates
+            if (subjectId != null)
+            {
+                var normalized = subjectId.Value > 0 ? subjectId.Value : (int?)null;
+                if (normalized != null)
+                {
+                    var exists = await _context.Subjects.AnyAsync(s => s.Id == normalized.Value);
+                    if (!exists)
+                    {
+                        return new ResponseBaseDto
+                        {
+                            Success = false,
+                            Message = "Geçersiz ders (subject) ID'si."
+                        };
+                    }
+                }
+                question.SubjectId = normalized;
+            }
+
+            if (topicId != null)
+            {
+                var normalized = topicId.Value > 0 ? topicId.Value : (int?)null;
+                if (normalized != null)
+                {
+                    var exists = await _context.Topics.AnyAsync(t => t.Id == normalized.Value);
+                    if (!exists)
+                    {
+                        return new ResponseBaseDto
+                        {
+                            Success = false,
+                            Message = "Geçersiz konu (topic) ID'si."
+                        };
+                    }
+                }
+                question.TopicId = normalized;
+            }
+
+            if (subTopicId != null)
+            {
+                var normalized = subTopicId.Value > 0 ? subTopicId.Value : (int?)null;
+                if (normalized != null)
+                {
+                    var exists = await _context.SubTopics.AnyAsync(st => st.Id == normalized.Value);
+                    if (!exists)
+                    {
+                        return new ResponseBaseDto
+                        {
+                            Success = false,
+                            Message = "Geçersiz alt konu (subtopic) ID'si."
+                        };
+                    }
+                }
+
+                // Replace existing mappings with the provided single subtopic (or clear if null)
+                if (question.QuestionSubTopics.Count > 0)
+                {
+                    _context.QuestionSubTopics.RemoveRange(question.QuestionSubTopics);
+                    question.QuestionSubTopics.Clear();
+                }
+
+                if (normalized != null)
+                {
+                    question.QuestionSubTopics.Add(new QuestionSubTopic
+                    {
+                        QuestionId = question.Id,
+                        SubTopicId = normalized.Value
+                    });
+                }
+            }
+
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();
 

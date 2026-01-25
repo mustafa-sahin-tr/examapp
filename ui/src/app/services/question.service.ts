@@ -35,8 +35,21 @@ export class QuestionService {
     return this.http.post<any>(`${this.apiUrl}/save`, bulkDto);
   }
 
-  updateCorrectAnswer(questionId: number, correctAnswerId: number, scale: number): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${questionId}/correct-answer`, { correctAnswerId, scale });
+  updateCorrectAnswer(
+    questionId: number,
+    correctAnswerId: number,
+    scale: number,
+    subjectId?: number | null,
+    topicId?: number | null,
+    subTopicId?: number | null
+  ): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${questionId}/correct-answer`, {
+      correctAnswerId,
+      scale,
+      subjectId,
+      topicId,
+      subTopicId,
+    });
   }
 
   removeQuestionFromTest(testId: number, questionId: number): Observable<any> {

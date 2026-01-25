@@ -83,6 +83,14 @@ export class ImageSelectorComponent {
     topicId?: number | null;
     subtopicId?: number | null;
   };
+
+  @Output() previewQuestionChange = new EventEmitter<{
+    index: number;
+    questionId: number;
+    subjectId: number | null;
+    topicId: number | null;
+    subtopicId: number | null;
+  }>();
   @ViewChild('canvas', { static: false }) canvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;
   @ViewChild('menuTrigger') menuTrigger!: MatMenuTrigger;
@@ -191,6 +199,27 @@ export class ImageSelectorComponent {
 
   questionSelected(index: number) {
     this.previewCurrentIndex.set(index);
+    this.emitPreviewQuestionMeta(index);
+  }
+
+  private emitPreviewQuestionMeta(index: number) {
+    const region = this.regions()[index];
+    if (!region) {
+      return;
+    }
+
+    const toNullable = (x: any): number | null => {
+      const n = Number(x);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    this.previewQuestionChange.emit({
+      index,
+      questionId: region.id,
+      subjectId: toNullable(region.subjectId),
+      topicId: toNullable(region.topicId),
+      subtopicId: toNullable(region.subtopicId),
+    });
   }
 
   public togglePreviewMode(testId: number) {
@@ -202,6 +231,7 @@ export class ImageSelectorComponent {
       this.questionService.getAll(testId).subscribe((response) => {
         const regions = this.testService.convertQuestionsToRegions(response);
         this.regions.set(regions);
+        this.emitPreviewQuestionMeta(0);
       });
     } else {
       this.resetRegions();

@@ -123,7 +123,10 @@
         </div>
       </form>
 
-      <app-image-selector [previewMetaProvider]="previewMetaProvider"></app-image-selector>
+      <app-image-selector
+        [previewMetaProvider]="previewMetaProvider"
+        (previewQuestionChange)="onPreviewQuestionChange($event)"
+      ></app-image-selector>
     </div>
   </div>
 </div>

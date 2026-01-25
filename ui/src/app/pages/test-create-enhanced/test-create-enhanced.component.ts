@@ -176,6 +176,54 @@ export class TestCreateEnhancedComponent implements OnInit {
     });
   }
 
+  public syncClassification(subjectId: number | null, topicId: number | null, subtopicId: number | null) {
+    if (!this.testForm) {
+      return;
+    }
+
+    const gradeId = this.testForm.value.gradeId;
+
+    // Normalize to form-friendly values
+    const sId = subjectId && subjectId > 0 ? subjectId : '';
+    const tId = topicId && topicId > 0 ? topicId : '';
+    const stId = subtopicId && subtopicId > 0 ? subtopicId : '';
+
+    // If no subject selected, clear dependent lists + values.
+    if (!sId) {
+      this.topics = [];
+      this.subtopics = [];
+      this.testForm.patchValue({ subjectId: '', topicId: '', subtopicId: '' }, { emitEvent: false });
+      return;
+    }
+
+    // Patch subject immediately; then load topics, and only after that set topic/subtopic.
+    this.testForm.patchValue({ subjectId: sId }, { emitEvent: false });
+
+    if (!gradeId) {
+      // Without grade, we can't fetch topics; still apply values to keep UI state consistent.
+      this.testForm.patchValue({ topicId: tId, subtopicId: stId }, { emitEvent: false });
+      return;
+    }
+
+    this.subjectService.getTopicsBySubjectAndGrade(sId, gradeId).subscribe((topics) => {
+      this.topics = topics;
+
+      // Set topic after list is loaded.
+      this.testForm.patchValue({ topicId: tId }, { emitEvent: false });
+
+      if (!tId) {
+        this.subtopics = [];
+        this.testForm.patchValue({ subtopicId: '' }, { emitEvent: false });
+        return;
+      }
+
+      this.subjectService.getSubTopicsByTopic(tId).subscribe((subtopics) => {
+        this.subtopics = subtopics;
+        this.testForm.patchValue({ subtopicId: stId }, { emitEvent: false });
+      });
+    });
+  }
+
   onImageSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {

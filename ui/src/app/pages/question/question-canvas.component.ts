@@ -213,6 +213,31 @@ export class QuestionCanvasComponent implements OnInit {
     this.imageSelector.toggleOnlyQuestionMode();
   }
 
+  onPreviewQuestionChange(evt: {
+    index: number;
+    questionId: number;
+    subjectId: number | null;
+    topicId: number | null;
+    subtopicId: number | null;
+  }) {
+    const subjectId = evt.subjectId ?? 0;
+    const topicId = evt.topicId ?? 0;
+    const subtopicId = evt.subtopicId ?? 0;
+
+    // Keep local form in sync (used by save flow + previewMetaProvider).
+    this.questionForm.patchValue(
+      {
+        subjectId,
+        topicId,
+        subtopicId,
+      },
+      { emitEvent: false }
+    );
+
+    // Also sync the visible left-side taxonomy selectors.
+    this.testCreateEnhancedComponent?.syncClassification?.(subjectId || null, topicId || null, subtopicId || null);
+  }
+
   handleFilesInput2(event: Event) {
     this.imageSelector.handleFilesInput2(event);
   }

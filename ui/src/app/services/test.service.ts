@@ -25,7 +25,10 @@ import { Question } from '../models/question';
 export class TestService {
   private baseUrl = '/api/exam/worksheet';
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(
+    private http: HttpClient,
+    private router: Router
+  ) {}
 
   getTestWithAnswers(testInstanceId: number): Observable<TestInstance> {
     return this.http.get<TestInstance>(`${this.baseUrl}/test-instance/${testInstanceId}`);
@@ -188,6 +191,8 @@ export class TestService {
     const regions: QuestionRegion[] = qeuestions
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((question, index) => {
+        const firstSubtopicId =
+          (question.subTopics && question.subTopics.length > 0 ? question.subTopics[0]?.id : 0) || 0;
         return {
           id: question.id,
           name: `Soru ${question.order ?? index + 1}`,
@@ -196,6 +201,9 @@ export class TestService {
           width: question.width,
           height: question.height,
           isExample: question.isExample,
+          subjectId: question.subjectId || 0,
+          topicId: question.topicId || 0,
+          subtopicId: firstSubtopicId,
           passageId: question.passage ? question.passage.id.toString() : '',
           imageId: question.imageUrl,
           imageUrl: question.imageUrl,

@@ -31,6 +31,10 @@ export interface QuestionRegion {
   width: number;
   height: number;
   passageId: string;
+  // Optional classification metadata (used to sync preview navigation with UI forms)
+  subjectId?: number;
+  topicId?: number;
+  subtopicId?: number;
   answers: AnswerChoice[];
   passage?: PassageRegion;
   // Optional authoring/solve hint: show passage first, then reveal question.

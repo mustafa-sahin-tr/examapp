@@ -41,6 +41,9 @@ export class QuestionCanvasDragDropLabelingComponent {
   // If true, show immediate feedback (IsExample)
   @Input() practiceFeedback = false;
 
+  // Used by solve 'passage first' mode: when true, passage should not be rendered in the question view.
+  @Input() hidePassage: boolean = false;
+
   // Current answer payload (persisted)
   @Input() set answerPayloadJson(value: string | null | undefined) {
     this._answerPayloadJson.set(value ?? null);

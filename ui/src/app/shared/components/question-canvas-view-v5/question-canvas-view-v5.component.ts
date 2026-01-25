@@ -57,6 +57,7 @@ export class QuestionCanvasViewComponentv5 {
   }
   @Input() correctAnswerVisible: boolean = false;
   @Input() isPreviewMode: boolean = false;
+  @Input() hidePassage: boolean = false;
   @Input() set selectedChoice(choice: AnswerChoice | undefined) {
     this._selectedChoice.set(choice);
   }

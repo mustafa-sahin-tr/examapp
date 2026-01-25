@@ -1,6 +1,6 @@
 <div class="dd-root">
   <div class="dd-canvas">
-    <div class="dd-passage" *ngIf="passageImageUrl() as pUrl">
+    <div class="dd-passage" *ngIf="!hidePassage && passageImageUrl() as pUrl">
       <div class="dd-passage__title" *ngIf="passageTitle() as title">{{ title }}</div>
       <img class="dd-passage__image" [src]="pUrl" alt="Paragraf görseli" />
     </div>

@@ -163,6 +163,7 @@
                             [interactionPlanJson]="questionData.question.question.interactionPlan || null"
                             [answerPayloadJson]="questionData.question.answerPayload || null"
                             [practiceFeedback]="questionData.question.question.isExample"
+                            [hidePassage]="isPassageFirstActive(questionData.index)"
                             (answerPayloadChange)="saveDragDropAnswerForQuestion($event, questionData.index)"
                             (answered)="focusOnQuestion(questionData.index)"
                           ></app-question-canvas-dragdrop-labeling>
@@ -171,6 +172,7 @@
                             #canvasView
                             class="canvas-stage"
                             [questionRegion]="questionData.region"
+                            [hidePassage]="isPassageFirstActive(questionData.index)"
                             [selectedChoice]="selectedChoices().get(questionData.region.id)"
                             (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
                             (answerOpened)="openAnswer($event)"

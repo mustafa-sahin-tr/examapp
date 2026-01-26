@@ -92,6 +92,9 @@ public class AppDbContext : DbContext
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
     public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
 
+    public DbSet<QuestionTransferJob> QuestionTransferJobs { get; set; }
+    public DbSet<QuestionTransferImportMap> QuestionTransferImportMaps { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -222,6 +225,10 @@ public class AppDbContext : DbContext
             .HasOne(qst => qst.SubTopic)
             .WithMany(st => st.QuestionSubTopics)
             .HasForeignKey(qst => qst.SubTopicId);
+
+        modelBuilder.Entity<QuestionTransferImportMap>()
+            .HasIndex(m => new { m.SourceKey, m.ExternalQuestionKey })
+            .IsUnique();
 
         modelBuilder.Entity<WorksheetAssignment>()
             .HasOne(wa => wa.Worksheet)

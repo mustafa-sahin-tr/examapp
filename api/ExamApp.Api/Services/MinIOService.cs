@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 public interface IMinIoService
 {
-    Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null);
+    Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null, string contentType = null);
 
-    Task<Stream> GetFileStreamAsync(string fileUrl);
+    Task<Stream?> GetFileStreamAsync(string fileUrl);
 }
 
 public class MinIoService : IMinIoService
@@ -31,7 +31,7 @@ public class MinIoService : IMinIoService
     }
 
     // write a function to get file from minio
-    public async Task<Stream> GetFileStreamAsync(string fileUrl)
+    public async Task<Stream?> GetFileStreamAsync(string fileUrl)
     {
         try
         {
@@ -79,13 +79,31 @@ public class MinIoService : IMinIoService
         return objectName;
     }
 
-    public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null)
+    public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null, string contentType = null)
     {
         try
         {
             if (string.IsNullOrEmpty(bucketName))
             {
                 bucketName = _bucketName;
+            }
+
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
+                contentType = ext switch
+                {
+                    ".zip" => "application/zip",
+                    ".json" => "application/json",
+                    ".png" => "image/png",
+                    ".webp" => "image/webp",
+                    _ => "image/jpeg",
+                };
+            }
+
+            if (fileStream.CanSeek)
+            {
+                fileStream.Position = 0;
             }
             // Bucket varsa oluşturma, yoksa oluştur
             bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName));
@@ -100,7 +118,7 @@ public class MinIoService : IMinIoService
                 .WithObject(fileName)
                 .WithStreamData(fileStream)
                 .WithObjectSize(fileStream.Length)
-                .WithContentType("image/jpeg"));
+                .WithContentType(contentType));
 
             return $"/img/{bucketName}/{fileName}";
         }

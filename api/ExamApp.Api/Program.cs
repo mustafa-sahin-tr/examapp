@@ -2,6 +2,10 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.QuestionTransfer;
+using Hangfire;
+using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
@@ -23,7 +27,28 @@ var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 
 builder.Services.Configure<KeycloakSettings>(keycloakConfig);
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = "smart";
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddPolicyScheme("smart", "Smart scheme", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+            context.Request.Path.StartsWithSegments("/hangfire")
+                ? "HangfireCookie"
+                : JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddCookie("HangfireCookie", options =>
+    {
+        options.Cookie.Name = "examapp_hangfire";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.Path = "/hangfire";
+        options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+        options.SlidingExpiration = true;
+    })
     .AddJwtBearer(options =>
     {
         options.Authority = keycloakConfig["Authority"]; //  "http://localhost:5678/realms/exam-realm"; // Ocelot üzerinden erişilen Keycloak
@@ -39,7 +64,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                Console.WriteLine($"🔹 Raw token: {context.Request.Headers["Authorization"]}");
+                // Avoid logging raw tokens (security)
+                var hasAuth = !string.IsNullOrWhiteSpace(context.Request.Headers["Authorization"]);
+                if (hasAuth)
+                {
+                    Console.WriteLine("🔹 Authorization header received");
+                }
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
@@ -102,6 +132,29 @@ builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Hangfire (PostgreSQL)
+var hangfireConn = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddHangfire(config =>
+{
+    config
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UsePostgreSqlStorage(hangfireConn, new PostgreSqlStorageOptions
+        {
+            SchemaName = "hangfire"
+        });
+});
+
+builder.Services.AddHangfireServer(options =>
+{
+    options.Queues = new[] { "default", "question-transfer" };
+});
+
+// Question export/import
+builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
+builder.Services.AddScoped<QuestionTransferJobRunner>();
+
 // builder.Services.AddHostedService<OutboxPublisher>();
 // var rabbitConfig = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
 // builder.Services.AddMassTransit(x =>
@@ -149,6 +202,12 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireDashboardAuthFilter() }
+});
+
 app.MapControllers();
 
 app.Run();

@@ -1,7 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
-import { SafeHtmlPipe } from '../../../services/safehtml';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -23,7 +22,7 @@ const EMPTY_REGION: QuestionRegion = {
 @Component({
   selector: 'app-question-canvas-view-v4',
   standalone: true,
-  imports: [CommonModule, SafeHtmlPipe, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule],
   templateUrl: './question-canvas-view-v4.component.html',
   styleUrls: ['./question-canvas-view-v4.component.scss'],
 })

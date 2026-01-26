@@ -60,6 +60,26 @@
       }
     },    
     {
+      "DownstreamPathTemplate": "/hangfire",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "exam-dotnet-api", "Port": 5079 }
+      ],
+      "UpstreamPathTemplate": "/hangfire",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "Priority": 1
+    },
+    {
+      "DownstreamPathTemplate": "/hangfire/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "exam-dotnet-api", "Port": 5079 }
+      ],
+      "UpstreamPathTemplate": "/hangfire/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "Priority": 1
+    },
+    {
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

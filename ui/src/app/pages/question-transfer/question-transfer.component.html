@@ -1,0 +1,75 @@
+<div class="qt-root">
+  <mat-card>
+    <mat-card-title>Soru Export</mat-card-title>
+    <mat-card-content>
+      <div class="qt-row">
+        <mat-form-field appearance="outline" class="qt-field">
+          <mat-label>Source Key</mat-label>
+          <input matInput [formControl]="exportSourceKey" />
+        </mat-form-field>
+      </div>
+
+      <div class="qt-row">
+        <mat-form-field appearance="outline" class="qt-field">
+          <mat-label>Question Ids (örn: 12, 15, 99, 100-200)</mat-label>
+          <textarea matInput rows="3" [formControl]="exportQuestionIds"></textarea>
+        </mat-form-field>
+      </div>
+
+      <button mat-raised-button color="primary" (click)="startExport()" [disabled]="isBusy()">Export Başlat</button>
+
+      <button mat-stroked-button style="margin-left: 12px" (click)="openHangfire()" [disabled]="isBusy()">
+        Hangfire Dashboard
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-title>Soru Import</mat-card-title>
+    <mat-card-content>
+      <div class="qt-row">
+        <mat-form-field appearance="outline" class="qt-field">
+          <mat-label>Source Key</mat-label>
+          <input matInput [formControl]="importSourceKey" />
+        </mat-form-field>
+      </div>
+
+      <div class="qt-row">
+        <input type="file" accept=".zip" (change)="onFileSelected($event)" />
+      </div>
+
+      <button mat-raised-button color="accent" (click)="startImport()" [disabled]="isBusy() || !importFile()">
+        Import Başlat
+      </button>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
+    <mat-card-title>Jobs</mat-card-title>
+    <mat-card-content>
+      @if (jobs().length === 0) {
+        <div>Henüz job yok.</div>
+      }
+
+      @for (job of jobs(); track job.id) {
+        <div class="qt-job">
+          <div class="qt-job-head">
+            <div>
+              <b>{{ job.kind }}</b> · {{ job.status }} · {{ job.sourceKey }}
+            </div>
+            <div>{{ job.processedItems }}/{{ job.totalItems }} ({{ progress(job) }}%)</div>
+          </div>
+
+          <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
+
+          <div class="qt-job-foot">
+            <div class="qt-msg">{{ job.message }}</div>
+            @if (job.kind === 'Export' && job.status === 'Completed') {
+              <button mat-stroked-button (click)="download(job)">İndir</button>
+            }
+          </div>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

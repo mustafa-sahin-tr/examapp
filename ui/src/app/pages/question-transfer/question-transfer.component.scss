@@ -1,0 +1,40 @@
+.qt-root {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+}
+
+.qt-row {
+  display: flex;
+  gap: 12px;
+}
+
+.qt-field {
+  width: 100%;
+}
+
+.qt-job {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 12px;
+}
+
+.qt-job-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.qt-job-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  gap: 12px;
+}
+
+.qt-msg {
+  opacity: 0.75;
+}

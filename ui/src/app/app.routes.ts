@@ -20,6 +20,7 @@ import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-c
 import { StudyPageComponent } from './components/study-page/study-page.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
+import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
 
 export const routes: Routes = [
   {
@@ -60,6 +61,7 @@ export const routes: Routes = [
       { path: 'program-create', component: ProgramCreateComponent },
       { path: 'certificates', component: BadgeThropyComponent }, //
       { path: 'study', component: StudyPageComponent },
+      { path: 'question-transfer', component: QuestionTransferComponent },
     ],
   },
   { path: '**', redirectTo: 'tests' },

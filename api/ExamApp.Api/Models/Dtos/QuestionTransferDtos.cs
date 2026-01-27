@@ -39,3 +39,18 @@ public class QuestionTransferJobDto
     public string? FileUrl { get; set; }
     public string? Message { get; set; }
 }
+
+public class QuestionTransferExportBundleDto
+{
+    public string SourceKey { get; set; } = "default";
+    public int BundleNo { get; set; }
+    public int QuestionCount { get; set; }
+    public string? FileUrl { get; set; }
+}
+
+public class QuestionTransferImportPreviewDto
+{
+    public string SourceKey { get; set; } = "default";
+    public int QuestionCount { get; set; }
+    public int AlreadyImportedCount { get; set; }
+}

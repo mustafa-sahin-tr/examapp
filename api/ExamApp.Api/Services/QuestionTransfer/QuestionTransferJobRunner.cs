@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using Hangfire;
+using Hangfire.Storage;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,8 @@ public class QuestionTransferJobRunner
 {
     private readonly AppDbContext _db;
     private readonly IMinIoService _minio;
+
+    private const int ExportBundleSize = 2000;
 
     public QuestionTransferJobRunner(AppDbContext db, IMinIoService minio)
     {
@@ -37,137 +40,129 @@ public class QuestionTransferJobRunner
                 ? null
                 : JsonSerializer.Deserialize<Models.Dtos.StartQuestionExportDto>(job.RequestJson);
 
-            var questionIds = request?.QuestionIds?.Distinct().ToList() ?? new List<int>();
-            job.TotalItems = questionIds.Count;
+            var sourceKey = string.IsNullOrWhiteSpace(request?.SourceKey) ? "default" : request!.SourceKey!.Trim();
+
+            // Prevent concurrent exports within the same source (append/overwrite safety).
+            using var connection = JobStorage.Current.GetConnection();
+            using var sourceLock = connection.AcquireDistributedLock($"question-transfer-export:{sourceKey}", TimeSpan.FromHours(1));
+
+            var requestedIds = request?.QuestionIds?.Distinct().ToList() ?? new List<int>();
+            requestedIds = requestedIds.Where(x => x > 0).Distinct().ToList();
+
+            // Skip if already exported for this source
+            var alreadyExported = await _db.Set<QuestionTransferExportMap>()
+                .Where(m => m.SourceKey == sourceKey && requestedIds.Contains(m.QuestionId))
+                .Select(m => m.QuestionId)
+                .ToListAsync();
+
+            var alreadySet = alreadyExported.ToHashSet();
+            var newIds = requestedIds.Where(id => !alreadySet.Contains(id)).ToList();
+            var skippedCount = requestedIds.Count - newIds.Count;
+
+            job.TotalItems = newIds.Count;
             job.ProcessedItems = 0;
             await _db.SaveChangesAsync();
 
-            var questions = await _db.Questions
-                .Include(q => q.Answers)
-                .Include(q => q.Subject)
-                .Include(q => q.Topic)
-                    .ThenInclude(t => t.Grade)
-                .Include(q => q.QuestionSubTopics)
-                    .ThenInclude(qst => qst.SubTopic)
-                        .ThenInclude(st => st.Topic)
-                .Include(q => q.Passage)
-                .Where(q => questionIds.Contains(q.Id))
-                .ToListAsync();
-
-            var tmpPath = Path.Combine(Path.GetTempPath(), $"question-export-{jobId}.zip");
-            if (File.Exists(tmpPath))
+            if (newIds.Count == 0)
             {
-                File.Delete(tmpPath);
+                // Still write/update per-source index.json for discoverability.
+                var indexUrl = await WriteSourceIndexAsync(sourceKey);
+                job.FileUrl = indexUrl;
+                job.Status = QuestionTransferJobStatus.Completed;
+                job.Message = $"Completed. Nothing new to export (Skipped {skippedCount} already exported).";
+                await _db.SaveChangesAsync();
+                return;
             }
 
-            await using (var fs = new FileStream(tmpPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
-            using (var zip = new ZipArchive(fs, ZipArchiveMode.Create, leaveOpen: true))
+            // Ensure bundle rows exist and append new questions into bundles of up to ExportBundleSize.
+            var remaining = new Queue<int>(newIds);
+            var touchedBundles = new HashSet<int>();
+
+            while (remaining.Count > 0)
             {
-                var manifest = new
+                var bundle = await GetOrCreateWritableBundleAsync(sourceKey);
+                var existingCount = await _db.Set<QuestionTransferExportMap>()
+                    .CountAsync(m => m.SourceKey == sourceKey && m.BundleNo == bundle.BundleNo);
+
+                // Keep bundle count consistent even if it drifted.
+                if (bundle.QuestionCount != existingCount)
                 {
-                    version = 2,
-                    sourceKey = job.SourceKey,
-                    exportedAtUtc = DateTime.UtcNow,
-                    questions = questions.Select(q => new
-                    {
-                        externalKey = $"question:{q.Id}",
-                        id = q.Id,
-                        text = q.Text,
-                        subText = q.SubText,
-                        imageUrl = q.ImageUrl,
-                        showPassageFirst = q.ShowPassageFirst,
-                        isExample = q.IsExample,
-                        practiceCorrectAnswer = q.PracticeCorrectAnswer,
-                        answerColCount = q.AnswerColCount,
-                        layoutPlan = q.LayoutPlan,
-                        interactionType = q.InteractionType,
-                        interactionPlan = q.InteractionPlan,
-                        x = q.X,
-                        y = q.Y,
-                        width = q.Width,
-                        height = q.Height,
-                        subject = q.SubjectId.HasValue && q.Subject != null
-                            ? new { id = q.SubjectId, name = q.Subject.Name }
-                            : null,
-                        topic = q.TopicId.HasValue && q.Topic != null
-                            ? new { id = q.TopicId, name = q.Topic.Name, gradeId = q.Topic.GradeId, gradeName = q.Topic.Grade?.Name }
-                            : null,
-                        subTopics = q.QuestionSubTopics
-                            .Where(st => st.SubTopic != null)
-                            .Select(st => new
-                            {
-                                id = st.SubTopicId,
-                                name = st.SubTopic.Name,
-                                topicName = st.SubTopic.Topic?.Name,
-                                gradeName = st.SubTopic.Topic?.Grade?.Name,
-                            })
-                            .ToList(),
-                        passage = q.PassageId.HasValue && q.Passage != null
-                            ? new
-                            {
-                                externalKey = $"passage:{q.Passage.Id}",
-                                id = q.PassageId,
-                                title = q.Passage.Title,
-                                text = q.Passage.Text,
-                                imageUrl = q.Passage.ImageUrl,
-                                x = q.Passage.X,
-                                y = q.Passage.Y,
-                                width = q.Passage.Width,
-                                height = q.Passage.Height,
-                            }
-                            : null,
-                        answers = q.Answers.Select(a => new
-                        {
-                            id = a.Id,
-                            text = a.Text,
-                            tag = a.Tag,
-                            order = a.Order,
-                            imageUrl = a.ImageUrl,
-                            isCorrect = q.CorrectAnswerId.HasValue && q.CorrectAnswerId.Value == a.Id,
-                            x = a.X,
-                            y = a.Y,
-                            width = a.Width,
-                            height = a.Height,
-                        }).ToList()
-                    }).ToList()
-                };
-
-                var manifestEntry = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);
-                await using (var entryStream = manifestEntry.Open())
-                {
-                    await JsonSerializer.SerializeAsync(entryStream, manifest);
-                }
-
-                foreach (var q in questions)
-                {
-                    await TryAddFromMinioAsync(zip, q.ImageUrl, $"questions/{q.Id}/question.jpg");
-
-                    var qV2Url = TransformQuestionV2Url(q.ImageUrl);
-                    await TryAddFromMinioAsync(zip, qV2Url, $"questions/{q.Id}/question-v2.jpg");
-
-                    foreach (var a in q.Answers)
-                    {
-                        await TryAddFromMinioAsync(zip, a.ImageUrl, $"questions/{q.Id}/answers/{a.Id}.jpg");
-                    }
-
-                    if (q.Passage != null)
-                    {
-                        await TryAddFromMinioAsync(zip, q.Passage.ImageUrl, $"passages/{q.Passage.Id}.jpg");
-                    }
-
-                    job.ProcessedItems++;
-                    job.Message = $"Exported {job.ProcessedItems}/{job.TotalItems}";
+                    bundle.QuestionCount = existingCount;
+                    bundle.UpdateTime = DateTime.UtcNow;
                     await _db.SaveChangesAsync();
                 }
+
+                var capacity = Math.Max(0, ExportBundleSize - existingCount);
+                if (capacity == 0)
+                {
+                    // Bundle is full; create next.
+                    bundle = await CreateNextBundleAsync(sourceKey);
+                    existingCount = 0;
+                    capacity = ExportBundleSize;
+                }
+
+                var batch = new List<int>(Math.Min(capacity, remaining.Count));
+                while (batch.Count < capacity && remaining.Count > 0)
+                {
+                    batch.Add(remaining.Dequeue());
+                }
+
+                // Append assets for these questions and rewrite manifest.json for the bundle.
+                await AppendQuestionsToBundleAsync(sourceKey, bundle.BundleNo, batch);
+
+                // Persist export mappings after successful upload.
+                foreach (var qid in batch)
+                {
+                    _db.Set<QuestionTransferExportMap>().Add(new QuestionTransferExportMap
+                    {
+                        SourceKey = sourceKey,
+                        QuestionId = qid,
+                        BundleNo = bundle.BundleNo,
+                        CreateTime = DateTime.UtcNow,
+                    });
+                }
+
+                // Unique constraint safety: if any duplicates slipped in, ignore them.
+                try
+                {
+                    await _db.SaveChangesAsync();
+                }
+                catch (DbUpdateException)
+                {
+                    // Best effort: duplicates mean they were exported concurrently or earlier.
+                    foreach (var entry in _db.ChangeTracker.Entries<QuestionTransferExportMap>().ToList())
+                    {
+                        if (entry.State == EntityState.Added)
+                        {
+                            entry.State = EntityState.Detached;
+                        }
+                    }
+                }
+
+                var newCount = await _db.Set<QuestionTransferExportMap>()
+                    .CountAsync(m => m.SourceKey == sourceKey && m.BundleNo == bundle.BundleNo);
+
+                bundle.QuestionCount = newCount;
+                bundle.UpdateTime = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+
+                touchedBundles.Add(bundle.BundleNo);
+
+                job.ProcessedItems = Math.Min(job.TotalItems, job.ProcessedItems + batch.Count);
+                job.Message = $"Export progress {job.ProcessedItems}/{job.TotalItems} (Skipped {skippedCount} already exported)";
+                await _db.SaveChangesAsync();
             }
 
-            await using var uploadStream = new FileStream(tmpPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var exportObjectName = $"question-transfer/exports/{jobId}.zip";
-            var fileUrl = await _minio.UploadFileAsync(uploadStream, exportObjectName, contentType: "application/zip");
+            // Write per-source index + per-bundle map JSON for discoverability.
+            foreach (var bundleNo in touchedBundles.OrderBy(x => x))
+            {
+                await WriteBundleMapAsync(sourceKey, bundleNo);
+            }
+            var finalIndexUrl = await WriteSourceIndexAsync(sourceKey);
 
-            job.FileUrl = fileUrl;
+            job.FileUrl = finalIndexUrl;
             job.Status = QuestionTransferJobStatus.Completed;
-            job.Message = "Completed";
+            job.Message = $"Completed. Exported {newIds.Count}, Skipped {skippedCount}. Bundles updated: {string.Join(",", touchedBundles.OrderBy(x => x).Select(x => x.ToString()))}";
             await _db.SaveChangesAsync();
         }
         catch (Exception ex)
@@ -176,6 +171,298 @@ public class QuestionTransferJobRunner
             job.Message = ex.Message;
             await _db.SaveChangesAsync();
         }
+    }
+
+    private static string BundleObjectName(string sourceKey, int bundleNo)
+        => $"question-transfer/exports/{sourceKey}/bundle-{bundleNo:D4}.zip";
+
+    private static string BundleMapObjectName(string sourceKey, int bundleNo)
+        => $"question-transfer/exports/{sourceKey}/bundle-{bundleNo:D4}.map.json";
+
+    private static string SourceIndexObjectName(string sourceKey)
+        => $"question-transfer/exports/{sourceKey}/index.json";
+
+    private async Task<QuestionTransferExportBundle> GetOrCreateWritableBundleAsync(string sourceKey)
+    {
+        var last = await _db.Set<QuestionTransferExportBundle>()
+            .Where(b => b.SourceKey == sourceKey)
+            .OrderByDescending(b => b.BundleNo)
+            .FirstOrDefaultAsync();
+
+        if (last == null)
+        {
+            return await CreateBundleAsync(sourceKey, 1);
+        }
+
+        if (last.QuestionCount >= ExportBundleSize)
+        {
+            return await CreateBundleAsync(sourceKey, last.BundleNo + 1);
+        }
+
+        return last;
+    }
+
+    private async Task<QuestionTransferExportBundle> CreateNextBundleAsync(string sourceKey)
+    {
+        var lastNo = await _db.Set<QuestionTransferExportBundle>()
+            .Where(b => b.SourceKey == sourceKey)
+            .MaxAsync(b => (int?)b.BundleNo) ?? 0;
+        return await CreateBundleAsync(sourceKey, lastNo + 1);
+    }
+
+    private async Task<QuestionTransferExportBundle> CreateBundleAsync(string sourceKey, int bundleNo)
+    {
+        var bundle = new QuestionTransferExportBundle
+        {
+            SourceKey = sourceKey,
+            BundleNo = bundleNo,
+            QuestionCount = 0,
+            CreateTime = DateTime.UtcNow,
+            UpdateTime = DateTime.UtcNow,
+        };
+
+        _db.Set<QuestionTransferExportBundle>().Add(bundle);
+        await _db.SaveChangesAsync();
+        return bundle;
+    }
+
+    private async Task AppendQuestionsToBundleAsync(string sourceKey, int bundleNo, List<int> questionIdsToAdd)
+    {
+        questionIdsToAdd = questionIdsToAdd.Where(x => x > 0).Distinct().ToList();
+        if (questionIdsToAdd.Count == 0) return;
+
+        var bundle = await _db.Set<QuestionTransferExportBundle>()
+            .FirstOrDefaultAsync(b => b.SourceKey == sourceKey && b.BundleNo == bundleNo)
+            ?? throw new InvalidOperationException("Bundle not found");
+
+        var objectName = BundleObjectName(sourceKey, bundleNo);
+        var tmpPath = Path.Combine(Path.GetTempPath(), $"export-{sourceKey}-bundle-{bundleNo:D4}.zip");
+
+        // Download existing bundle if present
+        if (!string.IsNullOrWhiteSpace(bundle.FileUrl))
+        {
+            await using var existing = await _minio.GetFileStreamAsync(bundle.FileUrl);
+            if (existing != null)
+            {
+                await using var fs = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await existing.CopyToAsync(fs);
+            }
+        }
+        else
+        {
+            if (File.Exists(tmpPath)) File.Delete(tmpPath);
+        }
+
+        var existingIds = await _db.Set<QuestionTransferExportMap>()
+            .Where(m => m.SourceKey == sourceKey && m.BundleNo == bundleNo)
+            .Select(m => m.QuestionId)
+            .ToListAsync();
+
+        var existingSet = existingIds.ToHashSet();
+        var toAdd = questionIdsToAdd.Where(id => !existingSet.Contains(id)).ToList();
+        if (toAdd.Count == 0) return;
+
+        var questionsToAdd = await LoadQuestionsAsync(toAdd);
+
+        // Open zip
+        if (File.Exists(tmpPath))
+        {
+            await using var fs = new FileStream(tmpPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Update, leaveOpen: true);
+
+            foreach (var q in questionsToAdd)
+            {
+                await TryAddFromMinioAsync(zip, q.ImageUrl, $"questions/{q.Id}/question.jpg");
+                var qV2Url = TransformQuestionV2Url(q.ImageUrl);
+                await TryAddFromMinioAsync(zip, qV2Url, $"questions/{q.Id}/question-v2.jpg");
+                foreach (var a in q.Answers)
+                {
+                    await TryAddFromMinioAsync(zip, a.ImageUrl, $"questions/{q.Id}/answers/{a.Id}.jpg");
+                }
+                if (q.Passage != null)
+                {
+                    await TryAddFromMinioAsync(zip, q.Passage.ImageUrl, $"passages/{q.Passage.Id}.jpg");
+                }
+            }
+
+            await RewriteBundleManifestAsync(zip, sourceKey, bundleNo, existingIds.Concat(toAdd).Distinct().ToList(), allowDeleteExisting: true);
+        }
+        else
+        {
+            await using var fs = new FileStream(tmpPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
+            using var zip = new ZipArchive(fs, ZipArchiveMode.Create, leaveOpen: true);
+
+            foreach (var q in questionsToAdd)
+            {
+                await TryAddFromMinioAsync(zip, q.ImageUrl, $"questions/{q.Id}/question.jpg");
+                var qV2Url = TransformQuestionV2Url(q.ImageUrl);
+                await TryAddFromMinioAsync(zip, qV2Url, $"questions/{q.Id}/question-v2.jpg");
+                foreach (var a in q.Answers)
+                {
+                    await TryAddFromMinioAsync(zip, a.ImageUrl, $"questions/{q.Id}/answers/{a.Id}.jpg");
+                }
+                if (q.Passage != null)
+                {
+                    await TryAddFromMinioAsync(zip, q.Passage.ImageUrl, $"passages/{q.Passage.Id}.jpg");
+                }
+            }
+
+            await RewriteBundleManifestAsync(zip, sourceKey, bundleNo, toAdd, allowDeleteExisting: false);
+        }
+
+        // Upload (overwrite) and persist FileUrl
+        await using var uploadStream = new FileStream(tmpPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var fileUrl = await _minio.UploadFileAsync(uploadStream, objectName, contentType: "application/zip");
+        bundle.FileUrl = fileUrl;
+        bundle.UpdateTime = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task RewriteBundleManifestAsync(ZipArchive zip, string sourceKey, int bundleNo, List<int> bundleQuestionIds, bool allowDeleteExisting)
+    {
+        if (allowDeleteExisting)
+        {
+            var existingManifest = zip.GetEntry("manifest.json");
+            existingManifest?.Delete();
+        }
+
+        var questions = await LoadQuestionsAsync(bundleQuestionIds);
+
+        var manifest = new
+        {
+            version = 2,
+            sourceKey = sourceKey,
+            bundleNo = bundleNo,
+            exportedAtUtc = DateTime.UtcNow,
+            questions = questions.Select(q => new
+            {
+                externalKey = $"question:{q.Id}",
+                id = q.Id,
+                text = q.Text,
+                subText = q.SubText,
+                imageUrl = q.ImageUrl,
+                showPassageFirst = q.ShowPassageFirst,
+                isExample = q.IsExample,
+                practiceCorrectAnswer = q.PracticeCorrectAnswer,
+                answerColCount = q.AnswerColCount,
+                layoutPlan = q.LayoutPlan,
+                interactionType = q.InteractionType,
+                interactionPlan = q.InteractionPlan,
+                x = q.X,
+                y = q.Y,
+                width = q.Width,
+                height = q.Height,
+                subject = q.SubjectId.HasValue && q.Subject != null
+                    ? new { id = q.SubjectId, name = q.Subject.Name }
+                    : null,
+                topic = q.TopicId.HasValue && q.Topic != null
+                    ? new { id = q.TopicId, name = q.Topic.Name, gradeId = q.Topic.GradeId, gradeName = q.Topic.Grade?.Name }
+                    : null,
+                subTopics = q.QuestionSubTopics
+                    .Where(st => st.SubTopic != null)
+                    .Select(st => new
+                    {
+                        id = st.SubTopicId,
+                        name = st.SubTopic.Name,
+                        topicName = st.SubTopic.Topic?.Name,
+                        gradeName = st.SubTopic.Topic?.Grade?.Name,
+                    })
+                    .ToList(),
+                passage = q.PassageId.HasValue && q.Passage != null
+                    ? new
+                    {
+                        externalKey = $"passage:{q.Passage.Id}",
+                        id = q.PassageId,
+                        title = q.Passage.Title,
+                        text = q.Passage.Text,
+                        imageUrl = q.Passage.ImageUrl,
+                        x = q.Passage.X,
+                        y = q.Passage.Y,
+                        width = q.Passage.Width,
+                        height = q.Passage.Height,
+                    }
+                    : null,
+                answers = q.Answers.Select(a => new
+                {
+                    id = a.Id,
+                    text = a.Text,
+                    tag = a.Tag,
+                    order = a.Order,
+                    imageUrl = a.ImageUrl,
+                    isCorrect = q.CorrectAnswerId.HasValue && q.CorrectAnswerId.Value == a.Id,
+                    x = a.X,
+                    y = a.Y,
+                    width = a.Width,
+                    height = a.Height,
+                }).ToList()
+            }).ToList()
+        };
+
+        var manifestEntry = zip.CreateEntry("manifest.json", CompressionLevel.Fastest);
+        await using var entryStream = manifestEntry.Open();
+        await JsonSerializer.SerializeAsync(entryStream, manifest);
+    }
+
+    private async Task<List<Question>> LoadQuestionsAsync(List<int> ids)
+    {
+        ids = ids.Where(x => x > 0).Distinct().ToList();
+        if (ids.Count == 0) return new List<Question>();
+
+        return await _db.Questions
+            .Include(q => q.Answers)
+            .Include(q => q.Subject)
+            .Include(q => q.Topic)
+                .ThenInclude(t => t.Grade)
+            .Include(q => q.QuestionSubTopics)
+                .ThenInclude(qst => qst.SubTopic)
+                    .ThenInclude(st => st.Topic)
+            .Include(q => q.Passage)
+            .Where(q => ids.Contains(q.Id))
+            .ToListAsync();
+    }
+
+    private async Task WriteBundleMapAsync(string sourceKey, int bundleNo)
+    {
+        var ids = await _db.Set<QuestionTransferExportMap>()
+            .Where(m => m.SourceKey == sourceKey && m.BundleNo == bundleNo)
+            .OrderBy(m => m.QuestionId)
+            .Select(m => m.QuestionId)
+            .ToListAsync();
+
+        var payload = new
+        {
+            sourceKey = sourceKey,
+            bundleNo = bundleNo,
+            questionIds = ids,
+            updatedAtUtc = DateTime.UtcNow,
+        };
+
+        await using var ms = new MemoryStream();
+        await JsonSerializer.SerializeAsync(ms, payload);
+        ms.Position = 0;
+        await _minio.UploadFileAsync(ms, BundleMapObjectName(sourceKey, bundleNo), contentType: "application/json");
+    }
+
+    private async Task<string> WriteSourceIndexAsync(string sourceKey)
+    {
+        var bundles = await _db.Set<QuestionTransferExportBundle>()
+            .Where(b => b.SourceKey == sourceKey)
+            .OrderBy(b => b.BundleNo)
+            .Select(b => new { b.BundleNo, b.QuestionCount, b.FileUrl })
+            .ToListAsync();
+
+        var payload = new
+        {
+            sourceKey = sourceKey,
+            bundleSize = ExportBundleSize,
+            bundles = bundles,
+            updatedAtUtc = DateTime.UtcNow,
+        };
+
+        await using var ms = new MemoryStream();
+        await JsonSerializer.SerializeAsync(ms, payload);
+        ms.Position = 0;
+        return await _minio.UploadFileAsync(ms, SourceIndexObjectName(sourceKey), contentType: "application/json");
     }
 
     [Queue("question-transfer")]

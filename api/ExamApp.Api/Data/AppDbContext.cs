@@ -95,6 +95,9 @@ public class AppDbContext : DbContext
     public DbSet<QuestionTransferJob> QuestionTransferJobs { get; set; }
     public DbSet<QuestionTransferImportMap> QuestionTransferImportMaps { get; set; }
 
+    public DbSet<QuestionTransferExportBundle> QuestionTransferExportBundles { get; set; }
+    public DbSet<QuestionTransferExportMap> QuestionTransferExportMaps { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -228,6 +231,14 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<QuestionTransferImportMap>()
             .HasIndex(m => new { m.SourceKey, m.ExternalQuestionKey })
+            .IsUnique();
+
+        modelBuilder.Entity<QuestionTransferExportBundle>()
+            .HasIndex(b => new { b.SourceKey, b.BundleNo })
+            .IsUnique();
+
+        modelBuilder.Entity<QuestionTransferExportMap>()
+            .HasIndex(m => new { m.SourceKey, m.QuestionId })
             .IsUnique();
 
         modelBuilder.Entity<WorksheetAssignment>()

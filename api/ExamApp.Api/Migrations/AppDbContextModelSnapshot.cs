@@ -763,6 +763,106 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("QuestionSubTopics");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionTransferExportBundle", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BundleNo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FileUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("QuestionCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceKey", "BundleNo")
+                        .IsUnique();
+
+                    b.ToTable("QuestionTransferExportBundles");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.QuestionTransferExportMap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BundleNo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceKey", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("QuestionTransferExportMaps");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.QuestionTransferImportMap", b =>
                 {
                     b.Property<int>("Id")

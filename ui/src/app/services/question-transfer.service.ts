@@ -13,6 +13,19 @@ export interface QuestionTransferJob {
   message?: string | null;
 }
 
+export interface QuestionTransferExportBundle {
+  sourceKey: string;
+  bundleNo: number;
+  questionCount: number;
+  fileUrl?: string | null;
+}
+
+export interface QuestionTransferImportPreview {
+  sourceKey: string;
+  questionCount: number;
+  alreadyImportedCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class QuestionTransferService {
   private apiUrl = '/api/exam/question-transfer';
@@ -28,9 +41,20 @@ export class QuestionTransferService {
 
   startImport(file: File, sourceKey?: string | null): Observable<QuestionTransferJob> {
     const form = new FormData();
-    form.append('sourceKey', sourceKey ?? 'default');
+    if (sourceKey && sourceKey.trim().length > 0) {
+      form.append('sourceKey', sourceKey.trim());
+    }
     form.append('file', file);
     return this.http.post<QuestionTransferJob>(`${this.apiUrl}/imports`, form);
+  }
+
+  previewImport(file: File, sourceKeyOverride?: string | null): Observable<QuestionTransferImportPreview> {
+    const form = new FormData();
+    if (sourceKeyOverride && sourceKeyOverride.trim().length > 0) {
+      form.append('sourceKey', sourceKeyOverride.trim());
+    }
+    form.append('file', file);
+    return this.http.post<QuestionTransferImportPreview>(`${this.apiUrl}/imports/preview`, form);
   }
 
   listJobs(take = 50): Observable<QuestionTransferJob[]> {
@@ -47,6 +71,43 @@ export class QuestionTransferService {
 
   download(id: string): Observable<HttpResponse<Blob>> {
     return this.http.get(`${this.apiUrl}/jobs/${id}/download`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  listExportBundles(sourceKey: string): Observable<QuestionTransferExportBundle[]> {
+    const sk = (sourceKey ?? 'default').trim() || 'default';
+    return this.http.get<QuestionTransferExportBundle[]>(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles`);
+  }
+
+  downloadBundle(sourceKey: string, bundleNo: number): Observable<HttpResponse<Blob>> {
+    const sk = (sourceKey ?? 'default').trim() || 'default';
+    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles/${bundleNo}/download`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  downloadBundleMap(sourceKey: string, bundleNo: number): Observable<HttpResponse<Blob>> {
+    const sk = (sourceKey ?? 'default').trim() || 'default';
+    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles/${bundleNo}/map`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  downloadSourceIndex(sourceKey: string): Observable<HttpResponse<Blob>> {
+    const sk = (sourceKey ?? 'default').trim() || 'default';
+    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/index`, {
+      observe: 'response',
+      responseType: 'blob',
+    });
+  }
+
+  downloadSourcePackage(sourceKey: string): Observable<HttpResponse<Blob>> {
+    const sk = (sourceKey ?? 'default').trim() || 'default';
+    return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/package`, {
       observe: 'response',
       responseType: 'blob',
     });

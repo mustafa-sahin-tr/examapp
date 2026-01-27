@@ -7,7 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { interval, Subscription, switchMap } from 'rxjs';
-import { QuestionTransferJob, QuestionTransferService } from '../../services/question-transfer.service';
+import {
+  QuestionTransferExportBundle,
+  QuestionTransferImportPreview,
+  QuestionTransferJob,
+  QuestionTransferService,
+} from '../../services/question-transfer.service';
 
 @Component({
   selector: 'app-question-transfer',
@@ -29,25 +34,44 @@ export class QuestionTransferComponent implements OnDestroy {
   public exportSourceKey = new FormControl<string>('default', { nonNullable: true });
   public exportQuestionIds = new FormControl<string>('', { nonNullable: true });
 
-  public importSourceKey = new FormControl<string>('default', { nonNullable: true });
   public importFile = signal<File | null>(null);
+  public importPreview = signal<QuestionTransferImportPreview | null>(null);
+
+  public bundles = signal<QuestionTransferExportBundle[]>([]);
 
   public jobs = signal<QuestionTransferJob[]>([]);
   public isBusy = signal<boolean>(false);
   private pollSub?: Subscription;
+  private sourceKeySub?: Subscription;
 
   constructor(private transfer: QuestionTransferService) {
     this.startPolling();
+    this.refreshBundles();
+
+    this.sourceKeySub = this.exportSourceKey.valueChanges.subscribe(() => {
+      this.refreshBundles();
+    });
   }
 
   ngOnDestroy(): void {
     this.pollSub?.unsubscribe();
+    this.sourceKeySub?.unsubscribe();
   }
 
   onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     const file = input.files?.item(0) ?? null;
     this.importFile.set(file);
+
+    if (!file) {
+      this.importPreview.set(null);
+      return;
+    }
+
+    this.transfer.previewImport(file).subscribe({
+      next: (p) => this.importPreview.set(p),
+      error: () => this.importPreview.set(null),
+    });
   }
 
   startExport() {
@@ -59,6 +83,7 @@ export class QuestionTransferComponent implements OnDestroy {
       next: () => {
         this.isBusy.set(false);
         this.refreshJobs();
+        this.refreshBundles();
       },
       error: () => this.isBusy.set(false),
     });
@@ -69,10 +94,113 @@ export class QuestionTransferComponent implements OnDestroy {
     if (!file) return;
 
     this.isBusy.set(true);
-    this.transfer.startImport(file, this.importSourceKey.value).subscribe({
+    // Do not send sourceKey: backend will infer from manifest.json
+    this.transfer.startImport(file, null).subscribe({
       next: () => {
         this.isBusy.set(false);
         this.refreshJobs();
+      },
+      error: () => this.isBusy.set(false),
+    });
+  }
+
+  refreshBundles() {
+    const sourceKey = this.exportSourceKey.value;
+    this.transfer.listExportBundles(sourceKey).subscribe({
+      next: (b) => this.bundles.set(b ?? []),
+      error: () => this.bundles.set([]),
+    });
+  }
+
+  downloadIndex() {
+    const sourceKey = this.exportSourceKey.value;
+    this.isBusy.set(true);
+    this.transfer.downloadSourceIndex(sourceKey).subscribe({
+      next: (resp) => {
+        const blob = resp.body;
+        if (!blob) {
+          this.isBusy.set(false);
+          return;
+        }
+        const filename = `question-transfer-${(sourceKey ?? 'default').trim() || 'default'}-index.json`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.isBusy.set(false);
+      },
+      error: () => this.isBusy.set(false),
+    });
+  }
+
+  downloadBundle(bundle: QuestionTransferExportBundle) {
+    this.isBusy.set(true);
+    this.transfer.downloadBundle(bundle.sourceKey, bundle.bundleNo).subscribe({
+      next: (resp) => {
+        const blob = resp.body;
+        if (!blob) {
+          this.isBusy.set(false);
+          return;
+        }
+        const filename = `question-transfer-${bundle.sourceKey}-bundle-${String(bundle.bundleNo).padStart(4, '0')}.zip`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.isBusy.set(false);
+      },
+      error: () => this.isBusy.set(false),
+    });
+  }
+
+  downloadBundleMap(bundle: QuestionTransferExportBundle) {
+    this.isBusy.set(true);
+    this.transfer.downloadBundleMap(bundle.sourceKey, bundle.bundleNo).subscribe({
+      next: (resp) => {
+        const blob = resp.body;
+        if (!blob) {
+          this.isBusy.set(false);
+          return;
+        }
+        const filename = `question-transfer-${bundle.sourceKey}-bundle-${String(bundle.bundleNo).padStart(4, '0')}.map.json`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.isBusy.set(false);
+      },
+      error: () => this.isBusy.set(false),
+    });
+  }
+
+  downloadSourcePackage() {
+    const sk = (this.exportSourceKey.value ?? '').trim() || 'default';
+    this.isBusy.set(true);
+    this.transfer.downloadSourcePackage(sk).subscribe({
+      next: (resp) => {
+        const blob = resp.body;
+        if (!blob) {
+          this.isBusy.set(false);
+          return;
+        }
+
+        const contentDisposition = resp.headers.get('content-disposition');
+        const fallbackName = `question-transfer-${sk}-package.zip`;
+        const filename = this.extractFilename(contentDisposition) ?? fallbackName;
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.isBusy.set(false);
       },
       error: () => this.isBusy.set(false),
     });

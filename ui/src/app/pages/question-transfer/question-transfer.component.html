@@ -18,6 +18,10 @@
 
       <button mat-raised-button color="primary" (click)="startExport()" [disabled]="isBusy()">Export Başlat</button>
 
+      <button mat-stroked-button style="margin-left: 12px" (click)="refreshBundles()" [disabled]="isBusy()">
+        Bundle'ları Yenile
+      </button>
+
       <button mat-stroked-button style="margin-left: 12px" (click)="openHangfire()" [disabled]="isBusy()">
         Hangfire Dashboard
       </button>
@@ -25,18 +29,52 @@
   </mat-card>
 
   <mat-card>
+    <button mat-raised-button color="primary" (click)="downloadSourcePackage()">Tek ZIP (package) İndir</button>
+    <mat-card-title>Export Bundles</mat-card-title>
+    <mat-card-content>
+      <div class="qt-row" style="margin-bottom: 8px">
+        <button mat-stroked-button (click)="downloadIndex()" [disabled]="isBusy()">
+          Source Index (index.json) İndir
+        </button>
+      </div>
+
+      @if (bundles().length === 0) {
+        <div>Bu source için henüz bundle yok.</div>
+      }
+
+      @for (b of bundles(); track b.bundleNo) {
+        <div class="qt-job">
+          <div class="qt-job-head">
+            <div>
+              <b>Bundle {{ b.bundleNo }}</b> · {{ b.questionCount }} soru
+            </div>
+            <div>
+              <button mat-stroked-button (click)="downloadBundle(b)" [disabled]="isBusy()">İndir</button>
+              <button mat-stroked-button style="margin-left: 8px" (click)="downloadBundleMap(b)" [disabled]="isBusy()">
+                Map
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card>
     <mat-card-title>Soru Import</mat-card-title>
     <mat-card-content>
       <div class="qt-row">
-        <mat-form-field appearance="outline" class="qt-field">
-          <mat-label>Source Key</mat-label>
-          <input matInput [formControl]="importSourceKey" />
-        </mat-form-field>
-      </div>
-
-      <div class="qt-row">
         <input type="file" accept=".zip" (change)="onFileSelected($event)" />
       </div>
+
+      @if (importPreview()) {
+        <div class="qt-row">
+          <div>
+            <b>Dosya Kaynağı:</b> {{ importPreview()!.sourceKey }} · <b>Soru:</b> {{ importPreview()!.questionCount }} ·
+            <b>Zaten Import Edilmiş:</b> {{ importPreview()!.alreadyImportedCount }}
+          </div>
+        </div>
+      }
 
       <button mat-raised-button color="accent" (click)="startImport()" [disabled]="isBusy() || !importFile()">
         Import Başlat

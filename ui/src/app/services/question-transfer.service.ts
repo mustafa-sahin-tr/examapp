@@ -81,6 +81,10 @@ export class QuestionTransferService {
     return this.http.get<QuestionTransferExportBundle[]>(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles`);
   }
 
+  listSourceKeys(): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiUrl}/exports/sources`);
+  }
+
   downloadBundle(sourceKey: string, bundleNo: number): Observable<HttpResponse<Blob>> {
     const sk = (sourceKey ?? 'default').trim() || 'default';
     return this.http.get(`${this.apiUrl}/exports/${encodeURIComponent(sk)}/bundles/${bundleNo}/download`, {

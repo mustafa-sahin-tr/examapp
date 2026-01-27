@@ -84,6 +84,14 @@ public class QuestionTransferController : ControllerBase
         return Ok(bundles);
     }
 
+    [HttpGet("exports/sources")]
+    [Authorize]
+    public async Task<ActionResult> ListSources(CancellationToken ct)
+    {
+        var sources = await _service.ListSourceKeysAsync(ct);
+        return Ok(sources);
+    }
+
     [HttpGet("exports/{sourceKey}/bundles/{bundleNo:int}/download")]
     [Authorize]
     public async Task<IActionResult> DownloadBundle([FromRoute] string sourceKey, [FromRoute] int bundleNo, CancellationToken ct)

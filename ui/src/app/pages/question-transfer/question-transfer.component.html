@@ -1,109 +1,241 @@
 <div class="qt-root">
-  <mat-card>
-    <mat-card-title>Soru Export</mat-card-title>
-    <mat-card-content>
-      <div class="qt-row">
-        <mat-form-field appearance="outline" class="qt-field">
-          <mat-label>Source Key</mat-label>
-          <input matInput [formControl]="exportSourceKey" />
-        </mat-form-field>
-      </div>
+  <div class="qt-top">
+    <div>
+      <div class="qt-title">Soru Transferi</div>
+      <div class="qt-subtitle"></div>
+    </div>
 
-      <div class="qt-row">
-        <mat-form-field appearance="outline" class="qt-field">
-          <mat-label>Question Ids (örn: 12, 15, 99, 100-200)</mat-label>
-          <textarea matInput rows="3" [formControl]="exportQuestionIds"></textarea>
-        </mat-form-field>
-      </div>
-
-      <button mat-raised-button color="primary" (click)="startExport()" [disabled]="isBusy()">Export Başlat</button>
-
-      <button mat-stroked-button style="margin-left: 12px" (click)="refreshBundles()" [disabled]="isBusy()">
-        Bundle'ları Yenile
+    <div class="qt-actions">
+      <button mat-stroked-button (click)="refreshBundles()" [disabled]="isBusy()" matTooltip="Bundle listesini yeniler">
+        <mat-icon>refresh</mat-icon>
+        Bundle’lar
       </button>
-
-      <button mat-stroked-button style="margin-left: 12px" (click)="openHangfire()" [disabled]="isBusy()">
-        Hangfire Dashboard
+      <button mat-stroked-button (click)="openHangfire()" [disabled]="isBusy()" matTooltip="Hangfire dashboard aç">
+        <mat-icon>launch</mat-icon>
+        Hangfire
       </button>
-    </mat-card-content>
-  </mat-card>
+    </div>
+  </div>
 
-  <mat-card>
-    <button mat-raised-button color="primary" (click)="downloadSourcePackage()">Tek ZIP (package) İndir</button>
-    <mat-card-title>Export Bundles</mat-card-title>
+  <div class="qt-grid2">
+    <mat-card class="qt-card">
+      <mat-card-header>
+        <mat-card-title>Soruları Dışa Aktar</mat-card-title>
+        <!-- <mat-card-subtitle>Kaynağa göre export + bundle rotation</mat-card-subtitle> -->
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="qt-row">
+          <mat-form-field appearance="outline" class="qt-field">
+            <mat-label>Paket Kodu</mat-label>
+            <input matInput [formControl]="exportSourceKey" [matAutocomplete]="sourceKeyAuto" autocomplete="off" />
+            <mat-icon matSuffix>arrow_drop_down</mat-icon>
+          </mat-form-field>
+
+          <mat-autocomplete #sourceKeyAuto="matAutocomplete">
+            @for (sk of filteredSourceKeys(); track sk) {
+              <mat-option [value]="sk">{{ sk }}</mat-option>
+            }
+          </mat-autocomplete>
+        </div>
+
+        <div class="qt-row">
+          <mat-form-field appearance="outline" class="qt-field">
+            <mat-label>Soru Numaraları</mat-label>
+            <textarea
+              matInput
+              rows="4"
+              [formControl]="exportQuestionIds"
+              placeholder="örn: 12, 15, 99, 100-200"
+            ></textarea>
+            <mat-hint align="start">Boş bırakırsan tüm sorular export edilir</mat-hint>
+            <mat-hint align="end">{{ exportAllSelected() ? 'Tümü' : exportIdCount() + ' id' }}</mat-hint>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+
+      <mat-divider></mat-divider>
+
+      <mat-card-actions class="qt-actions" align="end">
+        <button mat-raised-button color="primary" (click)="startExport()" [disabled]="isBusy()">
+          <mat-icon>upload</mat-icon>
+          Export Başlat
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <mat-card class="qt-card">
+      <mat-card-header>
+        <mat-card-title>Soruları İçe Aktar</mat-card-title>
+        <!-- <mat-card-subtitle>manifest.json içinden sourceKey okunur</mat-card-subtitle> -->
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="qt-file-row">
+          <input class="qt-file" type="file" accept=".zip" (change)="onFileSelected($event)" />
+          <div class="qt-muted">{{ importFile()?.name ?? 'Zip seçilmedi' }}</div>
+        </div>
+
+        @if (importPreview()) {
+          <div class="qt-preview">
+            <mat-chip-set>
+              <mat-chip selected color="primary">Source: {{ importPreview()!.sourceKey }}</mat-chip>
+              <mat-chip selected color="accent">Soru: {{ importPreview()!.questionCount }}</mat-chip>
+              <mat-chip selected>Zaten: {{ importPreview()!.alreadyImportedCount }}</mat-chip>
+            </mat-chip-set>
+          </div>
+        }
+      </mat-card-content>
+
+      <mat-divider></mat-divider>
+
+      <mat-card-actions class="qt-actions" align="end">
+        <button mat-raised-button color="accent" (click)="startImport()" [disabled]="isBusy() || !importFile()">
+          <mat-icon>download</mat-icon>
+          Import Başlat
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <mat-card class="qt-card">
+    <mat-card-header>
+      <mat-card-title>Export Bundles</mat-card-title>
+      <mat-card-subtitle>{{ exportSourceKey.value }} için paketler</mat-card-subtitle>
+    </mat-card-header>
+
     <mat-card-content>
-      <div class="qt-row" style="margin-bottom: 8px">
+      <div class="qt-actions qt-bundles-actions">
         <button mat-stroked-button (click)="downloadIndex()" [disabled]="isBusy()">
-          Source Index (index.json) İndir
+          <mat-icon>description</mat-icon>
+          Index (json)
+        </button>
+
+        <button mat-raised-button color="primary" (click)="downloadSourcePackage()" [disabled]="isBusy()">
+          <mat-icon>archive</mat-icon>
+          Tek ZIP (package)
         </button>
       </div>
 
       @if (bundles().length === 0) {
-        <div>Bu source için henüz bundle yok.</div>
+        <div class="qt-empty">Bu source için henüz bundle yok.</div>
       }
 
-      @for (b of bundles(); track b.bundleNo) {
-        <div class="qt-job">
-          <div class="qt-job-head">
+      <div class="qt-bundles">
+        @for (b of bundles(); track b.bundleNo) {
+          <div class="qt-bundle">
             <div>
-              <b>Bundle {{ b.bundleNo }}</b> · {{ b.questionCount }} soru
+              <div class="qt-bundle-title">Bundle {{ b.bundleNo }}</div>
+              <div class="qt-muted">{{ b.questionCount }} soru</div>
             </div>
-            <div>
-              <button mat-stroked-button (click)="downloadBundle(b)" [disabled]="isBusy()">İndir</button>
-              <button mat-stroked-button style="margin-left: 8px" (click)="downloadBundleMap(b)" [disabled]="isBusy()">
+
+            <div class="qt-actions">
+              <button mat-stroked-button (click)="downloadBundle(b)" [disabled]="isBusy()">
+                <mat-icon>download</mat-icon>
+                ZIP
+              </button>
+              <button mat-stroked-button (click)="downloadBundleMap(b)" [disabled]="isBusy()">
+                <mat-icon>map</mat-icon>
                 Map
               </button>
             </div>
           </div>
-        </div>
-      }
+        }
+      </div>
     </mat-card-content>
   </mat-card>
 
-  <mat-card>
-    <mat-card-title>Soru Import</mat-card-title>
+  <mat-card class="qt-card">
+    <mat-card-header>
+      <mat-card-title>Jobs</mat-card-title>
+      <mat-card-subtitle>Son 10 job (otomatik yenilenir)</mat-card-subtitle>
+    </mat-card-header>
+
     <mat-card-content>
-      <div class="qt-row">
-        <input type="file" accept=".zip" (change)="onFileSelected($event)" />
+      <div class="qt-actions qt-bundles-actions">
+        <button mat-stroked-button (click)="refreshJobsNow()" [disabled]="isBusy()">
+          <mat-icon>refresh</mat-icon>
+          Şimdi yenile
+        </button>
       </div>
 
-      @if (importPreview()) {
-        <div class="qt-row">
-          <div>
-            <b>Dosya Kaynağı:</b> {{ importPreview()!.sourceKey }} · <b>Soru:</b> {{ importPreview()!.questionCount }} ·
-            <b>Zaten Import Edilmiş:</b> {{ importPreview()!.alreadyImportedCount }}
-          </div>
-        </div>
-      }
-
-      <button mat-raised-button color="accent" (click)="startImport()" [disabled]="isBusy() || !importFile()">
-        Import Başlat
-      </button>
-    </mat-card-content>
-  </mat-card>
-
-  <mat-card>
-    <mat-card-title>Jobs</mat-card-title>
-    <mat-card-content>
       @if (jobs().length === 0) {
-        <div>Henüz job yok.</div>
-      }
-
-      @for (job of jobs(); track job.id) {
-        <div class="qt-job">
-          <div class="qt-job-head">
-            <div>
-              <b>{{ job.kind }}</b> · {{ job.status }} · {{ job.sourceKey }}
+        <div class="qt-empty">Henüz job yok.</div>
+      } @else {
+        <div class="qt-jobs-grid">
+          <div class="qt-jobs-col">
+            <div class="qt-jobs-col-title">
+              <mat-icon>upload</mat-icon>
+              Export
             </div>
-            <div>{{ job.processedItems }}/{{ job.totalItems }} ({{ progress(job) }}%)</div>
+
+            @if (exportJobs().length === 0) {
+              <div class="qt-empty">Export job yok.</div>
+            }
+
+            @for (job of exportJobs(); track job.id) {
+              <div class="qt-job">
+                <div class="qt-job-head">
+                  <div class="qt-job-left">
+                    <div class="qt-job-title">
+                      <b>{{ job.kind }}</b>
+                      <mat-chip class="qt-chip" [color]="jobChipColor(job)" selected>{{ job.status }}</mat-chip>
+                      <span class="qt-muted">{{ job.sourceKey }}</span>
+                    </div>
+                    <div class="qt-muted qt-msg">{{ job.message }}</div>
+                  </div>
+
+                  <div class="qt-job-right">
+                    <div class="qt-mono">{{ job.processedItems }}/{{ job.totalItems }} · {{ progress(job) }}%</div>
+                    @if (canDownloadJob(job)) {
+                      <button mat-stroked-button (click)="download(job)" [disabled]="isBusy()">
+                        <mat-icon>download</mat-icon>
+                        {{ jobDownloadLabel(job) }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
+              </div>
+            }
           </div>
 
-          <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
+          <div class="qt-jobs-col">
+            <div class="qt-jobs-col-title">
+              <mat-icon>download</mat-icon>
+              Import
+            </div>
 
-          <div class="qt-job-foot">
-            <div class="qt-msg">{{ job.message }}</div>
-            @if (job.kind === 'Export' && job.status === 'Completed') {
-              <button mat-stroked-button (click)="download(job)">İndir</button>
+            @if (importJobs().length === 0) {
+              <div class="qt-empty">Import job yok.</div>
+            }
+
+            @for (job of importJobs(); track job.id) {
+              <div class="qt-job">
+                <div class="qt-job-head">
+                  <div class="qt-job-left">
+                    <div class="qt-job-title">
+                      <b>{{ job.kind }}</b>
+                      <mat-chip class="qt-chip" [color]="jobChipColor(job)" selected>{{ job.status }}</mat-chip>
+                      <span class="qt-muted">{{ job.sourceKey }}</span>
+                    </div>
+                    <div class="qt-muted qt-msg">{{ job.message }}</div>
+                  </div>
+
+                  <div class="qt-job-right">
+                    <div class="qt-mono">{{ job.processedItems }}/{{ job.totalItems }} · {{ progress(job) }}%</div>
+                    @if (canDownloadJob(job)) {
+                      <button mat-stroked-button (click)="download(job)" [disabled]="isBusy()">
+                        <mat-icon>download</mat-icon>
+                        {{ jobDownloadLabel(job) }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <mat-progress-bar mode="determinate" [value]="progress(job)"></mat-progress-bar>
+              </div>
             }
           </div>
         </div>

@@ -3,9 +3,14 @@ import { Component, OnDestroy, signal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { interval, Subscription, switchMap } from 'rxjs';
 import {
   QuestionTransferExportBundle,
@@ -26,13 +31,22 @@ import {
     MatInputModule,
     MatButtonModule,
     MatProgressBarModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatChipsModule,
+    MatDividerModule,
+    MatAutocompleteModule,
   ],
   templateUrl: './question-transfer.component.html',
   styleUrls: ['./question-transfer.component.scss'],
 })
 export class QuestionTransferComponent implements OnDestroy {
+  private readonly sourceKeyStorageKey = 'questionTransfer.sourceKeys';
+
   public exportSourceKey = new FormControl<string>('default', { nonNullable: true });
   public exportQuestionIds = new FormControl<string>('', { nonNullable: true });
+
+  public sourceKeyOptions = signal<string[]>([]);
 
   public importFile = signal<File | null>(null);
   public importPreview = signal<QuestionTransferImportPreview | null>(null);
@@ -48,7 +62,10 @@ export class QuestionTransferComponent implements OnDestroy {
     this.startPolling();
     this.refreshBundles();
 
+    this.loadSourceKeys();
+
     this.sourceKeySub = this.exportSourceKey.valueChanges.subscribe(() => {
+      this.rememberSourceKey(this.exportSourceKey.value);
       this.refreshBundles();
     });
   }
@@ -76,9 +93,9 @@ export class QuestionTransferComponent implements OnDestroy {
 
   startExport() {
     const ids = this.parseIds(this.exportQuestionIds.value);
-    if (!ids.length) return;
 
     this.isBusy.set(true);
+    this.rememberSourceKey(this.exportSourceKey.value);
     this.transfer.startExport(ids, this.exportSourceKey.value).subscribe({
       next: () => {
         this.isBusy.set(false);
@@ -87,6 +104,18 @@ export class QuestionTransferComponent implements OnDestroy {
       },
       error: () => this.isBusy.set(false),
     });
+  }
+
+  exportIdCount(): number {
+    try {
+      return this.parseIds(this.exportQuestionIds.value).length;
+    } catch {
+      return 0;
+    }
+  }
+
+  exportAllSelected(): boolean {
+    return this.exportIdCount() === 0;
   }
 
   startImport() {
@@ -110,6 +139,89 @@ export class QuestionTransferComponent implements OnDestroy {
       next: (b) => this.bundles.set(b ?? []),
       error: () => this.bundles.set([]),
     });
+  }
+
+  filteredSourceKeys(): string[] {
+    const options = this.sourceKeyOptions() ?? [];
+    const q = (this.exportSourceKey.value ?? '').trim().toLowerCase();
+    if (!q) return options;
+    return options.filter((x) => x.toLowerCase().includes(q));
+  }
+
+  private loadSourceKeys() {
+    const fromStorage = this.readSourceKeysFromStorage();
+    if (fromStorage.length) {
+      this.sourceKeyOptions.set(fromStorage);
+    }
+
+    this.transfer.listSourceKeys().subscribe({
+      next: (keys) => {
+        const merged = this.mergeSourceKeys(fromStorage, keys ?? []);
+        this.sourceKeyOptions.set(merged);
+        this.writeSourceKeysToStorage(merged);
+      },
+      error: () => {
+        // keep local options
+      },
+    });
+  }
+
+  private rememberSourceKey(value: string) {
+    const key = (value ?? '').trim();
+    if (!key) return;
+
+    const existing = this.readSourceKeysFromStorage();
+    const merged = this.mergeSourceKeys([key], existing);
+    this.sourceKeyOptions.set(this.mergeSourceKeys(merged, this.sourceKeyOptions()));
+    this.writeSourceKeysToStorage(merged);
+  }
+
+  private mergeSourceKeys(a: string[], b: string[]): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+
+    const push = (x: string) => {
+      const v = (x ?? '').trim();
+      if (!v) return;
+      const k = v.toLowerCase();
+      if (seen.has(k)) return;
+      seen.add(k);
+      result.push(v);
+    };
+
+    (a ?? []).forEach(push);
+    (b ?? []).forEach(push);
+
+    // Keep it reasonably small.
+    return result.slice(0, 50);
+  }
+
+  private readSourceKeysFromStorage(): string[] {
+    try {
+      const raw = window.localStorage.getItem(this.sourceKeyStorageKey);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? parsed
+            .map(String)
+            .map((x) => x.trim())
+            .filter(Boolean)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private writeSourceKeysToStorage(keys: string[]) {
+    try {
+      window.localStorage.setItem(this.sourceKeyStorageKey, JSON.stringify(keys ?? []));
+    } catch {
+      // ignore
+    }
+  }
+
+  refreshJobsNow() {
+    this.refreshJobs();
   }
 
   downloadIndex() {
@@ -245,6 +357,25 @@ export class QuestionTransferComponent implements OnDestroy {
     });
   }
 
+  canDownloadJob(job: QuestionTransferJob): boolean {
+    return !!job?.fileUrl && job.status === 'Completed';
+  }
+
+  jobDownloadLabel(job: QuestionTransferJob): string {
+    const url = (job?.fileUrl ?? '').toLowerCase();
+    if (url.endsWith('.json')) return 'Index';
+    if (url.endsWith('.zip')) return 'ZIP';
+    return 'Dosya';
+  }
+
+  jobChipColor(job: QuestionTransferJob): 'primary' | 'accent' | 'warn' | undefined {
+    const status = (job?.status ?? '').toLowerCase();
+    if (status === 'completed') return 'primary';
+    if (status === 'running') return 'accent';
+    if (status === 'failed') return 'warn';
+    return undefined;
+  }
+
   progress(job: QuestionTransferJob): number {
     if (!job.totalItems) return 0;
     return Math.round((job.processedItems / job.totalItems) * 100);
@@ -252,17 +383,25 @@ export class QuestionTransferComponent implements OnDestroy {
 
   private startPolling() {
     this.refreshJobs();
-    this.pollSub = interval(2500)
-      .pipe(switchMap(() => this.transfer.listJobs(50)))
+    this.pollSub = interval(60_000)
+      .pipe(switchMap(() => this.transfer.listJobs(10)))
       .subscribe({
         next: (jobs) => this.jobs.set(jobs ?? []),
       });
   }
 
   private refreshJobs() {
-    this.transfer.listJobs(50).subscribe({
+    this.transfer.listJobs(10).subscribe({
       next: (jobs) => this.jobs.set(jobs ?? []),
     });
+  }
+
+  exportJobs(): QuestionTransferJob[] {
+    return (this.jobs() ?? []).filter((j) => j.kind === 'Export');
+  }
+
+  importJobs(): QuestionTransferJob[] {
+    return (this.jobs() ?? []).filter((j) => j.kind === 'Import');
   }
 
   private parseIds(value: string): number[] {

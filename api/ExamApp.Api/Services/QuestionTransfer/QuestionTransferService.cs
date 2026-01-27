@@ -21,6 +21,8 @@ public interface IQuestionTransferService
     Task<List<QuestionTransferJobDto>> ListJobsAsync(int take, CancellationToken ct);
     Task<Stream?> GetJobFileStreamAsync(Guid jobId, CancellationToken ct);
 
+    Task<List<string>> ListSourceKeysAsync(CancellationToken ct);
+
     Task<List<QuestionTransferExportBundleDto>> ListExportBundlesAsync(string sourceKey, CancellationToken ct);
     Task<Stream?> GetExportBundleStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
     Task<Stream?> GetExportBundleMapStreamAsync(string sourceKey, int bundleNo, CancellationToken ct);
@@ -50,10 +52,7 @@ public class QuestionTransferService : IQuestionTransferService
 
     public async Task<QuestionTransferJobDto> StartExportAsync(StartQuestionExportDto request, CancellationToken ct)
     {
-        if (request.QuestionIds == null || request.QuestionIds.Count == 0)
-        {
-            throw new ArgumentException("QuestionIds is required.");
-        }
+        // QuestionIds may be empty to indicate "export all".
 
         var job = new QuestionTransferJob
         {
@@ -62,7 +61,7 @@ public class QuestionTransferService : IQuestionTransferService
             Status = QuestionTransferJobStatus.Queued,
             SourceKey = string.IsNullOrWhiteSpace(request.SourceKey) ? "default" : request.SourceKey.Trim(),
             RequestJson = JsonSerializer.Serialize(request),
-            TotalItems = request.QuestionIds.Count,
+            TotalItems = request.QuestionIds?.Count ?? 0,
             ProcessedItems = 0,
             Message = "Queued"
         };
@@ -110,6 +109,29 @@ public class QuestionTransferService : IQuestionTransferService
             .ToListAsync(ct);
 
         return jobs.Select(ToDto).ToList();
+    }
+
+    public async Task<List<string>> ListSourceKeysAsync(CancellationToken ct)
+    {
+        // Sources may exist via bundles or jobs; merge both.
+        var bundleKeys = await _db.Set<QuestionTransferExportBundle>()
+            .Select(b => b.SourceKey)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var jobKeys = await _db.Set<QuestionTransferJob>()
+            .Select(j => j.SourceKey)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return bundleKeys
+            .Concat(jobKeys)
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(k => k)
+            .Take(200)
+            .ToList();
     }
 
     public async Task<Stream?> GetJobFileStreamAsync(Guid jobId, CancellationToken ct)

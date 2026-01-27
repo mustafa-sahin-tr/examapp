@@ -1,7 +1,38 @@
 .qt-root {
   display: grid;
   gap: 16px;
-  padding: 16px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.qt-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.qt-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.qt-subtitle {
+  opacity: 0.7;
+  font-size: 13px;
+}
+
+.qt-grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.qt-card {
+  border-radius: 14px;
 }
 
 .qt-row {
@@ -13,10 +44,88 @@
   width: 100%;
 }
 
+.qt-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.qt-bundles-actions {
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.qt-muted {
+  opacity: 0.7;
+}
+
+.qt-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.qt-file-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.qt-file {
+  max-width: 100%;
+}
+
+.qt-preview {
+  margin-top: 10px;
+}
+
+.qt-empty {
+  opacity: 0.7;
+  padding: 8px 0;
+}
+
+.qt-bundles {
+  display: grid;
+  gap: 10px;
+}
+
+.qt-jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.qt-jobs-col {
+  // display: grid;
+  gap: 10px;
+}
+
+.qt-jobs-col-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.qt-bundle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+}
+
+.qt-bundle-title {
+  font-weight: 600;
+}
+
 .qt-job {
   border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 12px;
+  padding: 12px;
   margin-top: 12px;
 }
 
@@ -25,14 +134,32 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 6px;
+  align-items: flex-start;
+  flex-wrap: wrap;
 }
 
-.qt-job-foot {
+.qt-job-left {
+  display: grid;
+  gap: 6px;
+}
+
+.qt-job-right {
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
   align-items: center;
-  margin-top: 8px;
-  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.qt-job-title {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.qt-chip {
+  height: 22px;
 }
 
 .qt-msg {

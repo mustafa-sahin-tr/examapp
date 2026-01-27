@@ -49,108 +49,151 @@ public class QuestionTransferJobRunner
             var requestedIds = request?.QuestionIds?.Distinct().ToList() ?? new List<int>();
             requestedIds = requestedIds.Where(x => x > 0).Distinct().ToList();
 
-            // Skip if already exported for this source
-            var alreadyExported = await _db.Set<QuestionTransferExportMap>()
-                .Where(m => m.SourceKey == sourceKey && requestedIds.Contains(m.QuestionId))
-                .Select(m => m.QuestionId)
-                .ToListAsync();
-
-            var alreadySet = alreadyExported.ToHashSet();
-            var newIds = requestedIds.Where(id => !alreadySet.Contains(id)).ToList();
-            var skippedCount = requestedIds.Count - newIds.Count;
-
-            job.TotalItems = newIds.Count;
-            job.ProcessedItems = 0;
-            await _db.SaveChangesAsync();
-
-            if (newIds.Count == 0)
+            async Task ProcessNewIdsAsync(List<int> ids, HashSet<int> touched)
             {
-                // Still write/update per-source index.json for discoverability.
-                var indexUrl = await WriteSourceIndexAsync(sourceKey);
-                job.FileUrl = indexUrl;
-                job.Status = QuestionTransferJobStatus.Completed;
-                job.Message = $"Completed. Nothing new to export (Skipped {skippedCount} already exported).";
-                await _db.SaveChangesAsync();
-                return;
-            }
-
-            // Ensure bundle rows exist and append new questions into bundles of up to ExportBundleSize.
-            var remaining = new Queue<int>(newIds);
-            var touchedBundles = new HashSet<int>();
-
-            while (remaining.Count > 0)
-            {
-                var bundle = await GetOrCreateWritableBundleAsync(sourceKey);
-                var existingCount = await _db.Set<QuestionTransferExportMap>()
-                    .CountAsync(m => m.SourceKey == sourceKey && m.BundleNo == bundle.BundleNo);
-
-                // Keep bundle count consistent even if it drifted.
-                if (bundle.QuestionCount != existingCount)
+                var remaining = new Queue<int>(ids);
+                while (remaining.Count > 0)
                 {
-                    bundle.QuestionCount = existingCount;
-                    bundle.UpdateTime = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                    var bundle = await GetOrCreateWritableBundleAsync(sourceKey);
+                    var existingCount = await _db.Set<QuestionTransferExportMap>()
+                        .CountAsync(m => m.SourceKey == sourceKey && m.BundleNo == bundle.BundleNo);
 
-                var capacity = Math.Max(0, ExportBundleSize - existingCount);
-                if (capacity == 0)
-                {
-                    // Bundle is full; create next.
-                    bundle = await CreateNextBundleAsync(sourceKey);
-                    existingCount = 0;
-                    capacity = ExportBundleSize;
-                }
-
-                var batch = new List<int>(Math.Min(capacity, remaining.Count));
-                while (batch.Count < capacity && remaining.Count > 0)
-                {
-                    batch.Add(remaining.Dequeue());
-                }
-
-                // Append assets for these questions and rewrite manifest.json for the bundle.
-                await AppendQuestionsToBundleAsync(sourceKey, bundle.BundleNo, batch);
-
-                // Persist export mappings after successful upload.
-                foreach (var qid in batch)
-                {
-                    _db.Set<QuestionTransferExportMap>().Add(new QuestionTransferExportMap
+                    // Keep bundle count consistent even if it drifted.
+                    if (bundle.QuestionCount != existingCount)
                     {
-                        SourceKey = sourceKey,
-                        QuestionId = qid,
-                        BundleNo = bundle.BundleNo,
-                        CreateTime = DateTime.UtcNow,
-                    });
-                }
+                        bundle.QuestionCount = existingCount;
+                        bundle.UpdateTime = DateTime.UtcNow;
+                        await _db.SaveChangesAsync();
+                    }
 
-                // Unique constraint safety: if any duplicates slipped in, ignore them.
-                try
-                {
-                    await _db.SaveChangesAsync();
-                }
-                catch (DbUpdateException)
-                {
-                    // Best effort: duplicates mean they were exported concurrently or earlier.
-                    foreach (var entry in _db.ChangeTracker.Entries<QuestionTransferExportMap>().ToList())
+                    var capacity = Math.Max(0, ExportBundleSize - existingCount);
+                    if (capacity == 0)
                     {
-                        if (entry.State == EntityState.Added)
+                        // Bundle is full; create next.
+                        bundle = await CreateNextBundleAsync(sourceKey);
+                        existingCount = 0;
+                        capacity = ExportBundleSize;
+                    }
+
+                    var batch = new List<int>(Math.Min(capacity, remaining.Count));
+                    while (batch.Count < capacity && remaining.Count > 0)
+                    {
+                        batch.Add(remaining.Dequeue());
+                    }
+
+                    await AppendQuestionsToBundleAsync(sourceKey, bundle.BundleNo, batch);
+
+                    foreach (var qid in batch)
+                    {
+                        _db.Set<QuestionTransferExportMap>().Add(new QuestionTransferExportMap
                         {
-                            entry.State = EntityState.Detached;
+                            SourceKey = sourceKey,
+                            QuestionId = qid,
+                            BundleNo = bundle.BundleNo,
+                            CreateTime = DateTime.UtcNow,
+                        });
+                    }
+
+                    try
+                    {
+                        await _db.SaveChangesAsync();
+                    }
+                    catch (DbUpdateException)
+                    {
+                        foreach (var entry in _db.ChangeTracker.Entries<QuestionTransferExportMap>().ToList())
+                        {
+                            if (entry.State == EntityState.Added)
+                            {
+                                entry.State = EntityState.Detached;
+                            }
                         }
                     }
+
+                    var newCount = await _db.Set<QuestionTransferExportMap>()
+                        .CountAsync(m => m.SourceKey == sourceKey && m.BundleNo == bundle.BundleNo);
+
+                    bundle.QuestionCount = newCount;
+                    bundle.UpdateTime = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+
+                    touched.Add(bundle.BundleNo);
+
+                    job.ProcessedItems = Math.Min(job.TotalItems, job.ProcessedItems + batch.Count);
+                    job.Message = $"Export progress {job.ProcessedItems}/{job.TotalItems}";
+                    await _db.SaveChangesAsync();
+                }
+            }
+
+            var touchedBundles = new HashSet<int>();
+            var exportAll = requestedIds.Count == 0;
+            var skippedCount = 0;
+
+            if (!exportAll)
+            {
+                // Skip if already exported for this source
+                var alreadyExported = await _db.Set<QuestionTransferExportMap>()
+                    .Where(m => m.SourceKey == sourceKey && requestedIds.Contains(m.QuestionId))
+                    .Select(m => m.QuestionId)
+                    .ToListAsync();
+
+                var alreadySet = alreadyExported.ToHashSet();
+                var newIds = requestedIds.Where(id => !alreadySet.Contains(id)).ToList();
+                skippedCount = requestedIds.Count - newIds.Count;
+
+                job.TotalItems = newIds.Count;
+                job.ProcessedItems = 0;
+                await _db.SaveChangesAsync();
+
+                if (newIds.Count == 0)
+                {
+                    var indexUrl = await WriteSourceIndexAsync(sourceKey);
+                    job.FileUrl = indexUrl;
+                    job.Status = QuestionTransferJobStatus.Completed;
+                    job.Message = $"Completed. Nothing new to export (Skipped {skippedCount} already exported).";
+                    await _db.SaveChangesAsync();
+                    return;
                 }
 
-                var newCount = await _db.Set<QuestionTransferExportMap>()
-                    .CountAsync(m => m.SourceKey == sourceKey && m.BundleNo == bundle.BundleNo);
+                await ProcessNewIdsAsync(newIds, touchedBundles);
+            }
+            else
+            {
+                // Export ALL questions that were not yet exported for this source.
+                var totalQuestions = await _db.Questions.CountAsync();
+                var totalNew = await _db.Questions
+                    .Where(q => !_db.Set<QuestionTransferExportMap>().Any(m => m.SourceKey == sourceKey && m.QuestionId == q.Id))
+                    .CountAsync();
 
-                bundle.QuestionCount = newCount;
-                bundle.UpdateTime = DateTime.UtcNow;
+                skippedCount = Math.Max(0, totalQuestions - totalNew);
+                job.TotalItems = totalNew;
+                job.ProcessedItems = 0;
+                job.Message = $"Export-all: {totalNew} new, {skippedCount} already exported";
                 await _db.SaveChangesAsync();
 
-                touchedBundles.Add(bundle.BundleNo);
+                var lastId = 0;
+                while (true)
+                {
+                    var page = await _db.Questions
+                        .Where(q => q.Id > lastId)
+                        .OrderBy(q => q.Id)
+                        .Select(q => q.Id)
+                        .Take(2000)
+                        .ToListAsync();
 
-                job.ProcessedItems = Math.Min(job.TotalItems, job.ProcessedItems + batch.Count);
-                job.Message = $"Export progress {job.ProcessedItems}/{job.TotalItems} (Skipped {skippedCount} already exported)";
-                await _db.SaveChangesAsync();
+                    if (page.Count == 0) break;
+                    lastId = page[^1];
+
+                    var exported = await _db.Set<QuestionTransferExportMap>()
+                        .Where(m => m.SourceKey == sourceKey && page.Contains(m.QuestionId))
+                        .Select(m => m.QuestionId)
+                        .ToListAsync();
+
+                    var exportedSet = exported.ToHashSet();
+                    var newIds = page.Where(id => !exportedSet.Contains(id)).ToList();
+                    if (newIds.Count == 0) continue;
+
+                    await ProcessNewIdsAsync(newIds, touchedBundles);
+                }
             }
 
             // Write per-source index + per-bundle map JSON for discoverability.
@@ -162,7 +205,7 @@ public class QuestionTransferJobRunner
 
             job.FileUrl = finalIndexUrl;
             job.Status = QuestionTransferJobStatus.Completed;
-            job.Message = $"Completed. Exported {newIds.Count}, Skipped {skippedCount}. Bundles updated: {string.Join(",", touchedBundles.OrderBy(x => x).Select(x => x.ToString()))}";
+            job.Message = $"Completed. Exported {job.ProcessedItems}, Skipped {skippedCount}. Bundles updated: {string.Join(",", touchedBundles.OrderBy(x => x).Select(x => x.ToString()))}";
             await _db.SaveChangesAsync();
         }
         catch (Exception ex)

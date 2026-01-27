@@ -7,7 +7,6 @@ namespace ExamApp.Api.Models.Dtos;
 
 public class StartQuestionExportDto
 {
-    [Required]
     public List<int> QuestionIds { get; set; } = new();
 
     // Used for idempotent imports: (SourceKey, ExternalQuestionKey)

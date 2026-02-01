@@ -1,8 +1,8 @@
 DO $$
 DECLARE
     -- GİRİLEN DEĞERLER
-    v_topic_name     text := 'Okuma';
-    v_subtopic_name  text := 'Okuduğunu Anlama';
+    v_topic_name     text := 'Yazım Kuralları';
+    v_subtopic_name  text := '"de" Bağlacının Yazımı';
     v_grade_name     text := '4. Sınıf';
     v_subject_name   text := 'Türkçe';
 
@@ -10,6 +10,7 @@ DECLARE
     v_subject_id     bigint;
     v_grade_id       bigint;
     v_topic_id       bigint;
+    v_subtopic_id    bigint;
 BEGIN
 
     -- 1️⃣ SubjectId ve GradeId bul
@@ -64,18 +65,34 @@ BEGIN
         RAISE NOTICE 'Topic zaten mevcut. TopicId=%', v_topic_id;
     END IF;
 
-    -- 4️⃣ SubTopic ekle (her durumda)
-    INSERT INTO public."SubTopics" (
-        "Id",
-        "Name",
-        "TopicId"
-    )
-    VALUES (
-        (SELECT COALESCE(MAX("Id"), 0) + 1 FROM public."SubTopics"),
-        v_subtopic_name,
-        v_topic_id
-    );
+    -- 4️⃣ SubTopic var mı kontrol et
+    SELECT st."Id"
+    INTO v_subtopic_id
+    FROM public."SubTopics" st
+    WHERE st."Name" = v_subtopic_name
+      AND st."TopicId" = v_topic_id
+    LIMIT 1;
 
-    RAISE NOTICE 'SubTopic eklendi. TopicId=%', v_topic_id;
+    -- 5️⃣ SubTopic yoksa ekle
+    IF v_subtopic_id IS NULL THEN
+        SELECT COALESCE(MAX("Id"), 0) + 1
+        INTO v_subtopic_id
+        FROM public."SubTopics";
+
+        INSERT INTO public."SubTopics" (
+            "Id",
+            "Name",
+            "TopicId"
+        )
+        VALUES (
+            v_subtopic_id,
+            v_subtopic_name,
+            v_topic_id
+        );
+
+        RAISE NOTICE 'Yeni SubTopic eklendi. SubTopicId=%', v_subtopic_id;
+    ELSE
+        RAISE NOTICE 'SubTopic zaten mevcut. SubTopicId=%', v_subtopic_id;
+    END IF;
 
 END $$;

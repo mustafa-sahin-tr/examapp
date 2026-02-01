@@ -3,6 +3,7 @@ using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.QuestionTransfer;
+using ExamApp.Api.Services.StudentReset;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -128,6 +129,11 @@ builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 
+// Student activity reset
+builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
+builder.Services.AddScoped<IBadgeResetApiClient, BadgeResetApiClient>();
+builder.Services.AddScoped<StudentResetJob>();
+
 // PostgreSQL & EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -205,7 +211,9 @@ app.UseAuthorization();
 
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
-    Authorization = new[] { new HangfireDashboardAuthFilter() }
+    Authorization = app.Environment.IsDevelopment()
+        ? new[] { new HangfireDashboardDevAuthFilter() }
+        : new[] { new HangfireDashboardAuthFilter() }
 });
 
 app.MapControllers();

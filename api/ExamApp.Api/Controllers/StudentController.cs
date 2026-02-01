@@ -5,6 +5,8 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.StudentReset;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -29,10 +31,18 @@ namespace ExamApp.Api.Controllers
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
+        private readonly IBackgroundJobClient _backgroundJobs;
+        private readonly StudentResetJob _studentResetJob;
 
-        public StudentController(IMinIoService minioService, IStudentService studentService,
-             UserProfileCacheService userProfileCacheService,
-            IOptions<KeycloakSettings> options, IKeycloakService keycloakService)
+
+        public StudentController(
+            IMinIoService minioService,
+            IStudentService studentService,
+            UserProfileCacheService userProfileCacheService,
+            IOptions<KeycloakSettings> options,
+            IKeycloakService keycloakService,
+            IBackgroundJobClient backgroundJobs,
+            StudentResetJob studentResetJob)
             : base()
         {
             _minioService = minioService;
@@ -40,6 +50,43 @@ namespace ExamApp.Api.Controllers
             _userProfileCacheService = userProfileCacheService;
             _keycloakService = keycloakService;
             _keycloakSettings = options.Value;
+            _backgroundJobs = backgroundJobs;
+            _studentResetJob = studentResetJob;
+        }
+
+        [Authorize(Roles = "Student")]
+        [HttpPost("me/reset")]
+        public async Task<IActionResult> ResetMyStudentData(CancellationToken cancellationToken)
+        {
+            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            if (user == null)
+            {
+                return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            }
+
+            var student = await _studentService.GetStudentProfile(user.Id);
+            if (student == null)
+            {
+                return NotFound(new { message = "Öğrenci bulunamadı." });
+            }
+
+            // Enqueue a Hangfire job so reset is handled asynchronously.
+            // We pass userId + studentId + keycloak id, but we do NOT store end-user JWT.
+            var jobId = _backgroundJobs.Enqueue(() =>
+                _studentResetJob.RunAsync(user.Id, student.Id, KeyCloakId));
+
+            return Accepted(new { jobId, message = "Sıfırlama işlemi kuyruğa alındı." });
+        }
+
+        // Handy for manual browser testing; the actual reset must be triggered via POST.
+        [Authorize(Roles = "Student")]
+        [HttpGet("me/reset")]
+        public IActionResult ResetMyStudentDataHelp()
+        {
+            return Ok(new
+            {
+                message = "Bu endpoint POST ile çalışır: POST /api/exam/student/me/reset"
+            });
         }
 
         [HttpPost("update-grade")]

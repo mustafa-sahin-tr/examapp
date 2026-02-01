@@ -41,6 +41,14 @@
 <div class="dashboard-section">
   <app-section-header title="Öğrenme Aktivitesi" icon="/icons/28.svg"></app-section-header>
 
+  <div class="activity-actions">
+    <button type="button" class="reset-btn" [disabled]="resetInProgress()" (click)="onResetMyActivity()">
+      {{ resetInProgress() ? 'Sıfırlanıyor...' : 'Aktiviteleri Sıfırla' }}
+    </button>
+  </div>
+
+  <p class="reset-message" *ngIf="resetMessage() as msg">{{ msg }}</p>
+
   <div class="heatmap-container">
     <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
       <ng-container *ngIf="!activityApiError(); else heatmapError">

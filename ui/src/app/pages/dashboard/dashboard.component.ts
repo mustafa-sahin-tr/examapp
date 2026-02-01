@@ -19,6 +19,7 @@ import { Test } from '../../models/test-instance';
 import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
 import { BadgeProgressItem, BadgeService, UserActivityResponse } from '../../services/badge.service';
 import { finalize } from 'rxjs';
+import { StudentResetService } from '../../services/student-reset.service';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
@@ -36,6 +37,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly testService = inject(TestService);
   private readonly router = inject(Router);
   private readonly badgeService = inject(BadgeService);
+  private readonly studentResetService = inject(StudentResetService);
 
   private readonly assignments = signal<AssignmentCardViewModel[]>([]);
   readonly loading = signal(true);
@@ -49,6 +51,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly badgeProgressLoading = signal(false);
   readonly badgeProgressError = signal(false);
   readonly earnedBadges = signal<BadgeProgressItem[]>([]);
+  readonly resetInProgress = signal(false);
+  readonly resetMessage = signal<string | null>(null);
 
   readonly assignmentCards = computed(() => this.assignments());
   readonly canScrollLeft = signal(false);
@@ -122,6 +126,63 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const resolvedUserId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
     this.loadUserActivityHeatmap(resolvedUserId);
     this.loadUserBadgeProgress(resolvedUserId);
+  }
+
+  onResetMyActivity(): void {
+    if (this.resetInProgress()) {
+      return;
+    }
+
+    const confirmed =
+      typeof window !== 'undefined'
+        ? window.confirm(
+            'Tüm sınav ilerlemen, atanmış kişisel sınavların, puanların ve rozet/aktivite verilerin sıfırlanacak. Devam edilsin mi?'
+          )
+        : false;
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.resetInProgress.set(true);
+    this.resetMessage.set(null);
+
+    // Clear local UI data immediately; backend reset happens async via Hangfire.
+    this.assignments.set([]);
+    this.activityDataFromApi.set([]);
+    this.activityNumberCardData.set([]);
+    this.earnedBadges.set([]);
+
+    this.studentResetService
+      .resetMyData()
+      .pipe(finalize(() => this.resetInProgress.set(false)))
+      .subscribe({
+        next: (res) => {
+          this.resetMessage.set(res?.message || 'Sıfırlama işlemi kuyruğa alındı.');
+          // Try to refresh after a short delay.
+          const userId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
+          setTimeout(() => {
+            this.testService.getActiveAssignments().subscribe({
+              next: (assignments) => {
+                const viewModels = assignments.map((assignment) => ({
+                  assignment,
+                  test: this.mapToTest(assignment),
+                }));
+                this.assignments.set(viewModels);
+                this.scheduleScrollIndicatorUpdate();
+              },
+              error: () => {
+                // keep silent; user can refresh later
+              },
+            });
+            this.loadUserActivityHeatmap(userId);
+            this.loadUserBadgeProgress(userId);
+          }, 2500);
+        },
+        error: () => {
+          this.resetMessage.set('Sıfırlama isteği gönderilemedi. Lütfen tekrar deneyin.');
+        },
+      });
   }
 
   ngAfterViewInit(): void {

@@ -4,6 +4,32 @@
   gap: 16px;
 }
 
+.activity-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -6px;
+}
+
+.reset-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(77, 72, 146, 0.9);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.reset-message {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .activity-summary {
   display: flex;
   flex-wrap: wrap;

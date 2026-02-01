@@ -3,30 +3,35 @@
   <canvas #canvas (mousemove)="onMouseMove($event)" (click)="selectChoice($event)"></canvas>
 </div>
 
-@if(isPreviewMode) {
-<div class="preview-actions" style="margin-top: 10px; display: flex; gap: 10px; justify-content: center">
-  <button mat-raised-button color="warn" (click)="removeQuestion()">
-    <mat-icon>delete</mat-icon>
-    Soruyu Testten Çıkar
-  </button>
-  <button mat-raised-button (click)="shrinkImage()" aria-label="Küçült (-5%)">
-    <mat-icon>zoom_out</mat-icon>
-    Küçült (-5%)
-  </button>
-  <button mat-raised-button (click)="enlargeImage()" aria-label="Büyüt (+5%)">
-    <mat-icon>zoom_in</mat-icon>
-    Büyüt (+5%)
-  </button>
-</div>
+@if (isPreviewMode) {
+  <div class="preview-actions" style="margin-top: 10px; display: flex; gap: 10px; justify-content: center">
+    <button mat-raised-button color="warn" (click)="removeQuestion()">
+      <mat-icon>delete</mat-icon>
+      Soruyu Testten Çıkar
+    </button>
+    <button mat-raised-button color="primary" (click)="applyClassificationToQuestion()">
+      <mat-icon>check</mat-icon>
+      Uygula
+    </button>
+    <button mat-raised-button (click)="shrinkImage()" aria-label="Küçült (-5%)">
+      <mat-icon>zoom_out</mat-icon>
+      Küçült (-5%)
+    </button>
+    <button mat-raised-button (click)="enlargeImage()" aria-label="Büyüt (+5%)">
+      <mat-icon>zoom_in</mat-icon>
+      Büyüt (+5%)
+    </button>
+  </div>
 }
 
 <div>
-  @if(_questionRegion() && _questionRegion().isExample) { @if(correctAnswerVisible) {
-  <div class="correct-answer">
-    Doğru Cevap:
-    <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>
-  </div>
-  }
-  <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+  @if (_questionRegion() && _questionRegion().isExample) {
+    @if (correctAnswerVisible) {
+      <div class="correct-answer">
+        Doğru Cevap:
+        <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>
+      </div>
+    }
+    <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
   }
 </div>

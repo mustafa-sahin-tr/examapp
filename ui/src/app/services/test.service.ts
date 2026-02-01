@@ -191,8 +191,8 @@ export class TestService {
     const regions: QuestionRegion[] = qeuestions
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((question, index) => {
-        const firstSubtopicId =
-          (question.subTopics && question.subTopics.length > 0 ? question.subTopics[0]?.id : 0) || 0;
+        const subtopicIds = (question.subTopics || []).map((st) => Number(st?.id) || 0).filter((id) => id > 0);
+        const firstSubtopicId = subtopicIds.length > 0 ? subtopicIds[0] : 0;
         return {
           id: question.id,
           name: `Soru ${question.order ?? index + 1}`,
@@ -204,6 +204,7 @@ export class TestService {
           subjectId: question.subjectId || 0,
           topicId: question.topicId || 0,
           subtopicId: firstSubtopicId,
+          subtopicIds,
           passageId: question.passage ? question.passage.id.toString() : '',
           imageId: question.imageUrl,
           imageUrl: question.imageUrl,

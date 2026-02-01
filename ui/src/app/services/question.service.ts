@@ -41,7 +41,8 @@ export class QuestionService {
     scale: number,
     subjectId?: number | null,
     topicId?: number | null,
-    subTopicId?: number | null
+    subTopicId?: number | null,
+    subTopicIds?: number[]
   ): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/${questionId}/correct-answer`, {
       correctAnswerId,
@@ -49,6 +50,7 @@ export class QuestionService {
       subjectId,
       topicId,
       subTopicId,
+      subTopicIds,
     });
   }
 

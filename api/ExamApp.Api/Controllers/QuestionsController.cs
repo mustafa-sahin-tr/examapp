@@ -98,7 +98,8 @@ public class QuestionsController : BaseController
             request.CorrectAnswerId,
             request.SubjectId,
             request.TopicId,
-            request.SubTopicId
+            request.SubTopicId,
+            request.SubTopicIds
         );
         if (request.Scale != 1)
         {

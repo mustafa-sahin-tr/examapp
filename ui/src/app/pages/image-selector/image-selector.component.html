@@ -6,11 +6,20 @@
           [questions]="previewQuestions"
           (questionSelected)="questionSelected($event)"
         ></app-question-navigator>
+
+        <!-- Classification Selector for Preview Mode -->
+        <app-classification-selector
+          [initialSelection]="currentClassification()"
+          (selectionChange)="onClassificationChange($event)"
+        ></app-classification-selector>
+
         <app-question-canvas-view
           [questionRegion]="regions()[previewCurrentIndex()]"
+          [currentClassification]="currentClassification()"
           [isPreviewMode]="true"
           (choiceSelected)="onPreviewChoiceSelected($event)"
           (questionRemove)="onQuestionRemove($event)"
+          (applyClassification)="onApplyClassification($event)"
         ></app-question-canvas-view>
       </ng-container>
 

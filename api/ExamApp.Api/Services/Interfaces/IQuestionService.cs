@@ -14,7 +14,13 @@ public interface IQuestionService
 
     Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto);
 
-    Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId, int? subjectId = null, int? topicId = null, int? subTopicId = null);
+    Task<ResponseBaseDto> UpdateCorrectAnswer(
+        int questionId,
+        int correctAnswerId,
+        int? subjectId = null,
+        int? topicId = null,
+        int? subTopicId = null,
+        int[]? subTopicIds = null);
 
     Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
 

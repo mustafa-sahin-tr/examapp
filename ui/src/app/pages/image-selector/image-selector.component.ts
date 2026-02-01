@@ -28,9 +28,14 @@ import { QuestionNavigatorComponent } from '../../shared/components/question-nav
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
+import { SubjectService } from '../../services/subject.service';
 import { MatDialog } from '@angular/material/dialog';
 import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-canvas-view-v3/question-canvas-view-v3.component';
 import { QuestionCanvasViewComponentv4 } from '../../shared/components/question-canvas-view-v4/question-canvas-view-v4.component';
+import {
+  ClassificationSelectorComponent,
+  ClassificationSelection,
+} from '../../shared/components/classification-selector/classification-selector.component';
 
 interface WarningMarker {
   id: number;
@@ -72,6 +77,7 @@ interface DragDropLabelingAuthoringState {
     MatSlideToggleModule,
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
+    ClassificationSelectorComponent,
     //QuestionCanvasViewComponentv4,
   ],
   templateUrl: './image-selector.component.html',
@@ -118,8 +124,12 @@ export class ImageSelectorComponent {
   questionDetectorService = inject(QuestionDetectorService);
   questionService = inject(QuestionService);
   testService = inject(TestService);
+  private subjectService = inject(SubjectService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+
+  // Cache: topicId -> gradeId (topic carries gradeId)
+  private topicGradeIdCache = new Map<number, number>();
   public previewCurrentIndex = signal(0);
   private startX = 0;
   private startY = 0;
@@ -140,6 +150,9 @@ export class ImageSelectorComponent {
   // Interaction authoring (per region.name)
   public interactionTypes = new Map<string, QuestionInteractionType>();
   public labelingState = new Map<string, DragDropLabelingAuthoringState>();
+
+  // Classification selection for preview mode
+  public currentClassification = signal<ClassificationSelection | null>(null);
 
   private currentX = 0;
   private currentY = 0;
@@ -200,6 +213,128 @@ export class ImageSelectorComponent {
   questionSelected(index: number) {
     this.previewCurrentIndex.set(index);
     this.emitPreviewQuestionMeta(index);
+
+    // Load classification for the selected question
+    const region = this.regions()[index];
+    if (region) {
+      const toNullable = (x: unknown): number | null => {
+        const n = Number(x);
+        return Number.isFinite(n) && n > 0 ? n : null;
+      };
+
+      const subjectId = toNullable(region.subjectId);
+      const topicId = toNullable(region.topicId);
+      const subtopicIds = (region.subtopicIds ?? (region.subtopicId ? [region.subtopicId] : []))
+        .map((id) => Number(id) || 0)
+        .filter((id) => id > 0);
+
+      const cachedGradeId = topicId ? (this.topicGradeIdCache.get(topicId) ?? null) : null;
+
+      // Set immediately so UI updates on every question change.
+      // If gradeId is missing, ClassificationSelectorComponent will auto-resolve it.
+      this.currentClassification.set({
+        gradeId: cachedGradeId,
+        subjectId,
+        topicId,
+        subtopicIds,
+      });
+
+      // Also try to resolve gradeId here so initialSelection is complete (gradeId non-null).
+      // This avoids extra work in the selector and makes grade chips preselect instantly.
+      if (!cachedGradeId && subjectId && topicId) {
+        this.subjectService.getTopicsBySubject(subjectId).subscribe({
+          next: (topics) => {
+            const match = topics.find((t) => t.id === topicId);
+            const gradeId = match?.gradeId ?? null;
+            if (!gradeId) return;
+
+            this.topicGradeIdCache.set(topicId, gradeId);
+
+            // Only apply if user is still on the same question.
+            if (this.previewCurrentIndex() !== index) return;
+
+            const current = this.currentClassification();
+            this.currentClassification.set({
+              gradeId,
+              subjectId: current?.subjectId ?? subjectId,
+              topicId: current?.topicId ?? topicId,
+              subtopicIds: current?.subtopicIds ?? subtopicIds,
+            });
+          },
+          error: () => {
+            // Ignore; selector can still attempt to resolve.
+          },
+        });
+      }
+    }
+  }
+
+  onClassificationChange(selection: ClassificationSelection) {
+    const current = this.currentClassification();
+    const sameArray = (a: number[] = [], b: number[] = []) => a.length === b.length && a.every((v, i) => v === b[i]);
+
+    if (
+      current &&
+      current.gradeId === selection.gradeId &&
+      current.subjectId === selection.subjectId &&
+      current.topicId === selection.topicId &&
+      sameArray(current.subtopicIds ?? [], selection.subtopicIds ?? [])
+    ) {
+      return;
+    }
+
+    this.currentClassification.set(selection);
+
+    // Cache gradeId resolved by selector for faster subsequent preselect.
+    if (selection.topicId && selection.gradeId) {
+      this.topicGradeIdCache.set(selection.topicId, selection.gradeId);
+    }
+
+    // Keep outer (QuestionCanvas) comboboxes in sync (single subtopic expectation)
+    const index = this.previewCurrentIndex();
+    const region = this.regions()[index];
+    if (!region) return;
+
+    this.previewQuestionChange.emit({
+      index,
+      questionId: region.id,
+      subjectId: selection.subjectId,
+      topicId: selection.topicId,
+      subtopicId: selection.subtopicIds?.length ? selection.subtopicIds[0] : null,
+    });
+  }
+
+  onApplyClassification(evt: {
+    questionId: number;
+    correctAnswerId: number;
+    scale: number;
+    subjectId: number | null;
+    topicId: number | null;
+    subtopicIds?: number[];
+    subtopicId?: number | null;
+  }) {
+    const normalizedSubtopicIds = (evt.subtopicIds ?? (evt.subtopicId ? [evt.subtopicId] : []))
+      .map((id) => Number(id) || 0)
+      .filter((id) => id > 0);
+
+    this.questionService
+      .updateCorrectAnswer(
+        evt.questionId,
+        evt.correctAnswerId,
+        evt.scale,
+        evt.subjectId,
+        evt.topicId,
+        null,
+        normalizedSubtopicIds
+      )
+      .subscribe({
+        next: () => {
+          this.snackBar.open('Sınıflandırma uygulandı.', 'Kapat', { duration: 2000 });
+        },
+        error: () => {
+          this.snackBar.open('Uygulama sırasında hata oluştu.', 'Kapat', { duration: 3000 });
+        },
+      });
   }
 
   private emitPreviewQuestionMeta(index: number) {
@@ -231,7 +366,7 @@ export class ImageSelectorComponent {
       this.questionService.getAll(testId).subscribe((response) => {
         const regions = this.testService.convertQuestionsToRegions(response);
         this.regions.set(regions);
-        this.emitPreviewQuestionMeta(0);
+        this.questionSelected(0);
       });
     } else {
       this.resetRegions();

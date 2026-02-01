@@ -35,6 +35,8 @@ export interface QuestionRegion {
   subjectId?: number;
   topicId?: number;
   subtopicId?: number;
+  // Optional multi-subtopic ids (used for preview classification selector)
+  subtopicIds?: number[];
   answers: AnswerChoice[];
   passage?: PassageRegion;
   // Optional authoring/solve hint: show passage first, then reveal question.

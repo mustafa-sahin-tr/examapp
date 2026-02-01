@@ -60,6 +60,15 @@ public class QuestionService : IQuestionService
                     Height = a.Height,
 
                 }).ToList(),
+                SubTopics = q.QuestionSubTopics
+                    .Where(qst => qst.SubTopic != null)
+                    .Select(qst => new SubTopicDto
+                    {
+                        Id = qst.SubTopic.Id,
+                        Name = qst.SubTopic.Name,
+                        TopicId = qst.SubTopic.TopicId
+                    })
+                    .ToList(),
                 IsExample = q.IsExample,
                 PracticeCorrectAnswer = q.PracticeCorrectAnswer,
                 Passage = q.PassageId.HasValue ? new PassageDto
@@ -76,11 +85,6 @@ public class QuestionService : IQuestionService
                 CorrectAnswerId = q.CorrectAnswerId,
                 AnswerColCount = q.AnswerColCount,
                 LayoutPlan = q.LayoutPlan
-                // Subtopics = q.QuestionSubTopics.Select(qst => new Sub
-                // {
-                //     qst.SubTopicId,
-                //     qst.SubTopic.Name
-                // }).ToList()
             })
             .FirstOrDefaultAsync();
 
@@ -152,6 +156,15 @@ public class QuestionService : IQuestionService
                     Width = a.Width,
                     Height = a.Height,
                 }).ToList(),
+                SubTopics = tq.Question.QuestionSubTopics
+                    .Where(qst => qst.SubTopic != null)
+                    .Select(qst => new SubTopicDto
+                    {
+                        Id = qst.SubTopic.Id,
+                        Name = qst.SubTopic.Name,
+                        TopicId = qst.SubTopic.TopicId
+                    })
+                    .ToList(),
                 IsExample = tq.Question.IsExample,
                 PracticeCorrectAnswer = tq.Question.PracticeCorrectAnswer,
                 Passage = tq.Question.PassageId.HasValue ? new PassageDto
@@ -169,11 +182,6 @@ public class QuestionService : IQuestionService
                 AnswerColCount = tq.Question.AnswerColCount,
                 LayoutPlan = tq.Question.LayoutPlan,
                 Order = tq.Order
-                // SubTopics = tq.Question.QuestionSubTopics.Select(qst => new
-                // {
-                //     qst.SubTopicId,
-                //     qst.SubTopic.Name
-                // }).ToList()
             })
             .ToListAsync();
 
@@ -987,7 +995,13 @@ public class QuestionService : IQuestionService
         }
     }
 
-    public async Task<ResponseBaseDto> UpdateCorrectAnswer(int questionId, int correctAnswerId, int? subjectId = null, int? topicId = null, int? subTopicId = null)
+    public async Task<ResponseBaseDto> UpdateCorrectAnswer(
+        int questionId,
+        int correctAnswerId,
+        int? subjectId = null,
+        int? topicId = null,
+        int? subTopicId = null,
+        int[]? subTopicIds = null)
     {
         try
         {
@@ -1056,7 +1070,50 @@ public class QuestionService : IQuestionService
                 question.TopicId = normalized;
             }
 
-            if (subTopicId != null)
+            // SubTopic mapping update
+            // If subTopicIds is provided, it takes precedence (supports multi-select).
+            // If subTopicIds is an empty array, it clears all mappings.
+            if (subTopicIds != null)
+            {
+                var normalizedIds = subTopicIds
+                    .Where(id => id > 0)
+                    .Distinct()
+                    .ToArray();
+
+                if (normalizedIds.Length > 0)
+                {
+                    var existingIds = await _context.SubTopics
+                        .Where(st => normalizedIds.Contains(st.Id))
+                        .Select(st => st.Id)
+                        .ToListAsync();
+
+                    var missing = normalizedIds.Except(existingIds).ToArray();
+                    if (missing.Length > 0)
+                    {
+                        return new ResponseBaseDto
+                        {
+                            Success = false,
+                            Message = "Geçersiz alt konu (subtopic) ID'si."
+                        };
+                    }
+                }
+
+                if (question.QuestionSubTopics.Count > 0)
+                {
+                    _context.QuestionSubTopics.RemoveRange(question.QuestionSubTopics);
+                    question.QuestionSubTopics.Clear();
+                }
+
+                foreach (var id in normalizedIds)
+                {
+                    question.QuestionSubTopics.Add(new QuestionSubTopic
+                    {
+                        QuestionId = question.Id,
+                        SubTopicId = id
+                    });
+                }
+            }
+            else if (subTopicId != null)
             {
                 var normalized = subTopicId.Value > 0 ? subTopicId.Value : (int?)null;
                 if (normalized != null)

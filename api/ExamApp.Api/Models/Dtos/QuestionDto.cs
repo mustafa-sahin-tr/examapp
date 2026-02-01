@@ -28,6 +28,10 @@ public class QuestionDto
 
     public List<AnswerDto> Answers { get; set; } = new();
 
+    // Many-to-many: QuestionSubTopics -> SubTopic
+    // Serialized as "subTopics" to match UI model.
+    public List<SubTopicDto> SubTopics { get; set; } = new();
+
     public int? CorrectAnswerId { get; set; } // Doğru cevap ID'si
     public string? CorrectAnswer { get; set; } // Doğru cevap ID'si
     public string? LayoutPlan { get; set; }
@@ -44,6 +48,13 @@ public class QuestionDto
     public double? Height { get; set; }
 
     public int Order { get; set; }
+}
+
+public class SubTopicDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public int TopicId { get; set; }
 }
 
 public class PassageDto

@@ -67,6 +67,12 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
 
   @Input() correctAnswerVisible: boolean = false;
   @Input() isPreviewMode: boolean = false;
+  @Input() currentClassification: {
+    gradeId: number | null;
+    subjectId: number | null;
+    topicId: number | null;
+    subtopicIds: number[];
+  } | null = null;
 
   @Input() set selectedChoice(choice: AnswerChoice | undefined) {
     this._selectedChoice.set(choice);
@@ -85,6 +91,14 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   @Output() choiceSelected = new EventEmitter<AnswerChoice>();
   @Output() answerOpened = new EventEmitter<number>();
   @Output() questionRemove = new EventEmitter<number>();
+  @Output() applyClassification = new EventEmitter<{
+    questionId: number;
+    correctAnswerId: number;
+    scale: number;
+    subjectId: number | null;
+    topicId: number | null;
+    subtopicIds: number[];
+  }>();
 
   public hoveredChoice = signal<AnswerChoice | null>(null);
   private _selectedChoice = signal<AnswerChoice | undefined>(undefined);
@@ -345,6 +359,27 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     this.questionRemove.emit(this._questionRegion().id);
   }
 
+  applyClassificationToQuestion() {
+    const region = this._questionRegion();
+    const correctAnswerId = this._correctChoice()?.id ?? this._selectedChoice()?.id;
+    if (!region?.id || !correctAnswerId) {
+      return;
+    }
+
+    const subjectId = this.currentClassification?.subjectId ?? null;
+    const topicId = this.currentClassification?.topicId ?? null;
+    const subtopicIds = this.currentClassification?.subtopicIds ?? [];
+
+    this.applyClassification.emit({
+      questionId: region.id,
+      correctAnswerId,
+      scale: this.contentScale,
+      subjectId,
+      topicId,
+      subtopicIds,
+    });
+  }
+
   enlargeImage() {
     this.rescaleQuestion(1.05);
   }
@@ -377,7 +412,8 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     let passageHeight = 0;
     if (hasPassageImage) {
       const basePassageHeight = region?.passage?.height || this.passageImg?.naturalHeight || 0;
-      const effectiveBase = basePassageHeight > 0 ? basePassageHeight : this.passageCanvas?.nativeElement?.height ?? 0;
+      const effectiveBase =
+        basePassageHeight > 0 ? basePassageHeight : (this.passageCanvas?.nativeElement?.height ?? 0);
       passageHeight = Math.round(effectiveBase * this.contentScale) || 0;
     }
 
@@ -395,7 +431,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     let passageWidth = 0;
     if (hasPassageImage) {
       const basePassageWidth = region?.passage?.width || this.passageImg?.naturalWidth || 0;
-      const effectiveBase = basePassageWidth > 0 ? basePassageWidth : this.passageCanvas?.nativeElement?.width ?? 0;
+      const effectiveBase = basePassageWidth > 0 ? basePassageWidth : (this.passageCanvas?.nativeElement?.width ?? 0);
       passageWidth = Math.round(effectiveBase * this.contentScale) || 0;
     }
 

@@ -1,0 +1,29 @@
+
+.ms-question-pager {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 10px;
+}
+
+.ms-pager-btn {
+	padding: 6px 10px;
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	background: rgba(255, 255, 255, 0.06);
+	color: inherit;
+	cursor: pointer;
+}
+
+.ms-pager-btn[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.ms-pager-info {
+	opacity: 0.8;
+	font-size: 12px;
+	white-space: nowrap;
+}
+

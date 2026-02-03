@@ -2,25 +2,30 @@
   <div class="form-container">
     <div class="form-column-4" style="border: var(--border-input)">
       <ng-container *ngIf="previewMode()">
-        <app-question-navigator
-          [questions]="previewQuestions"
-          (questionSelected)="questionSelected($event)"
-        ></app-question-navigator>
+        <div class="form-container" style="border: var(--border-input)">
+          <app-question-navigator
+            class="form-column-2"
+            [questions]="previewQuestions"
+            (questionSelected)="questionSelected($event)"
+          ></app-question-navigator>
 
-        <!-- Classification Selector for Preview Mode -->
-        <app-classification-selector
-          [initialSelection]="currentClassification()"
-          (selectionChange)="onClassificationChange($event)"
-        ></app-classification-selector>
+          <app-question-canvas-view
+            class="form-column-4"
+            [questionRegion]="regions()[previewCurrentIndex()]"
+            [currentClassification]="currentClassification()"
+            [isPreviewMode]="true"
+            (choiceSelected)="onPreviewChoiceSelected($event)"
+            (questionRemove)="onQuestionRemove($event)"
+            (applyClassification)="onApplyClassification($event)"
+          ></app-question-canvas-view>
 
-        <app-question-canvas-view
-          [questionRegion]="regions()[previewCurrentIndex()]"
-          [currentClassification]="currentClassification()"
-          [isPreviewMode]="true"
-          (choiceSelected)="onPreviewChoiceSelected($event)"
-          (questionRemove)="onQuestionRemove($event)"
-          (applyClassification)="onApplyClassification($event)"
-        ></app-question-canvas-view>
+          <!-- Classification Selector for Preview Mode -->
+          <app-classification-selector
+            class="form-column-2"
+            [initialSelection]="currentClassification()"
+            (selectionChange)="onClassificationChange($event)"
+          ></app-classification-selector>
+        </div>
       </ng-container>
 
       <div *ngIf="!previewMode() && imageSrc()" class="ms-canvas-wrapper">

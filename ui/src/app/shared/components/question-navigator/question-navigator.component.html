@@ -1,25 +1,57 @@
 <div class="ms-question-navigator">
-    <div
-      *ngFor="let question of questions; let i = index"
-      class="ms-question-item"
-      [class.ms-question-correct]="question.status === 'correct'"
-      [class.ms-question-incorrect]="question.status === 'incorrect'"
-      [class.ms-question-unknown]="question.status === 'unknown'"      
-      (click)="selectQuestion(i)"
+  <div
+    class="ms-question-pager"
+    *ngIf="questions.length"
+    (mousedown)="$event.stopPropagation()"
+    (click)="$event.stopPropagation()"
+  >
+    <button
+      class="ms-pager-btn"
+      type="button"
+      (mousedown)="$event.stopPropagation()"
+      (click)="$event.stopPropagation(); prevPage()"
+      [disabled]="!canPrev()"
     >
-      <svg *ngIf="question.status === 'correct'" class="ms-question-icon ms-icon-correct" viewBox="0 0 24 24">
-        <path d="m9.59 14.58-2.818-2.818a.5.5 0 0 0-.706 0l-.71.704a.5.5 0 0 0-.003.708h.002l3.881 3.882a.5.5 0 0 0 .707 0l9.293-9.292a.5.5 0 0 0 0-.708l-.703-.702a.5.5 0 0 0-.707 0L9.59 14.58Z"></path>
-      </svg>
-  
-      <svg *ngIf="question.status === 'incorrect'" class="ms-question-icon ms-icon-incorrect" viewBox="0 0 24 24">
-        <path d="M18.703 6 18 5.297a.5.5 0 0 0-.707 0L12 10.59 6.707 5.297a.5.5 0 0 0-.707 0L5.297 6a.5.5 0 0 0 0 .707L10.59 12l-5.293 5.293a.5.5 0 0 0 0 .707l.703.703a.5.5 0 0 0 .707 0L12 13.41l5.293 5.293a.5.5 0 0 0 .707 0l.703-.703a.5.5 0 0 0 0-.707L13.41 12l5.293-5.293a.5.5 0 0 0 0-.707Z"></path>
-      </svg>
-
-      <svg *ngIf="question.status === 'unknown'" class="ms-question-icon ms-icon-unknown" viewBox="0 0 24 24">
-        <path d="M5 12h14a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"></path>
-      </svg>
-  
-      <span class="ms-question-number" [class.ms-question-number-active]="selectedQuestion() === i">{{ i + 1 }}</span>
-    </div>
+      Önceki
+    </button>
+    <span class="ms-pager-info"> Sayfa {{ currentPage() }} / {{ pageCount() }} </span>
+    <button
+      class="ms-pager-btn"
+      type="button"
+      (mousedown)="$event.stopPropagation()"
+      (click)="$event.stopPropagation(); nextPage()"
+      [disabled]="!canNext()"
+    >
+      Sonraki
+    </button>
   </div>
-  
+
+  <div
+    *ngFor="let question of visibleQuestions(); let i = index"
+    class="ms-question-item"
+    [class.ms-question-correct]="question.status === 'correct'"
+    [class.ms-question-incorrect]="question.status === 'incorrect'"
+    [class.ms-question-unknown]="question.status === 'unknown'"
+    (click)="selectQuestion(globalIndex(i))"
+  >
+    <svg *ngIf="question.status === 'correct'" class="ms-question-icon ms-icon-correct" viewBox="0 0 24 24">
+      <path
+        d="m9.59 14.58-2.818-2.818a.5.5 0 0 0-.706 0l-.71.704a.5.5 0 0 0-.003.708h.002l3.881 3.882a.5.5 0 0 0 .707 0l9.293-9.292a.5.5 0 0 0 0-.708l-.703-.702a.5.5 0 0 0-.707 0L9.59 14.58Z"
+      ></path>
+    </svg>
+
+    <svg *ngIf="question.status === 'incorrect'" class="ms-question-icon ms-icon-incorrect" viewBox="0 0 24 24">
+      <path
+        d="M18.703 6 18 5.297a.5.5 0 0 0-.707 0L12 10.59 6.707 5.297a.5.5 0 0 0-.707 0L5.297 6a.5.5 0 0 0 0 .707L10.59 12l-5.293 5.293a.5.5 0 0 0 0 .707l.703.703a.5.5 0 0 0 .707 0L12 13.41l5.293 5.293a.5.5 0 0 0 .707 0l.703-.703a.5.5 0 0 0 0-.707L13.41 12l5.293-5.293a.5.5 0 0 0 0-.707Z"
+      ></path>
+    </svg>
+
+    <svg *ngIf="question.status === 'unknown'" class="ms-question-icon ms-icon-unknown" viewBox="0 0 24 24">
+      <path d="M5 12h14a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"></path>
+    </svg>
+
+    <span class="ms-question-number" [class.ms-question-number-active]="selectedQuestion() === globalIndex(i)">{{
+      globalIndex(i) + 1
+    }}</span>
+  </div>
+</div>

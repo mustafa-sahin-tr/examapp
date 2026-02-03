@@ -518,6 +518,110 @@ public class QuestionService : IQuestionService
                     }
 
                 }
+
+                // Validate classification consistency:
+                // - All provided SubTopics must belong to the same Topic.
+                // - That Topic must match Header.TopicId (the Question.TopicId being set).
+                // - Header.TopicId's Topic.SubjectId must match Header.SubjectId (Question.SubjectId being set).
+                Topic? headerTopic = null;
+                Subject? headerSubject = null;
+
+                if (soruDto.Header.SubjectId.HasValue && soruDto.Header.SubjectId.Value > 0)
+                {
+                    headerSubject = await _context.Subjects
+                        .FirstOrDefaultAsync(s => s.Id == soruDto.Header.SubjectId.Value);
+                }
+
+                if (soruDto.Header.TopicId.HasValue && soruDto.Header.TopicId.Value > 0)
+                {
+                    headerTopic = await _context.Topics
+                        .Include(t => t.Subject)
+                        .FirstOrDefaultAsync(t => t.Id == soruDto.Header.TopicId.Value);
+
+                    if (headerTopic == null)
+                    {
+                        throw new InvalidOperationException($"Geçersiz TopicId: {soruDto.Header.TopicId.Value}");
+                    }
+
+                    if (soruDto.Header.SubjectId.HasValue && soruDto.Header.SubjectId.Value > 0)
+                    {
+                        var questionSubjectId = soruDto.Header.SubjectId.Value;
+                        if (headerTopic.SubjectId != questionSubjectId)
+                        {
+                            var headerSubjectName = headerSubject?.Name ?? "(bulunamadı)";
+                            var topicSubjectName = headerTopic.Subject?.Name ?? "(bulunamadı)";
+                            throw new InvalidOperationException(
+                                "Topic.SubjectId ile Question.SubjectId uyumsuz. " +
+                                $"Question.SubjectId={questionSubjectId} ('{headerSubjectName}'), " +
+                                $"Topic(Id={headerTopic.Id}, Name='{headerTopic.Name}') SubjectId={headerTopic.SubjectId} ('{topicSubjectName}').");
+                        }
+                    }
+                }
+
+                if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
+                {
+                    var normalizedSubtopicIds = soruDto.Header.Subtopics
+                        .Where(id => id > 0)
+                        .Distinct()
+                        .ToList();
+
+                    if (normalizedSubtopicIds.Count > 0)
+                    {
+                        var subtopics = await _context.SubTopics
+                            .Include(st => st.Topic)
+                            .Where(st => normalizedSubtopicIds.Contains(st.Id))
+                            .ToListAsync();
+
+                        var missingSubtopics = normalizedSubtopicIds.Except(subtopics.Select(st => st.Id)).ToList();
+                        if (missingSubtopics.Count > 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Geçersiz SubTopicId(ler): " + string.Join(", ", missingSubtopics));
+                        }
+
+                        var distinctTopicIds = subtopics
+                            .Select(st => st.TopicId)
+                            .Distinct()
+                            .ToList();
+
+                        if (distinctTopicIds.Count > 1)
+                        {
+                            var details = string.Join(", ", subtopics.Select(st =>
+                                $"SubTopic(Id={st.Id}, Name='{st.Name}') -> TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
+
+                            throw new InvalidOperationException(
+                                "Aynı question için birden fazla TopicId'ye ait SubTopic gönderildi. " +
+                                "Tüm subtopic'lerin TopicId değeri aynı olmalı. " +
+                                details);
+                        }
+
+                        var subtopicsTopicId = distinctTopicIds[0];
+
+                        // If TopicId is missing but subtopics are present, we cannot reliably set Question.TopicId.
+                        if (!soruDto.Header.TopicId.HasValue || soruDto.Header.TopicId.Value <= 0)
+                        {
+                            var details = string.Join(", ", subtopics.Select(st =>
+                                $"SubTopic(Id={st.Id}, Name='{st.Name}') TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
+
+                            throw new InvalidOperationException(
+                                "Header.TopicId belirtilmemiş/0 ancak SubTopic listesi var. " +
+                                $"SubTopic'lerin TopicId değeri {subtopicsTopicId}. Detay: {details}");
+                        }
+
+                        var questionTopicId = soruDto.Header.TopicId.Value;
+                        if (subtopicsTopicId != questionTopicId)
+                        {
+                            var questionTopicName = headerTopic?.Name ?? "(bulunamadı)";
+                            var subTopicExample = subtopics.First();
+                            var subTopicTopicName = subTopicExample.Topic?.Name ?? "(bulunamadı)";
+
+                            throw new InvalidOperationException(
+                                "SubTopic'nin topic'i, question üzerinde setlenen TopicId'den farklı. " +
+                                $"Question.TopicId={questionTopicId} ('{questionTopicName}'), " +
+                                $"SubTopic(Id={subTopicExample.Id}, Name='{subTopicExample.Name}') TopicId={subTopicExample.TopicId} ('{subTopicTopicName}').");
+                        }
+                    }
+                }
                 string imageUrl = string.Empty;
                 // 🔹 1. Resmi MinIO'ya kaydetmeden önce, her Question ve Passage için crop işlemi yapıp ayrı dosya olarak sakla
                 // Ana görseli byte[] olarak hazırla

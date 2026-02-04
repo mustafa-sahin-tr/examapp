@@ -140,7 +140,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 2.08m,
                             Currency = "TRY",
                             CurrentPrice = 85.50m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3395),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1704),
                             Name = "Tüpraş",
                             Symbol = "TUPRS",
                             Type = 0
@@ -152,7 +152,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.51m,
                             Currency = "TRY",
                             CurrentPrice = 42.30m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3410),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1722),
                             Name = "Akbank",
                             Symbol = "AKBNK",
                             Type = 0
@@ -164,7 +164,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 4.71m,
                             Currency = "TRY",
                             CurrentPrice = 156.80m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3415),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1730),
                             Name = "Türk Hava Yolları",
                             Symbol = "THYAO",
                             Type = 0
@@ -176,7 +176,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 2.22m,
                             Currency = "TRY",
                             CurrentPrice = 125.40m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3421),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1736),
                             Name = "Aselsan",
                             Symbol = "ASELS",
                             Type = 0
@@ -188,7 +188,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.26m,
                             Currency = "TRY",
                             CurrentPrice = 31.85m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3426),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1744),
                             Name = "Ereğli Demir Çelik",
                             Symbol = "EREGL",
                             Type = 0
@@ -200,7 +200,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 3.42m,
                             Currency = "USD",
                             CurrentPrice = 192.45m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3433),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1752),
                             Name = "Apple Inc.",
                             Symbol = "AAPL",
                             Type = 1
@@ -212,7 +212,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -1.89m,
                             Currency = "USD",
                             CurrentPrice = 378.20m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3438),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1758),
                             Name = "Microsoft Corporation",
                             Symbol = "MSFT",
                             Type = 1
@@ -224,7 +224,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 3.21m,
                             Currency = "USD",
                             CurrentPrice = 142.65m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3443),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1764),
                             Name = "Alphabet Inc.",
                             Symbol = "GOOGL",
                             Type = 1
@@ -236,7 +236,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 1.65m,
                             Currency = "USD",
                             CurrentPrice = 151.94m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3448),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1770),
                             Name = "Amazon.com Inc.",
                             Symbol = "AMZN",
                             Type = 1
@@ -248,7 +248,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = -5.32m,
                             Currency = "USD",
                             CurrentPrice = 248.50m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3464),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1778),
                             Name = "Tesla Inc.",
                             Symbol = "TSLA",
                             Type = 1
@@ -260,7 +260,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 15.92m,
                             Currency = "USD",
                             CurrentPrice = 2012.45m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3470),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1783),
                             Name = "Gold",
                             Symbol = "GOLD",
                             Type = 2
@@ -272,10 +272,10 @@ namespace FinanceApi.Migrations
                             ChangeValue = -0.38m,
                             Currency = "USD",
                             CurrentPrice = 24.85m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3474),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1790),
                             Name = "Silver",
                             Symbol = "SILVER",
-                            Type = 3
+                            Type = 2
                         },
                         new
                         {
@@ -284,7 +284,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 0.001493m,
                             Currency = "TRY",
                             CurrentPrice = 0.125864m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3480),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1820),
                             Name = "QNB Finans Portföy A.Ş. Hisse Senedi Fonu",
                             Symbol = "QNB001",
                             Type = 4
@@ -296,7 +296,7 @@ namespace FinanceApi.Migrations
                             ChangeValue = 0.000259m,
                             Currency = "TRY",
                             CurrentPrice = 0.086543m,
-                            LastUpdated = new DateTime(2026, 1, 16, 13, 10, 14, 748, DateTimeKind.Utc).AddTicks(3484),
+                            LastUpdated = new DateTime(2026, 2, 4, 11, 16, 6, 570, DateTimeKind.Utc).AddTicks(1827),
                             Name = "Garanti Portföy Özel Sektör Borçlanma Araçları Fonu",
                             Symbol = "GAR001",
                             Type = 4

@@ -53,8 +53,7 @@ export class DashboardComponent implements OnInit {
     const displayNames = {
       [AssetType.Stock]: 'BIST 100',
       [AssetType.USStock]: 'US Stocks',
-      [AssetType.Gold]: 'Gold',
-      [AssetType.Silver]: 'Silver',
+      [AssetType.PreciousMetals]: 'Precious Metals',
       [AssetType.Fund]: 'Funds',
       [AssetType.FixedDeposit]: 'Vadeli Mevduat',
       [AssetType.Crypto]: 'Crypto',
@@ -66,8 +65,7 @@ export class DashboardComponent implements OnInit {
     const routes = {
       [AssetType.Stock]: '/bist100',
       [AssetType.USStock]: '/us-stocks',
-      [AssetType.Gold]: '/precious-metals-gold',
-      [AssetType.Silver]: '/precious-metals-silver',
+      [AssetType.PreciousMetals]: '/precious-metals',
       [AssetType.Fund]: '/funds',
       [AssetType.FixedDeposit]: '/fixed-deposits', // Vadeli mevduat için yeni route
       [AssetType.Crypto]: '/crypto',

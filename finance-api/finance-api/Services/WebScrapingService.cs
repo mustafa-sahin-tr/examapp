@@ -66,8 +66,7 @@ namespace FinanceApi.Services
             {
                 AssetType.Stock => await ScrapeGoogleFinanceStock(request.Symbol, "IST"),
                 AssetType.USStock => await ScrapeGoogleFinanceStock(request.Symbol, "NASDAQ"),
-                AssetType.Gold => await ScrapeGoogleFinance(request.Symbol, request.Type),
-                AssetType.Silver => await ScrapeGoogleFinance(request.Symbol, request.Type), // Silver için de aynı yöntem kullanılabilir
+                AssetType.PreciousMetals => await ScrapeGoogleFinance(request.Symbol, request.Type),
                 AssetType.Fund => await ScrapeTefasFund(request.Symbol),
                 AssetType.Crypto => await ScrapeCoinGeckoCrypto(request.Symbol),
                 _ => new AssetPriceResponseDto
@@ -264,11 +263,12 @@ namespace FinanceApi.Services
 
                     if (decimal.TryParse(cleanPrice, NumberStyles.Any, CultureInfo.InvariantCulture, out var price))
                     {
+                        var adjustment = GetPreciousMetalsAdjustment(symbol);
                         return new AssetPriceResponseDto
                         {
                             Type = type,
                             Symbol = symbol,
-                            Price = price - (type == AssetType.Gold ? 100 : 2), // Altın fiyatlarında küçük bir düzeltme
+                            Price = price - adjustment,
                             Unit = "USD", // COMEX altın fiyatları USD/oz cinsindendir
                             LastUpdated = DateTime.UtcNow,
                             IsSuccess = true
@@ -281,20 +281,47 @@ namespace FinanceApi.Services
                     Type = type,
                     Symbol = symbol,
                     IsSuccess = false,
-                    ErrorMessage = "Could not parse gold price from Google Finance"
+                    ErrorMessage = "Could not parse precious metals price from Google Finance"
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error scraping gold price for {Symbol}", symbol);
+                _logger.LogError(ex, "Error scraping precious metals price for {Symbol}", symbol);
                 return new AssetPriceResponseDto
                 {
-                    Type = AssetType.Gold,
+                    Type = AssetType.PreciousMetals,
                     Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = ex.Message
                 };
             }
+        }
+
+        private static decimal GetPreciousMetalsAdjustment(string symbol)
+        {
+            if (string.IsNullOrWhiteSpace(symbol))
+            {
+                return 0m;
+            }
+
+            var s = symbol.Trim();
+
+            // Heuristic: keep legacy behavior (gold: -100, silver: -2)
+            if (s.Contains("GOLD", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains("GC", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains("XAU", StringComparison.OrdinalIgnoreCase))
+            {
+                return 100m;
+            }
+
+            if (s.Contains("SILVER", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains("SI", StringComparison.OrdinalIgnoreCase) ||
+                s.Contains("XAG", StringComparison.OrdinalIgnoreCase))
+            {
+                return 2m;
+            }
+
+            return 0m;
         }
 
         private async Task<AssetPriceResponseDto> ScrapeTefasFund(string symbol)

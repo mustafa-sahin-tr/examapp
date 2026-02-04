@@ -274,8 +274,7 @@ namespace FinanceApi.Controllers
             {
                 AssetType.Stock => "BIST 100",
                 AssetType.USStock => "US Stocks",
-                AssetType.Gold => "Gold",
-                AssetType.Silver => "Silver",
+                AssetType.PreciousMetals => "Precious Metals",
                 AssetType.Fund => "Funds",
                 AssetType.FixedDeposit => "Vadeli Mevduat",
                 AssetType.Crypto => "Crypto",

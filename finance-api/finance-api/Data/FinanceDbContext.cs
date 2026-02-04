@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using FinanceApi.Models;
 
 namespace FinanceApi.Data
@@ -24,6 +25,13 @@ namespace FinanceApi.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // AssetType enum was consolidated: Gold/Silver -> PreciousMetals.
+            // Keep backward compatibility for persisted legacy int values (e.g. 3) by normalizing them.
+            var assetTypeConverter = new ValueConverter<AssetType, int>(
+                v => (int)(v == (AssetType)3 ? AssetType.PreciousMetals : v),
+                v => v == 3 ? AssetType.PreciousMetals : (AssetType)v
+            );
+
             // Asset configuration
             modelBuilder.Entity<Asset>(entity =>
             {
@@ -31,6 +39,7 @@ namespace FinanceApi.Data
                 entity.Property(e => e.Symbol).IsRequired().HasMaxLength(10);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Currency).IsRequired().HasMaxLength(10);
+                entity.Property(e => e.Type).HasConversion(assetTypeConverter);
                 entity.Property(e => e.CurrentPrice).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.ChangePercentage).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.ChangeValue).HasColumnType("decimal(18,4)");
@@ -96,6 +105,7 @@ namespace FinanceApi.Data
             modelBuilder.Entity<AssetTypeProfitLoss>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                entity.Property(e => e.AssetType).HasConversion(assetTypeConverter);
                 entity.Property(e => e.ProfitLoss).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.Investment).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.CurrentValue).HasColumnType("decimal(18,4)");
@@ -225,8 +235,8 @@ namespace FinanceApi.Data
                 new Asset { Id = "17", Symbol = "TSLA", Name = "Tesla Inc.", Type = AssetType.USStock, CurrentPrice = 248.50m, Currency = "USD", ChangePercentage = -2.1m, ChangeValue = -5.32m },
                 
                 // Precious Metals
-                new Asset { Id = "6", Symbol = "GOLD", Name = "Gold", Type = AssetType.Gold, CurrentPrice = 2012.45m, Currency = "USD", ChangePercentage = 0.8m, ChangeValue = 15.92m },
-                new Asset { Id = "7", Symbol = "SILVER", Name = "Silver", Type = AssetType.Silver, CurrentPrice = 24.85m, Currency = "USD", ChangePercentage = -1.5m, ChangeValue = -0.38m },
+                new Asset { Id = "6", Symbol = "GOLD", Name = "Gold", Type = AssetType.PreciousMetals, CurrentPrice = 2012.45m, Currency = "USD", ChangePercentage = 0.8m, ChangeValue = 15.92m },
+                new Asset { Id = "7", Symbol = "SILVER", Name = "Silver", Type = AssetType.PreciousMetals, CurrentPrice = 24.85m, Currency = "USD", ChangePercentage = -1.5m, ChangeValue = -0.38m },
                 
                 // Funds
                 new Asset { Id = "8", Symbol = "QNB001", Name = "QNB Finans Portföy A.Ş. Hisse Senedi Fonu", Type = AssetType.Fund, CurrentPrice = 0.125864m, Currency = "TRY", ChangePercentage = 1.2m, ChangeValue = 0.001493m },

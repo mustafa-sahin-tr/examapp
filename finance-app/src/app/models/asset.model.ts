@@ -1,8 +1,7 @@
 export enum AssetType {
   Stock = 0,
   USStock = 1,
-  Gold = 2,
-  Silver = 3,
+  PreciousMetals = 2,
   Fund = 4,
   FixedDeposit = 5,
   Crypto = 6,

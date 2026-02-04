@@ -303,7 +303,7 @@ export class PortfolioService {
             return true;
           }
 
-          if (type === AssetType.Gold && p.assetId === 'generic_2') {
+          if (type === AssetType.PreciousMetals && p.assetId === 'generic_2') {
             return true;
           }
 
@@ -456,13 +456,13 @@ export class PortfolioService {
           changePercentage: 0,
           changeValue: 0,
         };
-      case AssetType.Gold:
+      case AssetType.PreciousMetals:
         return {
-          id: 'virtual_gold',
-          symbol: 'GOLD',
-          name: 'Altın',
-          type: AssetType.Gold,
-          currentPrice: 2500, // Default gold price - gerçek fiyat API'den alınmalı
+          id: 'virtual_precious_metals',
+          symbol: 'PM',
+          name: 'Precious Metals',
+          type: AssetType.PreciousMetals,
+          currentPrice: 0,
           currency: 'TRY',
           lastUpdated: new Date(),
           changePercentage: 0,

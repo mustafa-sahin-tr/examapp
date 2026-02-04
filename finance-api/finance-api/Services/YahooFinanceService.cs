@@ -246,8 +246,7 @@ namespace FinanceApi.Services
             {
                 AssetType.Stock => "BIST", // BIST100
                 AssetType.USStock => "US",
-                AssetType.Gold => "US",
-                AssetType.Silver => "US",
+                AssetType.PreciousMetals => "US",
                 AssetType.Fund => "BIST",
                 AssetType.Crypto => "CRYPTO",
                 _ => "BIST"

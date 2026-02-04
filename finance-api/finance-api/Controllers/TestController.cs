@@ -57,7 +57,7 @@ namespace FinanceApi.Controllers
                         Id = Guid.NewGuid().ToString(),
                         Symbol = "GCW00",
                         Name = "Gold Futures",
-                        Type = AssetType.Gold,
+                        Type = AssetType.PreciousMetals,
                         CurrentPrice = 2050.00m,
                         Currency = "USD",
                         LastUpdated = DateTime.UtcNow

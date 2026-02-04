@@ -12,8 +12,7 @@ import { saveAs } from 'file-saver';
 export const ASSET_TYPE_LABELS = {
   [AssetType.Stock]: 'BIST 100',
   [AssetType.USStock]: 'US Stocks',
-  [AssetType.Gold]: 'Gold',
-  [AssetType.Silver]: 'Silver',
+  [AssetType.PreciousMetals]: 'Precious Metals',
   [AssetType.Fund]: 'Funds',
   [AssetType.FixedDeposit]: 'Vadeli Mevduat',
   [AssetType.Crypto]: 'Crypto',
@@ -28,15 +27,25 @@ export const TRANSACTION_TYPE_LABELS = {
 };
 
 // Reverse lookup for import
-export const ASSET_TYPE_VALUES = Object.entries(ASSET_TYPE_LABELS).reduce((acc, [key, value]) => {
-  acc[value] = parseInt(key);
-  return acc;
-}, {} as Record<string, AssetType>);
+export const ASSET_TYPE_VALUES = Object.entries(ASSET_TYPE_LABELS).reduce(
+  (acc, [key, value]) => {
+    acc[value] = parseInt(key);
+    return acc;
+  },
+  {} as Record<string, AssetType>
+);
 
-export const TRANSACTION_TYPE_VALUES = Object.entries(TRANSACTION_TYPE_LABELS).reduce((acc, [key, value]) => {
-  acc[value] = key as TransactionType;
-  return acc;
-}, {} as Record<string, TransactionType>);
+// Backward-compatible aliases (old exports/imports)
+ASSET_TYPE_VALUES['Gold'] = AssetType.PreciousMetals;
+ASSET_TYPE_VALUES['Silver'] = AssetType.PreciousMetals;
+
+export const TRANSACTION_TYPE_VALUES = Object.entries(TRANSACTION_TYPE_LABELS).reduce(
+  (acc, [key, value]) => {
+    acc[value] = key as TransactionType;
+    return acc;
+  },
+  {} as Record<string, TransactionType>
+);
 
 export interface ExcelTransactionRow {
   'Asset Symbol': string;

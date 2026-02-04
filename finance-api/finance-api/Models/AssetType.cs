@@ -4,8 +4,7 @@ namespace FinanceApi.Models
     {
         Stock = 0,      // Hisse Senedi (BIST)
         USStock = 1,    // ABD Hisse Senedi
-        Gold = 2,       // Altın
-        Silver = 3,     // Gümüş
+        PreciousMetals = 2, // Değerli Metaller (Altın, Gümüş, ...)
         Fund = 4,       // Fon
         FixedDeposit = 5, // Vadeli Mevduat
         Crypto = 6      // Kripto (BTC, ETH, ...)

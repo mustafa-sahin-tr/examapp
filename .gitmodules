@@ -1,0 +1,3 @@
+[submodule "finance-ios/FinanceTracker26"]
+	path = finance-ios/FinanceTracker26
+	url = https://github.com/mtafasahin/finance-ios.git

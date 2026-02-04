@@ -11,7 +11,10 @@ export class AssetService {
   private assetsSubject = new BehaviorSubject<Asset[]>([]);
   public assets$ = this.assetsSubject.asObservable();
 
-  constructor(private apiService: ApiService, private signalRService: SignalRService) {
+  constructor(
+    private apiService: ApiService,
+    private signalRService: SignalRService
+  ) {
     this.loadAssets();
     this.setupPriceUpdates();
   }
@@ -99,9 +102,7 @@ export class AssetService {
   }
 
   getPreciousMetals(): Observable<Asset[]> {
-    return this.assets$.pipe(
-      map((assets) => assets.filter((asset) => asset.type === AssetType.Gold || asset.type === AssetType.Silver))
-    );
+    return this.assets$.pipe(map((assets) => assets.filter((asset) => asset.type === AssetType.PreciousMetals)));
   }
 
   getFunds(): Observable<Asset[]> {

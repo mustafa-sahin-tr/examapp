@@ -29,8 +29,7 @@ export class AddTransactionComponent implements OnInit, OnDestroy {
   assetTypes = [
     { value: AssetType.Stock, label: 'BIST 100' },
     { value: AssetType.USStock, label: 'US Stocks' },
-    { value: AssetType.Gold, label: 'Gold' },
-    { value: AssetType.Silver, label: 'Silver' },
+    { value: AssetType.PreciousMetals, label: 'Precious Metals' },
     { value: AssetType.Fund, label: 'Funds' },
     { value: AssetType.FixedDeposit, label: 'Vadeli Mevduat' },
     { value: AssetType.Crypto, label: 'Crypto' },

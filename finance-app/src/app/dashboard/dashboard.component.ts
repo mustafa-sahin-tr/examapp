@@ -66,8 +66,8 @@ export class DashboardComponent implements OnInit {
     const routes = {
       [AssetType.Stock]: '/bist100',
       [AssetType.USStock]: '/us-stocks',
-      [AssetType.Gold]: '/precious-metals',
-      [AssetType.Silver]: '/precious-metals',
+      [AssetType.Gold]: '/precious-metals-gold',
+      [AssetType.Silver]: '/precious-metals-silver',
       [AssetType.Fund]: '/funds',
       [AssetType.FixedDeposit]: '/fixed-deposits', // Vadeli mevduat için yeni route
       [AssetType.Crypto]: '/crypto',

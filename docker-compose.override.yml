@@ -10,7 +10,7 @@ services:
     command: dotnet run --urls=http://+:8006
 
   finance-api:
-    command: sh -c "cd finance-api && dotnet ef database update && dotnet watch run --urls=http://+:8005"
+    # command: sh -c "cd finance-api && dotnet ef database update && dotnet watch run --urls=http://+:8005"
 
   ocelot-gateway:
     command: dotnet watch run --urls=http://+:5678

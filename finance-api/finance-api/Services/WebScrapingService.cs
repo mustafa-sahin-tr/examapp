@@ -66,7 +66,8 @@ namespace FinanceApi.Services
             {
                 AssetType.Stock => await ScrapeGoogleFinanceStock(request.Symbol, "IST"),
                 AssetType.USStock => await ScrapeGoogleFinanceStock(request.Symbol, "NASDAQ"),
-                AssetType.Gold => await ScrapeGoogleFinanceGold(request.Symbol),
+                AssetType.Gold => await ScrapeGoogleFinance(request.Symbol, request.Type),
+                AssetType.Silver => await ScrapeGoogleFinance(request.Symbol, request.Type), // Silver için de aynı yöntem kullanılabilir
                 AssetType.Fund => await ScrapeTefasFund(request.Symbol),
                 AssetType.Crypto => await ScrapeCoinGeckoCrypto(request.Symbol),
                 _ => new AssetPriceResponseDto
@@ -231,7 +232,7 @@ namespace FinanceApi.Services
             }
         }
 
-        private async Task<AssetPriceResponseDto> ScrapeGoogleFinanceGold(string symbol)
+        private async Task<AssetPriceResponseDto> ScrapeGoogleFinance(string symbol, AssetType type)
         {
             try
             {
@@ -265,9 +266,9 @@ namespace FinanceApi.Services
                     {
                         return new AssetPriceResponseDto
                         {
-                            Type = AssetType.Gold,
+                            Type = type,
                             Symbol = symbol,
-                            Price = price - 100,
+                            Price = price - (type == AssetType.Gold ? 100 : 2), // Altın fiyatlarında küçük bir düzeltme
                             Unit = "USD", // COMEX altın fiyatları USD/oz cinsindendir
                             LastUpdated = DateTime.UtcNow,
                             IsSuccess = true
@@ -277,7 +278,7 @@ namespace FinanceApi.Services
 
                 return new AssetPriceResponseDto
                 {
-                    Type = AssetType.Gold,
+                    Type = type,
                     Symbol = symbol,
                     IsSuccess = false,
                     ErrorMessage = "Could not parse gold price from Google Finance"

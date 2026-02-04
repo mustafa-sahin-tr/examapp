@@ -4,7 +4,7 @@
 
   <div class="dashboard-header">
     <h1>Portfolio Dashboard</h1>
-    <p class="last-updated">Last updated: {{ lastUpdated | date : 'medium' }}</p>
+    <p class="last-updated">Last updated: {{ lastUpdated | date: 'medium' }}</p>
 
     <!-- Export/Import buttons -->
     <div class="dashboard-actions">
@@ -177,9 +177,13 @@
           <span class="icon">🇺🇸</span>
           US Stocks
         </a>
-        <a routerLink="/precious-metals" class="action-btn">
+        <a routerLink="/precious-metals-gold" class="action-btn">
           <span class="icon">🥇</span>
-          Precious Metals
+          Gold
+        </a>
+        <a routerLink="/precious-metals-silver" class="action-btn">
+          <span class="icon">🥈</span>
+          Silver
         </a>
         <a routerLink="/crypto" class="action-btn">
           <span class="icon">₿</span>

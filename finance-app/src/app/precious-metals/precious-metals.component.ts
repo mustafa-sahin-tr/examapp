@@ -6,7 +6,7 @@ import { AssetType } from '../models/asset.model';
   selector: 'app-precious-metals',
   imports: [AssetPortfolioComponent],
   templateUrl: './precious-metals.component.html',
-  styleUrl: './precious-metals.component.scss'
+  styleUrl: './precious-metals.component.scss',
 })
 export class PreciousMetalsComponent {
   AssetType = AssetType;

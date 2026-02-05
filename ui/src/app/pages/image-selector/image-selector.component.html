@@ -4,7 +4,7 @@
       <ng-container *ngIf="previewMode()">
         <div class="form-container" style="border: var(--border-input)">
           <app-question-navigator
-            class="form-column-2"
+            class="form-column"
             [questions]="previewQuestions"
             (questionSelected)="questionSelected($event)"
           ></app-question-navigator>

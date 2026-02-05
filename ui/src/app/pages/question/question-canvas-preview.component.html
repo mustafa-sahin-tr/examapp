@@ -1,0 +1,15 @@
+<div class="preview-page">
+  <div class="preview-header">
+    <div class="title">
+      <mat-icon>visibility</mat-icon>
+      <span>Ön İzleme</span>
+    </div>
+
+    <button mat-stroked-button color="primary" type="button" (click)="closePreview()">
+      <mat-icon>close</mat-icon>
+      Ön izleme kapat
+    </button>
+  </div>
+
+  <app-image-selector [previewMetaProvider]="previewMetaProvider"></app-image-selector>
+</div>

@@ -8,7 +8,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { SubjectService } from '../../services/subject.service';
 import { QuestionService } from '../../services/question.service';
@@ -65,7 +65,7 @@ export class QuestionCanvasComponent implements OnInit {
   public autoMode = signal<boolean>(false);
   public autoAlign = signal<boolean>(false);
   public inProgress = signal<boolean>(false);
-  public previewModeText = signal<string>('Önizleme Modu');
+  public previewModeText = signal<string>('visibility');
   public dropdownVisible = signal<boolean>(false);
 
   // Used by ImageSelector preview mode to send current classification updates along with correct-answer updates.
@@ -91,6 +91,7 @@ export class QuestionCanvasComponent implements OnInit {
   };
   router = inject(Router);
   route = inject(ActivatedRoute);
+  location = inject(Location);
   questionService = inject(QuestionService);
   testService = inject(TestService);
   subjectService = inject(SubjectService);
@@ -201,12 +202,26 @@ export class QuestionCanvasComponent implements OnInit {
   togglePreviewMode() {
     let testId = this.id;
     if (!testId) {
-      testId = this.questionForm.value.testValue;
+      testId = Number(this.questionForm.value.testValue);
     }
-    this.imageSelector.togglePreviewMode(testId || 0);
-    console.log('Preview Mode:', this.imageSelector.previewMode());
-    this.previewModeText.set(this.imageSelector.previewMode() ? 'visibility_off' : 'visibility');
-    console.log('Preview Mode Text:', this.previewModeText());
+
+    if (!Number.isFinite(Number(testId)) || Number(testId) <= 0) {
+      this.snackBar.open('Ön izleme için önce bir test seçin.', 'Tamam', { duration: 2500 });
+      return;
+    }
+
+    const returnUrl = this.router.url;
+
+    const rawState = (this.location.getState?.() as any) ?? (globalThis as any)?.history?.state ?? {};
+    const { navigationId, ...returnState } = rawState || {};
+
+    this.router.navigate(['/questioncanvas/preview', testId], {
+      queryParams: { returnUrl },
+      state: {
+        returnUrl,
+        returnState,
+      },
+    });
   }
 
   toggleOnlyQuestionMode() {

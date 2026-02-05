@@ -9,6 +9,7 @@ import { WorksheetListEnhancedComponent } from './pages/worksheet-list/worksheet
 import { worksheetListResolver } from './shared/resolvers/worksheet-resolver';
 import { ImageSelectorComponent } from './pages/image-selector/image-selector.component';
 import { QuestionCanvasComponent } from './pages/question/question-canvas.component';
+import { QuestionCanvasPreviewComponent } from './pages/question/question-canvas-preview.component';
 import { WorksheetDetailComponent } from './pages/worksheet-detail/worksheet-detail.component';
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
 import { MyProgramsComponent } from './pages/my-programs/my-programs.component';
@@ -33,6 +34,8 @@ export const routes: Routes = [
       { path: 'teacher-register', component: TeacherRegisterComponent },
       { path: 'question/:id', component: QuestionComponent },
       { path: 'questioncanvas', component: QuestionCanvasComponent },
+      { path: 'questioncanvas/preview', component: QuestionCanvasPreviewComponent },
+      { path: 'questioncanvas/preview/:testId', component: QuestionCanvasPreviewComponent },
       { path: 'questioncanvas/:id', component: QuestionCanvasComponent },
       { path: 'question', component: QuestionComponent },
       { path: 'imageselect', component: ImageSelectorComponent },

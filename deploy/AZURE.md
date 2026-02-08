@@ -90,7 +90,10 @@ Kurulum özeti:
 2) GitHub → Repo → Settings → Secrets and variables → Actions → Secrets:
   - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (OIDC)
   - `ACR_NAME` (örn: `examappacr`)
-  - `VM_HOST`, `VM_USER`, `VM_SSH_KEY` (deploy için SSH)
+  - `ACR_USERNAME`, `ACR_PASSWORD` (VM tarafında `docker login` için; ACR admin user veya token)
+  - `VM_HOST`, `VM_USER`, `VM_SSH_KEY`
+  - `VM_DEPLOY_DIR` (örn: `/opt/examapp/deploy`)
+  - `VM_ENV_FILE` (örn: `.env.prod`)
 3) VM’de deploy klasörünü hazırla:
 
 ```bash
@@ -109,5 +112,27 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 CI deploy akışı:
 - GitHub Actions image’ları ACR’a push eder.
 - Sonra VM’ye SSH ile bağlanıp `deploy/scripts/vm-update.sh` script’ini çalıştırır.
+
+## 8) Staging (önerilen kurulum)
+
+Staging’i en problemsiz şekilde yapmak için **2 ayrı VM** öneriyorum:
+
+- **Prod VM**: `exam.<domain>` (veya kök domain)
+- **Staging VM**: `staging.<domain>`
+
+Avantajlar:
+- Prod verisi ile staging verisi karışmaz (Postgres/MinIO/RabbitMQ)
+- Riskli değişiklikler prod’u etkilemez
+- Ölçek/maliyet bağımsız yönetilir
+
+GitHub tarafı:
+- GitHub Environments oluştur: `staging` ve `production`
+- Workflow bu environment’lara göre deploy eder.
+  - `push` (main/master) → staging
+  - `prod-*` tag → production
+  - `workflow_dispatch` ile manuel hedef seçilebilir
+
+Not:
+- Staging Keycloak için ayrı realm önerilir: `exam-realm-staging` (veya ayrı Keycloak instance zaten ayrı VM’de olur)
 
 İstersen bir sonraki adımda ACR + GitHub Actions pipeline’ını ekleyebilirim.

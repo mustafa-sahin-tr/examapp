@@ -82,10 +82,15 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("SignalRCors", policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "http://localhost:5678", "http://localhost:3000")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+        var configuredOrigins = builder.Configuration.GetSection("Cors:SignalR:AllowedOrigins").Get<string[]>();
+        var allowedOrigins = (configuredOrigins != null && configuredOrigins.Length > 0)
+            ? configuredOrigins
+            : new[] { "http://localhost:4200", "http://localhost:5678", "http://localhost:3000" };
+
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 

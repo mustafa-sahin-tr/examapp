@@ -114,7 +114,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<AppDbContext>();
-        // context.Database.Migrate(); // Apply any pending migrations
+        context.Database.Migrate(); // Apply any pending migrations
         // Seed TopicSeed data everyitme the application starts       
     }
     catch (Exception ex)

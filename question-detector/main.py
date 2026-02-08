@@ -39,6 +39,10 @@ if not os.path.exists(QUESTIONS_JSON_PATH):
     with open(QUESTIONS_JSON_PATH, "w") as f:
         json.dump([], f)
 
+if not os.path.exists(ANSWERS_JSON_PATH):
+    with open(ANSWERS_JSON_PATH, "w") as f:
+        json.dump([], f)
+
 # Request body model
 class ImageData(BaseModel):
     image_base64: str

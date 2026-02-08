@@ -1,0 +1,11 @@
+{
+	# Email is optional but recommended for Let's Encrypt
+	# email {$LETSENCRYPT_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+
+	# Single entry-point: forward everything to Ocelot gateway
+	reverse_proxy ocelot-gateway:5678
+}

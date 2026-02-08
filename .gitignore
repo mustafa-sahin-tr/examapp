@@ -1,120 +1,97 @@
+### OS / Editor
+.DS_Store
+Thumbs.db
+*.pkg
 
-# Visual Studio & Rider
-.vs/
+### IDEs
 .idea/
+.vs/
+.project
+.classpath
+.settings/
+.c9/
+*.launch
+*.sublime-workspace
+
+### VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+
+### .NET
+**/bin/
+**/obj/
+**/out/
+*.pdb
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
 *.sln.cache
 
-# Build Output
-bin/
-obj/
-out/
+### Node / Angular
+**/node_modules/
+**/dist/
+**/out-tsc/
+**/.angular/cache/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Packages
-*.nupkg
-packages/
-!packages/repositories.config
+### Python
+**/__pycache__/
+**/*.pyc
+.venv/
+venv/
 
-# Logs
+### Logs
 *.log
 logs/
 
-# User Secrets (Local Configurations)
+### Local secrets / env files
 secrets.json
-**/appsettings.*.json
-**/appsettings.json
+.env
+.env.*
+!.env.prod.example
 
-# Database & Migrations
+### Appsettings (keep base appsettings.json tracked)
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Local-only file currently contains secrets; use an example file instead
+finance-api/finance-api/appsettings.json
+
+### Local databases / sqlite write-ahead logs
 *.db
 *.sqlite
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
 
-# Docker & Kubernetes
-.dockerignore
-# docker-compose.override.yml
-
-# .NET Debugging
-*.pdb
-*.lock.json
-.DS_Store
-=======
-# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
-# Compiled output
-/dist
-/tmp
-/out-tsc
-/bazel-out
-
-# Node
-/node_modules
-npm-debug.log
-yarn-error.log
-
-/finance-app/node_modules
-
-# IDEs and editors
-.idea/
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
-
-# Visual Studio Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-.history/*
-
-# Miscellaneous
-/.angular/cache
-.sass-cache/
-/connect.lock
-/coverage
-/libpeerconnection.log
-testem.log
-/typings
-
-# System files
-.DS_Store
-Thumbs.db
-
-/postgres/examdata
-/postgres/examdata*
-
-/ui/node_modules
-/ui/dist
-/ui/.angular/cache
-/ui/.vscode
-/ui/.idea
-
-/auth-ui/node_modules
-/auth-ui/dist
-/auth-ui/.angular/cache
-/auth-ui/.vscode
-/auth-ui/.idea
-
+### Runtime data folders (should never be committed)
 minio-data/
 pgadmin-data/
-pgadmin-data/sessions/
+n8n-data/
+rabbitmq/
+postgres/examdata/
+postgres/examdata*
+nuget-packages/
+nuget-packages/*.db*
 
-/question-detector/data/labels
-/question-detector/data/answers/*
-!/question-detector/data/answers/runs
-/question-detector/data/answers-v1
-/question-detector/data/crops
-/question-detector/data/images
-/question-detector/data/questions/*
-!/question-detector/data/questions/runs
-/question-detector/data/venv/
-/question-detector/data/venv/lib/python3.8/site-packages
-/question-detector/.tmp.driveupload
-/question-detector/.tmp.drivedownload
-
-/rabbitmq
+### ML / detector artifacts (generated)
+runs/
+question-detector/runs/
+question-detector/data/crops/
+question-detector/data/images/
+question-detector/data/questions/
+question-detector/data/answers/
+question-detector/data/labels/
+question-detector/data/json/*.json
+question-detector/data/venv/
+question-detector/.tmp.driveupload
+question-detector/.tmp.drivedownload

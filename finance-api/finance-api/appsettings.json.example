@@ -1,0 +1,21 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=finance_db;Username=examuser;Password=CHANGE_ME"
+  },
+  "EmailSettings": {
+    "FromAddress": "change-me@example.com",
+    "FromName": "Finance App",
+    "SmtpServer": "smtp.example.com",
+    "SmtpPort": 587,
+    "Username": "change-me",
+    "Password": "change-me",
+    "UseSsl": true
+  }
+}

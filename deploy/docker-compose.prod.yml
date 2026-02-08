@@ -1,0 +1,338 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:2
+    container_name: exam-caddy
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - ocelot-gateway
+    networks:
+      - exam-net
+
+  postgres:
+    image: postgres:14
+    container_name: exam-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Keep default DB minimal; we create per-service DBs via init scripts
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - exam-net
+
+  redis:
+    image: redis:7
+    container_name: exam-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - exam-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: exam-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - exam-net
+
+  minio:
+    image: minio/minio
+    container_name: exam-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - exam-net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    container_name: exam-keycloak
+    restart: unless-stopped
+    command: start
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY: edge
+      KC_HOSTNAME: ${DOMAIN}
+      KC_HEALTH_ENABLED: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - exam-net
+
+  question-detector:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/question-detector.Dockerfile
+    container_name: exam-question-detector
+    restart: unless-stopped
+    networks:
+      - exam-net
+
+  exam-dotnet-api:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: api/ExamApp.Api/ExamApp.Api.csproj
+        APP_DLL: ExamApp.Api.dll
+        EXPOSE_PORT: 5079
+    container_name: exam-dotnet-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5079
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=worksheet_v2;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY}
+      MinioConfig__Endpoint: minio:9000
+      MinioConfig__AccessKey: ${MINIO_ROOT_USER}
+      MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
+      MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
+      Redis__Configuration: redis:6379,password=${REDIS_PASSWORD}
+      Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
+      Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
+      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
+      Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    networks:
+      - exam-net
+
+  auth-api:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: auth-api/ExamApp.Api.csproj
+        APP_DLL: ExamApp.Api.dll
+        EXPOSE_PORT: 5079
+    container_name: auth-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5079
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=auth_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY}
+      MinioConfig__Endpoint: minio:9000
+      MinioConfig__AccessKey: ${MINIO_ROOT_USER}
+      MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
+      MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
+      Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
+      Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
+      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
+      Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - exam-net
+
+  exam-badge-api:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: Services/BadgeService/BadgeService.csproj
+        APP_DLL: BadgeService.dll
+        EXPOSE_PORT: 8006
+    container_name: exam-badge-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Kestrel__Port: 8006
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Key: ${JWT_KEY}
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASS}
+      Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
+      Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
+      Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
+      Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
+      Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+      MinioConfig__Endpoint: minio:9000
+      MinioConfig__AccessKey: ${MINIO_ROOT_USER}
+      MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
+      MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - exam-net
+
+  finance-api:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: finance-api/finance-api/finance-api.csproj
+        APP_DLL: finance-api.dll
+        EXPOSE_PORT: 8005
+    container_name: finance-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Kestrel__Port: 8005
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=finance_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Cors__SignalR__AllowedOrigins__0: ${PUBLIC_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - exam-net
+
+  exam-outbox-publisher:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile
+      args:
+        PROJECT_PATH: Services/OutboxPublisher/OutboxPublisherService.csproj
+        APP_DLL: OutboxPublisherService.dll
+    container_name: exam-outbox-publisher
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=worksheet_v2;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - exam-net
+
+  angular-app:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/angular-spa.Dockerfile
+      args:
+        APP_DIR: ui
+    container_name: angular-app
+    restart: unless-stopped
+    networks:
+      - exam-net
+
+  auth-ui:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/angular-spa.Dockerfile
+      args:
+        APP_DIR: auth-ui
+    container_name: auth-ui
+    restart: unless-stopped
+    networks:
+      - exam-net
+
+  finance-ui:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/angular-spa.Dockerfile
+      args:
+        APP_DIR: finance-app
+    container_name: finance-ui
+    restart: unless-stopped
+    networks:
+      - exam-net
+
+  ocelot-gateway:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      args:
+        PROJECT_PATH: Services/Gateway/Gateway.csproj
+        APP_DLL: Gateway.dll
+        EXPOSE_PORT: 5678
+    container_name: ocelot-gateway
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Kestrel__Port: 5678
+      Server__BaseUrl: ${PUBLIC_BASE_URL}
+      Keycloak__Realm: exam-realm
+      Keycloak__ClientCallbackUrl: ${PUBLIC_BASE_URL}/app/callback&response_type=code&scope=openid&state=${PUBLIC_BASE_URL}
+      Cors__AllowedOrigins__0: ${PUBLIC_BASE_URL}
+    depends_on:
+      - angular-app
+      - auth-ui
+      - finance-ui
+      - exam-dotnet-api
+      - auth-api
+      - exam-badge-api
+      - finance-api
+      - keycloak
+      - minio
+      - rabbitmq
+      - redis
+      - question-detector
+    networks:
+      - exam-net
+
+networks:
+  exam-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

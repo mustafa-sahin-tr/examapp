@@ -1,0 +1,37 @@
+version: '3.8'
+
+# Image override file for production.
+# Use together with docker-compose.prod.yml:
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.images.yml pull
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.prod.images.yml up -d --no-build
+
+services:
+  question-detector:
+    image: ${ACR_LOGIN_SERVER}/exam-question-detector:${IMAGE_TAG}
+
+  exam-dotnet-api:
+    image: ${ACR_LOGIN_SERVER}/exam-dotnet-api:${IMAGE_TAG}
+
+  auth-api:
+    image: ${ACR_LOGIN_SERVER}/auth-api:${IMAGE_TAG}
+
+  exam-badge-api:
+    image: ${ACR_LOGIN_SERVER}/exam-badge-api:${IMAGE_TAG}
+
+  finance-api:
+    image: ${ACR_LOGIN_SERVER}/finance-api:${IMAGE_TAG}
+
+  exam-outbox-publisher:
+    image: ${ACR_LOGIN_SERVER}/exam-outbox-publisher:${IMAGE_TAG}
+
+  angular-app:
+    image: ${ACR_LOGIN_SERVER}/ui:${IMAGE_TAG}
+
+  auth-ui:
+    image: ${ACR_LOGIN_SERVER}/auth-ui:${IMAGE_TAG}
+
+  finance-ui:
+    image: ${ACR_LOGIN_SERVER}/finance-ui:${IMAGE_TAG}
+
+  ocelot-gateway:
+    image: ${ACR_LOGIN_SERVER}/ocelot-gateway:${IMAGE_TAG}

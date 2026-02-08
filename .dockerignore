@@ -1,0 +1,52 @@
+# Keep docker build context small and avoid shipping local runtime data
+
+# Git
+.git
+.gitignore
+.github
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+.vs
+
+# Build outputs
+**/bin
+**/obj
+**/out
+
+# Node
+**/node_modules
+**/dist
+**/out-tsc
+**/.angular/cache
+
+# Python
+**/__pycache__
+**/*.pyc
+.venv
+venv
+
+# Local runtime data (never needed in images)
+minio-data
+pgadmin-data
+n8n-data
+rabbitmq
+postgres/examdata
+postgres/examdata*
+nuget-packages
+
+# Detector generated artifacts / datasets (don’t bake into image)
+question-detector/data/crops
+question-detector/data/images
+question-detector/data/questions
+question-detector/data/answers
+question-detector/data/labels
+question-detector/data/json
+question-detector/runs
+runs
+
+# Large misc
+azure-cli-installer.pkg

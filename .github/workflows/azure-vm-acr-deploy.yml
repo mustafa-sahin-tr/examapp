@@ -1,0 +1,140 @@
+name: Build & Deploy (Azure VM + ACR)
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: examapp-prod
+  cancel-in-progress: false
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Option A (recommended): Azure OIDC login (no long-lived secrets)
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        shell: bash
+        run: |
+          set -euo pipefail
+          az acr login --name "${{ secrets.ACR_NAME }}"
+
+      - name: Set ACR login server
+        id: acr
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGIN_SERVER=$(az acr show -n "${{ secrets.ACR_NAME }}" --query loginServer -o tsv)
+          echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push images
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACR="${{ steps.acr.outputs.login_server }}"
+          TAG="${IMAGE_TAG}"
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/dotnet-web.Dockerfile \
+            --build-arg PROJECT_PATH=api/ExamApp.Api/ExamApp.Api.csproj \
+            --build-arg APP_DLL=ExamApp.Api.dll \
+            --build-arg EXPOSE_PORT=5079 \
+            -t "$ACR/exam-dotnet-api:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/dotnet-web.Dockerfile \
+            --build-arg PROJECT_PATH=auth-api/ExamApp.Api.csproj \
+            --build-arg APP_DLL=ExamApp.Api.dll \
+            --build-arg EXPOSE_PORT=5079 \
+            -t "$ACR/auth-api:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/dotnet-web.Dockerfile \
+            --build-arg PROJECT_PATH=Services/BadgeService/BadgeService.csproj \
+            --build-arg APP_DLL=BadgeService.dll \
+            --build-arg EXPOSE_PORT=8006 \
+            -t "$ACR/exam-badge-api:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/dotnet-web.Dockerfile \
+            --build-arg PROJECT_PATH=finance-api/finance-api/finance-api.csproj \
+            --build-arg APP_DLL=finance-api.dll \
+            --build-arg EXPOSE_PORT=8005 \
+            -t "$ACR/finance-api:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/dotnet-web.Dockerfile \
+            --build-arg PROJECT_PATH=Services/Gateway/Gateway.csproj \
+            --build-arg APP_DLL=Gateway.dll \
+            --build-arg EXPOSE_PORT=5678 \
+            -t "$ACR/ocelot-gateway:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile \
+            --build-arg PROJECT_PATH=Services/OutboxPublisher/OutboxPublisherService.csproj \
+            --build-arg APP_DLL=OutboxPublisherService.dll \
+            -t "$ACR/exam-outbox-publisher:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/angular-spa.Dockerfile \
+            --build-arg APP_DIR=ui \
+            -t "$ACR/ui:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/angular-spa.Dockerfile \
+            --build-arg APP_DIR=auth-ui \
+            -t "$ACR/auth-ui:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/angular-spa.Dockerfile \
+            --build-arg APP_DIR=finance-app \
+            -t "$ACR/finance-ui:$TAG" \
+            .
+
+          docker buildx build --push \
+            -f deploy/dockerfiles/question-detector.Dockerfile \
+            -t "$ACR/exam-question-detector:$TAG" \
+            .
+
+      - name: Deploy on VM (SSH)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/examapp/deploy
+            export ACR_LOGIN_SERVER="${{ steps.acr.outputs.login_server }}"
+            export IMAGE_TAG="${{ env.IMAGE_TAG }}"
+            sh ./scripts/vm-update.sh

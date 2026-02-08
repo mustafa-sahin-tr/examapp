@@ -11,6 +11,12 @@ Bu doküman, mevcut [deploy/README.md](README.md) akışını **Azure VM** üzer
   - `22/tcp` (SSH) sadece kendi IP’n
   - `80/tcp`, `443/tcp` (public)
 
+### Region seçimi (pratik öneri)
+
+- Kullanıcıların çoğu Türkiye’deyse: **Germany West Central** veya **West Europe** genelde iyi default.
+- Min. latency istiyorsan: kullanıcı kitlesine en yakın region (çoğu zaman Frankfurt/Amsterdam hattı).
+- Maliyet odaklıysan: Azure fiyatları region’a göre değişir; VM + disk + outbound’u kıyasla.
+
 > Prod compose sadece 80/443’ü publish ediyor. Diğer servisler private kalır.
 
 ## 2) Azure Portal ile hızlı kurulum (en pratik)
@@ -74,5 +80,34 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f --tail=20
 Bu repo şu an VM üzerinde `docker compose ... --build` yaklaşımına uygun. CI/CD istersen:
 - GitHub Actions ile image’ları ACR’a push
 - VM’de `docker compose pull && docker compose up -d` ile güncelle
+
+### GitHub Actions ile otomatik deploy (önerilen)
+
+Repo içinde hazır workflow var: [ .github/workflows/azure-vm-acr-deploy.yml ](../.github/workflows/azure-vm-acr-deploy.yml)
+
+Kurulum özeti:
+1) Azure’da bir ACR oluştur (VM ile aynı region önerilir)
+2) GitHub → Repo → Settings → Secrets and variables → Actions → Secrets:
+  - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` (OIDC)
+  - `ACR_NAME` (örn: `examappacr`)
+  - `VM_HOST`, `VM_USER`, `VM_SSH_KEY` (deploy için SSH)
+3) VM’de deploy klasörünü hazırla:
+
+```bash
+sudo mkdir -p /opt/examapp
+sudo chown -R $USER:$USER /opt/examapp
+
+git clone <REPO_URL> /opt/examapp
+cd /opt/examapp/deploy
+cp .env.prod.example .env.prod
+nano .env.prod
+
+# İlk kez çalıştırmak istersen (build ile)
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+```
+
+CI deploy akışı:
+- GitHub Actions image’ları ACR’a push eder.
+- Sonra VM’ye SSH ile bağlanıp `deploy/scripts/vm-update.sh` script’ini çalıştırır.
 
 İstersen bir sonraki adımda ACR + GitHub Actions pipeline’ını ekleyebilirim.

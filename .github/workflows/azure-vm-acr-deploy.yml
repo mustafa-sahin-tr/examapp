@@ -27,9 +27,9 @@ on:
           - exam-badge-api
           - ocelot-gateway
           - exam-outbox-publisher
-          - ui
+          - angular-app
           - auth-ui
-          - exam-question-detector
+          - question-detector
       image_tag:
         description: 'Optional image tag override (default: git sha)'
         type: string
@@ -55,12 +55,104 @@ jobs:
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
     outputs:
       acr_login_server: ${{ steps.acr.outputs.login_server }}
+      services_to_deploy: ${{ steps.changes.outputs.services }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed services
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Default to workflow input when manually triggered.
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if [[ "${SERVICE}" == "all" ]]; then
+              echo "services=all" >> "$GITHUB_OUTPUT"
+            else
+              echo "services=${SERVICE}" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+
+          BASE_SHA="${{ github.event.before }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          # Some events may not provide a usable base SHA.
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" =~ ^0+$ ]]; then
+            echo "services=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          if [[ -z "$changed_files" ]]; then
+            echo "services=__none__" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          declare -A seen
+          add() {
+            local svc="$1"
+            seen["$svc"]=1
+          }
+
+          # If deploy/compose wiring changes, do a full build+deploy to ensure IMAGE_TAG exists for everything.
+          if echo "$changed_files" | grep -Eq '^(deploy/docker-compose\.prod\.yml|deploy/docker-compose\.prod\.images\.yml|deploy/Caddyfile|deploy/scripts/|docker-compose\.)'; then
+            echo "services=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          while IFS= read -r f; do
+            case "$f" in
+              auth-api/*) add auth-api ;;
+              api/*) add exam-dotnet-api ;;
+              Services/BadgeService/*) add exam-badge-api ;;
+              Services/Gateway/*) add ocelot-gateway ;;
+              Services/OutboxPublisher/*) add exam-outbox-publisher ;;
+              ui/*) add angular-app ;;
+              auth-ui/*) add auth-ui ;;
+              question-detector/*) add question-detector ;;
+
+              deploy/dockerfiles/dotnet-web.Dockerfile)
+                add exam-dotnet-api
+                add auth-api
+                add exam-badge-api
+                add ocelot-gateway
+                ;;
+              deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile)
+                add exam-outbox-publisher
+                ;;
+              deploy/dockerfiles/angular-spa.Dockerfile)
+                add angular-app
+                add auth-ui
+                ;;
+              deploy/dockerfiles/question-detector.Dockerfile)
+                add question-detector
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          if [[ ${#seen[@]} -eq 0 ]]; then
+            echo "services=__none__" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Stable output order
+          services=""
+          for svc in angular-app auth-api auth-ui exam-badge-api exam-dotnet-api exam-outbox-publisher ocelot-gateway question-detector; do
+            if [[ -n "${seen[$svc]:-}" ]]; then
+              services+="${svc} "
+            fi
+          done
+          services="${services% }"
+          echo "services=${services}" >> "$GITHUB_OUTPUT"
 
       - name: Validate Azure secrets present
+        if: ${{ steps.changes.outputs.services != '__none__' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -68,7 +160,7 @@ jobs:
 
           # When building only a single service, force an explicit tag so deploy won't reference non-existent images.
           # Typical use: set image_tag to the currently deployed tag (e.g. manual-20260209-amd64-1) to replace only one image.
-          if [[ "${SERVICE}" != "all" && -z "${IMAGE_TAG_INPUT}" ]]; then
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${SERVICE}" != "all" && -z "${IMAGE_TAG_INPUT}" ]]; then
             echo "::error::For single-service builds (service=${SERVICE}), you must provide 'image_tag'. Use the currently deployed tag to update only that service."
             missing=1
           fi
@@ -106,6 +198,7 @@ jobs:
 
       # Option A (recommended): Azure OIDC login (no long-lived secrets)
       - name: Azure login (OIDC)
+        if: ${{ steps.changes.outputs.services != '__none__' }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -113,6 +206,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: ACR login
+        if: ${{ steps.changes.outputs.services != '__none__' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -141,6 +235,7 @@ jobs:
 
       - name: Set ACR login server
         id: acr
+        if: ${{ steps.changes.outputs.services != '__none__' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -159,19 +254,24 @@ jobs:
           echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
 
       - name: Setup Docker Buildx
+        if: ${{ steps.changes.outputs.services != '__none__' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Build & push images
+        if: ${{ steps.changes.outputs.services != '__none__' }}
         shell: bash
         run: |
           set -euo pipefail
           ACR="${{ steps.acr.outputs.login_server }}"
           TAG="${IMAGE_TAG}"
-          SERVICE="${SERVICE}"
+          SERVICES="${{ steps.changes.outputs.services }}"
 
           should_build() {
             local name="$1"
-            [[ "$SERVICE" == "all" || "$SERVICE" == "$name" ]]
+            if [[ "$SERVICES" == "all" ]]; then
+              return 0
+            fi
+            [[ " $SERVICES " == *" $name "* ]]
           }
 
           if should_build "exam-dotnet-api"; then
@@ -223,7 +323,7 @@ jobs:
               .
           fi
 
-          if should_build "ui"; then
+          if should_build "angular-app"; then
             docker buildx build --push \
               -f deploy/dockerfiles/angular-spa.Dockerfile \
               --build-arg APP_DIR=ui \
@@ -239,7 +339,7 @@ jobs:
               .
           fi
 
-          if should_build "exam-question-detector"; then
+          if should_build "question-detector"; then
             docker buildx build --push \
               -f deploy/dockerfiles/question-detector.Dockerfile \
               -t "$ACR/exam-question-detector:$TAG" \
@@ -249,6 +349,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build_and_push]
+    if: ${{ needs.build_and_push.outputs.services_to_deploy != '__none__' }}
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
 
     steps:
@@ -266,6 +367,8 @@ jobs:
             export ACR_USERNAME="${{ secrets.ACR_USERNAME }}"
             export ACR_PASSWORD="${{ secrets.ACR_PASSWORD }}"
             export IMAGE_TAG="${{ env.IMAGE_TAG }}"
+
+            export SERVICES_TO_DEPLOY="${{ needs.build_and_push.outputs.services_to_deploy }}"
 
             export ENV_FILE="${{ secrets.VM_ENV_FILE }}"
             sh ./scripts/vm-update.sh

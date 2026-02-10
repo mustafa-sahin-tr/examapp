@@ -17,17 +17,31 @@ if [ -n "${ACR_LOGIN_SERVER:-}" ] && [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_P
 fi
 
 # Pull latest images (tag is provided via IMAGE_TAG env)
-docker compose --env-file "$ENV_FILE" \
-  -f docker-compose.prod.yml \
-  -f docker-compose.prod.images.yml \
-  pull
-
-# Restart without building
-IMAGE_TAG="${IMAGE_TAG:-latest}" \
+if [ -n "${SERVICES_TO_DEPLOY:-}" ] && [ "${SERVICES_TO_DEPLOY}" != "all" ]; then
   docker compose --env-file "$ENV_FILE" \
     -f docker-compose.prod.yml \
     -f docker-compose.prod.images.yml \
-    up -d --no-build
+    pull ${SERVICES_TO_DEPLOY}
+else
+  docker compose --env-file "$ENV_FILE" \
+    -f docker-compose.prod.yml \
+    -f docker-compose.prod.images.yml \
+    pull
+fi
+
+# Restart without building
+IMAGE_TAG="${IMAGE_TAG:-latest}" \
+  if [ -n "${SERVICES_TO_DEPLOY:-}" ] && [ "${SERVICES_TO_DEPLOY}" != "all" ]; then
+    docker compose --env-file "$ENV_FILE" \
+      -f docker-compose.prod.yml \
+      -f docker-compose.prod.images.yml \
+      up -d --no-build ${SERVICES_TO_DEPLOY}
+  else
+    docker compose --env-file "$ENV_FILE" \
+      -f docker-compose.prod.yml \
+      -f docker-compose.prod.images.yml \
+      up -d --no-build
+  fi
 
 # Optional cleanup
 if [ "${PRUNE_IMAGES:-0}" = "1" ]; then

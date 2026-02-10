@@ -43,6 +43,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate Azure secrets present
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "${{ secrets.AZURE_CLIENT_ID }}" ]]; then
+            echo "::error::Missing secret AZURE_CLIENT_ID (repo or environment)"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.AZURE_TENANT_ID }}" ]]; then
+            echo "::error::Missing secret AZURE_TENANT_ID (repo or environment)"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]]; then
+            echo "::error::Missing secret AZURE_SUBSCRIPTION_ID (repo or environment)"
+            missing=1
+          fi
+          exit $missing
+
       # Option A (recommended): Azure OIDC login (no long-lived secrets)
       - name: Azure login (OIDC)
         uses: azure/login@v2

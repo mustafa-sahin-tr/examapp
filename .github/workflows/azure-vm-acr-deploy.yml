@@ -100,14 +100,6 @@ jobs:
 
           docker buildx build --push \
             -f deploy/dockerfiles/dotnet-web.Dockerfile \
-            --build-arg PROJECT_PATH=finance-api/finance-api/finance-api.csproj \
-            --build-arg APP_DLL=finance-api.dll \
-            --build-arg EXPOSE_PORT=8005 \
-            -t "$ACR/finance-api:$TAG" \
-            .
-
-          docker buildx build --push \
-            -f deploy/dockerfiles/dotnet-web.Dockerfile \
             --build-arg PROJECT_PATH=Services/Gateway/Gateway.csproj \
             --build-arg APP_DLL=Gateway.dll \
             --build-arg EXPOSE_PORT=5678 \
@@ -131,12 +123,6 @@ jobs:
             -f deploy/dockerfiles/angular-spa.Dockerfile \
             --build-arg APP_DIR=auth-ui \
             -t "$ACR/auth-ui:$TAG" \
-            .
-
-          docker buildx build --push \
-            -f deploy/dockerfiles/angular-spa.Dockerfile \
-            --build-arg APP_DIR=finance-app \
-            -t "$ACR/finance-ui:$TAG" \
             .
 
           docker buildx build --push \

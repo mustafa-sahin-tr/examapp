@@ -60,6 +60,11 @@ jobs:
             echo "::error::Missing secret AZURE_SUBSCRIPTION_ID (repo or environment)"
             missing=1
           fi
+
+          if [[ -z "${{ secrets.ACR_NAME }}" && -z "${{ secrets.ACR_LOGIN_SERVER }}" ]]; then
+            echo "::error::Missing secret ACR_NAME or ACR_LOGIN_SERVER (repo or environment)"
+            missing=1
+          fi
           exit $missing
 
       # Option A (recommended): Azure OIDC login (no long-lived secrets)
@@ -74,14 +79,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          az acr login --name "${{ secrets.ACR_NAME }}"
+          ACR_NAME="${{ secrets.ACR_NAME }}"
+          ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+
+          if [[ -z "$ACR_NAME" && -n "$ACR_LOGIN_SERVER" ]]; then
+            ACR_NAME="${ACR_LOGIN_SERVER%%.azurecr.io}"
+          fi
+
+          if [[ -z "$ACR_NAME" ]]; then
+            echo "::error::ACR registry name is empty. Set secret ACR_NAME (e.g. sorukutusuacr) or ACR_LOGIN_SERVER (e.g. sorukutusuacr.azurecr.io)."
+            exit 1
+          fi
+
+          az acr login --name "$ACR_NAME"
 
       - name: Set ACR login server
         id: acr
         shell: bash
         run: |
           set -euo pipefail
-          LOGIN_SERVER=$(az acr show -n "${{ secrets.ACR_NAME }}" --query loginServer -o tsv)
+          ACR_NAME="${{ secrets.ACR_NAME }}"
+          ACR_LOGIN_SERVER="${{ secrets.ACR_LOGIN_SERVER }}"
+
+          if [[ -n "$ACR_LOGIN_SERVER" ]]; then
+            LOGIN_SERVER="$ACR_LOGIN_SERVER"
+          else
+            if [[ -z "$ACR_NAME" ]]; then
+              echo "::error::ACR_NAME is empty and ACR_LOGIN_SERVER not provided."
+              exit 1
+            fi
+            LOGIN_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
+          fi
           echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
 
       - name: Setup Docker Buildx

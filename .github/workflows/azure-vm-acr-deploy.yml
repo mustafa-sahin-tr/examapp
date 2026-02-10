@@ -177,6 +177,15 @@ jobs:
             echo "::error::Missing secret ACR_NAME or ACR_LOGIN_SERVER (repo or environment)"
             missing=1
           fi
+
+          if [[ -n "${{ secrets.ACR_LOGIN_SERVER }}" ]]; then
+            acr_ls=$(printf '%s' "${{ secrets.ACR_LOGIN_SERVER }}" | tr -d ' \t\r\n' | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+            if ! echo "$acr_ls" | grep -Eq '^[a-z0-9][a-z0-9-]*\.azurecr\.io$'; then
+              echo "::error::Secret ACR_LOGIN_SERVER must look like 'sorukutusuacr.azurecr.io'. Got: $acr_ls"
+              missing=1
+            fi
+          fi
+
           if [[ -n "${{ secrets.ACR_USERNAME }}" || -n "${{ secrets.ACR_PASSWORD }}" ]]; then
             if [[ -z "${{ secrets.ACR_USERNAME }}" || -z "${{ secrets.ACR_PASSWORD }}" ]]; then
               echo "::error::Provide both ACR_USERNAME and ACR_PASSWORD (or neither)"
@@ -244,8 +253,24 @@ jobs:
             fi
             LOGIN_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
           fi
-          # Normalize to a docker-safe registry host (lowercase, no scheme, no trailing slash)
-          LOGIN_SERVER=$(echo "$LOGIN_SERVER" | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+          # Normalize to a docker-safe registry host (lowercase, no scheme, no trailing slash, no whitespace)
+          LOGIN_SERVER=$(printf '%s' "$LOGIN_SERVER" | tr -d ' \t\r\n' | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+          if echo "$LOGIN_SERVER" | grep -Eq '[A-Z]'; then
+            echo "::error::ACR login server must be lowercase. Got: $LOGIN_SERVER";
+            exit 1;
+          fi
+          if echo "$LOGIN_SERVER" | grep -Eq '/'; then
+            echo "::error::ACR login server must not contain a path (expected like 'sorukutusuacr.azurecr.io'). Got: $LOGIN_SERVER";
+            exit 1;
+          fi
+          if echo "$LOGIN_SERVER" | grep -Eq '^https?://'; then
+            echo "::error::ACR login server must not include scheme (https://). Got: $LOGIN_SERVER";
+            exit 1;
+          fi
+          if ! echo "$LOGIN_SERVER" | grep -Eq '^[a-z0-9][a-z0-9-]*\.azurecr\.io$'; then
+            echo "::error::ACR login server must look like '<name>.azurecr.io'. Got: $LOGIN_SERVER";
+            exit 1;
+          fi
           echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
 
       - name: Setup Docker Buildx
@@ -258,7 +283,15 @@ jobs:
         run: |
           set -euo pipefail
           ACR="${{ steps.acr.outputs.login_server }}"
-          ACR=$(echo "$ACR" | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+          ACR=$(printf '%s' "$ACR" | tr -d ' \t\r\n' | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+          if echo "$ACR" | grep -Eq '[A-Z]'; then
+            echo "::error::ACR host must be lowercase. Got: $ACR";
+            exit 1;
+          fi
+          if echo "$ACR" | grep -Eq '/'; then
+            echo "::error::ACR host must not contain a path. Got: $ACR";
+            exit 1;
+          fi
           TAG="${IMAGE_TAG}"
           SERVICES="${{ steps.changes.outputs.services }}"
 
@@ -392,7 +425,7 @@ jobs:
               echo "ACR_LOGIN_SERVER is empty (set secret ACR_LOGIN_SERVER or ensure build job outputs it)." >&2
               exit 1
             fi
-            ACR_LOGIN_SERVER_NORM=$(echo "${ACR_LOGIN_SERVER_EFFECTIVE}" | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+            ACR_LOGIN_SERVER_NORM=$(printf '%s' "${ACR_LOGIN_SERVER_EFFECTIVE}" | tr -d ' \t\r\n' | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
             export ACR_LOGIN_SERVER="${ACR_LOGIN_SERVER_NORM}"
             export ACR_USERNAME="${{ secrets.ACR_USERNAME }}"
             export ACR_PASSWORD="${{ secrets.ACR_PASSWORD }}"

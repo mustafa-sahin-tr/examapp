@@ -344,6 +344,8 @@ jobs:
     needs: [build_and_push]
     if: ${{ needs.build_and_push.outputs.services_to_deploy != '__none__' }}
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
+    env:
+      ACR_LOGIN_SERVER_EFFECTIVE: ${{ secrets.ACR_LOGIN_SERVER || needs.build_and_push.outputs.acr_login_server }}
 
     steps:
       - name: Validate VM deploy secrets present
@@ -383,7 +385,11 @@ jobs:
             set -e
             cd "${{ secrets.VM_DEPLOY_DIR }}"
 
-            export ACR_LOGIN_SERVER="${{ needs.build_and_push.outputs.acr_login_server }}"
+            if [ -z "${ACR_LOGIN_SERVER_EFFECTIVE}" ]; then
+              echo "ACR_LOGIN_SERVER is empty (set secret ACR_LOGIN_SERVER or ensure build job outputs it)." >&2
+              exit 1
+            fi
+            export ACR_LOGIN_SERVER="${ACR_LOGIN_SERVER_EFFECTIVE}"
             export ACR_USERNAME="${{ secrets.ACR_USERNAME }}"
             export ACR_PASSWORD="${{ secrets.ACR_PASSWORD }}"
             export IMAGE_TAG="${{ env.IMAGE_TAG }}"

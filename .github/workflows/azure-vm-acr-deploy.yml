@@ -244,6 +244,8 @@ jobs:
             fi
             LOGIN_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv)
           fi
+          # Normalize to a docker-safe registry host (lowercase, no scheme, no trailing slash)
+          LOGIN_SERVER=$(echo "$LOGIN_SERVER" | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
           echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
 
       - name: Setup Docker Buildx
@@ -256,6 +258,7 @@ jobs:
         run: |
           set -euo pipefail
           ACR="${{ steps.acr.outputs.login_server }}"
+          ACR=$(echo "$ACR" | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
           TAG="${IMAGE_TAG}"
           SERVICES="${{ steps.changes.outputs.services }}"
 
@@ -389,7 +392,8 @@ jobs:
               echo "ACR_LOGIN_SERVER is empty (set secret ACR_LOGIN_SERVER or ensure build job outputs it)." >&2
               exit 1
             fi
-            export ACR_LOGIN_SERVER="${ACR_LOGIN_SERVER_EFFECTIVE}"
+            ACR_LOGIN_SERVER_NORM=$(echo "${ACR_LOGIN_SERVER_EFFECTIVE}" | sed -E 's#^https?://##' | sed -E 's#/*$##' | tr '[:upper:]' '[:lower:]')
+            export ACR_LOGIN_SERVER="${ACR_LOGIN_SERVER_NORM}"
             export ACR_USERNAME="${{ secrets.ACR_USERNAME }}"
             export ACR_PASSWORD="${{ secrets.ACR_PASSWORD }}"
             export IMAGE_TAG="${{ env.IMAGE_TAG }}"

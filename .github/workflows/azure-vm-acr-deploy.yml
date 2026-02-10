@@ -15,6 +15,21 @@ on:
         options:
           - staging
           - prod
+      service:
+        description: 'Service to build & push (use all for full rebuild)'
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - exam-dotnet-api
+          - auth-api
+          - exam-badge-api
+          - ocelot-gateway
+          - exam-outbox-publisher
+          - ui
+          - auth-ui
+          - exam-question-detector
       image_tag:
         description: 'Optional image tag override (default: git sha)'
         type: string
@@ -30,7 +45,9 @@ concurrency:
 
 env:
   TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || startsWith(github.ref, 'refs/tags/') && 'prod' || 'staging' }}
+  SERVICE: ${{ github.event_name == 'workflow_dispatch' && inputs.service || 'all' }}
   IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.sha }}
+  IMAGE_TAG_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || '' }}
 
 jobs:
   build_and_push:
@@ -48,6 +65,13 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
+
+          # When building only a single service, force an explicit tag so deploy won't reference non-existent images.
+          # Typical use: set image_tag to the currently deployed tag (e.g. manual-20260209-amd64-1) to replace only one image.
+          if [[ "${SERVICE}" != "all" && -z "${IMAGE_TAG_INPUT}" ]]; then
+            echo "::error::For single-service builds (service=${SERVICE}), you must provide 'image_tag'. Use the currently deployed tag to update only that service."
+            missing=1
+          fi
           if [[ -z "${{ secrets.AZURE_CLIENT_ID }}" ]]; then
             echo "::error::Missing secret AZURE_CLIENT_ID (repo or environment)"
             missing=1
@@ -143,62 +167,84 @@ jobs:
           set -euo pipefail
           ACR="${{ steps.acr.outputs.login_server }}"
           TAG="${IMAGE_TAG}"
+          SERVICE="${SERVICE}"
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/dotnet-web.Dockerfile \
-            --build-arg PROJECT_PATH=api/ExamApp.Api/ExamApp.Api.csproj \
-            --build-arg APP_DLL=ExamApp.Api.dll \
-            --build-arg EXPOSE_PORT=5079 \
-            -t "$ACR/exam-dotnet-api:$TAG" \
-            .
+          should_build() {
+            local name="$1"
+            [[ "$SERVICE" == "all" || "$SERVICE" == "$name" ]]
+          }
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/dotnet-web.Dockerfile \
-            --build-arg PROJECT_PATH=auth-api/ExamApp.Api.csproj \
-            --build-arg APP_DLL=ExamApp.Api.dll \
-            --build-arg EXPOSE_PORT=5079 \
-            -t "$ACR/auth-api:$TAG" \
-            .
+          if should_build "exam-dotnet-api"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=api/ExamApp.Api/ExamApp.Api.csproj \
+              --build-arg APP_DLL=ExamApp.Api.dll \
+              --build-arg EXPOSE_PORT=5079 \
+              -t "$ACR/exam-dotnet-api:$TAG" \
+              .
+          fi
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/dotnet-web.Dockerfile \
-            --build-arg PROJECT_PATH=Services/BadgeService/BadgeService.csproj \
-            --build-arg APP_DLL=BadgeService.dll \
-            --build-arg EXPOSE_PORT=8006 \
-            -t "$ACR/exam-badge-api:$TAG" \
-            .
+          if should_build "auth-api"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=auth-api/ExamApp.Api.csproj \
+              --build-arg APP_DLL=ExamApp.Api.dll \
+              --build-arg EXPOSE_PORT=5079 \
+              -t "$ACR/auth-api:$TAG" \
+              .
+          fi
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/dotnet-web.Dockerfile \
-            --build-arg PROJECT_PATH=Services/Gateway/Gateway.csproj \
-            --build-arg APP_DLL=Gateway.dll \
-            --build-arg EXPOSE_PORT=5678 \
-            -t "$ACR/ocelot-gateway:$TAG" \
-            .
+          if should_build "exam-badge-api"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=Services/BadgeService/BadgeService.csproj \
+              --build-arg APP_DLL=BadgeService.dll \
+              --build-arg EXPOSE_PORT=8006 \
+              -t "$ACR/exam-badge-api:$TAG" \
+              .
+          fi
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile \
-            --build-arg PROJECT_PATH=Services/OutboxPublisher/OutboxPublisherService.csproj \
-            --build-arg APP_DLL=OutboxPublisherService.dll \
-            -t "$ACR/exam-outbox-publisher:$TAG" \
-            .
+          if should_build "ocelot-gateway"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=Services/Gateway/Gateway.csproj \
+              --build-arg APP_DLL=Gateway.dll \
+              --build-arg EXPOSE_PORT=5678 \
+              -t "$ACR/ocelot-gateway:$TAG" \
+              .
+          fi
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/angular-spa.Dockerfile \
-            --build-arg APP_DIR=ui \
-            -t "$ACR/ui:$TAG" \
-            .
+          if should_build "exam-outbox-publisher"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile \
+              --build-arg PROJECT_PATH=Services/OutboxPublisher/OutboxPublisherService.csproj \
+              --build-arg APP_DLL=OutboxPublisherService.dll \
+              -t "$ACR/exam-outbox-publisher:$TAG" \
+              .
+          fi
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/angular-spa.Dockerfile \
-            --build-arg APP_DIR=auth-ui \
-            -t "$ACR/auth-ui:$TAG" \
-            .
+          if should_build "ui"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/angular-spa.Dockerfile \
+              --build-arg APP_DIR=ui \
+              -t "$ACR/ui:$TAG" \
+              .
+          fi
 
-          docker buildx build --push \
-            -f deploy/dockerfiles/question-detector.Dockerfile \
-            -t "$ACR/exam-question-detector:$TAG" \
-            .
+          if should_build "auth-ui"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/angular-spa.Dockerfile \
+              --build-arg APP_DIR=auth-ui \
+              -t "$ACR/auth-ui:$TAG" \
+              .
+          fi
+
+          if should_build "exam-question-detector"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/question-detector.Dockerfile \
+              -t "$ACR/exam-question-detector:$TAG" \
+              .
+          fi
 
   deploy:
     runs-on: ubuntu-latest

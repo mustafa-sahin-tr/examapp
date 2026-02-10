@@ -157,13 +157,6 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-
-          # When building only a single service, force an explicit tag so deploy won't reference non-existent images.
-          # Typical use: set image_tag to the currently deployed tag (e.g. manual-20260209-amd64-1) to replace only one image.
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${SERVICE}" != "all" && -z "${IMAGE_TAG_INPUT}" ]]; then
-            echo "::error::For single-service builds (service=${SERVICE}), you must provide 'image_tag'. Use the currently deployed tag to update only that service."
-            missing=1
-          fi
           if [[ -z "${{ secrets.AZURE_CLIENT_ID }}" ]]; then
             echo "::error::Missing secret AZURE_CLIENT_ID (repo or environment)"
             missing=1

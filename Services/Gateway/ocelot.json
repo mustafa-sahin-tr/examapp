@@ -10,14 +10,20 @@
         }
       ],
       "UpstreamPathTemplate": "/hub/badges",
-      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST"
+      ],
       "UseWebSockets": true
     },
     {
-      "DownstreamPathTemplate": "/{everything}" ,
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "question-detector-dev", "Port": 8080 }
+        {
+          "Host": "question-detector-dev",
+          "Port": 8080
+        }
       ],
       "UpstreamPathTemplate": "/question-detector-dev/{everything}"
     },
@@ -25,15 +31,21 @@
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "auth-api", "Port": 5079 }
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
       ],
-      "UpstreamPathTemplate": "/api/auth/{everything}"      
+      "UpstreamPathTemplate": "/api/auth/{everything}"
     },
     {
       "DownstreamPathTemplate": "/priceUpdateHub/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "finance-api", "Port": 8005 }
+        {
+          "Host": "finance-api",
+          "Port": 8005
+        }
       ],
       "UpstreamPathTemplate": "/api/finance/priceUpdateHub/{everything}",
       "UseWebSockets": true,
@@ -43,7 +55,10 @@
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "finance-api", "Port": 8005 }
+        {
+          "Host": "finance-api",
+          "Port": 8005
+        }
       ],
       "UpstreamPathTemplate": "/api/finance/{everything}",
       "Priority": 0
@@ -52,38 +67,62 @@
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "exam-dotnet-api", "Port": 5079 }
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
       ],
       "UpstreamPathTemplate": "/api/exam/{everything}",
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "TestKey"
       }
-    },    
+    },
     {
       "DownstreamPathTemplate": "/hangfire",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "exam-dotnet-api", "Port": 5079 }
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
       ],
       "UpstreamPathTemplate": "/hangfire",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ],
       "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/hangfire/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "exam-dotnet-api", "Port": 5079 }
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
       ],
       "UpstreamPathTemplate": "/hangfire/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ],
       "Priority": 1
     },
     {
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "exam-badge-api", "Port": 8006 }
+        {
+          "Host": "exam-badge-api",
+          "Port": 8006
+        }
       ],
       "UpstreamPathTemplate": "/api/badge/{everything}",
       "AuthenticationOptions": {
@@ -100,7 +139,9 @@
         }
       ],
       "UpstreamPathTemplate": "/oidc-login",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "AddQueriesToRequest": true
     },
     {
@@ -113,7 +154,9 @@
         }
       ],
       "UpstreamPathTemplate": "/token",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "AddQueriesToRequest": true
     },
     {
@@ -126,7 +169,9 @@
         }
       ],
       "UpstreamPathTemplate": "/userinfo",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
     },
     {
       "DownstreamPathTemplate": "/resources/{everything}",
@@ -138,7 +183,9 @@
         }
       ],
       "UpstreamPathTemplate": "/resources/{everything}",
-      "UpstreamHttpMethod": [ "GET" ]
+      "UpstreamHttpMethod": [
+        "GET"
+      ]
     },
     {
       "DownstreamPathTemplate": "/realms/{everything}",
@@ -150,7 +197,13 @@
         }
       ],
       "UpstreamPathTemplate": "/auth/realms/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ]
     },
     {
       "DownstreamPathTemplate": "/realms/{everything}",
@@ -162,7 +215,10 @@
         }
       ],
       "UpstreamPathTemplate": "/realms/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post" ],
+      "UpstreamHttpMethod": [
+        "Get",
+        "Post"
+      ],
       "AddHeadersToRequest": true
     },
     {
@@ -175,14 +231,20 @@
         }
       ],
       "UpstreamPathTemplate": "/img/{everything}",
-      "UpstreamHttpMethod": [ "Get", "Post" ],
+      "UpstreamHttpMethod": [
+        "Get",
+        "Post"
+      ],
       "AddHeadersToRequest": true
     },
     {
-      "DownstreamPathTemplate": "/app/{everything}",
+      "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "auth-ui", "Port": 4200 }
+        {
+          "Host": "auth-ui",
+          "Port": 4200
+        }
       ],
       "UpstreamPathTemplate": "/app/{everything}",
       "Priority": 0
@@ -191,7 +253,10 @@
       "DownstreamPathTemplate": "/finance/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "finance-ui", "Port": 4200 }
+        {
+          "Host": "finance-ui",
+          "Port": 4200
+        }
       ],
       "UpstreamPathTemplate": "/finance/{everything}",
       "Priority": 0
@@ -200,7 +265,10 @@
       "DownstreamPathTemplate": "/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        { "Host": "angular-app", "Port": 4200 }
+        {
+          "Host": "angular-app",
+          "Port": 4200
+        }
       ],
       "UpstreamPathTemplate": "/{everything}",
       "Priority": 0

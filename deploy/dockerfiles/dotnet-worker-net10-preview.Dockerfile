@@ -8,7 +8,7 @@ COPY . .
 ARG PROJECT_PATH
 RUN test -n "$PROJECT_PATH"
 
-RUN dotnet restore "$PROJECT_PATH"
+RUN dotnet restore "$PROJECT_PATH" --ignore-failed-sources --source https://api.nuget.org/v3/index.json
 RUN dotnet publish "$PROJECT_PATH" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime image for preview may not always be present; using SDK as runtime for simplicity.

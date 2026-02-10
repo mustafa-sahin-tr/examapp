@@ -57,6 +57,9 @@ secrets.json
 .env.*
 !.env.prod.example
 
+### Keycloak realm exports (contain secrets)
+deploy/keycloak/import/
+
 ### Appsettings (keep base appsettings.json tracked)
 **/appsettings.Development.json
 **/appsettings.Local.json

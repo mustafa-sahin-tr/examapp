@@ -23,6 +23,40 @@ public class KeycloakService : IKeycloakService
         _keycloakSettings = options.Value;
     }
 
+    private Uri GetKeycloakBaseUri()
+    {
+        if (!string.IsNullOrWhiteSpace(_keycloakSettings.Host) &&
+            Uri.TryCreate(_keycloakSettings.Host, UriKind.Absolute, out var hostUri))
+        {
+            return hostUri;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_keycloakSettings.Authority) &&
+            Uri.TryCreate(_keycloakSettings.Authority, UriKind.Absolute, out var authorityUri))
+        {
+            return new Uri($"{authorityUri.Scheme}://{authorityUri.Authority}");
+        }
+
+        throw new KeycloakException("Keycloak base URL is not configured. Set Keycloak:Host or Keycloak:Authority.");
+    }
+
+    private Uri BuildKeycloakUri(string pathOrUrl)
+    {
+        if (string.IsNullOrWhiteSpace(pathOrUrl))
+        {
+            throw new KeycloakException("Keycloak URL segment is not configured.");
+        }
+
+        if (Uri.TryCreate(pathOrUrl, UriKind.Absolute, out var absolute))
+        {
+            return absolute;
+        }
+
+        var baseUri = GetKeycloakBaseUri();
+        var relative = pathOrUrl.TrimStart('/');
+        return new Uri(baseUri, relative);
+    }
+
 
 
     private async Task<string> GetKeycloakAdminTokenAsync()
@@ -34,7 +68,7 @@ public class KeycloakService : IKeycloakService
             new KeyValuePair<string, string>("client_secret", _keycloakSettings.AdminClientSecret)
         });
 
-        var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content);
+        var response = await _http.PostAsync(BuildKeycloakUri(_keycloakSettings.TokenUrl), content);
         var json = await response.Content.ReadAsStringAsync();
 
         using var doc = JsonDocument.Parse(json);
@@ -43,17 +77,22 @@ public class KeycloakService : IKeycloakService
 
     public async Task<TokenResponseDto> ExchangeTokenAsync(string code)
     {
+        if (string.IsNullOrWhiteSpace(_keycloakSettings.RedirectUri))
+        {
+            throw new KeycloakException("Keycloak redirect URI is not configured. Set Keycloak:RedirectUri (e.g. https://<domain>/app/callback).");
+        }
+
         var body = new Dictionary<string, string>
             {
                 { "grant_type", "authorization_code" },
                 { "client_id", _keycloakSettings.ClientId },
                 { "client_secret", _keycloakSettings.ClientSecret },
-                { "redirect_uri", "http://localhost:5678/app/callback" },
+                { "redirect_uri", _keycloakSettings.RedirectUri },
                 { "code", code }
             };
 
         var response = await _http.PostAsync(
-            $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
+            BuildKeycloakUri(_keycloakSettings.TokenUrl),
             new FormUrlEncodedContent(body)
         );
 
@@ -87,7 +126,7 @@ public class KeycloakService : IKeycloakService
             throw new KeycloakException("Keycloak user ID cannot be null or empty.");
         }
 
-        var rolesResponse = await _http.GetAsync($"{_keycloakSettings.Host}/{_keycloakSettings.RealmRolesUrl}");
+        var rolesResponse = await _http.GetAsync(BuildKeycloakUri(_keycloakSettings.RealmRolesUrl));
         var rolesJson = await rolesResponse.Content.ReadAsStringAsync();
 
         var roles = JsonSerializer.Deserialize<List<KeycloakRoleDto>>(rolesJson, new JsonSerializerOptions
@@ -100,7 +139,7 @@ public class KeycloakService : IKeycloakService
         var roleAssignJson = JsonSerializer.Serialize(new[] { role });
         var assignContent = new StringContent(roleAssignJson, Encoding.UTF8, "application/json");
 
-        await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm", assignContent);
+        await _http.PostAsync(BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"), assignContent);
     }
 
     public async Task<TokenResponseDto> LoginAsync(string username, string password)
@@ -115,7 +154,7 @@ public class KeycloakService : IKeycloakService
             };
 
         var response = await _http.PostAsync(
-            $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
+            BuildKeycloakUri(_keycloakSettings.TokenUrl),
             new FormUrlEncodedContent(body)
         );
 
@@ -145,9 +184,9 @@ public class KeycloakService : IKeycloakService
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", adminToken);
 
-        var logoutUrl = string.Format($"{_keycloakSettings.Host}/{_keycloakSettings.LogoutUrl}", userId);
+        var logoutUrl = string.Format(_keycloakSettings.LogoutUrl, userId);
 
-        var resp = await _http.PostAsync(logoutUrl, null);
+        var resp = await _http.PostAsync(BuildKeycloakUri(logoutUrl), null);
         if (!resp.IsSuccessStatusCode)
             throw new KeycloakException($"Keycloak logout failed: {await resp.Content.ReadAsStringAsync()}");
 
@@ -159,7 +198,7 @@ public class KeycloakService : IKeycloakService
 
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
 
-        var response = await _http.DeleteAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{userId}");
+        var response = await _http.DeleteAsync(BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{userId}"));
 
         if (!response.IsSuccessStatusCode)
         {
@@ -199,7 +238,7 @@ public class KeycloakService : IKeycloakService
 
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
 
-        var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}", content);
+        var response = await _http.PostAsync(BuildKeycloakUri(_keycloakSettings.UserUrl), content);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -265,7 +304,7 @@ public class KeycloakService : IKeycloakService
 
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
 
-            var rolesResponse = await _http.GetAsync($"{_keycloakSettings.Host}/{_keycloakSettings.RealmRolesUrl}");
+            var rolesResponse = await _http.GetAsync(BuildKeycloakUri(_keycloakSettings.RealmRolesUrl));
 
             if (!rolesResponse.IsSuccessStatusCode)
             {

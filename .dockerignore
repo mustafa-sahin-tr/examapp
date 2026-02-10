@@ -48,5 +48,17 @@ question-detector/data/json
 question-detector/runs
 runs
 
+# Allow-list the exact weights used by the API image (question-detector)
+!question-detector/data/questions/
+!question-detector/data/questions/runs/
+!question-detector/data/questions/runs/train20251206-22/
+!question-detector/data/questions/runs/train20251206-22/weights/
+!question-detector/data/questions/runs/train20251206-22/weights/best.pt
+!question-detector/data/answers/
+!question-detector/data/answers/runs/
+!question-detector/data/answers/runs/train-answers-v11/
+!question-detector/data/answers/runs/train-answers-v11/weights/
+!question-detector/data/answers/runs/train-answers-v11/weights/best.pt
+
 # Large misc
 azure-cli-installer.pkg

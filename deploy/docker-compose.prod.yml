@@ -79,7 +79,7 @@ services:
     image: quay.io/keycloak/keycloak:24.0.1
     container_name: exam-keycloak
     restart: unless-stopped
-    command: start
+    command: start --import-realm
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -94,6 +94,10 @@ services:
       KC_PROXY: edge
       KC_HOSTNAME: ${DOMAIN}
       KC_HEALTH_ENABLED: 'true'
+    volumes:
+      # Drop your exported realm JSON(s) here (DO NOT commit them): deploy/keycloak/import/*.json
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+      - ./keycloak/keycloak-themes/my-theme:/opt/keycloak/themes/my-theme:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,6 +172,12 @@ services:
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
+      Keycloak__Host: http://keycloak:8080
+      Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
+      Keycloak__UserUrl: admin/realms/exam-realm/users
+      Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
+      Keycloak__LogoutUrl: admin/realms/exam-realm/users/{0}/logout
+      Keycloak__RedirectUri: ${PUBLIC_BASE_URL}/app/callback
       Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
       Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
       Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
@@ -212,27 +222,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
-    networks:
-      - exam-net
-
-  finance-api:
-    build:
-      context: ..
-      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
-      args:
-        PROJECT_PATH: finance-api/finance-api/finance-api.csproj
-        APP_DLL: finance-api.dll
-        EXPOSE_PORT: 8005
-    container_name: finance-api
-    restart: unless-stopped
-    environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      Kestrel__Port: 8005
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=finance_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      Cors__SignalR__AllowedOrigins__0: ${PUBLIC_BASE_URL}
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - exam-net
 
@@ -281,17 +270,6 @@ services:
     networks:
       - exam-net
 
-  finance-ui:
-    build:
-      context: ..
-      dockerfile: deploy/dockerfiles/angular-spa.Dockerfile
-      args:
-        APP_DIR: finance-app
-    container_name: finance-ui
-    restart: unless-stopped
-    networks:
-      - exam-net
-
   ocelot-gateway:
     build:
       context: ..
@@ -312,11 +290,9 @@ services:
     depends_on:
       - angular-app
       - auth-ui
-      - finance-ui
       - exam-dotnet-api
       - auth-api
       - exam-badge-api
-      - finance-api
       - keycloak
       - minio
       - rabbitmq

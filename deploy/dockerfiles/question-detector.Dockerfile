@@ -14,10 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY question-detector/requirements.txt ./requirements.txt
+COPY question-detector/requirements.prod.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-COPY question-detector/ ./
+RUN mkdir -p /app/models
+COPY question-detector/main.py ./main.py
+
+# Only ship the weights actually used by the API.
+COPY question-detector/data/questions/runs/train20251206-22/weights/best.pt /app/models/question-best.pt
+COPY question-detector/data/answers/runs/train-answers-v11/weights/best.pt /app/models/answer-best.pt
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

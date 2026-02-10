@@ -87,7 +87,19 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml logs -f --tail=20
 
 ## 5) Keycloak Realm / Client Ayarı
 
-Bu repo Keycloak’u otomatik “realm import” etmiyor. İlk kurulumda:
+Bu deploy seti Keycloak realm import’u destekler.
+
+Realm export JSON’unu (client/roles/groups dahil olabilir) şu klasöre koy:
+
+- `deploy/keycloak/import/*.json`
+
+Sonra Keycloak container’ı **recreate** et ki import startup’ta çalışsın:
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --force-recreate keycloak
+```
+
+İlk kurulumda (import kullanmıyorsan) manuel olarak:
 
 1. Keycloak container ayağa kalkınca admin console’a geçici erişim ver:
    - Kısa süreli debug için host’ta port publish ekleyebilirsin (prod compose’da yok).
@@ -101,6 +113,15 @@ Bu repo Keycloak’u otomatik “realm import” etmiyor. İlk kurulumda:
 ```bash
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 ```
+
+### Keycloak Theme (login)
+
+Custom theme mount’ı prod compose’da aktiftir:
+
+- Host: `deploy/keycloak/keycloak-themes/my-theme/`
+- Container: `/opt/keycloak/themes/my-theme`
+
+Realm import dosyan `my-theme`’i referans ediyorsa, Keycloak recreate sonrası otomatik kullanılabilir.
 
 ## 6) Veri Kalıcılığı ve Backup
 

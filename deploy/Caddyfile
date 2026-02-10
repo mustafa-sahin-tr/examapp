@@ -6,6 +6,11 @@
 {$DOMAIN} {
 	encode gzip
 
+	# Keycloak must be reachable on the public domain for OIDC flows.
+	# Serve it directly from Caddy (bypassing Ocelot) for common Keycloak paths.
+	@keycloak path /realms/* /resources/* /admin/* /js/* /robots.txt
+	reverse_proxy @keycloak keycloak:8080
+
 	# Single entry-point: forward everything to Ocelot gateway
 	reverse_proxy ocelot-gateway:5678
 }

@@ -5,27 +5,27 @@ DO
 $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'worksheet_v2') THEN
-    CREATE DATABASE worksheet_v2 OWNER examuser;
+    CREATE DATABASE worksheet_v2;
   END IF;
 
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'auth_db') THEN
-    CREATE DATABASE auth_db OWNER examuser;
+    CREATE DATABASE auth_db;
   END IF;
 
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'badge') THEN
-    CREATE DATABASE badge OWNER examuser;
+    CREATE DATABASE badge;
   END IF;
 
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'catalog') THEN
-    CREATE DATABASE catalog OWNER examuser;
+    CREATE DATABASE catalog;
   END IF;
 
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'finance_db') THEN
-    CREATE DATABASE finance_db OWNER examuser;
+    CREATE DATABASE finance_db;
   END IF;
 
   IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak') THEN
-    CREATE DATABASE keycloak OWNER examuser;
+    CREATE DATABASE keycloak;
   END IF;
 END
 $$;

@@ -18,9 +18,6 @@ services:
   exam-badge-api:
     image: ${ACR_LOGIN_SERVER}/exam-badge-api:${IMAGE_TAG}
 
-  finance-api:
-    image: ${ACR_LOGIN_SERVER}/finance-api:${IMAGE_TAG}
-
   exam-outbox-publisher:
     image: ${ACR_LOGIN_SERVER}/exam-outbox-publisher:${IMAGE_TAG}
 
@@ -29,9 +26,6 @@ services:
 
   auth-ui:
     image: ${ACR_LOGIN_SERVER}/auth-ui:${IMAGE_TAG}
-
-  finance-ui:
-    image: ${ACR_LOGIN_SERVER}/finance-ui:${IMAGE_TAG}
 
   ocelot-gateway:
     image: ${ACR_LOGIN_SERVER}/ocelot-gateway:${IMAGE_TAG}

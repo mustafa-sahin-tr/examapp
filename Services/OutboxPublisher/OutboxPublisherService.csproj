@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ExamApp.Foundation" Version="1.1.1" />
     <PackageReference Include="MassTransit" Version="8.4.1" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.4.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0-preview.4.25258.110" />
@@ -18,5 +17,9 @@
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.4.25258.110" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0-preview.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../api/ExamApp.Foundation/ExamApp.Foundation.csproj" />
   </ItemGroup>
 </Project>

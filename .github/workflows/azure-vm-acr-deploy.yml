@@ -353,6 +353,33 @@ jobs:
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
 
     steps:
+      - name: Validate VM deploy secrets present
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "${{ secrets.VM_HOST }}" ]]; then
+            echo "::error::Missing secret VM_HOST (set it in repo secrets or in the selected environment secrets)"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_USER }}" ]]; then
+            echo "::error::Missing secret VM_USER"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_SSH_KEY }}" ]]; then
+            echo "::error::Missing secret VM_SSH_KEY"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_DEPLOY_DIR }}" ]]; then
+            echo "::error::Missing secret VM_DEPLOY_DIR"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_ENV_FILE }}" ]]; then
+            echo "::error::Missing secret VM_ENV_FILE"
+            missing=1
+          fi
+          exit $missing
+
       - name: Deploy on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
         with:

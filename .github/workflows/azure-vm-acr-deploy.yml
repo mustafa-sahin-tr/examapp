@@ -332,6 +332,9 @@ jobs:
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Validate VM deploy secrets present
         shell: bash
         run: |
@@ -359,6 +362,34 @@ jobs:
           fi
           exit $missing
 
+      - name: Ensure VM deploy dirs exist
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+
+      - name: Upload deploy assets to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml"
+          target: "${{ secrets.VM_DEPLOY_DIR }}"
+
+      - name: Upload VM update script
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "deploy/scripts/vm-update.sh"
+          target: "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+
       - name: Deploy on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -369,10 +400,10 @@ jobs:
             set -e
             cd "${{ secrets.VM_DEPLOY_DIR }}"
 
-            # If VM_DEPLOY_DIR is a git checkout, sync it to this workflow commit
-            if [ -d .git ]; then
-              git fetch --all --prune
-              git reset --hard "${{ github.sha }}"
+            echo "VM deploy dir: $(pwd)"
+            echo "Caddyfile keycloak matcher preview:"
+            if [ -f ./Caddyfile ]; then
+              grep -n -E "@keycloak|handle @keycloak|X-Forwarded-Proto|reverse_proxy keycloak" ./Caddyfile || true
             fi
 
             ACR_LOGIN_SERVER_EFFECTIVE="${{ secrets.ACR_LOGIN_SERVER }}"
@@ -403,6 +434,9 @@ jobs:
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Validate VM deploy secrets present
         shell: bash
         run: |
@@ -430,6 +464,25 @@ jobs:
           fi
           exit $missing
 
+      - name: Ensure VM deploy dirs exist
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+
+      - name: Upload deploy assets to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml"
+          target: "${{ secrets.VM_DEPLOY_DIR }}"
+
       - name: Deploy config on VM (SSH, no build)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -439,14 +492,6 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.VM_DEPLOY_DIR }}"
-
-            if [ -d .git ]; then
-              git fetch --all --prune
-              git reset --hard "${{ github.sha }}"
-              echo "VM deploy dir at commit: $(git rev-parse HEAD)"
-            else
-              echo "WARNING: VM_DEPLOY_DIR is not a git checkout; config files will NOT auto-update." >&2
-            fi
 
             ENV_FILE="${{ secrets.VM_ENV_FILE }}"
 

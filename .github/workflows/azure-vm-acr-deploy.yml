@@ -12,6 +12,7 @@ on:
           - build_and_deploy
           - build_only
           - deploy_only
+          - bootstrap_minimal
       target:
         description: 'Deploy target'
         type: choice
@@ -57,7 +58,7 @@ env:
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'deploy_only' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.mode != 'deploy_only' && inputs.mode != 'bootstrap_minimal') }}
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
     outputs:
       acr_login_server: ${{ steps.acr.outputs.login_server }}
@@ -510,3 +511,90 @@ jobs:
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
               up -d --no-build --force-recreate --no-deps caddy keycloak
+
+  bootstrap_minimal:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'bootstrap_minimal' }}
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate VM deploy secrets present
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "${{ secrets.VM_HOST }}" ]]; then
+            echo "::error::Missing secret VM_HOST (set it in repo secrets or in the selected environment secrets)"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_USER }}" ]]; then
+            echo "::error::Missing secret VM_USER"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_SSH_KEY }}" ]]; then
+            echo "::error::Missing secret VM_SSH_KEY"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_DEPLOY_DIR }}" ]]; then
+            echo "::error::Missing secret VM_DEPLOY_DIR"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_ENV_FILE }}" ]]; then
+            echo "::error::Missing secret VM_ENV_FILE"
+            missing=1
+          fi
+          exit $missing
+
+      - name: Ensure VM deploy dirs exist
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+
+      - name: Upload deploy assets to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml'
+          target: '${{ secrets.VM_DEPLOY_DIR }}'
+          strip_components: 1
+          overwrite: true
+
+      - name: Bootstrap minimal stack on VM (SSH)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.VM_DEPLOY_DIR }}"
+
+            ENV_FILE="${{ secrets.VM_ENV_FILE }}"
+
+            echo "Resetting stack (containers + volumes) ..."
+            docker compose --env-file "$ENV_FILE" \
+              -f docker-compose.prod.yml \
+              -f docker-compose.prod.images.yml \
+              down --remove-orphans --volumes
+
+            echo "Starting minimal services (postgres, redis, rabbitmq, keycloak, caddy) ..."
+            docker compose --env-file "$ENV_FILE" \
+              -f docker-compose.prod.yml \
+              -f docker-compose.prod.images.yml \
+              up -d --no-build postgres redis rabbitmq keycloak caddy
+
+            echo "Status:" 
+            docker compose \
+              -f docker-compose.prod.yml \
+              -f docker-compose.prod.images.yml \
+              ps

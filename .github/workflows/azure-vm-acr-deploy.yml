@@ -419,6 +419,12 @@ jobs:
             set -e
             cd "${{ secrets.VM_DEPLOY_DIR }}"
 
+            # If VM_DEPLOY_DIR is a git checkout, sync it to this workflow commit
+            if [ -d .git ]; then
+              git fetch --all --prune
+              git reset --hard "${{ github.sha }}"
+            fi
+
             ACR_LOGIN_SERVER_EFFECTIVE="${{ secrets.ACR_LOGIN_SERVER }}"
             if [ -z "$ACR_LOGIN_SERVER_EFFECTIVE" ]; then
               ACR_LOGIN_SERVER_EFFECTIVE="${{ needs.build_and_push.outputs.acr_login_server }}"

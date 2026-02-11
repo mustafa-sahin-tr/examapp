@@ -63,6 +63,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Free disk space on runner
+        if: ${{ steps.changes.outputs.services != '__none__' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Disk before cleanup:" && df -h
+
+          # GitHub-hosted runners come with large preinstalled toolchains.
+          # This workflow builds inside Docker, so we can safely remove these to avoid
+          # intermittent 'no space left on device' during image pull/extract/build.
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
+          sudo apt-get clean || true
+
+          # Ensure Docker has maximum headroom for layer extraction/buildkit.
+          docker system prune -af || true
+          docker builder prune -af || true
+
+          echo "Disk after cleanup:" && df -h
+
       - name: Detect changed services
         id: changes
         shell: bash

@@ -42,12 +42,17 @@ public class KeycloakService : IKeycloakService
 
     public async Task<TokenResponseDto> ExchangeTokenAsync(string code) 
     {
+        if (string.IsNullOrWhiteSpace(_keycloakSettings.RedirectUri))
+        {
+            throw new KeycloakException("Keycloak redirect URI is not configured. Set Keycloak:RedirectUri to the same callback URL used in the authorization request (e.g. https://<domain>/app/callback). Do not hard-code localhost for staging/prod.");
+        }
+
         var body = new Dictionary<string, string>
             {
                 { "grant_type", "authorization_code" },
                 { "client_id", _keycloakSettings.ClientId },
                 { "client_secret", _keycloakSettings.ClientSecret },
-                { "redirect_uri", "http://localhost:5678/callback" },
+                { "redirect_uri", _keycloakSettings.RedirectUri },
                 { "code", code }
             };
 

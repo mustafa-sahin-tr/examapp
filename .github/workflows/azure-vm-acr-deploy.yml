@@ -448,7 +448,10 @@ jobs:
             ENV_FILE="${{ secrets.VM_ENV_FILE }}"
 
             # Apply config changes without pulling/building images.
+            # NOTE: `caddy` depends_on `ocelot-gateway` in docker-compose.prod.yml.
+            # In deploy-only mode we *must not* start dependencies, otherwise Compose may try
+            # to recreate unrelated services and fail if their images are not present on the VM.
             docker compose --env-file "$ENV_FILE" \
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
-              up -d --no-build --force-recreate caddy keycloak
+              up -d --no-build --force-recreate --no-deps caddy keycloak

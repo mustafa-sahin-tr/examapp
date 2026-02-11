@@ -34,6 +34,14 @@ trim_ws() {
 
 SERVICES_TO_DEPLOY_NORM="$(trim_ws "${SERVICES_TO_DEPLOY:-}")"
 
+# Allow caller to override services via CLI args (e.g. vm-update.sh auth-api)
+if [ "$#" -gt 0 ]; then
+  # shellcheck disable=SC2124
+  SERVICES_TO_DEPLOY_NORM="$(trim_ws "$*")"
+fi
+
+echo "SERVICES_TO_DEPLOY=${SERVICES_TO_DEPLOY_NORM:-<all>}"
+
 # Pull latest images (tag is provided via IMAGE_TAG env)
 if [ -n "$SERVICES_TO_DEPLOY_NORM" ] && [ "$SERVICES_TO_DEPLOY_NORM" != "all" ]; then
   # split on spaces into positional args

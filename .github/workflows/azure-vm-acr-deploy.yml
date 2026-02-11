@@ -462,4 +462,6 @@ jobs:
             export SERVICES_TO_DEPLOY="${{ needs.build_and_push.outputs.services_to_deploy }}"
 
             export ENV_FILE="${{ secrets.VM_ENV_FILE }}"
-            sh ./scripts/vm-update.sh
+            # Pass services explicitly so compose only pulls/starts what we built.
+            # shellcheck disable=SC2086
+            sh ./scripts/vm-update.sh $SERVICES_TO_DEPLOY

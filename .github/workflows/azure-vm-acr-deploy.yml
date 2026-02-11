@@ -443,9 +443,19 @@ jobs:
             if [ -d .git ]; then
               git fetch --all --prune
               git reset --hard "${{ github.sha }}"
+              echo "VM deploy dir at commit: $(git rev-parse HEAD)"
+            else
+              echo "WARNING: VM_DEPLOY_DIR is not a git checkout; config files will NOT auto-update." >&2
             fi
 
             ENV_FILE="${{ secrets.VM_ENV_FILE }}"
+
+            echo "Caddyfile keycloak matcher preview:" 
+            if [ -f ./Caddyfile ]; then
+              grep -n -E "@keycloak|handle @keycloak|X-Forwarded-Proto|reverse_proxy keycloak" ./Caddyfile || true
+            else
+              echo "ERROR: ./Caddyfile not found in VM_DEPLOY_DIR" >&2
+            fi
 
             # Apply config changes without pulling/building images.
             # NOTE: `caddy` depends_on `ocelot-gateway` in docker-compose.prod.yml.

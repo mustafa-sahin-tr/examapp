@@ -9,17 +9,21 @@
 	# Keycloak must be reachable on the public domain for OIDC flows.
 	# Serve it directly from Caddy (bypassing Ocelot) for common Keycloak paths.
 	@keycloak path /realms /realms/* /resources /resources/* /admin /admin/* /js /js/* /robots.txt
-	reverse_proxy @keycloak keycloak:8080 {
-		# Keycloak enforces HTTPS for external requests (realm ssl-required=external).
-		# In some setups the connection to Caddy may be HTTP (LB/Cloudflare in front),
-		# so forwarding `{scheme}` can incorrectly become `http` and Keycloak returns
-		# {"error":"invalid_request","error_description":"HTTPS required"}.
-		# Force the external scheme/port to what clients use.
-		header_up X-Forwarded-Proto https
-		header_up X-Forwarded-Host {host}
-		header_up X-Forwarded-Port 443
+	handle @keycloak {
+		reverse_proxy keycloak:8080 {
+			# Keycloak enforces HTTPS for external requests (realm ssl-required=external).
+			# In some setups the connection to Caddy may be HTTP (LB/Cloudflare in front),
+			# so forwarding `{scheme}` can incorrectly become `http` and Keycloak returns
+			# {"error":"invalid_request","error_description":"HTTPS required"}.
+			# Force the external scheme/port to what clients use.
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Port 443
+		}
 	}
 
-	# Single entry-point: forward everything to Ocelot gateway
-	reverse_proxy ocelot-gateway:5678
+	# Single entry-point: forward everything else to Ocelot gateway
+	handle {
+		reverse_proxy ocelot-gateway:5678
+	}
 }

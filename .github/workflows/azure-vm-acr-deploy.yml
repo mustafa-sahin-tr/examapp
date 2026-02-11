@@ -593,11 +593,19 @@ jobs:
             docker system prune -af
             docker builder prune -af || true
 
-            echo "Starting minimal services (postgres, redis, rabbitmq, keycloak, caddy) ..."
+            echo "Starting minimal services (postgres, redis, rabbitmq, keycloak) ..."
             docker compose --env-file "$ENV_FILE" \
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
-              up -d --no-build postgres redis rabbitmq keycloak caddy
+              up -d --no-build postgres redis rabbitmq keycloak
+
+            echo "Starting caddy (no dependencies) ..."
+            # `caddy` depends_on `ocelot-gateway`, which can recursively start the whole stack.
+            # For bootstrap we want ONLY the minimal set.
+            docker compose --env-file "$ENV_FILE" \
+              -f docker-compose.prod.yml \
+              -f docker-compose.prod.images.yml \
+              up -d --no-build --no-deps caddy
 
             echo "Status:" 
             docker compose \

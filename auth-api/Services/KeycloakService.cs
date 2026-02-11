@@ -61,6 +61,12 @@ public class KeycloakService : IKeycloakService
 
     private async Task<string> GetKeycloakAdminTokenAsync()
     {
+        if (string.IsNullOrWhiteSpace(_keycloakSettings.AdminClientId) ||
+            string.IsNullOrWhiteSpace(_keycloakSettings.AdminClientSecret))
+        {
+            throw new KeycloakException("Keycloak admin client credentials are not configured. Set KeycloakSettings:AdminClientId and KeycloakSettings:AdminClientSecret.");
+        }
+
         var content = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("grant_type", "client_credentials"),
@@ -71,8 +77,33 @@ public class KeycloakService : IKeycloakService
         var response = await _http.PostAsync(BuildKeycloakUri(_keycloakSettings.TokenUrl), content);
         var json = await response.Content.ReadAsStringAsync();
 
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.GetProperty("access_token").GetString();
+        if (!response.IsSuccessStatusCode)
+        {
+            var details = string.IsNullOrWhiteSpace(json) ? "<empty response>" : json;
+            throw new KeycloakException($"Failed to get admin token from Keycloak. Status={(int)response.StatusCode} {response.ReasonPhrase}. Body: {details}");
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("access_token", out var tokenProp))
+            {
+                var token = tokenProp.GetString();
+                if (!string.IsNullOrWhiteSpace(token))
+                {
+                    return token;
+                }
+            }
+
+            // Common Keycloak error schema: {"error": "...", "error_description": "..."}
+            var error = doc.RootElement.TryGetProperty("error", out var errProp) ? errProp.GetString() : null;
+            var description = doc.RootElement.TryGetProperty("error_description", out var descProp) ? descProp.GetString() : null;
+            throw new KeycloakException($"Keycloak admin token response did not contain 'access_token'. error={error ?? "<none>"} description={description ?? "<none>"}. Raw: {json}");
+        }
+        catch (JsonException jex)
+        {
+            throw new KeycloakException($"Failed to parse Keycloak admin token response as JSON. Raw: {json}", jex);
+        }
     }
 
     public async Task<TokenResponseDto> ExchangeTokenAsync(string code)

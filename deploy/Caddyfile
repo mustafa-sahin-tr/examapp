@@ -8,7 +8,7 @@
 
 	# Keycloak must be reachable on the public domain for OIDC flows.
 	# Serve it directly from Caddy (bypassing Ocelot) for common Keycloak paths.
-	@keycloak path /realms/* /resources/* /admin/* /js/* /robots.txt
+	@keycloak path /realms /realms/* /resources /resources/* /admin /admin/* /js /js/* /robots.txt
 	reverse_proxy @keycloak keycloak:8080
 
 	# Single entry-point: forward everything to Ocelot gateway

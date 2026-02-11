@@ -8,8 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender-dev \
     libzbar0 \
-    tesseract-ocr \
-    tesseract-ocr-tur \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

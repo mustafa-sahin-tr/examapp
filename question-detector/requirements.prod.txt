@@ -1,7 +1,13 @@
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+
+# Ultralytics depends on PyTorch. Force CPU wheels to avoid multi-GB CUDA/NVIDIA layers.
+torch
+torchvision
+torchaudio
+
 fastapi
 uvicorn
 pillow
 ultralytics
-python-multipart
 pyzbar
-pytesseract

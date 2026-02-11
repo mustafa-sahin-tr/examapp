@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
@@ -6,7 +6,6 @@ from pathlib import Path
 from ultralytics import YOLO
 from PIL import Image
 import base64
-import io
 from io import BytesIO
 import uuid
 import json
@@ -90,11 +89,6 @@ model = YOLO(QUESTION_MODEL_PATH)
 sub_model = YOLO(ANSWER_MODEL_PATH)  # <--- Alt modelin yolu
 
 
-
-class ImageData(BaseModel):
-    image_base64: str
-
-
 def upload_answers_logic(payload: UploadQuestionsRequest) -> dict:
     try:
         # 👇 Base64 temizleme
@@ -158,7 +152,7 @@ def predict(data: ImageData):
             base64_data = base64_data.split(",", 1)[1]
         # Base64'ten image oluştur
         image_bytes = base64.b64decode(base64_data)
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image = Image.open(BytesIO(image_bytes)).convert("RGB")
         logger.info(f"Received image with shape: {image.size}")
         # Predict et
         results = model.predict(
@@ -340,7 +334,7 @@ async def read_qr_code(request: ImageData):
             base64_data = base64_data.split(",", 1)[1]
         # Base64'ten image oluştur
         image_bytes = base64.b64decode(base64_data)
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        image = Image.open(BytesIO(image_bytes)).convert("RGB")
 
         # Base64 decode
         # image_data = base64.b64decode(request.image_base64)

@@ -90,6 +90,7 @@ services:
 
       KC_HTTP_ENABLED: 'true'
       KC_PROXY: edge
+      KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME: ${DOMAIN}
       KC_HEALTH_ENABLED: 'true'
     volumes:

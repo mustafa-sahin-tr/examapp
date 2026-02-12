@@ -52,24 +52,24 @@ if [ -z "$SERVICES_TO_DEPLOY_NORM" ] || [ "$SERVICES_TO_DEPLOY_NORM" = "all" ]; 
   echo "Resolved services for deploy (app-only): $SERVICES_TO_DEPLOY_NORM"
 fi
 
-# Pull latest images (tag is provided via IMAGE_TAG env)
-if [ -n "$SERVICES_TO_DEPLOY_NORM" ]; then
-  # split on spaces into positional args
-  # shellcheck disable=SC2086
-  set -- $SERVICES_TO_DEPLOY_NORM
-  compose pull "$@"
-else
-  compose pull
-fi
-
-# Restart without building
+# Restart without building.
+# Important: for single-service deploys we must not pull/start dependency chains
+# (ocelot-gateway depends_on many services). Use --no-deps and let `up` pull
+# only the explicitly requested services.
 if [ -n "$SERVICES_TO_DEPLOY_NORM" ]; then
   # shellcheck disable=SC2086
   set -- $SERVICES_TO_DEPLOY_NORM
-  # Don't implicitly start other app services; dependencies (postgres/keycloak/etc.) are assumed running.
-  compose up -d --no-build --no-deps "$@"
+  if ! compose up -d --no-build --no-deps --pull always "$@"; then
+    # Older compose versions may not support `--pull` on `up`.
+    compose pull "$@"
+    compose up -d --no-build --no-deps "$@"
+  fi
 else
-  compose up -d --no-build
+  # Full app deploy (app-only list) should pull everything.
+  if ! compose up -d --no-build --pull always; then
+    compose pull
+    compose up -d --no-build
+  fi
 fi
 
 # Optional cleanup

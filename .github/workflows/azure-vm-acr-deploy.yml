@@ -641,14 +641,15 @@ jobs:
               -f docker-compose.pgadmin.yml \
               down --remove-orphans
 
-            # Preserve Caddy volumes to avoid re-issuing TLS certificates on every bootstrap.
-            # Repeated full wipes can easily hit Let's Encrypt rate limits.
+            # Preserve infra volumes to avoid re-issuing TLS certificates and to keep
+            # stateful services (Postgres/Redis/RabbitMQ) persistent across bootstraps.
             PROJECT="${COMPOSE_PROJECT_NAME:-$(basename "$(pwd)")}" 
             echo "Compose project: $PROJECT"
-            echo "Removing compose volumes (except caddy_data/caddy_config) ..."
+            echo "Removing compose volumes (except caddy_data/caddy_config and postgres/redis/rabbitmq) ..."
             docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | while read -r vol; do
               vkey=$(docker volume inspect "$vol" --format '{{ index .Labels "com.docker.compose.volume" }}' 2>/dev/null || true)
-              if [ "$vkey" = "caddy_data" ] || [ "$vkey" = "caddy_config" ]; then
+              if [ "$vkey" = "caddy_data" ] || [ "$vkey" = "caddy_config" ] || \
+                 [ "$vkey" = "postgres_data" ] || [ "$vkey" = "redis_data" ] || [ "$vkey" = "rabbitmq_data" ]; then
                 echo "Keeping volume: $vol ($vkey)"
                 continue
               fi

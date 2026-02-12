@@ -580,17 +580,6 @@ jobs:
           strip_components: 3
           overwrite: true
 
-      - name: Upload Postgres init scripts to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          source: 'deploy/postgres/init/*'
-          target: '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'
-          strip_components: 3
-          overwrite: true
-
       - name: Bootstrap minimal stack on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -630,7 +619,7 @@ jobs:
               up -d --no-build --no-deps caddy
 
             echo "Status:" 
-            docker compose \
+            docker compose --env-file "$ENV_FILE" \
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
               ps

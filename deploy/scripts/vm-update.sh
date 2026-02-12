@@ -34,6 +34,11 @@ trim_ws() {
 
 SERVICES_TO_DEPLOY_NORM="$(trim_ws "${SERVICES_TO_DEPLOY:-}")"
 
+# IMPORTANT: keep application deployments isolated from the minimal/infra stack.
+# The minimal stack is managed via the dedicated workflow mode (bootstrap_minimal)
+# and should not be implicitly restarted/pulled during normal app deploys.
+APP_SERVICES="question-detector exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher angular-app auth-ui ocelot-gateway"
+
 # Allow caller to override services via CLI args (e.g. vm-update.sh auth-api)
 if [ "$#" -gt 0 ]; then
   # shellcheck disable=SC2124
@@ -42,8 +47,13 @@ fi
 
 echo "SERVICES_TO_DEPLOY=${SERVICES_TO_DEPLOY_NORM:-<all>}"
 
+if [ -z "$SERVICES_TO_DEPLOY_NORM" ] || [ "$SERVICES_TO_DEPLOY_NORM" = "all" ]; then
+  SERVICES_TO_DEPLOY_NORM="$APP_SERVICES"
+  echo "Resolved services for deploy (app-only): $SERVICES_TO_DEPLOY_NORM"
+fi
+
 # Pull latest images (tag is provided via IMAGE_TAG env)
-if [ -n "$SERVICES_TO_DEPLOY_NORM" ] && [ "$SERVICES_TO_DEPLOY_NORM" != "all" ]; then
+if [ -n "$SERVICES_TO_DEPLOY_NORM" ]; then
   # split on spaces into positional args
   # shellcheck disable=SC2086
   set -- $SERVICES_TO_DEPLOY_NORM
@@ -53,7 +63,7 @@ else
 fi
 
 # Restart without building
-if [ -n "$SERVICES_TO_DEPLOY_NORM" ] && [ "$SERVICES_TO_DEPLOY_NORM" != "all" ]; then
+if [ -n "$SERVICES_TO_DEPLOY_NORM" ]; then
   # shellcheck disable=SC2086
   set -- $SERVICES_TO_DEPLOY_NORM
   # Don't implicitly start other app services; dependencies (postgres/keycloak/etc.) are assumed running.

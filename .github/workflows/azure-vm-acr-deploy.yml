@@ -659,8 +659,17 @@ jobs:
             set +a
 
             echo "Starting pgAdmin (staging default; VM-local only) ..."
-            echo "PGADMIN_DEFAULT_EMAIL set: $([ -n \"${PGADMIN_DEFAULT_EMAIL:-}\" ] && echo yes || echo no)"
-            echo "PGADMIN_DEFAULT_PASSWORD set: $([ -n \"${PGADMIN_DEFAULT_PASSWORD:-}\" ] && echo yes || echo no)"
+            if [ -n "${PGADMIN_DEFAULT_EMAIL:-}" ]; then
+              echo "PGADMIN_DEFAULT_EMAIL set: yes"
+            else
+              echo "PGADMIN_DEFAULT_EMAIL set: no"
+            fi
+
+            if [ -n "${PGADMIN_DEFAULT_PASSWORD:-}" ]; then
+              echo "PGADMIN_DEFAULT_PASSWORD set: yes"
+            else
+              echo "PGADMIN_DEFAULT_PASSWORD set: no"
+            fi
 
             if [ -n "${PGADMIN_DEFAULT_EMAIL:-}" ] && [ -n "${PGADMIN_DEFAULT_PASSWORD:-}" ]; then
               if [ ! -f ./docker-compose.pgadmin.yml ]; then
@@ -694,7 +703,14 @@ jobs:
                 exit 1
               fi
             else
-              echo "Skipping pgAdmin: PGADMIN_DEFAULT_EMAIL/PASSWORD not set in $ENV_FILE" >&2
+              missing=""
+              if [ -z "${PGADMIN_DEFAULT_EMAIL:-}" ]; then
+                missing="${missing} PGADMIN_DEFAULT_EMAIL"
+              fi
+              if [ -z "${PGADMIN_DEFAULT_PASSWORD:-}" ]; then
+                missing="${missing} PGADMIN_DEFAULT_PASSWORD"
+              fi
+              echo "Skipping pgAdmin: missing:${missing} (from $ENV_FILE)" >&2
             fi
 
             if [ -z "${PUBLIC_BASE_URL:-}" ]; then

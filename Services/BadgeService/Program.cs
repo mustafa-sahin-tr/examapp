@@ -39,12 +39,20 @@ builder.Services.AddDbContext<BadgeDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = builder.Configuration["Keycloak:Authority"]; // Keycloak realm URL (Ocelot üzerinden)
-        options.Audience = builder.Configuration["Keycloak:Audience"]; // Angular'ın login olduğu clientId
+
+        options.Authority = "https://staging.hedefokul.com/realms/exam-realm"; // keycloakConfig["Authority"]; //  "http://localhost:5678/realms/exam-realm"; // Ocelot üzerinden erişilen Keycloak
         options.MetadataAddress = "http://keycloak:8080/realms/exam-realm/.well-known/openid-configuration";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "https://staging.hedefokul.com/realms/exam-realm"
+        };
+        options.Audience = "account"; // veya client_id değerin
         options.RequireHttpsMetadata = false;
 
         // SignalR bağlantısı için token'ı query string'den çek

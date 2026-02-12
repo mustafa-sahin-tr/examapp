@@ -17,7 +17,7 @@ builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange
 StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
 
 builder.Services.AddAuthentication()
-    .AddJwtBearer("TestKey", options =>
+    .AddJwtBearer("Bearer", options =>
     {
         options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}";//  "http://localhost:5678/realms/exam-realm"; // Keycloak
         options.Audience = "account";

@@ -390,6 +390,8 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml,deploy/docker-compose.pgadmin.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
+          strip_components: 1
+          overwrite: true
 
       - name: Upload VM update script
         uses: appleboy/scp-action@v0.1.7
@@ -399,6 +401,8 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: 'deploy/scripts/vm-update.sh'
           target: '${{ secrets.VM_DEPLOY_DIR }}/scripts'
+          strip_components: 2
+          overwrite: true
 
       - name: Deploy on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
@@ -500,6 +504,8 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml,deploy/docker-compose.pgadmin.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
+          strip_components: 1
+          overwrite: true
 
       - name: Deploy config on VM (SSH, no build)
         uses: appleboy/ssh-action@v1.0.3

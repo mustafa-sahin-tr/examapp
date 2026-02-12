@@ -57,8 +57,11 @@ secrets.json
 .env.*
 !.env.prod.example
 
-### Keycloak realm exports (contain secrets)
-deploy/keycloak/import/
+### Keycloak realm exports
+# Keep the directory mostly ignored because exports can contain secrets.
+# We explicitly allow the sanitized baseline realm used for bootstrapping.
+deploy/keycloak/import/*
+!deploy/keycloak/import/realm-export.json
 
 ### Appsettings (keep base appsettings.json tracked)
 **/appsettings.Development.json

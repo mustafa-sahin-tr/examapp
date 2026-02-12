@@ -585,6 +585,7 @@ jobs:
           overwrite: true
 
       - name: Upload Keycloak realm import to VM
+        if: ${{ hashFiles('deploy/keycloak/import/**') != '' }}
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VM_HOST }}

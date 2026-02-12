@@ -11,6 +11,10 @@ services:
       - '127.0.0.1:5050:80'
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      # Auto-register the Postgres server on first boot.
+      # These files are generated on the VM during bootstrap_minimal.
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./pgadmin/pgpass:/var/lib/pgadmin/.pgpass:ro
     depends_on:
       - postgres
     networks:

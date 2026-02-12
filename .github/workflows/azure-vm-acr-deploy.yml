@@ -576,7 +576,8 @@ jobs:
               "${{ secrets.VM_DEPLOY_DIR }}" \
               "${{ secrets.VM_DEPLOY_DIR }}/scripts" \
               "${{ secrets.VM_DEPLOY_DIR }}/keycloak/import" \
-              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes" \
+              "${{ secrets.VM_DEPLOY_DIR }}/pgadmin"
 
             # Ensure deploy tree is writable by the SSH user (scp-action untars into target).
             if command -v sudo >/dev/null 2>&1; then
@@ -636,6 +637,7 @@ jobs:
             docker compose --env-file "$ENV_FILE" \
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
+              -f docker-compose.pgadmin.yml \
               down --remove-orphans --volumes
 
             echo "Removing Docker images and build cache ..."
@@ -658,6 +660,15 @@ jobs:
 
             echo "Starting pgAdmin (staging default; VM-local only) ..."
             if [ -n "${PGADMIN_DEFAULT_EMAIL:-}" ] && [ -n "${PGADMIN_DEFAULT_PASSWORD:-}" ]; then
+              # Pre-register Postgres server in pgAdmin.
+              # Note: server password is provided via .pgpass (VM-local file), not committed to git.
+              printf '%s\n' "{\"Servers\":{\"1\":{\"Name\":\"exam-postgres\",\"Group\":\"ExamApp\",\"Host\":\"postgres\",\"Port\":5432,\"MaintenanceDB\":\"postgres\",\"Username\":\"${POSTGRES_USER}\",\"SSLMode\":\"prefer\"}}}" > ./pgadmin/servers.json
+
+              # libpq will read this for passwordless connections inside pgAdmin.
+              # Format: hostname:port:database:username:password
+              printf '%s\n' "postgres:5432:*:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > ./pgadmin/pgpass
+              chmod 600 ./pgadmin/pgpass || true
+
               docker compose --env-file "$ENV_FILE" \
                 -f docker-compose.prod.yml \
                 -f docker-compose.pgadmin.yml \

@@ -74,7 +74,7 @@
       ],
       "UpstreamPathTemplate": "/api/exam/{everything}",
       "AuthenticationOptions": {
-        "AuthenticationProviderKey": "TestKey"
+        "AuthenticationProviderKey": "Bearer"
       }
     },
     {
@@ -126,7 +126,7 @@
       ],
       "UpstreamPathTemplate": "/api/badge/{everything}",
       "AuthenticationOptions": {
-        "AuthenticationProviderKey": "TestKey"
+        "AuthenticationProviderKey": "Bearer"
       }
     },
     {

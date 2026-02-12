@@ -659,7 +659,16 @@ jobs:
             set +a
 
             echo "Starting pgAdmin (staging default; VM-local only) ..."
+            echo "PGADMIN_DEFAULT_EMAIL set: $([ -n \"${PGADMIN_DEFAULT_EMAIL:-}\" ] && echo yes || echo no)"
+            echo "PGADMIN_DEFAULT_PASSWORD set: $([ -n \"${PGADMIN_DEFAULT_PASSWORD:-}\" ] && echo yes || echo no)"
+
             if [ -n "${PGADMIN_DEFAULT_EMAIL:-}" ] && [ -n "${PGADMIN_DEFAULT_PASSWORD:-}" ]; then
+              if [ ! -f ./docker-compose.pgadmin.yml ]; then
+                echo "ERROR: docker-compose.pgadmin.yml not found in $(pwd)" >&2
+                ls -la
+                exit 1
+              fi
+
               # Pre-register Postgres server in pgAdmin.
               # Note: server password is provided via .pgpass (VM-local file), not committed to git.
               printf '%s\n' "{\"Servers\":{\"1\":{\"Name\":\"exam-postgres\",\"Group\":\"ExamApp\",\"Host\":\"postgres\",\"Port\":5432,\"MaintenanceDB\":\"postgres\",\"Username\":\"${POSTGRES_USER}\",\"SSLMode\":\"prefer\"}}}" > ./pgadmin/servers.json
@@ -673,6 +682,17 @@ jobs:
                 -f docker-compose.prod.yml \
                 -f docker-compose.pgadmin.yml \
                 up -d --no-build pgadmin
+
+              # Verify pgAdmin is actually running.
+              if ! docker ps --format '{{.Names}}' | grep -qx 'exam-pgadmin'; then
+                echo "ERROR: pgAdmin container did not start" >&2
+                docker compose --env-file "$ENV_FILE" \
+                  -f docker-compose.prod.yml \
+                  -f docker-compose.pgadmin.yml \
+                  ps || true
+                docker logs --tail 200 exam-pgadmin || true
+                exit 1
+              fi
             else
               echo "Skipping pgAdmin: PGADMIN_DEFAULT_EMAIL/PASSWORD not set in $ENV_FILE" >&2
             fi

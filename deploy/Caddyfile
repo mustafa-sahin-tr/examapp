@@ -6,6 +6,11 @@
 {$DOMAIN} {
 	encode gzip
 
+	# Optional override for TLS policy.
+	# Example (temporary): set env CADDY_TLS='tls internal' to serve an internal cert
+	# without hitting Let's Encrypt rate limits. Leave empty for normal public ACME.
+	{$CADDY_TLS}
+
 	# Keycloak must be reachable on the public domain for OIDC flows.
 	# Serve it directly from Caddy (bypassing Ocelot) for common Keycloak paths.
 	@keycloak path /realms /realms/* /resources /resources/* /admin /admin/* /js /js/* /robots.txt

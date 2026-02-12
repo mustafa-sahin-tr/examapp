@@ -13,6 +13,7 @@ on:
           - build_only
           - deploy_only
           - bootstrap_minimal
+          - diagnose_tls
       target:
         description: 'Deploy target'
         type: choice
@@ -58,7 +59,7 @@ env:
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.mode != 'deploy_only' && inputs.mode != 'bootstrap_minimal') }}
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.mode != 'deploy_only' && inputs.mode != 'bootstrap_minimal' && inputs.mode != 'diagnose_tls') }}
     environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
     outputs:
       acr_login_server: ${{ steps.acr.outputs.login_server }}
@@ -638,7 +639,22 @@ jobs:
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
               -f docker-compose.pgadmin.yml \
-              down --remove-orphans --volumes
+              down --remove-orphans
+
+            # Preserve Caddy volumes to avoid re-issuing TLS certificates on every bootstrap.
+            # Repeated full wipes can easily hit Let's Encrypt rate limits.
+            PROJECT="${COMPOSE_PROJECT_NAME:-$(basename "$(pwd)")}" 
+            echo "Compose project: $PROJECT"
+            echo "Removing compose volumes (except caddy_data/caddy_config) ..."
+            docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | while read -r vol; do
+              vkey=$(docker volume inspect "$vol" --format '{{ index .Labels "com.docker.compose.volume" }}' 2>/dev/null || true)
+              if [ "$vkey" = "caddy_data" ] || [ "$vkey" = "caddy_config" ]; then
+                echo "Keeping volume: $vol ($vkey)"
+                continue
+              fi
+              echo "Removing volume: $vol (${vkey:-unknown})"
+              docker volume rm "$vol" >/dev/null 2>&1 || true
+            done
 
             echo "Removing Docker images and build cache ..."
             # After `down`, no compose containers should reference images, so prune can
@@ -772,3 +788,109 @@ jobs:
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
               ps
+
+  diagnose_tls:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'diagnose_tls' }}
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || (startsWith(github.ref, 'refs/tags/') && 'production') || 'staging' }}
+
+    steps:
+      - name: Validate VM deploy secrets present
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          if [[ -z "${{ secrets.VM_HOST }}" ]]; then
+            echo "::error::Missing secret VM_HOST (set it in repo secrets or in the selected environment secrets)"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_USER }}" ]]; then
+            echo "::error::Missing secret VM_USER"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_SSH_KEY }}" ]]; then
+            echo "::error::Missing secret VM_SSH_KEY"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_DEPLOY_DIR }}" ]]; then
+            echo "::error::Missing secret VM_DEPLOY_DIR"
+            missing=1
+          fi
+          if [[ -z "${{ secrets.VM_ENV_FILE }}" ]]; then
+            echo "::error::Missing secret VM_ENV_FILE"
+            missing=1
+          fi
+          exit $missing
+
+      - name: Diagnose TLS on VM (SSH)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.VM_DEPLOY_DIR }}"
+
+            ENV_FILE="${{ secrets.VM_ENV_FILE }}"
+            echo "VM: $(hostname)"
+            echo "Deploy dir: $(pwd)"
+            echo "Env file: $ENV_FILE"
+
+            if [ -f "$ENV_FILE" ]; then
+              set -a
+              . "$ENV_FILE"
+              set +a
+            else
+              echo "WARNING: ENV_FILE not found on VM: $ENV_FILE" >&2
+            fi
+
+            echo "DOMAIN=${DOMAIN:-<empty>}"
+            echo "PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-<empty>}"
+
+            echo "--- Port listeners (80/443) ---"
+            if command -v sudo >/dev/null 2>&1; then
+              sudo ss -lntp | grep -E ':(80|443)\b' || true
+            else
+              ss -lntp | grep -E ':(80|443)\b' || true
+            fi
+
+            echo "--- Docker containers (relevant) ---"
+            docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | sed -n '1p;/exam-caddy/p;/exam-keycloak/p;/ocelot-gateway/p' || true
+
+            echo "--- exam-caddy logs (tail) ---"
+            docker logs --tail 250 exam-caddy || true
+
+            echo "--- exam-caddy inspect (ports/mounts) ---"
+            docker inspect exam-caddy --format '{{json .HostConfig.PortBindings}}' || true
+            docker inspect exam-caddy --format '{{json .Mounts}}' || true
+
+            echo "--- Caddyfile on VM (first 120 lines) ---"
+            if [ -f ./Caddyfile ]; then
+              sed -n '1,120p' ./Caddyfile
+            else
+              echo "ERROR: ./Caddyfile not found in $(pwd)" >&2
+            fi
+
+            echo "--- Validate Caddy config inside container ---"
+            docker exec exam-caddy caddy validate --config /etc/caddy/Caddyfile || true
+
+            echo "--- TLS handshake to localhost:443 (SNI=DOMAIN) ---"
+            # Use a disposable container to ensure openssl exists.
+            # network=host allows connecting to the VM's 127.0.0.1:443 directly.
+            dom="${DOMAIN:-staging.hedefokul.com}"
+            docker run --rm --network host alpine:3.20 sh -lc "apk add --no-cache openssl curl >/dev/null && echo | openssl s_client -connect 127.0.0.1:443 -servername $dom -tls1_2 -brief 2>&1 | sed -n '1,80p'" || true
+
+            echo "--- Curl to localhost:443 (Host header) ---"
+            docker run --rm --network host curlimages/curl:8.6.0 \
+              -vkI --resolve "$dom:443:127.0.0.1" "https://$dom/" 2>&1 | sed -n '1,120p' || true
+
+            echo "--- Compose status (if compose files exist) ---"
+            if [ -f ./docker-compose.prod.yml ]; then
+              docker compose --env-file "$ENV_FILE" \
+                -f docker-compose.prod.yml \
+                -f docker-compose.prod.images.yml \
+                ps || true
+            else
+              echo "WARNING: docker-compose.prod.yml not found in $(pwd)" >&2
+            fi

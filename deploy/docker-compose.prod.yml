@@ -9,6 +9,8 @@ services:
     environment:
       DOMAIN: ${DOMAIN}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
+      # Optional. Set to 'tls internal' for temporary self-signed certs (debug/emergency).
+      CADDY_TLS: ${CADDY_TLS:-}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

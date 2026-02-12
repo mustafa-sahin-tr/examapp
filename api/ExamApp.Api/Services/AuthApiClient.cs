@@ -26,6 +26,7 @@ public class AuthApiClient : IAuthApiClient
     {
         using var httpClient = new HttpClient();
         var baseUrl = _configuration["AuthApiBaseUrl"]; // Configuration'dan URL oku
+        Console.WriteLine($"[AuthApiClient] Base URL: {baseUrl}");
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/auth/user-profile");
 

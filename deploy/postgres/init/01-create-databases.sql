@@ -1,31 +1,31 @@
 -- Creates per-service databases on first boot.
 -- NOTE: Runs only when the Postgres data volume is empty.
 
-DO
-$$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'worksheet_v2') THEN
-    CREATE DATABASE worksheet_v2;
-  END IF;
+\set ON_ERROR_STOP on
 
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'auth_db') THEN
-    CREATE DATABASE auth_db;
-  END IF;
+-- `CREATE DATABASE` cannot be executed inside a transaction/function/DO block.
+-- Use psql's \gexec to conditionally execute CREATE DATABASE statements.
 
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'badge') THEN
-    CREATE DATABASE badge;
-  END IF;
+SELECT format('CREATE DATABASE %I;', 'worksheet_v2')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'worksheet_v2');
+\gexec
 
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'catalog') THEN
-    CREATE DATABASE catalog;
-  END IF;
+SELECT format('CREATE DATABASE %I;', 'auth_db')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'auth_db');
+\gexec
 
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'finance_db') THEN
-    CREATE DATABASE finance_db;
-  END IF;
+SELECT format('CREATE DATABASE %I;', 'badge')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'badge');
+\gexec
 
-  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keycloak') THEN
-    CREATE DATABASE keycloak;
-  END IF;
-END
-$$;
+SELECT format('CREATE DATABASE %I;', 'catalog')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'catalog');
+\gexec
+
+SELECT format('CREATE DATABASE %I;', 'finance_db')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'finance_db');
+\gexec
+
+SELECT format('CREATE DATABASE %I;', 'keycloak')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'keycloak');
+\gexec

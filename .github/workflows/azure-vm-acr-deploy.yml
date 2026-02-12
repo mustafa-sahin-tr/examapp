@@ -371,7 +371,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts" "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
 
       - name: Upload deploy assets to VM
         uses: appleboy/scp-action@v0.1.7
@@ -473,7 +473,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts" "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
 
       - name: Upload deploy assets to VM
         uses: appleboy/scp-action@v0.1.7
@@ -567,6 +567,28 @@ jobs:
           source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
           strip_components: 1
+          overwrite: true
+
+      - name: Upload Postgres init scripts to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/postgres/init/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'
+          strip_components: 3
+          overwrite: true
+
+      - name: Upload Postgres init scripts to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/postgres/init/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'
+          strip_components: 3
           overwrite: true
 
       - name: Bootstrap minimal stack on VM (SSH)

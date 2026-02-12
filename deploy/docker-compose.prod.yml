@@ -128,7 +128,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:5079
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=worksheet_v2;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      AuthApiBaseUrl: http://auth-api:8001
+      AuthApiBaseUrl: http://auth-api:5079
       Jwt__Key: ${JWT_KEY}
       MinioConfig__Endpoint: minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}

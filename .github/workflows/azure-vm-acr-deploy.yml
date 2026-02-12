@@ -387,7 +387,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml'
+          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml,deploy/docker-compose.pgadmin.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
 
       - name: Upload VM update script
@@ -497,7 +497,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml'
+          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml,deploy/docker-compose.pgadmin.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
 
       - name: Deploy config on VM (SSH, no build)
@@ -592,7 +592,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml'
+          source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml,deploy/docker-compose.pgadmin.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
           strip_components: 1
           overwrite: true
@@ -655,6 +655,16 @@ jobs:
             set -a
             . "$ENV_FILE"
             set +a
+
+            echo "Starting pgAdmin (staging default; VM-local only) ..."
+            if [ -n "${PGADMIN_DEFAULT_EMAIL:-}" ] && [ -n "${PGADMIN_DEFAULT_PASSWORD:-}" ]; then
+              docker compose --env-file "$ENV_FILE" \
+                -f docker-compose.prod.yml \
+                -f docker-compose.pgadmin.yml \
+                up -d --no-build pgadmin
+            else
+              echo "Skipping pgAdmin: PGADMIN_DEFAULT_EMAIL/PASSWORD not set in $ENV_FILE" >&2
+            fi
 
             if [ -z "${PUBLIC_BASE_URL:-}" ]; then
               echo "ERROR: PUBLIC_BASE_URL is empty in $ENV_FILE" >&2

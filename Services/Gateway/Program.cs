@@ -20,6 +20,7 @@ StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentNa
 builder.Services.AddAuthentication()
     .AddJwtBearer("Bearer", options =>
     {
+        options.MetadataAddress = "http://keycloak:8080/realms/exam-realm/.well-known/openid-configuration";
         options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}";
         options.Audience = "account";
         options.RequireHttpsMetadata = false;

@@ -22,6 +22,11 @@ builder.Services.AddAuthentication()
         options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}";//  "http://localhost:5678/realms/exam-realm"; // Keycloak
         options.Audience = "account";
         options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "https://staging.hedefokul.com/realms/exam-realm"
+        };
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>

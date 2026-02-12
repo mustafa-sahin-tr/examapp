@@ -373,6 +373,14 @@ jobs:
             set -e
             mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts" "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
 
+            # Ensure deploy tree is writable by the SSH user (scp-action untars into target).
+            if command -v sudo >/dev/null 2>&1; then
+              sudo chown -R "${{ secrets.VM_USER }}":"${{ secrets.VM_USER }}" "${{ secrets.VM_DEPLOY_DIR }}" || true
+              sudo chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            else
+              chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            fi
+
       - name: Upload deploy assets to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -475,6 +483,14 @@ jobs:
             set -e
             mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts" "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
 
+            # Ensure deploy tree is writable by the SSH user (scp-action untars into target).
+            if command -v sudo >/dev/null 2>&1; then
+              sudo chown -R "${{ secrets.VM_USER }}":"${{ secrets.VM_USER }}" "${{ secrets.VM_DEPLOY_DIR }}" || true
+              sudo chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            else
+              chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            fi
+
       - name: Upload deploy assets to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -561,6 +577,14 @@ jobs:
               "${{ secrets.VM_DEPLOY_DIR }}/scripts" \
               "${{ secrets.VM_DEPLOY_DIR }}/keycloak/import" \
               "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
+
+            # Ensure deploy tree is writable by the SSH user (scp-action untars into target).
+            if command -v sudo >/dev/null 2>&1; then
+              sudo chown -R "${{ secrets.VM_USER }}":"${{ secrets.VM_USER }}" "${{ secrets.VM_DEPLOY_DIR }}" || true
+              sudo chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            else
+              chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            fi
 
       - name: Upload deploy assets to VM
         uses: appleboy/scp-action@v0.1.7

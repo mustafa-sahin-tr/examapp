@@ -556,7 +556,11 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts"
+            mkdir -p \
+              "${{ secrets.VM_DEPLOY_DIR }}" \
+              "${{ secrets.VM_DEPLOY_DIR }}/scripts" \
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/import" \
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
 
       - name: Upload deploy assets to VM
         uses: appleboy/scp-action@v0.1.7
@@ -577,6 +581,17 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: 'deploy/postgres/init/*'
           target: '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'
+          strip_components: 3
+          overwrite: true
+
+      - name: Upload Keycloak realm import to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/keycloak/import/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import'
           strip_components: 3
           overwrite: true
 
@@ -609,6 +624,58 @@ jobs:
               -f docker-compose.prod.yml \
               -f docker-compose.prod.images.yml \
               up -d --no-build postgres redis rabbitmq keycloak
+
+            echo "Configuring Keycloak realm/client URLs from env ..."
+            # Load env vars (DOMAIN, PUBLIC_BASE_URL, KEYCLOAK_ADMIN, etc.)
+            set -a
+            . "$ENV_FILE"
+            set +a
+
+            if [ -z "${PUBLIC_BASE_URL:-}" ]; then
+              echo "ERROR: PUBLIC_BASE_URL is empty in $ENV_FILE" >&2
+              exit 1
+            fi
+            if [ -z "${KEYCLOAK_ADMIN:-}" ] || [ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]; then
+              echo "ERROR: KEYCLOAK_ADMIN / KEYCLOAK_ADMIN_PASSWORD is empty in $ENV_FILE" >&2
+              exit 1
+            fi
+
+            # Wait for Keycloak to be ready enough for admin API calls.
+            i=0
+            until docker exec exam-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+              --server http://localhost:8080 \
+              --realm master \
+              --user "$KEYCLOAK_ADMIN" \
+              --password "$KEYCLOAK_ADMIN_PASSWORD" >/dev/null 2>&1
+            do
+              i=$((i+1))
+              if [ "$i" -ge 60 ]; then
+                echo "ERROR: Keycloak did not become ready in time" >&2
+                docker logs --tail 200 exam-keycloak || true
+                exit 1
+              fi
+              sleep 2
+            done
+
+            # Set realm Frontend URL
+            docker exec exam-keycloak /opt/keycloak/bin/kcadm.sh update realms/exam-realm \
+              -s "attributes.frontendUrl=$PUBLIC_BASE_URL" >/dev/null
+
+            # Update exam-client redirect URIs + web origins
+            CLIENT_INTERNAL_ID=$(docker exec exam-keycloak /opt/keycloak/bin/kcadm.sh get clients \
+              -r exam-realm \
+              -q clientId=exam-client \
+              --fields id | tr -d '\r' | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+
+            if [ -z "$CLIENT_INTERNAL_ID" ]; then
+              echo "ERROR: Could not find clientId=exam-client in realm exam-realm" >&2
+              exit 1
+            fi
+
+            docker exec exam-keycloak /opt/keycloak/bin/kcadm.sh update "clients/$CLIENT_INTERNAL_ID" \
+              -r exam-realm \
+              -s "redirectUris=[\"$PUBLIC_BASE_URL/app/*\",\"$PUBLIC_BASE_URL/*\"]" \
+              -s "webOrigins=[\"$PUBLIC_BASE_URL\"]" >/dev/null
 
             echo "Starting caddy (no dependencies) ..."
             # `caddy` depends_on `ocelot-gateway`, which can recursively start the whole stack.

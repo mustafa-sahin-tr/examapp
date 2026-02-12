@@ -41,20 +41,39 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = context =>
             {
-                Console.WriteLine($"🔹 Raw token: {context.Request.Headers["Authorization"]}");
+                var authHeader = context.Request.Headers["Authorization"].ToString();
+                logger.LogInformation($"[Auth] OnMessageReceived: Path={context.Request.Path}, Method={context.Request.Method}, AuthorizationHeader={authHeader}");
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    var token = authHeader.Substring("Bearer ".Length);
+                    logger.LogInformation($"[Auth] JWT Token (truncated): {token.Substring(0, Math.Min(30, token.Length))}...");
+                }
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
                 var jwtToken = context.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
-                Console.WriteLine($"✅ Token validated. Subject: {jwtToken?.Subject}");
-                Console.WriteLine($"🔐 Issuer: {jwtToken?.Issuer}");
-                Console.WriteLine($"🕒 Expiration: {jwtToken?.ValidTo}");
+                logger.LogInformation($"[Auth] OnTokenValidated: Path={context.Request.Path}, Method={context.Request.Method}");
+                logger.LogInformation($"[Auth] Token validated. Subject: {jwtToken?.Subject}");
+                logger.LogInformation($"[Auth] Issuer: {jwtToken?.Issuer}");
+                logger.LogInformation($"[Auth] Expiration: {jwtToken?.ValidTo}");
+                if (jwtToken != null)
+                {
+                    foreach (var claim in jwtToken.Claims)
+                    {
+                        logger.LogInformation($"[Auth] Claim: {claim.Type} = {claim.Value}");
+                    }
+                }
                 return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine($"❌ JWT ERROR: {context.Exception.Message}");
+                logger.LogError($"[Auth] OnAuthenticationFailed: Path={context.Request.Path}, Method={context.Request.Method}");
+                logger.LogError($"[Auth] JWT ERROR: {context.Exception.Message}");
+                if (context.Exception != null)
+                {
+                    logger.LogError($"[Auth] Exception: {context.Exception}");
+                }
                 return Task.CompletedTask;
             }
         };

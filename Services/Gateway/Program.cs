@@ -33,14 +33,14 @@ builder.Services.AddAuthentication()
     });
 
 
-builder.Services
-    .AddAuthentication("Bearer")
-    .AddJwtBearer("Bearer", options =>
-    {
-        options.Authority = "https://staging.hedefokul.com/realms/exam-realm";
-        options.RequireHttpsMetadata = true;
-        options.Audience = "account";
-    });
+// builder.Services
+//     .AddAuthentication("Bearer")
+//     .AddJwtBearer("Bearer", options =>
+//     {
+//         options.Authority = "https://staging.hedefokul.com/realms/exam-realm";
+//         options.RequireHttpsMetadata = true;
+//         options.Audience = "account";
+//     });
 
 // CORS desteği SignalR için
 builder.Services.AddCors(options =>

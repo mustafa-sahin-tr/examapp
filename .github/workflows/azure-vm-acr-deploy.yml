@@ -670,6 +670,12 @@ jobs:
 
             echo "Configuring Keycloak realm/client URLs from env ..."
             # Load env vars (DOMAIN, PUBLIC_BASE_URL, KEYCLOAK_ADMIN, etc.)
+            # Guard against unquoted spaces in dotenv values (e.g. CADDY_TLS=tls internal).
+            if grep -nE '^[A-Za-z_][A-Za-z0-9_]*=[^#"\x27]*[[:space:]][^#]*$' "$ENV_FILE"; then
+              echo "ERROR: $ENV_FILE contains unquoted spaces in a KEY=value line." >&2
+              echo "Fix by quoting the value, e.g. CADDY_TLS='tls internal'" >&2
+              exit 1
+            fi
             set -a
             . "$ENV_FILE"
             set +a
@@ -838,9 +844,15 @@ jobs:
             echo "Env file: $ENV_FILE"
 
             if [ -f "$ENV_FILE" ]; then
-              set -a
-              . "$ENV_FILE"
-              set +a
+              # Avoid failing diagnostics due to common dotenv mistakes (like unquoted spaces).
+              if grep -nE '^[A-Za-z_][A-Za-z0-9_]*=[^#"\x27]*[[:space:]][^#]*$' "$ENV_FILE"; then
+                echo "WARNING: $ENV_FILE contains unquoted spaces; skipping 'source' to continue diagnostics." >&2
+                echo "Hint: quote values with spaces, e.g. CADDY_TLS='tls internal'" >&2
+              else
+                set -a
+                . "$ENV_FILE"
+                set +a
+              fi
             else
               echo "WARNING: ENV_FILE not found on VM: $ENV_FILE" >&2
             fi

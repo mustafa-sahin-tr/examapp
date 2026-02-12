@@ -30,11 +30,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = keycloakConfig["Authority"]; //  "http://localhost:5678/realms/exam-realm"; // Ocelot üzerinden erişilen Keycloak
         options.MetadataAddress = "http://keycloak:8080/realms/exam-realm/.well-known/openid-configuration";
-        // options.TokenValidationParameters = new TokenValidationParameters
-        // {
-        //     ValidateIssuer = true,
-        //     ValidIssuer = "http://localhost:5678/realms/exam-realm"
-        // };
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "https://staging.hedefokul.com/realms/exam-realm"
+        };
         options.Audience = "account"; // veya client_id değerin
         options.RequireHttpsMetadata = false;
         options.Events = new JwtBearerEvents

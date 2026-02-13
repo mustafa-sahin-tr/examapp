@@ -207,10 +207,13 @@ services:
       Kestrel__Port: 8006
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Jwt__Key: ${JWT_KEY}
+      Server__BaseUrl: ${PUBLIC_BASE_URL}
       RabbitMQ__Host: rabbitmq
       RabbitMQ__Username: ${RABBITMQ_USER}
       RabbitMQ__Password: ${RABBITMQ_PASS}
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
+      Keycloak__Host: http://keycloak:8080
+      Keycloak__Realm: exam-realm      
       Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
       Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
       Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}

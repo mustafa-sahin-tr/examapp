@@ -130,11 +130,14 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=worksheet_v2;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       AuthApiBaseUrl: http://auth-api:5079
       Jwt__Key: ${JWT_KEY}
+      Server__BaseUrl: ${PUBLIC_BASE_URL}
       MinioConfig__Endpoint: minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       Redis__Configuration: redis:6379,password=${REDIS_PASSWORD}
+      Keycloak__Host: http://keycloak:8080
+      Keycloak__Realm: exam-realm     
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
       Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
       Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
@@ -169,12 +172,14 @@ services:
       ASPNETCORE_URLS: http://+:5079
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=auth_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Jwt__Key: ${JWT_KEY}
+      Server__BaseUrl: ${PUBLIC_BASE_URL}
       MinioConfig__Endpoint: minio:9000
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
-      Keycloak__Host: http://keycloak:8080
+      Keycloak__Host: http://keycloak:8080      
+      Keycloak__Realm: exam-realm           
       Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
       Keycloak__UserUrl: admin/realms/exam-realm/users
       Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
@@ -292,6 +297,7 @@ services:
       Keycloak__Realm: exam-realm
       Keycloak__ClientCallbackUrl: ${PUBLIC_BASE_URL}/app/callback&response_type=code&scope=openid&state=${PUBLIC_BASE_URL}
       Cors__AllowedOrigins__0: ${PUBLIC_BASE_URL}
+      Keycloak__Host: http://keycloak:8080
     depends_on:
       - angular-app
       - auth-ui

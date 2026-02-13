@@ -42,37 +42,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnMessageReceived = context =>
             {
                 var authHeader = context.Request.Headers["Authorization"].ToString();
-                logger.LogInformation($"[Auth] OnMessageReceived: Path={context.Request.Path}, Method={context.Request.Method}, AuthorizationHeader={authHeader}");
+                Console.WriteLine($"[Auth] OnMessageReceived: Path={context.Request.Path}, Method={context.Request.Method}, AuthorizationHeader={authHeader}");
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
                 {
                     var token = authHeader.Substring("Bearer ".Length);
-                    logger.LogInformation($"[Auth] JWT Token (truncated): {token.Substring(0, Math.Min(30, token.Length))}...");
+                    Console.WriteLine($"[Auth] JWT Token (truncated): {token.Substring(0, Math.Min(30, token.Length))}...");
                 }
                 return Task.CompletedTask;
             },
             OnTokenValidated = context =>
             {
                 var jwtToken = context.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
-                logger.LogInformation($"[Auth] OnTokenValidated: Path={context.Request.Path}, Method={context.Request.Method}");
-                logger.LogInformation($"[Auth] Token validated. Subject: {jwtToken?.Subject}");
-                logger.LogInformation($"[Auth] Issuer: {jwtToken?.Issuer}");
-                logger.LogInformation($"[Auth] Expiration: {jwtToken?.ValidTo}");
+                Console.WriteLine($"[Auth] OnTokenValidated: Path={context.Request.Path}, Method={context.Request.Method}");
+                Console.WriteLine($"[Auth] Token validated. Subject: {jwtToken?.Subject}");
+                Console.WriteLine($"[Auth] Issuer: {jwtToken?.Issuer}");
+                Console.WriteLine($"[Auth] Expiration: {jwtToken?.ValidTo}");
                 if (jwtToken != null)
                 {
                     foreach (var claim in jwtToken.Claims)
                     {
-                        logger.LogInformation($"[Auth] Claim: {claim.Type} = {claim.Value}");
+                        Console.WriteLine($"[Auth] Claim: {claim.Type} = {claim.Value}");
                     }
                 }
                 return Task.CompletedTask;
             },
             OnAuthenticationFailed = context =>
             {
-                logger.LogError($"[Auth] OnAuthenticationFailed: Path={context.Request.Path}, Method={context.Request.Method}");
-                logger.LogError($"[Auth] JWT ERROR: {context.Exception.Message}");
+                Console.WriteLine($"[Auth] OnAuthenticationFailed: Path={context.Request.Path}, Method={context.Request.Method}");
+                Console.WriteLine($"[Auth] JWT ERROR: {context.Exception.Message}");
                 if (context.Exception != null)
                 {
-                    logger.LogError($"[Auth] Exception: {context.Exception}");
+                    Console.WriteLine($"[Auth] Exception: {context.Exception}");
                 }
                 return Task.CompletedTask;
             }
@@ -141,7 +141,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred seeding the DB.");
+        Console.WriteLine($"[Auth] An error occurred seeding the DB: {ex}");
     }
 }
 

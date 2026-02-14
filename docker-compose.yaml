@@ -33,6 +33,7 @@ services:
       - ASPNETCORE_URLS=http://+:8005
     volumes:
       - ./auth-api:/app
+      - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
     depends_on:
       exam-pg-container:
         condition: service_healthy
@@ -52,6 +53,7 @@ services:
       - ASPNETCORE_URLS=http://+:8006
     volumes:
       - ./Services/BadgeService:/app
+      - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
     depends_on:
       exam-pg-container:
         condition: service_healthy
@@ -90,6 +92,7 @@ services:
       - ASPNETCORE_URLS=http://+:8007
     volumes:
       - ./Services/OutboxPublisher:/app
+      - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
     depends_on:
       exam-pg-container:
         condition: service_healthy

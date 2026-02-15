@@ -318,86 +318,86 @@ services:
     networks:
       - mynetwork
 
-  k6:
-    build:
-      context: ./dockerfiles/k6
-      dockerfile: Dockerfile.k6
-    volumes:
-      - ./k6:/home/k6/testfiles
-    # entrypoint: ["k6", "run", "/load_test.js"]
-    networks:
-      - mynetwork
+  # k6:
+  #   build:
+  #     context: ./dockerfiles/k6
+  #     dockerfile: Dockerfile.k6
+  #   volumes:
+  #     - ./k6:/home/k6/testfiles
+  #   # entrypoint: ["k6", "run", "/load_test.js"]
+  #   networks:
+  #     - mynetwork
 
-  baget:
-    image: loicsharma/baget
-    platform: linux/amd64
-    container_name: baget
-    ports:
-      - '8008:80'
-    volumes:
-      - ./nuget-packages:/var/baget
-    environment:
-      - ApiKey=dev123
-      - Storage__Type=FileSystem
-      - Storage__Path=/var/baget/packages
-      - Database__Type=Sqlite
-      - Database__ConnectionString=Data Source=/var/baget/baget.db
-      - Search__Type=Database
-    networks:
-      - mynetwork
+  # baget:
+  #   image: loicsharma/baget
+  #   platform: linux/amd64
+  #   container_name: baget
+  #   ports:
+  #     - '8008:80'
+  #   volumes:
+  #     - ./nuget-packages:/var/baget
+  #   environment:
+  #     - ApiKey=dev123
+  #     - Storage__Type=FileSystem
+  #     - Storage__Path=/var/baget/packages
+  #     - Database__Type=Sqlite
+  #     - Database__ConnectionString=Data Source=/var/baget/baget.db
+  #     - Search__Type=Database
+  #   networks:
+  #     - mynetwork
 
-  finance-ui:
-    container_name: finance-ui
-    build:
-      context: ./dockerfiles/finance-ui
-      dockerfile: Dockerfile.finance-ui
-    image: finance-ui:latest
-    ports:
-      - '4202:4200'
-    environment:
-      - NODE_ENV=development
-    depends_on:
-      - auth-api
-    networks:
-      - mynetwork
-    volumes:
-      - ./finance-app:/app
+  # finance-ui:
+  #   container_name: finance-ui
+  #   build:
+  #     context: ./dockerfiles/finance-ui
+  #     dockerfile: Dockerfile.finance-ui
+  #   image: finance-ui:latest
+  #   ports:
+  #     - '4202:4200'
+  #   environment:
+  #     - NODE_ENV=development
+  #   depends_on:
+  #     - auth-api
+  #   networks:
+  #     - mynetwork
+  #   volumes:
+  #     - ./finance-app:/app
 
-  finance-api:
-    container_name: finance-api
-    build:
-      context: ./dockerfiles/finance-api
-      dockerfile: Dockerfile.finance-api
-    ports:
-      - '9006:8005'
-      - '6080:5079'
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8005
-    volumes:
-      - ./finance-api:/app
-    depends_on:
-      exam-pg-container:
-        condition: service_healthy
-    networks:
-      - mynetwork
+  # finance-api:
+  #   container_name: finance-api
+  #   build:
+  #     context: ./dockerfiles/finance-api
+  #     dockerfile: Dockerfile.finance-api
+  #   ports:
+  #     - '9006:8005'
+  #     - '6080:5079'
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - ASPNETCORE_URLS=http://+:8005
+  #   volumes:
+  #     - ./finance-api:/app
+  #   depends_on:
+  #     exam-pg-container:
+  #       condition: service_healthy
+  #   networks:
+  #     - mynetwork
 
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n
-    restart: always
-    ports:
-      - '5679:5678' # n8n container portu 5678, host'ta 5679 (ocelot-gateway 5678'i kullanıyor)
-    environment:
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - GENERIC_TIMEZONE=Europe/Istanbul
-      # Local kullanım için öneri (istersen düzenle):
-      # - WEBHOOK_URL=http://localhost:5679/
-    volumes:
-      - ./n8n-data:/home/node/.n8n
-    networks:
-      - mynetwork
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   container_name: n8n
+  #   restart: always
+  #   ports:
+  #     - '5679:5678' # n8n container portu 5678, host'ta 5679 (ocelot-gateway 5678'i kullanıyor)
+  #   environment:
+  #     - N8N_PORT=5678
+  #     - N8N_PROTOCOL=http
+  #     - GENERIC_TIMEZONE=Europe/Istanbul
+  #     # Local kullanım için öneri (istersen düzenle):
+  #     # - WEBHOOK_URL=http://localhost:5679/
+  #   volumes:
+  #     - ./n8n-data:/home/node/.n8n
+  #   networks:
+  #     - mynetwork
 
 networks:
   mynetwork:

@@ -238,7 +238,7 @@
       "AddHeadersToRequest": true
     },
     {
-      "DownstreamPathTemplate": "/{everything}",
+      "DownstreamPathTemplate": "/app/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {

@@ -24,48 +24,153 @@ import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
 
 export const routes: Routes = [
+  // Public landing and legal pages (top-level)
   {
-    path: '',
+    path: 'welcome',
+    loadComponent: () => import('./pages/public/landing/landing.component').then((m) => m.LandingComponent),
+  },
+  {
+    path: 'privacy-policy',
+    loadComponent: () =>
+      import('./pages/public/privacy-policy/privacy-policy.component').then((m) => m.PrivacyPolicyComponent),
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./pages/public/terms/terms.component').then((m) => m.TermsComponent),
+  },
+  { path: '', redirectTo: 'welcome', pathMatch: 'full' },
+  // Main app (protected) routes
+  // Main app routes, each wrapped in EnhancedLayoutComponent
+  {
+    path: 'dashboard',
     component: EnhancedLayoutComponent,
-    // canActivate: [authGuard],
+    children: [{ path: '', component: DashboardComponent }],
+  },
+  {
+    path: 'tests',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } }],
+  },
+  {
+    path: 'student-register',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: StudentRegisterComponent }],
+  },
+  {
+    path: 'teacher-register',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: TeacherRegisterComponent }],
+  },
+  {
+    path: 'question/:id',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionComponent }],
+  },
+  {
+    path: 'questioncanvas',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionCanvasComponent }],
+  },
+  {
+    path: 'questioncanvas/preview',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionCanvasPreviewComponent }],
+  },
+  {
+    path: 'questioncanvas/preview/:testId',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionCanvasPreviewComponent }],
+  },
+  {
+    path: 'questioncanvas/:id',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionCanvasComponent }],
+  },
+  {
+    path: 'question',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionComponent }],
+  },
+  {
+    path: 'imageselect',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: ImageSelectorComponent }],
+  },
+  {
+    path: 'tests-enhanced',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: WorksheetListEnhancedComponent, resolve: { worksheets: worksheetListResolver } }],
+  },
+  {
+    path: 'questions/view',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionViewComponent }],
+  },
+  {
+    path: 'testsolve/:testInstanceId',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: TestSolveCanvasComponentv3 }],
+  },
+  {
+    path: 'testsolve/v2/:testInstanceId',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: TestSolveCanvasComponentv2 }],
+  },
+  {
+    path: 'test/:testId',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: WorksheetDetailComponent }],
+  },
+  {
+    path: 'student-profile',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: StudentProfileComponent }],
+  },
+  {
+    path: 'exam',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: TestCreateEnhancedComponent }],
+  },
+  {
+    path: 'exam/:id',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: TestCreateEnhancedComponent }],
+  },
+  {
+    path: 'programs',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: MyProgramsComponent }],
+  },
+  {
+    path: 'programs/:id/detail',
+    component: EnhancedLayoutComponent,
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'student-register', component: StudentRegisterComponent },
-      { path: 'teacher-register', component: TeacherRegisterComponent },
-      { path: 'question/:id', component: QuestionComponent },
-      { path: 'questioncanvas', component: QuestionCanvasComponent },
-      { path: 'questioncanvas/preview', component: QuestionCanvasPreviewComponent },
-      { path: 'questioncanvas/preview/:testId', component: QuestionCanvasPreviewComponent },
-      { path: 'questioncanvas/:id', component: QuestionCanvasComponent },
-      { path: 'question', component: QuestionComponent },
-      { path: 'imageselect', component: ImageSelectorComponent },
-      { path: 'tests', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } },
-      { path: 'dashboard', component: DashboardComponent },
       {
-        path: 'tests-enhanced',
-        component: WorksheetListEnhancedComponent,
-        resolve: { worksheets: worksheetListResolver },
-      },
-      { path: 'questions/view', component: QuestionViewComponent },
-      // { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponent }, // 🆕 Test çözme sayfası
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3 }, // 🆕 Test çözme sayfası
-      { path: 'testsolve/v2/:testInstanceId', component: TestSolveCanvasComponentv2 }, // 🆕 Test çözme sayfası
-      { path: 'test/:testId', component: WorksheetDetailComponent }, // 🆕 Test çözme sayfası
-      { path: 'student-profile', component: StudentProfileComponent }, // 🆕 Test çözme sayfası
-      // { path: 'exam', component: TestCreateComponent }, // 🆕 Test çözme sayfası
-      { path: 'exam', component: TestCreateEnhancedComponent }, // 🆕 Test çözme sayfası
-      { path: 'exam/:id', component: TestCreateEnhancedComponent }, // 🆕 Test çözme sayfası
-      { path: 'programs', component: MyProgramsComponent },
-      {
-        path: 'programs/:id/detail',
+        path: '',
         loadComponent: () =>
           import('./pages/my-programs/program-detail.component').then((m) => m.ProgramDetailComponent),
       },
-      { path: 'program-create', component: ProgramCreateComponent },
-      { path: 'certificates', component: BadgeThropyComponent }, //
-      { path: 'study', component: StudyPageComponent },
-      { path: 'question-transfer', component: QuestionTransferComponent },
     ],
   },
-  { path: '**', redirectTo: 'tests' },
+  {
+    path: 'program-create',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: ProgramCreateComponent }],
+  },
+  {
+    path: 'certificates',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: BadgeThropyComponent }],
+  },
+  {
+    path: 'study',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: StudyPageComponent }],
+  },
+  {
+    path: 'question-transfer',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: QuestionTransferComponent }],
+  },
+  { path: '**', redirectTo: 'welcome' },
 ];

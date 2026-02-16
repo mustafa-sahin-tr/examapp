@@ -12,7 +12,20 @@ export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error) => {
       if (error.status === 401) {
         // Refresh token URL'leri için tekrar refresh denemeyelim (sonsuz döngü)
-        const excludedUrls = ['/app/logout', '/app/exchange', '/app/refresh-token', '/api/auth/refresh-token'];
+        const excludedUrls = [
+          '/',
+          '/about',
+          '/features',
+          '/pricing',
+          '/contact',
+          '/faq',
+          '/privacy-policy',
+          '/terms',
+          '/app/logout',
+          '/app/exchange',
+          '/app/refresh-token',
+          '/api/auth/refresh-token',
+        ];
 
         if (excludedUrls.some((url) => req.url.includes(url))) {
           // Refresh token endpoint'inde 401 aldıysak direkt login'e yönlendir

@@ -22,6 +22,8 @@ import { StudyPageComponent } from './components/study-page/study-page.component
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
+import { StudyPagesComponent } from './pages/study-pages/study-pages.component';
+import { StudyPageEditorComponent } from './pages/study-pages/study-page-editor.component';
 
 export const routes: Routes = [
   // Public landing and legal pages (top-level)
@@ -166,6 +168,21 @@ export const routes: Routes = [
     path: 'study',
     component: EnhancedLayoutComponent,
     children: [{ path: '', component: StudyPageComponent }],
+  },
+  {
+    path: 'study-pages',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: StudyPagesComponent }],
+  },
+  {
+    path: 'study-pages/new',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: StudyPageEditorComponent }],
+  },
+  {
+    path: 'study-pages/:id',
+    component: EnhancedLayoutComponent,
+    children: [{ path: '', component: StudyPageEditorComponent }],
   },
   {
     path: 'question-transfer',

@@ -89,6 +89,8 @@ public class AppDbContext : DbContext
     public DbSet<ProgramStepAction> ProgramStepActions { get; set; } // ProgramStepAction tablosu
     public DbSet<UserProgram> UserPrograms { get; set; } // UserProgram tablosu
     public DbSet<UserProgramSchedule> UserProgramSchedules { get; set; } // UserProgramSchedule tablosu
+    public DbSet<StudyPage> StudyPages { get; set; } // StudyPage tablosu
+    public DbSet<StudyPageImage> StudyPageImages { get; set; } // StudyPageImage tablosu
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
     public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
 
@@ -240,6 +242,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<QuestionTransferExportMap>()
             .HasIndex(m => new { m.SourceKey, m.QuestionId })
             .IsUnique();
+
+        modelBuilder.Entity<StudyPageImage>()
+            .HasOne(i => i.StudyPage)
+            .WithMany(p => p.Images)
+            .HasForeignKey(i => i.StudyPageId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<WorksheetAssignment>()
             .HasOne(wa => wa.Worksheet)

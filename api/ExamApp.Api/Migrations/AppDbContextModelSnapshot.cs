@@ -1326,6 +1326,126 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("StudentSpecialEvents");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.StudyPage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CreatedByName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CreatedByRole")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("SubTopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubTopicId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TopicId");
+
+                    b.ToTable("StudyPages");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudyPageImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudyPageId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudyPageId");
+
+                    b.ToTable("StudyPageImages");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
                 {
                     b.Property<int>("Id")
@@ -2404,6 +2524,38 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.StudyPage", b =>
+                {
+                    b.HasOne("SubTopic", "SubTopic")
+                        .WithMany()
+                        .HasForeignKey("SubTopicId");
+
+                    b.HasOne("Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId");
+
+                    b.HasOne("Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId");
+
+                    b.Navigation("SubTopic");
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudyPageImage", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.StudyPage", "StudyPage")
+                        .WithMany("Images")
+                        .HasForeignKey("StudyPageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StudyPage");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.UserProgram", "UserProgram")
@@ -2680,6 +2832,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("StudentBadges");
 
                     b.Navigation("StudentPoints");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.StudyPage", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>

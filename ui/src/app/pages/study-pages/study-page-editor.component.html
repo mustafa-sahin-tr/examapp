@@ -1,0 +1,187 @@
+<app-section-header
+  class="section-container"
+  [title]="isEditMode() ? 'Calisma Sayfasini Duzenle' : 'Yeni Calisma Sayfasi'"
+  icon="/icons/18.svg"
+></app-section-header>
+
+<div class="form-container editor-grid">
+  <div class="form-column">
+    <mat-card class="editor-card">
+      <mat-card-content>
+        <form class="field-grid" [formGroup]="form">
+          <mat-form-field appearance="outline">
+            <mat-label>Baslik</mat-label>
+            <input matInput formControlName="title" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Aciklama</mat-label>
+            <textarea matInput rows="4" formControlName="description"></textarea>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Sinif</mat-label>
+            <mat-select formControlName="gradeId">
+              <mat-option [value]="null">Seciniz</mat-option>
+              <mat-option *ngFor="let grade of grades()" [value]="grade.id">
+                {{ grade.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Ders</mat-label>
+            <mat-select formControlName="subjectId" [disabled]="!form.get('gradeId')?.value">
+              <mat-option [value]="null">Seciniz</mat-option>
+              <mat-option *ngFor="let subject of subjects()" [value]="subject.id">
+                {{ subject.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Konu</mat-label>
+            <mat-select formControlName="topicId" [disabled]="!form.get('gradeId')?.value">
+              <mat-option [value]="null">Seciniz</mat-option>
+              <mat-option *ngFor="let topic of topics()" [value]="topic.id">
+                {{ topic.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Alt Konu</mat-label>
+            <mat-select formControlName="subTopicId" [disabled]="!form.get('gradeId')?.value">
+              <mat-option [value]="null">Seciniz</mat-option>
+              <mat-option *ngFor="let subtopic of subtopics()" [value]="subtopic.id">
+                {{ subtopic.name }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-slide-toggle formControlName="isPublished">Yayinla</mat-slide-toggle>
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions class="action-row">
+        <button mat-stroked-button (click)="onCancel()">Iptal</button>
+        <button mat-flat-button color="primary" (click)="onSave()" [disabled]="loading()">
+          {{ loading() ? 'Kaydediliyor...' : 'Kaydet' }}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <div class="form-column-5">
+    <div class="study-cards-row">
+      <mat-card class="editor-card">
+        <mat-card-content>
+          <div class="upload-header">
+            <div>
+              <h3>Resimler</h3>
+            </div>
+            <label class="upload-btn">
+              <input type="file" accept="image/*" multiple (change)="onFilesSelected($event)" />
+              <mat-icon>upload</mat-icon>
+              Resim Sec
+            </label>
+          </div>
+
+          <div class="preview" *ngIf="currentPreview as preview">
+            <div class="study-preview-image">
+              <img [src]="preview.url" alt="" />
+              <div class="ms-nav-area ms-nav-prev" (click)="previousImage()"></div>
+              <div class="ms-nav-area ms-nav-next" (click)="nextImage()"></div>
+              <div class="preview-actions preview-actions-top">
+                <button mat-flat-button color="primary" (click)="toggleCurrentSelection()" *ngIf="!preview.selected">
+                  <mat-icon>add</mat-icon>
+                  Ekle
+                </button>
+                <button mat-stroked-button color="warn" (click)="toggleCurrentSelection()" *ngIf="preview.selected">
+                  <mat-icon>remove_circle</mat-icon>
+                  Cikar
+                </button>
+              </div>
+              <div class="preview-meta">
+                <span>{{ preview.fileName || 'Resim' }}</span>
+                <span class="badge-generic" [class.badge-new]="preview.type === 'new'">
+                  {{ preview.type === 'new' ? 'Yeni' : 'Mevcut' }}
+                </span>
+                <span
+                  class="badge-generic"
+                  [class.badge-selected]="preview.selected"
+                  [class.badge-unselected]="!preview.selected"
+                >
+                  {{ preview.selected ? 'Secili' : 'Secili Degil' }}
+                </span>
+              </div>
+              <div class="preview-actions">
+                <button mat-flat-button color="primary" (click)="toggleCurrentSelection()" *ngIf="!preview.selected">
+                  <mat-icon>add</mat-icon>
+                  Ekle
+                </button>
+                <button mat-stroked-button color="warn" (click)="toggleCurrentSelection()" *ngIf="preview.selected">
+                  <mat-icon>remove_circle</mat-icon>
+                  Cikar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-preview" *ngIf="!currentPreview">
+            <mat-icon>image</mat-icon>
+            <span>Henuz resim eklenmedi</span>
+          </div>
+
+          <div class="thumbs">
+            <div
+              class="thumb"
+              *ngFor="let item of previewItems; let i = index"
+              [class.active]="i === previewIndex()"
+              [class.thumb-unselected]="!item.selected"
+              (click)="setPreview(i)"
+            >
+              <img [src]="item.url" alt="" />
+              <div class="thumb-info">
+                <span>{{ item.fileName || 'Resim' }}</span>
+                <span class="badge-generic" [class.badge-new]="item.type === 'new'">{{
+                  item.type === 'new' ? 'Yeni' : 'Mevcut'
+                }}</span>
+                <span
+                  class="badge-generic"
+                  [class.badge-selected]="item.selected"
+                  [class.badge-unselected]="!item.selected"
+                >
+                  {{ item.selected ? 'Secili' : 'Haric' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="editor-card" *ngIf="selectedItems.length > 0">
+        <mat-card-content>
+          <h3>Programa Eklenecek Resimler</h3>
+          <div class="image-list">
+            <div class="image-item" *ngFor="let item of selectedItems">
+              <img [src]="item.url" alt="" (click)="setPreviewByKey(item.key)" class="clickable" />
+              <div class="image-actions">
+                <button mat-stroked-button (click)="setPreviewByKey(item.key)">Buyuk Gor</button>
+                <button mat-icon-button color="warn" (click)="removeSelectedByKey(item.key)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="thumb-info">
+                <span>{{ item.fileName || 'Resim' }}</span>
+                <span class="badge" [class.badge-new]="item.type === 'new'">{{
+                  item.type === 'new' ? 'Yeni' : 'Mevcut'
+                }}</span>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

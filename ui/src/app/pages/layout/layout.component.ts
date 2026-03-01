@@ -61,6 +61,7 @@ export class LayoutComponent implements OnInit {
     { type: 'menu', name: 'Destek', icon: 'help' },
     { type: 'menu', name: 'Geri Bildirim', icon: 'feedback' },
     { type: 'divider' },
+    { type: 'menu', name: 'Çalışma Ekleme', icon: 'library_add', route: '/study-pages' },
     { type: 'menu', name: 'Test Ekleme', icon: 'add_circle', route: '/exam' },
   ];
 
@@ -145,7 +146,10 @@ export class LayoutComponent implements OnInit {
   isSidenavCollapsed = this.sidenavService.isSidenavCollapsed; // Collapsed state
   isFullScreen = this.sidenavService.isFullScreen; // Servisten değer alıyoruz
 
-  constructor(private router: Router, private signalR: SignalRService) {
+  constructor(
+    private router: Router,
+    private signalR: SignalRService
+  ) {
     this.router.events.subscribe((event) => {
       if (event instanceof NavigationEnd) {
         const url = (event as NavigationEnd).urlAfterRedirects; // ✅ Doğru URL almak için

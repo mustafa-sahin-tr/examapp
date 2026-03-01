@@ -84,6 +84,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu' },
     { id: 'students', name: 'Öğrenciler', icon: 'people', route: '/students', type: 'menu' },
     { id: 'divider1', name: '', icon: '', route: '', type: 'divider' },
+    { id: 'study-pages', name: 'Çalışma Ekleme', icon: 'library_add', route: '/study-pages', type: 'menu' },
     { id: 'exam', name: 'Test Ekleme', icon: 'app_registration', route: '/exam', type: 'menu' },
     { id: 'questiontransfer', name: 'Soru Transferi', icon: 'swap_horiz', route: '/question-transfer', type: 'menu' },
     { id: 'reports', name: 'Raporlar', icon: 'analytics', route: '/certificates', type: 'menu' },

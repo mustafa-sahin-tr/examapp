@@ -1,0 +1,82 @@
+<app-section-header class="section-container" title="Calisma Sayfalari" icon="/icons/18.svg"></app-section-header>
+
+<div class="list-container">
+  <div class="form-container align-center">
+    <div class="form-column-3">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Baslik veya aciklama ara</mat-label>
+        <input matInput [formControl]="searchControl" (keyup.enter)="onSearch()" />
+        <button mat-icon-button matSuffix (click)="onSearch()">
+          <mat-icon>search</mat-icon>
+        </button>
+      </mat-form-field>
+    </div>
+    <div class="form-column">
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Ders filtrele</mat-label>
+        <mat-select [value]="selectedSubjectId()" (selectionChange)="onSubjectChange($event.value)">
+          <mat-option [value]="null">Tum Dersler</mat-option>
+          <mat-option *ngFor="let subject of subjectsSignal()" [value]="subject.id">
+            {{ subject.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="form-column actions">
+      <button mat-flat-button color="primary" (click)="onNewPage()">
+        <mat-icon>library_add</mat-icon>
+        Yeni Ekle
+      </button>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <mat-card *ngFor="let page of pagedStudyPagesSignal().items; trackBy: trackByPage" class="page-card">
+      <div class="card-media" [style.background-image]="page.coverImageUrl ? 'url(' + page.coverImageUrl + ')' : ''">
+        <div class="media-overlay" *ngIf="!page.coverImageUrl">
+          <mat-icon>image</mat-icon>
+          <span>Resim Yok</span>
+        </div>
+      </div>
+      <mat-card-content>
+        <div class="card-header">
+          <h3>{{ page.title }}</h3>
+          <button
+            mat-icon-button
+            [matMenuTriggerFor]="pageMenu"
+            (click)="$event.stopPropagation()"
+            [disabled]="deletingId() === page.id"
+          >
+            <mat-icon *ngIf="deletingId() !== page.id">more_vert</mat-icon>
+            <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
+          </button>
+          <mat-menu #pageMenu="matMenu">
+            <button mat-menu-item (click)="onEdit(page)">
+              <mat-icon>edit</mat-icon>
+              <span>Duzenle</span>
+            </button>
+            <button mat-menu-item (click)="onDelete(page)">
+              <mat-icon>delete</mat-icon>
+              <span>Sil</span>
+            </button>
+          </mat-menu>
+        </div>
+        <p class="description">{{ page.description || 'Aciklama yok' }}</p>
+        <div class="meta">
+          <span><mat-icon>photo_library</mat-icon>{{ page.imageCount }} sayfa</span>
+          <span><mat-icon>person</mat-icon>{{ page.createdByName }}</span>
+          <span><mat-icon>calendar_today</mat-icon>{{ page.createTime | date: 'dd.MM.yyyy' }}</span>
+        </div>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-stroked-button color="primary" (click)="onEdit(page)">Duzenle</button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <app-pagination
+    [currentPage]="pageNumber"
+    [totalItems]="pagedStudyPagesSignal().totalCount"
+    (pageChanged)="changePage($event)"
+  ></app-pagination>
+</div>

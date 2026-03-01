@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   exam-dotnet-api:
-    command: sh -c "dotnet ef database update --project ExamApp.Api && dotnet nuget locals all --clear && dotnet restore && dotnet watch run --project ExamApp.Api --urls=http://+:5079"
+    # command: sh -c "dotnet nuget locals all --clear && dotnet restore && dotnet ef database update --project ExamApp.Api && dotnet watch run --project ExamApp.Api --urls=http://+:5079"
 
   auth-api:
     command: dotnet watch run --urls=http://+:5079
@@ -25,7 +25,7 @@ services:
   #   command: sh -c "npm install && npm start"
 
   auth-ui:
-    command: sh -c "yarn install && yarn start"
+    # command: sh -c "yarn install && yarn start"
 
   question-detector-dev:
     command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload

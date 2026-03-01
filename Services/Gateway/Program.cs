@@ -12,8 +12,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(kestrelPort); // 🟢 Dinamik Port Kullanımı
 });
 
-
+var environment = builder.Environment.EnvironmentName;
+Console.WriteLine($"[Startup] Environment: {environment}, Kestrel Port: {kestrelPort}");
 builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+builder.Configuration.AddJsonFile($"ocelot.{environment}.json", optional: true, reloadOnChange: true);
 
 StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
 

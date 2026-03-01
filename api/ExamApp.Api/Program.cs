@@ -130,6 +130,7 @@ builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
+builder.Services.AddScoped<IStudyPageService, StudyPageService>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

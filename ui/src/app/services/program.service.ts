@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ProgramStep } from '../models/programstep';
-import { CreateProgramRequest, UserProgram } from '../models/program.interfaces';
+import { CreateProgramRequest, ProgramStudyPageScheduleRequest, UserProgram } from '../models/program.interfaces';
 
 @Injectable({
   providedIn: 'root',
@@ -22,5 +22,13 @@ export class ProgramService {
 
   getMyPrograms(): Observable<UserProgram[]> {
     return this.http.get<UserProgram[]>(`${this.apiUrl}/my-programs`);
+  }
+
+  getProgramById(programId: number): Observable<UserProgram> {
+    return this.http.get<UserProgram>(`${this.apiUrl}/${programId}`);
+  }
+
+  addStudyPages(programId: number, request: ProgramStudyPageScheduleRequest): Observable<UserProgram> {
+    return this.http.post<UserProgram>(`${this.apiUrl}/${programId}/study-pages`, request);
   }
 }

@@ -90,7 +90,6 @@ export class StudyPageEditorComponent implements OnDestroy {
   previewIndex = signal(0);
 
   constructor() {
-    this.loadSubjects();
     this.loadGrades();
 
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -327,6 +326,7 @@ export class StudyPageEditorComponent implements OnDestroy {
     const payload = {
       title: this.form.value.title || '',
       description: this.form.value.description || '',
+      gradeId: this.form.value.gradeId,
       subjectId: this.form.value.subjectId,
       topicId: this.form.value.topicId,
       subTopicId: this.form.value.subTopicId,
@@ -371,12 +371,6 @@ export class StudyPageEditorComponent implements OnDestroy {
     });
   }
 
-  private loadSubjects() {
-    this.subjectService.loadCategories().subscribe((subjects) => {
-      this.subjects.set(subjects);
-    });
-  }
-
   private loadGrades() {
     this.gradesService.getGrades().subscribe((grades) => {
       this.grades.set(grades);
@@ -387,29 +381,50 @@ export class StudyPageEditorComponent implements OnDestroy {
     this.loading.set(true);
     this.studyPageService.getById(id).subscribe({
       next: (page: StudyPage) => {
-        this.form.patchValue({
-          title: page.title,
-          description: page.description,
-          gradeId: null,
-          subjectId: page.subjectId ?? null,
-          topicId: page.topicId ?? null,
-          subTopicId: page.subTopicId ?? null,
-          isPublished: page.isPublished,
-        });
-        this.existingImages.set(page.images || []);
-        this.loading.set(false);
+        const gradeId = page.gradeId ?? null;
+        const subjectId = page.subjectId ?? null;
+        const topicId = page.topicId ?? null;
+        const subTopicId = page.subTopicId ?? null;
 
-        if (page.subjectId) {
-          this.subjectService.getTopicsBySubject(page.subjectId).subscribe((topics) => {
+        this.form.patchValue(
+          {
+            title: page.title,
+            description: page.description,
+            gradeId,
+            subjectId,
+            topicId,
+            subTopicId,
+            isPublished: page.isPublished,
+          },
+          { emitEvent: false }
+        );
+        this.existingImages.set(page.images || []);
+
+        if (gradeId) {
+          this.subjectService.getSubjectsByGrade(gradeId).subscribe((subjects) => {
+            this.subjects.set(subjects);
+          });
+        } else {
+          this.subjects.set([]);
+        }
+
+        if (subjectId && gradeId) {
+          this.subjectService.getTopicsBySubjectAndGrade(subjectId, gradeId).subscribe((topics) => {
             this.topics.set(topics);
           });
+        } else {
+          this.topics.set([]);
         }
 
-        if (page.topicId) {
-          this.subjectService.getSubTopicsByTopic(page.topicId).subscribe((subtopics) => {
+        if (topicId) {
+          this.subjectService.getSubTopicsByTopic(topicId).subscribe((subtopics) => {
             this.subtopics.set(subtopics);
           });
+        } else {
+          this.subtopics.set([]);
         }
+
+        this.loading.set(false);
       },
       error: () => {
         this.snackBar.open('Calisma sayfasi bulunamadi.', 'Tamam', { duration: 3000 });

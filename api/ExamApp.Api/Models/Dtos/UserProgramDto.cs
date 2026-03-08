@@ -20,6 +20,7 @@ namespace ExamApp.Api.Models.Dtos
         public string RestDays { get; set; } = string.Empty;
         public string DifficultSubjects { get; set; } = string.Empty;
         public List<UserProgramScheduleDto> Schedules { get; set; } = new List<UserProgramScheduleDto>();
+        public List<UserProgramStudyPageScheduleDto> StudyPageSchedules { get; set; } = new List<UserProgramStudyPageScheduleDto>();
     }
 
     public class UserProgramScheduleDto
@@ -34,5 +35,16 @@ namespace ExamApp.Api.Models.Dtos
         public bool IsCompleted { get; set; }
         public DateTime? CompletedDate { get; set; }
         public string? Notes { get; set; }
+    }
+
+    public class UserProgramStudyPageScheduleDto
+    {
+        public int Id { get; set; }
+        public int UserProgramId { get; set; }
+        public int StudyPageId { get; set; }
+        public string StudyPageTitle { get; set; } = string.Empty;
+        public string? StudyPageCoverImageUrl { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
     }
 }

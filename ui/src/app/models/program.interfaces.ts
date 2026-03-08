@@ -27,6 +27,7 @@ export interface UserProgram {
   restDays: string;
   difficultSubjects: string;
   schedules: UserProgramSchedule[];
+  studyPageSchedules: UserProgramStudyPageSchedule[];
 }
 
 export interface UserProgramSchedule {
@@ -40,4 +41,24 @@ export interface UserProgramSchedule {
   isCompleted: boolean;
   completedDate?: string;
   notes?: string;
+}
+
+export interface UserProgramStudyPageSchedule {
+  id: number;
+  userProgramId: number;
+  studyPageId: number;
+  studyPageTitle: string;
+  studyPageCoverImageUrl?: string | null;
+  startDate: string;
+  endDate: string;
+}
+
+export interface ProgramStudyPageScheduleRequest {
+  items: ProgramStudyPageScheduleItem[];
+}
+
+export interface ProgramStudyPageScheduleItem {
+  studyPageId: number;
+  startDate: string;
+  endDate: string;
 }

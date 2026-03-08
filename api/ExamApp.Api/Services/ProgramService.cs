@@ -104,15 +104,80 @@ namespace ExamApp.Api.Services
             var userPrograms = await _context.UserPrograms
                 .Where(up => up.UserId == userId)
                 .Include(up => up.Schedules)
+                .Include(up => up.StudyPageSchedules)
+                .ThenInclude(s => s.StudyPage)
+                .ThenInclude(p => p.Images)
                 .ToListAsync();
 
             return userPrograms.Select(MapToUserProgramDto).ToList();
+        }
+
+        public async Task<UserProgramDto?> GetUserProgramByIdAsync(string userId, int programId)
+        {
+            var userProgram = await _context.UserPrograms
+                .Where(up => up.UserId == userId && up.Id == programId)
+                .Include(up => up.Schedules)
+                .Include(up => up.StudyPageSchedules)
+                .ThenInclude(s => s.StudyPage)
+                .ThenInclude(p => p.Images)
+                .FirstOrDefaultAsync();
+
+            return userProgram != null ? MapToUserProgramDto(userProgram) : null;
+        }
+
+        public async Task<UserProgramDto?> AddStudyPageSchedulesAsync(string userId, int programId, ProgramStudyPageScheduleRequestDto request)
+        {
+            var userProgram = await _context.UserPrograms
+                .Include(up => up.StudyPageSchedules)
+                .FirstOrDefaultAsync(up => up.UserId == userId && up.Id == programId);
+
+            if (userProgram == null)
+            {
+                return null;
+            }
+
+            var studyPageIds = request.Items.Select(i => i.StudyPageId).Distinct().ToList();
+            var studyPages = await _context.StudyPages
+                .Where(p => studyPageIds.Contains(p.Id))
+                .ToListAsync();
+
+            var schedules = new List<UserProgramStudyPageSchedule>();
+            foreach (var item in request.Items)
+            {
+                var pageExists = studyPages.Any(p => p.Id == item.StudyPageId);
+                if (!pageExists)
+                {
+                    continue;
+                }
+
+                var startDate = DateTime.SpecifyKind(item.StartDate.Date, DateTimeKind.Utc);
+                var endDate = DateTime.SpecifyKind(item.EndDate.Date, DateTimeKind.Utc);
+
+                schedules.Add(new UserProgramStudyPageSchedule
+                {
+                    UserProgramId = userProgram.Id,
+                    StudyPageId = item.StudyPageId,
+                    StartDate = startDate,
+                    EndDate = endDate
+                });
+            }
+
+            if (schedules.Count > 0)
+            {
+                _context.UserProgramStudyPageSchedules.AddRange(schedules);
+                await _context.SaveChangesAsync();
+            }
+
+            return await GetUserProgramByIdAsync(userId, programId);
         }
 
         private async Task<UserProgramDto> GetUserProgramDtoAsync(int userProgramId)
         {
             var userProgram = await _context.UserPrograms
                 .Include(up => up.Schedules)
+                .Include(up => up.StudyPageSchedules)
+                .ThenInclude(s => s.StudyPage)
+                .ThenInclude(p => p.Images)
                 .FirstOrDefaultAsync(up => up.Id == userProgramId);
 
             return userProgram != null ? MapToUserProgramDto(userProgram) : null;
@@ -148,6 +213,18 @@ namespace ExamApp.Api.Services
                     IsCompleted = s.IsCompleted,
                     CompletedDate = s.CompletedDate,
                     Notes = s.Notes
+                }).ToList(),
+                StudyPageSchedules = up.StudyPageSchedules.Select(s => new UserProgramStudyPageScheduleDto
+                {
+                    Id = s.Id,
+                    UserProgramId = s.UserProgramId,
+                    StudyPageId = s.StudyPageId,
+                    StudyPageTitle = s.StudyPage != null ? s.StudyPage.Title : string.Empty,
+                    StudyPageCoverImageUrl = s.StudyPage != null
+                        ? s.StudyPage.Images.OrderBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault()
+                        : null,
+                    StartDate = s.StartDate,
+                    EndDate = s.EndDate
                 }).ToList()
             };
         }

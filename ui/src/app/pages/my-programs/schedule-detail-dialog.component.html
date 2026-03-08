@@ -1,0 +1,30 @@
+<div class="schedule-detail-header">
+  <div class="color-indicator" [style.background]="data.color"></div>
+  <div class="title-group">
+    <h2>{{ data.schedule.studyPageTitle }}</h2>
+    <div class="date-range">
+      <mat-icon>event</mat-icon>
+      <span>{{ data.schedule.startDate | date: 'd MMMM y' }} - {{ data.schedule.endDate | date: 'd MMMM y' }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="schedule-detail-body">
+  <div class="detail-row">
+    <mat-icon>book</mat-icon>
+    <span>Study Page ID: {{ data.schedule.studyPageId }}</span>
+  </div>
+
+  <div class="detail-row" *ngIf="data.schedule.studyPageCoverImageUrl">
+    <mat-icon>image</mat-icon>
+    <span>Kapak:</span>
+  </div>
+
+  <div class="cover-image" *ngIf="data.schedule.studyPageCoverImageUrl">
+    <img [src]="data.schedule.studyPageCoverImageUrl" [alt]="data.schedule.studyPageTitle" />
+  </div>
+</div>
+
+<div class="schedule-detail-actions">
+  <button mat-flat-button color="primary" (click)="close()">Kapat</button>
+</div>

@@ -9,6 +9,7 @@ export interface StudyPage {
   id: number;
   title: string;
   description: string;
+  gradeId?: number | null;
   subjectId?: number | null;
   topicId?: number | null;
   subTopicId?: number | null;

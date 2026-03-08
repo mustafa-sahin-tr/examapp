@@ -55,6 +55,42 @@ namespace ExamApp.Api.Controllers
             return Ok(programs);
         }
 
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<UserProgramDto>> GetProgramById(int id)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var program = await _programService.GetUserProgramByIdAsync(userId, id);
+            if (program == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(program);
+        }
+
+        [HttpPost("{id:int}/study-pages")]
+        public async Task<ActionResult<UserProgramDto>> AddStudyPages(int id, [FromBody] ProgramStudyPageScheduleRequestDto request)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var program = await _programService.AddStudyPageSchedulesAsync(userId, id, request);
+            if (program == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(program);
+        }
+
         // Add other actions as needed for CRUD operations
         // For example:
         // [HttpGet("steps/{id}")]

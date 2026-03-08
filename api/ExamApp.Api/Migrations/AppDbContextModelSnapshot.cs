@@ -1361,6 +1361,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("GradeId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -1639,6 +1642,56 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("UserProgramId");
 
                     b.ToTable("UserProgramSchedules");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.UserProgramStudyPageSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("StudyPageId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserProgramId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudyPageId");
+
+                    b.HasIndex("UserProgramId");
+
+                    b.ToTable("UserProgramStudyPageSchedules");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetAssignment", b =>
@@ -2567,6 +2620,25 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("UserProgram");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.UserProgramStudyPageSchedule", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.StudyPage", "StudyPage")
+                        .WithMany()
+                        .HasForeignKey("StudyPageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.UserProgram", "UserProgram")
+                        .WithMany("StudyPageSchedules")
+                        .HasForeignKey("UserProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StudyPage");
+
+                    b.Navigation("UserProgram");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.WorksheetAssignment", b =>
                 {
                     b.HasOne("Grade", "Grade")
@@ -2842,6 +2914,8 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
                 {
                     b.Navigation("Schedules");
+
+                    b.Navigation("StudyPageSchedules");
                 });
 
             modelBuilder.Entity("Grade", b =>

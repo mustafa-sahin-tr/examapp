@@ -10,6 +10,8 @@ namespace ExamApp.Api.Services
         Task<List<ProgramStepDto>> GetProgramStepsAsync();
         Task<UserProgramDto> CreateUserProgramAsync(string userId, CreateProgramRequestDto request);
         Task<List<UserProgramDto>> GetUserProgramsAsync(string userId);
+        Task<UserProgramDto?> GetUserProgramByIdAsync(string userId, int programId);
+        Task<UserProgramDto?> AddStudyPageSchedulesAsync(string userId, int programId, ProgramStudyPageScheduleRequestDto request);
         // Add other methods as needed, for example:
         // Task<ProgramStep> GetProgramStepByIdAsync(int id);
         // Task CreateProgramStepAsync(ProgramStep programStep);

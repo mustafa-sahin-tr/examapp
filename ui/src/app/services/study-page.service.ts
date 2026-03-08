@@ -32,6 +32,7 @@ export class StudyPageService {
     request: {
       title: string;
       description: string;
+      gradeId?: number | null;
       subjectId?: number | null;
       topicId?: number | null;
       subTopicId?: number | null;
@@ -42,6 +43,7 @@ export class StudyPageService {
     const formData = new FormData();
     formData.append('Title', request.title);
     formData.append('Description', request.description || '');
+    if (request.gradeId) formData.append('GradeId', String(request.gradeId));
     if (request.subjectId) formData.append('SubjectId', String(request.subjectId));
     if (request.topicId) formData.append('TopicId', String(request.topicId));
     if (request.subTopicId) formData.append('SubTopicId', String(request.subTopicId));
@@ -57,6 +59,7 @@ export class StudyPageService {
     request: {
       title: string;
       description: string;
+      gradeId?: number | null;
       subjectId?: number | null;
       topicId?: number | null;
       subTopicId?: number | null;
@@ -68,6 +71,7 @@ export class StudyPageService {
     const formData = new FormData();
     formData.append('Title', request.title);
     formData.append('Description', request.description || '');
+    if (request.gradeId) formData.append('GradeId', String(request.gradeId));
     if (request.subjectId) formData.append('SubjectId', String(request.subjectId));
     if (request.topicId) formData.append('TopicId', String(request.topicId));
     if (request.subTopicId) formData.append('SubTopicId', String(request.subTopicId));

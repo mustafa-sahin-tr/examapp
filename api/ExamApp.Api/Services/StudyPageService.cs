@@ -95,6 +95,7 @@ public class StudyPageService : IStudyPageService
         {
             Title = request.Title.Trim(),
             Description = request.Description?.Trim() ?? string.Empty,
+            GradeId = request.GradeId,
             SubjectId = request.SubjectId,
             TopicId = request.TopicId,
             SubTopicId = request.SubTopicId,
@@ -155,6 +156,7 @@ public class StudyPageService : IStudyPageService
 
         page.Title = request.Title.Trim();
         page.Description = request.Description?.Trim() ?? string.Empty;
+        page.GradeId = request.GradeId;
         page.SubjectId = request.SubjectId;
         page.TopicId = request.TopicId;
         page.SubTopicId = request.SubTopicId;
@@ -237,6 +239,7 @@ public class StudyPageService : IStudyPageService
             Id = page.Id,
             Title = page.Title,
             Description = page.Description,
+            GradeId = page.GradeId,
             SubjectId = page.SubjectId,
             TopicId = page.TopicId,
             SubTopicId = page.SubTopicId,

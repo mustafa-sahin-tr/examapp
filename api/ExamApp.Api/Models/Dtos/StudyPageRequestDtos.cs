@@ -6,6 +6,7 @@ public class CreateStudyPageRequestDto
 {
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public int? GradeId { get; set; }
     public int? SubjectId { get; set; }
     public int? TopicId { get; set; }
     public int? SubTopicId { get; set; }
@@ -16,6 +17,7 @@ public class UpdateStudyPageRequestDto
 {
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public int? GradeId { get; set; }
     public int? SubjectId { get; set; }
     public int? TopicId { get; set; }
     public int? SubTopicId { get; set; }

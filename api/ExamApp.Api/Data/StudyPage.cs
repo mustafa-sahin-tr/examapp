@@ -14,6 +14,8 @@ public class StudyPage : BaseEntity
 
     public string Description { get; set; } = string.Empty;
 
+    public int? GradeId { get; set; }
+
     public int? SubjectId { get; set; }
 
     [ForeignKey("SubjectId")]

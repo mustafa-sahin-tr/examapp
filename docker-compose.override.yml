@@ -4,7 +4,7 @@ services:
     # command: sh -c "dotnet nuget locals all --clear && dotnet restore && dotnet ef database update --project ExamApp.Api && dotnet watch run --project ExamApp.Api --urls=http://+:5079"
 
   auth-api:
-    command: dotnet watch run --urls=http://+:5079
+    # command: dotnet watch run --urls=http://+:5079
 
   exam-badge-api:
     command: dotnet run --urls=http://+:8006
@@ -25,11 +25,18 @@ services:
   #   command: sh -c "npm install && npm start"
 
   auth-ui:
-    # command: sh -c "yarn install && yarn start"
+    command: sh -c "yarn install && yarn start"
 
   question-detector-dev:
     command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
 
+
   keycloak:
+    # command: start-dev --import-realm --spi-login-protocol-openid-connect-require-ssl=false
+    command: start-dev --http-enabled=true --hostname-strict=false --import-realm
+    environment:
+      KC_LOG_LEVEL: DEBUG
+      KEYCLOAK_SSL_REQUIRED: none
     volumes:
       - ./keycloak-themes/my-theme:/opt/keycloak/themes/my-theme
+      - ./keycloak-themes/import:/opt/keycloak/data/import

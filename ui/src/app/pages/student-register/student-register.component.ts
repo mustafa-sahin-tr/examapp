@@ -65,6 +65,18 @@ export class StudentRegisterComponent implements OnInit {
         if (val.accessToken) {
           localStorage.setItem('auth_token', val.accessToken);
         }
+        if (val.profileId) {
+          var user = localStorage.getItem('user');
+          if (user) {
+            try {
+              const userObj = JSON.parse(user);
+              userObj.teacher = { id: val.profileId };
+              localStorage.setItem('user', JSON.stringify(userObj));
+            } catch (e) {
+              console.error('User data parsing error:', e);
+            }
+          }
+        }
         this.snackBar.open('Öğrenci kaydı başarılı!', 'Tamam', { duration: 3000 });
         this.router.navigate(['/tests']); // Kayıt sonrası yönlendirme
       },

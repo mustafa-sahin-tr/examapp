@@ -75,7 +75,7 @@ export class CallbackComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(async (params) => {
       const code = params['code'];
-      const navigateTo = params['state'];
+      const navigateTo = params['state'] + '/dashboard';
       console.log('Callback params:', params);
       if (code) {
         // Add initial delay for better visual experience

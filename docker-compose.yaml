@@ -247,8 +247,12 @@ services:
       KC_DB_USERNAME: examuser
       KC_DB_PASSWORD: exampass
       KC_PROXY: none
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT:  8081
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT_HTTPS: false
     ports:
-      - '8081:8080'
+      - '127.0.0.1:8081:8080'
     depends_on:
       exam-pg-container:
         condition: service_healthy      

@@ -169,7 +169,8 @@ namespace ExamApp.Api.Controllers
             return Ok(new
             {
                 accessToken = tokenData.AccessToken,
-                expiresIn = tokenData.ExpiresIn
+                expiresIn = tokenData.ExpiresIn,
+                profileId = user.Id
             });
 
         }

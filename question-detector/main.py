@@ -82,8 +82,8 @@ app.add_middleware(
 # model = YOLO("data/questions/runs/train5/weights/best.pt")
 # sub_model = YOLO("data/answers/runs/train-answers-v10/weights/best.pt")  # <--- Alt modelin yolu
 
-QUESTION_MODEL_PATH = os.getenv("QUESTION_MODEL_PATH", "models/question-best.pt")
-ANSWER_MODEL_PATH = os.getenv("ANSWER_MODEL_PATH", "models/answer-best.pt")
+QUESTION_MODEL_PATH = os.getenv("QUESTION_MODEL_PATH", "data/questions/runs/train5/weights/best.pt")
+ANSWER_MODEL_PATH = os.getenv("ANSWER_MODEL_PATH", "data/answers/runs/train-answers-v10/weights/best.pt")
 
 model = YOLO(QUESTION_MODEL_PATH)
 sub_model = YOLO(ANSWER_MODEL_PATH)  # <--- Alt modelin yolu

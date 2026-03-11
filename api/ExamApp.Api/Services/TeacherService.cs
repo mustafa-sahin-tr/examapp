@@ -27,10 +27,13 @@ public class TeacherService : ITeacherService
         var existingTeacher = await _context.Teachers.FirstOrDefaultAsync(s => s.UserId == userId);
         if (existingTeacher != null)
         {
+            existingTeacher.SchoolName = dto.SchoolName;
+            await _context.SaveChangesAsync();
             return new ResponseBaseDto
             {
-                Success = false,
-                Message = "Öğretmen zaten kayıtlı."
+                Success = true,
+                Message = "Öğretmen başarıyla güncellendi..",
+                ObjectId = existingTeacher.Id
             };
         }
 

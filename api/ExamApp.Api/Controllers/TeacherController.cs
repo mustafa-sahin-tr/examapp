@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
@@ -15,12 +16,16 @@ namespace ExamApp.Api.Controllers
         private readonly ITeacherService _teacherService;
 
         private readonly UserProfileCacheService _userProfileCacheService;
+        private readonly IKeycloakService _keycloakService;
 
-        public TeacherController(ITeacherService teacherService, UserProfileCacheService userProfileCacheService)
+        public TeacherController(ITeacherService teacherService, UserProfileCacheService userProfileCacheService,
+            IKeycloakService keycloakService
+        )
             : base()
         {
             _userProfileCacheService = userProfileCacheService;
             _teacherService = teacherService;
+            _keycloakService = keycloakService;
         }
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
@@ -29,6 +34,15 @@ namespace ExamApp.Api.Controllers
         {
             // 🔹 Token’dan UserId'yi al
             var user = await GetAuthenticatedUserAsync();
+
+            await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Teacher);
+
+            var refreshToken = Request.Cookies["refresh_token"];
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return Unauthorized("No refresh token provided.");
+
+            // 2. Keycloak token endpoint'ine isteği hazırla
+            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _teacherService.Save(user.Id, request);
@@ -42,11 +56,23 @@ namespace ExamApp.Api.Controllers
                 return BadRequest(new { message = response.Message });
             }
 
+            if (!string.IsNullOrEmpty(tokenData.RefreshToken))
+            {
+                Response.Cookies.Append("refresh_token", tokenData.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    MaxAge = TimeSpan.FromSeconds(tokenData.RefreshExpiresIn),
+                    Path = "/"
+                });
+            }
+
             return Ok(new
             {
-                Message = "Teacher registered successfully.",
-                TeacherId = response.ObjectId,
-
+                accessToken = tokenData.AccessToken,
+                expiresIn = tokenData.ExpiresIn,
+                profileId = user.Id
             });
         }
 

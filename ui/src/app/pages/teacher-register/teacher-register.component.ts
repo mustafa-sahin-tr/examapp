@@ -47,6 +47,18 @@ export class TeacherRegisterComponent {
         if (val.refreshToken) {
           localStorage.setItem('auth_token', val.refreshToken);
         }
+        if (val.profileId) {
+          var user = localStorage.getItem('user');
+          if (user) {
+            try {
+              const userObj = JSON.parse(user);
+              userObj.student = { id: val.profileId };
+              localStorage.setItem('user', JSON.stringify(userObj));
+            } catch (e) {
+              console.error('User data parsing error:', e);
+            }
+          }
+        }
         this.snackBar.open('Öğretmen kaydı başarılı!', 'Tamam', { duration: 3000 });
         this.router.navigate(['/tests']); // Kayıt sonrası yönlendirme
       },

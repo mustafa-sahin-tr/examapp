@@ -47,10 +47,10 @@ public class KeycloakService : IKeycloakService
             throw new KeycloakException("Keycloak URL segment is not configured.");
         }
 
-        if (Uri.TryCreate(pathOrUrl, UriKind.Absolute, out var absolute))
-        {
-            return absolute;
-        }
+        // if (Uri.TryCreate(pathOrUrl, UriKind.Absolute, out var absolute))
+        // {
+        //     return absolute;
+        // }
 
         var baseUri = GetKeycloakBaseUri();
         var relative = pathOrUrl.TrimStart('/');

@@ -80,11 +80,22 @@
             <div>
               <h3>Resimler</h3>
             </div>
-            <label class="upload-btn">
-              <input type="file" accept="image/*" multiple (change)="onFilesSelected($event)" />
-              <mat-icon>upload</mat-icon>
-              Resim Sec
-            </label>
+            <div class="upload-actions">
+              <button
+                mat-stroked-button
+                *ngIf="existingImages().length > 0"
+                [disabled]="downloadingZip()"
+                (click)="downloadAsZip()"
+              >
+                <mat-icon>download</mat-icon>
+                {{ downloadingZip() ? 'Indiriliyor...' : 'ZIP Indir' }}
+              </button>
+              <label class="upload-btn">
+                <input type="file" accept="image/*" multiple (change)="onFilesSelected($event)" />
+                <mat-icon>upload</mat-icon>
+                Resim Sec
+              </label>
+            </div>
           </div>
 
           <div class="preview" *ngIf="currentPreview as preview">

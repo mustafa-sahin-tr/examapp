@@ -88,6 +88,7 @@ export class StudyPageEditorComponent implements OnDestroy {
   removedImageIds = new Set<number>();
   newImages = signal<NewImageItem[]>([]);
   previewIndex = signal(0);
+  downloadingZip = signal(false);
 
   constructor() {
     this.loadGrades();
@@ -287,6 +288,40 @@ export class StudyPageEditorComponent implements OnDestroy {
       if (!this.removedImageIds.has(existing.id)) {
         this.toggleRemoveExisting(existing);
       }
+    }
+  }
+
+  async downloadAsZip() {
+    const images = this.existingImages();
+    if (images.length === 0) return;
+
+    this.downloadingZip.set(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      await Promise.all(
+        images.map(async (img, index) => {
+          const response = await fetch(img.imageUrl);
+          const blob = await response.blob();
+          const ext = img.fileName?.split('.').pop() || 'jpg';
+          const name = img.fileName || `resim_${index + 1}.${ext}`;
+          zip.file(name, blob);
+        })
+      );
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const title = (this.form.value.title || 'calisma-sayfasi').replace(/[^a-z0-9_\-]/gi, '_').toLowerCase();
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      this.snackBar.open('ZIP indirme sirasinda hata olustu.', 'Tamam', { duration: 3000 });
+    } finally {
+      this.downloadingZip.set(false);
     }
   }
 

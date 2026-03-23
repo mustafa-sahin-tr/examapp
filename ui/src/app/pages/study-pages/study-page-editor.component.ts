@@ -21,9 +21,25 @@ import { StudyPage, StudyPageImage } from '../../models/study-page';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 
 interface NewImageItem {
-  file: File;
+  file?: File; // Optional for MinIO items
   previewUrl: string;
   selected: boolean;
+  isFromJson?: boolean;
+  minioUrl?: string; // MinIO URL for the image
+  bookName?: string; // Book name for MinIO items
+  pageNumber?: number; // Page number for MinIO items  
+  isFromMinio?: boolean; // Indicates if this is from MinIO
+}
+
+interface BookConfig {
+  book: string;
+  pages: number[];
+}
+
+interface ExpectedFile {
+  bookName: string;
+  pageNumber: number;
+  found: boolean;
 }
 
 type PreviewItemType = 'existing' | 'new';
@@ -89,6 +105,12 @@ export class StudyPageEditorComponent implements OnDestroy {
   newImages = signal<NewImageItem[]>([]);
   previewIndex = signal(0);
   downloadingZip = signal(false);
+
+  // JSON-guided bulk selection properties
+  jsonConfig = signal<BookConfig[]>([]);
+  expectedFiles = signal<ExpectedFile[]>([]);
+  jsonProcessing = signal(false);
+  jsonFileName = signal<string | null>(null);
 
   constructor() {
     this.loadGrades();
@@ -158,7 +180,7 @@ export class StudyPageEditorComponent implements OnDestroy {
       key: `new-${index}`,
       url: img.previewUrl,
       type: 'new' as const,
-      fileName: img.file.name,
+      fileName: img.file?.name || (img.isFromMinio ? `${img.bookName}/page_${img.pageNumber}.webp` : 'Unknown'),
       selected: img.selected,
       newImageIndex: index,
     }));
@@ -207,15 +229,31 @@ export class StudyPageEditorComponent implements OnDestroy {
   }
 
   onFilesSelected(event: Event) {
+    console.log('🚀 onFilesSelected tetiklendi!', event);
     const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
+    console.log('📁 Input element:', input);
+    console.log('📝 Files:', input.files);
+    
+    if (!input.files || input.files.length === 0) {
+      console.log('❌ Dosya bulunamadı veya boş');
+      return;
+    }
 
     const files = Array.from(input.files);
-    const newItems = files.map((file) => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-      selected: false,
-    }));
+    console.log('📋 Seçilen dosyalar:', files.map(f => f.name));
+    const newItems = files.map((file) => {
+      const expectedFile = this.findMatchingExpectedFile(file.name);
+      return {
+        file,
+        previewUrl: URL.createObjectURL(file),
+        selected: expectedFile ? true : false, // Auto-select if matches JSON expectation
+        isFromJson: expectedFile ? true : false,
+        minioUrl: expectedFile ? `/img/study-pages/books/${expectedFile.bookName}/page_${expectedFile.pageNumber}.webp` : undefined,
+      };
+    });
+
+    // Update expected files with found matches
+    this.updateExpectedFilesWithMatches(files);
 
     const existingCount = this.previewItems.length;
     this.newImages.set([...this.newImages(), ...newItems]);
@@ -223,11 +261,294 @@ export class StudyPageEditorComponent implements OnDestroy {
     input.value = '';
   }
 
+  async onJsonSelected(event: Event) {
+    console.log('📄 onJsonSelected tetiklendi!', event);
+    const input = event.target as HTMLInputElement;
+    console.log('📁 JSON Input:', input.files);
+    
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    console.log('📋 JSON dosyası:', file.name, file.size, 'bytes');
+    
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      console.log('❌ JSON olmayan dosya:', file.name);
+      this.snackBar.open('Lütfen JSON dosyası seçin.', 'Tamam', { duration: 3000 });
+      input.value = '';
+      return;
+    }
+
+    this.jsonProcessing.set(true);
+    this.jsonFileName.set(file.name);
+
+    try {
+      const text = await file.text();
+      console.log('📖 JSON içeriği:', text);
+      const config: BookConfig[] = JSON.parse(text);
+      console.log('🔍 Parsed config:', config);
+      
+      // Validate JSON structure
+      if (!Array.isArray(config) || !this.validateJsonConfig(config)) {
+        throw new Error('Invalid JSON format');
+      }
+
+      this.jsonConfig.set(config);
+      console.log('✅ JSON config set edildi:', this.jsonConfig());
+      this.generateExpectedFiles(config);
+      console.log('📝 Expected files oluşturuldu:', this.expectedFiles());
+      
+      // Auto-create MinIO images for expected files
+      await this.createMinIOImages();
+      
+      this.snackBar.open(
+        `JSON yüklendi: MinIO'dan ${this.newImages().filter(img => img.isFromMinio).length} resim bulundu.`, 
+        'Tamam', 
+        { duration: 3000 }
+      );
+    } catch (error) {
+      console.log('❌ JSON parse hatası:', error);
+      this.snackBar.open(
+        'JSON dosyası okunamadı. Format: [{"book":"kitap_adi","pages":[87,88,89]}]',
+        'Tamam',
+        { duration: 5000 }
+      );
+      this.jsonFileName.set(null);
+    } finally {
+      this.jsonProcessing.set(false);
+      input.value = '';
+    }
+  }
+
+  private validateJsonConfig(config: any[]): config is BookConfig[] {
+    return config.every(
+      (item) =>
+        typeof item === 'object' &&
+        typeof item.book === 'string' &&
+        Array.isArray(item.pages) &&
+        item.pages.every((page: any) => typeof page === 'number')
+    );
+  }
+
+  private generateExpectedFiles(config: BookConfig[]) {
+    const expected: ExpectedFile[] = [];
+    config.forEach((bookConfig) => {
+      bookConfig.pages.forEach((page) => {
+        expected.push({
+          bookName: bookConfig.book,
+          pageNumber: page,
+          found: false,
+        });
+      });
+    });
+    this.expectedFiles.set(expected);
+  }
+
+  async createMinIOImages() {
+    console.log('☁️ MinIO imajlar kontrol ediliyor...');
+    
+    const expectedFiles = this.expectedFiles();
+    const newItems: NewImageItem[] = [];
+    
+    for (const expectedFile of expectedFiles) {
+      const minioUrl = `/img/study-pages/books/${expectedFile.bookName}/page_${expectedFile.pageNumber}.webp`;
+      console.log(`🔍 MinIO URL kontrol ediliyor: ${minioUrl}`);
+      
+      const exists = await this.checkMinIOImageExists(minioUrl);
+      
+      if (exists) {
+        const encodedUrl = this.encodeMinIOUrl(minioUrl);
+        newItems.push({
+          previewUrl: encodedUrl, // Use encoded URL for preview
+          selected: true,
+          isFromJson: true,
+          minioUrl: minioUrl, // Keep original for reference
+          bookName: expectedFile.bookName,
+          pageNumber: expectedFile.pageNumber,
+          isFromMinio: true,
+        });
+        
+        expectedFile.found = true;
+      }
+    }
+
+    const existingCount = this.previewItems.length;
+    this.newImages.set([...this.newImages(), ...newItems]);
+    this.previewIndex.set(existingCount);
+    
+    console.log(`✅ ${newItems.length}/${expectedFiles.length} MinIO resmi bulundu ve eklendi`);
+  }
+
+  async checkMinIOImageExists(url: string): Promise<boolean> {
+    try {
+      const encodedUrl = this.encodeMinIOUrl(url);
+      
+      // Use GET request directly since HEAD doesn't work with this MinIO setup
+      const response = await fetch(encodedUrl, { method: 'GET' });
+      return response.ok;
+    } catch (error) {
+      console.log(`❌ MinIO URL kontrol hatası: ${url}`, error);
+      return false;
+    }
+  }
+
+  private encodeMinIOUrl(url: string): string {
+    // Find the study-pages path segment
+    const pathMarker = '/img/study-pages/books/';
+    const pathIndex = url.indexOf(pathMarker);
+    if (pathIndex === -1) {
+      return url; // Return original if path not found
+    }
+    
+    const baseUrl = url.substring(0, pathIndex + pathMarker.length);
+    const pathPart = url.substring(pathIndex + pathMarker.length);
+    
+    // Split into book folder and filename
+    const parts = pathPart.split('/');
+    if (parts.length !== 2) {
+      return url; // Fallback to original if format unexpected
+    }
+    
+    const [bookFolder, filename] = parts;
+    
+    // Transform book folder name: only remove spaces after "number." patterns
+    // "4. Sınıf" -> "4.Sınıf", "1. Defter" -> "1.Defter"
+    // But keep normal spaces like "Maksimum Tam Benlik"
+    // const transformedBookFolder = bookFolder
+    //   .replace(/(\d+)\.\s+/g, '$1.'); // Only remove space after number+dot
+    
+    // Now encode the transformed folder name
+    const encodedBookFolder = encodeURIComponent(bookFolder);
+    const encodedFilename = encodeURIComponent(filename);
+    
+    return `${baseUrl}${encodedBookFolder}%2F${encodedFilename}`;
+  }
+
+  private findMatchingExpectedFile(fileName: string): ExpectedFile | undefined {
+    console.log('🔍 Aranan dosya:', fileName);
+    
+    return this.expectedFiles().find((expected) => {
+      // Check if filename matches the expected pattern - support both just filename and full path
+      const expectedFileName = `page_${expected.pageNumber}.webp`;
+      const expectedPath = `${expected.bookName}/page_${expected.pageNumber}.webp`;
+      
+      console.log(`📋 Beklenen: "${expectedPath}" ve "${expectedFileName}"`);
+      
+      // Match either just the filename or the full path
+      const isMatch = fileName === expectedFileName || 
+                     fileName === expectedPath ||
+                     fileName.endsWith(expectedPath) ||
+                     fileName.endsWith(expectedFileName);
+                     
+      console.log(`✅ Eşleşme: ${isMatch ? 'EVET' : 'HAYIR'}`);
+      
+      return isMatch;
+    });
+  }
+
+  private updateExpectedFilesWithMatches(files: File[]) {
+    const expected = [...this.expectedFiles()];
+    const newImages = this.newImages();
+
+    console.log('🔄 Dosya eşleştirmesi yapılıyor:', files.map(f => f.name));
+
+    files.forEach((file, fileIndex) => {
+      const newImageIndex = newImages.length + fileIndex;
+      expected.forEach((expectedFile) => {
+        const expectedFileName = `page_${expectedFile.pageNumber}.webp`;
+        const expectedPath = `${expectedFile.bookName}/page_${expectedFile.pageNumber}.webp`;
+        
+        console.log(`🎯 "${file.name}" ile "${expectedPath}" ve "${expectedFileName}" karşılaştırılıyor`);
+        
+        // Use same matching logic as findMatchingExpectedFile
+        const isMatch = file.name === expectedFileName || 
+                       file.name === expectedPath ||
+                       file.name.endsWith(expectedPath) ||
+                       file.name.endsWith(expectedFileName);
+                       
+        console.log(`📌 Sonuç: ${isMatch ? 'EŞLEŞTI!' : 'eşleşmedi'}`);
+                       
+        if (isMatch && !expectedFile.found) {
+          console.log(`✅ ${expectedFile.bookName}/page_${expectedFile.pageNumber}.webp bulundu olarak işaretlendi`);
+          expectedFile.found = true;
+        }
+      });
+    });
+
+    this.expectedFiles.set(expected);
+  }
+
+  onBulkFilesSelected(event: Event) {
+    console.log('📂 onBulkFilesSelected tetiklendi!', event);
+    const input = event.target as HTMLInputElement;
+    
+    if (!input.files || input.files.length === 0) {
+      console.log('❌ Dosya bulunamadı veya boş');
+      return;
+    }
+
+    const files = Array.from(input.files);
+    console.log('📋 Bulk seçilen dosyalar:', files.map(f => f.name));
+    
+    // Add all selected files as new images
+    const newItems = files.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      selected: true,
+      isFromJson: false,
+    }));
+
+    const existingCount = this.previewItems.length;
+    this.newImages.set([...this.newImages(), ...newItems]);
+    this.previewIndex.set(existingCount);
+    
+    this.snackBar.open(
+      `${files.length} adet dosya eklendi.`, 
+      'Tamam', 
+      { duration: 3000 }
+    );
+    input.value = '';
+  }
+
+  clearJsonConfig() {
+    this.jsonConfig.set([]);
+    this.expectedFiles.set([]);
+    this.jsonFileName.set(null);
+
+    // Remove JSON-guided selections (including MinIO images)
+    const filtered = this.newImages().filter((img) => !img.isFromJson);
+    this.newImages.set(filtered);
+  }
+
   toggleNewImageSelection(index: number) {
     const items = [...this.newImages()];
     if (!items[index]) return;
     items[index] = { ...items[index], selected: !items[index].selected };
     this.newImages.set(items);
+  }
+
+  get guidanceStats() {
+    const expected = this.expectedFiles();
+    const foundCount = expected.filter(f => f.found).length;
+    const totalCount = expected.length;
+    return { found: foundCount, total: totalCount, missing: totalCount - foundCount };
+  }
+
+  get hasJsonConfig() {
+    return this.jsonConfig().length > 0;
+  }
+
+  get expectedFilesByBook() {
+    const expected = this.expectedFiles();
+    const byBook: { [book: string]: ExpectedFile[] } = {};
+    
+    expected.forEach(file => {
+      if (!byBook[file.bookName]) {
+        byBook[file.bookName] = [];
+      }
+      byBook[file.bookName].push(file);
+    });
+    
+    return byBook;
   }
 
   removeNewImage(index: number) {
@@ -343,8 +664,8 @@ export class StudyPageEditorComponent implements OnDestroy {
     }
 
     const selectedNewFiles = this.newImages()
-      .filter((img) => img.selected)
-      .map((img) => img.file);
+      .filter((img) => img.selected && img.file) // Only files that were actually uploaded
+      .map((img) => img.file!);
 
     const remainingExisting = this.existingImages().filter((img) => !this.removedImageIds.has(img.id));
 

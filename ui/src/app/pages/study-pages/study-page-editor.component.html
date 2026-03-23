@@ -90,6 +90,16 @@
                 <mat-icon>download</mat-icon>
                 {{ downloadingZip() ? 'Indiriliyor...' : 'ZIP Indir' }}
               </button>
+              <label class="upload-btn json-upload-btn">
+                <input type="file" accept=".json" (change)="onJsonSelected($event)" [disabled]="jsonProcessing()" />
+                <mat-icon>upload_file</mat-icon>
+                {{ jsonProcessing() ? 'Okuyor...' : 'JSON Yukle' }}
+              </label>
+              <label class="upload-btn" *ngIf="hasJsonConfig">
+                <input #bulkFileInput type="file" webkitdirectory multiple (change)="onBulkFilesSelected($event)" />
+                <mat-icon>folder_open</mat-icon>
+                Klasör Seç - Otomatik Filtrele
+              </label>
               <label class="upload-btn">
                 <input type="file" accept="image/*" multiple (change)="onFilesSelected($event)" />
                 <mat-icon>upload</mat-icon>
@@ -165,6 +175,52 @@
                 >
                   {{ item.selected ? 'Secili' : 'Haric' }}
                 </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- JSON Guidance Section -->
+          <div class="guidance-section" *ngIf="hasJsonConfig">
+            <div class="guidance-header">
+              <h4>
+                <mat-icon>list_alt</mat-icon>
+                Dosya Klavuzu
+              </h4>
+              <div class="guidance-stats">
+                <span class="stat-item found">{{ guidanceStats.found }}/{{ guidanceStats.total }} Bulundu</span>
+                <span class="stat-item missing" *ngIf="guidanceStats.missing > 0">
+                  {{ guidanceStats.missing }} Eksik
+                </span>
+                <button mat-icon-button (click)="clearJsonConfig()" title="JSON klavuzunu temizle">
+                  <mat-icon>clear</mat-icon>
+                </button>
+              </div>
+            </div>
+            
+            <p class="guidance-help">
+              <mat-icon>info</mat-icon>
+              JSON'dan: <strong>{{ jsonFileName() }}</strong> - 
+              Aşağıdaki dosyaları klasörlerinizden bulup yükleyin.
+            </p>
+
+            <div class="expected-files">
+              <div class="book-group" *ngFor="let book of expectedFilesByBook | keyvalue">
+                <h5 class="book-title">
+                  <mat-icon>folder</mat-icon>
+                  {{ book.key }}/
+                </h5>
+                <div class="book-files">
+                  <div 
+                    class="expected-file" 
+                    *ngFor="let file of book.value" 
+                    [class.found]="file.found"
+                    [class.missing]="!file.found"
+                  >
+                    <mat-icon>{{ file.found ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                    <span class="file-name">{{ file.bookName }} - Sayfa {{ file.pageNumber }}</span>
+                    <span class="file-status">{{ file.found ? 'Bulundu' : 'Eksik' }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

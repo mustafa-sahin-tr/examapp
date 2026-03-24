@@ -36,21 +36,27 @@
   <!-- Cards Section -->
   <section class="cards-section">
     <div class="cards-grid">
-      <mat-card *ngFor="let page of pagedStudyPagesSignal().items; trackBy: trackByPage" class="page-card">
-        <div class="card-media" [style.background-image]="page.coverImageUrl ? 'url(' + page.coverImageUrl + ')' : ''">
-          <div class="media-overlay" *ngIf="!page.coverImageUrl">
-            <mat-icon>image</mat-icon>
-            <span>Resim Yok</span>
+      <div *ngFor="let page of pagedStudyPagesSignal().items; trackBy: trackByPage" class="course-card">
+        <div class="sp-card-image">
+          <img *ngIf="page.coverImageUrl" [src]="page.coverImageUrl" [alt]="page.title" class="cover-image">
+          <div class="image-placeholder" *ngIf="!page.coverImageUrl">
+            <mat-icon>auto_stories</mat-icon>
+            <span>Çalışma Sayfası</span>
           </div>
-        </div>
-        <mat-card-content>
-          <div class="card-header">
-            <h3>{{ page.title }}</h3>
+          
+          <!-- Badge System -->
+          <!-- <div class="badge trending" *ngIf="page.imageCount >= 10">Kapsamlı</div> -->
+          <!-- <div class="badge best-rated" *ngIf="page.isPublished && page.imageCount >= 5">Yayında</div> -->
+          <div class="badge newly-launched" *ngIf="isRecentlyCreated(page.createTime)">Yeni</div>
+          
+          <!-- Action Menu -->
+          <!-- <div class="card-actions">
             <button
               mat-icon-button
               [matMenuTriggerFor]="pageMenu"
               (click)="$event.stopPropagation()"
               [disabled]="deletingId() === page.id"
+              class="action-button"
             >
               <mat-icon *ngIf="deletingId() !== page.id">more_vert</mat-icon>
               <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
@@ -58,30 +64,63 @@
             <mat-menu #pageMenu="matMenu">
               <button mat-menu-item (click)="onEdit(page)">
                 <mat-icon>edit</mat-icon>
-                <span>Duzenle</span>
+                <span>Düzenle</span>
               </button>
               <button mat-menu-item (click)="onDelete(page)">
                 <mat-icon>delete</mat-icon>
                 <span>Sil</span>
               </button>
             </mat-menu>
+          </div> -->
+        </div>
+        
+        <div class="card-content">
+          <h3 class="card-title">{{ page.title }}</h3>
+          
+          <!-- Rating/Status Display -->
+          <div class="card-rating">
+            <div class="stars">
+              <mat-icon *ngFor="let star of [1,2,3,4,5]; let i = index" 
+                       [class.filled]="i < getStarRating(page)"
+                       class="star">star</mat-icon>
+            </div>
+            <!-- <span class="rating-score">{{ getRatingScore(page) }}</span>
+            <span class="review-count">({{ page.imageCount }} sayfa)</span> -->
           </div>
-          <p class="description">{{ page.description || 'Aciklama yok' }}</p>
-          <div class="meta">
-            <span><mat-icon>photo_library</mat-icon>{{ page.imageCount }} sayfa</span>
-            <span><mat-icon>person</mat-icon>{{ page.createdByName }}</span>
-            <span><mat-icon>calendar_today</mat-icon>{{ page.createTime | date: 'dd.MM.yyyy' }}</span>
+          
+          <!-- Price/Status -->
+          <!-- <div class="card-price">
+            <span class="current-price">{{ page.isPublished ? 'Aktif' : 'Taslak' }}</span>
+          </div> -->
+          
+          <!-- Meta Information -->
+          <div class="card-meta">
+            <div class="meta-item">
+              <mat-icon>photo_library</mat-icon>
+              <span>{{ page.imageCount }} Sayfa</span>
+            </div>
+            <div class="meta-item">
+              <mat-icon>person</mat-icon>
+              <span>{{ page.createdByName }}</span>
+            </div>
           </div>
-        </mat-card-content>
-        <mat-card-actions>
-          <button mat-stroked-button color="primary" (click)="onEdit(page)">Duzenle</button>
-          <button mat-stroked-button color="warn" (click)="onDelete(page)" [disabled]="deletingId() === page.id">
-            <mat-icon *ngIf="deletingId() !== page.id">delete</mat-icon>
-            <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
-            Sil
-          </button>
-        </mat-card-actions>
-      </mat-card>
+          
+          <!-- Description -->
+          <p class="card-description" *ngIf="page.description">{{ page.description }}</p>
+          
+          <!-- Action Buttons -->
+          <div class="card-buttons">
+            <button mat-stroked-button color="primary" (click)="onEdit(page)" class="edit-btn">
+              <mat-icon>edit</mat-icon>
+              Düzenle
+            </button>
+            <button mat-icon-button color="warn" (click)="onDelete(page)" [disabled]="deletingId() === page.id" class="delete-btn">
+              <mat-icon *ngIf="deletingId() !== page.id">delete</mat-icon>
+              <mat-icon *ngIf="deletingId() === page.id" class="loading-icon">hourglass_empty</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 

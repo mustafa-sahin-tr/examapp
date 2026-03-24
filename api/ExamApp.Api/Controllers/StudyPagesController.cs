@@ -46,7 +46,10 @@ public class StudyPagesController : BaseController
     [HttpPost]
     public async Task<IActionResult> Create([FromForm] CreateStudyPageRequestDto request, [FromForm] List<IFormFile> images)
     {
-        if (images == null || images.Count == 0)
+        bool hasImages = (images != null && images.Count > 0);
+        bool hasMinioImages = !string.IsNullOrEmpty(request.MinioImages);
+
+        if (!hasImages && !hasMinioImages)
         {
             return BadRequest(new { message = "En az bir resim eklemelisiniz." });
         }

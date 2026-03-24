@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -133,6 +135,45 @@ public class StudyPageService : IStudyPageService
             sortOrder += 1;
         }
 
+        // Handle MinIO images from JSON
+        if (!string.IsNullOrEmpty(request.MinioImages))
+        {
+            try
+            {
+                // Debug logging
+                Console.WriteLine($"MinioImages JSON: {request.MinioImages}");
+
+                using var jsonDoc = JsonDocument.Parse(request.MinioImages);
+                var jsonArray = jsonDoc.RootElement;
+
+                Console.WriteLine($"Parsed {jsonArray.GetArrayLength()} MinIO images");
+
+                foreach (var item in jsonArray.EnumerateArray())
+                {
+                    var bookName = item.GetProperty("bookName").GetString() ?? string.Empty;
+                    var pageNumber = item.GetProperty("pageNumber").GetInt32();
+                    var minioUrl = item.GetProperty("minioUrl").GetString() ?? string.Empty;
+
+                    Console.WriteLine($"MinIO Image - Book: {bookName}, Page: {pageNumber}, URL: {minioUrl}");
+
+                    _context.StudyPageImages.Add(new StudyPageImage
+                    {
+                        StudyPageId = entity.Id,
+                        ImageUrl = minioUrl,
+                        SortOrder = sortOrder,
+                        FileName = $"{bookName}/page_{pageNumber}.webp"
+                    });
+
+                    sortOrder += 1;
+                }
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"JSON parsing error: {ex.Message}");
+                // Log error or handle invalid JSON gracefully
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         return await GetByIdAsync(entity.Id, user) ?? MapToDto(entity);
@@ -191,6 +232,45 @@ public class StudyPageService : IStudyPageService
             });
 
             sortOrder += 1;
+        }
+
+        // Handle MinIO images from JSON
+        if (!string.IsNullOrEmpty(request.MinioImages))
+        {
+            try
+            {
+                // Debug logging
+                Console.WriteLine($"UPDATE MinioImages JSON: {request.MinioImages}");
+
+                using var jsonDoc = JsonDocument.Parse(request.MinioImages);
+                var jsonArray = jsonDoc.RootElement;
+
+                Console.WriteLine($"UPDATE Parsed {jsonArray.GetArrayLength()} MinIO images");
+
+                foreach (var item in jsonArray.EnumerateArray())
+                {
+                    var bookName = item.GetProperty("bookName").GetString() ?? string.Empty;
+                    var pageNumber = item.GetProperty("pageNumber").GetInt32();
+                    var minioUrl = item.GetProperty("minioUrl").GetString() ?? string.Empty;
+
+                    Console.WriteLine($"UPDATE MinIO Image - Book: {bookName}, Page: {pageNumber}, URL: {minioUrl}");
+
+                    _context.StudyPageImages.Add(new StudyPageImage
+                    {
+                        StudyPageId = page.Id,
+                        ImageUrl = minioUrl,
+                        SortOrder = sortOrder,
+                        FileName = $"{bookName}/page_{pageNumber}.webp"
+                    });
+
+                    sortOrder += 1;
+                }
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"UPDATE JSON parsing error: {ex.Message}");
+                // Log error or handle invalid JSON gracefully
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -253,4 +333,11 @@ public class StudyPageService : IStudyPageService
             Images = images
         };
     }
+}
+
+public class MinioImageInfo
+{
+    public string BookName { get; set; } = string.Empty;
+    public int PageNumber { get; set; }
+    public string MinioUrl { get; set; } = string.Empty;
 }

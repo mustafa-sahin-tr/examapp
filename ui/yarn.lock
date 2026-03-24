@@ -5300,6 +5300,13 @@ neo-async@^2.6.2:
   resolved "https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
+ngx-owl-carousel-o@^21.0.0:
+  version "21.0.0"
+  resolved "https://registry.yarnpkg.com/ngx-owl-carousel-o/-/ngx-owl-carousel-o-21.0.0.tgz#7fc86045fbdb4dcb8273089344e2284cc9f17082"
+  integrity sha512-ZOKJUft1WYPbTjEfY8H/HwSvoARHrGobTwiHmSKzaLaBO+wk2wTyir09Zv0ZLg372o2KXirGid7tZ5ZJ7+rrBQ==
+  dependencies:
+    tslib "^2.3.0"
+
 ngx-quill@^27.0.0:
   version "27.0.0"
   resolved "https://registry.npmjs.org/ngx-quill/-/ngx-quill-27.0.0.tgz"

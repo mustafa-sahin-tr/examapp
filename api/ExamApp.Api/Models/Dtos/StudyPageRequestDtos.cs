@@ -11,6 +11,7 @@ public class CreateStudyPageRequestDto
     public int? TopicId { get; set; }
     public int? SubTopicId { get; set; }
     public bool IsPublished { get; set; } = true;
+    public string? MinioImages { get; set; } // JSON string
 }
 
 public class UpdateStudyPageRequestDto
@@ -23,6 +24,7 @@ public class UpdateStudyPageRequestDto
     public int? SubTopicId { get; set; }
     public bool IsPublished { get; set; } = true;
     public List<int> RemovedImageIds { get; set; } = new();
+    public string? MinioImages { get; set; } // JSON string
 }
 
 public class StudyPageFilterDto

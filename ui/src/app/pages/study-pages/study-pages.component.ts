@@ -152,4 +152,28 @@ export class StudyPagesComponent {
         this.deletingId.set(null);
       });
   }
+
+  // Helper methods for the modern card template
+  isRecentlyCreated(createTime: string): boolean {
+    const createdDate = new Date(createTime);
+    const now = new Date();
+    const diffInDays = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    return diffInDays <= 7; // Considered "new" if created within last 7 days
+  }
+
+  getStarRating(page: any): number {
+    // Calculate rating based on page metrics (imageCount, isPublished status)
+    let rating = 3; // Base rating
+    
+    if (page.imageCount >= 10) rating += 1;
+    if (page.imageCount >= 5) rating += 0.5;
+    if (page.isPublished) rating += 0.5;
+    
+    return Math.min(5, rating); // Cap at 5 stars
+  }
+
+  getRatingScore(page: any): string {
+    const rating = this.getStarRating(page);
+    return rating.toFixed(1);
+  }
 }

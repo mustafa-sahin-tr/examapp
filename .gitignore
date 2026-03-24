@@ -102,3 +102,5 @@ question-detector/data/json/*.json
 question-detector/data/venv/
 question-detector/.tmp.driveupload
 question-detector/.tmp.drivedownload
+
+*.zip

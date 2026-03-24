@@ -1,0 +1,318 @@
+/*! CSS Used from: Embedded */
+*,
+*:before,
+*:after {
+    box-sizing: border-box;
+}
+
+/*! CSS Used from: https://angular.envytheme.com/aluno/styles-PRYNRIV6.css ; media=all */
+@media all {
+
+    *,
+    *:before,
+    *:after {
+        box-sizing: border-box;
+    }
+
+    h3 {
+        margin-top: 0;
+        margin-bottom: .5rem;
+        font-weight: 500;
+        line-height: 1.2;
+        color: var(--bs-heading-color);
+    }
+
+    h3 {
+        font-size: calc(1.3rem + .6vw);
+    }
+
+    @media (min-width: 1200px) {
+        h3 {
+            font-size: 1.75rem;
+        }
+    }
+
+    p {
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
+
+    svg {
+        vertical-align: middle;
+    }
+
+    .container {
+        --bs-gutter-x: 1.5rem;
+        --bs-gutter-y: 0;
+        width: 100%;
+        padding-right: calc(var(--bs-gutter-x) * .5);
+        padding-left: calc(var(--bs-gutter-x) * .5);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    @media (min-width: 576px) {
+        .container {
+            max-width: 540px;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .container {
+            max-width: 720px;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .container {
+            max-width: 960px;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .container {
+            max-width: 1140px;
+        }
+    }
+
+    @media (min-width: 1400px) {
+        .container {
+            max-width: 1320px;
+        }
+    }
+
+    .row {
+        --bs-gutter-x: 1.5rem;
+        --bs-gutter-y: 0;
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: calc(-1 * var(--bs-gutter-y));
+        margin-right: calc(-.5 * var(--bs-gutter-x));
+        margin-left: calc(-.5 * var(--bs-gutter-x));
+    }
+
+    .row>* {
+        flex-shrink: 0;
+        // width: 100%;
+        max-width: 100%;
+        padding-right: calc(var(--bs-gutter-x) * .5);
+        padding-left: calc(var(--bs-gutter-x) * .5);
+        margin-top: var(--bs-gutter-y);
+    }
+
+    .g-5 {
+        --bs-gutter-x: 3rem;
+    }
+
+    .g-5 {
+        --bs-gutter-y: 3rem;
+    }
+
+    @media (min-width: 576px) {
+        .col-sm-6 {
+            flex: 0 0 auto;
+            width: 50%;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .col-lg-3 {
+            flex: 0 0 auto;
+            width: 25%;
+        }
+    }
+
+    .justify-content-center {
+        justify-content: center !important;
+    }
+
+    p {
+        margin-bottom: 15px;
+        line-height: 1.7;
+        color: var(--paragraphColor);
+        font-family: var(--paragraphFontFamily);
+        font-size: 15px;
+    }
+
+    p:last-child {
+        margin-bottom: 0;
+    }
+
+    h3 {
+        color: var(--blackColor);
+        font-weight: 600;
+    }
+
+    :focus {
+        outline: 0 !important;
+    }
+
+    @media only screen and (max-width: 767px) {
+        p {
+            font-size: 14px;
+        }
+    }
+}
+
+/*! CSS Used from: Embedded */
+.education-fun-area {
+    overflow: hidden;
+    background-color: var(--primaryColor);
+}
+
+.education-fun-area .g-5 {
+    --bs-gutter-y: 7rem;
+}
+
+.education-fun-area .g-5 {
+    --bs-gutter-x: 7rem;
+}
+
+.education-fun-area .col-lg-3:nth-child(4) .education-fun-card:before {
+    display: none;
+}
+
+.education-fun-card {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    position: relative;
+    padding-top: 80px;
+    padding-bottom: 80px;
+}
+
+.education-fun-card .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 58px;
+    width: 58px;
+    background-color: #ffffff4d;
+    border-radius: 50px;
+    transition: var(--transition);
+}
+
+.education-fun-card .funcontent h3 {
+    font-size: 24px;
+    font-weight: 500;
+    font-family: var(--paragraphFontFamily);
+    margin-bottom: 7px;
+    color: var(--whiteColor);
+    line-height: 1;
+}
+
+.education-fun-card .funcontent p {
+    color: var(--whiteColor);
+    margin-bottom: 0;
+}
+
+.education-fun-card:before {
+    position: absolute;
+    content: "";
+    right: -55px;
+    top: 0;
+    background-image: url("https://angular.envytheme.com/aluno/media/fun-HFPSGMXY.png");
+    width: 52px;
+    height: 100%;
+    background-position: center center;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.education-fun-card:hover .icon {
+    background-color: var(--blackColor);
+}
+
+@media only screen and (max-width: 767px) {
+    .education-fun-area {
+        padding-top: 50px;
+        padding-bottom: 50px;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-y: 2rem;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-x: 2rem;
+    }
+
+    .education-fun-card {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .education-fun-card .content h3 {
+        font-size: 20px;
+    }
+
+    .education-fun-card .content p {
+        font-size: 14px;
+    }
+
+    .education-fun-card:before {
+        display: none;
+    }
+}
+
+@media only screen and (min-width: 768px) and (max-width: 991px) {
+    .education-fun-area {
+        padding-top: 80px;
+        padding-bottom: 80px;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-y: 2rem;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-x: 2rem;
+    }
+
+    .education-fun-card {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .education-fun-card:before {
+        display: none;
+    }
+}
+
+@media only screen and (min-width: 992px) and (max-width: 1199px) {
+    .education-fun-area {
+        padding-top: 80px;
+        padding-bottom: 80px;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-y: 1rem;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-x: 1rem;
+    }
+
+    .education-fun-card {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    .education-fun-card:before {
+        display: none;
+    }
+}
+
+@media only screen and (min-width: 1200px) and (max-width: 1399px) {
+    .education-fun-area .g-5 {
+        --bs-gutter-y: 2rem;
+    }
+
+    .education-fun-area .g-5 {
+        --bs-gutter-x: 2rem;
+    }
+
+    .education-fun-card:before {
+        right: -5px;
+    }
+}

@@ -37,6 +37,7 @@ export class StudyPageService {
       topicId?: number | null;
       subTopicId?: number | null;
       isPublished: boolean;
+      minioImages?: { bookName: string; pageNumber: number; minioUrl: string }[];
     },
     images: File[]
   ): Observable<StudyPage> {
@@ -48,6 +49,11 @@ export class StudyPageService {
     if (request.topicId) formData.append('TopicId', String(request.topicId));
     if (request.subTopicId) formData.append('SubTopicId', String(request.subTopicId));
     formData.append('IsPublished', String(request.isPublished));
+
+    // Add MinIO images as JSON string
+    if (request.minioImages && request.minioImages.length > 0) {
+      formData.append('MinioImages', JSON.stringify(request.minioImages));
+    }
 
     images.forEach((file) => formData.append('images', file));
 
@@ -65,6 +71,7 @@ export class StudyPageService {
       subTopicId?: number | null;
       isPublished: boolean;
       removedImageIds: number[];
+      minioImages?: { bookName: string; pageNumber: number; minioUrl: string }[];
     },
     newImages: File[]
   ): Observable<StudyPage> {
@@ -77,6 +84,12 @@ export class StudyPageService {
     if (request.subTopicId) formData.append('SubTopicId', String(request.subTopicId));
     formData.append('IsPublished', String(request.isPublished));
     request.removedImageIds.forEach((idValue) => formData.append('RemovedImageIds', String(idValue)));
+    
+    // Add MinIO images as JSON string
+    if (request.minioImages && request.minioImages.length > 0) {
+      formData.append('MinioImages', JSON.stringify(request.minioImages));
+    }
+    
     newImages.forEach((file) => formData.append('images', file));
 
     return this.http.put<StudyPage>(`${this.baseUrl}/${id}`, formData);

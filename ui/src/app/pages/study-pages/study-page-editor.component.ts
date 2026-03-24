@@ -667,17 +667,22 @@ export class StudyPageEditorComponent implements OnDestroy {
       .filter((img) => img.selected && img.file) // Only files that were actually uploaded
       .map((img) => img.file!);
 
+    const selectedNewItems = this.newImages().filter((img) => img.selected); // All selected new items (including MinIO)
     const remainingExisting = this.existingImages().filter((img) => !this.removedImageIds.has(img.id));
 
-    if (!this.isEditMode() && selectedNewFiles.length === 0) {
+    if (!this.isEditMode() && selectedNewItems.length === 0) {
       this.snackBar.open('En az bir resim secmelisiniz.', 'Tamam', { duration: 2000 });
       return;
     }
 
-    if (this.isEditMode() && selectedNewFiles.length === 0 && remainingExisting.length === 0) {
+    if (this.isEditMode() && selectedNewItems.length === 0 && remainingExisting.length === 0) {
       this.snackBar.open('Bu sayfada en az bir resim kalmali.', 'Tamam', { duration: 2000 });
       return;
     }
+
+    const selectedMinIOImages = this.newImages()
+      .filter((img) => img.selected && img.isFromMinio && img.minioUrl)
+      .map((img) => ({ bookName: img.bookName!, pageNumber: img.pageNumber!, minioUrl: img.minioUrl! }));
 
     const payload = {
       title: this.form.value.title || '',
@@ -687,6 +692,7 @@ export class StudyPageEditorComponent implements OnDestroy {
       topicId: this.form.value.topicId,
       subTopicId: this.form.value.subTopicId,
       isPublished: this.form.value.isPublished ?? true,
+      minioImages: selectedMinIOImages, // Add MinIO images to payload
     };
 
     this.loading.set(true);

@@ -1,0 +1,172 @@
+/*! CSS Used from: Embedded */
+*,
+*:before,
+*:after {
+    box-sizing: border-box;
+}
+
+/*! CSS Used from: https://angular.envytheme.com/aluno/styles-PRYNRIV6.css ; media=all */
+@media all {
+
+    *,
+    *:before,
+    *:after {
+        box-sizing: border-box;
+    }
+
+    img {
+        vertical-align: middle;
+    }
+
+    .container {
+        --bs-gutter-x: 1.5rem;
+        --bs-gutter-y: 0;
+        width: 100%;
+        padding-right: calc(var(--bs-gutter-x) * .5);
+        padding-left: calc(var(--bs-gutter-x) * .5);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    @media (min-width: 576px) {
+        .container {
+            max-width: 540px;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .container {
+            max-width: 720px;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .container {
+            max-width: 960px;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .container {
+            max-width: 1140px;
+        }
+    }
+
+    @media (min-width: 1400px) {
+        .container {
+            max-width: 1320px;
+        }
+    }
+
+    .row {
+        --bs-gutter-x: 1.5rem;
+        --bs-gutter-y: 0;
+        display: flex;
+        flex-wrap: wrap;
+        margin-top: calc(-1 * var(--bs-gutter-y));
+        margin-right: calc(-.5 * var(--bs-gutter-x));
+        margin-left: calc(-.5 * var(--bs-gutter-x));
+    }
+
+    .row>* {
+        flex-shrink: 0;
+        width: 100%;
+        max-width: 100%;
+        padding-right: calc(var(--bs-gutter-x) * .5);
+        padding-left: calc(var(--bs-gutter-x) * .5);
+        margin-top: var(--bs-gutter-y);
+    }
+
+    .col {
+        flex: 1 0 0;
+    }
+
+    .g-4 {
+        --bs-gutter-x: 1.5rem;
+    }
+
+    .g-4 {
+        --bs-gutter-y: 1.5rem;
+    }
+
+    .justify-content-center {
+        justify-content: center !important;
+    }
+
+    :focus {
+        outline: 0 !important;
+    }
+
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .ptb-140 {
+        padding-top: 140px;
+        padding-bottom: 140px;
+    }
+
+    @media only screen and (max-width: 767px) {
+        .ptb-140 {
+            padding-top: 50px;
+            padding-bottom: 50px;
+        }
+    }
+
+    @media only screen and (min-width: 768px) and (max-width: 991px) {
+        .ptb-140 {
+            padding-top: 100px;
+            padding-bottom: 100px;
+        }
+    }
+
+    @media only screen and (min-width: 992px) and (max-width: 1199px) {
+        .ptb-140 {
+            padding-top: 100px;
+            padding-bottom: 100px;
+        }
+    }
+}
+
+/*! CSS Used from: Embedded */
+.education-partner-title {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.education-partner-title span {
+    display: block;
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.education-partner-item {
+    text-align: center;
+}
+
+.education-partner-area {
+    overflow: hidden;
+    background-color: var(--whiteColor);
+}
+
+@media only screen and (max-width: 767px) {
+    .education-partner-title {
+        margin-bottom: 30px;
+    }
+
+    .education-partner-title span {
+        font-size: 17px;
+    }
+
+    .education-partner-lists .col {
+        flex: 0 0 auto;
+        width: 50%;
+    }
+}
+
+@media only screen and (min-width: 768px) and (max-width: 991px) {
+    .education-partner-title {
+        margin-bottom: 30px;
+    }
+}

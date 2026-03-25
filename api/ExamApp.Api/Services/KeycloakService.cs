@@ -15,14 +15,14 @@ public class KeycloakService : IKeycloakService
 {
     private readonly HttpClient _http;
     private readonly KeycloakSettings _keycloakSettings;
-    
+
     public KeycloakService(IHttpClientFactory factory, IOptions<KeycloakSettings> options)
     {
         _http = factory.CreateClient();
         _keycloakSettings = options.Value;
     }
 
-    
+
 
     private async Task<string> GetKeycloakAdminTokenAsync()
     {
@@ -33,14 +33,18 @@ public class KeycloakService : IKeycloakService
             new KeyValuePair<string, string>("client_secret", _keycloakSettings.AdminClientSecret)
         });
 
-        var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content);
-        var json = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Requesting admin token from Keycloak... {_keycloakSettings.AdminClientId}, {_keycloakSettings.AdminClientSecret}");
 
+        Console.WriteLine($"Requesting admin token from Keycloak at {_keycloakSettings.Host}/{_keycloakSettings.TokenUrl} with client_id={_keycloakSettings.AdminClientId}");
+        var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content);
+        Console.WriteLine($"Received response: {response.StatusCode}");
+        var json = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Response content: {json}");
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.GetProperty("access_token").GetString();
     }
 
-    public async Task<TokenResponseDto> ExchangeTokenAsync(string code) 
+    public async Task<TokenResponseDto> ExchangeTokenAsync(string code)
     {
         if (string.IsNullOrWhiteSpace(_keycloakSettings.RedirectUri))
         {
@@ -56,27 +60,28 @@ public class KeycloakService : IKeycloakService
                 { "code", code }
             };
 
-            var response = await _http.PostAsync(
-                $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-                new FormUrlEncodedContent(body)
-            );
+        var response = await _http.PostAsync(
+            $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
+            new FormUrlEncodedContent(body)
+        );
 
-            var content = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
-            {
-                // Keycloak error'ını ayıkla
-                using var doc = JsonDocument.Parse(content);
-                var error = doc.RootElement.GetProperty("error").GetString();
-                var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                    ? descProp.GetString()
-                    : null;                
-                throw new KeycloakException($"Keycloak login failed: {error} - {description}");                
-            }
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            // Keycloak error'ını ayıkla
+            using var doc = JsonDocument.Parse(content);
+            var error = doc.RootElement.GetProperty("error").GetString();
+            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
+                ? descProp.GetString()
+                : null;
+            Console.WriteLine($"Keycloak login failed: {error} - {description}");
+            throw new KeycloakException($"Keycloak login failed: {error} - {description}");
+        }
 
-            return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
+        return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
     }
 
-     public async Task SetRoleAsync(string keycloakUserId, UserRole userRole) 
+    public async Task SetRoleAsync(string keycloakUserId, UserRole userRole)
     {
 
         var adminToken = await GetKeycloakAdminTokenAsync();
@@ -85,10 +90,11 @@ public class KeycloakService : IKeycloakService
 
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", adminToken);
-            
-        if (string.IsNullOrEmpty(keycloakUserId)){
+
+        if (string.IsNullOrEmpty(keycloakUserId))
+        {
             throw new KeycloakException("Keycloak user ID cannot be null or empty.");
-        }            
+        }
 
         var rolesResponse = await _http.GetAsync($"{_keycloakSettings.Host}/{_keycloakSettings.RealmRolesUrl}");
         var rolesJson = await rolesResponse.Content.ReadAsStringAsync();
@@ -117,25 +123,25 @@ public class KeycloakService : IKeycloakService
                 { "password", password }
             };
 
-            var response = await _http.PostAsync(
-                $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-                new FormUrlEncodedContent(body)
-            );
+        var response = await _http.PostAsync(
+            $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
+            new FormUrlEncodedContent(body)
+        );
 
-            var content = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
-            {
-                // Keycloak error'ını ayıkla
-                using var doc = JsonDocument.Parse(content);
-                var error = doc.RootElement.GetProperty("error").GetString();
-                var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                    ? descProp.GetString()
-                    : null;
-                // _logger.LogWarning("Login failed: {Error} - {Description}", error, description);
-                throw new KeycloakException($"Keycloak login failed: {error} - {description}");                   
-            }
+        var content = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            // Keycloak error'ını ayıkla
+            using var doc = JsonDocument.Parse(content);
+            var error = doc.RootElement.GetProperty("error").GetString();
+            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
+                ? descProp.GetString()
+                : null;
+            // _logger.LogWarning("Login failed: {Error} - {Description}", error, description);
+            throw new KeycloakException($"Keycloak login failed: {error} - {description}");
+        }
 
-            return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
+        return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
     }
 
     public async Task LogoutAsync(string userId)
@@ -152,7 +158,7 @@ public class KeycloakService : IKeycloakService
 
         var resp = await _http.PostAsync(logoutUrl, null);
         if (!resp.IsSuccessStatusCode)
-            throw new KeycloakException($"Keycloak logout failed: {await resp.Content.ReadAsStringAsync()}");            
+            throw new KeycloakException($"Keycloak logout failed: {await resp.Content.ReadAsStringAsync()}");
 
     }
 
@@ -167,7 +173,7 @@ public class KeycloakService : IKeycloakService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
-            throw new KeycloakException($"Keycloak user deletion failed: {error}");            
+            throw new KeycloakException($"Keycloak user deletion failed: {error}");
         }
     }
 
@@ -207,7 +213,7 @@ public class KeycloakService : IKeycloakService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
-            throw new KeycloakException($"Keycloak user creation failed: {error}");            
+            throw new KeycloakException($"Keycloak user creation failed: {error}");
         }
         // Keycloak yeni kullanıcıya ID dönmez, ama Location header'ı olur
         var locationHeader = response.Headers.Location?.ToString();
@@ -238,23 +244,23 @@ public class KeycloakService : IKeycloakService
                 { "refresh_token", refreshToken }
             };
 
-            var response = await _http.PostAsync(
-                 $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-                new FormUrlEncodedContent(parameters)
-            );
+        var response = await _http.PostAsync(
+             $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
+            new FormUrlEncodedContent(parameters)
+        );
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(content);
-                var error = doc.RootElement.GetProperty("error").GetString();
-                var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                    ? descProp.GetString()
-                    : null;
-                throw new KeycloakException($"Keycloak refresh token failed: {error} - {description}");                
-            }
+        if (!response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(content);
+            var error = doc.RootElement.GetProperty("error").GetString();
+            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
+                ? descProp.GetString()
+                : null;
+            throw new KeycloakException($"Keycloak refresh token failed: {error} - {description}");
+        }
 
-            return await response.Content.ReadFromJsonAsync<TokenResponseDto>();
+        return await response.Content.ReadFromJsonAsync<TokenResponseDto>();
     }
 
     public Task<string> GetUserIdFromTokenAsync(string token)

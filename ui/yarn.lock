@@ -4835,6 +4835,11 @@ lie@~3.3.0:
   dependencies:
     immediate "~3.0.5"
 
+lightgallery@^2.7.2:
+  version "2.9.0"
+  resolved "https://registry.yarnpkg.com/lightgallery/-/lightgallery-2.9.0.tgz#b3b6e15169eb9b840f70e14d67b9ec0a213cc612"
+  integrity sha512-58Ud1DyhD2ao58t+kPEqSZrjFxg23tGd5ZKr75erm7q31g5xhUtWUJH3sTUkhHzlyJAKHj5eTrJ37HQRXG4Wbg==
+
 lines-and-columns@^1.1.6:
   version "1.2.4"
   resolved "https://registry.npmjs.org/lines-and-columns/-/lines-and-columns-1.2.4.tgz"
@@ -5300,10 +5305,10 @@ neo-async@^2.6.2:
   resolved "https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
-ngx-owl-carousel-o@^21.0.0:
-  version "21.0.0"
-  resolved "https://registry.yarnpkg.com/ngx-owl-carousel-o/-/ngx-owl-carousel-o-21.0.0.tgz#7fc86045fbdb4dcb8273089344e2284cc9f17082"
-  integrity sha512-ZOKJUft1WYPbTjEfY8H/HwSvoARHrGobTwiHmSKzaLaBO+wk2wTyir09Zv0ZLg372o2KXirGid7tZ5ZJ7+rrBQ==
+ngx-owl-carousel-o@^19.0.0:
+  version "19.0.2"
+  resolved "https://registry.yarnpkg.com/ngx-owl-carousel-o/-/ngx-owl-carousel-o-19.0.2.tgz#77404acc5c57886252992d4d985dc4c83f9bdd6b"
+  integrity sha512-k5JNHTKzOa8I+gf6qq9pxcxItsLgPw5XpTe7C3ZnP1jtjg7Vie9OTwhbQzoAqoiqRePyRZ8GfU7mktDaE1602w==
   dependencies:
     tslib "^2.3.0"
 

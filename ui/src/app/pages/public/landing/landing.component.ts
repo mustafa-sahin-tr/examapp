@@ -1,4 +1,5 @@
-import { Component, HostListener, ChangeDetectionStrategy } from '@angular/core';
+import { Component, HostListener, ChangeDetectionStrategy, OnInit } from '@angular/core';
+import { Title, Meta } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { NavbarComponent } from './navbar/navbar.component';
 import { EducationBannerComponent } from './education-banner/education-banner.component';
@@ -45,9 +46,33 @@ import { NewsComponent } from './news/news.component';
   styleUrls: ['./landing.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush, // Performans için
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit {
   isScrolled = false;
   appName = 'Hedef Okul';
+
+  constructor(
+    private titleService: Title,
+    private metaService: Meta
+  ) {}
+
+  ngOnInit(): void {
+    this.titleService.setTitle('Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu');
+    this.metaService.updateTag({
+      name: 'description',
+      content:
+        "Hedef Okul, 3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları, online sınavlar ve yapay zekâ destekli soru tespiti sunan Türkiye'nin eğitim platformu.",
+    });
+    this.metaService.updateTag({
+      property: 'og:title',
+      content: 'Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu',
+    });
+    this.metaService.updateTag({
+      property: 'og:description',
+      content:
+        '3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi kolaylaştırıyoruz.',
+    });
+    this.metaService.updateTag({ property: 'og:url', content: 'https://hedefokul.com/' });
+  }
 
   @HostListener('window:scroll', [])
   onWindowScroll() {

@@ -12,6 +12,7 @@ import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
 import { CoreModule } from './core/core.module';
+import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,6 +21,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),
     provideAnimationsAsync(),
     provideStore(reducers),
-    importProvidersFrom(ReactiveFormsModule, CoreModule),
+    importProvidersFrom(ReactiveFormsModule, CoreModule), provideClientHydration(withEventReplay()),
   ],
 };

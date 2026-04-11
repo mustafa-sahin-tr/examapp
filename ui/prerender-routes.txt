@@ -1,0 +1,3 @@
+/welcome
+/privacy-policy
+/terms

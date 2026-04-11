@@ -40,7 +40,13 @@
               "node_modules/quill/dist/quill.snow.css",
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "server": "src/main.server.ts",
+            "outputMode": "static",
+            "ssr": {
+              "entry": "src/server.ts"
+            },
+            "prerender": true
           },
           "configurations": {
             "production": {

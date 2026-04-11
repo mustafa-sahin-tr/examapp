@@ -1,5 +1,57 @@
 <app-navbar></app-navbar>
 
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://hedefokul.com/#organization",
+      "name": "Hedef Okul",
+      "url": "https://hedefokul.com",
+      "logo": "https://hedefokul.com/assets/images/logo.svg",
+      "description": "3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve online sınav platformu.",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "destek@hedefokul.com",
+        "contactType": "customer support",
+        "availableLanguage": "Turkish"
+      },
+      "sameAs": [
+        "https://www.instagram.com/hedefokul",
+        "https://www.facebook.com/hedefokul",
+        "https://x.com/hedefokul"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://hedefokul.com/#website",
+      "url": "https://hedefokul.com",
+      "name": "Hedef Okul",
+      "inLanguage": "tr",
+      "publisher": { "@id": "https://hedefokul.com/#organization" }
+    },
+    {
+      "@type": "EducationalOrganization",
+      "@id": "https://hedefokul.com/#edu",
+      "name": "Hedef Okul",
+      "url": "https://hedefokul.com",
+      "description": "Türkiye'nin K-12 online sınav ve çalışma yaprağı platformu. YZ destekli soru tespiti, rozet sistemi ve ebeveyn takip paneli.",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Çalışma Yaprakları",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Course", "name": "Türkçe Çalışma Yaprakları", "educationalLevel": "İlkokul - Ortaokul" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Course", "name": "Matematik Çalışma Yaprakları", "educationalLevel": "İlkokul - Ortaokul" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Course", "name": "Fen Bilimleri Çalışma Yaprakları", "educationalLevel": "İlkokul - Ortaokul" } }
+        ]
+      }
+    }
+  ]
+}
+</script>
+
 <main>
   <app-education-banner></app-education-banner>
 
@@ -13,7 +65,7 @@
 
   <app-landing-courses></app-landing-courses>
 
-  <app-partners></app-partners>
+  <!-- <app-partners></app-partners> -->
 
   <app-how-it-works></app-how-it-works>
 

@@ -1,5 +1,9 @@
 @use '@angular/material' as mat;
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 :root {
   --main-bg-color: #120F20;
   --mat-sys-on-surface : rgb(165, 170, 207);

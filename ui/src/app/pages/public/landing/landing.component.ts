@@ -18,6 +18,7 @@ import { PricingComponent } from './pricing/pricing.component';
 import { ServiceAreaComponent } from './service-area/service-area.component';
 import { DiscoverComponent } from './discover/discover.component';
 import { NewsComponent } from './news/news.component';
+import { NewLoginComponent } from './new-login/new-login.component';
 
 @Component({
   selector: 'app-landing',
@@ -41,6 +42,7 @@ import { NewsComponent } from './news/news.component';
     ServiceAreaComponent,
     DiscoverComponent,
     NewsComponent,
+    NewLoginComponent,
   ],
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.scss'],

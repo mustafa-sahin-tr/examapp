@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" fill="none">
+  <!-- Background circle -->
+  <circle cx="240" cy="240" r="220" fill="#f0ebff"/>
+
+  <!-- Book stack -->
+  <rect x="130" y="260" width="220" height="28" rx="6" fill="#6438c3"/>
+  <rect x="140" y="236" width="200" height="28" rx="6" fill="#8b5cf6"/>
+  <rect x="150" y="212" width="180" height="28" rx="6" fill="#a78bfa"/>
+
+  <!-- Pencil -->
+  <rect x="310" y="180" width="12" height="80" rx="4" fill="#fbbf24" transform="rotate(-30 310 180)"/>
+  <polygon points="316,256 308,256 312,270" fill="#f59e0b"/>
+  <rect x="310" y="180" width="12" height="16" rx="2" fill="#f87171" transform="rotate(-30 310 180)"/>
+
+  <!-- Star decorations -->
+  <circle cx="160" cy="160" r="8" fill="#fbbf24"/>
+  <circle cx="340" cy="150" r="5" fill="#6438c3"/>
+  <circle cx="370" cy="300" r="7" fill="#a78bfa"/>
+  <circle cx="120" cy="320" r="5" fill="#fbbf24"/>
+
+  <!-- Student figure – head -->
+  <circle cx="240" cy="148" r="40" fill="#fde8d8"/>
+  <!-- body -->
+  <rect x="205" y="185" width="70" height="70" rx="12" fill="#6438c3"/>
+  <!-- arms -->
+  <rect x="175" y="190" width="32" height="14" rx="7" fill="#6438c3" transform="rotate(-20 191 197)"/>
+  <rect x="273" y="190" width="32" height="14" rx="7" fill="#6438c3" transform="rotate(20 289 197)"/>
+  <!-- legs -->
+  <rect x="215" y="250" width="18" height="40" rx="8" fill="#4f2fa4"/>
+  <rect x="247" y="250" width="18" height="40" rx="8" fill="#4f2fa4"/>
+
+  <!-- Graduation cap -->
+  <ellipse cx="240" cy="112" rx="46" ry="10" fill="#1a1a2e"/>
+  <rect x="226" y="100" width="28" height="14" rx="2" fill="#1a1a2e"/>
+  <line x1="280" y1="112" x2="280" y2="132" stroke="#fbbf24" stroke-width="3"/>
+  <circle cx="280" cy="135" r="5" fill="#fbbf24"/>
+</svg>

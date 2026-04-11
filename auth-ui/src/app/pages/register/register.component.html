@@ -1,88 +1,156 @@
-<div class="register-container">
-  <mat-card class="register-card">
-    <mat-card-title>Kayıt Ol</mat-card-title>
-    <mat-card-content>
-      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-        <div class="form-container">
-          <div class="form-column">
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Ad</mat-label>
-              <input matInput type="text" formControlName="firstName" required />
-              @if (registerForm.controls['firstName'].hasError('required')) {
-              <mat-error>Ad zorunludur.</mat-error>
-              }
-            </mat-form-field>
+<div class="auth-area">
+  <div class="auth-inner">
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Soyad</mat-label>
-              <input matInput type="text" formControlName="lastName" required />
-              @if (registerForm.controls['lastName'].hasError('required')) {
-              <mat-error>Soyad zorunludur.</mat-error>
-              }
-            </mat-form-field>
+    <div class="auth-image-col">
+      <img src="assets/images/register-illustration.svg" alt="Kayıt Ol">
+    </div>
+
+    <div class="auth-form-col">
+      <div class="auth-form-header">
+        <h3>Hesap Oluştur</h3>
+        <p>Hemen ücretsiz kaydol, öğrenmeye başla.</p>
+      </div>
+
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" class="auth-form">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName">Ad *</label>
+            <input id="firstName" type="text" formControlName="firstName" placeholder="Adınız" class="form-control"
+              [class.is-invalid]="registerForm.controls['firstName'].invalid && registerForm.controls['firstName'].touched" />
+            @if (registerForm.controls['firstName'].touched && registerForm.controls['firstName'].hasError('required'))
+            {
+            <span class="field-error">Ad zorunludur.</span>
+            } @else if (registerForm.controls['firstName'].touched &&
+            registerForm.controls['firstName'].hasError('minlength')) {
+            <span class="field-error">En az 2 karakter olmalıdır.</span>
+            }
           </div>
-          <div class="form-column">
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Email</mat-label>
-              <input matInput type="email" formControlName="email" required />
-              @if (registerForm.controls['email'].hasError('required')) {
-              <mat-error>Email zorunludur.</mat-error>
-              } @if (registerForm.controls['email'].hasError('email')) {
-              <mat-error>Geçerli bir email giriniz.</mat-error>
-              }
-            </mat-form-field>
 
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Rol Seçiniz</mat-label>
-              <mat-select formControlName="role" required>
-                @if (isLoadingRoles) {
-                <mat-option disabled>Roller yükleniyor...</mat-option>
-                } @else { @for ( role of roles; track role.value ) {
-                <mat-option [value]="role.value">{{ role.viewValue }}</mat-option>
-                } }
-              </mat-select>
-              @if(registerForm.controls['role'].hasError('required')){
-              <mat-error>Rol seçimi zorunludur.</mat-error>
-              }
-            </mat-form-field>
+          <div class="form-group">
+            <label for="lastName">Soyad *</label>
+            <input id="lastName" type="text" formControlName="lastName" placeholder="Soyadınız" class="form-control"
+              [class.is-invalid]="registerForm.controls['lastName'].invalid && registerForm.controls['lastName'].touched" />
+            @if (registerForm.controls['lastName'].touched && registerForm.controls['lastName'].hasError('required')) {
+            <span class="field-error">Soyad zorunludur.</span>
+            } @else if (registerForm.controls['lastName'].touched &&
+            registerForm.controls['lastName'].hasError('minlength')) {
+            <span class="field-error">En az 2 karakter olmalıdır.</span>
+            }
           </div>
         </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Şifre</mat-label>
-          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" required />
-          <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword">
-            <mat-icon>{{ hidePassword ? 'visibility' : 'visibility_off' }}</mat-icon>
-          </button>
-          @if (registerForm.controls['password'].hasError('required')) {
-          <mat-error>Şifre zorunludur.</mat-error>
-          }
-        </mat-form-field>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">E-posta *</label>
+            <input id="email" type="email" formControlName="email" placeholder="siz@ornek.com" class="form-control"
+              [class.is-invalid]="registerForm.controls['email'].invalid && registerForm.controls['email'].touched" />
+            @if (registerForm.controls['email'].touched && registerForm.controls['email'].hasError('required')) {
+            <span class="field-error">E-posta zorunludur.</span>
+            } @else if (registerForm.controls['email'].touched && registerForm.controls['email'].hasError('email')) {
+            <span class="field-error">Geçerli bir e-posta giriniz.</span>
+            }
+          </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Şifreyi Tekrar Gir</mat-label>
-          <input
-            matInput
-            [type]="hideConfirmPassword ? 'password' : 'text'"
-            formControlName="confirmPassword"
-            required
-          />
-          <button mat-icon-button matSuffix (click)="hideConfirmPassword = !hideConfirmPassword">
-            <mat-icon>{{ hideConfirmPassword ? 'visibility' : 'visibility_off' }}</mat-icon>
-          </button>
-          @if (registerForm.controls['confirmPassword'].hasError('required')) {
-          <mat-error>Şifre zorunludur.</mat-error>
-          }
-        </mat-form-field>
+          <div class="form-group">
+            <label for="role">Rol *</label>
+            <select id="role" formControlName="role" class="form-control"
+              [class.is-invalid]="registerForm.controls['role'].invalid && registerForm.controls['role'].touched">
+              <option value="" disabled selected>Rol seçiniz</option>
+              @if (isLoadingRoles) {
+              <option disabled>Roller yükleniyor...</option>
+              } @else {
+              @for (role of roles; track role.value) {
+              <option [value]="role.value">{{ role.viewValue }}</option>
+              }
+              }
+            </select>
+            @if (registerForm.controls['role'].touched && registerForm.controls['role'].hasError('required')) {
+            <span class="field-error">Rol seçimi zorunludur.</span>
+            }
+          </div>
+        </div>
 
-        <button mat-raised-button color="primary" class="full-width" type="submit" [disabled]="registerForm.invalid">
-          Kayıt Ol
-        </button>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Şifre *</label>
+            <div class="input-with-icon">
+              <input id="password" [type]="hidePassword ? 'password' : 'text'" formControlName="password"
+                placeholder="En az 6 karakter" class="form-control"
+                [class.is-invalid]="registerForm.controls['password'].invalid && registerForm.controls['password'].touched" />
+              <button type="button" class="toggle-pw" (click)="hidePassword = !hidePassword" tabindex="-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  @if (hidePassword) {
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                  } @else {
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  }
+                </svg>
+              </button>
+            </div>
+            @if (registerForm.controls['password'].touched && registerForm.controls['password'].hasError('required')) {
+            <span class="field-error">Şifre zorunludur.</span>
+            } @else if (registerForm.controls['password'].touched &&
+            registerForm.controls['password'].hasError('minlength')) {
+            <span class="field-error">En az 6 karakter olmalıdır.</span>
+            }
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Şifre Tekrar *</label>
+            <div class="input-with-icon">
+              <input id="confirmPassword" [type]="hideConfirmPassword ? 'password' : 'text'"
+                formControlName="confirmPassword" placeholder="Şifrenizi tekrar girin" class="form-control"
+                [class.is-invalid]="registerForm.controls['confirmPassword'].invalid && registerForm.controls['confirmPassword'].touched" />
+              <button type="button" class="toggle-pw" (click)="hideConfirmPassword = !hideConfirmPassword"
+                tabindex="-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  @if (hideConfirmPassword) {
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                  } @else {
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  }
+                </svg>
+              </button>
+            </div>
+            @if (registerForm.controls['confirmPassword'].touched &&
+            registerForm.controls['confirmPassword'].hasError('required')) {
+            <span class="field-error">Şifre zorunludur.</span>
+            } @else if (registerForm.hasError('mismatch') && registerForm.controls['confirmPassword'].touched) {
+            <span class="field-error">Şifreler eşleşmiyor.</span>
+            }
+          </div>
+        </div>
+
+        <div class="auth-submit">
+          <button type="submit" class="default-btn" [disabled]="registerForm.invalid || isLoading">
+            @if (isLoading) {
+            Kaydediliyor...
+            } @else {
+            Kayıt Ol
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 18 14" fill="none">
+              <path opacity="0.5" d="M16.25 6.75V7.25H1.25V6.75H16.25Z" fill="white" stroke="white" />
+              <path d="M10.75 1L16.75 7L10.75 13" stroke="white" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            }
+          </button>
+        </div>
+
       </form>
-    </mat-card-content>
 
-    <mat-card-actions>
-      <button mat-button color="accent" (click)="navigateToLogin()">Zaten hesabınız var mı? Giriş Yap</button>
-    </mat-card-actions>
-  </mat-card>
+      <div class="auth-bottom-text">
+        <span>Zaten hesabın var mı? <a (click)="navigateToLogin()" class="auth-link">Giriş Yap</a></span>
+      </div>
+    </div>
+
+  </div>
 </div>

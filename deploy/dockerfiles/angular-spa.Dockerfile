@@ -16,10 +16,11 @@ RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund || npm install
 RUN npm run build
 
 # Normalize Angular build output into a known folder.
-# Angular 17+ often outputs to dist/<project>/browser; older configs use dist/<project>.
+# Angular 17+ outputs to dist/<project>/browser.
+# With outputMode=static (SSR prerender), the root file is index.csr.html, not index.html.
 RUN set -eu; \
     mkdir -p /app/out; \
-    browser_index="$(find dist -type f -path '*/browser/index.html' -print -quit 2>/dev/null || true)"; \
+    browser_index="$(find dist -type f \( -path '*/browser/index.html' -o -path '*/browser/index.csr.html' \) -print -quit 2>/dev/null || true)"; \
     if [ -n "$browser_index" ]; then \
     output_dir="$(dirname "$browser_index")"; \
     else \

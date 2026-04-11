@@ -12,6 +12,7 @@ on:
           - build_and_deploy
           - build_only
           - deploy_only
+          - update_keycloak_theme
           - bootstrap_minimal
           - diagnose_tls
       target:
@@ -404,6 +405,18 @@ jobs:
           strip_components: 2
           overwrite: true
 
+      - name: Upload Keycloak themes to VM
+        if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/keycloak/keycloak-themes/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'
+          strip_components: 3
+          overwrite: true
+
       - name: Deploy on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -441,6 +454,41 @@ jobs:
             # Pass services explicitly so compose only pulls/starts what we built.
             # shellcheck disable=SC2086
             sh ./scripts/vm-update.sh $SERVICES_TO_DEPLOY
+
+  update_keycloak_theme:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'update_keycloak_theme' }}
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'prod' && 'production') || 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload Keycloak themes to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/keycloak/keycloak-themes/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'
+          strip_components: 3
+          overwrite: true
+
+      - name: Restart Keycloak on VM (SSH)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.VM_DEPLOY_DIR }}"
+            docker compose --env-file "${{ secrets.VM_ENV_FILE }}" \
+              -f docker-compose.prod.yml \
+              -f docker-compose.prod.images.yml \
+              up -d --no-build --force-recreate --no-deps keycloak
+            echo "✓ Keycloak restarted with updated theme"
 
   deploy_only:
     runs-on: ubuntu-latest
@@ -505,6 +553,18 @@ jobs:
           source: 'deploy/Caddyfile,deploy/docker-compose.prod.yml,deploy/docker-compose.prod.images.yml,deploy/docker-compose.pgadmin.yml'
           target: '${{ secrets.VM_DEPLOY_DIR }}'
           strip_components: 1
+          overwrite: true
+
+      - name: Upload Keycloak themes to VM
+        if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/keycloak/keycloak-themes/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'
+          strip_components: 3
           overwrite: true
 
       - name: Deploy config on VM (SSH, no build)
@@ -625,6 +685,18 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: 'deploy/keycloak/import/*'
           target: '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import'
+          strip_components: 3
+          overwrite: true
+
+      - name: Upload Keycloak themes to VM
+        if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: 'deploy/keycloak/keycloak-themes/*'
+          target: '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'
           strip_components: 3
           overwrite: true
 

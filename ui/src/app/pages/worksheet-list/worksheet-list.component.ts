@@ -68,7 +68,7 @@ export class WorksheetListComponent {
   gradesService = inject(GradesService);
   gradesSignal = toSignal(this.gradesService.getGrades());
   totalCount = 0;
-  pageSize = 10;
+  pageSize = 5;
   pageNumber = 1;
   scrollDistance = 600;
   selectedSubjectIds: number[] = [];
@@ -156,7 +156,7 @@ export class WorksheetListComponent {
 
   private updatePagedWorksheets(page: number): void {
     this.testService
-      .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeIds, page)
+      .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeIds, page, this.pageSize)
       .subscribe((results) => {
         this.pagedWorksheetsSignal.set(results);
       });

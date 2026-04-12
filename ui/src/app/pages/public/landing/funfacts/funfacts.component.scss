@@ -224,29 +224,48 @@
 
 @media only screen and (max-width: 767px) {
     .education-fun-area {
-        padding-top: 50px;
-        padding-bottom: 50px;
+        padding-top: 40px;
+        padding-bottom: 40px;
     }
 
     .education-fun-area .g-5 {
-        --bs-gutter-y: 2rem;
+        --bs-gutter-y: 1rem;
+        --bs-gutter-x: 1rem;
     }
 
-    .education-fun-area .g-5 {
-        --bs-gutter-x: 2rem;
+    /* Force 2-column grid on mobile */
+    ::ng-deep .education-fun-area .row {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px !important;
+    }
+
+    ::ng-deep .education-fun-area .row > [class*="col"] {
+        width: 100% !important;
+        flex: none !important;
+        max-width: 100% !important;
+        padding: 0 !important;
     }
 
     .education-fun-card {
-        padding-top: 0;
-        padding-bottom: 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 10px;
+        padding: 20px 10px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        height: 100%;
     }
 
-    .education-fun-card .content h3 {
-        font-size: 20px;
+    .education-fun-card .funcontent h3 {
+        font-size: 19px;
+        margin-bottom: 4px;
     }
 
-    .education-fun-card .content p {
-        font-size: 14px;
+    .education-fun-card .funcontent p {
+        font-size: 13px;
     }
 
     .education-fun-card:before {

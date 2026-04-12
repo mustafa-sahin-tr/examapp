@@ -1,7 +1,13 @@
 /* ===========================
    Base Reset & Body
    =========================== */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   font-family: 'Segoe UI', Arial, sans-serif;
@@ -114,7 +120,9 @@ body {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .form-control:focus {
@@ -142,7 +150,7 @@ body {
   cursor: pointer;
 }
 
-.remember-me input[type="checkbox"] {
+.remember-me input[type='checkbox'] {
   accent-color: #6438c3;
   width: 15px;
   height: 15px;
@@ -154,12 +162,16 @@ body {
   font-weight: 500;
 }
 
-.forgot-link:hover { text-decoration: underline; }
+.forgot-link:hover {
+  text-decoration: underline;
+}
 
 /* ===========================
    Submit button
    =========================== */
-.auth-submit { margin-bottom: 20px; }
+.auth-submit {
+  margin-bottom: 20px;
+}
 
 .default-btn {
   display: inline-flex;
@@ -175,11 +187,17 @@ body {
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  transition:
+    opacity 0.2s,
+    transform 0.1s;
 }
 
-.default-btn:hover { opacity: 0.92; }
-.default-btn:active { transform: scale(0.98); }
+.default-btn:hover {
+  opacity: 0.92;
+}
+.default-btn:active {
+  transform: scale(0.98);
+}
 
 /* ===========================
    Social divider
@@ -204,7 +222,9 @@ body {
 /* ===========================
    Google SSO button
    =========================== */
-.social-login { margin-bottom: 20px; }
+.social-login {
+  margin-bottom: 20px;
+}
 
 .gsi-material-button {
   display: flex;
@@ -220,13 +240,15 @@ body {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s, box-shadow 0.2s;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
   position: relative;
 }
 
 .gsi-material-button:hover {
   background: #f9fafb;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
 }
 
 .gsi-material-button-state {
@@ -261,15 +283,23 @@ body {
   text-decoration: none;
 }
 
-.auth-bottom-text a:hover { text-decoration: underline; }
+.auth-bottom-text a:hover {
+  text-decoration: underline;
+}
 
 /* ===========================
    Responsive
    =========================== */
 @media (max-width: 768px) {
+  .auth-area {
+    padding: 24px 16px;
+    align-items: flex-start;
+  }
+
   .auth-inner {
     flex-direction: column;
-    gap: 24px;
+    gap: 0;
+    width: 100%;
   }
 
   .auth-image-col {
@@ -277,6 +307,13 @@ body {
   }
 
   .auth-form-col {
+    flex: none;
+    width: 100%;
     padding: 28px 20px;
+    border-radius: 12px;
+  }
+
+  .auth-form-header h3 {
+    font-size: 22px;
   }
 }

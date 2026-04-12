@@ -267,9 +267,15 @@ body {
    Responsive
    =========================== */
 @media (max-width: 768px) {
+  .auth-area {
+    padding: 24px 16px;
+    align-items: flex-start;
+  }
+
   .auth-inner {
     flex-direction: column;
-    gap: 24px;
+    gap: 0;
+    width: 100%;
   }
 
   .auth-image-col {
@@ -277,6 +283,13 @@ body {
   }
 
   .auth-form-col {
+    flex: none;
+    width: 100%;
     padding: 28px 20px;
+    border-radius: 12px;
+  }
+
+  .auth-form-header h3 {
+    font-size: 22px;
   }
 }

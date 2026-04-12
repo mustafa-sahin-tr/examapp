@@ -1,4 +1,14 @@
-import { Component, HostListener, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  OnInit,
+  OnDestroy,
+  PLATFORM_ID,
+  Inject,
+} from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { Title, Meta } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { NavbarComponent } from './navbar/navbar.component';
@@ -48,15 +58,22 @@ import { NewLoginComponent } from './new-login/new-login.component';
   styleUrls: ['./landing.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush, // Performans için
 })
-export class LandingComponent implements OnInit {
+export class LandingComponent implements OnInit, OnDestroy {
   isScrolled = false;
   showBackToTop = false;
   appName = 'Hedef Okul';
 
+  private touchStartY = 0;
+  private touchStartTime = 0;
+  private readonly NAVBAR_H = 62;
+  private readonly VELOCITY_THRESHOLD = 0.45; // px/ms
+  private readonly MIN_DISTANCE = 55; // px
+
   constructor(
     private titleService: Title,
     private metaService: Meta,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private platformId: object
   ) {}
 
   ngOnInit(): void {
@@ -78,6 +95,36 @@ export class LandingComponent implements OnInit {
     this.metaService.updateTag({ property: 'og:url', content: 'https://hedefokul.com/' });
   }
 
+  @HostListener('window:touchstart', ['$event'])
+  onTouchStart(e: TouchEvent): void {
+    if (!isPlatformBrowser(this.platformId) || window.innerWidth > 767) return;
+    this.touchStartY = e.touches[0].clientY;
+    this.touchStartTime = Date.now();
+  }
+
+  @HostListener('window:touchend', ['$event'])
+  onTouchEnd(e: TouchEvent): void {
+    if (!isPlatformBrowser(this.platformId) || window.innerWidth > 767) return;
+    const deltaY = this.touchStartY - e.changedTouches[0].clientY;
+    const elapsed = Date.now() - this.touchStartTime;
+    const velocity = Math.abs(deltaY) / elapsed;
+
+    if (velocity < this.VELOCITY_THRESHOLD || Math.abs(deltaY) < this.MIN_DISTANCE) return;
+
+    const sections = Array.from(document.querySelectorAll('main > section')) as HTMLElement[];
+    const scrollY = window.scrollY;
+
+    if (deltaY > 0) {
+      // Yukarı swipe → sonraki section
+      const next = sections.find((s) => s.offsetTop > scrollY + this.NAVBAR_H + 20);
+      if (next) window.scrollTo({ top: next.offsetTop - this.NAVBAR_H, behavior: 'smooth' });
+    } else {
+      // Aşağı swipe → önceki section
+      const prev = [...sections].reverse().find((s) => s.offsetTop < scrollY - 20);
+      if (prev) window.scrollTo({ top: prev.offsetTop - this.NAVBAR_H, behavior: 'smooth' });
+    }
+  }
+
   @HostListener('window:scroll', [])
   onWindowScroll() {
     const scrollY = window.scrollY;
@@ -89,4 +136,6 @@ export class LandingComponent implements OnInit {
   scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
+  ngOnDestroy(): void {}
 }

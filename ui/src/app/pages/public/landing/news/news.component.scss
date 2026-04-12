@@ -9,6 +9,64 @@
     max-width: 490px;
 }
 
+@media only screen and (max-width: 767px) {
+    .news-area {
+        padding-top: 40px;
+        padding-bottom: 40px;
+    }
+
+    /* Header: başlık + buton dikey, ortalı */
+    .news-area .row.mb-4 > div {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px;
+    }
+
+    .news-area h2 {
+        font-size: 22px;
+    }
+
+    .news-area .g-4 {
+        --bs-gutter-y: 1rem;
+    }
+
+    /* Kart görsel yüksekliği sınırla */
+    .news-area .card-img,
+    .news-area .card-img-top {
+        max-height: 200px;
+        object-fit: cover;
+    }
+
+    /* Kart metni kompakt */
+    .news-area .card-body {
+        padding: 12px 8px;
+    }
+
+    .news-area .card-title {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    .news-area p {
+        font-size: 13px;
+    }
+
+    /* Tag buton pozisyon düzelt */
+    .tag-btn {
+        position: static;
+        transform: none;
+        display: inline-block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        padding: 4px 12px;
+    }
+
+    /* "Daha fazlasını okumak" span mobilde gizle, sadece buton göster */
+    .news-area .me-2 {
+        display: none;
+    }
+}
+
 .fas{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;display:inline-block;font-style:normal;font-variant:normal;text-rendering:auto;line-height:1;}
 .fa-angle-right:before{content:"\f105";}
 .fas{font-family:"Font Awesome 5 Free";font-weight:900;}

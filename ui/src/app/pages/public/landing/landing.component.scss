@@ -5862,3 +5862,8 @@ body {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* Anchor link offset for sections */
+main > section {
+  scroll-margin-top: 62px;
+}

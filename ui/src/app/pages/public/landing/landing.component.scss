@@ -5819,9 +5819,9 @@ body {
    =========================== */
 .back-to-top {
   position: fixed;
-  bottom: 32px;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
   right: 32px;
-  z-index: 1000;
+  z-index: 9999;
   width: 46px;
   height: 46px;
   border-radius: 50%;
@@ -5843,6 +5843,18 @@ body {
 
   &:active {
     transform: scale(0.94);
+  }
+
+  @media (max-width: 767px) {
+    width: 40px;
+    height: 40px;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 }
 

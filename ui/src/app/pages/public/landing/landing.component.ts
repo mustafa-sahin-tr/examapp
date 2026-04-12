@@ -1,4 +1,4 @@
-import { Component, HostListener, ChangeDetectionStrategy, OnInit } from '@angular/core';
+import { Component, HostListener, ChangeDetectionStrategy, ChangeDetectorRef, OnInit } from '@angular/core';
 import { Title, Meta } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
 import { NavbarComponent } from './navbar/navbar.component';
@@ -50,11 +50,13 @@ import { NewLoginComponent } from './new-login/new-login.component';
 })
 export class LandingComponent implements OnInit {
   isScrolled = false;
+  showBackToTop = false;
   appName = 'Hedef Okul';
 
   constructor(
     private titleService: Title,
-    private metaService: Meta
+    private metaService: Meta,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -78,7 +80,13 @@ export class LandingComponent implements OnInit {
 
   @HostListener('window:scroll', [])
   onWindowScroll() {
-    // Sayfa 80px aşağı kaydırıldığında navbar değişsin
-    this.isScrolled = window.scrollY > 80;
+    const scrollY = window.scrollY;
+    this.isScrolled = scrollY > 80;
+    this.showBackToTop = scrollY > 400;
+    this.cdr.markForCheck();
+  }
+
+  scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }

@@ -5813,3 +5813,40 @@ body {
   }
 }
 
+
+/* ===========================
+   Back to Top Button
+   =========================== */
+.back-to-top {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 1000;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6438c3 0%, #4f2fa4 100%);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(100, 56, 195, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  animation: fadeInUp 0.25s ease;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(100, 56, 195, 0.5);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

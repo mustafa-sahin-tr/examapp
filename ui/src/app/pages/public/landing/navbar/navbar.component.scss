@@ -1465,3 +1465,93 @@
         transform: skew(-.1953125deg) skewY(-.1953125deg);
     }
 }
+
+/* ===========================
+   Hedef Okul — Navbar extras
+   =========================== */
+
+/* Sticky */
+.education-navbar-area.sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 999;
+  background: #fff;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+  animation: slideDown .3s ease;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+
+/* Login link */
+.others-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-link {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+  text-decoration: none;
+  &:hover { color: #6438c3; }
+}
+
+/* Hamburger toggler */
+.navbar-toggler {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+
+  .toggler-icon {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: #1a1a2e;
+    border-radius: 2px;
+    transition: all .25s;
+  }
+}
+
+@media (max-width: 1199px) {
+  .navbar-toggler {
+    display: flex;
+  }
+
+  .navbar-collapse {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: 16px 0 8px;
+
+    &.show {
+      display: flex;
+    }
+
+    .navbar-nav {
+      flex-direction: column;
+      width: 100%;
+      margin: 0 0 12px !important;
+
+      .nav-item { width: 100%; }
+      .nav-link  { padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    }
+
+    .others-options {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      width: 100%;
+    }
+  }
+}

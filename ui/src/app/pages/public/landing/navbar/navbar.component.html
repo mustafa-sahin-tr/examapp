@@ -1,18 +1,47 @@
-<header class="navbar-area education-navbar-area">
+<header class="navbar-area education-navbar-area" [class.sticky]="isSticky">
     <div class="container-fluid">
         <nav class="navbar navbar-expand-xl">
-            <a class="navbar-brand" href="/">
-                <img src="assets/images/banner/logo.svg" alt="logo">
+
+            <a class="navbar-brand" routerLink="/welcome">
+                <img src="assets/images/banner/logo.svg" alt="Hedef Okul" height="38">
             </a>
-            <div class="collapse navbar-collapse">
+
+            <button class="navbar-toggler" type="button" (click)="toggleMenu()" [attr.aria-expanded]="isMenuOpen">
+                <span class="toggler-icon"></span>
+                <span class="toggler-icon"></span>
+                <span class="toggler-icon"></span>
+            </button>
+
+            <div class="navbar-collapse" [class.show]="isMenuOpen">
                 <ul class="navbar-nav m-auto">
-                    <li class="nav-item"><a href="#" class="nav-link">Home</a></li>
-                    <li class="nav-item"><a href="#" class="nav-link">Courses</a></li>
+                    <li class="nav-item">
+                        <a href="#anasayfa" class="nav-link" (click)="closeMenu()">Ana Sayfa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#ozellikler" class="nav-link" (click)="closeMenu()">Özellikler</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#dersler" class="nav-link" (click)="closeMenu()">Dersler</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#nasil-calisir" class="nav-link" (click)="closeMenu()">Nasıl Çalışır?</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#fiyatlandirma" class="nav-link" (click)="closeMenu()">Fiyatlandırma</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#sss" class="nav-link" (click)="closeMenu()">SSS</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#blog" class="nav-link" (click)="closeMenu()">Blog</a>
+                    </li>
                 </ul>
                 <div class="others-options">
-                    <a href="/login" class="default-btn">Login</a>
+                    <a routerLink="/app/login" class="login-link">Giriş Yap</a>
+                    <a routerLink="/app/register" class="default-btn">Ücretsiz Başla</a>
                 </div>
             </div>
+
         </nav>
     </div>
 </header>

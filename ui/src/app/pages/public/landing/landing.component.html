@@ -54,9 +54,8 @@
 
 <main>
 
-  <app-new-login></app-new-login>
 
-  <app-education-banner></app-education-banner>
+  <section id="anasayfa"><app-education-banner></app-education-banner></section>
 
   <app-discover></app-discover>
 
@@ -64,27 +63,37 @@
 
   <app-funfacts></app-funfacts>
 
-  <app-categories></app-categories>
+  <section id="ozellikler"><app-categories></app-categories></section>
 
-  <app-landing-courses></app-landing-courses>
+  <section id="dersler"><app-landing-courses></app-landing-courses></section>
 
   <!-- <app-partners></app-partners> -->
 
-  <app-how-it-works></app-how-it-works>
+  <section id="nasil-calisir"><app-how-it-works></app-how-it-works></section>
 
   <app-overview></app-overview>
 
-  <app-edu-blog></app-edu-blog>
+  <section id="blog"><app-edu-blog></app-edu-blog></section>
 
-  <app-about-us></app-about-us>
+  <section id="hakkimizda"><app-about-us></app-about-us></section>
 
-  <app-faq></app-faq>
+  <section id="sss"><app-faq></app-faq></section>
 
-  <app-pricing></app-pricing>
+  <section id="fiyatlandirma"><app-pricing></app-pricing></section>
 
   <app-service-area></app-service-area>
 
   <app-landing-footer></app-landing-footer>
+
+  <!-- Back to Top -->
+  @if (showBackToTop) {
+  <button class="back-to-top" (click)="scrollToTop()" aria-label="Başa dön">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="18 15 12 9 6 15" />
+    </svg>
+  </button>
+  }
 
 
   <!-- <app-education-about></app-education-about>

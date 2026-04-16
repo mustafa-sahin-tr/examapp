@@ -63,12 +63,13 @@
                   <div class="row justify-content-center g-4">
                     <div class="col-lg-6 col-md-5">
                       <div class="image" [style.backgroundImage]="'url(' + getBackgroundImage(course.id || 0) + ')'"><a
-                          routerlink="/course-details" class="link-btn" href="/aluno/course-details"></a></div>
+                          [routerLink]="['/test', course.id]" class="link-btn"></a></div>
                     </div>
                     <div class="col-lg-6 col-md-7">
-                      <div class="course-content"><a routerlink="." class="tag-btn" href="/aluno/courses-7">{{
+                      <div class="course-content"><a [routerLink]="['/test', course.id]" class="tag-btn">{{
                           course.badgeText || 'Yeni' }}</a>
-                        <h3><a routerlink="/course-details" href="/aluno/course-details">{{ course.name }}</a></h3>
+                        <h3><a [routerLink]="['/test', course.id]">{{ course.name }}</a>
+                        </h3>
                         <div class="info-rating">
                           <ul class="rating">
                             <li><b>4.9</b></li>

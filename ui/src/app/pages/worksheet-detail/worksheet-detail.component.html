@@ -1,5 +1,4 @@
 <div class="worksheet-detail-container">
-  <!-- Header Section -->
   <div class="worksheet-header" *ngIf="exam">
     <div class="header-content">
       <div class="header-main">
@@ -11,26 +10,15 @@
         <h2 class="worksheet-subtitle">{{ exam.subtitle }}</h2>
         <p class="worksheet-description">{{ exam.description }}</p>
 
-        <!-- Action Buttons -->
         <div class="action-buttons">
           <ng-container *appIsStudent>
-            <button
-              *ngIf="!exam.instance"
-              mat-flat-button
-              color="primary"
-              class="primary-action"
-              (click)="StartTest(exam.id)"
-            >
+            <button *ngIf="!exam.instance" mat-flat-button color="primary" class="primary-action"
+              (click)="StartTest(exam.id)">
               <mat-icon>play_arrow</mat-icon>
               Testi Başlat
             </button>
-            <button
-              *ngIf="instanceStarted"
-              mat-flat-button
-              color="primary"
-              class="primary-action"
-              (click)="StartTest(exam.id)"
-            >
+            <button *ngIf="instanceStarted" mat-flat-button color="primary" class="primary-action"
+              (click)="StartTest(exam.id)">
               <mat-icon>play_arrow</mat-icon>
               Teste Devam Et
             </button>
@@ -140,12 +128,8 @@
           <mat-icon>person_add</mat-icon>
           Öğrenci Seç
         </button>
-        <button
-          mat-icon-button
-          matTooltip="Yenile"
-          (click)="refreshAssignments()"
-          [disabled]="assignmentPanel() === 'loading'"
-        >
+        <button mat-icon-button matTooltip="Yenile" (click)="refreshAssignments()"
+          [disabled]="assignmentPanel() === 'loading'">
           <mat-icon>refresh</mat-icon>
         </button>
       </div>
@@ -224,10 +208,8 @@
       </div>
 
       <mat-accordion class="assignment-accordion" multi>
-        <mat-expansion-panel
-          *ngFor="let assignment of teacherAssignments()"
-          [expanded]="teacherAssignments().length === 1"
-        >
+        <mat-expansion-panel *ngFor="let assignment of teacherAssignments()"
+          [expanded]="teacherAssignments().length === 1">
           <mat-expansion-panel-header>
             <div class="assignment-header">
               <div class="assignment-title">
@@ -312,12 +294,9 @@
           </app-question-navigator>
 
           <div class="question-review">
-            <app-question-canvas-view
-              [questionRegion]="regions()[currentIndex()]"
-              [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)"
-              [mode]="'result'"
-              [correctChoice]="correctChoices().get(regions()[currentIndex()].id)"
-            >
+            <app-question-canvas-view [questionRegion]="regions()[currentIndex()]"
+              [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)" [mode]="'result'"
+              [correctChoice]="correctChoices().get(regions()[currentIndex()].id)">
             </app-question-canvas-view>
           </div>
         </div>

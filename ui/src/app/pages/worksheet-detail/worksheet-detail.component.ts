@@ -54,8 +54,8 @@ interface AssignmentPanelState {
     IsStudentDirective,
     IsTeacherDirective,
   ],
-  templateUrl: './worksheet-detail.component.html',
-  styleUrl: './worksheet-detail.component.scss',
+  templateUrl: './worksheet-detail.component-dlms.html',
+  styleUrls: ['./worksheet-detail.component-dlms.scss'],
 })
 export class WorksheetDetailComponent implements OnInit {
   private snackBar = inject(MatSnackBar);

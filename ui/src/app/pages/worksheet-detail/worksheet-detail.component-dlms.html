@@ -76,142 +76,126 @@
                     class="text-secondary">{{ formatDuration(exam.maxDurationSeconds) }}</span>
                 </h6>
               </div>
-              <div class="accordion accordion-customicon1 accordions-items-seperate p-0"
-                id="accordioncustomicon1Example">
-                <div class="accordion-item" data-aos="fade-up">
-                  <h2 class="accordion-header" id="headingcustomicon1One">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#collapsecustomicon1One" aria-expanded="false"
-                      aria-controls="collapsecustomicon1One">
-                      Sınav Özeti <mat-icon>expand_more</mat-icon>
-                    </button>
-                  </h2>
-                  <div id="collapsecustomicon1One" class="accordion-collapse collapse"
-                    aria-labelledby="headingcustomicon1One" data-bs-parent="#accordioncustomicon1Example">
-                    <div class="accordion-body p-0">
-                      <ul>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav Adı</p>
-                          <p class="mb-0">{{ exam.name }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Alt Başlık</p>
-                          <p class="mb-0">{{ exam.subtitle || '-' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Soru Sayısı</p>
-                          <p class="mb-0">{{ exam.questionCount ?? 0 }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Süre</p>
-                          <p class="mb-0">{{ formatDuration(exam.maxDurationSeconds) }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Katılım</p>
-                          <p class="mb-0">{{ exam.instanceCount ?? 0 }} Öğrenci</p>
-                        </li>
-                      </ul>
-                    </div>
+              <mat-accordion class="exam-accordion" multi>
+                <mat-expansion-panel class="exam-accordion-panel" [expanded]="true" hideToggle>
+                  <mat-expansion-panel-header class="exam-accordion-header">
+                    <mat-panel-title class="exam-accordion-title">
+                      <span>Sınav Özeti</span>
+                      <mat-icon class="exam-accordion-icon">expand_more</mat-icon>
+                    </mat-panel-title>
+                  </mat-expansion-panel-header>
+                  <div class="exam-accordion-body">
+                    <ul>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav Adı</p>
+                        <p class="mb-0">{{ exam.name }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Alt Başlık</p>
+                        <p class="mb-0">{{ exam.subtitle || '-' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Soru Sayısı</p>
+                        <p class="mb-0">{{ exam.questionCount ?? 0 }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Süre</p>
+                        <p class="mb-0">{{ formatDuration(exam.maxDurationSeconds) }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Katılım</p>
+                        <p class="mb-0">{{ exam.instanceCount ?? 0 }} Öğrenci</p>
+                      </li>
+                    </ul>
                   </div>
-                </div>
-                <div class="accordion-item" data-aos="fade-up" data-aos-delay="250">
-                  <h2 class="accordion-header" id="headingcustomicon1Two">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#collapsecustomicon1Two" aria-expanded="false"
-                      aria-controls="collapsecustomicon1Two">
-                      Kaynak Bilgisi<mat-icon>expand_more</mat-icon>
-                    </button>
-                  </h2>
-                  <div id="collapsecustomicon1Two" class="accordion-collapse collapse"
-                    aria-labelledby="headingcustomicon1Two" data-bs-parent="#accordioncustomicon1Example">
-                    <div class="accordion-body p-0">
-                      <ul>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Kitap</p>
-                          <p class="mb-0">{{ exam.newBookName || '-' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Test</p>
-                          <p class="mb-0">{{ exam.newBookTestName || '-' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav No</p>
-                          <p class="mb-0">{{ exam.id }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Rozet</p>
-                          <p class="mb-0">{{ exam.badgeText || '-' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Çalışma Türü
-                          </p>
-                          <p class="mb-0">{{ exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</p>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div class="accordion-item" data-aos="fade-up" data-aos-delay="300">
-                  <h2 class="accordion-header" id="headingcustomicon1Three">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#collapsecustomicon1Three" aria-expanded="false"
-                      aria-controls="collapsecustomicon1Three">
-                      Katılım Durumu<mat-icon>expand_more</mat-icon>
-                    </button>
-                  </h2>
-                  <div id="collapsecustomicon1Three" class="accordion-collapse collapse"
-                    aria-labelledby="headingcustomicon1Three" data-bs-parent="#accordioncustomicon1Example">
-                    <div class="accordion-body p-0">
-                      <ul>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Katılımcı
-                            Sayısı</p>
-                          <p class="mb-0">{{ exam.instanceCount ?? 0 }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Başlangıç
-                            Durumu</p>
-                          <p class="mb-0">{{ instanceStarted ? 'Başladı' : 'Bekliyor' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Tamamlanma
-                            Durumu</p>
-                          <p class="mb-0">{{ instanceCompleted ? 'Tamamlandı' : 'Tamamlanmadı' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Durum Kodu</p>
-                          <p class="mb-0">{{ instanceStatus ?? '-' }}</p>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav Türü</p>
-                          <p class="mb-0">{{ exam.isPracticeTest ? 'Pratik' : 'Resmi' }}</p>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                <div class="accordion-item mb-0" data-aos="fade-up" data-aos-delay="350">
-                  <h2 class="accordion-header" id="headingcustomicon1Four">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                      data-bs-target="#collapsecustomicon1Four" aria-expanded="false"
-                      aria-controls="collapsecustomicon1Four">
-                      Açıklama Metni<mat-icon>expand_more</mat-icon>
-                    </button>
-                  </h2>
-                  <div id="collapsecustomicon1Four" class="accordion-collapse collapse"
-                    aria-labelledby="headingcustomicon1Four" data-bs-parent="#accordioncustomicon1Example">
-                    <div class="accordion-body p-0">
-                      <ul>
-                        <li class="p-4 px-3 pb-0">
-                          <p class="mb-0">{{ exam.description || exam.subtitle || 'Bu sınava ait ek açıklama
-                            bulunmuyor.' }}</p>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
+                </mat-expansion-panel>
 
-              </div>
+                <mat-expansion-panel class="exam-accordion-panel" hideToggle>
+                  <mat-expansion-panel-header class="exam-accordion-header">
+                    <mat-panel-title class="exam-accordion-title">
+                      <span>Kaynak Bilgisi</span>
+                      <mat-icon class="exam-accordion-icon">expand_more</mat-icon>
+                    </mat-panel-title>
+                  </mat-expansion-panel-header>
+                  <div class="exam-accordion-body">
+                    <ul>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Kitap</p>
+                        <p class="mb-0">{{ exam.newBookName || '-' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Test</p>
+                        <p class="mb-0">{{ exam.newBookTestName || '-' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav No</p>
+                        <p class="mb-0">{{ exam.id }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Rozet</p>
+                        <p class="mb-0">{{ exam.badgeText || '-' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Çalışma Türü</p>
+                        <p class="mb-0">{{ exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</p>
+                      </li>
+                    </ul>
+                  </div>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="exam-accordion-panel" hideToggle>
+                  <mat-expansion-panel-header class="exam-accordion-header">
+                    <mat-panel-title class="exam-accordion-title">
+                      <span>Katılım Durumu</span>
+                      <mat-icon class="exam-accordion-icon">expand_more</mat-icon>
+                    </mat-panel-title>
+                  </mat-expansion-panel-header>
+                  <div class="exam-accordion-body">
+                    <ul>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Katılımcı Sayısı
+                        </p>
+                        <p class="mb-0">{{ exam.instanceCount ?? 0 }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Başlangıç Durumu
+                        </p>
+                        <p class="mb-0">{{ instanceStarted ? 'Başladı' : 'Bekliyor' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Tamamlanma Durumu
+                        </p>
+                        <p class="mb-0">{{ instanceCompleted ? 'Tamamlandı' : 'Tamamlanmadı' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Durum Kodu</p>
+                        <p class="mb-0">{{ instanceStatus ?? '-' }}</p>
+                      </li>
+                      <li class="p-4 px-3 d-flex justify-content-between">
+                        <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav Türü</p>
+                        <p class="mb-0">{{ exam.isPracticeTest ? 'Pratik' : 'Resmi' }}</p>
+                      </li>
+                    </ul>
+                  </div>
+                </mat-expansion-panel>
+
+                <mat-expansion-panel class="exam-accordion-panel" hideToggle>
+                  <mat-expansion-panel-header class="exam-accordion-header">
+                    <mat-panel-title class="exam-accordion-title">
+                      <span>Açıklama Metni</span>
+                      <mat-icon class="exam-accordion-icon">expand_more</mat-icon>
+                    </mat-panel-title>
+                  </mat-expansion-panel-header>
+                  <div class="exam-accordion-body">
+                    <ul>
+                      <li class="p-4 px-3 pb-0">
+                        <p class="mb-0">{{ exam.description || exam.subtitle || 'Bu sınava ait ek açıklama bulunmuyor.'
+                          }}</p>
+                      </li>
+                    </ul>
+                  </div>
+                </mat-expansion-panel>
+              </mat-accordion>
             </div>
           </div>
           <div class="card mb-4">

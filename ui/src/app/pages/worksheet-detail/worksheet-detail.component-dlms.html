@@ -6,9 +6,10 @@
           <div class="card-body d-lg-flex align-items-center">
             <div class="position-relative">
               <a href="https://www.youtube.com/embed/1trvO6dqQUI" id="openVideoBtn" target="_blank">
-                <img class="img-fluid rounded-2" src="assets/images/courses/video-bg.webp" alt="img">
+                <img class="img-fluid rounded-2" src="assets/images/courses/zaman-olcme-background.webp"
+                  alt="Sınav tanıtım görseli">
                 <div class="play-icon">
-                  <i class="ti ti-player-play-filled fs-28"></i>
+                  <mat-icon class="fs-26">play_circle</mat-icon>
                 </div>
               </a>
             </div>
@@ -19,27 +20,22 @@
               </div>
             </div>
             <div class="w-100 ps-lg-4">
-              <h3 class="mb-2">The Complete Web Developer Course 2.0</h3>
-              <p class="fs-14 mb-3">Learn Web Development by building 25 websites and mobile apps using HTML, CSS,
-                Javascript, PHP, Python</p>
+              <h3 class="mb-2">{{ exam.name }}</h3>
+              <p class="fs-14 mb-3">{{ exam.subtitle || exam.description || 'Sınav detayları' }}</p>
               <div class="d-flex align-items-center gap-2 gap-sm-3 gap-xl-4 flex-nowrap my-3 my-sm-0">
                 <p class="fw-medium d-flex align-items-center mb-0"><img class="me-2" src="assets/images/icons/book.svg"
-                    alt="img">12+ Lesson</p>
+                    alt="img">{{ exam.questionCount ?? 0 }} Soru</p>
                 <p class="fw-medium d-flex align-items-center mb-0"><img class="me-2"
-                    src="assets/images/icons/timer-start.svg" alt="img">9hr 30min</p>
+                    src="assets/images/icons/timer-start.svg" alt="img">{{ formatDuration(exam.maxDurationSeconds) }}
+                </p>
                 <p class="fw-medium d-flex align-items-center mb-0"><img class="me-2"
-                    src="assets/images/icons/people.svg" alt="img">32 students enrolled</p>
+                    src="assets/images/icons/people.svg" alt="img">{{ exam.instanceCount ?? 0 }} Öğrenci</p>
 
               </div>
               <div class="d-sm-flex align-items-center justify-content-sm-between mt-3">
-                <div class="d-flex mt-sm-0 mt-2 align-items-center">
-                  <mat-icon>star</mat-icon>
-                  <mat-icon>star</mat-icon>
-                  <mat-icon>star</mat-icon>
-                  <mat-icon>star</mat-icon>
-                  <mat-icon>star_half</mat-icon>
-                  <p class=" fs-14"><span class="text-gray-9">4.0</span> (15) </p>
-                </div>
+                <p class="fs-14 mb-0 text-gray-7">
+                  {{ exam.badgeText || (exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı') }}
+                </p>
               </div>
             </div>
           </div>
@@ -49,42 +45,35 @@
     <div class="row mt-4">
       <div class="col-lg-8">
         <div>
-          <img src="assets/images/courses/course-details-two-2.webp" alt="img" class="img-fluid mb-4">
+          <img src="assets/images/courses/zaman-olcme-kurs.webp" alt="Sınav içerik görseli" class="img-fluid mb-4">
         </div>
         <div class="course-page-content pt-0">
           <div class="card mb-4">
             <div class="card-body">
-              <h5 class="mb-3">Overview</h5>
-              <h6 class="mb-2">Course Description</h6>
-              <p>Embark on a transformative journey into AI with Mike Wheeler, your guide in this Udemy Best Seller
-                course on ChatGPT and Prompt Engineering. As an experience instructor who has taught well over 300,000
-                students, Mike unveils the secrets of developing your own custom GPTs, ensuring your skills shine in the
-                thriving digital marketplace. </p>
-              <p>This course will get your familiar with Generative AI&nbsp;and the effective use of ChatGPT and is
-                perfect for the beginner. You will also learn advanced prompting techniques to take your Prompt
-                Engineering skills to the next level!</p>
-              <h6 class="mb-2">What you'll learn</h6>
+              <h5 class="mb-3">Genel Bakış</h5>
+              <h6 class="mb-2">Sınav Açıklaması</h6>
+              <p>{{ exam.description || exam.subtitle || 'Bu sınav için açıklama bulunmuyor.' }}</p>
+              <h6 class="mb-2">Bu sınavda neler var?</h6>
               <ul class="custom-list mb-3">
-                <li class="list-item">Become a UX designer</li>
-                <li class="list-item">You will be able to add UX designer to your CV</li>
-                <li class="list-item">Become a UI designer</li>
-                <li class="list-item">Build &amp; test a full website design.</li>
-                <li class="list-item">Build &amp; test a full mobile app.</li>
+                <li class="list-item">Toplam {{ exam.questionCount ?? 0 }} soru içerir.</li>
+                <li class="list-item">Süre {{ formatDuration(exam.maxDurationSeconds) }} olarak planlanmıştır.</li>
+                <li class="list-item">{{ exam.instanceCount ?? 0 }} öğrenci tarafından görüntülenmiştir.</li>
+                <li class="list-item">Tür: {{ exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</li>
               </ul>
-              <h6 class="mb-2">Requirements</h6>
+              <h6 class="mb-2">Kaynak Bilgisi</h6>
               <ul class="custom-list mb-0">
-                <li class="list-item">You will need a copy of Adobe XD 2019 or above. A free trial can be downloaded
-                  from Adobe.</li>
-                <li class="list-item">No previous design experience is needed.</li>
-                <li class="list-item">No previous Adobe XD skills are needed.</li>
+                <li class="list-item">Kitap: {{ exam.newBookName || '-' }}</li>
+                <li class="list-item">Test: {{ exam.newBookTestName || '-' }}</li>
+                <li class="list-item">Rozet: {{ exam.badgeText || '-' }}</li>
               </ul>
             </div>
           </div>
           <div class="card mb-4">
             <div class="card-body">
               <div class="d-flex justify-content-between flex-wrap">
-                <h5 class="subs-title mb-2 mb-sm-3">Course Content</h5>
-                <h6 class="fs-16 fw-medium text-gray-7 mb-3">92 Lectures <span class="text-secondary">10:56:11</span>
+                <h5 class="subs-title mb-2 mb-sm-3">Sınav İçeriği</h5>
+                <h6 class="fs-16 fw-medium text-gray-7 mb-3">{{ exam.questionCount ?? 0 }} Soru <span
+                    class="text-secondary">{{ formatDuration(exam.maxDurationSeconds) }}</span>
                 </h6>
               </div>
               <div class="accordion accordion-customicon1 accordions-items-seperate p-0"
@@ -94,7 +83,7 @@
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                       data-bs-target="#collapsecustomicon1One" aria-expanded="false"
                       aria-controls="collapsecustomicon1One">
-                      Getting Started <i class="fa-solid fa-chevron-down"></i>
+                      Sınav Özeti <mat-icon>expand_more</mat-icon>
                     </button>
                   </h2>
                   <div id="collapsecustomicon1One" class="accordion-collapse collapse"
@@ -102,44 +91,24 @@
                     <div class="accordion-body p-0">
                       <ul>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.1
-                            Introduction to the User Experience Course</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav Adı</p>
+                          <p class="mb-0">{{ exam.name }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.2
-                            Exercise: Your first design challenge</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Alt Başlık</p>
+                          <p class="mb-0">{{ exam.subtitle || '-' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.3 How
-                            to solve the previous exercise</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Soru Sayısı</p>
+                          <p class="mb-0">{{ exam.questionCount ?? 0 }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.4 Find
-                            out why smart objects are amazing</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Süre</p>
+                          <p class="mb-0">{{ formatDuration(exam.maxDurationSeconds) }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.5 How
-                            to use text layers effectively</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Katılım</p>
+                          <p class="mb-0">{{ exam.instanceCount ?? 0 }} Öğrenci</p>
                         </li>
                       </ul>
                     </div>
@@ -150,7 +119,7 @@
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                       data-bs-target="#collapsecustomicon1Two" aria-expanded="false"
                       aria-controls="collapsecustomicon1Two">
-                      The Brief<i class="fa-solid fa-chevron-down"></i>
+                      Kaynak Bilgisi<mat-icon>expand_more</mat-icon>
                     </button>
                   </h2>
                   <div id="collapsecustomicon1Two" class="accordion-collapse collapse"
@@ -158,44 +127,25 @@
                     <div class="accordion-body p-0">
                       <ul>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.1
-                            Introduction to the User Experience Course</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Kitap</p>
+                          <p class="mb-0">{{ exam.newBookName || '-' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.2
-                            Exercise: Your first design challenge</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Test</p>
+                          <p class="mb-0">{{ exam.newBookTestName || '-' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.3 How
-                            to solve the previous exercise</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav No</p>
+                          <p class="mb-0">{{ exam.id }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.4 Find
-                            out why smart objects are amazing</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Rozet</p>
+                          <p class="mb-0">{{ exam.badgeText || '-' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.5 How
-                            to use text layers effectively</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Çalışma Türü
+                          </p>
+                          <p class="mb-0">{{ exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</p>
                         </li>
                       </ul>
                     </div>
@@ -206,7 +156,7 @@
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                       data-bs-target="#collapsecustomicon1Three" aria-expanded="false"
                       aria-controls="collapsecustomicon1Three">
-                      Wireframing Low Fidelity<i class="fa-solid fa-chevron-down"></i>
+                      Katılım Durumu<mat-icon>expand_more</mat-icon>
                     </button>
                   </h2>
                   <div id="collapsecustomicon1Three" class="accordion-collapse collapse"
@@ -214,44 +164,27 @@
                     <div class="accordion-body p-0">
                       <ul>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.1
-                            Introduction to the User Experience Course</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Katılımcı
+                            Sayısı</p>
+                          <p class="mb-0">{{ exam.instanceCount ?? 0 }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.2
-                            Exercise: Your first design challenge</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Başlangıç
+                            Durumu</p>
+                          <p class="mb-0">{{ instanceStarted ? 'Başladı' : 'Bekliyor' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.3 How
-                            to solve the previous exercise</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Tamamlanma
+                            Durumu</p>
+                          <p class="mb-0">{{ instanceCompleted ? 'Tamamlandı' : 'Tamamlanmadı' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.4 Find
-                            out why smart objects are amazing</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Durum Kodu</p>
+                          <p class="mb-0">{{ instanceStatus ?? '-' }}</p>
                         </li>
                         <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.5 How
-                            to use text layers effectively</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Sınav Türü</p>
+                          <p class="mb-0">{{ exam.isPracticeTest ? 'Pratik' : 'Resmi' }}</p>
                         </li>
                       </ul>
                     </div>
@@ -262,52 +195,16 @@
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                       data-bs-target="#collapsecustomicon1Four" aria-expanded="false"
                       aria-controls="collapsecustomicon1Four">
-                      Type, Color &amp; Icon Introduction<i class="fa-solid fa-chevron-down"></i>
+                      Açıklama Metni<mat-icon>expand_more</mat-icon>
                     </button>
                   </h2>
                   <div id="collapsecustomicon1Four" class="accordion-collapse collapse"
                     aria-labelledby="headingcustomicon1Four" data-bs-parent="#accordioncustomicon1Example">
                     <div class="accordion-body p-0">
                       <ul>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.1
-                            Introduction to the User Experience Course</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.2
-                            Exercise: Your first design challenge</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.3 How
-                            to solve the previous exercise</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
-                        </li>
-                        <li class="p-4 px-3 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.4 Find
-                            out why smart objects are amazing</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
-                        </li>
-                        <li class="p-4 px-3 pb-0 d-flex justify-content-between">
-                          <p class="mb-0"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Lecture1.5 How
-                            to use text layers effectively</p>
-                          <div class="d-flex gap-xl-5 gap-3">
-                            <a href="#" class="preview-link">Preview</a>
-                            <p class="mb-0">02:53</p>
-                          </div>
+                        <li class="p-4 px-3 pb-0">
+                          <p class="mb-0">{{ exam.description || exam.subtitle || 'Bu sınava ait ek açıklama
+                            bulunmuyor.' }}</p>
                         </li>
                       </ul>
                     </div>
@@ -319,48 +216,27 @@
           </div>
           <div class="card mb-4">
             <div class="card-body">
-              <h5 class="subs-title mb-4">About the instructor</h5>
-              <div class="d-flex align-items-center justify-content-between mt-4 gap-2 flex-wrap">
-                <div class="d-flex align-items-center">
-                  <div class="avatar avatar-lg">
-                    <img class="rounded-circle" src="assets/images/users//avatar10.jpg" alt="img">
-                  </div>
-                  <div class="ms-2">
-                    <a href="instructor-details.html" class="name-link">Nicole Brown</a>
-                    <p class="mb-0 fs-14">UX/UI Designer</p>
-                  </div>
-                </div>
-                <div class="d-flex align-items-center">
-                  <i class="fa-solid fa-star text-warning me-1"></i>
-                  <i class="fa-solid fa-star text-warning me-1"></i>
-                  <i class="fa-solid fa-star text-warning me-1"></i>
-                  <i class="fa-solid fa-star text-warning me-1"></i>
-                  <i class="fa-solid fa-star text-warning me-2"></i>
-                  <p class="mb-0 fs-14">4.5</p>
-                </div>
-              </div>
+              <h5 class="subs-title mb-4">Sınav Notları</h5>
               <div class="course-info align-items-center d-flex gap-2 gap-xl-3 mt-3 mb-3 flex-wrap">
                 <p class="fw-medium d-flex align-items-center fs-14 mb-0"><img class="me-2"
-                    src="assets/images/icons/play2.svg" alt="img">5 Courses</p>
+                    src="assets/images/icons/play2.svg" alt="img">{{ exam.badgeText || 'Sınav içeriği' }}</p>
                 <p class="fw-medium d-flex align-items-center fs-14 mb-0"><img class="me-2"
-                    src="assets/images/icons/book2.svg" alt="img">12+ Lesson</p>
+                    src="assets/images/icons/book2.svg" alt="img">{{ exam.newBookName || 'Kaynak belirtilmedi' }}</p>
                 <p class="fw-medium d-flex align-items-center fs-14 mb-0"><img class="me-2"
-                    src="assets/images/icons/timer-start2.svg" alt="img">9hr 30min</p>
+                    src="assets/images/icons/timer-start2.svg" alt="img">{{ formatDuration(exam.maxDurationSeconds) }}
+                </p>
                 <p class="fw-medium d-flex align-items-center fs-14 mb-0"><img class="me-2"
-                    src="assets/images/icons/people.svg" alt="img">270,866 students enrolled</p>
+                    src="assets/images/icons/people.svg" alt="img">{{ exam.instanceCount ?? 0 }} öğrenci</p>
               </div>
-              <p>UI/UX Designer, with 7+ Years Experience. Guarantee of High Quality Work.</p>
-              <h6 class="fs-16 mb-2">Skills: </h6>
-              <p>Web Design, UI Design, UX/UI Design, Mobile Design, User Interface Design, Sketch, Photoshop, GUI,
-                Html, Css, Grid Systems, Typography, Minimal, Template, English, Bootstrap, Responsive Web Design, Pixel
-                Perfect, Graphic Design, Corporate, Creative, Flat, Luxury and much more.</p>
-              <h6 class="fs-16 mb-2">Available for:</h6>
+              <p>{{ exam.description || 'Sınav notu bulunmuyor.' }}</p>
+              <h6 class="fs-16 mb-2">Hızlı Bilgiler</h6>
               <ol class="ordered-list">
-                <li class="list-items">Full Time Office Work</li>
-                <li class="list-items">Remote Work</li>
-                <li class="list-items">Freelance</li>
-                <li class="list-items">Contract</li>
-                <li class="list-items mb-0">Worldwide</li>
+                <li class="list-items">Sınav adı: {{ exam.name }}</li>
+                <li class="list-items">Alt başlık: {{ exam.subtitle || '-' }}</li>
+                <li class="list-items">Süre: {{ formatDuration(exam.maxDurationSeconds) }}</li>
+                <li class="list-items">Soru sayısı: {{ exam.questionCount ?? 0 }}</li>
+                <li class="list-items mb-0">Tür: {{ exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}
+                </li>
               </ol>
             </div>
           </div>
@@ -372,54 +248,61 @@
           <div class="card mb-4">
             <div class="card-body">
               <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="text-success fs-30">FREE</h2>
-                <p class="fs-14 mb-0"><span class="text-decoration-line-through me-2">$99.00</span>50% off</p>
+                <h2 class="text-success fs-30">SINAV</h2>
+                <p class="fs-14 mb-0">{{ exam.badgeText || 'Hazır' }}</p>
               </div>
               <div class="d-flex justify-content-between gap-3 wishlist-btns">
-                <a class="btn d-flex btn-wish" href="student-wishlist.html"><i
-                    class="isax isax-heart me-1 fs-18"></i>Add to Wishlist</a>
-                <a class="btn d-flex btn-wish" href="#"><i class="ti ti-share me-1 fs-18"></i>Share</a>
+                <a class="btn d-flex btn-wish" href="student-wishlist.html"><mat-icon
+                    class="me-1 fs-18">favorite_border</mat-icon>Listeye Ekle</a>
+                <a class="btn d-flex btn-wish" href="#"><mat-icon class="me-1 fs-18">share</mat-icon>Paylaş</a>
               </div>
-              <a href="cart.html" class="btn btn-primary w-100 mt-3 btn-enroll">Enroll Now</a>
+              <a href="cart.html" class="btn btn-primary w-100 mt-3 btn-enroll">Sınava Başla</a>
             </div>
           </div>
           <div class="card mb-4">
             <div class="card-body">
-              <h5 class="subs-title mb-4">Includes</h5>
-              <p class="mb-3"><img class="me-2" src="assets/images/icons/play.svg" alt="img">11 hours on-demand video
+              <h5 class="subs-title mb-4">Öne Çıkanlar</h5>
+              <p class="mb-3"><img class="me-2" src="assets/images/icons/play.svg" alt="img">{{ exam.questionCount ?? 0
+                }} soru
               </p>
-              <p class="mb-3"><img class="me-2" src="assets/images/icons/import.svg" alt="img">69 downloadable resources
+              <p class="mb-3"><img class="me-2" src="assets/images/icons/import.svg" alt="img">{{
+                formatDuration(exam.maxDurationSeconds) }} süre
               </p>
-              <p class="mb-3"><img class="me-2" src="assets/images/icons/key.svg" alt="img">Full lifetime access</p>
-              <p class="mb-3"><img class="me-2" src="assets/images/icons/monitor-mobbile.svg" alt="img">Access on mobile
-                and TV</p>
-              <p class="mb-3"><img class="me-2" src="assets/images/icons/cloud-lightning.svg" alt="img">Assignments</p>
-              <p class="mb-0"><img class="me-2" src="assets/images/icons/teacher.svg" alt="img">Certificate of
-                Completion
+              <p class="mb-3"><img class="me-2" src="assets/images/icons/key.svg" alt="img">{{ exam.instanceCount ?? 0
+                }} öğrenci katılımı</p>
+              <p class="mb-3"><img class="me-2" src="assets/images/icons/monitor-mobbile.svg" alt="img">{{
+                exam.newBookName || 'Kaynak belirtilmedi' }}</p>
+              <p class="mb-3"><img class="me-2" src="assets/images/icons/cloud-lightning.svg" alt="img">{{
+                exam.newBookTestName || 'Test bilgisi yok' }}</p>
+              <p class="mb-0"><img class="me-2" src="assets/images/icons/teacher.svg" alt="img">{{ exam.isPracticeTest ?
+                'Pratik çalışma' : 'Değerlendirme sınavı' }}
               </p>
             </div>
           </div>
           <div class="card">
             <div class="card-body cou-features">
-              <h5 class="subs-title">Course Features</h5>
+              <h5 class="subs-title">Sınav Özellikleri</h5>
               <ul>
                 <li>
-                  <p class="mb-0"><img class="me-2" src="assets/images/icons/people2.svg" alt="img">Enrolled: 32
-                    students
+                  <p class="mb-0"><img class="me-2" src="assets/images/icons/people2.svg" alt="img">Katılımcı: {{
+                    exam.instanceCount ?? 0 }}
                   </p>
                 </li>
                 <li>
-                  <p class="mb-0"><img class="me-2" src="assets/images/icons/timer-start3.svg" alt="img">Duration: 20
-                    hours</p>
+                  <p class="mb-0"><img class="me-2" src="assets/images/icons/timer-start3.svg" alt="img">Süre: {{
+                    formatDuration(exam.maxDurationSeconds) }}</p>
                 </li>
                 <li>
-                  <p class="mb-0"><img class="me-2" src="assets/images/icons/note.svg" alt="img">Chapters: 15</p>
+                  <p class="mb-0"><img class="me-2" src="assets/images/icons/note.svg" alt="img">Soru Sayısı: {{
+                    exam.questionCount ?? 0 }}</p>
                 </li>
                 <li>
-                  <p class="mb-0"><img class="me-2" src="assets/images/icons/play3.svg" alt="img">Video: 12 hours</p>
+                  <p class="mb-0"><img class="me-2" src="assets/images/icons/play3.svg" alt="img">Kitap: {{
+                    exam.newBookName || '-' }}</p>
                 </li>
                 <li>
-                  <p class="mb-0"><img class="me-2" src="assets/images/icons/chart.svg" alt="img">Level: Beginner</p>
+                  <p class="mb-0"><img class="me-2" src="assets/images/icons/chart.svg" alt="img">Tür: {{
+                    exam.isPracticeTest ? 'Pratik' : 'Resmi' }}</p>
                 </li>
               </ul>
             </div>

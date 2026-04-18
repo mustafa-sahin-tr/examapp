@@ -5,12 +5,9 @@ import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion } from '../../models/test-instance';
 import { lastValueFrom } from 'rxjs';
 import { TestService } from '../../services/test.service';
-import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
-import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 import { GradesService } from '../../services/grades.service';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -44,15 +41,11 @@ interface AssignmentPanelState {
   imports: [
     CommonModule,
     MatIconModule,
-    QuestionNavigatorComponent,
-    QuestionCanvasViewComponent,
     MatButtonModule,
     MatChipsModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
-    IsStudentDirective,
-    IsTeacherDirective,
   ],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],
@@ -136,6 +129,26 @@ export class WorksheetDetailComponent implements OnInit {
 
   protected refreshAssignments(): void {
     this.loadAssignments();
+  }
+
+  formatDuration(totalSeconds: number): string {
+    if (!totalSeconds || totalSeconds <= 0) {
+      return '0 dakika';
+    }
+
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours > 0 && minutes > 0) {
+      return `${hours} saat ${minutes} dakika`;
+    }
+
+    if (hours > 0) {
+      return `${hours} saat`;
+    }
+
+    return `${totalMinutes} dakika`;
   }
 
   protected openAssignmentDialog(scope: 'grade' | 'student'): void {

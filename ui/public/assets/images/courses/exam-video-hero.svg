@@ -1,0 +1,57 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="80" x2="1120" y2="680" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F766E"/>
+      <stop offset="0.5" stop-color="#155E75"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="840" y1="120" x2="1120" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#E2E8F0" stop-opacity="0.92"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(312 180) rotate(53.4) scale(430 330)">
+      <stop stop-color="#67E8F9" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#67E8F9" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1280" height="720" rx="36" fill="url(#bg)"/>
+  <rect width="1280" height="720" rx="36" fill="url(#glow)"/>
+
+  <circle cx="1088" cy="132" r="88" fill="#F8FAFC" fill-opacity="0.08"/>
+  <circle cx="118" cy="610" r="140" fill="#F8FAFC" fill-opacity="0.06"/>
+  <path d="M158 126C260 76 392 88 482 152" stroke="#A5F3FC" stroke-opacity="0.35" stroke-width="18" stroke-linecap="round"/>
+  <path d="M166 168C238 126 334 130 398 176" stroke="#CCFBF1" stroke-opacity="0.45" stroke-width="10" stroke-linecap="round"/>
+
+  <rect x="96" y="108" width="634" height="504" rx="28" fill="#0B1220" fill-opacity="0.24" stroke="#E0F2FE" stroke-opacity="0.16"/>
+  <rect x="124" y="138" width="578" height="448" rx="24" fill="#020617" fill-opacity="0.3"/>
+  <rect x="148" y="162" width="532" height="312" rx="20" fill="#0EA5E9" fill-opacity="0.18"/>
+
+  <circle cx="412" cy="318" r="86" fill="#F8FAFC" fill-opacity="0.18"/>
+  <circle cx="412" cy="318" r="68" fill="#F8FAFC"/>
+  <path d="M388 281L456 318L388 355V281Z" fill="#0F766E"/>
+
+  <rect x="164" y="504" width="188" height="18" rx="9" fill="#E2E8F0" fill-opacity="0.72"/>
+  <rect x="164" y="536" width="266" height="14" rx="7" fill="#CBD5E1" fill-opacity="0.5"/>
+  <rect x="164" y="564" width="142" height="12" rx="6" fill="#94A3B8" fill-opacity="0.45"/>
+
+  <rect x="812" y="112" width="364" height="496" rx="30" fill="url(#panel)"/>
+  <rect x="844" y="154" width="166" height="38" rx="19" fill="#CCFBF1"/>
+  <text x="927" y="179" text-anchor="middle" fill="#115E59" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">SINAV OZETI</text>
+
+  <text x="844" y="244" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="700">Hazirlik</text>
+  <text x="844" y="292" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">Soru, sure ve ilerleme</text>
+  <text x="844" y="324" fill="#334155" font-family="Arial, Helvetica, sans-serif" font-size="24">bilgilerini one cikarir</text>
+
+  <rect x="844" y="372" width="300" height="88" rx="24" fill="#ECFEFF"/>
+  <circle cx="904" cy="416" r="28" fill="#14B8A6" fill-opacity="0.18"/>
+  <path d="M904 399V416L918 424" stroke="#0F766E" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="952" y="412" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">Sure Takibi</text>
+  <text x="952" y="439" fill="#475569" font-family="Arial, Helvetica, sans-serif" font-size="18">Dakika ve saat gosterimi</text>
+
+  <rect x="844" y="482" width="300" height="88" rx="24" fill="#EFF6FF"/>
+  <circle cx="904" cy="526" r="28" fill="#2563EB" fill-opacity="0.14"/>
+  <path d="M892 527L900 535L916 517" stroke="#1D4ED8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="952" y="522" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">Icerik Uyumlu</text>
+  <text x="952" y="549" fill="#475569" font-family="Arial, Helvetica, sans-serif" font-size="18">Sinav detaylariyla uyumlu kart</text>
+</svg>

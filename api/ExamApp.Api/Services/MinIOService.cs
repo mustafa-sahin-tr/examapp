@@ -11,6 +11,8 @@ public interface IMinIoService
     Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null, string contentType = null);
 
     Task<Stream?> GetFileStreamAsync(string fileUrl);
+
+    Task<bool> DeleteFileByUrlAsync(string fileUrl);
 }
 
 public class MinIoService : IMinIoService
@@ -35,11 +37,11 @@ public class MinIoService : IMinIoService
     {
         try
         {
-            var objectName = GetObjectNameFromUrl(fileUrl);
+            var (bucketName, objectName) = GetBucketAndObjectNameFromUrl(fileUrl);
 
             var memoryStream = new MemoryStream();
             await _minioClient.GetObjectAsync(new GetObjectArgs()
-                .WithBucket(_bucketName)
+                .WithBucket(bucketName)
                 .WithObject(objectName)
                 .WithCallbackStream(stream => stream.CopyTo(memoryStream)));
             memoryStream.Position = 0;
@@ -52,8 +54,7 @@ public class MinIoService : IMinIoService
         }
     }
 
-    // Helper method to extract object name from file URL
-    private string GetObjectNameFromUrl(string fileUrl)
+    private (string BucketName, string ObjectName) GetBucketAndObjectNameFromUrl(string fileUrl)
     {
         // Example: "/img/bucketName/objectName" or full URL
         if (string.IsNullOrEmpty(fileUrl))
@@ -75,8 +76,26 @@ public class MinIoService : IMinIoService
             throw new ArgumentException("Invalid fileUrl format", nameof(fileUrl));
 
         // parts[0] = "img", parts[1] = bucketName, parts[2..] = objectName
+        var bucketName = parts[1];
         var objectName = string.Join('/', parts, 2, parts.Length - 2);
-        return objectName;
+        return (bucketName, objectName);
+    }
+
+    public async Task<bool> DeleteFileByUrlAsync(string fileUrl)
+    {
+        try
+        {
+            var (bucketName, objectName) = GetBucketAndObjectNameFromUrl(fileUrl);
+            await _minioClient.RemoveObjectAsync(new RemoveObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName));
+            return true;
+        }
+        catch (MinioException e)
+        {
+            Console.WriteLine($"[MinIO Error]: {e.Message}");
+            return false;
+        }
     }
 
     public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string bucketName = null, string contentType = null)

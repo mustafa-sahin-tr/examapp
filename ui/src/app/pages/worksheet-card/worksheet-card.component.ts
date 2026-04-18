@@ -82,25 +82,104 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
     }
 
     this.backgroundUploading.set(true);
-    this.testService
-      .updateWorksheetBackgroundImage(worksheetId, file)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response?.success && response.imageUrl) {
-            this.test = { ...this.test, imageUrl: response.imageUrl };
-          }
-          this.snackBar.open(response?.message || 'Arka plan gorseli guncellendi.', 'Tamam', { duration: 2500 });
-          this.backgroundUploading.set(false);
-          input.value = '';
-        },
-        error: (error) => {
-          const message = error?.error?.message || 'Gorsel yuklenirken bir hata olustu.';
-          this.snackBar.open(message, 'Tamam', { duration: 3000 });
-          this.backgroundUploading.set(false);
-          input.value = '';
-        },
+    this.prepareBackgroundImageForUpload(file)
+      .then((optimizedFile) => {
+        this.testService
+          .updateWorksheetBackgroundImage(worksheetId, optimizedFile)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (response) => {
+              if (response?.success && response.imageUrl) {
+                this.test = { ...this.test, imageUrl: response.imageUrl };
+              }
+              this.snackBar.open(response?.message || 'Arka plan gorseli guncellendi.', 'Tamam', { duration: 2500 });
+              this.backgroundUploading.set(false);
+              input.value = '';
+            },
+            error: (error) => {
+              const message = error?.error?.message || 'Gorsel yuklenirken bir hata olustu.';
+              this.snackBar.open(message, 'Tamam', { duration: 3000 });
+              this.backgroundUploading.set(false);
+              input.value = '';
+            },
+          });
+      })
+      .catch(() => {
+        this.snackBar.open('Gorsel islenirken bir hata olustu.', 'Tamam', { duration: 3000 });
+        this.backgroundUploading.set(false);
+        input.value = '';
       });
+  }
+
+  private async prepareBackgroundImageForUpload(file: File): Promise<File> {
+    const targetWidth = 1200;
+    const targetHeight = 675;
+
+    const image = await this.loadImageFromFile(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Canvas context olusturulamadi.');
+    }
+
+    const sourceRatio = image.width / image.height;
+    const targetRatio = targetWidth / targetHeight;
+
+    let sourceWidth = image.width;
+    let sourceHeight = image.height;
+    let sourceX = 0;
+    let sourceY = 0;
+
+    if (sourceRatio > targetRatio) {
+      sourceWidth = image.height * targetRatio;
+      sourceX = (image.width - sourceWidth) / 2;
+    } else {
+      sourceHeight = image.width / targetRatio;
+      sourceY = (image.height - sourceHeight) / 2;
+    }
+
+    context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, targetWidth, targetHeight);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => {
+          if (result) {
+            resolve(result);
+            return;
+          }
+          reject(new Error('Gorsel blob olusturulamadi.'));
+        },
+        'image/png',
+        0.92
+      );
+    });
+
+    return new File([blob], `${this.test?.id || 'worksheet'}-background.png`, {
+      type: 'image/png',
+      lastModified: Date.now(),
+    });
+  }
+
+  private loadImageFromFile(file: File): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(image);
+      };
+
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Gorsel okunamadi.'));
+      };
+
+      image.src = objectUrl;
+    });
   }
 
   onClick() {

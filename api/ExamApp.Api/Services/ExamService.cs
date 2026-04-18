@@ -1268,12 +1268,19 @@ public class ExamService : IExamService
             };
         }
 
+        var previousImageUrl = worksheet.ImageUrl;
         var fileName = $"{worksheetId}-background.png";
         await using var stream = file.OpenReadStream();
         var uploadedPath = await _minioService.UploadFileAsync(stream, fileName, "worksheets", "image/png");
 
         worksheet.ImageUrl = uploadedPath;
         await _context.SaveChangesAsync();
+
+        if (!string.IsNullOrWhiteSpace(previousImageUrl) &&
+            !string.Equals(previousImageUrl, uploadedPath, StringComparison.OrdinalIgnoreCase))
+        {
+            await _minioService.DeleteFileByUrlAsync(previousImageUrl);
+        }
 
         return new UpdateWorksheetBackgroundImageDto
         {

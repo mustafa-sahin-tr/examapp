@@ -17,6 +17,9 @@ export class WorksheetListViewCardComponent {
   private readonly images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
 
   protected backgroundImageUrl(): string {
+    if (this.course.imageUrl) {
+      return this.course.imageUrl;
+    }
     const id = this.course?.id ?? 0;
     const randomIndex = Math.abs(id) % this.images.length;
     return `/${this.images[randomIndex]}`;

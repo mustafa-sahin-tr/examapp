@@ -3,7 +3,9 @@
         <div class="col-lg-9 col-md-12 card-left">
             <div class="row justify-content-center g-4 card-media-content">
                 <div class="col-lg-6 col-md-5 media-col">
-                    <div class="image" [style.backgroundImage]="'url(' + backgroundImageUrl() + ')'">
+                    <div class="image" [style.backgroundImage]="'url(' + backgroundImageUrl() + ')'"
+                        [style.background-size]="'contain'" [style.background-position]="'center'"
+                        [style.background-repeat]="'no-repeat'">
                         <a [routerLink]="['/test', course.id]" class="image-badge">
                             {{ course.badgeText || 'Yeni' }}
                         </a>

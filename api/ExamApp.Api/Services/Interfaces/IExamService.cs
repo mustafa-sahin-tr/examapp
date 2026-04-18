@@ -2,6 +2,7 @@ using System;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
+using Microsoft.AspNetCore.Http;
 
 namespace ExamApp.Api.Services.Interfaces;
 
@@ -40,4 +41,5 @@ public interface IExamService
     Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId);
     Task<List<Grade>> GetGradesAsync();
     Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId);
+    Task<UpdateWorksheetBackgroundImageDto> UpdateWorksheetBackgroundImageAsync(int worksheetId, IFormFile file, int userId);
 }

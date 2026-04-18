@@ -1,69 +1,41 @@
-<div class="container" [ngClass]="selectionMode()">
-  <div class="form-container">
+<div [ngClass]="{ 'container': !previewMode(), 'selection-mode': selectionMode() }">
+  <div [ngClass]="{ 'form-container': !previewMode() }">
     <div class="form-column-4" style="border: var(--border-input)">
       <ng-container *ngIf="previewMode()">
         <div class="form-container" style="border: var(--border-input)">
-          <app-question-navigator
-            class="form-column"
-            [questions]="previewQuestions"
-            (questionSelected)="questionSelected($event)"
-          ></app-question-navigator>
+          <app-question-navigator class="form-column" [questions]="previewQuestions"
+            (questionSelected)="questionSelected($event)"></app-question-navigator>
 
-          <app-question-canvas-view
-            class="form-column-4"
-            [questionRegion]="regions()[previewCurrentIndex()]"
-            [currentClassification]="currentClassification()"
-            [isPreviewMode]="true"
-            (choiceSelected)="onPreviewChoiceSelected($event)"
-            (questionRemove)="onQuestionRemove($event)"
-            (applyClassification)="onApplyClassification($event)"
-          ></app-question-canvas-view>
+          <app-question-canvas-view class="form-column-4" [questionRegion]="regions()[previewCurrentIndex()]"
+            [currentClassification]="currentClassification()" [isPreviewMode]="true"
+            (choiceSelected)="onPreviewChoiceSelected($event)" (questionRemove)="onQuestionRemove($event)"
+            (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
 
           <!-- Classification Selector for Preview Mode -->
-          <app-classification-selector
-            class="form-column-2"
-            [initialSelection]="currentClassification()"
-            (selectionChange)="onClassificationChange($event)"
-          ></app-classification-selector>
+          <app-classification-selector class="form-column-2" [initialSelection]="currentClassification()"
+            (selectionChange)="onClassificationChange($event)"></app-classification-selector>
         </div>
       </ng-container>
 
       <div *ngIf="!previewMode() && imageSrc()" class="ms-canvas-wrapper">
-        <canvas
-          #canvas
-          (mousedown)="startSelection($event)"
-          (click)="tapCorrectAnswer($event)"
-          (mousemove)="onMouseMove($event)"
-          (mouseup)="endSelection($event)"
-          (contextmenu)="onRightClick($event)"
-        ></canvas>
+        <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)"
+          (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"
+          (contextmenu)="onRightClick($event)"></canvas>
         <!-- Sol bölge – Previous -->
         <div class="ms-nav-area ms-nav-prev" [class.ms-nav-disabled]="isDrawing" (click)="previousImage()"></div>
         <!-- Sağ bölge – Next -->
         <div class="ms-nav-area ms-nav-next" [class.ms-nav-disabled]="isDrawing" (click)="nextImage()"></div>
         <!-- Marker'lar -->
-        <div
-          *ngFor="let marker of warningMarkers"
-          [class.cs-warning-marker]="marker.type === 'warning'"
-          [class.cs-error-marker]="marker.type === 'error'"
-          [ngStyle]="{ top: marker.y + 'px', left: marker.x + 'px' }"
-          (click)="openWarningContextMenu(marker, $event)"
-        >
-          <mat-icon
-            [style.width]="warningIconHeight + 'px !important'"
-            [style.height]="warningIconHeight + 'px !important'"
-            [style.font-size]="warningIconHeight + 'px !important'"
-            color="warn"
-            >warning</mat-icon
-          >
+        <div *ngFor="let marker of warningMarkers" [class.cs-warning-marker]="marker.type === 'warning'"
+          [class.cs-error-marker]="marker.type === 'error'" [ngStyle]="{ top: marker.y + 'px', left: marker.x + 'px' }"
+          (click)="openWarningContextMenu(marker, $event)">
+          <mat-icon [style.width]="warningIconHeight + 'px !important'"
+            [style.height]="warningIconHeight + 'px !important'" [style.font-size]="warningIconHeight + 'px !important'"
+            color="warn">warning</mat-icon>
         </div>
         <!-- Marker context menü -->
-        <div
-          *ngIf="warningMenuVisible"
-          class="wr-custom-context-menu"
-          [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px' }"
-          (click)="$event.stopPropagation()"
-        >
+        <div *ngIf="warningMenuVisible" class="wr-custom-context-menu"
+          [ngStyle]="{ top: warningMenuY + 'px', left: warningMenuX + 'px' }" (click)="$event.stopPropagation()">
           <div style="padding: 8px; max-width: 220px">
             <!-- <strong>Uyarı:</strong> -->
             <ul>
@@ -77,12 +49,8 @@
         </div>
       </div>
 
-      <div
-        *ngIf="contextMenuVisible"
-        (click)="$event.stopPropagation()"
-        class="ms-custom-context-menu"
-        [ngStyle]="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }"
-      >
+      <div *ngIf="contextMenuVisible" (click)="$event.stopPropagation()" class="ms-custom-context-menu"
+        [ngStyle]="{ top: contextMenuY + 'px', left: contextMenuX + 'px' }">
         <!-- Region için menü -->
         <ng-container *ngIf="contextMenuType === 'region'">
           <button (click)="handleMenuAction('removeQuestion', $event)">
@@ -99,24 +67,16 @@
           </button>
 
           <!-- dragDropLabeling hızlı ayarları (sağ panel olmadan) -->
-          <ng-container
-            *ngIf="
+          <ng-container *ngIf="
               selectedRegion! >= 0 && getInteractionType(regions()[selectedRegion || 0].name) === 'dragDropLabeling'
-            "
-          >
+            ">
             <mat-divider></mat-divider>
             <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">dragDropLabeling</div>
 
             <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
-            <input
-              type="number"
-              min="1"
-              max="30"
-              style="margin: 0 8px 6px; width: calc(100% - 16px)"
-              [value]="getLabelCount(regions()[selectedRegion || 0].name)"
-              (click)="$event.stopPropagation()"
-              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)"
-            />
+            <input type="number" min="1" max="30" style="margin: 0 8px 6px; width: calc(100% - 16px)"
+              [value]="getLabelCount(regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()"
+              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)" />
 
             <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
               <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
@@ -136,20 +96,13 @@
             <mat-icon style="vertical-align: middle; margin-right: 8px">format_align_center</mat-icon>
             Cevapları Hizala
           </button>
-          <select
-            *ngIf="selectedRegion! >= 0 && passages().length > 0"
-            id="passageSelect"
-            (change)="onPassageChange($event, regions()[selectedRegion || 0].name)"
-            (click)="$event.stopPropagation()"
-          >
+          <select *ngIf="selectedRegion! >= 0 && passages().length > 0" id="passageSelect"
+            (change)="onPassageChange($event, regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()">
             <option value="0" [selected]="!selectedPassageMap.has(regions()[selectedRegion || 0].name)">
               🔹 Passage Seçiniz
             </option>
-            <option
-              *ngFor="let passage of passages()"
-              [value]="passage.id"
-              [selected]="selectedPassageMap.get(regions()[selectedRegion || 0].name) === passage.id"
-            >
+            <option *ngFor="let passage of passages()" [value]="passage.id"
+              [selected]="selectedPassageMap.get(regions()[selectedRegion || 0].name) === passage.id">
               Passage {{ passage.id }}
             </option>
           </select>
@@ -168,15 +121,9 @@
             <div style="padding: 6px 8px; font-size: 12px; opacity: 0.8">Zone: {{ zoneId }}</div>
 
             <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
-            <input
-              type="number"
-              min="1"
-              max="30"
-              style="margin: 0 8px 6px; width: calc(100% - 16px)"
-              [value]="getLabelCount(regions()[selectedRegion || 0].name)"
-              (click)="$event.stopPropagation()"
-              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)"
-            />
+            <input type="number" min="1" max="30" style="margin: 0 8px 6px; width: calc(100% - 16px)"
+              [value]="getLabelCount(regions()[selectedRegion || 0].name)" (click)="$event.stopPropagation()"
+              (change)="setLabelCount(regions()[selectedRegion || 0].name, $any($event.target).value)" />
 
             <button (click)="ensureDraggables(regions()[selectedRegion || 0].name)">
               <mat-icon style="vertical-align: middle; margin-right: 8px">format_list_numbered</mat-icon>
@@ -184,11 +131,9 @@
             </button>
 
             <label style="display: block; padding: 6px 8px 2px; font-size: 12px; opacity: 0.8">Doğru Etiket</label>
-            <select
-              (click)="$event.stopPropagation()"
+            <select (click)="$event.stopPropagation()"
               [value]="getZoneAssignedDraggable(regions()[selectedRegion || 0].name, zoneId)"
-              (change)="setZoneSolutionFromMenu(regions()[selectedRegion || 0].name, zoneId, $any($event.target).value)"
-            >
+              (change)="setZoneSolutionFromMenu(regions()[selectedRegion || 0].name, zoneId, $any($event.target).value)">
               <option value="0">(boş)</option>
               <option *ngFor="let d of getDraggables(regions()[selectedRegion || 0].name)" [value]="d.id">
                 {{ d.label }}
@@ -274,14 +219,8 @@
                 <button (click)="removeLastDropZone(region.name)">↩︎ Son Zone</button>
                 <button (click)="clearDropZones(region.name)">🗑 Zone Temizle</button>
                 <label style="font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  [value]="getLabelCount(region.name)"
-                  (change)="setLabelCount(region.name, $any($event.target).value)"
-                  style="width: 70px"
-                />
+                <input type="number" min="1" max="30" [value]="getLabelCount(region.name)"
+                  (change)="setLabelCount(region.name, $any($event.target).value)" style="width: 70px" />
                 <button (click)="generateDraggables(region.name)">Etiketleri Oluştur</button>
                 <button (click)="autoAssignSolutionSequential(region.name)">Auto Solution</button>
               </div>
@@ -290,10 +229,8 @@
                 <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px">Solution (DropZone → Etiket)</div>
                 <div *ngFor="let z of getDropZones(region.name)" class="flex-no-wrap border-none" style="gap: 8px">
                   <span style="min-width: 38px">{{ z.id }}</span>
-                  <select
-                    [value]="getZoneAssignedDraggable(region.name, z.id)"
-                    (change)="setZoneSolution(region.name, z.id, $any($event.target).value)"
-                  >
+                  <select [value]="getZoneAssignedDraggable(region.name, z.id)"
+                    (change)="setZoneSolution(region.name, z.id, $any($event.target).value)">
                     <option value="0">(boş)</option>
                     <option *ngFor="let d of getDraggables(region.name)" [value]="d.id">{{ d.label }}</option>
                   </select>
@@ -313,11 +250,8 @@
               <li class="flex-no-wrap border-none">
                 <select id="passageSelect" class="passage-select" (change)="onPassageChange($event, region.name)">
                   <option value="0" [selected]="!selectedPassageMap.has(region.name)">Passage Seçiniz</option>
-                  <option
-                    *ngFor="let passage of passages()"
-                    [value]="passage.id"
-                    [selected]="selectedPassageMap.get(region.name) === passage.id"
-                  >
+                  <option *ngFor="let passage of passages()" [value]="passage.id"
+                    [selected]="selectedPassageMap.get(region.name) === passage.id">
                     Passage {{ passage.id }}
                   </option>
                 </select>

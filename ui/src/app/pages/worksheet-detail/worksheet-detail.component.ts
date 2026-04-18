@@ -27,6 +27,7 @@ import {
   WorksheetAssignmentDialogComponent,
   WorksheetAssignmentDialogResult,
 } from './components/assignment-dialog/worksheet-assignment-dialog.component';
+import { IsTeacherDirective } from '../../shared/directives/is-student.directive';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -46,6 +47,7 @@ interface AssignmentPanelState {
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
+    IsTeacherDirective,
   ],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],

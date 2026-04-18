@@ -24,6 +24,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { finalize } from 'rxjs/operators';
+import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
 
 @Component({
   selector: 'app-worksheet-list',
@@ -49,6 +50,7 @@ import { finalize } from 'rxjs/operators';
   ],
 })
 export class WorksheetListComponent {
+  protected readonly worksheetListViewCardComponent = WorksheetListViewCardComponent;
   testService = inject(TestService);
   searchControl = new FormControl('');
   route = inject(ActivatedRoute);
@@ -76,12 +78,6 @@ export class WorksheetListComponent {
   deletingWorksheetId = signal<number | null>(null);
 
   @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;
-
-  images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
-  public getBackgroundImage(id: number) {
-    const randomIndex = id % this.images.length;
-    return this.images[randomIndex];
-  }
 
   get totalPages(): number {
     return Math.ceil(this.pagedWorksheetsSignal().totalCount / this.pageSize);

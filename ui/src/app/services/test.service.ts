@@ -106,6 +106,18 @@ export class TestService {
     return this.http.post<any>(`${this.baseUrl}/bulk-import`, bulkData);
   }
 
+  updateWorksheetBackgroundImage(
+    worksheetId: number,
+    file: File
+  ): Observable<{ success: boolean; message: string; imageUrl?: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.put<{ success: boolean; message: string; imageUrl?: string }>(
+      `${this.baseUrl}/${worksheetId}/background-image`,
+      formData
+    );
+  }
+
   get(id: number): Observable<Test> {
     var reqUrl = `${this.baseUrl}/list?id=${id}`;
     return this.http.get<Paged<Test>>(reqUrl).pipe(

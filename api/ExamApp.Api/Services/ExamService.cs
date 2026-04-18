@@ -6,6 +6,7 @@ using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Layout;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Globalization;
@@ -1237,6 +1238,52 @@ public class ExamService : IExamService
         };
     }
 
+    public async Task<UpdateWorksheetBackgroundImageDto> UpdateWorksheetBackgroundImageAsync(int worksheetId, IFormFile file, int userId)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return new UpdateWorksheetBackgroundImageDto
+            {
+                Success = false,
+                Message = "Yüklemek için geçerli bir görsel seçin."
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return new UpdateWorksheetBackgroundImageDto
+            {
+                Success = false,
+                Message = "Sadece görsel dosyaları yüklenebilir."
+            };
+        }
+
+        var worksheet = await _context.Worksheets.FirstOrDefaultAsync(w => w.Id == worksheetId);
+        if (worksheet == null)
+        {
+            return new UpdateWorksheetBackgroundImageDto
+            {
+                Success = false,
+                Message = "Worksheet bulunamadı."
+            };
+        }
+
+        var fileName = $"{worksheetId}-background.png";
+        await using var stream = file.OpenReadStream();
+        var uploadedPath = await _minioService.UploadFileAsync(stream, fileName, "worksheets", "image/png");
+
+        worksheet.ImageUrl = uploadedPath;
+        await _context.SaveChangesAsync();
+
+        return new UpdateWorksheetBackgroundImageDto
+        {
+            Success = true,
+            Message = "Arka plan görseli güncellendi.",
+            ObjectId = worksheetId,
+            ImageUrl = uploadedPath
+        };
+    }
+
     public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId)
     {
         if (examDto == null)
@@ -1268,6 +1315,8 @@ public class ExamService : IExamService
                     examDto.BookTestId = existingBookTest.Id;
                 }
             }
+
+
         }
 
         try

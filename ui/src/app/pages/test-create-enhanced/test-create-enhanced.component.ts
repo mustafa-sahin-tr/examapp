@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { BookService } from '../../services/book.service';
 import { GradesService } from '../../services/grades.service';
@@ -28,6 +28,8 @@ import { Test } from '../../models/test-instance';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import { WorksheetListViewCardComponent } from '../worksheet-list/worksheet-list-view-card.component';
+import { A11yModule } from '@angular/cdk/a11y';
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -52,9 +54,13 @@ import { HttpErrorResponse } from '@angular/common/http';
     MatSnackBarModule,
     WorksheetCardComponent,
     TestFormComponent,
+    WorksheetListViewCardComponent,
+    A11yModule,
   ],
 })
 export class TestCreateEnhancedComponent implements OnInit {
+  protected readonly worksheetListViewCardComponent = WorksheetListViewCardComponent;
+  @Input() mode: string = 'default'; // 'create' veya 'edit' olabilir
   id!: number | null;
   exam!: Test;
   isEditMode: boolean = false;
@@ -102,6 +108,7 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.thisId = id;
     this.isEditMode = this.id !== null && this.id !== undefined && this.id > 0;
     this.testForm = this.fb.group({
+      id: [this.id || null],
       name: ['', Validators.required],
       description: [''],
       gradeId: ['', Validators.required],

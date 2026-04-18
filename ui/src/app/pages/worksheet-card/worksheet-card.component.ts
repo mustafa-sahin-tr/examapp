@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewInit, Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output, signal } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import { Test } from '../../models/test-instance';
 import { HasRoleDirective } from '../../shared/directives/has-role.directive';
@@ -12,6 +12,8 @@ import { AssignedWorksheet } from '../../models/assignment';
 import { MatIconModule } from '@angular/material/icon';
 import { ThemeConfigService, WorksheetCardThemeConfig } from '../../services/theme-config.service';
 import { TestService } from '../../services/test.service';
+import { AuthService } from '../../services/auth.service';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-worksheet-card',
@@ -35,14 +37,70 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly themeService = inject(ThemeConfigService);
   private readonly testService = inject(TestService);
+  private readonly authService = inject(AuthService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly destroy$ = new Subject<void>();
+  readonly backgroundUploading = signal(false);
+  readonly canEditBackground = this.authService.hasRole('Teacher');
 
   themeConfig!: WorksheetCardThemeConfig;
 
   images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
   public getBackgroundImage() {
+    if (this.test?.imageUrl) {
+      return this.test.imageUrl;
+    }
+
     const randomIndex = (this.test.id || 0) % this.images.length;
-    return this.images[randomIndex];
+    return `/${this.images[randomIndex]}`;
+  }
+
+  openBackgroundPicker(input: HTMLInputElement, event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.canEditBackground || this.backgroundUploading()) {
+      return;
+    }
+
+    input.click();
+  }
+
+  onBackgroundFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const worksheetId = this.test?.id;
+
+    if (!file || !worksheetId || !this.canEditBackground) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.snackBar.open('Lutfen bir gorsel dosyasi secin.', 'Tamam', { duration: 2500 });
+      input.value = '';
+      return;
+    }
+
+    this.backgroundUploading.set(true);
+    this.testService
+      .updateWorksheetBackgroundImage(worksheetId, file)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response?.success && response.imageUrl) {
+            this.test = { ...this.test, imageUrl: response.imageUrl };
+          }
+          this.snackBar.open(response?.message || 'Arka plan gorseli guncellendi.', 'Tamam', { duration: 2500 });
+          this.backgroundUploading.set(false);
+          input.value = '';
+        },
+        error: (error) => {
+          const message = error?.error?.message || 'Gorsel yuklenirken bir hata olustu.';
+          this.snackBar.open(message, 'Tamam', { duration: 3000 });
+          this.backgroundUploading.set(false);
+          input.value = '';
+        },
+      });
   }
 
   onClick() {

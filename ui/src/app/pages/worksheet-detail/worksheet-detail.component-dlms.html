@@ -241,6 +241,16 @@
                 <a class="btn d-flex btn-wish" href="#"><mat-icon class="me-1 fs-18">share</mat-icon>Paylaş</a>
               </div>
               <a href="cart.html" class="btn btn-primary w-100 mt-3 btn-enroll">Sınava Başla</a>
+              <ng-container *appIsTeacher>
+                <button mat-stroked-button class="secondary-action" (click)="editWorksheet(exam.id)">
+                  <mat-icon>edit</mat-icon>
+                  Düzenle
+                </button>
+                <button mat-flat-button color="accent" class="accent-action" (click)="navigateToQuestionCanvas()">
+                  <mat-icon>add_circle</mat-icon>
+                  Soru Ekle
+                </button>
+              </ng-container>
             </div>
           </div>
           <div class="card mb-4">

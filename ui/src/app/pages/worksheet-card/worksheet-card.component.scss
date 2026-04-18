@@ -453,6 +453,58 @@
   width: 100%;
 }
 
+.course-info {
+  position: relative;
+}
+
+.background-file-input {
+  display: none;
+}
+
+.background-edit-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  background: rgba(18, 18, 24, 0.78);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.background-edit-btn mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.course-info:hover .background-edit-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.background-edit-btn:hover {
+  background: rgba(18, 18, 24, 0.95);
+}
+
+.background-edit-btn:disabled {
+  opacity: 1;
+  pointer-events: none;
+  cursor: wait;
+}
+
 .header-with-badges .course-type {
   margin: 0;
   flex: 1;

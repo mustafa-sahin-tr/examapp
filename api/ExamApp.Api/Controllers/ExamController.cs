@@ -345,4 +345,23 @@ public class ExamController : BaseController
         }
     }
 
+    [HttpPut("{id}/background-image")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<IActionResult> UpdateWorksheetBackgroundImage(int id, [FromForm] IFormFile file)
+    {
+        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        var result = await _examService.UpdateWorksheetBackgroundImageAsync(id, file, user.Id);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
 }

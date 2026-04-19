@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Layout;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services;
@@ -17,6 +20,7 @@ public class QuestionService : IQuestionService
 
     private readonly ImageHelper _imageHelper;
     private readonly IMinIoService _minioService;
+
     public QuestionService(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService)
     {
         _imageHelper = imageHelper;
@@ -464,6 +468,29 @@ public class QuestionService : IQuestionService
                 // _context.QuestionSubTopics.AddRange(newSubTopics);
 
                 await _context.SaveChangesAsync();
+
+                // 🟢 Record QuestionCreated event to Outbox for new questions only (OutboxPublisher will publish)
+                if (questionDto.Id == 0) // Yeni soru oluşturuldı
+                {
+                    var @event = new QuestionCreatedEvent
+                    {
+                        QuestionId = question.Id,
+                        SubjectId = question.SubjectId,
+                        TopicId = question.TopicId,
+                        ClassificationSource = question.ClassificationSource?.ToString(),
+                        CreatedAt = DateTime.UtcNow,
+                        Text = question.Text
+                    };
+
+                    var outbox = new OutboxMessage
+                    {
+                        Type = typeof(QuestionCreatedEvent).AssemblyQualifiedName ?? nameof(QuestionCreatedEvent),
+                        Content = JsonSerializer.Serialize(@event),
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.OutboxMessages.Add(outbox);
+                    await _context.SaveChangesAsync();
+                }
             }
 
             return new QuestionSavedDto
@@ -489,6 +516,7 @@ public class QuestionService : IQuestionService
         {
             try
             {
+                var createdQuestions = new List<Question>(); // 🟢 Track created questions for events
 
                 var worksheet = _context.Worksheets.FirstOrDefault(worksheet => worksheet.Id == soruDto.Header.TestId);
                 if (worksheet != null)
@@ -808,7 +836,8 @@ public class QuestionService : IQuestionService
                         TopicId = soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,
                         AnswerColCount = recommendedColumns,
-                        LayoutPlan = layoutPlanJson
+                        LayoutPlan = layoutPlanJson,
+                        ClassificationSource = soruDto.Header.ClassificationSource ?? ClassificationSource.Human
                     };
 
                     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
@@ -821,6 +850,8 @@ public class QuestionService : IQuestionService
 
                     _context.Questions.Add(question);
                     await _context.SaveChangesAsync();
+
+                    createdQuestions.Add(question); // 🟢 Track for OutboxMessage
 
                     if (!questionDto.IsExample)
                     {
@@ -889,96 +920,29 @@ public class QuestionService : IQuestionService
                         await _context.SaveChangesAsync();
                     }
                 }
+                // Record QuestionCreated events to Outbox for all newly created questions
+                foreach (var question in createdQuestions)
+                {
+                    var @event = new QuestionCreatedEvent
+                    {
+                        QuestionId = question.Id,
+                        SubjectId = question.SubjectId,
+                        TopicId = question.TopicId,
+                        ClassificationSource = question.ClassificationSource?.ToString(),
+                        CreatedAt = DateTime.UtcNow,
+                        Text = question.Text
+                    };
 
-                // // 🔹 2. Passage'ları kaydet
-                // var passages = soruDto.Passages.Select(p => new Passage
-                // {
-                //     X = p.X,
-                //     Y = p.Y,
-                //     Width = p.Width,
-                //     Height = p.Height,
-                //     Title = p.Id,
-                //     IsCanvasQuestion = true
-                // }).ToList();
+                    var outbox = new OutboxMessage
+                    {
+                        Type = typeof(QuestionCreatedEvent).AssemblyQualifiedName ?? nameof(QuestionCreatedEvent),
+                        Content = JsonSerializer.Serialize(@event),
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.OutboxMessages.Add(outbox);
+                }
+                await _context.SaveChangesAsync();
 
-                // _context.Passage.AddRange(passages);
-                // await _context.SaveChangesAsync();
-
-                // // 🔹 3. Soruları kaydet
-                // foreach (var questionDto in soruDto.Questions)
-                // {
-                //     var question = new Question
-                //     {
-                //         // Text = questionDto.Name,
-                //         ImageUrl = imageUrl,
-                //         X = questionDto.X,
-                //         Y = questionDto.Y,
-                //         Width = questionDto.Width,
-                //         Height = questionDto.Height,
-                //         IsExample = questionDto.IsExample,
-                //         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
-                //         IsCanvasQuestion = true,
-                //         SubjectId = soruDto.Header.SubjectId,
-                //         TopicId = soruDto.Header.TopicId,
-                //         PassageId = passages.FirstOrDefault(p => p.Title == questionDto.PassageId)?.Id ?? null
-                //     };
-
-                //     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())
-                //     {
-                //         question.QuestionSubTopics = soruDto.Header.Subtopics.Select(subTopicId => new QuestionSubTopic
-                //         {
-                //             SubTopicId = subTopicId
-                //             // QuestionId will be set automatically when the question is saved
-                //         }).ToList();
-                //     }
-
-                //     _context.Questions.Add(question);
-                //     await _context.SaveChangesAsync();
-
-                //     // 🔹 4. Şıkları kaydet
-                //     if (!questionDto.IsExample)
-                //     {
-                //         var answers = questionDto.Answers.Select(a => new Answer
-                //         {
-                //             QuestionId = question.Id,
-                //             Text = a.Label,
-                //             X = a.X,
-                //             Y = a.Y,
-                //             Width = a.Width,
-                //             Height = a.Height,
-                //             IsCanvasQuestion = true
-                //         }).ToList();
-
-                //         var correctLabel = questionDto.Answers.FirstOrDefault(a => a.IsCorrect)?.Label;
-
-                //         if (correctLabel == null)
-                //         {
-                //             throw new InvalidOperationException("Doğru cevap belirtilmemiş." + questionDto.Name);
-                //         }
-
-                //         _context.Answers.AddRange(answers);
-                //         await _context.SaveChangesAsync();
-
-                //         // 🔹 Doğru cevabı kaydet (ilk doğru olanı seç)
-                //         question.CorrectAnswerId = answers.FirstOrDefault(a => a.Text == correctLabel)?.Id;
-                //         await _context.SaveChangesAsync();
-                //     }
-
-                //     if (soruDto.Header.TestId.HasValue)
-                //     {
-                //         var orderCount = await _context.TestQuestions
-                //             .Where(tq => tq.TestId == soruDto.Header.TestId.Value)
-                //             .CountAsync();
-                //         // ** WorksheetQuestions tablosuna ekleme **
-                //         var worksheetQuestion = new WorksheetQuestion
-                //         {
-                //             TestId = soruDto.Header.TestId.Value,
-                //             QuestionId = question.Id,
-                //             Order = orderCount + 1 // Varsayılan sıralama
-                //         };
-
-                //         _context.TestQuestions.Add(worksheetQuestion);
-                //         await _context.SaveChangesAsync();
                 //     }
                 // }
 

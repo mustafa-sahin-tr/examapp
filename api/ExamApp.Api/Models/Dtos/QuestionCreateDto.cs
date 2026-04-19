@@ -55,5 +55,6 @@ public class HeaderInfo
 
     public int? SubjectId { get; set; }
     public List<int>? Subtopics { get; set; }
+    public string? ClassificationSource { get; set; }
 
 }

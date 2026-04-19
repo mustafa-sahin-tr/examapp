@@ -164,20 +164,6 @@ builder.Services.AddHangfireServer(options =>
 builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
 builder.Services.AddScoped<QuestionTransferJobRunner>();
 
-// builder.Services.AddHostedService<OutboxPublisher>();
-// var rabbitConfig = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
-// builder.Services.AddMassTransit(x =>
-// {
-//     x.UsingRabbitMq((context, cfg) =>
-//     {
-//         cfg.Host(rabbitConfig.Host, "/", h =>
-//          {
-//              h.Username(rabbitConfig.Username);
-//              h.Password(rabbitConfig.Password);
-//          }); 
-//     });
-// });
-
 
 
 var app = builder.Build();

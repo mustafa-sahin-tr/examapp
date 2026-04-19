@@ -28,11 +28,14 @@ StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentNa
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
 
 // Badge services
 builder.Services.AddScoped<AnswerSubmissionAggregationService>();
 builder.Services.AddScoped<BadgeEvaluator>();
 builder.Services.AddScoped<StudentReportService>();
+builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
+builder.Services.AddScoped<IQuestionAnalyzerService, QuestionAnalyzerService>();
 
 // Badge DbContext
 builder.Services.AddDbContext<BadgeDbContext>(options =>
@@ -81,6 +84,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer>();
+    x.AddConsumer<QuestionCreatedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -93,6 +97,7 @@ builder.Services.AddMassTransit(x =>
         cfg.ReceiveEndpoint("badge-service", e =>
         {
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
+            e.ConfigureConsumer<QuestionCreatedConsumer>(context);
         });
     });
 });

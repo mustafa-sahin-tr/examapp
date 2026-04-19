@@ -95,16 +95,38 @@ public class QuestionsController : BaseController
 
         var response = await _questionService.UpdateCorrectAnswer(
             questionId,
-            request.CorrectAnswerId,
-            request.SubjectId,
-            request.TopicId,
-            request.SubTopicId,
-            request.SubTopicIds
+            request.CorrectAnswerId
         );
         if (request.Scale != 1)
         {
             response = await _questionService.ResizeQuestionImage(questionId, request.Scale);
         }
+
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
+    [HttpPut("{questionId}/classification")]
+    [Authorize]
+    public async Task<IActionResult> UpdateQuestionClassification(int questionId, [FromBody] UpdateQuestionClassificationDto request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { message = "Geçersiz sınıflandırma verisi." });
+        }
+
+        var response = await _questionService.UpdateQuestionClassification(
+            questionId,
+            request.SubjectId,
+            request.TopicId,
+            request.SubTopicId,
+            request.SubTopicIds,
+            request.ClassificationSource
+        );
 
         if (!response.Success)
         {

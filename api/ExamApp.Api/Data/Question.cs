@@ -68,5 +68,7 @@ public class Question : BaseEntity
 
     public bool IsCanvasQuestion { get; set; } = false;
 
+    public ClassificationSource? ClassificationSource { get; set; }
+
 }
 

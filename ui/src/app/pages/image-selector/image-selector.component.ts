@@ -318,15 +318,7 @@ export class ImageSelectorComponent {
       .filter((id) => id > 0);
 
     this.questionService
-      .updateCorrectAnswer(
-        evt.questionId,
-        evt.correctAnswerId,
-        evt.scale,
-        evt.subjectId,
-        evt.topicId,
-        null,
-        normalizedSubtopicIds
-      )
+      .updateClassification(evt.questionId, evt.subjectId, evt.topicId, null, normalizedSubtopicIds)
       .subscribe({
         next: () => {
           this.snackBar.open('Sınıflandırma uygulandı.', 'Kapat', { duration: 2000 });
@@ -1732,27 +1724,20 @@ export class ImageSelectorComponent {
       const questionId = region.id;
       const correctAnswerId = region.answers[answerIndex].id;
 
-      const meta = this.previewMetaProvider?.() ?? {};
-      const subjectId = meta.subjectId ?? null;
-      const topicId = meta.topicId ?? null;
-      const subTopicId = meta.subtopicId ?? null;
-
       if (questionId && correctAnswerId) {
-        this.questionService
-          .updateCorrectAnswer(questionId, correctAnswerId, scale, subjectId, topicId, subTopicId)
-          .subscribe({
-            next: (response) => {
-              if (response.success) {
-                this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
-              } else {
-                this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
-              }
-            },
-            error: (error) => {
-              console.error('Error updating correct answer:', error);
-              this.snackBar.open('Doğru cevap güncellenirken hata oluştu!', 'Tamam', { duration: 3000 });
-            },
-          });
+        this.questionService.updateCorrectAnswer(questionId, correctAnswerId, scale).subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
+            } else {
+              this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
+            }
+          },
+          error: (error) => {
+            console.error('Error updating correct answer:', error);
+            this.snackBar.open('Doğru cevap güncellenirken hata oluştu!', 'Tamam', { duration: 3000 });
+          },
+        });
       }
     }
 

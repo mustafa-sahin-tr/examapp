@@ -1,4 +1,5 @@
 using System;
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 
 namespace ExamApp.Api.Services.Interfaces;
@@ -16,11 +17,15 @@ public interface IQuestionService
 
     Task<ResponseBaseDto> UpdateCorrectAnswer(
         int questionId,
-        int correctAnswerId,
+        int correctAnswerId);
+
+    Task<ResponseBaseDto> UpdateQuestionClassification(
+        int questionId,
         int? subjectId = null,
         int? topicId = null,
         int? subTopicId = null,
-        int[]? subTopicIds = null);
+        int[]? subTopicIds = null,
+        string? classificationSourceStr = null);
 
     Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
 

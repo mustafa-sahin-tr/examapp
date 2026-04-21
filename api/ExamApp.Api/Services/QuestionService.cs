@@ -817,6 +817,13 @@ public class QuestionService : IQuestionService
                         ? layoutPlan.RecommendedAnswerColumns
                         : 1;
 
+                    var classificationSource = ClassificationSource.Human;
+                    if (!string.IsNullOrEmpty(soruDto.Header.ClassificationSource) &&
+                        Enum.TryParse<ClassificationSource>(soruDto.Header.ClassificationSource, ignoreCase: true, out var parsedSource))
+                    {
+                        classificationSource = parsedSource;
+                    }
+
                     var question = new Question
                     {
                         ImageUrl = questionImageUrl,
@@ -837,7 +844,7 @@ public class QuestionService : IQuestionService
                         PassageId = matchedPassage?.Id,
                         AnswerColCount = recommendedColumns,
                         LayoutPlan = layoutPlanJson,
-                        ClassificationSource = soruDto.Header.ClassificationSource ?? ClassificationSource.Human
+                        ClassificationSource = classificationSource
                     };
 
                     if (soruDto.Header.Subtopics != null && soruDto.Header.Subtopics.Any())

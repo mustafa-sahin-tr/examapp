@@ -88,7 +88,7 @@ postgres/examdata/
 postgres/examdata*
 nuget-packages/
 nuget-packages/*.db*
-data/
+rabbitmq/data/
 
 ### ML / detector artifacts (generated)
 runs/

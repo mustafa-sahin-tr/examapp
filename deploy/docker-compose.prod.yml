@@ -144,6 +144,7 @@ services:
       Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
       Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
       Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
+      Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
     depends_on:
       postgres:
         condition: service_healthy

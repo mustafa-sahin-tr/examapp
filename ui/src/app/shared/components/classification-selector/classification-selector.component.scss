@@ -47,3 +47,11 @@ mat-chip-option:hover {
 .apply-actions button {
   min-width: 120px;
 }
+
+/* Sadece .custom-status-one class'ı varsa ve seçiliyse renk değişir */
+// :host ::ng-deep .mat-mdc-chip-option.custom-status-one.mdc-evolution-chip--selected {
+  // background-color: red !important;
+  // --mdc-chip-elevated-selected-container-color: red !important;
+// }
+
+/* Değer 1 değilse bu class eklenmez ve Material'in kendi CSS'i (senin yazdığın ilk CSS dahil) çalışmaya devam eder. */

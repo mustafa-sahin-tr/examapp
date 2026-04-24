@@ -1,3 +1,4 @@
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 
 public class QuestionDto
@@ -48,6 +49,7 @@ public class QuestionDto
     public double? Height { get; set; }
 
     public int Order { get; set; }
+    public ClassificationSource ClassificationSource { get; set; }
 }
 
 public class SubTopicDto

@@ -23,6 +23,11 @@ export interface PassageRegion {
   imageId: string;
 }
 
+export enum ClassificationSource {
+  Human = 0,
+  AI = 1,
+}
+
 export interface QuestionRegion {
   id: number;
   name: string;
@@ -47,6 +52,7 @@ export interface QuestionRegion {
   isExample: boolean;
   order?: number;
   layoutPlan?: CanvasLayoutPlan;
+  classificationSource?: ClassificationSource;
 }
 
 export interface CanvasLayoutPlan {

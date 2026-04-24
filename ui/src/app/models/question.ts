@@ -1,4 +1,5 @@
 import { Answer } from './answer';
+import { ClassificationSource } from './draws';
 import { Subject } from './subject';
 import { SubTopic } from './subtopic';
 
@@ -40,4 +41,5 @@ export interface Question {
   isCanvasQuestion: boolean;
   correctAnswerId?: number;
   order?: number;
+  classificationSource?: ClassificationSource;
 }

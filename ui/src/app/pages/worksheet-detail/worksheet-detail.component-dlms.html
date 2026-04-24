@@ -240,7 +240,14 @@
                     class="me-1 fs-18">favorite_border</mat-icon>Listeye Ekle</a>
                 <a class="btn d-flex btn-wish" href="#"><mat-icon class="me-1 fs-18">share</mat-icon>Paylaş</a>
               </div>
-              <a href="cart.html" class="btn btn-primary w-100 mt-3 btn-enroll">Sınava Başla</a>
+              <ng-container *appIsStudent>
+                <a *ngIf="!exam.instance" (click)="StartTest(exam.id)" class="btn btn-primary w-100 mt-3 btn-enroll">
+                  <mat-icon>play_arrow</mat-icon>Sınava Başla</a>
+                <a *ngIf="instanceStarted" (click)="StartTest(exam.id)" class="btn btn-primary w-100 mt-3 btn-enroll">
+                  <mat-icon>play_arrow</mat-icon>Devam Et</a>
+              </ng-container>
+
+
               <ng-container *appIsTeacher>
                 <button mat-stroked-button class="secondary-action" (click)="editWorksheet(exam.id)">
                   <mat-icon>edit</mat-icon>

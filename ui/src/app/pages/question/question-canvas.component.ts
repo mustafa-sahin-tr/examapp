@@ -29,6 +29,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TestFormComponent } from '../test-form/test-form.component';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
+import { ClassificationSource } from '../../models/draws';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -234,6 +235,7 @@ export class QuestionCanvasComponent implements OnInit {
     subjectId: number | null;
     topicId: number | null;
     subtopicId: number | null;
+    classificationSource?: ClassificationSource;
   }) {
     const subjectId = evt.subjectId ?? 0;
     const topicId = evt.topicId ?? 0;

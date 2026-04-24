@@ -10,7 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { QuestionRegion, AnswerChoice, RegionOrAnswerHit } from '../../models/draws';
+import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { QuillModule } from 'ngx-quill';
 import { FormsModule, NgModel } from '@angular/forms';
@@ -96,6 +96,7 @@ export class ImageSelectorComponent {
     subjectId: number | null;
     topicId: number | null;
     subtopicId: number | null;
+    classificationSource?: ClassificationSource;
   }>();
   @ViewChild('canvas', { static: false }) canvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput', { static: false }) fileInput!: ElementRef<HTMLInputElement>;
@@ -223,6 +224,7 @@ export class ImageSelectorComponent {
       };
 
       const subjectId = toNullable(region.subjectId);
+      const classificationSource = region.classificationSource ?? ClassificationSource.Human;
       const topicId = toNullable(region.topicId);
       const subtopicIds = (region.subtopicIds ?? (region.subtopicId ? [region.subtopicId] : []))
         .map((id) => Number(id) || 0)
@@ -237,6 +239,7 @@ export class ImageSelectorComponent {
         subjectId,
         topicId,
         subtopicIds,
+        classificationSource, // Sınıflandırma kaynağını da geçelim
       });
 
       // Also try to resolve gradeId here so initialSelection is complete (gradeId non-null).
@@ -259,6 +262,7 @@ export class ImageSelectorComponent {
               subjectId: current?.subjectId ?? subjectId,
               topicId: current?.topicId ?? topicId,
               subtopicIds: current?.subtopicIds ?? subtopicIds,
+              classificationSource: current?.classificationSource ?? classificationSource,
             });
           },
           error: () => {
@@ -301,6 +305,7 @@ export class ImageSelectorComponent {
       subjectId: selection.subjectId,
       topicId: selection.topicId,
       subtopicId: selection.subtopicIds?.length ? selection.subtopicIds[0] : null,
+      classificationSource: ClassificationSource.Human,
     });
   }
 

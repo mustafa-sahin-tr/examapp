@@ -1,32 +1,19 @@
-<div class="qcv4-canvas-root" [ngClass]="layoutClass" [style.flex-direction]="isInlineLayout() ? 'row' : 'column'">
-  <div class="qcv4-question-panel" [style.flex]="getPanelFlex('question')">
-    <div class="qcv4-question-image-wrapper">
-      <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl">
-        <div class="qcv4-passage__title" *ngIf="_questionRegion().passage?.title">
-          {{ _questionRegion().passage?.title }}
-        </div>
-        <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
-      </div>
-
+<div class="qcv4-container" [class]="'layout-' + currentLayout()">
+  <div class="qcv4-question-image-wrapper">
+    <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl">
+      <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
+    </div>
+    <div class="qcv4-main-image-box">
       <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
     </div>
   </div>
-  <div
-    class="qcv4-answers-panel"
-    [style.flex]="getPanelFlex('answers')"
-    [ngStyle]="{ 'grid-template-columns': answerColumns > 1 ? 'repeat(' + answerColumns + ', 1fr)' : null }"
-    [style.gap]="'2px'"
-  >
-    <ng-container *ngFor="let answer of sortedAnswers; let idx = index">
-      <div
-        class="qcv4-answer-wrapper"
-        [ngClass]="getAnswerClasses(answer)"
-        (mouseenter)="hoverAnswer(answer)"
-        (mouseleave)="hoverAnswer(null)"
-        (click)="selectAnswer(idx)"
-      >
-        <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ idx + 1 }}" />
-      </div>
-    </ng-container>
+  <div class="qcv4-answers-grid">
+    @for (answer of _questionRegion().answers; track $index) {
+    <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" (mouseenter)="hoverAnswer(answer)"
+      (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)">
+      <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ $index + 1 }}" />
+    </div>
+    }
+
   </div>
 </div>

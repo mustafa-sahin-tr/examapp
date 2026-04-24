@@ -523,7 +523,7 @@ article.question-card:has(.question-card__body--canvas) {
   position: sticky;
   bottom: 12px;
   margin: 32px auto 0;
-  width: min(100%, clamp(680px, 78vw, 1180px));
+  // width: min(100%, clamp(680px, 78vw, 1180px));
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;

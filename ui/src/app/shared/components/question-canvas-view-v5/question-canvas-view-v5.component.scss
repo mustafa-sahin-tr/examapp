@@ -1,167 +1,89 @@
-.qcv4-answer-wrapper.is-selected::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  background: rgba(30, 136, 229, 0.32); /* more visible blue */
-  border: 2px solid #1e88e5;
-  box-shadow: 0 0 0 2px #90caf933;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 1;
-}
-
-.qcv4-answer-wrapper.is-hovered:not(.is-selected)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  background: rgba(30, 136, 229, 0.10); /* subtle blue */
-  border: 2px solid #1e88e5;
-  box-shadow: 0 0 0 2px #90caf933;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 1;
-}
-.qcv4-canvas-root {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-// Stack (alt alta) modunda scroll ekle
-.canvas-layout--solo-stack--cols-1.qcv4-canvas-root,
-.canvas-layout--solo-stack--cols-2.qcv4-canvas-root,
-.canvas-layout--solo-stack--cols-3.qcv4-canvas-root,
-.canvas-layout--solo-stack--cols-4.qcv4-canvas-root,
-.canvas-layout--passage-stack--cols-1.qcv4-canvas-root,
-.canvas-layout--passage-stack--cols-2.qcv4-canvas-root,
-.canvas-layout--passage-stack--cols-3.qcv4-canvas-root,
-.canvas-layout--passage-stack--cols-4.qcv4-canvas-root {
-  overflow-y: auto;
-}
-
-.qcv4-question-panel {
-  display: flex;
-  flex: 3 3 0;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
-//   background: #f8f8fc;
-}
-
-.qcv4-question-image-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.qcv4-passage {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.92);
-}
-
-.qcv4-passage__title {
-  width: 100%;
-  font-weight: 700;
-  color: rgba(15, 23, 42, 0.85);
-  text-align: left;
-}
-
-.qcv4-passage__image {
-  max-width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-  display: block;
-}
-
-.qcv4-question-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-.qcv4-answers-panel {
+.qcv4-container {
   display: grid;
-  flex: 2 2 0;
-  min-height: 0;
+  gap: 24px;
   width: 100%;
-//   gap: 12px;
-  align-items: stretch;
-  justify-items: stretch;
-  background: #fff;
+  
+  // --- Üst-Alt Düzenler (Soru Üstte) ---
+
+  // SENİN İSTEDİĞİN: 4 Şık Tek Satırda Yan Yana
+  &.layout-top-1row {
+    grid-template-columns: 1fr;
+    .qcv4-answers-grid { 
+      display: grid;
+      grid-template-columns: repeat(4, 1fr); // 4 sütun
+      gap: 12px;
+    }
+  }
+
+  // 2 Satır 2 Sütun (2x2)
+  &.layout-top-2row {
+    grid-template-columns: 1fr;
+    .qcv4-answers-grid { 
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 12px;
+    }
+  }
+
+  // Klasik Alt Alta (Her şık tam satır)
+  &.layout-top-4row {
+    grid-template-columns: 1fr;
+    .qcv4-answers-grid { 
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+  }
+
+  // --- Yan Yana Düzenler (Soru Solda) ---
+  &.layout-side-1col {
+    grid-template-columns: 1fr 300px;
+    .qcv4-answers-grid { display: flex; flex-direction: column; }
+  }
+
+  &.layout-side-2col {
+    grid-template-columns: 1fr 1fr;
+    .qcv4-answers-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+    }
+  }
 }
 
-// Stack modunda cevap paneline de scroll ekle
-.canvas-layout--solo-stack--cols-1 .qcv4-answers-panel,
-.canvas-layout--solo-stack--cols-2 .qcv4-answers-panel,
-.canvas-layout--solo-stack--cols-3 .qcv4-answers-panel,
-.canvas-layout--solo-stack--cols-4 .qcv4-answers-panel,
-.canvas-layout--passage-stack--cols-1 .qcv4-answers-panel,
-.canvas-layout--passage-stack--cols-2 .qcv4-answers-panel,
-.canvas-layout--passage-stack--cols-3 .qcv4-answers-panel,
-.canvas-layout--passage-stack--cols-4 .qcv4-answers-panel {
-  overflow-y: auto;
-  max-height: 50vh;
-}
-
-.qcv4-answer-wrapper {
-  display: flex;
-  align-items: center;
-//   justify-content: center;
-  min-height: 48px;
-//   background: #f3f3f7;
+// Şık Kartı Tasarımı
+.qcv4-answer-card {
+  border: 1.5px solid #d1d5db;
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  transition: box-shadow 0.2s;
-  cursor: pointer;
-  overflow: hidden;
-  position: relative;
+  padding: 8px;
+  background: #fff;
+  display: flex;
+  // justify-content: center;
+  align-items: center;
+  min-height: 48px;
+
+  img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
 }
 
-.qcv4-answer-image {
-  position: relative;
-  z-index: 1;
-}
-
-.qcv4-answer-wrapper.is-selected {
+.qcv4-answer-card.is-selected {
   border: 2px solid #1976d2;
   background: #e3f0fd;
 }
 
 
-.qcv4-answer-wrapper.is-hovered {
+.qcv4-answer-card.is-hovered {
   border: 2px solid #1e88e5;
   background: rgba(0, 0, 255, 0.02); 
   box-shadow: 0 0 0 2px #c6e0f533;
 }
-.qcv4-answer-wrapper.is-correct {
+.qcv4-answer-card.is-correct {
   border: 2px solid #43a047;
   background: #e8f5e9;
 }
-.qcv4-answer-wrapper.is-incorrect {
+.qcv4-answer-card.is-incorrect {
   border: 2px solid #e53935;
   background: #ffebee;
-}
-
-.qcv4-answer-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  display: block;
 }

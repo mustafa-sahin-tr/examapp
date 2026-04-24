@@ -185,7 +185,9 @@ public class QuestionService : IQuestionService
                 CorrectAnswerId = tq.Question.CorrectAnswerId,
                 AnswerColCount = tq.Question.AnswerColCount,
                 LayoutPlan = tq.Question.LayoutPlan,
-                Order = tq.Order
+                Order = tq.Order,
+                ClassificationSource = tq.Question.ClassificationSource ?? ClassificationSource.Human
+
             })
             .ToListAsync();
 

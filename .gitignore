@@ -104,3 +104,6 @@ question-detector/.tmp.driveupload
 question-detector/.tmp.drivedownload
 
 *.zip
+
+my-secrets.txt
+

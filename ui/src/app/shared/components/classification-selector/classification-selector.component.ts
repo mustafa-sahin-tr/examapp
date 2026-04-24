@@ -10,12 +10,14 @@ import { Subject } from '../../../models/subject';
 import { Topic } from '../../../models/topic';
 import { SubTopic } from '../../../models/subtopic';
 import { firstValueFrom } from 'rxjs';
+import { ClassificationSource } from '../../../models/draws';
 
 export interface ClassificationSelection {
   gradeId: number | null;
   subjectId: number | null;
   topicId: number | null;
   subtopicIds: number[];
+  classificationSource?: ClassificationSource;
 }
 
 @Component({
@@ -47,6 +49,7 @@ export class ClassificationSelectorComponent {
     this.selectedSubject.set(value.subjectId);
     this.selectedTopic.set(value.topicId);
     this.selectedSubtopics.set(value.subtopicIds || []);
+    this.classificationSource.set(value.classificationSource || ClassificationSource.Human);
 
     queueMicrotask(() => {
       this.suppressSelectionChange = false;
@@ -68,6 +71,7 @@ export class ClassificationSelectorComponent {
   public selectedSubject = signal<number | null>(null);
   public selectedTopic = signal<number | null>(null);
   public selectedSubtopics = signal<number[]>([]);
+  public classificationSource = signal<ClassificationSource>(ClassificationSource.Human);
 
   public loading = signal(false);
 
@@ -156,6 +160,7 @@ export class ClassificationSelectorComponent {
       subjectId: this.selectedSubject(),
       topicId: this.selectedTopic(),
       subtopicIds: this.selectedSubtopics(),
+      classificationSource: ClassificationSource.Human,
     };
     this.selectionChange.emit(selection);
   }
@@ -283,6 +288,7 @@ export class ClassificationSelectorComponent {
       subjectId: this.selectedSubject(),
       topicId: this.selectedTopic(),
       subtopicIds: this.selectedSubtopics(),
+      classificationSource: ClassificationSource.Human,
     };
     this.apply.emit(selection);
   }

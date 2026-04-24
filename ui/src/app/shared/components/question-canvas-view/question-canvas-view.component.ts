@@ -129,6 +129,7 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
   }
 
   private async loadImageForQuestion() {
+    console.log('[QuestionCanvasView] Loading image for question region', this._questionRegion());
     const region = this._questionRegion();
     if (!region?.imageUrl || !region.imageId) return;
 

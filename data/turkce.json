@@ -1,0 +1,71 @@
+{
+    "ders": "Türkçe",
+    "konular": [
+        {
+            "konu_adi": "Söz Varlığı (Kelime Bilgisi)",
+            "alt_konular": [
+                "Zıt (Karşıt) Anlamlı Kelimeler",
+                "Eş Anlamlı (Anlamdaş) Kelimeler",
+                "Eş Sesli (Sesteş) Kelimeler",
+                "Gerçek, Mecaz ve Terim Anlam",
+                "Deyimler, Atasözleri ve Özdeyişler",
+                "Yabancı Sözcüklerin Türkçe Karşılıkları",
+                "Alfabetik Sıralama (Sözlük Sırası)",
+                "Yapılarına Göre Sözcükler (Basit, Türemiş, Birleşik Kelimeler)"
+            ]
+        },
+        {
+            "konu_adi": "Cümlede Anlam",
+            "alt_konular": [
+                "Neden - Sonuç (Sebep - Sonuç) Cümleleri",
+                "Karşılaştırma ve Benzetme Cümleleri",
+                "Anlamlı ve Kurallı Cümle Oluşturma",
+                "Gerçek ve Hayalî Ögeler",
+                "Örneklendirme Cümleleri"
+            ]
+        },
+        {
+            "konu_adi": "Metinde Anlam ve Çözümleme (Okuma Becerileri)",
+            "alt_konular": [
+                "Metnin Konusu ve Başlığı",
+                "Metnin Ana Fikri ve Ana Duygusu",
+                "Hikâye Unsurları ve Karakter Analizi",
+                "Metin Türleri (Hikâye Edici, Bilgilendirici Metinler, Şiir)",
+                "Metnin Bölümleri (Serim, Düğüm, Çözüm / Giriş, Gelişme, Sonuç)",
+                "Metinleri Karşılaştırma",
+                "Olayların Oluş Sırası",
+                "Çıkarım Yapmak / Paragrafta Yapı"
+            ]
+        },
+        {
+            "konu_adi": "Bilgi Okuryazarlığı ve Görsel Okuma",
+            "alt_konular": [
+                "Bilgi Kaynakları ve Güvenilirlikleri (İçindekiler, Sözlük, .gov, .edu)",
+                "Görsel Okuma, Grafik, Tablo ve Çizelge Yorumlama",
+                "Medya Metinleri",
+                "Yönergeler, Form Doldurma, Sembol ve İşaretler (Akıllı İşaretler)"
+            ]
+        },
+        {
+            "konu_adi": "Yazım Kuralları, Noktalama ve Dil Bilgisi",
+            "alt_konular": [
+                "Noktalama İşaretleri",
+                "Büyük Harflerin Kullanıldığı Yerler",
+                "Kısaltmaların Yazımı",
+                "De, Ki ve Mi'nin Yazımı",
+                "Sayıların Yazımı",
+                "Pekiştirmeli Sözcüklerin Yazımı",
+                "Adlar (İsimler - Özel, Tür, Tekil, Çoğul, Topluluk, Soyut, Somut)"
+            ]
+        },
+        {
+            "konu_adi": "Dinleme, İzleme ve Konuşma Becerileri",
+            "alt_konular": [
+                "Dinlediklerinin Konusunu ve Ana Fikrini Belirleme",
+                "Sözlü Yönergeleri Uygulama",
+                "Hazırlıklı ve Hazırlıksız Konuşma (Sunum Yapma)",
+                "Konuşma Stratejileri ve Beden Dili"
+            ]
+        }
+    ]
+}

@@ -51,32 +51,7 @@ export interface QuestionRegion {
   exampleAnswer: string | null | undefined;
   isExample: boolean;
   order?: number;
-  layoutPlan?: CanvasLayoutPlan;
   classificationSource?: ClassificationSource;
-}
-
-export interface CanvasLayoutPlan {
-  layoutClass: string;
-  answerColumns: number;
-  hasPassage?: boolean;
-  overrides?: CanvasLayoutPlanOverrides;
-  questionFlex?: number;
-  answersFlex?: number;
-}
-
-export interface CanvasLayoutPlanOverrides {
-  initialScale?: number;
-  minScale?: number;
-  maxScale?: number;
-  answerScale?: number;
-  question?: {
-    maxHeight?: number;
-    maxWidth?: number;
-  };
-  answers?: {
-    maxHeight?: number;
-    maxWidth?: number;
-  };
 }
 
 export type RegionOrAnswerHit =

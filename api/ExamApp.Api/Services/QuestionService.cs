@@ -6,7 +6,6 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
-using ExamApp.Api.Services.Layout;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -87,15 +86,11 @@ public class QuestionService : IQuestionService
                     Height = q.Passage.Height,
                 } : null,
                 CorrectAnswerId = q.CorrectAnswerId,
-                AnswerColCount = q.AnswerColCount,
-                LayoutPlan = q.LayoutPlan
+                AnswerColCount = q.AnswerColCount
             })
             .FirstOrDefaultAsync();
 
-        if (question != null)
-        {
-            question.LayoutPlan = BuildUiLayoutPlanPayload(question);
-        }
+        
 
         return question;
     }
@@ -184,17 +179,13 @@ public class QuestionService : IQuestionService
                 } : null,
                 CorrectAnswerId = tq.Question.CorrectAnswerId,
                 AnswerColCount = tq.Question.AnswerColCount,
-                LayoutPlan = tq.Question.LayoutPlan,
                 Order = tq.Order,
                 ClassificationSource = tq.Question.ClassificationSource ?? ClassificationSource.Human
 
             })
             .ToListAsync();
 
-        foreach (var question in questionList)
-        {
-            question.LayoutPlan = BuildUiLayoutPlanPayload(question);
-        }
+        
 
         return questionList;
     }
@@ -231,11 +222,7 @@ public class QuestionService : IQuestionService
                 question.InteractionType = questionDto.InteractionType;
                 question.InteractionPlan = questionDto.InteractionPlan;
                 question.ShowPassageFirst = questionDto.ShowPassageFirst;
-                if (!string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
-                    questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase))
-                {
-                    question.LayoutPlan = questionDto.LayoutPlan;
-                }
+                
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -338,10 +325,7 @@ public class QuestionService : IQuestionService
                     // SubjectId = questionDto.SubjectId,
                     // TopicId = questionDto.TopicId,
                     AnswerColCount = questionDto.AnswerColCount,
-                    LayoutPlan = !string.IsNullOrWhiteSpace(questionDto.LayoutPlan) &&
-                                 questionDto.LayoutPlan.Contains("breakpoints", StringComparison.OrdinalIgnoreCase)
-                        ? questionDto.LayoutPlan
-                        : null
+                    
                 };
 
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -795,30 +779,7 @@ public class QuestionService : IQuestionService
                         passageLookup.TryGetValue(questionDto.PassageId, out matchedPassage);
                     }
 
-                    PassageLayoutSize? passageLayoutSize = null;
-                    if (matchedPassage?.Width is int passageWidth && passageWidth > 0 &&
-                        matchedPassage.Height is int passageHeight && passageHeight > 0)
-                    {
-                        passageLayoutSize = new PassageLayoutSize(passageWidth, passageHeight);
-                    }
-
-                    var layoutInput = new QuestionLayoutInput
-                    {
-                        QuestionWidth = questionDto.Width,
-                        QuestionHeight = effectiveQuestionHeight,
-                        Answers = answerInfos
-                            .Where(a => a.EffectiveWidth > 0 && a.EffectiveHeight > 0)
-                            .Select(a => new AnswerLayoutSize(a.EffectiveWidth, a.EffectiveHeight))
-                            .ToList(),
-                        Passage = passageLayoutSize
-                    };
-
-                    var layoutPlan = QuestionLayoutAnalyzer.Analyze(layoutInput);
-                    var layoutPlanJson = QuestionLayoutAnalyzer.SerializePlan(layoutPlan);
-                    var recommendedColumns = layoutPlan.RecommendedAnswerColumns > 0
-                        ? layoutPlan.RecommendedAnswerColumns
-                        : 1;
-
+                    
                     var classificationSource = ClassificationSource.Human;
                     if (!string.IsNullOrEmpty(soruDto.Header.ClassificationSource) &&
                         Enum.TryParse<ClassificationSource>(soruDto.Header.ClassificationSource, ignoreCase: true, out var parsedSource))
@@ -844,8 +805,6 @@ public class QuestionService : IQuestionService
                         SubjectId = soruDto.Header.SubjectId,
                         TopicId = soruDto.Header.TopicId,
                         PassageId = matchedPassage?.Id,
-                        AnswerColCount = recommendedColumns,
-                        LayoutPlan = layoutPlanJson,
                         ClassificationSource = classificationSource
                     };
 
@@ -1300,22 +1259,4 @@ public class QuestionService : IQuestionService
         public int EffectiveHeight { get; set; }
     }
 
-    private static string BuildUiLayoutPlanPayload(QuestionDto question)
-    {
-        if (question == null)
-        {
-            return string.Empty;
-        }
-
-        var fallbackColumns = question.AnswerColCount > 0
-            ? question.AnswerColCount
-            : Math.Max(1, Math.Min(question.Answers?.Count ?? 0, 4));
-
-        var uiPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
-            question.LayoutPlan,
-            fallbackColumns,
-            question.Passage != null);
-
-        return uiPlan;
-    }
 }

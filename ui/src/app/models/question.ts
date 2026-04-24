@@ -31,7 +31,6 @@ export interface Question {
   subTopics?: SubTopic[];
   correctAnswer?: Answer;
   answerColCount: number;
-  layoutPlan?: string;
   interactionType?: string;
   interactionPlan?: string;
   x: number;

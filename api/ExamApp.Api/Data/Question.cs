@@ -49,9 +49,6 @@ public class Question : BaseEntity
     // Şıkların kaç sütun olacağı. 
     // 3 demek yan yana 3 şık olacak demektir.
     // 1 demek cevaplar alt alta sıralanacak demektir.
-
-    public string? LayoutPlan { get; set; }
-
     // Canvas interaction type (e.g. mcq, dragDropLabeling)
     public string? InteractionType { get; set; }
 

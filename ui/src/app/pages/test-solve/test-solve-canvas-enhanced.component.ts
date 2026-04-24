@@ -29,13 +29,10 @@ import { SpinWheelComponent } from '../../shared/components/spin-wheel/spin-whee
 import { MatDialog } from '@angular/material/dialog';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { lastValueFrom } from 'rxjs';
-import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatIconModule } from '@angular/material/icon';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { Answer } from '../../models/answer';
-import { QuestionCanvasViewComponentv2 } from '../../shared/components/question-canvas-view-v2/question-canvas-view-v2.component';
-import { QuestionCanvasViewComponentv4 } from '../../shared/components/question-canvas-view-v4/question-canvas-view-v4.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 
 @Component({

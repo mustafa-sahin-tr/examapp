@@ -3,7 +3,6 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
-using ExamApp.Api.Services.Layout;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.AspNetCore.Http;
@@ -923,7 +922,6 @@ public class ExamService : IExamService
                     IsExample = tiq.WorksheetQuestion?.Question?.IsExample ?? false,
                     PracticeCorrectAnswer = tiq.WorksheetQuestion?.Question?.PracticeCorrectAnswer,
                     AnswerColCount = tiq.WorksheetQuestion?.Question?.AnswerColCount ?? 0,
-                    LayoutPlan = tiq.WorksheetQuestion.Question.LayoutPlan,
                     Passage = tiq.WorksheetQuestion?.Question?.PassageId != null
                         ? new PassageDto
                         {
@@ -951,11 +949,6 @@ public class ExamService : IExamService
             var fallbackColumns = dto.AnswerColCount > 0
                 ? dto.AnswerColCount
                 : Math.Max(1, Math.Min(dto.Answers?.Count ?? 0, 4));
-
-            dto.LayoutPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
-                dto.LayoutPlan,
-                fallbackColumns,
-                dto.Passage != null);
         }
 
         return worksheetInstanceDto;
@@ -976,7 +969,6 @@ public class ExamService : IExamService
                     Width = q.Width,
                     Height = q.Height,
                     ImageUrl = q.ImageUrl,
-                    LayoutPlan = q.LayoutPlan,
                     Answers = includeAnswers ? q.Answers.Select(a => new AnswerDto
                     {
                         X = a.X,
@@ -995,11 +987,6 @@ public class ExamService : IExamService
             var fallbackColumns = dto.AnswerColCount > 0
                 ? dto.AnswerColCount
                 : Math.Max(1, Math.Min(dto.Answers?.Count ?? 0, 4));
-
-            dto.LayoutPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
-                dto.LayoutPlan,
-                fallbackColumns,
-                dto.Passage != null);
         }
 
         return questions;
@@ -1069,7 +1056,6 @@ public class ExamService : IExamService
                     Y = questionEntity.Y,
                     Width = questionEntity.Width,
                     Height = questionEntity.Height,
-                    LayoutPlan = questionEntity.LayoutPlan,
                     Answers = questionEntity.Answers.Select(a => new AnswerDto
                     {
                         Id = a.Id,
@@ -1088,10 +1074,6 @@ public class ExamService : IExamService
                     ? questionDto.AnswerColCount
                     : Math.Max(1, Math.Min(questionDto.Answers.Count, 4));
 
-                questionDto.LayoutPlan = QuestionLayoutAnalyzer.BuildUiPlanPayload(
-                    questionDto.LayoutPlan,
-                    fallbackColumns,
-                    questionDto.Passage != null);
 
                 return new WorksheetInstanceQuestionDto
                 {

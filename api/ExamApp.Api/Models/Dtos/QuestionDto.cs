@@ -35,7 +35,6 @@ public class QuestionDto
 
     public int? CorrectAnswerId { get; set; } // Doğru cevap ID'si
     public string? CorrectAnswer { get; set; } // Doğru cevap ID'si
-    public string? LayoutPlan { get; set; }
 
     // Canvas interaction (e.g. mcq, dragDropLabeling)
     public string? InteractionType { get; set; }

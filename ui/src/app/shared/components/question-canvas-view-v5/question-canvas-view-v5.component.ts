@@ -3,8 +3,6 @@ import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { QuestionCanvasViewComponentv4 } from '../question-canvas-view-v4/question-canvas-view-v4.component';
-import { QuestionCanvasViewComponent } from '../question-canvas-view/question-canvas-view.component';
 
 const EMPTY_REGION: QuestionRegion = {
   id: 0,
@@ -31,10 +29,6 @@ type LayoutType = 'side-1col' | 'side-2col' | 'top-1row' | 'top-2row' | 'top-4ro
   styleUrls: ['./question-canvas-view-v5.component.scss'],
 })
 export class QuestionCanvasViewComponentv5 {
-  public get layoutClass(): string {
-    return this._questionRegion().layoutPlan?.layoutClass || '';
-  }
-
   public contentScale = 1;
 
   public questionImageSource = signal<string | null>(null);
@@ -126,26 +120,6 @@ export class QuestionCanvasViewComponentv5 {
   private _selectedChoice = signal<AnswerChoice | undefined>(undefined);
   private _correctChoice = signal<AnswerChoice | undefined>(undefined);
   private _mode = signal<'exam' | 'result'>('exam');
-
-  public get answerColumns(): number {
-    return this._questionRegion().layoutPlan?.answerColumns || 1;
-  }
-
-  public isInlineLayout(): boolean {
-    return this._questionRegion().layoutPlan?.layoutClass?.includes('inline') || false;
-  }
-
-  public getPanelFlex(panel: 'question' | 'answers'): string {
-    if (!this._questionRegion()) {
-      return panel === 'question' ? '7 7 0' : '2 2 0';
-    }
-    const plan = this._questionRegion().layoutPlan;
-    if (plan && typeof plan.questionFlex === 'number' && typeof plan.answersFlex === 'number') {
-      if (panel === 'question') return `${plan.questionFlex} ${plan.questionFlex} 0`;
-      if (panel === 'answers') return `${plan.answersFlex} ${plan.answersFlex} 0`;
-    }
-    return panel === 'question' ? '7 7 0' : '2 2 0';
-  }
 
   public getAnswerClasses(answer: AnswerChoice): Record<string, boolean> {
     const mode = this._mode();

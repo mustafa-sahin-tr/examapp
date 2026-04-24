@@ -11,27 +11,22 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
-import { QuestionCanvasForm } from '../../models/question-form';
 import { QuillModule } from 'ngx-quill';
-import { FormsModule, NgModel } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { QuestionDetectorService } from '../../services/question-detector.service';
 import { Prediction } from '../../models/prediction';
-import { HttpStatusCode } from '@angular/common/http';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import { QuestionCanvasComponent } from '../question/question-canvas.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
 import { MatDialog } from '@angular/material/dialog';
-import { QuestionCanvasViewComponentv3 } from '../../shared/components/question-canvas-view-v3/question-canvas-view-v3.component';
-import { QuestionCanvasViewComponentv4 } from '../../shared/components/question-canvas-view-v4/question-canvas-view-v4.component';
 import {
   ClassificationSelectorComponent,
   ClassificationSelection,
@@ -78,7 +73,6 @@ interface DragDropLabelingAuthoringState {
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
     ClassificationSelectorComponent,
-    //QuestionCanvasViewComponentv4,
   ],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss'],

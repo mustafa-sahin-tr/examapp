@@ -73,6 +73,30 @@ public class StudyPagesController : BaseController
     }
 
     [Authorize(Roles = "Teacher")]
+    [HttpPost("attach-image-by-subtopics")]
+    public async Task<IActionResult> AttachImageBySubTopics([FromBody] AttachStudyPageImageBySubTopicsRequestDto request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ImageUrl))
+        {
+            return BadRequest(new { message = "imageUrl zorunludur." });
+        }
+
+        if (request.SubTopicIds == null || request.SubTopicIds.Count == 0)
+        {
+            return BadRequest(new { message = "subTopicIds en az bir eleman icermelidir." });
+        }
+
+        var user = await GetAuthenticatedUserAsync();
+        var result = await _studyPageService.AttachImageBySubTopicsAsync(request, user);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Teacher")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

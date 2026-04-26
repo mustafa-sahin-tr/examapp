@@ -90,7 +90,7 @@ public class QuestionService : IQuestionService
             })
             .FirstOrDefaultAsync();
 
-        
+
 
         return question;
     }
@@ -185,7 +185,7 @@ public class QuestionService : IQuestionService
             })
             .ToListAsync();
 
-        
+
 
         return questionList;
     }
@@ -222,7 +222,7 @@ public class QuestionService : IQuestionService
                 question.InteractionType = questionDto.InteractionType;
                 question.InteractionPlan = questionDto.InteractionPlan;
                 question.ShowPassageFirst = questionDto.ShowPassageFirst;
-                
+
 
                 // 📌 Eğer yeni resim varsa, güncelle
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -325,7 +325,7 @@ public class QuestionService : IQuestionService
                     // SubjectId = questionDto.SubjectId,
                     // TopicId = questionDto.TopicId,
                     AnswerColCount = questionDto.AnswerColCount,
-                    
+
                 };
 
                 if (!string.IsNullOrEmpty(questionDto.Image) &&
@@ -492,6 +492,82 @@ public class QuestionService : IQuestionService
             {
                 Success = false,
                 Message = ex.Message
+            };
+        }
+    }
+
+    public async Task<StudyPageAttachImageResponseDto> AttachImageToStudyPage(StudyPageAttachImageDto request)
+    {
+        try
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ImageData))
+            {
+                return new StudyPageAttachImageResponseDto
+                {
+                    Success = false,
+                    Message = "ImageData zorunludur."
+                };
+            }
+
+            if (!_imageHelper.IsBase64String(request.ImageData))
+            {
+                return new StudyPageAttachImageResponseDto
+                {
+                    Success = false,
+                    Message = "Geçersiz imageData formatı."
+                };
+            }
+
+            var payload = request.ImageData.Contains(',')
+                ? request.ImageData.Split(',')[1]
+                : request.ImageData;
+
+            byte[] imageBytes;
+            try
+            {
+                imageBytes = Convert.FromBase64String(payload);
+            }
+            catch (FormatException)
+            {
+                return new StudyPageAttachImageResponseDto
+                {
+                    Success = false,
+                    Message = "ImageData decode edilemedi."
+                };
+            }
+
+            await using var imageStream = new MemoryStream(imageBytes);
+            var objectName = $"books/{Guid.NewGuid()}.jpg";
+            var imageUrl = await _minioService.UploadFileAsync(imageStream, objectName, "study-pages", "image/jpeg");
+
+            var @event = new StudyPageImageUploadedEvent
+            {
+                ImageUrl = imageUrl,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.OutboxMessages.Add(new OutboxMessage
+            {
+                Type = typeof(StudyPageImageUploadedEvent).AssemblyQualifiedName ?? nameof(StudyPageImageUploadedEvent),
+                Content = JsonSerializer.Serialize(@event),
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+
+            return new StudyPageAttachImageResponseDto
+            {
+                Success = true,
+                Message = "Gorsel study page books altina yuklendi.",
+                ImageUrl = imageUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            return new StudyPageAttachImageResponseDto
+            {
+                Success = false,
+                Message = $"Resim yuklenirken hata olustu: {ex.Message}"
             };
         }
     }
@@ -779,7 +855,7 @@ public class QuestionService : IQuestionService
                         passageLookup.TryGetValue(questionDto.PassageId, out matchedPassage);
                     }
 
-                    
+
                     var classificationSource = ClassificationSource.Human;
                     if (!string.IsNullOrEmpty(soruDto.Header.ClassificationSource) &&
                         Enum.TryParse<ClassificationSource>(soruDto.Header.ClassificationSource, ignoreCase: true, out var parsedSource))

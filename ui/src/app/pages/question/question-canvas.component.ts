@@ -368,6 +368,26 @@ export class QuestionCanvasComponent implements OnInit {
             //   bookTestId: testData.bookTestId,
             //   testValue: testData.id,
             // });
+            this.onSave();
+          },
+        });
+      },
+      error: (error) => {
+        console.error('Error creating test:', error);
+        this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+      },
+    });
+  }
+
+  onSaveAndFix() {
+    this.testCreateEnhancedComponent.onCreateAsync().subscribe({
+      next: (test) => {
+        console.log('Test created:', test);
+        this.id = test.examId;
+        this.testService.get(test.examId).subscribe({
+          next: (testData) => {
+            console.log('Test fetched:', testData);
+            this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
             this.onSave(true);
           },
         });
@@ -377,6 +397,11 @@ export class QuestionCanvasComponent implements OnInit {
         this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
       },
     });
+  }
+
+  sendToWorkPages() {
+    console.log('Çalışma sayfasına gönderiliyor...');
+    this.imageSelector.sendToStudyPage();
   }
 
   onSubmit() {
@@ -408,7 +433,7 @@ export class QuestionCanvasComponent implements OnInit {
     });
   }
 
-  onSave(navigateNewQuestion: boolean = false) {
+  onSave(sendToFix: boolean = false) {
     const formData = this.questionForm.value;
 
     if (formData.isExample) {
@@ -429,7 +454,9 @@ export class QuestionCanvasComponent implements OnInit {
       next: (data) => {
         console.log('Soru Kaydedildi:', data);
         this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
-        this.imageSelector.sendToFix();
+        if (sendToFix) {
+          this.imageSelector.sendToFix();
+        }
         this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
       },
       error: (err) => {

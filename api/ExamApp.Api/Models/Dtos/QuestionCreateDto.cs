@@ -10,6 +10,16 @@ public class BulkQuestionCreateDto
     public HeaderInfo Header { get; set; }
 }
 
+public class StudyPageAttachImageDto
+{
+    public string ImageData { get; set; }
+}
+
+public class StudyPageAttachImageResponseDto : ResponseBaseDto
+{
+    public string ImageUrl { get; set; } = string.Empty;
+}
+
 public class BulkPassageDto
 {
     public string Id { get; set; } // JSON'dan geliyor, ancak EF’de kullanılmayacak

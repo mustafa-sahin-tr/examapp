@@ -278,6 +278,113 @@ public class StudyPageService : IStudyPageService
         return await GetByIdAsync(page.Id, user);
     }
 
+    public async Task<AttachStudyPageImageBySubTopicsResultDto> AttachImageBySubTopicsAsync(AttachStudyPageImageBySubTopicsRequestDto request, UserProfileDto user)
+    {
+        var result = new AttachStudyPageImageBySubTopicsResultDto();
+
+        var imageUrl = request.ImageUrl?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(imageUrl))
+        {
+            result.Success = false;
+            result.Message = "imageUrl zorunludur.";
+            return result;
+        }
+
+        var subTopicIds = request.SubTopicIds
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (subTopicIds.Count == 0)
+        {
+            result.Success = false;
+            result.Message = "Gecerli subTopicIds bulunamadi.";
+            return result;
+        }
+
+        var subTopics = await _context.SubTopics
+            .Include(st => st.Topic)
+            .Where(st => subTopicIds.Contains(st.Id) && !st.IsDeleted)
+            .ToListAsync();
+
+        var subTopicById = subTopics.ToDictionary(st => st.Id, st => st);
+        var missingSubTopicIds = subTopicIds.Where(id => !subTopicById.ContainsKey(id)).ToList();
+        if (missingSubTopicIds.Count > 0)
+        {
+            result.Success = false;
+            result.Message = "Bazi subTopic kayitlari bulunamadi.";
+            result.MissingSubTopicIds = missingSubTopicIds;
+            return result;
+        }
+
+        var existingPages = await _context.StudyPages
+            .Include(p => p.Images)
+            .Where(p => !p.IsDeleted && p.SubTopicId.HasValue && subTopicIds.Contains(p.SubTopicId.Value))
+            .ToListAsync();
+
+        var pageBySubTopicId = existingPages
+            .GroupBy(p => p.SubTopicId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(p => p.CreateTime).First());
+
+        var processedPages = new List<StudyPage>();
+
+        foreach (var subTopicId in subTopicIds)
+        {
+            if (!pageBySubTopicId.TryGetValue(subTopicId, out var page))
+            {
+                var subTopic = subTopicById[subTopicId];
+
+                page = new StudyPage
+                {
+                    Title = subTopic.Name.Trim(),
+                    Description = string.Empty,
+                    GradeId = subTopic.Topic?.GradeId,
+                    SubjectId = subTopic.Topic?.SubjectId,
+                    TopicId = subTopic.TopicId,
+                    SubTopicId = subTopic.Id,
+                    IsPublished = true,
+                    CreatedByUserId = user.Id,
+                    CreatedByName = user.FullName ?? string.Empty,
+                    CreatedByRole = user.Role ?? string.Empty
+                };
+
+                _context.StudyPages.Add(page);
+                pageBySubTopicId[subTopicId] = page;
+                result.CreatedStudyPageCount += 1;
+            }
+            else
+            {
+                result.UpdatedStudyPageCount += 1;
+            }
+
+            var nextSortOrder = page.Images
+                .Where(i => !i.IsDeleted)
+                .Select(i => i.SortOrder)
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+
+            page.Images.Add(new StudyPageImage
+            {
+                ImageUrl = imageUrl,
+                SortOrder = nextSortOrder,
+                FileName = GetFileNameFromUrl(imageUrl)
+            });
+
+            processedPages.Add(page);
+        }
+
+        await _context.SaveChangesAsync();
+
+        result.StudyPages = processedPages
+            .GroupBy(p => p.Id)
+            .Select(g => MapToDto(g.First()))
+            .ToList();
+        result.Success = true;
+        result.Message = "Image basariyla eklendi.";
+
+        return result;
+    }
+
     public async Task<ResponseBaseDto> DeleteAsync(int id, UserProfileDto user)
     {
         var page = await _context.StudyPages
@@ -332,6 +439,20 @@ public class StudyPageService : IStudyPageService
             CoverImageUrl = images.FirstOrDefault()?.ImageUrl,
             Images = images
         };
+    }
+
+    private static string GetFileNameFromUrl(string imageUrl)
+    {
+        if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
+        {
+            var fileName = Path.GetFileName(uri.LocalPath);
+            if (!string.IsNullOrWhiteSpace(fileName))
+            {
+                return fileName;
+            }
+        }
+
+        return "external-image";
     }
 }
 

@@ -85,6 +85,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer>();
     x.AddConsumer<QuestionCreatedConsumer>();
+    x.AddConsumer<StudyPageImageUploadedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -98,6 +99,7 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);
+            e.ConfigureConsumer<StudyPageImageUploadedConsumer>(context);
         });
     });
 });

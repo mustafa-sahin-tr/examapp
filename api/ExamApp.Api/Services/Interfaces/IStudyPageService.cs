@@ -10,5 +10,6 @@ public interface IStudyPageService
     Task<StudyPageDto?> GetByIdAsync(int id, UserProfileDto user);
     Task<StudyPageDto> CreateAsync(CreateStudyPageRequestDto request, List<IFormFile> images, UserProfileDto user);
     Task<StudyPageDto?> UpdateAsync(int id, UpdateStudyPageRequestDto request, List<IFormFile> newImages, UserProfileDto user);
+    Task<AttachStudyPageImageBySubTopicsResultDto> AttachImageBySubTopicsAsync(AttachStudyPageImageBySubTopicsRequestDto request, UserProfileDto user);
     Task<ResponseBaseDto> DeleteAsync(int id, UserProfileDto user);
 }

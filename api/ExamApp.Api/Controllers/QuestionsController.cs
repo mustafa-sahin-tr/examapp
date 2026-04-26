@@ -84,6 +84,18 @@ public class QuestionsController : BaseController
         return Ok(reponse);
     }
 
+    [HttpPost("attach-study-page")]
+    public async Task<IActionResult> AddToStudyPage([FromBody] StudyPageAttachImageDto request)
+    {
+        var response = await _questionService.AttachImageToStudyPage(request);
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+
+        return Ok(response);
+    }
+
     [HttpPut("{questionId}/correct-answer")]
     [Authorize]
     public async Task<IActionResult> UpdateCorrectAnswer(int questionId, [FromBody] UpdateCorrectAnswerDto request)

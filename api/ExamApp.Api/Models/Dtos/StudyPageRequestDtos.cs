@@ -36,3 +36,17 @@ public class StudyPageFilterDto
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 10;
 }
+
+public class AttachStudyPageImageBySubTopicsRequestDto
+{
+    public string ImageUrl { get; set; } = string.Empty;
+    public List<int> SubTopicIds { get; set; } = new();
+}
+
+public class AttachStudyPageImageBySubTopicsResultDto : ResponseBaseDto
+{
+    public int CreatedStudyPageCount { get; set; }
+    public int UpdatedStudyPageCount { get; set; }
+    public List<int> MissingSubTopicIds { get; set; } = new();
+    public List<StudyPageDto> StudyPages { get; set; } = new();
+}

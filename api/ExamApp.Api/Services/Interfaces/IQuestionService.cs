@@ -15,6 +15,8 @@ public interface IQuestionService
 
     Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto);
 
+    Task<StudyPageAttachImageResponseDto> AttachImageToStudyPage(StudyPageAttachImageDto request);
+
     Task<ResponseBaseDto> UpdateCorrectAnswer(
         int questionId,
         int correctAnswerId);

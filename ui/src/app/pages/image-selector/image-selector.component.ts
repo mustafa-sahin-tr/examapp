@@ -1431,6 +1431,22 @@ export class ImageSelectorComponent {
     this.autoMode.set(!this.autoMode());
   }
 
+  public sendToStudyPage() {
+    console.log('Sending to study page...');
+    this.questionService.attachStudyPage(this.imageData()).subscribe((response) => {
+      if (response.success) {
+        this.snackBar.open(`Successfully attached study page with ${response.imageFile}`, 'Tamam', {
+          duration: 3000,
+        });
+        this.nextImage();
+      } else {
+        this.snackBar.open(`${response.message}`, 'Tamam', {
+          duration: 3000,
+        });
+      }
+    });
+  }
+
   public sendToFix() {
     const imageData = { image_base64: this.imageData() };
     const regionData = { question: this.regions() };

@@ -35,6 +35,10 @@ export class QuestionService {
     return this.http.post<any>(`${this.apiUrl}/save`, bulkDto);
   }
 
+  attachStudyPage(imageData: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/attach-study-page`, { imageData });
+  }
+
   updateCorrectAnswer(questionId: number, correctAnswerId: number, scale: number): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/${questionId}/correct-answer`, {
       correctAnswerId,

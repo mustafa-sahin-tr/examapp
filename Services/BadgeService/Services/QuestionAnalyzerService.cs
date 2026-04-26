@@ -1,8 +1,10 @@
 using System;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using BadgeService.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -58,14 +60,76 @@ public class QuestionAnalyzerService : IQuestionAnalyzerService
             var response = await httpClient.PostAsJsonAsync(analyzeUrl, payload, cancellationToken);
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            if (!response.IsSuccessStatusCode)  
+            if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("❌ Analyzer returned {StatusCode}: {Content}", response.StatusCode, content);
                 response.EnsureSuccessStatusCode(); // Throw if not success
             }
 
+            var analysisResponse = JsonSerializer.Deserialize<StudyPageAnalysisResponseDto>(
+                content,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+            if (analysisResponse is null)
+            {
+                _logger.LogWarning("⚠️ Study page analyzer returned an empty or invalid response body. ImageUrl: {ImageUrl}", imageUrl);
+                return;
+            }
+
             _logger.LogInformation("✅ Study page image analysis request accepted. ImageUrl: {ImageUrl}, Status: {StatusCode}, Response: {Content}",
                 imageUrl, response.StatusCode, content);
+
+            _logger.LogInformation(
+                "🧩 Parsed study page analysis response. Subject: {Subject}, Topic: {Topic}, SubtopicCount: {SubtopicCount}",
+                analysisResponse.Subject,
+                analysisResponse.Topic,
+                analysisResponse.SubtopicIds.Count);
+
+            if (analysisResponse.SubtopicIds.Count == 0)
+            {
+                _logger.LogWarning("⚠️ No subtopic ids returned from analyzer. Skipping attach-image-by-subtopics call. ImageUrl: {ImageUrl}", imageUrl);
+                return;
+            }
+
+            var examApiBaseUrl = _configuration["ExamApi:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(examApiBaseUrl))
+            {
+                _logger.LogWarning("⚠️ ExamApi:BaseUrl is not configured. Skipping attach-image-by-subtopics call.");
+                return;
+            }
+
+            var attachUrl = $"{examApiBaseUrl.TrimEnd('/')}/api/study-pages/attach-image-by-subtopics";
+            var attachPayload = new AttachStudyPageImageBySubTopicsRequestDto
+            {
+                ImageUrl = string.IsNullOrWhiteSpace(analysisResponse.ImageUrl) ? imageUrl : analysisResponse.ImageUrl,
+                SubTopicIds = analysisResponse.SubtopicIds
+            };
+
+            _logger.LogInformation(
+                "📤 Calling exam API attach-image-by-subtopics at {Url}. SubtopicCount: {SubtopicCount}",
+                attachUrl,
+                attachPayload.SubTopicIds.Count);
+
+
+            var attachResponse = await httpClient.PostAsJsonAsync(attachUrl, attachPayload, cancellationToken);
+            var attachContent = await attachResponse.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!attachResponse.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "❌ Exam API attach-image-by-subtopics failed. StatusCode: {StatusCode}, Content: {Content}",
+                    attachResponse.StatusCode,
+                    attachContent);
+                attachResponse.EnsureSuccessStatusCode();
+            }
+
+            _logger.LogInformation(
+                "✅ Exam API attach-image-by-subtopics succeeded. ImageUrl: {ImageUrl}, SubtopicCount: {SubtopicCount}",
+                attachPayload.ImageUrl,
+                attachPayload.SubTopicIds.Count);
         }
         catch (Exception ex)
         {
@@ -97,6 +161,7 @@ public class QuestionAnalyzerService : IQuestionAnalyzerService
 
             _logger.LogInformation("📤 Sending question {QuestionId} to analyzer at {Url}", questionId, analyzeUrl);
 
+            
             var response = await httpClient.PostAsJsonAsync(analyzeUrl, payload, cancellationToken);
 
             if (!response.IsSuccessStatusCode)

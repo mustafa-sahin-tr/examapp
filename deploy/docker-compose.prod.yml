@@ -229,6 +229,7 @@ services:
       MinioConfig__AccessKey: ${MINIO_ROOT_USER}
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
+      ExamApi__BaseUrl: http://exam-dotnet-api:5079
     depends_on:
       postgres:
         condition: service_healthy

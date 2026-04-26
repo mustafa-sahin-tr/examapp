@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -91,7 +92,26 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ServiceToService", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var preferredUsername = context.User.FindFirstValue("preferred_username");
+            // exam-admin client is treated as god/service user
+            return preferredUsername?.Equals("exam-admin", StringComparison.OrdinalIgnoreCase) == true;
+        }));
+
+    options.AddPolicy("TeacherOrService", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var preferredUsername = context.User.FindFirstValue("preferred_username");
+            // exam-admin client is treated as god/service user
+            var isServiceAccount = preferredUsername?.Equals("exam-admin", StringComparison.OrdinalIgnoreCase) == true;
+            if (isServiceAccount) return true;
+            return context.User.IsInRole("Teacher");
+        }));
+});
 
 var redisConfig = builder.Configuration.GetSection("Redis");
 

@@ -72,7 +72,7 @@ public class StudyPagesController : BaseController
         return Ok(result);
     }
 
-    [Authorize(Roles = "Teacher")]
+    [Authorize(Policy = "TeacherOrService")]
     [HttpPost("attach-image-by-subtopics")]
     public async Task<IActionResult> AttachImageBySubTopics([FromBody] AttachStudyPageImageBySubTopicsRequestDto request)
     {
@@ -87,6 +87,7 @@ public class StudyPagesController : BaseController
         }
 
         var user = await GetAuthenticatedUserAsync();
+
         var result = await _studyPageService.AttachImageBySubTopicsAsync(request, user);
         if (!result.Success)
         {

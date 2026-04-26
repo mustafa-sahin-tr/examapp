@@ -190,7 +190,7 @@ public class StudyPageService : IStudyPageService
             return null;
         }
 
-        if (page.CreatedByUserId != user.Id)
+        if (page.CreatedByUserId != user.Id && user.Role != "Service")
         {
             return null;
         }
@@ -396,7 +396,7 @@ public class StudyPageService : IStudyPageService
             return new ResponseBaseDto { Success = false, Message = "Calisma sayfasi bulunamadi." };
         }
 
-        if (page.CreatedByUserId != user.Id)
+        if (page.CreatedByUserId != user.Id && user.Role != "Service")
         {
             return new ResponseBaseDto { Success = false, Message = "Bu sayfayi silme yetkiniz yok." };
         }

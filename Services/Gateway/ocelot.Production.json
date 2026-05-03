@@ -1,0 +1,243 @@
+{
+    "Routes": [
+        {
+            "DownstreamPathTemplate": "/hub/badges",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "exam-badge-api",
+                    "Port": 8006
+                }
+            ],
+            "UpstreamPathTemplate": "/hub/badges",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST"
+            ],
+            "UseWebSockets": true
+        },
+        {
+            "DownstreamPathTemplate": "/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "exam-question-detector",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/question-detector-dev/{everything}"
+        },
+        {
+            "DownstreamPathTemplate": "/api/auth/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "auth-api",
+                    "Port": 5079
+                }
+            ],
+            "UpstreamPathTemplate": "/api/auth/{everything}"
+        },
+        {
+            "DownstreamPathTemplate": "/api/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "exam-dotnet-api",
+                    "Port": 5079
+                }
+            ],
+            "UpstreamPathTemplate": "/api/exam/{everything}",
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/hangfire",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "exam-dotnet-api",
+                    "Port": 5079
+                }
+            ],
+            "UpstreamPathTemplate": "/hangfire",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ],
+            "Priority": 1
+        },
+        {
+            "DownstreamPathTemplate": "/hangfire/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "exam-dotnet-api",
+                    "Port": 5079
+                }
+            ],
+            "UpstreamPathTemplate": "/hangfire/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ],
+            "Priority": 1
+        },
+        {
+            "DownstreamPathTemplate": "/api/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "exam-badge-api",
+                    "Port": 8006
+                }
+            ],
+            "UpstreamPathTemplate": "/api/badge/{everything}",
+            "AuthenticationOptions": {
+                "AuthenticationProviderKey": "Bearer"
+            }
+        },
+        {
+            "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/auth",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "keycloak",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/oidc-login",
+            "UpstreamHttpMethod": [
+                "GET"
+            ],
+            "AddQueriesToRequest": true
+        },
+        {
+            "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/token",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "keycloak",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/token",
+            "UpstreamHttpMethod": [
+                "POST"
+            ],
+            "AddQueriesToRequest": true
+        },
+        {
+            "DownstreamPathTemplate": "/realms/exam-realm/protocol/openid-connect/userinfo",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "keycloak",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/userinfo",
+            "UpstreamHttpMethod": [
+                "GET"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/resources/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "keycloak",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/resources/{everything}",
+            "UpstreamHttpMethod": [
+                "GET"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/realms/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "keycloak",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/auth/realms/{everything}",
+            "UpstreamHttpMethod": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+            ]
+        },
+        {
+            "DownstreamPathTemplate": "/realms/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "keycloak",
+                    "Port": 8080
+                }
+            ],
+            "UpstreamPathTemplate": "/realms/{everything}",
+            "UpstreamHttpMethod": [
+                "Get",
+                "Post"
+            ],
+            "AddHeadersToRequest": true
+        },
+        {
+            "DownstreamPathTemplate": "/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "minio",
+                    "Port": 9000
+                }
+            ],
+            "UpstreamPathTemplate": "/img/{everything}",
+            "UpstreamHttpMethod": [
+                "Get",
+                "Post"
+            ],
+            "AddHeadersToRequest": true
+        },
+        {
+            "DownstreamPathTemplate": "/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "auth-ui",
+                    "Port": 4200
+                }
+            ],
+            "UpstreamPathTemplate": "/app/{everything}",
+            "Priority": 0
+        },
+        {
+            "DownstreamPathTemplate": "/{everything}",
+            "DownstreamScheme": "http",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "angular-app",
+                    "Port": 4200
+                }
+            ],
+            "UpstreamPathTemplate": "/{everything}",
+            "Priority": 0
+        }
+    ],
+    "GlobalConfiguration": {
+        "BaseUrl": "http://localhost:5678"
+    }
+}

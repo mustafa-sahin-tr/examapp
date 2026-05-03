@@ -14,8 +14,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 var environment = builder.Environment.EnvironmentName;
 Console.WriteLine($"[Startup] Environment: {environment}, Kestrel Port: {kestrelPort}");
-builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
-builder.Configuration.AddJsonFile($"ocelot.{environment}.json", optional: true, reloadOnChange: true);
+var ocelotConfigFile = File.Exists($"ocelot.{environment}.json")
+    ? $"ocelot.{environment}.json"
+    : "ocelot.json";
+builder.Configuration.AddJsonFile(ocelotConfigFile, optional: false, reloadOnChange: true);
 
 StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
 

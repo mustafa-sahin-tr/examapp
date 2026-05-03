@@ -286,9 +286,10 @@ services:
   ocelot-gateway:
     build:
       context: ..
-      dockerfile: deploy/dockerfiles/dotnet-web.Dockerfile
+      dockerfile: deploy/dockerfiles/gateway.Dockerfile
       args:
         PROJECT_PATH: Services/Gateway/Gateway.csproj
+        OCELOT_ENVIRONMENT: Production
         APP_DLL: Gateway.dll
         EXPOSE_PORT: 5678
     container_name: ocelot-gateway

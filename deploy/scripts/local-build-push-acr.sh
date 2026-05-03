@@ -50,8 +50,9 @@ build docker buildx build --push \
 
 build docker buildx build --push \
   --platform "${PLATFORM}" \
-  -f deploy/dockerfiles/dotnet-web.Dockerfile \
+  -f deploy/dockerfiles/gateway.Dockerfile \
   --build-arg PROJECT_PATH=Services/Gateway/Gateway.csproj \
+  --build-arg OCELOT_ENVIRONMENT=Production \
   --build-arg APP_DLL=Gateway.dll \
   --build-arg EXPOSE_PORT=5678 \
   -t "${ACR_LOGIN_SERVER}/ocelot-gateway:${IMAGE_TAG}" \

@@ -82,8 +82,28 @@ app.add_middleware(
 # model = YOLO("data/questions/runs/train5/weights/best.pt")
 # sub_model = YOLO("data/answers/runs/train-answers-v10/weights/best.pt")  # <--- Alt modelin yolu
 
-QUESTION_MODEL_PATH = os.getenv("QUESTION_MODEL_PATH", "data/questions/runs/train5/weights/best.pt")
-ANSWER_MODEL_PATH = os.getenv("ANSWER_MODEL_PATH", "data/answers/runs/train-answers-v10/weights/best.pt")
+def resolve_model_path(env_var_name: str, deployed_path: str, legacy_path: str) -> str:
+    configured_path = os.getenv(env_var_name)
+    if configured_path:
+        return configured_path
+
+    deployed_model = Path(deployed_path)
+    if deployed_model.exists():
+        return str(deployed_model)
+
+    return legacy_path
+
+
+QUESTION_MODEL_PATH = resolve_model_path(
+    "QUESTION_MODEL_PATH",
+    "/app/models/question-best.pt",
+    "data/questions/runs/train5/weights/best.pt",
+)
+ANSWER_MODEL_PATH = resolve_model_path(
+    "ANSWER_MODEL_PATH",
+    "/app/models/answer-best.pt",
+    "data/answers/runs/train-answers-v10/weights/best.pt",
+)
 
 model = YOLO(QUESTION_MODEL_PATH)
 sub_model = YOLO(ANSWER_MODEL_PATH)  # <--- Alt modelin yolu

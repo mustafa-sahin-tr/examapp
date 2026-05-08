@@ -27,6 +27,12 @@
 		}
 	}
 
+	# Expose MinIO admin console under /minio for production operations.
+	# handle_path strips the /minio prefix before proxying to console service.
+	handle_path /minio* {
+		reverse_proxy exam-minio:9001
+	}	
+
 	# Single entry-point: forward everything else to Ocelot gateway
 	handle {
 		reverse_proxy ocelot-gateway:5678

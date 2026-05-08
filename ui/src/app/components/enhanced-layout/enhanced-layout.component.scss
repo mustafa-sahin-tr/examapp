@@ -271,6 +271,17 @@
     }
 }
 
+.mobile-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .mobile-toolbar-title {
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+}
+
 // Mat sidenav content için de margin ayarı
 mat-sidenav-content.main-content-wrapper {
     margin-left: 280px !important;
@@ -284,20 +295,23 @@ mat-sidenav-content.main-content-wrapper {
 // Responsive Design
 @media (max-width: 768px) {
     .enhanced-sidenav {
-        position: fixed;
+        width: 280px;
+        min-width: 280px;
+        max-width: 280px;
+        position: relative;
         z-index: 1000;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-
-        &:not(.collapsed) {
-            transform: translateX(0);
-        }
     }
 
     .main-content-wrapper,
     mat-sidenav-content.main-content-wrapper {
         margin-left: 0 !important;
-        padding-left: 10px;
+        padding-left: 0;
+    }
+
+    .mobile-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
     }
 }
 

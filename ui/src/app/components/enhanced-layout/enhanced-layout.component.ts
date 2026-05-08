@@ -11,6 +11,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterOutlet, Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
@@ -52,7 +53,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   // Signals for state management
   private readonly sidenavService = inject(SidenavService);
-  isSidenavCollapsed = computed(() => this.sidenavService.isSidenavCollapsed());
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  isMobile = signal(false);
+  isMobileSidenavOpen = signal(false);
+  isSidenavCollapsed = computed(() => !this.isMobile() && this.sidenavService.isSidenavCollapsed());
   isFullScreen = computed(() => this.sidenavService.isFullScreen());
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
@@ -113,6 +117,16 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   constructor(private router: Router) {}
 
   ngOnInit() {
+    this.breakpointObserver
+      .observe(['(max-width: 768px)'])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((state) => {
+        this.isMobile.set(state.matches);
+        if (!state.matches) {
+          this.isMobileSidenavOpen.set(false);
+        }
+      });
+
     // Set initial active menu item based on current route
     const currentRoute = this.router.url;
     const activeItem = this.menuItems.find((item) => item.route === currentRoute);
@@ -208,6 +222,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   }
 
   toggleSidenav() {
+    if (this.isMobile()) {
+      this.isMobileSidenavOpen.update((value) => !value);
+      return;
+    }
+
     this.sidenavService.toggleSidenav();
   }
 
@@ -217,6 +236,10 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       const menuItem = this.menuItems.find((item) => item.route === route);
       if (menuItem) {
         this.activeMenuItem.set(menuItem.id);
+      }
+
+      if (this.isMobile()) {
+        this.isMobileSidenavOpen.set(false);
       }
     }
   }

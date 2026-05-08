@@ -201,7 +201,7 @@
             "DownstreamScheme": "http",
             "DownstreamHostAndPorts": [
                 {
-                    "Host": "minio",
+                    "Host": "exam-minio",
                     "Port": 9000
                 }
             ],

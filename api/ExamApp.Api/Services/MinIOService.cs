@@ -126,9 +126,11 @@ public class MinIoService : IMinIoService
             }
             // Bucket varsa oluşturma, yoksa oluştur
             bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName));
+            Console.WriteLine($"[MinIO] Bucket '{bucketName}' exists: {found}");
             if (!found)
             {
                 await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName));
+                Console.WriteLine($"[MinIO] Bucket created: {bucketName}");
             }
 
             // Dosyayı MinIO'ya yükle
@@ -139,6 +141,7 @@ public class MinIoService : IMinIoService
                 .WithObjectSize(fileStream.Length)
                 .WithContentType(contentType));
 
+            Console.WriteLine($"[MinIO] File uploaded successfully: {fileName} to bucket: {bucketName}, ETag: {respo.Etag}, Size: {respo.Size} bytes, ObjectName: {respo.ObjectName} ");
             return $"/img/{bucketName}/{fileName}";
         }
         catch (MinioException e)

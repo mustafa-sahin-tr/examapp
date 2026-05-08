@@ -720,14 +720,14 @@ jobs:
               down --remove-orphans
 
             # Preserve infra volumes to avoid re-issuing TLS certificates and to keep
-            # stateful services (Postgres/Redis/RabbitMQ) persistent across bootstraps.
+            # stateful services (Postgres/Redis/RabbitMQ/MinIO) persistent across bootstraps.
             PROJECT="${COMPOSE_PROJECT_NAME:-$(basename "$(pwd)")}" 
             echo "Compose project: $PROJECT"
-            echo "Removing compose volumes (except caddy_data/caddy_config and postgres/redis/rabbitmq) ..."
+            echo "Removing compose volumes (except caddy_data/caddy_config and postgres/redis/rabbitmq/minio) ..."
             docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | while read -r vol; do
               vkey=$(docker volume inspect "$vol" --format '{{ index .Labels "com.docker.compose.volume" }}' 2>/dev/null || true)
               if [ "$vkey" = "caddy_data" ] || [ "$vkey" = "caddy_config" ] || \
-                 [ "$vkey" = "postgres_data" ] || [ "$vkey" = "redis_data" ] || [ "$vkey" = "rabbitmq_data" ]; then
+                 [ "$vkey" = "postgres_data" ] || [ "$vkey" = "redis_data" ] || [ "$vkey" = "rabbitmq_data" ] || [ "$vkey" = "minio_data" ]; then
                 echo "Keeping volume: $vol ($vkey)"
                 continue
               fi

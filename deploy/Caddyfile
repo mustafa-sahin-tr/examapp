@@ -62,4 +62,13 @@ pgadmin.{$DOMAIN} {
 	reverse_proxy exam-pgadmin:80
 }
 
+# Optional dedicated host for n8n.
+# Example: if DOMAIN=staging.hedefokul.com, this serves n8n.staging.hedefokul.com.
+n8n.{$DOMAIN} {
+	encode gzip
+	{$CADDY_TLS}
+
+	reverse_proxy exam-n8n:5678
+}
+
 

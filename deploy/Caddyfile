@@ -71,4 +71,13 @@ n8n.{$DOMAIN} {
 	reverse_proxy exam-n8n:5678
 }
 
+# Optional dedicated host for RabbitMQ Management.
+# Example: if DOMAIN=staging.hedefokul.com, this serves rabbitmq.staging.hedefokul.com.
+rabbitmq.{$DOMAIN} {
+	encode gzip
+	{$CADDY_TLS}
+
+	reverse_proxy exam-rabbitmq:15672
+}
+
 

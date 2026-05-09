@@ -37,7 +37,7 @@ SERVICES_TO_DEPLOY_NORM="$(trim_ws "${SERVICES_TO_DEPLOY:-}")"
 # IMPORTANT: keep application deployments isolated from the minimal/infra stack.
 # The minimal stack is managed via the dedicated workflow mode (bootstrap_minimal)
 # and should not be implicitly restarted/pulled during normal app deploys.
-APP_SERVICES="question-detector exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher angular-app auth-ui ocelot-gateway"
+APP_SERVICES="question-detector exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher angular-app auth-ui ocelot-gateway n8n"
 
 # Allow caller to override services via CLI args (e.g. vm-update.sh auth-api)
 if [ "$#" -gt 0 ]; then

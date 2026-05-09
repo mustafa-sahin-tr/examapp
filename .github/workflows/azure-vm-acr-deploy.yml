@@ -38,6 +38,7 @@ on:
           - angular-app
           - auth-ui
           - question-detector
+          - n8n
       image_tag:
         description: 'Optional image tag override (default: git sha)'
         type: string
@@ -723,11 +724,11 @@ jobs:
             # stateful services (Postgres/Redis/RabbitMQ/MinIO) persistent across bootstraps.
             PROJECT="${COMPOSE_PROJECT_NAME:-$(basename "$(pwd)")}" 
             echo "Compose project: $PROJECT"
-            echo "Removing compose volumes (except caddy_data/caddy_config and postgres/redis/rabbitmq/minio) ..."
+            echo "Removing compose volumes (except caddy_data/caddy_config and postgres/redis/rabbitmq/minio/n8n) ..."
             docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" | while read -r vol; do
               vkey=$(docker volume inspect "$vol" --format '{{ index .Labels "com.docker.compose.volume" }}' 2>/dev/null || true)
               if [ "$vkey" = "caddy_data" ] || [ "$vkey" = "caddy_config" ] || \
-                 [ "$vkey" = "postgres_data" ] || [ "$vkey" = "redis_data" ] || [ "$vkey" = "rabbitmq_data" ] || [ "$vkey" = "minio_data" ]; then
+                 [ "$vkey" = "postgres_data" ] || [ "$vkey" = "redis_data" ] || [ "$vkey" = "rabbitmq_data" ] || [ "$vkey" = "minio_data" ] || [ "$vkey" = "n8n_data" ]; then
                 echo "Keeping volume: $vol ($vkey)"
                 continue
               fi

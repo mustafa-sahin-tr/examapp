@@ -33,8 +33,33 @@
 		reverse_proxy exam-minio:9001
 	}	
 
+	# Expose n8n editor and webhook endpoints under /n8n.
+	handle_path /n8n* {
+		reverse_proxy n8n:5678
+	}
+
 	# Single entry-point: forward everything else to Ocelot gateway
 	handle {
 		reverse_proxy ocelot-gateway:5678
 	}
 }
+
+# Optional dedicated host for MinIO console.
+# Example: if DOMAIN=staging.hedefokul.com, this serves minio.staging.hedefokul.com.
+minio.{$DOMAIN} {
+	encode gzip
+	{$CADDY_TLS}
+
+	reverse_proxy exam-minio:9001
+}
+
+# Optional dedicated host for pgAdmin.
+# Example: if DOMAIN=staging.hedefokul.com, this serves pgadmin.staging.hedefokul.com.
+pgadmin.{$DOMAIN} {
+	encode gzip
+	{$CADDY_TLS}
+
+	reverse_proxy exam-pgadmin:80
+}
+
+

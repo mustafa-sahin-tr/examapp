@@ -1,0 +1,17 @@
+# Kaynak ortamda — sadece bu 5 tabloyu dump et
+pg_dump \
+  --host=localhost --port=5432 \
+  --username=postgres \
+  --dbname=examapp \
+  --table='"Grades"' \
+  --table='"Subjects"' \
+  --table='"GradeSubjects"' \
+  --table='"Topics"' \
+  --table='"SubTopics"' \
+  --data-only \
+  --column-inserts \
+  --on-conflict-do-nothing \
+  -f taxonomy_export.sql
+
+# Hedef ortamda — import et
+psql --host=TARGET_HOST --username=postgres --dbname=examapp -f taxonomy_export.sql

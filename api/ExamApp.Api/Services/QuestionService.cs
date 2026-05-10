@@ -1165,7 +1165,8 @@ public class QuestionService : IQuestionService
         int? topicId = null,
         int? subTopicId = null,
         int[]? subTopicIds = null,
-        string? classificationSourceStr = null)
+        string? classificationSourceStr = null,
+        int? difficulty = null)
     {
         try
         {
@@ -1264,6 +1265,14 @@ public class QuestionService : IQuestionService
                 question.ClassificationSource = parsedSource;
             else
                 return new ResponseBaseDto { Success = false, Message = $"Geçersiz sınıflandırma kaynağı: {sourceStr}. 'Human' veya 'AI' beklenmektedir." };
+
+            if (difficulty.HasValue)
+            {
+                if (difficulty.Value < 1 || difficulty.Value > 10)
+                    return new ResponseBaseDto { Success = false, Message = "Geçersiz zorluk seviyesi. 1 ile 10 arasında olmalıdır." };
+
+                question.DifficultyLevel = difficulty.Value;
+            }
 
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();

@@ -21,4 +21,7 @@ public class UpdateQuestionClassificationDto
 
     // "Human" or "AI" as string; will be parsed to enum in service
     public string? ClassificationSource { get; set; }
+
+    // If provided, question difficulty will be updated (expected range: 1-10).
+    public int? Difficulty { get; set; }
 }

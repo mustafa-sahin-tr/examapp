@@ -137,7 +137,8 @@ public class QuestionsController : BaseController
             request.TopicId,
             request.SubTopicId,
             request.SubTopicIds,
-            request.ClassificationSource
+            request.ClassificationSource,
+            request.Difficulty
         );
 
         if (!response.Success)

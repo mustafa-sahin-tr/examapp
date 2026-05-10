@@ -27,7 +27,8 @@ public interface IQuestionService
         int? topicId = null,
         int? subTopicId = null,
         int[]? subTopicIds = null,
-        string? classificationSourceStr = null);
+        string? classificationSourceStr = null,
+        int? difficulty = null);
 
     Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
 

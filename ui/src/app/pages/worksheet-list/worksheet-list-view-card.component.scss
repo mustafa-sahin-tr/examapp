@@ -421,7 +421,8 @@ a:hover {
   }
 
   .courses-list-view-card .image {
-    height: 350px;
+    min-height: 140px;
+    height: 140px;
   }
 
   .courses-list-view-card .info-content {

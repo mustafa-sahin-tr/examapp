@@ -97,6 +97,14 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'help', name: 'Yardım', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' },
   ];
+  // Bottom navigation items for mobile (max 4 primary items + menu trigger)
+  bottomNavItems: MenuItem[] = [
+    { id: 'dashboard', name: 'Ana Sayfa', icon: 'home', route: '/dashboard', type: 'menu' },
+    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu' },
+    { id: 'study', name: 'Çalışma', icon: 'school', route: '/study', type: 'menu' },
+    { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
+  ];
+
   /*
     menuItems = [
     { type: 'menu', name: 'Sınavlar', icon: 'folder', route: '/tests' },

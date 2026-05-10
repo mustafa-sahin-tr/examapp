@@ -175,4 +175,17 @@
       </main>
     </mat-sidenav-content>
   </mat-sidenav-container>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="mobile-bottom-nav" *ngIf="isMobile()">
+    <div class="bottom-nav-item" *ngFor="let item of bottomNavItems" [class.active]="item.id === activeMenuItem()"
+      (click)="navigateTo(item.route)">
+      <mat-icon>{{ item.icon }}</mat-icon>
+      <span class="bottom-nav-label">{{ item.name }}</span>
+    </div>
+    <div class="bottom-nav-item menu-trigger" (click)="toggleSidenav()">
+      <mat-icon>{{ isMobileSidenavOpen() ? 'close' : 'menu' }}</mat-icon>
+      <span class="bottom-nav-label">Menü</span>
+    </div>
+  </nav>
 </div>

@@ -19,9 +19,6 @@
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
-    position: fixed;
-    height: 100vh;
-    z-index: 100;
 
     &.collapsed {
         width: 72px;
@@ -260,14 +257,22 @@
     }
 }
 
-// Main Content Layout - Sadece Pozisyonlama
+// Main Content Layout
 .main-content-wrapper {
-    margin-left: 280px;
     transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     padding-left: 10px;
+}
 
-    &.sidebar-collapsed {
-        margin-left: 72px;
+// PC modda Angular Material'ın otomatik margin hesaplamasını override et
+// (CSS ile daralan sidenav genişliğini Material kendi takip edemiyor)
+@media (min-width: 769px) {
+    mat-sidenav-content.main-content-wrapper {
+        margin-left: 280px !important;
+        transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+        &.sidebar-collapsed {
+            margin-left: 72px !important;
+        }
     }
 }
 
@@ -282,36 +287,118 @@
     }
 }
 
-// Mat sidenav content için de margin ayarı
-mat-sidenav-content.main-content-wrapper {
-    margin-left: 280px !important;
-    transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-
-    &.sidebar-collapsed {
-        margin-left: 72px !important;
-    }
-}
-
 // Responsive Design
 @media (max-width: 768px) {
     .enhanced-sidenav {
-        width: 280px;
-        min-width: 280px;
-        max-width: 280px;
-        position: relative;
-        z-index: 1000;
+        width: 85vw;
+        min-width: 260px;
+        max-width: 320px;
     }
 
-    .main-content-wrapper,
-    mat-sidenav-content.main-content-wrapper {
-        margin-left: 0 !important;
+    .main-content-wrapper {
         padding-left: 0;
+        // Bottom nav için alan bırak
+        padding-bottom: 64px;
+    }
+
+    .main-content {
+        padding-bottom: 72px;
     }
 
     .mobile-toolbar {
         position: sticky;
         top: 0;
         z-index: 5;
+    }
+}
+
+// Mobile Bottom Navigation Bar
+.mobile-bottom-nav {
+    display: none;
+
+    @media (max-width: 768px) {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 200;
+        background: #1a1a2e;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        height: 64px;
+        align-items: stretch;
+        justify-content: space-around;
+        padding: 0 4px;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        gap: 3px;
+        color: #64748b;
+        cursor: pointer;
+        padding: 8px 4px;
+        border-radius: 12px;
+        transition: all 0.2s ease;
+        position: relative;
+        min-width: 0;
+        -webkit-tap-highlight-color: transparent;
+
+        mat-icon {
+            font-size: 22px;
+            width: 22px;
+            height: 22px;
+        }
+
+        .bottom-nav-label {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            line-height: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        &.active {
+            color: #667eea;
+
+            mat-icon {
+                transform: scale(1.1);
+            }
+
+            &::before {
+                content: '';
+                position: absolute;
+                top: 4px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 32px;
+                height: 3px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                border-radius: 0 0 3px 3px;
+                top: 0;
+            }
+        }
+
+        &:active {
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(0.95);
+        }
+
+        &.menu-trigger {
+            color: #94a3b8;
+
+            &:active {
+                color: #ffffff;
+            }
+        }
     }
 }
 

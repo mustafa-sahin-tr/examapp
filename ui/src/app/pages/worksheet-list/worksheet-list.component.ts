@@ -76,6 +76,7 @@ export class WorksheetListComponent {
   selectedSubjectIds: number[] = [];
   selectedGradeIds: number[] = [];
   deletingWorksheetId = signal<number | null>(null);
+  showMobileFilters = signal<boolean>(false);
 
   @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;
 
@@ -312,5 +313,9 @@ export class WorksheetListComponent {
       verticalPosition: 'top',
       panelClass: ['error-snackbar'],
     });
+  }
+
+  toggleMobileFilters(): void {
+    this.showMobileFilters.set(!this.showMobileFilters());
   }
 }

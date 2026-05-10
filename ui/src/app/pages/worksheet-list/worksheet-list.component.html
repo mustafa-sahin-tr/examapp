@@ -26,11 +26,22 @@
         </h2>
       </div>
     </div>
-    <div class="form-container">
-      <div class="form-column">
+
+    <!-- Mobile Filter Toggle Button -->
+    <button class="mobile-filter-toggle" (click)="toggleMobileFilters()">
+      <mat-icon>{{ showMobileFilters() ? 'close' : 'tune' }}</mat-icon>
+      <span>{{ showMobileFilters() ? 'Filtreleri Kapat' : 'Filtreler' }}</span>
+    </button>
+
+    <div class="form-container" [class.mobile-view]="true">
+      <!-- Mobile Filters Overlay -->
+      <div class="mobile-filters-overlay" *ngIf="showMobileFilters()" (click)="toggleMobileFilters()"></div>
+
+      <!-- Filters Panel -->
+      <div class="form-column filters-column" [class.mobile-open]="showMobileFilters()">
         <div class="filters-container">
           <div class="filters">
-            <button class="clear-btn">Temizle</button>
+            <button class="clear-btn" (click)="toggleMobileFilters()">Temizle</button>
             <div class="filter-category">
               <h4>Dersler</h4>
               <ul>
@@ -54,36 +65,13 @@
           </div>
         </div>
       </div>
+
+      <!-- Cards Grid -->
       <div class="form-column-3">
         <ul class="course-list">
           <li *ngFor="let course of pagedWorksheetsSignal().items; trackBy: trackWorksheet" class="course-item">
             <ng-container *ngComponentOutlet="worksheetListViewCardComponent; inputs: { course: course }">
             </ng-container>
-            <!-- <div class="course-card-module--image-container--o-meJ">
-              <img [src]="getBackgroundImage(course.id || 0)" alt="" width="250" height="125" loading="lazy" />
-            </div>
-            <div class="course-info">
-              <h3>
-                {{ course.name }}
-                <span *ngIf="course.instance && course.instance.status === 1" class="new-badge">TAMAMLANDI</span>
-                <span class="new-badge"
-                  ><strong> {{ course.questionCount }} Soru</strong></span
-                >
-                <span class="new-badge"
-                  ><strong> {{ course.gradeId }}.Sınıf</strong></span
-                >
-                <span class="new-badge"
-                  ><strong> ⭐ {{ 4.8 }}</strong></span
-                >
-                <span class="new-badge"
-                  ><strong>{{ course.maxDurationSeconds / 60 }}</strong> Dakika</span
-                >
-              </h3>
-              <a [routerLink]="['/test', course.id]"
-                ><span>{{ course.subtitle }}</span></a
-              >
-              <p>{{ course.description }}</p>
-            </div> -->
             <button class="menu-btn" mat-icon-button [matMenuTriggerFor]="worksheetMenu"
               [disabled]="deletingWorksheetId() === course.id" (click)="$event.stopPropagation()">
               <mat-icon *ngIf="deletingWorksheetId() !== course.id">more_vert</mat-icon>

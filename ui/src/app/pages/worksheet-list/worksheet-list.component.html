@@ -38,7 +38,7 @@
       <div class="mobile-filters-overlay" *ngIf="showMobileFilters()" (click)="toggleMobileFilters()"></div>
 
       <!-- Filters Panel -->
-      <div class="form-column filters-column" [class.mobile-open]="showMobileFilters()">
+      <div class="form-column-1 filters-column" [class.mobile-open]="showMobileFilters()">
         <div class="filters-container">
           <div class="filters">
             <button class="clear-btn" (click)="toggleMobileFilters()">Temizle</button>
@@ -72,19 +72,6 @@
           <li *ngFor="let course of pagedWorksheetsSignal().items; trackBy: trackWorksheet" class="course-item">
             <ng-container *ngComponentOutlet="worksheetListViewCardComponent; inputs: { course: course }">
             </ng-container>
-            <button class="menu-btn" mat-icon-button [matMenuTriggerFor]="worksheetMenu"
-              [disabled]="deletingWorksheetId() === course.id" (click)="$event.stopPropagation()">
-              <mat-icon *ngIf="deletingWorksheetId() !== course.id">more_vert</mat-icon>
-              <mat-icon *ngIf="deletingWorksheetId() === course.id" class="loading-icon">hourglass_empty</mat-icon>
-            </button>
-            <mat-menu #worksheetMenu="matMenu">
-              <button mat-menu-item (click)="onDeleteWorksheet(course.id || 0)"
-                [disabled]="deletingWorksheetId() === course.id">
-                <mat-icon *ngIf="deletingWorksheetId() !== course.id">delete</mat-icon>
-                <mat-icon *ngIf="deletingWorksheetId() === course.id" class="loading-icon">hourglass_empty</mat-icon>
-                <span>{{ deletingWorksheetId() === course.id ? 'Siliniyor...' : 'Sil' }}</span>
-              </button>
-            </mat-menu>
           </li>
         </ul>
       </div>

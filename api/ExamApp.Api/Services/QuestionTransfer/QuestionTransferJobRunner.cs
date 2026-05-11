@@ -384,6 +384,8 @@ public class QuestionTransferJobRunner
                 text = q.Text,
                 subText = q.SubText,
                 imageUrl = q.ImageUrl,
+                difficultyLevel = q.DifficultyLevel,
+                classificationSource = q.ClassificationSource?.ToString(),
                 showPassageFirst = q.ShowPassageFirst,
                 isExample = q.IsExample,
                 practiceCorrectAnswer = q.PracticeCorrectAnswer,
@@ -598,6 +600,8 @@ public class QuestionTransferJobRunner
                         SubText = qEl.TryGetProperty("subText", out var st) ? st.GetString() : null,
                         SubjectId = subjectId,
                         TopicId = topicId,
+                        DifficultyLevel = ParseDifficultyLevel(qEl),
+                        ClassificationSource = ParseClassificationSource(qEl),
                         ShowPassageFirst = qEl.TryGetProperty("showPassageFirst", out var spf) && spf.ValueKind == JsonValueKind.True,
                         IsExample = qEl.TryGetProperty("isExample", out var ie) && ie.ValueKind == JsonValueKind.True,
                         PracticeCorrectAnswer = qEl.TryGetProperty("practiceCorrectAnswer", out var pca) ? pca.GetString() : null,
@@ -811,6 +815,41 @@ public class QuestionTransferJobRunner
             var ext = m.Groups.Count > 1 ? m.Groups[1].Value : string.Empty;
             return $"question-v2{ext}";
         }, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    }
+
+    private static int ParseDifficultyLevel(JsonElement qEl)
+    {
+        if (!qEl.TryGetProperty("difficultyLevel", out var dl) || dl.ValueKind != JsonValueKind.Number)
+        {
+            return 1;
+        }
+
+        var value = dl.GetInt32();
+        return Math.Clamp(value, 1, 10);
+    }
+
+    private static ClassificationSource? ParseClassificationSource(JsonElement qEl)
+    {
+        if (!qEl.TryGetProperty("classificationSource", out var cs))
+        {
+            return null;
+        }
+
+        var source = cs.ValueKind switch
+        {
+            JsonValueKind.String => cs.GetString(),
+            JsonValueKind.Number => cs.TryGetInt32(out var numberValue) ? ((ClassificationSource)numberValue).ToString() : null,
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return null;
+        }
+
+        return Enum.TryParse<ClassificationSource>(source, ignoreCase: true, out var parsed)
+            ? parsed
+            : null;
     }
 
     private async Task TryAddFromMinioAsync(ZipArchive zip, string? url, string entryPath)

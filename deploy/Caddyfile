@@ -38,9 +38,10 @@
 		reverse_proxy n8n:5678
 	}
 
-	# Redirect bare root to Angular welcome page
+	# Rewrite bare root to /welcome so Angular serves welcome page without URL change
 	handle / {
-		redir https://{host}/welcome permanent
+		rewrite * /welcome
+		reverse_proxy ocelot-gateway:5678
 	}
 
 	# Single entry-point: forward everything else to Ocelot gateway

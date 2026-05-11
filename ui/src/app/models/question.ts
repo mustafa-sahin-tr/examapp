@@ -28,6 +28,7 @@ export interface Question {
   isExample: boolean;
   subjectId: number;
   topicId: number;
+  difficultyLevel?: number;
   subTopics?: SubTopic[];
   correctAnswer?: Answer;
   answerColCount: number;

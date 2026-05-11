@@ -13,6 +13,7 @@ public class QuestionDto
 
     public int? TopicId { get; set; } // Konu ID'si
     public int Point { get; set; }
+    public int DifficultyLevel { get; set; }
 
     public string? Image { get; set; } // Base64 formatında geliyor
     public bool IsExample { get; set; }

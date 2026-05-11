@@ -6,6 +6,7 @@ import {
   Input,
   Output,
   ViewChild,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -148,6 +149,40 @@ export class ImageSelectorComponent {
 
   // Classification selection for preview mode
   public currentClassification = signal<ClassificationSelection | null>(null);
+
+  public readonly previewDifficultyLevel = computed<number | null>(() => {
+    if (!this.previewMode()) {
+      return null;
+    }
+
+    const regions = this.regions();
+    const index = this.previewCurrentIndex();
+    const rawValue = regions?.[index]?.difficultyLevel;
+
+    if (typeof rawValue !== 'number' || !Number.isFinite(rawValue)) {
+      return null;
+    }
+
+    return Math.min(10, Math.max(1, Math.round(rawValue)));
+  });
+
+  public readonly previewDifficultyTone = computed<'easy' | 'medium' | 'hard' | null>(() => {
+    const level = this.previewDifficultyLevel();
+
+    if (level == null) {
+      return null;
+    }
+
+    if (level <= 3) {
+      return 'easy';
+    }
+
+    if (level <= 7) {
+      return 'medium';
+    }
+
+    return 'hard';
+  });
 
   private currentX = 0;
   private currentY = 0;

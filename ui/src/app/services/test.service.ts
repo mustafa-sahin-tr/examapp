@@ -215,6 +215,7 @@ export class TestService {
           isExample: question.isExample,
           subjectId: question.subjectId || 0,
           topicId: question.topicId || 0,
+          difficultyLevel: question.difficultyLevel,
           classificationSource: question.classificationSource ?? 0,
           subtopicId: firstSubtopicId,
           subtopicIds,

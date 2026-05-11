@@ -27,6 +27,7 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
 
   readonly previewMetaProvider = () => {
     const selection = this.imageSelector?.currentClassification?.() ?? null;
+
     const subtopicId = selection?.subtopicIds?.length ? selection.subtopicIds[0] : null;
 
     return {

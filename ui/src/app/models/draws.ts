@@ -39,6 +39,7 @@ export interface QuestionRegion {
   // Optional classification metadata (used to sync preview navigation with UI forms)
   subjectId?: number;
   topicId?: number;
+  difficultyLevel?: number;
   subtopicId?: number;
   // Optional multi-subtopic ids (used for preview classification selector)
   subtopicIds?: number[];

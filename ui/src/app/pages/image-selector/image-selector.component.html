@@ -11,9 +11,22 @@
             (choiceSelected)="onPreviewChoiceSelected($event)" (questionRemove)="onQuestionRemove($event)"
             (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
 
-          <!-- Classification Selector for Preview Mode -->
-          <app-classification-selector class="form-column-2" [initialSelection]="currentClassification()"
-            (selectionChange)="onClassificationChange($event)"></app-classification-selector>
+          <div class="form-column-2 preview-side-panel">
+            <div class="preview-difficulty-chip" *ngIf="previewDifficultyLevel() as level"
+              [ngClass]="previewDifficultyTone()">
+              <div class="preview-difficulty-chip__top">
+                <span class="preview-difficulty-chip__label">Zorluk</span>
+                <span class="preview-difficulty-chip__value">{{ level }}/10</span>
+              </div>
+              <div class="preview-difficulty-chip__bar">
+                <span class="preview-difficulty-chip__fill" [style.width.%]="level * 10"></span>
+              </div>
+            </div>
+
+            <!-- Classification Selector for Preview Mode -->
+            <app-classification-selector [initialSelection]="currentClassification()"
+              (selectionChange)="onClassificationChange($event)"></app-classification-selector>
+          </div>
         </div>
       </ng-container>
 

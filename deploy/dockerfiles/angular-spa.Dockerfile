@@ -38,4 +38,10 @@ COPY deploy/nginx/angular-spa.conf /etc/nginx/conf.d/default.conf
 # Copy normalized build output (overwrites default nginx index.html)
 COPY --from=build /app/out/ /usr/share/nginx/html/
 
+# Angular SSR/static builds may emit index.csr.html instead of index.html.
+# Normalize to index.html so nginx SPA fallback serves the app shell.
+RUN if [ -f /usr/share/nginx/html/index.csr.html ]; then \
+    cp /usr/share/nginx/html/index.csr.html /usr/share/nginx/html/index.html; \
+    fi
+
 EXPOSE 4200

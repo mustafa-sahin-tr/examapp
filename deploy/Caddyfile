@@ -38,6 +38,11 @@
 		reverse_proxy n8n:5678
 	}
 
+	# Redirect bare root to Angular welcome page
+	handle / {
+		redir https://{host}/welcome permanent
+	}
+
 	# Single entry-point: forward everything else to Ocelot gateway
 	handle {
 		reverse_proxy ocelot-gateway:5678

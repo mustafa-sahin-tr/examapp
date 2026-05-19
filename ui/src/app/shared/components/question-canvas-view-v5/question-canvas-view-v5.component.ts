@@ -80,6 +80,38 @@ export class QuestionCanvasViewComponentv5 {
   }
 
   private calculateBestLayout(region: QuestionRegion): LayoutType {
+    const { width: qW, sanitizedHeight, height: qH, answers } = region;
+    const effectiveHeight = sanitizedHeight || qH;
+    const qRatio = qW / effectiveHeight;
+
+    const firstAns = answers?.[0];
+    const aW = firstAns?.width || 0;
+    const gap = 12; // CSS'teki gap değeriyle uyumlu olmalı
+
+    // 1. Durum: Soru Dikey veya Kareyse (Yan yana yerleşim)
+    if (qRatio < 1.1) {
+      return effectiveHeight > 800 || qRatio < 0.6 ? 'side-1col' : 'side-2col';
+    }
+
+    // 2. Durum: Soru Yatay ise (Genişlik bazlı hiyerarşik kontrol)
+
+    // 4 şık yan yana sığar mı? (Soru genişliğinin %95'ini baz alalım)
+    const totalWidth4 = aW * 4 + gap * 3;
+    if (totalWidth4 < qW * 0.95) {
+      return 'top-1row'; // 4 tane yan yana (Senin örneğin tam buraya düşer)
+    }
+
+    // 2 şık yan yana sığar mı?
+    const totalWidth2 = aW * 2 + gap;
+    if (totalWidth2 < qW * 0.95) {
+      return 'top-2row'; // 2 satır 2 sütun (2x2)
+    }
+
+    // Sığmıyorsa alt alta
+    return 'top-4row';
+  }
+
+  private calculateBestLayoutv1(region: QuestionRegion): LayoutType {
     const { width: qW, height: qH, answers } = region;
     const qRatio = qW / qH;
 

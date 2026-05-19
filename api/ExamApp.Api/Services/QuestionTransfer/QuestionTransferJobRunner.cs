@@ -396,6 +396,7 @@ public class QuestionTransferJobRunner
                 y = q.Y,
                 width = q.Width,
                 height = q.Height,
+                sanitizedHeight = q.SanitizedHeight,
                 subject = q.SubjectId.HasValue && q.Subject != null
                     ? new { id = q.SubjectId, name = q.Subject.Name }
                     : null,

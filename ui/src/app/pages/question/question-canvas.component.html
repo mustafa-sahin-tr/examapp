@@ -1,9 +1,9 @@
 <div>
   <div class="form-container ta-left">
-    <div class="form-column">
+    <div class="form-column" [class.hidden-panel]="!showSidePanel()" [attr.aria-hidden]="!showSidePanel()">
       <app-test-create-enhanced [mode]="'miniform'"></app-test-create-enhanced>
     </div>
-    <div class="form-column-4">
+    <div class="form-column-4" [class.centered]="!showSidePanel()">
       <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
         <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center" class="flex-row">
           <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()" type="button">
@@ -87,6 +87,10 @@
               <button mat-menu-item (click)="togglePreviewMode()" type="button">
                 <mat-icon>visibility</mat-icon>
                 <span>Ön İzleme</span>
+              </button>
+              <button mat-menu-item (click)="showSidePanel.set(!showSidePanel())" type="button">
+                <mat-icon>{{ showSidePanel() ? 'view_sidebar' : 'view_sidebar' }}</mat-icon>
+                <span>{{ showSidePanel() ? 'Paneli Gizle' : 'Paneli Göster' }}</span>
               </button>
               <div mat-menu-item (click)="$event.stopPropagation()">
                 <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">

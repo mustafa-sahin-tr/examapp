@@ -63,6 +63,9 @@ public class Question : BaseEntity
 
     public int? Height { get; set; }
 
+    // Height of question-v2 image (question area without answer block).
+    public int? SanitizedHeight { get; set; }
+
     public bool IsCanvasQuestion { get; set; } = false;
 
     public ClassificationSource? ClassificationSource { get; set; }

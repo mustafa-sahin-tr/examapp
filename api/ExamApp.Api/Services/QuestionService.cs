@@ -50,6 +50,7 @@ public class QuestionService : IQuestionService
                 Y = q.Y,
                 Width = q.Width,
                 Height = q.Height,
+                SanitizedHeight = q.SanitizedHeight,
                 InteractionType = q.InteractionType,
                 InteractionPlan = q.InteractionPlan,
                 ShowPassageFirst = q.ShowPassageFirst,
@@ -144,6 +145,7 @@ public class QuestionService : IQuestionService
                 Y = tq.Question.Y,
                 Width = tq.Question.Width,
                 Height = tq.Question.Height,
+                SanitizedHeight = tq.Question.SanitizedHeight,
                 InteractionType = tq.Question.InteractionType,
                 InteractionPlan = tq.Question.InteractionPlan,
                 ShowPassageFirst = tq.Question.ShowPassageFirst,
@@ -872,6 +874,7 @@ public class QuestionService : IQuestionService
                         Y = 0,
                         Width = questionDto.Width,
                         Height = questionDto.Height,
+                        SanitizedHeight = effectiveQuestionHeight,
                         IsExample = questionDto.IsExample,
                         PracticeCorrectAnswer = questionDto.IsExample ? questionDto.ExampleAnswer : null,
                         IsCanvasQuestion = true,
@@ -1080,6 +1083,8 @@ public class QuestionService : IQuestionService
                 question.Width = (int)(question.Width * scale);
             if (question.Height != null)
                 question.Height = (int)(question.Height * scale);
+            if (question.SanitizedHeight != null)
+                question.SanitizedHeight = (int)(question.SanitizedHeight * scale);
 
             foreach (var a in question.Answers)
             {

@@ -6,11 +6,18 @@
           <app-question-navigator class="form-column" [questions]="previewQuestions"
             (questionSelected)="questionSelected($event)"></app-question-navigator>
 
-          <app-question-canvas-view class="form-column-4" [questionRegion]="regions()[previewCurrentIndex()]"
-            [currentClassification]="currentClassification()" [isPreviewMode]="true"
-            (choiceSelected)="onPreviewChoiceSelected($event)" (questionRemove)="onQuestionRemove($event)"
-            (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
-
+          <div class="form-column-4">
+            <div class="mb-2">
+              <app-question-canvas-view [questionRegion]="regions()[previewCurrentIndex()]"
+                [currentClassification]="currentClassification()" [isPreviewMode]="true"
+                (choiceSelected)="onPreviewChoiceSelected($event)" (questionRemove)="onQuestionRemove($event)"
+                (applyClassification)="onApplyClassification($event)"></app-question-canvas-view>
+            </div>
+            <div class="mb-2">
+              <app-question-canvas-view-v5 [questionRegion]="regions()[previewCurrentIndex()]" [isPreviewMode]="true"
+                (questionRemove)="onQuestionRemove($event)"></app-question-canvas-view-v5>
+            </div>
+          </div>
           <div class="form-column-2 preview-side-panel">
             <div class="preview-difficulty-chip" *ngIf="previewDifficultyLevel() as level"
               [ngClass]="previewDifficultyTone()">

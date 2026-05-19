@@ -676,6 +676,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("PracticeCorrectAnswer")
                         .HasColumnType("text");
 
+                    b.Property<int?>("SanitizedHeight")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("ShowPassageFirst")
                         .HasColumnType("boolean");
 

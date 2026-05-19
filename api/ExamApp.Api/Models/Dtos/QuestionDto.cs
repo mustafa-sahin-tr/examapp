@@ -47,6 +47,7 @@ public class QuestionDto
     public double? Y { get; set; }
     public double? Width { get; set; }
     public double? Height { get; set; }
+    public double? SanitizedHeight { get; set; }
 
     public int Order { get; set; }
     public ClassificationSource ClassificationSource { get; set; }

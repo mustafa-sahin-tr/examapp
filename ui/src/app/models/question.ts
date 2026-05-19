@@ -38,6 +38,7 @@ export interface Question {
   y: number;
   width: number;
   height: number;
+  sanitizedHeight?: number;
   isCanvasQuestion: boolean;
   correctAnswerId?: number;
   order?: number;

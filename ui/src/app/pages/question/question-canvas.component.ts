@@ -65,6 +65,7 @@ export class QuestionCanvasComponent implements OnInit {
   resetTest: boolean = false;
   public autoMode = signal<boolean>(false);
   public autoAlign = signal<boolean>(false);
+  public showSidePanel = signal<boolean>(true);
   public inProgress = signal<boolean>(false);
   public previewModeText = signal<string>('visibility');
   public dropdownVisible = signal<boolean>(false);

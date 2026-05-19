@@ -968,6 +968,7 @@ public class ExamService : IExamService
                     Y = q.Y,
                     Width = q.Width,
                     Height = q.Height,
+                    SanitizedHeight = q.SanitizedHeight,
                     ImageUrl = q.ImageUrl,
                     Answers = includeAnswers ? q.Answers.Select(a => new AnswerDto
                     {
@@ -1056,6 +1057,7 @@ public class ExamService : IExamService
                     Y = questionEntity.Y,
                     Width = questionEntity.Width,
                     Height = questionEntity.Height,
+                    SanitizedHeight = questionEntity.SanitizedHeight,
                     Answers = questionEntity.Answers.Select(a => new AnswerDto
                     {
                         Id = a.Id,

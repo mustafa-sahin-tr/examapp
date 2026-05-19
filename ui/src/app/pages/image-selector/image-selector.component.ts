@@ -32,6 +32,7 @@ import {
   ClassificationSelectorComponent,
   ClassificationSelection,
 } from '../../shared/components/classification-selector/classification-selector.component';
+import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 
 interface WarningMarker {
   id: number;
@@ -73,6 +74,7 @@ interface DragDropLabelingAuthoringState {
     MatSlideToggleModule,
     QuestionNavigatorComponent,
     QuestionCanvasViewComponent,
+    QuestionCanvasViewComponentv5,
     ClassificationSelectorComponent,
   ],
   templateUrl: './image-selector.component.html',

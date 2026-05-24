@@ -35,6 +35,9 @@ export class QuestionCanvasViewComponentv5 {
   public passageImageSource = signal<string | null>(null);
   public _questionRegion = signal<QuestionRegion>(EMPTY_REGION);
   currentLayout = signal<LayoutType>('top-4row');
+  currentMarginLeft = signal<number>(0);
+  answerMarginLeft = signal<number>(0);
+  answerMinWidth = signal<number>(0);
 
   // Sıralı cevaplar getter'ı: order > tag > id
   public get sortedAnswers(): AnswerChoice[] {
@@ -49,6 +52,9 @@ export class QuestionCanvasViewComponentv5 {
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const region = value ?? EMPTY_REGION;
     this.currentLayout = signal<LayoutType>('top-4row');
+    this.currentMarginLeft = signal<number>(0);
+    this.answerMarginLeft = signal<number>(0);
+    this.answerMinWidth = signal<number>(0);
     // Veri elimizde olduğu için direkt hesaplıyoruz
     const bestLayout = this.calculateBestLayout(region);
     console.log('Calculated best layout:', bestLayout, 'for question region:', region);
@@ -84,8 +90,9 @@ export class QuestionCanvasViewComponentv5 {
     const effectiveHeight = sanitizedHeight || qH;
     const qRatio = qW / effectiveHeight;
 
-    const firstAns = answers?.[0];
-    const aW = firstAns?.width || 0;
+    const maxAns = answers?.reduce((max, ans) => (ans.width > (max?.width || 0) ? ans : max), answers?.[0]);
+    const aW = 20 + (maxAns?.width || 0); // Cevap kartlarının minimum genişliği (padding(8) + border(2) + görsel)
+    this.answerMinWidth.set(aW);
     const gap = 12; // CSS'teki gap değeriyle uyumlu olmalı
 
     // 1. Durum: Soru Dikey veya Kareyse (Yan yana yerleşim)
@@ -94,16 +101,28 @@ export class QuestionCanvasViewComponentv5 {
     }
 
     // 2. Durum: Soru Yatay ise (Genişlik bazlı hiyerarşik kontrol)
-
+    this.currentMarginLeft.set(0);
     // 4 şık yan yana sığar mı? (Soru genişliğinin %95'ini baz alalım)
     const totalWidth4 = aW * 4 + gap * 3;
-    if (totalWidth4 < qW * 0.95) {
+    if (totalWidth4 < qW * 1.1) {
+      if (totalWidth4 > qW) {
+        this.currentMarginLeft.set(Math.max(0, (totalWidth4 - qW) / 2));
+      } else {
+        this.currentMarginLeft.set(0);
+        this.answerMarginLeft.set(Math.max(0, (qW - totalWidth4) / 2));
+      }
       return 'top-1row'; // 4 tane yan yana (Senin örneğin tam buraya düşer)
     }
 
     // 2 şık yan yana sığar mı?
     const totalWidth2 = aW * 2 + gap;
-    if (totalWidth2 < qW * 0.95) {
+    if (totalWidth2 < qW * 1.1) {
+      if (totalWidth2 > qW) {
+        this.currentMarginLeft.set(Math.max(0, (totalWidth2 - qW) / 2));
+      } else {
+        this.currentMarginLeft.set(0);
+        this.answerMarginLeft.set(Math.max(0, (qW - totalWidth2) / 2));
+      }
       return 'top-2row'; // 2 satır 2 sütun (2x2)
     }
 

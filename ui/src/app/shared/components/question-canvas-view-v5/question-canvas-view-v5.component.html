@@ -1,19 +1,20 @@
-<div class="qcv4-container" [class]="'layout-' + currentLayout()">
-  <div class="qcv4-question-image-wrapper">
-    <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl">
-      <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
-    </div>
-    <div class="qcv4-main-image-box">
-      <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
-    </div>
+<div style="display: flex; gap: 16px; align-items: center;">
+  <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl" style="flex-shrink: 0;">
+    <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
   </div>
-  <div class="qcv4-answers-grid">
-    @for (answer of _questionRegion().answers; track $index) {
-    <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" (mouseenter)="hoverAnswer(answer)"
-      (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)">
-      <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ $index + 1 }}" />
+  <div class="qcv4-container" [class]="'layout-' + currentLayout()">
+    <div class="qcv4-question-image-wrapper">
+      <div [style.marginLeft.px]="currentMarginLeft()" class="qcv4-main-image-box">
+        <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
+      </div>
     </div>
-    }
+    <div class="qcv4-answers-grid" style="width: fit-content;" [style.marginLeft.px]="answerMarginLeft()">
+      @for (answer of _questionRegion().answers; track $index) {
+      <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" (mouseenter)="hoverAnswer(answer)"
+        (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)">
+        <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ $index + 1 }}" />
+      </div>
+      }
 
+    </div>
   </div>
-</div>

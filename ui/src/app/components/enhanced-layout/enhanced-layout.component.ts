@@ -50,6 +50,8 @@ interface MenuItem {
 export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Cleanup subject for subscriptions
   private destroy$ = new Subject<void>();
+  private static readonly MOBILE_LAYOUT_QUERY =
+    '(max-width: 768px), ((max-height: 500px) and (orientation: landscape))';
 
   // Signals for state management
   private readonly sidenavService = inject(SidenavService);
@@ -126,7 +128,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.breakpointObserver
-      .observe(['(max-width: 768px)'])
+      .observe([EnhancedLayoutComponent.MOBILE_LAYOUT_QUERY])
       .pipe(takeUntil(this.destroy$))
       .subscribe((state) => {
         this.isMobile.set(state.matches);

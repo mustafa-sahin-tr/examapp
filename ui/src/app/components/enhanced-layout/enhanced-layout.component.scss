@@ -276,6 +276,12 @@
     }
 }
 
+@media ((max-height: 500px) and (orientation: landscape)) {
+    mat-sidenav-content.main-content-wrapper {
+        margin-left: 0 !important;
+    }
+}
+
 .mobile-toolbar {
     display: flex;
     align-items: center;
@@ -288,7 +294,7 @@
 }
 
 // Responsive Design
-@media (max-width: 768px) {
+@media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
     .enhanced-sidenav {
         width: 85vw;
         min-width: 260px;
@@ -316,7 +322,7 @@
 .mobile-bottom-nav {
     display: none;
 
-    @media (max-width: 768px) {
+    @media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
         display: flex;
         position: fixed;
         bottom: 0;

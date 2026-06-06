@@ -898,7 +898,7 @@ article.question-card:has(.question-card__body--canvas) {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), ((max-height: 500px) and (orientation: landscape)) {
   .solve-v3__header {
     position: sticky;
     top: 0;

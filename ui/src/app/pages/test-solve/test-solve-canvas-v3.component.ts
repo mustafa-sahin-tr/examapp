@@ -32,6 +32,8 @@ import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private passageOnlyByQuestionIndex = new Map<number, boolean>();
+  private static readonly MOBILE_VIEWPORT_QUERY =
+    '(max-width: 640px), ((max-height: 500px) and (orientation: landscape))';
   public isMobileViewport = signal(false);
   public mobileInsightPanelOpen = signal(false);
   private mobileViewportQuery: MediaQueryList | null = null;
@@ -46,7 +48,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     super(route, testService, router, dialog);
 
     if (typeof window !== 'undefined') {
-      this.mobileViewportQuery = window.matchMedia('(max-width: 640px)');
+      this.mobileViewportQuery = window.matchMedia(TestSolveCanvasComponentv3.MOBILE_VIEWPORT_QUERY);
       this.isMobileViewport.set(this.mobileViewportQuery.matches);
       if (this.mobileViewportQuery.matches) {
         this.focusMode.set(true);

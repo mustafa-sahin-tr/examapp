@@ -20,6 +20,7 @@ internal static class StartupConfigDump
         PrintSection(config, "MinioConfig");
         PrintSection(config, "Server");
         PrintSection(config, "Cors");
+        PrintSection(config, "QuestionAnalyzer");
 
         Console.WriteLine("========================================");
     }

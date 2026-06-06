@@ -71,6 +71,7 @@ Doldurman gereken kritik alanlar:
 - Postgres/Redis/Rabbit/MinIO/Keycloak şifreleri (hepsi güçlü olmalı)
 - `JWT_KEY` (32+ karakter)
 - Keycloak client secret’lar (`KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_ADMIN_CLIENT_SECRET`)
+- BadgeService AI analyzer kontrolü: `BADGE_AI_ACTIVE=true|false`
 
 ## 4) İlk Kurulum (Up)
 

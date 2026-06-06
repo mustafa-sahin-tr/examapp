@@ -251,6 +251,7 @@ services:
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       ExamApi__BaseUrl: http://exam-dotnet-api:5079
       QuestionAnalyzer__BaseUrl: http://n8n:5678
+      QuestionAnalyzer__AIActive: ${BADGE_AI_ACTIVE:-true}
     depends_on:
       postgres:
         condition: service_healthy

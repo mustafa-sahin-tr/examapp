@@ -13,7 +13,9 @@ import { MatButtonModule } from '@angular/material/button';
 export class SectionHeaderComponent {
   @Input() title: string = ''; // Başlık
   @Input() icon: string = ''; // Material veya özel ikon
+  @Input() iconName: string = ''; // Material icon adı
   @Input() subtitle: string = ''; // Alt başlık
+  @Input() variant: 'default' | 'featured' = 'default';
   @Input() showBackButton: boolean = false; // Geri butonu gösterme
   @Output() onBackClick = new EventEmitter<void>(); // Geri butonuna tıklama olayı
 

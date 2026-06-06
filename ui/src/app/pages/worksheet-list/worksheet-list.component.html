@@ -1,5 +1,5 @@
 <ng-container *ngIf="!searchControl.value">
-  <app-section-header title="Senin İçin Yeni Testler" icon="/icons/18.svg"></app-section-header>
+  <app-section-header title="Yeni Testler" iconName="auto_awesome"></app-section-header>
   <div class="list-container list-container--carousel">
     <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
     <div class="cards hidden-scrollable" #cardContainer>
@@ -132,7 +132,7 @@
   </div>
 </div>
 <ng-container *appIsStudent>
-  <app-section-header title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
+  <app-section-header title="Tamamlanmış Testler" iconName="task_alt"></app-section-header>
   <div class="list-container list-container--carousel">
     <ng-container *ngIf="completedTestSignal() as tests">
       <ng-container *ngIf="tests.items.length > 0; else noTests">

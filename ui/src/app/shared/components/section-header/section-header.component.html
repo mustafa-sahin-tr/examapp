@@ -1,9 +1,12 @@
-<div class="section-header">
+<div class="section-header" [ngClass]="'variant-' + variant">
   <div class="header-left">
     <button mat-icon-button *ngIf="showBackButton" (click)="onBack()" class="back-button">
       <mat-icon>arrow_back</mat-icon>
     </button>
-    <img *ngIf="icon" [src]="icon" class="section-icon" alt="{{ title }} icon" />
+    <span class="section-icon-wrap" *ngIf="iconName || icon">
+      <mat-icon *ngIf="iconName" class="section-material-icon" aria-hidden="true">{{ iconName }}</mat-icon>
+      <img *ngIf="!iconName && icon" [src]="icon" class="section-icon" alt="{{ title }} icon" />
+    </span>
     <div class="title-container">
       <h2 class="section-title">{{ title }}</h2>
       <p class="section-subtitle" *ngIf="subtitle">{{ subtitle }}</p>

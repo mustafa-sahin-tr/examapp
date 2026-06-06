@@ -36,7 +36,7 @@ $space-6: 32px;
   background-color: $primary-color;
   color: $white-color;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -901,7 +901,7 @@ app-pagination {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: $space-4;
+  // gap: $space-4;
 
   @media (max-width: calc($tablet - 1px)) {
     padding-left: 0;

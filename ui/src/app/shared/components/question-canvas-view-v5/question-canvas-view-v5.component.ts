@@ -1,4 +1,14 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  signal,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  OnDestroy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
@@ -29,7 +39,13 @@ type LayoutType = 'side-1col' | 'side-2col' | 'top-1row' | 'top-2row' | 'top-4ro
   styleUrls: ['./question-canvas-view-v5.component.scss'],
 })
 export class QuestionCanvasViewComponentv5 {
+  @ViewChild('questionImage') private questionImageRef?: ElementRef<HTMLImageElement>;
+  @ViewChild('questionImageBox') private questionImageBoxRef?: ElementRef<HTMLDivElement>;
+
+  private resizeObserver?: ResizeObserver;
+
   public contentScale = 1;
+  public visualScale = signal<number>(1);
 
   public questionImageSource = signal<string | null>(null);
   public passageImageSource = signal<string | null>(null);
@@ -71,6 +87,7 @@ export class QuestionCanvasViewComponentv5 {
     this.questionImageSource.set(transformedQuestionUrl);
     const passageUrl = region?.passage?.imageUrl ?? null;
     this.passageImageSource.set(passageUrl && passageUrl.trim().length > 0 ? passageUrl : null);
+    queueMicrotask(() => this.updateVisualScale());
   }
   @Input() correctAnswerVisible: boolean = false;
   @Input() isPreviewMode: boolean = false;
@@ -83,6 +100,21 @@ export class QuestionCanvasViewComponentv5 {
   }
   @Input() set mode(m: 'exam' | 'result' | null) {
     this._mode.set(m || 'exam');
+  }
+
+  ngAfterViewInit(): void {
+    const imageBox = this.questionImageBoxRef?.nativeElement;
+    if (!imageBox) {
+      return;
+    }
+
+    this.resizeObserver = new ResizeObserver(() => this.updateVisualScale());
+    this.resizeObserver.observe(imageBox);
+    this.updateVisualScale();
+  }
+
+  ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
   }
 
   private calculateBestLayout(region: QuestionRegion): LayoutType {
@@ -210,6 +242,31 @@ export class QuestionCanvasViewComponentv5 {
     }
 
     return url.replace(/question(\.[^/?#]+)?$/i, (_match, ext) => `question-v2${ext ?? ''}`);
+  }
+
+  public updateVisualScale(): void {
+    const questionWidth = this._questionRegion().width || 0;
+    if (!questionWidth) {
+      this.visualScale.set(1);
+      return;
+    }
+
+    const renderedWidth = this.questionImageRef?.nativeElement.getBoundingClientRect().width || 0;
+    if (!renderedWidth) {
+      return;
+    }
+
+    const ratio = Math.max(0.2, Math.min(1, renderedWidth / questionWidth));
+    this.visualScale.set(ratio);
+  }
+
+  public getScaledAnswerWidth(answer: AnswerChoice): number | null {
+    const answerWidth = answer.width || 0;
+    if (!answerWidth) {
+      return null;
+    }
+
+    return Math.round(answerWidth * this.visualScale());
   }
 
   enlargeImage() {

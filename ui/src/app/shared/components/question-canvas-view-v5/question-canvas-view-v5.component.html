@@ -4,15 +4,17 @@
   </div>
   <div class="qcv4-container" [class]="'layout-' + currentLayout()">
     <div class="qcv4-question-image-wrapper">
-      <div [style.marginLeft.px]="currentMarginLeft()" class="qcv4-main-image-box">
-        <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
+      <div #questionImageBox [style.marginLeft.px]="currentMarginLeft()" class="qcv4-main-image-box">
+        <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli"
+          (load)="updateVisualScale()" />
       </div>
     </div>
     <div class="qcv4-answers-grid" [style.marginLeft.px]="answerMarginLeft()">
       @for (answer of _questionRegion().answers; track $index) {
       <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" (mouseenter)="hoverAnswer(answer)"
         (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)">
-        <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ $index + 1 }}" />
+        <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ $index + 1 }}"
+          [style.width.px]="getScaledAnswerWidth(answer)" />
       </div>
       }
 

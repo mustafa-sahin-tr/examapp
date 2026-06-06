@@ -625,6 +625,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("AnswerColCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("BookName")
+                        .HasColumnType("text");
+
                     b.Property<int?>("ClassificationSource")
                         .HasColumnType("integer");
 

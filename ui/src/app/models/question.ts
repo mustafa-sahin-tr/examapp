@@ -20,6 +20,7 @@ export interface Question {
   text: string;
   subText?: string;
   imageUrl: string;
+  bookName?: string;
   category: Subject;
   answers: Answer[];
   passage?: Passage;

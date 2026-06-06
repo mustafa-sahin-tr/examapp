@@ -41,6 +41,7 @@ public class QuestionService : IQuestionService
                 Text = q.Text,
                 SubText = q.SubText,
                 ImageUrl = q.ImageUrl,
+                BookName = q.BookName,
                 SubjectId = q.SubjectId,
                 TopicId = q.TopicId,
                 CategoryName = q.Subject.Name,
@@ -136,6 +137,7 @@ public class QuestionService : IQuestionService
                 Text = tq.Question.Text,
                 SubText = tq.Question.SubText,
                 ImageUrl = tq.Question.ImageUrl,
+                BookName = tq.Question.BookName,
                 SubjectId = tq.Question.SubjectId,
                 TopicId = tq.Question.TopicId,
                 CategoryName = tq.Question.Subject.Name,
@@ -219,6 +221,7 @@ public class QuestionService : IQuestionService
 
                 question.Text = questionDto.Text;
                 question.SubText = questionDto.SubText;
+                question.BookName = questionDto.BookName;
                 question.Point = questionDto.Point;
                 // question.SubjectId = questionDto.SubjectId;
                 // question.TopicId = questionDto.TopicId;
@@ -325,6 +328,7 @@ public class QuestionService : IQuestionService
                 {
                     Text = questionDto.Text,
                     SubText = questionDto.SubText,
+                    BookName = questionDto.BookName,
                     Point = questionDto.Point,
                     // SubjectId = questionDto.SubjectId,
                     // TopicId = questionDto.TopicId,
@@ -870,6 +874,7 @@ public class QuestionService : IQuestionService
                     var question = new Question
                     {
                         ImageUrl = questionImageUrl,
+                        BookName = questionDto.BookName,
                         X = 0,
                         Y = 0,
                         Width = questionDto.Width,

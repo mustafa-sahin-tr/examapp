@@ -10,6 +10,7 @@ public class Question : BaseEntity
     public string? Text { get; set; } = string.Empty;  // Soru metni
     public string? SubText { get; set; } = string.Empty;  // Soru metni
     public string? ImageUrl { get; set; }  // Eğer soru resimli ise
+    public string? BookName { get; set; }
 
     public int? SubjectId { get; set; }  // Soru hangi derse ait
     public Subject Subject { get; set; }

@@ -12,6 +12,13 @@
           </button>
           <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
 
+          <button mat-stroked-button color="primary" class="upload-btn" (click)="folderInput.click()" type="button">
+            <mat-icon>folder_open</mat-icon>
+            <span>Klasör Yükle</span>
+          </button>
+          <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory
+            hidden />
+
           <div class="select-wrapper">
             <label for="subject">Kitap</label>
             <select id="subject" formControlName="bookId" required class="select-style-1">

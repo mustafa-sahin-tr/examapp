@@ -116,6 +116,7 @@ export class ImageSelectorComponent {
   >([]);
   public selectedPassageMap = new Map<string, string>(); // 🗂 Soru ID -> Passage ID eşlemesi
   public imageData = signal<string | null>(null); // 🖼️ Base64 formatında resim verisi
+  public bookName = signal<string | null>(null);
   public regions = signal<QuestionRegion[]>([]);
   public imageSrc = signal<string | null>(null);
   public imagName = signal<string | null>(null);
@@ -673,9 +674,27 @@ export class ImageSelectorComponent {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       this.imageFiles = Array.from(input.files).filter((file) => file.type.startsWith('image/'));
+      const firstFolder = this.extractBookName(this.imageFiles[0]);
+      this.bookName.set(firstFolder);
       this.currentImageIndex = 0;
       this.loadCurrentImage();
     }
+  }
+
+  private extractBookName(file: File | undefined): string | null {
+    if (!file) {
+      return null;
+    }
+
+    const relativePath = file.webkitRelativePath?.trim();
+    if (relativePath) {
+      const [folderName] = relativePath.split('/').filter(Boolean);
+      if (folderName) {
+        return folderName;
+      }
+    }
+
+    return null;
   }
 
   loadCurrentImage() {
@@ -684,6 +703,9 @@ export class ImageSelectorComponent {
     if (!file) return;
     const reader = new FileReader();
     this.imagName.set(file.name);
+    if (!this.bookName()) {
+      this.bookName.set(this.extractBookName(file));
+    }
     this.regions.set([]);
 
     reader.onload = () => {
@@ -752,6 +774,7 @@ export class ImageSelectorComponent {
     if (file) {
       const reader = new FileReader();
       this.imagName.set(file.name);
+      this.bookName.set(this.extractBookName(file));
       reader.onload = (e: ProgressEvent<FileReader>) => {
         this.imageSrc.set(e.target?.result as string);
         this.imageData.set(e.target?.result as string); // 📂 Resmi base64 olarak sakla
@@ -1712,6 +1735,7 @@ export class ImageSelectorComponent {
       passages: this.passages(),
       questions: this.regions().map((region) => ({
         ...region,
+        bookName: this.bookName(),
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,
         interactionType: this.getInteractionType(region.name),
@@ -1734,6 +1758,7 @@ export class ImageSelectorComponent {
       passages: this.passages(),
       questions: this.regions().map((region) => ({
         ...region,
+        bookName: this.bookName(),
         isExample: this.isExample(region.name),
         exampleAnswer: this.isExample(region.name) ? this.getExampleAnswer(region.name) : null,
         interactionType: this.getInteractionType(region.name),
@@ -1748,6 +1773,7 @@ export class ImageSelectorComponent {
     this.regions.set([]);
     this.imageData.set(null);
     this.imageSrc.set(null);
+    this.bookName.set(null);
     this.exampleAnswers.clear();
     this.exampleFlags.clear();
     this.selectedPassageMap.clear();

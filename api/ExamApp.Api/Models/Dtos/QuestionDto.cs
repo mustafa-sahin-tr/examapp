@@ -7,6 +7,7 @@ public class QuestionDto
     public string Text { get; set; }
     public string? SubText { get; set; }
     public string? ImageUrl { get; set; }
+    public string? BookName { get; set; }
     public string CategoryName { get; set; }
 
     public int? SubjectId { get; set; }

@@ -32,6 +32,7 @@ public class BulkPassageDto
 public class BulkQuestionDto
 {
     public string Name { get; set; }
+    public string? BookName { get; set; }
     public double X { get; set; }
     public double Y { get; set; }
     public int Width { get; set; }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, inject, Input, signal, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, signal, ViewChild } from '@angular/core';
 import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -50,6 +50,7 @@ import { WorksheetListViewCardComponent } from './worksheet-list-view-card.compo
   ],
 })
 export class WorksheetListComponent {
+  private readonly mobileMaxWidth = 767;
   protected readonly worksheetListViewCardComponent = WorksheetListViewCardComponent;
   testService = inject(TestService);
   searchControl = new FormControl('');
@@ -82,6 +83,14 @@ export class WorksheetListComponent {
 
   get totalPages(): number {
     return Math.ceil(this.pagedWorksheetsSignal().totalCount / this.pageSize);
+  }
+
+  get activeFilterCount(): number {
+    return this.selectedSubjectIds.length + this.selectedGradeIds.length;
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.activeFilterCount > 0;
   }
 
   trackWorksheet(index: number, worksheet: Test): number {
@@ -175,17 +184,16 @@ export class WorksheetListComponent {
     if (event.checked) {
       if (!this.selectedSubjectIds.includes(subjectId)) {
         this.selectedSubjectIds.push(subjectId);
-        this.pageNumber = 1;
-        this.updatePagedWorksheets(this.pageNumber);
       }
     } else {
       const index = this.selectedSubjectIds.indexOf(subjectId);
       if (index > -1) {
         this.selectedSubjectIds.splice(index, 1);
-        this.pageNumber = 1;
-        this.updatePagedWorksheets(this.pageNumber);
       }
     }
+
+    this.pageNumber = 1;
+    this.updatePagedWorksheets(this.pageNumber);
     console.log('Checkbox State:', event.checked, 'Value:', event.value);
   }
 
@@ -317,5 +325,59 @@ export class WorksheetListComponent {
 
   toggleMobileFilters(): void {
     this.showMobileFilters.set(!this.showMobileFilters());
+  }
+
+  clearFilters(): void {
+    this.selectedSubjectIds = [];
+    this.selectedGradeIds = [];
+    this.pageNumber = 1;
+    this.updatePagedWorksheets(this.pageNumber);
+
+    if (this.isMobileViewport()) {
+      this.showMobileFilters.set(false);
+    }
+  }
+
+  removeSubjectFilter(subjectId: number): void {
+    const index = this.selectedSubjectIds.indexOf(subjectId);
+    if (index === -1) {
+      return;
+    }
+
+    this.selectedSubjectIds.splice(index, 1);
+    this.pageNumber = 1;
+    this.updatePagedWorksheets(this.pageNumber);
+  }
+
+  removeGradeFilter(gradeId: number): void {
+    if (!this.selectedGradeIds.includes(gradeId)) {
+      return;
+    }
+
+    this.selectedGradeIds = this.selectedGradeIds.filter((id) => id !== gradeId);
+    this.pageNumber = 1;
+    this.updatePagedWorksheets(this.pageNumber);
+  }
+
+  isSubjectSelected(subjectId: number): boolean {
+    return this.selectedSubjectIds.includes(subjectId);
+  }
+
+  isGradeSelected(gradeId: number): boolean {
+    return this.selectedGradeIds.includes(gradeId);
+  }
+
+  getSubjectName(subjectId: number): string {
+    const subject = this.subjectsSignal()?.find((item) => item.id === subjectId);
+    return subject?.name ?? `Ders ${subjectId}`;
+  }
+
+  getGradeName(gradeId: number): string {
+    const grade = this.gradesSignal()?.find((item) => item.id === gradeId);
+    return grade?.name ?? `Sınıf ${gradeId}`;
+  }
+
+  private isMobileViewport(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth <= this.mobileMaxWidth;
   }
 }

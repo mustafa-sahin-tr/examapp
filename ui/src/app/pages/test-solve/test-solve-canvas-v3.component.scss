@@ -842,7 +842,7 @@ article.question-card:has(.question-card__body--canvas) {
     justify-content: center;
     justify-items: center;
     text-align: center;
-    max-width: calc(100vw - 24px);
+    // max-width: calc(100vw - 24px);
     overflow-x: auto;
     backdrop-filter: blur(14px);
   }

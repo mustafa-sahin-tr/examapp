@@ -1,5 +1,11 @@
 @use '@angular/material' as mat;
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
   --bodyColor: #63667D;
   --darkColor: #000000;
@@ -4221,5 +4227,129 @@ app-root,
   height: 100% !important;
   min-height: 0 !important;
   width: 100%;
+}
+
+/* Shared layout utilities for public landing sections */
+.ptb-140 {
+  padding-top: 140px;
+  padding-bottom: 140px;
+}
+
+.row {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 0;
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: calc(-1 * var(--bs-gutter-y));
+  margin-right: calc(-0.5 * var(--bs-gutter-x));
+  margin-left: calc(-0.5 * var(--bs-gutter-x));
+}
+
+.row > * {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  padding-right: calc(var(--bs-gutter-x) * 0.5);
+  padding-left: calc(var(--bs-gutter-x) * 0.5);
+  margin-top: var(--bs-gutter-y);
+}
+
+.g-4 {
+  --bs-gutter-x: 1.5rem;
+  --bs-gutter-y: 1.5rem;
+}
+
+.justify-content-center {
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .col-md-6 {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .col-xl-3 {
+    flex: 0 0 auto;
+    width: 25%;
+  }
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  text-decoration: none;
+}
+
+.nav-tabs {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tab-content > .tab-pane {
+  display: none;
+}
+
+.tab-content > .active {
+  display: block;
+}
+
+.fade {
+  transition: opacity 0.2s linear;
+}
+
+.fade:not(.show) {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    transition: none;
+  }
+}
+
+.default-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--primaryColor);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.default-btn:hover,
+.default-btn:focus-visible {
+  background: #1736cc;
+  outline: none;
+}
+
+.default-btn:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 1199px) {
+  .ptb-140 {
+    padding-top: 90px;
+    padding-bottom: 90px;
+  }
 }
 

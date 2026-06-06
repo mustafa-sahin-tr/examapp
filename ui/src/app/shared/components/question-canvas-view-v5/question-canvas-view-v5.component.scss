@@ -1,3 +1,10 @@
+.qcv4-root {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
 .qcv4-container {
   display: grid;
   gap: 24px;
@@ -86,4 +93,43 @@
 .qcv4-answer-card.is-incorrect {
   border: 2px solid #e53935;
   background: #ffebee;
+}
+
+@media (max-width: 768px) {
+  .qcv4-root {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .qcv4-passage,
+  .qcv4-question-image-wrapper,
+  .qcv4-main-image-box,
+  .qcv4-answers-grid {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .qcv4-main-image-box,
+  .qcv4-answers-grid {
+    margin-left: 0 !important;
+  }
+
+  .qcv4-question-image,
+  .qcv4-passage__image,
+  .qcv4-answer-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .qcv4-container {
+    gap: 12px;
+    overflow-x: hidden;
+  }
+
+  .qcv4-answer-card {
+    min-width: 0;
+  }
 }

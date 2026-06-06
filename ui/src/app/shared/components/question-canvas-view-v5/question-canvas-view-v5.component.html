@@ -1,4 +1,4 @@
-<div style="display: flex; gap: 16px; align-items: center;">
+<div class="qcv4-root">
   <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl" style="flex-shrink: 0;">
     <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
   </div>
@@ -8,7 +8,7 @@
         <img class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli" />
       </div>
     </div>
-    <div class="qcv4-answers-grid" style="width: fit-content;" [style.marginLeft.px]="answerMarginLeft()">
+    <div class="qcv4-answers-grid" [style.marginLeft.px]="answerMarginLeft()">
       @for (answer of _questionRegion().answers; track $index) {
       <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" (mouseenter)="hoverAnswer(answer)"
         (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)">

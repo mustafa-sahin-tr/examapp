@@ -409,51 +409,50 @@
     </div>
   </div>
   }
-</div>
+  @if (questionsPerView() === 1) {
+  <div class="mobile-question-dock">
+    <div class="mobile-question-dock__actions">
+      <button mat-icon-button class="dock-nav dock-nav--prev" matTooltip="Önceki soru" aria-label="Önceki soru"
+        (click)="prevQuestion()" [disabled]="!canGoPrev()">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
 
-@if (questionsPerView() === 1) {
-<div class="mobile-question-dock">
-  <div class="mobile-question-dock__actions">
-    <button mat-icon-button class="dock-nav dock-nav--prev" matTooltip="Önceki soru" aria-label="Önceki soru"
-      (click)="prevQuestion()" [disabled]="!canGoPrev()">
-      <mat-icon>chevron_left</mat-icon>
-    </button>
+      <button mat-icon-button class="dock-toggle" matTooltip="Otomatik geçiş {{ autoNextQuestion() ? 'kapat' : 'aç' }}"
+        [attr.aria-label]="autoNextQuestion() ? 'Otomatik geçiş kapat' : 'Otomatik geçiş aç'"
+        (click)="toggleAutoNextQuestion()" [class.is-active]="autoNextQuestion()">
+        <mat-icon>{{ autoNextQuestion() ? 'pause' : 'play_arrow' }}</mat-icon>
+      </button>
 
-    <button mat-icon-button class="dock-toggle" matTooltip="Otomatik geçiş {{ autoNextQuestion() ? 'kapat' : 'aç' }}"
-      [attr.aria-label]="autoNextQuestion() ? 'Otomatik geçiş kapat' : 'Otomatik geçiş aç'"
-      (click)="toggleAutoNextQuestion()" [class.is-active]="autoNextQuestion()">
-      <mat-icon>{{ autoNextQuestion() ? 'pause' : 'play_arrow' }}</mat-icon>
-    </button>
+      <button mat-icon-button class="dock-toggle"
+        matTooltip="İnsight paneli {{ mobileInsightPanelOpen() ? 'gizle' : 'göster' }}"
+        [attr.aria-label]="mobileInsightPanelOpen() ? 'İnsight panelini gizle' : 'İnsight panelini göster'"
+        (click)="toggleFocusMode()" [class.is-active]="mobileInsightPanelOpen()">
+        <mat-icon>{{ mobileInsightPanelOpen() ? 'visibility_off' : 'visibility' }}</mat-icon>
+      </button>
 
-    <button mat-icon-button class="dock-toggle"
-      matTooltip="İnsight paneli {{ mobileInsightPanelOpen() ? 'gizle' : 'göster' }}"
-      [attr.aria-label]="mobileInsightPanelOpen() ? 'İnsight panelini gizle' : 'İnsight panelini göster'"
-      (click)="toggleFocusMode()" [class.is-active]="mobileInsightPanelOpen()">
-      <mat-icon>{{ mobileInsightPanelOpen() ? 'visibility_off' : 'visibility' }}</mat-icon>
-    </button>
+      @if (testInstance && currentQuestions().length) {
+      @let mobileActiveQuestion = currentQuestions()[0];
+      @if (mobileActiveQuestion.question.question.isCanvasQuestion) {
+      <button mat-icon-button class="dock-toggle" matTooltip="Cevabı temizle" aria-label="Cevabı temizle"
+        (click)="focusOnQuestion(mobileActiveQuestion.index); clearCanvasAnswer()"
+        [disabled]="!mobileActiveQuestion.question.selectedAnswerId">
+        <mat-icon>check_box_outline_blank</mat-icon>
+      </button>
+      } @else {
+      <button mat-icon-button class="dock-toggle" matTooltip="Cevabı temizle" aria-label="Cevabı temizle"
+        (click)="focusOnQuestion(mobileActiveQuestion.index); clearAnswer()"
+        [disabled]="!mobileActiveQuestion.question.selectedAnswerId">
+        <mat-icon>backspace</mat-icon>
+      </button>
+      }
+      }
 
-    @if (testInstance && currentQuestions().length) {
-    @let mobileActiveQuestion = currentQuestions()[0];
-    @if (mobileActiveQuestion.question.question.isCanvasQuestion) {
-    <button mat-icon-button class="dock-toggle" matTooltip="Cevabı temizle" aria-label="Cevabı temizle"
-      (click)="focusOnQuestion(mobileActiveQuestion.index); clearCanvasAnswer()"
-      [disabled]="!mobileActiveQuestion.question.selectedAnswerId">
-      <mat-icon>check_box_outline_blank</mat-icon>
-    </button>
-    } @else {
-    <button mat-icon-button class="dock-toggle" matTooltip="Cevabı temizle" aria-label="Cevabı temizle"
-      (click)="focusOnQuestion(mobileActiveQuestion.index); clearAnswer()"
-      [disabled]="!mobileActiveQuestion.question.selectedAnswerId">
-      <mat-icon>backspace</mat-icon>
-    </button>
-    }
-    }
-
-    <button mat-icon-button class="dock-nav dock-nav--next" matTooltip="Sonraki soru" aria-label="Sonraki soru"
-      (click)="nextQuestion()" [disabled]="!canGoNext()">
-      <mat-icon>chevron_right</mat-icon>
-    </button>
+      <button mat-icon-button class="dock-nav dock-nav--next" matTooltip="Sonraki soru" aria-label="Sonraki soru"
+        (click)="nextQuestion()" [disabled]="!canGoNext()">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
   </div>
+  }
 </div>
-}
 }

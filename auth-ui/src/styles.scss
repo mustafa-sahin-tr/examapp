@@ -2477,16 +2477,16 @@ h4 {
     font-weight: bold;
   }
 
-  .filters-container {
+  .filters-container { 
     display: flex;
     justify-content: space-between;
-    margin-top: 20px;
+    // margin-top: 20px;
 
     .filters {
       width: 100%;
       padding: 15px;
       background-color: rgb(27, 24, 52);
-      border-radius: 8px;
+      // border-radius: 8px;
 
       h3 {
         font-size: 18px;

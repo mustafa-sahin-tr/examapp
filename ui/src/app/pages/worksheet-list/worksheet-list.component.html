@@ -1,13 +1,12 @@
 <ng-container *ngIf="!searchControl.value">
-  <app-section-header class="section-container" title="Senin İçin Yeni Testler"
-    icon="/icons/18.svg"></app-section-header>
+  <app-section-header title="Senin İçin Yeni Testler" icon="/icons/18.svg"></app-section-header>
   <div class="list-container list-container--carousel">
     <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
     <div class="cards hidden-scrollable" #cardContainer>
       <ul class="psds-carousel__track">
-        <li class="psds-carousel__item m-5" style="flex-basis: 377.305px"
-          *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
-          <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"> </app-worksheet-card>
+        <li class="psds-carousel__item" *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
+          <app-worksheet-card [test]="worksheet" type="shorts" (cardClick)="onCardClick(worksheet.id || 0)">
+          </app-worksheet-card>
         </li>
       </ul>
     </div>
@@ -16,12 +15,12 @@
 </ng-container>
 <div class="list-container list-container--results">
   <div class="search-results">
-    <div class="form-container">
+    <div class="form-container results-summary">
       <div class="form-column">
-        <app-pagination [currentPage]="pageNumber" [totalItems]="pagedWorksheetsSignal().totalCount"
-          (pageChanged)="changePage($event)"></app-pagination>
+        <!-- <app-pagination [currentPage]="pageNumber" [totalItems]="pagedWorksheetsSignal().totalCount"
+          (pageChanged)="changePage($event)"></app-pagination> -->
         <h2>
-          {{ searchControl.value ? searchControl.value + ' için ' : '' }}
+          <span class="desktop-search-prefix">{{ searchControl.value ? searchControl.value + ' için ' : '' }}</span>
           <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test bulundu
         </h2>
       </div>
@@ -29,13 +28,16 @@
 
     <!-- Mobile Filter Toggle Button -->
     <button class="mobile-filter-toggle" (click)="toggleMobileFilters()" [class.has-filters]="hasActiveFilters">
-      <mat-icon>{{ showMobileFilters() ? 'close' : 'tune' }}</mat-icon>
-      <span>
-        {{ showMobileFilters() ? 'Filtreleri Kapat' : 'Filtreler' }}
-        @if (activeFilterCount > 0) {
-        ({{ activeFilterCount }})
-        }
+      <span class="mobile-filter-main">
+        <mat-icon>{{ showMobileFilters() ? 'close' : 'tune' }}</mat-icon>
+        <span>
+          {{ showMobileFilters() ? 'Filtreleri Kapat' : 'Filtreler' }}
+          @if (activeFilterCount > 0) {
+          ({{ activeFilterCount }})
+          }
+        </span>
       </span>
+      <span class="mobile-filter-total"><strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test</span>
     </button>
 
     @if (hasActiveFilters) {
@@ -130,7 +132,7 @@
   </div>
 </div>
 <ng-container *appIsStudent>
-  <app-section-header class="section-container" title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
+  <app-section-header title="Tamamlanmış Testler" icon="/icons/2.svg"></app-section-header>
   <div class="list-container list-container--carousel">
     <ng-container *ngIf="completedTestSignal() as tests">
       <ng-container *ngIf="tests.items.length > 0; else noTests">

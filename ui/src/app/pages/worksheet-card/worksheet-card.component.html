@@ -1,3 +1,21 @@
+<div *ngIf="type === 'shorts'" class="shorts-card" (click)="onClick()">
+  <a class="shorts-thumb" [style.background-image]="'url(' + getBackgroundImage() + ')'"
+    [style.background-size]="'cover'" [style.background-position]="'center'" [style.background-repeat]="'no-repeat'"
+    [attr.aria-label]="test.name + ' testini ac'">
+    <span class="shorts-count">{{ test.questionCount || 0 }} soru</span>
+  </a>
+
+  <div class="shorts-meta">
+    <h4 class="shorts-title">{{ test.name }}</h4>
+    <p class="shorts-subtitle">{{ test.description || 'Yeni test' }}</p>
+    <p class="shorts-views">{{ test.instanceCount ?? 0 }} ogrenci</p>
+  </div>
+
+  <button type="button" class="shorts-menu" [attr.aria-label]="'Daha fazla islem'" (click)="$event.stopPropagation()">
+    <mat-icon>more_vert</mat-icon>
+  </button>
+</div>
+
 <div *ngIf="type === 'pscard'" class="ms-card"
   [ngClass]="[getStatusBorderClass(), getGradientClass(), getGlowClass(), getTransformClass(), getTypographyClass()]">
   <!-- 2. Icon Badge -->

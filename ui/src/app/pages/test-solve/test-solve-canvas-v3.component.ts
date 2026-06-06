@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
@@ -32,13 +32,36 @@ import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private passageOnlyByQuestionIndex = new Map<number, boolean>();
+  public isMobileViewport = signal(false);
+  public mobileInsightPanelOpen = signal(false);
+  private mobileViewportQuery: MediaQueryList | null = null;
+  private readonly mobileViewportQueryListener = (event: MediaQueryListEvent) => {
+    this.isMobileViewport.set(event.matches);
+    if (!event.matches) {
+      this.mobileInsightPanelOpen.set(false);
+    }
+  };
 
   constructor(route: ActivatedRoute, testService: TestService, router: Router, dialog: MatDialog) {
     super(route, testService, router, dialog);
+
+    if (typeof window !== 'undefined') {
+      this.mobileViewportQuery = window.matchMedia('(max-width: 640px)');
+      this.isMobileViewport.set(this.mobileViewportQuery.matches);
+      if (this.mobileViewportQuery.matches) {
+        this.focusMode.set(true);
+      }
+      this.mobileInsightPanelOpen.set(false);
+      this.mobileViewportQuery.addEventListener('change', this.mobileViewportQueryListener);
+    }
   }
 
   public override async loadTest(testId: number) {
     await super.loadTest(testId);
+    if (this.isMobileViewport()) {
+      this.focusMode.set(true);
+    }
+    this.mobileInsightPanelOpen.set(false);
     this.initializePassageFirstState();
   }
 
@@ -79,5 +102,23 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
 
   public sideDockActive(): boolean {
     return this.questionsPerView() === 1 && this.questionDockPosition() === 'side';
+  }
+
+  public override toggleFocusMode() {
+    if (this.isMobileViewport()) {
+      this.focusMode.set(true);
+      this.mobileInsightPanelOpen.update((open) => !open);
+      return;
+    }
+
+    super.toggleFocusMode();
+  }
+
+  public override ngOnDestroy(): void {
+    if (this.mobileViewportQuery) {
+      this.mobileViewportQuery.removeEventListener('change', this.mobileViewportQueryListener);
+    }
+
+    super.ngOnDestroy();
   }
 }

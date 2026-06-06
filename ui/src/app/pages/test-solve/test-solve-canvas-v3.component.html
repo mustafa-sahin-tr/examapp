@@ -9,10 +9,6 @@
           <p class="test-ident__subtitle">Toplam {{ testInstance.testInstanceQuestions.length }} soru</p>
         </div>
       </div>
-      <div class="header-tags">
-        <span class="chip">Görünüm: {{ questionsPerView() === 1 ? 'Tek' : questionsPerView() + 'li' }}</span>
-        <span class="chip" [class.chip--accent]="focusMode()">Odak modu {{ focusMode() ? 'açık' : 'kapalı' }}</span>
-      </div>
     </div>
 
     <div class="header-block header-block--progress" [class.header-block--gauge]="sideDockActive()">
@@ -29,12 +25,20 @@
         <span>{{ answeredCount() }} / {{ testInstance.testInstanceQuestions.length }} cevaplandı</span>
       </div>
       } @else {
+      <div class="progress-compact progress-compact--desktop">
+        <span>İlerleme</span>
+        <span class="progress-compact__meta">%{{ progressPercentage() | number: '1.0-0' }}</span>
+      </div>
       <div class="progress-label">
         <span>İlerleme</span>
         <span class="progress-value">%{{ progressPercentage() | number: '1.0-0' }}</span>
       </div>
       <div class="progress-rail">
         <div class="progress-rail__fill" [style.width.%]="progressPercentage()"></div>
+      </div>
+      <div class="progress-compact progress-compact--mobile">
+        <span class="progress-compact__meta">%{{ progressPercentage() | number: '1.0-0' }}</span>
+        <span class="progress-compact__meta progress-compact__meta--time">{{ formattedTime }}</span>
       </div>
       }
     </div>
@@ -209,11 +213,6 @@
               <mat-icon>{{ mobileInsightPanelOpen() ? 'visibility_off' : 'visibility' }}</mat-icon>
             </button>
 
-            <button mat-icon-button class="dock-toggle" matTooltip="Kontrast modu" aria-label="Kontrast modu"
-              (click)="toggleHighContrast()" [class.is-active]="highContrast()">
-              <mat-icon>contrast</mat-icon>
-            </button>
-
             @if (currentQuestions().length) {
             @let mobileActiveQuestion = currentQuestions()[0];
             @if (mobileActiveQuestion.question.question.isCanvasQuestion) {
@@ -261,10 +260,6 @@
             [class.is-active]="focusMode()">
             <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
           </button>
-          <button mat-icon-button matTooltip="Kontrast modu" aria-label="Kontrast modu" (click)="toggleHighContrast()"
-            [class.is-active]="highContrast()">
-            <mat-icon>contrast</mat-icon>
-          </button>
           @if (activeQuestion.question.question.isCanvasQuestion) {
           <button mat-icon-button matTooltip="Cevabı temizle" aria-label="Cevabı temizle"
             (click)="focusOnQuestion(activeQuestion.index); clearCanvasAnswer()"
@@ -302,11 +297,6 @@
           <button mat-stroked-button class="dock-toggle" (click)="toggleFocusMode()">
             <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
             Odak Modu
-          </button>
-
-          <button mat-stroked-button class="dock-toggle" (click)="toggleHighContrast()">
-            <mat-icon>contrast</mat-icon>
-            Kontrast
           </button>
 
           @if (activeQuestion.question.question.isCanvasQuestion) {
@@ -349,11 +339,6 @@
           <button mat-stroked-button class="footer-toggle" (click)="toggleFocusMode()">
             <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
             Odak Modu
-          </button>
-
-          <button mat-stroked-button class="footer-toggle" (click)="toggleHighContrast()">
-            <mat-icon>contrast</mat-icon>
-            Kontrast
           </button>
 
           @if (

@@ -15,16 +15,75 @@
 </ng-container>
 <div class="list-container list-container--results">
   <div class="search-results">
-    <div class="form-container results-summary">
+    <!-- <div class="form-container results-summary">
       <div class="form-column">
-        <!-- <app-pagination [currentPage]="pageNumber" [totalItems]="pagedWorksheetsSignal().totalCount"
-          (pageChanged)="changePage($event)"></app-pagination> -->
+        <app-pagination [currentPage]="pageNumber" [totalItems]="pagedWorksheetsSignal().totalCount"
+          (pageChanged)="changePage($event)"></app-pagination>
         <h2>
           <span class="desktop-search-prefix">{{ searchControl.value ? searchControl.value + ' için ' : '' }}</span>
           <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test bulundu
         </h2>
       </div>
+    </div> -->
+
+    <div class="desktop-filter-bar" aria-label="Masaustu filtre cubugu">
+      <div class="desktop-filter-left">
+        <button type="button" class="desktop-filter-trigger" [matMenuTriggerFor]="subjectsMenu"
+          [class.is-active]="selectedSubjectIds.length > 0">
+          <mat-icon>menu_book</mat-icon>
+          <span>Dersler</span>
+          @if (selectedSubjectIds.length > 0) {
+          <b>{{ selectedSubjectIds.length }}</b>
+          }
+        </button>
+
+        <button type="button" class="desktop-filter-trigger" [matMenuTriggerFor]="gradesMenu"
+          [class.is-active]="selectedGradeIds.length > 0">
+          <mat-icon>school</mat-icon>
+          <span>Sınıflar</span>
+          @if (selectedGradeIds.length > 0) {
+          <b>{{ selectedGradeIds.length }}</b>
+          }
+        </button>
+
+        @if (hasActiveFilters) {
+        <button type="button" class="desktop-filter-clear" (click)="clearFilters()">Temizle</button>
+        }
+      </div>
+
+      <div class="desktop-filter-right" aria-live="polite">
+        <strong>{{ pagedWorksheetsSignal().totalCount }}</strong>
+        <span>test</span>
+      </div>
     </div>
+
+    <mat-menu #subjectsMenu="matMenu" xPosition="after" yPosition="below" panelClass="desktop-filter-menu">
+      <div class="desktop-menu-panel" (click)="$event.stopPropagation()">
+        <h4>Dersler</h4>
+        <div class="desktop-menu-list">
+          <label class="desktop-menu-option" *ngFor="let category of subjectsSignal(); trackBy: trackCategory"
+            [attr.for]="'subject-' + category.id">
+            <input [id]="'subject-' + category.id" type="checkbox" [checked]="isSubjectSelected(category.id)"
+              (change)="onCheckboxChange({ checked: $any($event.target).checked, value: category })" />
+            <span>{{ category.name }}</span>
+          </label>
+        </div>
+      </div>
+    </mat-menu>
+
+    <mat-menu #gradesMenu="matMenu" xPosition="after" yPosition="below" panelClass="desktop-filter-menu">
+      <div class="desktop-menu-panel" (click)="$event.stopPropagation()">
+        <h4>Sınıflar</h4>
+        <div class="desktop-menu-list">
+          <label class="desktop-menu-option" *ngFor="let grade of gradesSignal(); trackBy: trackGrades"
+            [attr.for]="'grade-' + (grade.id || 0)">
+            <input [id]="'grade-' + (grade.id || 0)" type="checkbox" [checked]="isGradeSelected(grade.id || 0)"
+              (change)="onGradeCheckboxChange({ checked: $any($event.target).checked, value: grade })" />
+            <span>{{ grade.name }}</span>
+          </label>
+        </div>
+      </div>
+    </mat-menu>
 
     <!-- Mobile Filter Toggle Button -->
     <button class="mobile-filter-toggle" (click)="toggleMobileFilters()" [class.has-filters]="hasActiveFilters">

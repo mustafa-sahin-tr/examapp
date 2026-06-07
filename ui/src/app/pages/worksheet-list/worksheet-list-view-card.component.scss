@@ -193,20 +193,25 @@ h3 a:hover {
 }
 
 .action-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  margin-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.28);
 }
 
 .start-btn,
 .buy-btn {
-  height: 28px;
-  border-radius: 999px;
+  height: 38px;
+  width: 100%;
   padding: 0 10px;
   font-size: 11px;
   font-weight: 600;
-  border: 1px solid transparent;
+  border-radius: 0;
+  justify-content: center;
+  border: none;
+  border-right: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .start-btn {
@@ -220,7 +225,7 @@ h3 a:hover {
 .buy-btn {
   background: #fff;
   color: #0f172a;
-  border-color: rgba(148, 163, 184, 0.45);
+  border-right: none;
   cursor: pointer;
 }
 
@@ -264,10 +269,6 @@ h3 a:hover {
     height: 30px;
   }
 
-  .action-row {
-    gap: 5px;
-  }
-
   .meta-rating-row {
     gap: 6px;
     flex-wrap: nowrap;
@@ -275,8 +276,15 @@ h3 a:hover {
 
   .start-btn,
   .buy-btn {
-    height: 26px;
     padding: 0 9px;
-    font-size: 10px;
+    font-size: 11px;
+  }
+
+  .start-btn {
+    background: var(--primaryColor);
+  }
+
+  .buy-btn {
+    border-right: none;
   }
 }

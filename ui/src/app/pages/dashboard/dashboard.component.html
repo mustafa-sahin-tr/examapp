@@ -10,11 +10,7 @@
         <button *ngIf="canScrollLeft()" class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
         <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
           <ul class="psds-carousel__track">
-            <li
-              class="psds-carousel__item m-5"
-              style="flex-basis: 377.305px"
-              *ngFor="let vm of assignmentCards(); trackBy: trackAssignment"
-            >
+            <li class="psds-carousel__item" *ngFor="let vm of assignmentCards(); trackBy: trackAssignment">
               <app-worksheet-card [test]="vm.test" [assignment]="vm.assignment" (cardClick)="onCardClick(vm)">
               </app-worksheet-card>
               <div class="assignment-meta">
@@ -39,13 +35,13 @@
 </div>
 
 <div class="dashboard-section">
-  <app-section-header title="Öğrenme Aktivitesi" icon="/icons/28.svg"></app-section-header>
+  <!-- <app-section-header title="Öğrenme Aktivitesi" icon="/icons/28.svg"></app-section-header> -->
 
-  <div class="activity-actions">
+  <!-- <div class="activity-actions">
     <button type="button" class="reset-btn" [disabled]="resetInProgress()" (click)="onResetMyActivity()">
       {{ resetInProgress() ? 'Sıfırlanıyor...' : 'Aktiviteleri Sıfırla' }}
     </button>
-  </div>
+  </div> -->
 
   <p class="reset-message" *ngIf="resetMessage() as msg">{{ msg }}</p>
 
@@ -56,32 +52,24 @@
           <ng-container *ngIf="showActivitySummary()">
             <div class="activity-summary">
               <div class="number-card-container" *ngIf="activityNumberCardData().length > 0">
-                <ngx-charts-number-card
-                  [view]="[900, 200]"
-                  [scheme]="activityNumberCardScheme"
-                  [results]="activityNumberCardData()"
-                  [cardColor]="activityNumberCardColor"
-                >
-                </ngx-charts-number-card>
+                <div class="number-card-scroll">
+                  <ngx-charts-number-card [view]="activityNumberCardView()" [scheme]="activityNumberCardScheme"
+                    [results]="activityNumberCardData()" [cardColor]="activityNumberCardColor">
+                  </ngx-charts-number-card>
+                </div>
               </div>
             </div>
           </ng-container>
-          <ngx-charts-heat-map
-            [view]="[1200, 210]"
-            [scheme]="activityColorScheme"
-            [results]="activityDataFromApi()"
-            [xAxis]="true"
-            [yAxis]="true"
-            [legend]="false"
-            [showXAxisLabel]="true"
-            [showYAxisLabel]="true"
-            [gradient]="true"
-            [xAxisTickFormatting]="activityXAxisTickFormatting"
-            [tooltipText]="activityHeatmapTooltip"
-          >
-          </ngx-charts-heat-map>
+          <div class="heatmap-scroll">
+            <ngx-charts-heat-map [view]="activityHeatmapView()" [scheme]="activityColorScheme"
+              [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
+              [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
+              [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">
+            </ngx-charts-heat-map>
+          </div>
+          <!-- <p class="heatmap-mobile-hint" *ngIf="isMobileViewport()">Mobilde son 4 ay aktivite gösteriliyor</p> -->
           <div class="earned-badges-container">
-            <h3 class="earned-badges-heading">Kazanılan Rozetler</h3>
+            <h3 class="earned-badges-heading">Rozetler</h3>
             <ng-container *ngIf="badgeProgressLoading(); else badgesResolved">
               <p class="badges-state">Rozetler yükleniyor...</p>
             </ng-container>

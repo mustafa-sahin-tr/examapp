@@ -1,7 +1,64 @@
+.list-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.nav-btn {
+  padding: 8px 12px;
+  background-color: var(--primaryColor);
+  color: var(--whiteColor);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  min-width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cards {
+  flex: 1;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.cards::-webkit-scrollbar,
+.number-card-scroll::-webkit-scrollbar,
+.heatmap-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.psds-carousel__track {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.psds-carousel__item {
+  flex: 0 0 280px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
 .dashboard-section {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.heatmap-container {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 .activity-actions {
@@ -41,6 +98,24 @@
 .activity-summary .number-card-container {
   flex: 1 1 600px;
   min-width: 280px;
+}
+
+.number-card-scroll,
+.heatmap-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.number-card-scroll {
+  padding-bottom: 4px;
+}
+
+.heatmap-mobile-hint {
+  display: none;
+  margin: -4px 0 4px;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .earned-badges-container {
@@ -159,6 +234,84 @@
   .earned-badges-container {
     flex: 1 1 100%;
     min-width: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  $mobile-bottom-nav-height: 64px;
+
+  .dashboard-section {
+    gap: 14px;
+  }
+
+  .dashboard-section:last-of-type {
+    padding-bottom: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom) + 16px);
+  }
+
+  .activity-actions {
+    margin-top: 0;
+    justify-content: stretch;
+  }
+
+  .reset-btn {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .psds-carousel__track {
+    gap: 12px;
+    padding-right: 4px;
+  }
+
+  .psds-carousel__item {
+    flex-basis: min(82vw, 320px);
+    max-width: min(82vw, 320px);
+  }
+
+  .nav-btn {
+    display: none;
+  }
+
+  .activity-summary {
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+
+  .activity-summary .number-card-container {
+    min-width: 0;
+  }
+
+  .number-card-scroll {
+    padding-bottom: 0;
+  }
+
+
+
+  .heatmap-mobile-hint {
+    display: block;
+  }
+
+  .earned-badges-container {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .earned-badges-grid {
+    gap: 10px;
+  }
+
+  .badge-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+
+  .badge-tooltip {
+    display: none;
+  }
+
+  .assignment-meta {
+    margin-top: 10px;
   }
 }
 

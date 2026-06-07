@@ -3,6 +3,7 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  HostListener,
   OnDestroy,
   OnInit,
   ViewChild,
@@ -57,6 +58,17 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly assignmentCards = computed(() => this.assignments());
   readonly canScrollLeft = signal(false);
   readonly canScrollRight = signal(false);
+  readonly viewportWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 1280);
+  readonly isMobileViewport = computed(() => this.viewportWidth() < 768);
+  readonly mobileHeatmapWeeks = 17;
+  readonly activityHeatmapData = computed(() => {
+    const data = this.activityDataFromApi();
+    if (!this.isMobileViewport()) {
+      return data;
+    }
+
+    return data.slice(-this.mobileHeatmapWeeks);
+  });
   readonly showActivitySummary = computed(
     () =>
       this.activityNumberCardData().length > 0 ||
@@ -64,6 +76,24 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.badgeProgressError() ||
       this.earnedBadges().length > 0
   );
+  readonly activityHeatmapView = computed<[number, number]>(() => {
+    const weeks = Math.max(this.activityHeatmapData().length, this.isMobileViewport() ? 14 : 24);
+
+    if (this.isMobileViewport()) {
+      return [Math.max(weeks * 20, Math.max(this.viewportWidth() - 24, 320)), 190];
+    }
+
+    return [Math.max(weeks * 22, 1200), 210];
+  });
+  readonly showHeatmapYAxis = computed(() => true);
+  readonly showHeatmapAxisLabels = computed(() => !this.isMobileViewport());
+  readonly activityNumberCardView = computed<[number, number]>(() => {
+    if (this.isMobileViewport()) {
+      return [Math.max(this.viewportWidth() - 24, 300), 220];
+    }
+
+    return [900, 200];
+  });
 
   readonly scrollDistance = 600;
   private readonly demoActivityUserId = 16;
@@ -107,6 +137,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly activityNumberCardColor = '#232837';
 
   ngOnInit(): void {
+    this.updateViewportWidth();
+
     this.testService.getActiveAssignments().subscribe({
       next: (assignments) => {
         const viewModels = assignments.map((assignment) => ({
@@ -198,6 +230,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportWidth();
+    this.scheduleScrollIndicatorUpdate();
   }
 
   trackAssignment(index: number, item: AssignmentCardViewModel): number {
@@ -530,5 +568,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       console.warn('DashboardComponent: localStorage user verisi okunamadı', error);
       return null;
     }
+  }
+
+  private updateViewportWidth(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.viewportWidth.set(window.innerWidth);
   }
 }

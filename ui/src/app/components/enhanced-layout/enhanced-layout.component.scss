@@ -295,6 +295,8 @@
 
 // Responsive Design
 @media (max-width: 768px), ((max-height: 500px) and (orientation: landscape)) {
+    $mobile-bottom-nav-height: 64px;
+
     .enhanced-sidenav {
         width: 85vw;
         min-width: 260px;
@@ -304,11 +306,11 @@
     .main-content-wrapper {
         padding-left: 0;
         // Bottom nav için alan bırak
-        padding-bottom: 64px;
+        padding-bottom: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom));
     }
 
     .main-content {
-        padding-bottom: 72px;
+        padding-bottom: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom) + 20px);
     }
 
     .mobile-toolbar {

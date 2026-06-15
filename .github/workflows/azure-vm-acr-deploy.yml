@@ -374,7 +374,12 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts" "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
+            mkdir -p \
+              "${{ secrets.VM_DEPLOY_DIR }}" \
+              "${{ secrets.VM_DEPLOY_DIR }}/scripts" \
+              "${{ secrets.VM_DEPLOY_DIR }}/postgres/init" \
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/import" \
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
 
             # Ensure deploy tree is writable by the SSH user (scp-action untars into target).
             if command -v sudo >/dev/null 2>&1; then
@@ -393,7 +398,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/deploy-assets.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; mv /tmp/deploy-assets.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -419,7 +426,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem vm-update.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/scripts/vm-update.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem vm-update.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/vm-update.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/scripts'; mv /tmp/vm-update.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/scripts/vm-update.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -446,7 +455,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -511,6 +522,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure Keycloak theme dir exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
+
       - name: Upload Keycloak themes to VM
         run: |
           set -euo pipefail
@@ -520,7 +541,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -596,7 +619,12 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            mkdir -p "${{ secrets.VM_DEPLOY_DIR }}" "${{ secrets.VM_DEPLOY_DIR }}/scripts" "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
+            mkdir -p \
+              "${{ secrets.VM_DEPLOY_DIR }}" \
+              "${{ secrets.VM_DEPLOY_DIR }}/scripts" \
+              "${{ secrets.VM_DEPLOY_DIR }}/postgres/init" \
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/import" \
+              "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
 
             # Ensure deploy tree is writable by the SSH user (scp-action untars into target).
             if command -v sudo >/dev/null 2>&1; then
@@ -615,7 +643,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/deploy-assets.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; mv /tmp/deploy-assets.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -642,7 +672,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -756,7 +788,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/deploy-assets.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; mv /tmp/deploy-assets.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -782,7 +816,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem postgres-init.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/postgres/init/postgres-init.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem postgres-init.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/postgres-init.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'; mv /tmp/postgres-init.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/postgres/init/postgres-init.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -809,7 +845,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-import.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/keycloak/import/keycloak-import.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-import.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-import.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import'; mv /tmp/keycloak-import.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import/keycloak-import.tar.gz'"
 
           rm vm_ssh_key.pem
 
@@ -837,7 +875,9 @@ jobs:
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
 
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz
+          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
+          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
 
           rm vm_ssh_key.pem
 

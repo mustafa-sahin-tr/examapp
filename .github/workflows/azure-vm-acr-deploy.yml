@@ -389,6 +389,32 @@ jobs:
               chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
             fi
 
+      - name: Verify VM disk space for deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            DEPLOY_DIR="${{ secrets.VM_DEPLOY_DIR }}"
+            mkdir -p "$DEPLOY_DIR"
+
+            # Clean stale archives from previous failed uploads.
+            find "$DEPLOY_DIR" -type f -name '*.tar.gz' -delete || true
+
+            echo "Disk usage for deploy target:"
+            df -h "$DEPLOY_DIR" || df -h
+
+            avail_kb=$(df -Pk "$DEPLOY_DIR" | awk 'NR==2 {print $4}')
+            min_kb=524288
+            if [ -z "${avail_kb:-}" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+              echo "ERROR: Not enough free space on VM for deploy (required >= 512MB)." >&2
+              echo "Top directories under deploy dir:" >&2
+              du -h --max-depth=1 "$DEPLOY_DIR" 2>/dev/null | sort -h | tail -n 20 || true
+              exit 1
+            fi
+
       - name: Sync deploy assets to VM (tar over SSH)
         shell: bash
         run: |
@@ -483,6 +509,26 @@ jobs:
             set -e
             mkdir -p "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
 
+      - name: Verify VM disk space for theme sync
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            DEPLOY_DIR="${{ secrets.VM_DEPLOY_DIR }}"
+            mkdir -p "$DEPLOY_DIR/keycloak/keycloak-themes"
+            echo "Disk usage for theme target:"
+            df -h "$DEPLOY_DIR" || df -h
+
+            avail_kb=$(df -Pk "$DEPLOY_DIR" | awk 'NR==2 {print $4}')
+            min_kb=131072
+            if [ -z "${avail_kb:-}" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+              echo "ERROR: Not enough free space on VM for theme sync (required >= 128MB)." >&2
+              exit 1
+            fi
+
       - name: Sync Keycloak themes to VM (tar over SSH)
         shell: bash
         run: |
@@ -567,6 +613,30 @@ jobs:
               sudo chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
             else
               chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            fi
+
+      - name: Verify VM disk space for deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            DEPLOY_DIR="${{ secrets.VM_DEPLOY_DIR }}"
+            mkdir -p "$DEPLOY_DIR"
+
+            find "$DEPLOY_DIR" -type f -name '*.tar.gz' -delete || true
+
+            echo "Disk usage for deploy target:"
+            df -h "$DEPLOY_DIR" || df -h
+
+            avail_kb=$(df -Pk "$DEPLOY_DIR" | awk 'NR==2 {print $4}')
+            min_kb=524288
+            if [ -z "${avail_kb:-}" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+              echo "ERROR: Not enough free space on VM for deploy (required >= 512MB)." >&2
+              du -h --max-depth=1 "$DEPLOY_DIR" 2>/dev/null | sort -h | tail -n 20 || true
+              exit 1
             fi
 
       - name: Sync deploy assets to VM (tar over SSH)
@@ -679,6 +749,30 @@ jobs:
               sudo chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
             else
               chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
+            fi
+
+      - name: Verify VM disk space for bootstrap
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            DEPLOY_DIR="${{ secrets.VM_DEPLOY_DIR }}"
+            mkdir -p "$DEPLOY_DIR"
+
+            find "$DEPLOY_DIR" -type f -name '*.tar.gz' -delete || true
+
+            echo "Disk usage for bootstrap target:"
+            df -h "$DEPLOY_DIR" || df -h
+
+            avail_kb=$(df -Pk "$DEPLOY_DIR" | awk 'NR==2 {print $4}')
+            min_kb=1048576
+            if [ -z "${avail_kb:-}" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+              echo "ERROR: Not enough free space on VM for bootstrap (required >= 1GB)." >&2
+              du -h --max-depth=1 "$DEPLOY_DIR" 2>/dev/null | sort -h | tail -n 20 || true
+              exit 1
             fi
 
       - name: Sync deploy assets to VM (tar over SSH)

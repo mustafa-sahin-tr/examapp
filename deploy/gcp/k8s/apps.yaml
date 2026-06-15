@@ -1,0 +1,687 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exam-dotnet-api
+  namespace: examapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: exam-dotnet-api
+  template:
+    metadata:
+      labels:
+        app: exam-dotnet-api
+    spec:
+      containers:
+        - name: exam-dotnet-api
+          image: REPLACE_IMAGE/exam-dotnet-api:latest
+          ports:
+            - containerPort: 5079
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ASPNETCORE_URLS
+              value: http://+:5079
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: CONNECTIONSTRINGS_EXAM
+            - name: AuthApiBaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: AUTH_API_BASE_URL
+            - name: Jwt__Key
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: JWT_KEY
+            - name: Server__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: PUBLIC_BASE_URL
+            - name: MinioConfig__Endpoint
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_ENDPOINT
+            - name: MinioConfig__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_ROOT_USER
+            - name: MinioConfig__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: MinioConfig__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_BASE_URL
+            - name: Redis__Configuration
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: REDIS_CONNECTION
+            - name: Redis__Password
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: REDIS_PASSWORD
+            - name: Keycloak__Host
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_HOST_INTERNAL
+            - name: Keycloak__Realm
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_REALM
+            - name: Keycloak__Authority
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_AUTHORITY
+            - name: Keycloak__ClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_CLIENT_ID
+            - name: Keycloak__ClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_CLIENT_SECRET
+            - name: Keycloak__AdminClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_ADMIN_CLIENT_ID
+            - name: Keycloak__AdminClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_ADMIN_CLIENT_SECRET
+            - name: Keycloak__TokenUrl
+              value: realms/exam-realm/protocol/openid-connect/token
+            - name: Keycloak__RealmRolesUrl
+              value: admin/realms/exam-realm/roles
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exam-dotnet-api
+  namespace: examapp
+spec:
+  selector:
+    app: exam-dotnet-api
+  ports:
+    - name: http
+      port: 5079
+      targetPort: 5079
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-api
+  namespace: examapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-api
+  template:
+    metadata:
+      labels:
+        app: auth-api
+    spec:
+      containers:
+        - name: auth-api
+          image: REPLACE_IMAGE/auth-api:latest
+          ports:
+            - containerPort: 5079
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ASPNETCORE_URLS
+              value: http://+:5079
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: CONNECTIONSTRINGS_AUTH
+            - name: Jwt__Key
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: JWT_KEY
+            - name: Server__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: PUBLIC_BASE_URL
+            - name: MinioConfig__Endpoint
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_ENDPOINT
+            - name: MinioConfig__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_ROOT_USER
+            - name: MinioConfig__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: MinioConfig__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_BASE_URL
+            - name: Keycloak__Authority
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_AUTHORITY
+            - name: Keycloak__Host
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_HOST_INTERNAL
+            - name: Keycloak__Realm
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_REALM
+            - name: Keycloak__TokenUrl
+              value: realms/exam-realm/protocol/openid-connect/token
+            - name: Keycloak__UserUrl
+              value: admin/realms/exam-realm/users
+            - name: Keycloak__RealmRolesUrl
+              value: admin/realms/exam-realm/roles
+            - name: Keycloak__LogoutUrl
+              value: admin/realms/exam-realm/users/{0}/logout
+            - name: Keycloak__RedirectUri
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_REDIRECT_URI
+            - name: Keycloak__ClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_CLIENT_ID
+            - name: Keycloak__ClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_CLIENT_SECRET
+            - name: Keycloak__AdminClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_ADMIN_CLIENT_ID
+            - name: Keycloak__AdminClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_ADMIN_CLIENT_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-api
+  namespace: examapp
+spec:
+  selector:
+    app: auth-api
+  ports:
+    - name: http
+      port: 5079
+      targetPort: 5079
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exam-badge-api
+  namespace: examapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exam-badge-api
+  template:
+    metadata:
+      labels:
+        app: exam-badge-api
+    spec:
+      containers:
+        - name: exam-badge-api
+          image: REPLACE_IMAGE/exam-badge-api:latest
+          ports:
+            - containerPort: 8006
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: Kestrel__Port
+              value: '8006'
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: CONNECTIONSTRINGS_BADGE
+            - name: Jwt__Key
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: JWT_KEY
+            - name: Server__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: PUBLIC_BASE_URL
+            - name: RabbitMQ__Host
+              value: rabbitmq.examapp.svc.cluster.local
+            - name: RabbitMQ__Username
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_USER
+            - name: RabbitMQ__Password
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_PASS
+            - name: Keycloak__Authority
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_AUTHORITY
+            - name: Keycloak__Host
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_HOST_INTERNAL
+            - name: Keycloak__Realm
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_REALM
+            - name: Keycloak__ClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_CLIENT_ID
+            - name: Keycloak__ClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_CLIENT_SECRET
+            - name: Keycloak__AdminClientId
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_ADMIN_CLIENT_ID
+            - name: Keycloak__AdminClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: KEYCLOAK_ADMIN_CLIENT_SECRET
+            - name: Keycloak__TokenUrl
+              value: realms/exam-realm/protocol/openid-connect/token
+            - name: Keycloak__RealmRolesUrl
+              value: admin/realms/exam-realm/roles
+            - name: MinioConfig__Endpoint
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_ENDPOINT
+            - name: MinioConfig__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_ROOT_USER
+            - name: MinioConfig__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: MinioConfig__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: MINIO_BASE_URL
+            - name: ExamApi__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: EXAM_API_BASE_URL
+            - name: QuestionAnalyzer__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: N8N_BASE_URL
+            - name: QuestionAnalyzer__AIActive
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: BADGE_AI_ACTIVE
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exam-badge-api
+  namespace: examapp
+spec:
+  selector:
+    app: exam-badge-api
+  ports:
+    - name: http
+      port: 8006
+      targetPort: 8006
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exam-outbox-publisher
+  namespace: examapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exam-outbox-publisher
+  template:
+    metadata:
+      labels:
+        app: exam-outbox-publisher
+    spec:
+      containers:
+        - name: exam-outbox-publisher
+          image: REPLACE_IMAGE/exam-outbox-publisher:latest
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: CONNECTIONSTRINGS_EXAM
+            - name: RabbitMQ__Host
+              value: rabbitmq.examapp.svc.cluster.local
+            - name: RabbitMQ__Username
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_USER
+            - name: RabbitMQ__Password
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_PASS
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: examapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: n8nio/n8n:1
+          ports:
+            - containerPort: 5678
+          env:
+            - name: N8N_BASIC_AUTH_ACTIVE
+              value: 'true'
+            - name: N8N_BASIC_AUTH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: N8N_BASIC_AUTH_USER
+            - name: N8N_BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: N8N_BASIC_AUTH_PASSWORD
+            - name: N8N_PORT
+              value: '5678'
+            - name: N8N_PROTOCOL
+              value: https
+            - name: N8N_EDITOR_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: N8N_EDITOR_BASE_URL
+            - name: WEBHOOK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: N8N_WEBHOOK_URL
+            - name: GENERIC_TIMEZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: TZ
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: examapp
+spec:
+  selector:
+    app: n8n
+  ports:
+    - name: http
+      port: 5678
+      targetPort: 5678
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: question-detector
+  namespace: examapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: question-detector
+  template:
+    metadata:
+      labels:
+        app: question-detector
+    spec:
+      containers:
+        - name: question-detector
+          image: REPLACE_IMAGE/exam-question-detector:latest
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: question-detector
+  namespace: examapp
+spec:
+  selector:
+    app: question-detector
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: angular-app
+  namespace: examapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: angular-app
+  template:
+    metadata:
+      labels:
+        app: angular-app
+    spec:
+      containers:
+        - name: angular-app
+          image: REPLACE_IMAGE/ui:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular-app
+  namespace: examapp
+spec:
+  selector:
+    app: angular-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-ui
+  namespace: examapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-ui
+  template:
+    metadata:
+      labels:
+        app: auth-ui
+    spec:
+      containers:
+        - name: auth-ui
+          image: REPLACE_IMAGE/auth-ui:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-ui
+  namespace: examapp
+spec:
+  selector:
+    app: auth-ui
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ocelot-gateway
+  namespace: examapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ocelot-gateway
+  template:
+    metadata:
+      labels:
+        app: ocelot-gateway
+    spec:
+      containers:
+        - name: ocelot-gateway
+          image: REPLACE_IMAGE/ocelot-gateway:latest
+          ports:
+            - containerPort: 5678
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: Kestrel__Port
+              value: '5678'
+            - name: Server__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: PUBLIC_BASE_URL
+            - name: Keycloak__Realm
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_REALM
+            - name: Keycloak__ClientCallbackUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_CLIENT_CALLBACK_URL
+            - name: Cors__AllowedOrigins__0
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: CORS_ALLOWED_ORIGIN_0
+            - name: Keycloak__Host
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: KEYCLOAK_HOST_INTERNAL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ocelot-gateway
+  namespace: examapp
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+    cloud.google.com/backend-config: '{"ports":{"5678":"ocelot-gateway-backendconfig"}}'
+    beta.cloud.google.com/backend-config: '{"ports":{"5678":"ocelot-gateway-backendconfig"}}'
+spec:
+  selector:
+    app: ocelot-gateway
+  ports:
+    - name: http
+      port: 5678
+      targetPort: 5678

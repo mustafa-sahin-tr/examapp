@@ -4,6 +4,8 @@ Bu klasör, mevcut dev compose akışını bozmadan prod için **build + run** e
 
 Azure VM için ek notlar: [deploy/AZURE.md](AZURE.md)
 
+Google Cloud (GKE + Artifact Registry) notları: [deploy/gcp/README.md](gcp/README.md)
+
 ## 0) Ön Koşullar
 
 - Bir Linux VM (Ubuntu 22.04 önerilir). Başlangıç için: **2 vCPU / 4–8 GB RAM / 60+ GB disk**.
@@ -66,6 +68,7 @@ nano .env.prod
 ```
 
 Doldurman gereken kritik alanlar:
+
 - `DOMAIN` (örn: `exam.example.com`)
 - `PUBLIC_BASE_URL` (örn: `https://exam.example.com`)
 - Postgres/Redis/Rabbit/MinIO/Keycloak şifreleri (hepsi güçlü olmalı)
@@ -127,15 +130,18 @@ Realm import dosyan `my-theme`’i referans ediyorsa, Keycloak recreate sonrası
 ## 6) Veri Kalıcılığı ve Backup
 
 Compose named volume’ler kullanır:
+
 - `postgres_data`, `minio_data`, `rabbitmq_data`, `redis_data`
 
 Backup önerisi:
+
 - Postgres: günlük `pg_dump` + offsite storage
 - MinIO: bucket replication veya periyodik volume backup
 
 ## 7) Güncelleme (Deploy Yeni Versiyon)
 
 Repo güncelle:
+
 ```bash
 cd examapp
 git pull
@@ -143,11 +149,13 @@ cd deploy
 ```
 
 İmajları rebuild + restart:
+
 ```bash
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 ```
 
 Eski image temizliği:
+
 ```bash
 docker image prune -f
 ```

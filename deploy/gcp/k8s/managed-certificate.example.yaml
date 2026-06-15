@@ -1,0 +1,8 @@
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: examapp-cert
+  namespace: examapp
+spec:
+  domains:
+    - exam.example.com

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: examapp-config
+  CORS_ALLOWED_ORIGIN_0: https://exam.example.com
+  namespace: examapp
+data:
+  PUBLIC_BASE_URL: https://exam.example.com
+  KEYCLOAK_REDIRECT_URI: https://exam.example.com/app/callback
+  KEYCLOAK_CLIENT_CALLBACK_URL: https://exam.example.com/app/callback&response_type=code&scope=openid&state=https://exam.example.com
+  KEYCLOAK_REALM: exam-realm
+  KEYCLOAK_AUTHORITY: https://exam.example.com/realms/exam-realm
+  KEYCLOAK_HOST_INTERNAL: http://keycloak.examapp.svc.cluster.local:8080
+  MINIO_ENDPOINT: minio.examapp.svc.cluster.local:9000
+  MINIO_BASE_URL: https://exam.example.com/img
+  N8N_EDITOR_BASE_URL: https://exam.example.com/n8n
+  N8N_WEBHOOK_URL: https://exam.example.com/n8n
+  TZ: Europe/Istanbul
+  AUTH_API_BASE_URL: http://auth-api.examapp.svc.cluster.local:5079
+  EXAM_API_BASE_URL: http://exam-dotnet-api.examapp.svc.cluster.local:5079
+  N8N_BASE_URL: http://n8n.examapp.svc.cluster.local:5678
+  ASPNETCORE_ENVIRONMENT: Production
+  BADGE_AI_ACTIVE: 'true'

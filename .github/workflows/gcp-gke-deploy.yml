@@ -1,0 +1,267 @@
+name: Build & Deploy (GCP GKE + Artifact Registry)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Run mode
+        type: choice
+        required: true
+        default: build_and_deploy
+        options:
+          - build_and_deploy
+          - build_only
+          - deploy_only
+      target:
+        description: Deploy target
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+          - prod
+      service:
+        description: Service to build and deploy (all = full)
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - exam-dotnet-api
+          - auth-api
+          - exam-badge-api
+          - ocelot-gateway
+          - exam-outbox-publisher
+          - angular-app
+          - auth-ui
+          - question-detector
+          - n8n
+      image_tag:
+        description: Optional image tag override (default git sha)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TARGET: ${{ inputs.target }}
+  SERVICE: ${{ inputs.service }}
+  IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+
+concurrency:
+  group: examapp-gcp-${{ inputs.target }}
+  cancel-in-progress: true
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.mode != 'deploy_only' }}
+    environment: ${{ inputs.target == 'prod' && 'production' || 'staging' }}
+    outputs:
+      services_to_deploy: ${{ steps.changes.outputs.services }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed services
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          svc="${SERVICE:-all}"
+          if [[ -z "$svc" ]]; then
+            svc="all"
+          fi
+          echo "services=${svc}" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud auth configure-docker "${{ secrets.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push images
+        shell: bash
+        env:
+          GAR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}
+        run: |
+          set -euo pipefail
+          TAG="${IMAGE_TAG}"
+          SERVICES="${{ steps.changes.outputs.services }}"
+
+          should_build() {
+            local name="$1"
+            if [[ "$SERVICES" == "all" ]]; then
+              return 0
+            fi
+            [[ " $SERVICES " == *" $name "* ]]
+          }
+
+          if should_build "exam-dotnet-api"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=api/ExamApp.Api/ExamApp.Api.csproj \
+              --build-arg APP_DLL=ExamApp.Api.dll \
+              --build-arg EXPOSE_PORT=5079 \
+              -t "$GAR_REPO/exam-dotnet-api:$TAG" \
+              .
+          fi
+
+          if should_build "auth-api"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=auth-api/ExamApp.Api.csproj \
+              --build-arg APP_DLL=ExamApp.Api.dll \
+              --build-arg EXPOSE_PORT=5079 \
+              -t "$GAR_REPO/auth-api:$TAG" \
+              .
+          fi
+
+          if should_build "exam-badge-api"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-web.Dockerfile \
+              --build-arg PROJECT_PATH=Services/BadgeService/BadgeService.csproj \
+              --build-arg APP_DLL=BadgeService.dll \
+              --build-arg EXPOSE_PORT=8006 \
+              -t "$GAR_REPO/exam-badge-api:$TAG" \
+              .
+          fi
+
+          if should_build "ocelot-gateway"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/gateway.Dockerfile \
+              --build-arg PROJECT_PATH=Services/Gateway/Gateway.csproj \
+              --build-arg OCELOT_ENVIRONMENT=Production \
+              --build-arg APP_DLL=Gateway.dll \
+              --build-arg EXPOSE_PORT=5678 \
+              -t "$GAR_REPO/ocelot-gateway:$TAG" \
+              .
+          fi
+
+          if should_build "exam-outbox-publisher"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile \
+              --build-arg PROJECT_PATH=Services/OutboxPublisher/OutboxPublisherService.csproj \
+              --build-arg APP_DLL=OutboxPublisherService.dll \
+              -t "$GAR_REPO/exam-outbox-publisher:$TAG" \
+              .
+          fi
+
+          if should_build "angular-app"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/angular-spa.Dockerfile \
+              --build-arg APP_DIR=ui \
+              -t "$GAR_REPO/ui:$TAG" \
+              .
+          fi
+
+          if should_build "auth-ui"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/angular-spa.Dockerfile \
+              --build-arg APP_DIR=auth-ui \
+              -t "$GAR_REPO/auth-ui:$TAG" \
+              .
+          fi
+
+          if should_build "question-detector"; then
+            docker buildx build --push \
+              -f deploy/dockerfiles/question-detector.Dockerfile \
+              -t "$GAR_REPO/exam-question-detector:$TAG" \
+              .
+          fi
+
+  deploy_after_build:
+    runs-on: ubuntu-latest
+    needs: [build_and_push]
+    if: ${{ inputs.mode == 'build_and_deploy' }}
+    environment: ${{ inputs.target == 'prod' && 'production' || 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        shell: bash
+        env:
+          GAR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          SERVICES: ${{ needs.build_and_push.outputs.services_to_deploy }}
+          NAMESPACE: ${{ secrets.GKE_NAMESPACE }}
+        run: |
+          set -euo pipefail
+          chmod +x deploy/gcp/scripts/deploy-gke.sh
+          deploy/gcp/scripts/deploy-gke.sh
+
+  deploy_only:
+    runs-on: ubuntu-latest
+    if: ${{ inputs.mode == 'deploy_only' }}
+    environment: ${{ inputs.target == 'prod' && 'production' || 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GKE_CLUSTER }}
+          location: ${{ secrets.GKE_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        shell: bash
+        env:
+          GAR_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          SERVICES: ${{ env.SERVICE }}
+          NAMESPACE: ${{ secrets.GKE_NAMESPACE }}
+        run: |
+          set -euo pipefail
+          chmod +x deploy/gcp/scripts/deploy-gke.sh
+          deploy/gcp/scripts/deploy-gke.sh

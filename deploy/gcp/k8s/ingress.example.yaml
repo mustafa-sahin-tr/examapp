@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: examapp-ingress
+  namespace: examapp
+  annotations:
+    kubernetes.io/ingress.class: gce
+    networking.gke.io/managed-certificates: examapp-cert
+spec:
+  defaultBackend:
+    service:
+      name: ocelot-gateway
+      port:
+        number: 5678

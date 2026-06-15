@@ -389,91 +389,42 @@ jobs:
               chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
             fi
 
-      - name: Upload deploy assets to VM
+      - name: Sync deploy assets to VM (tar over SSH)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading deploy assets..."
-          tar -cvzf deploy-assets.tar.gz -C deploy Caddyfile docker-compose.prod.yml docker-compose.prod.images.yml docker-compose.pgadmin.yml
-
+          echo "Streaming deploy assets to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/deploy-assets.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; mv /tmp/deploy-assets.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz'"
-
+          tar -C deploy -czf - Caddyfile docker-compose.prod.yml docker-compose.prod.images.yml docker-compose.pgadmin.yml | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}'"
           rm vm_ssh_key.pem
 
-      - name: Extract deploy assets on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}"
-            echo "Extracting deploy assets..."
-            tar -xvzf deploy-assets.tar.gz
-            rm deploy-assets.tar.gz
-
-      - name: Upload VM update script
+      - name: Sync VM update script to VM (tar over SSH)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading vm-update script..."
-          tar -cvzf vm-update.tar.gz -C deploy/scripts vm-update.sh
-
+          echo "Streaming vm-update script to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem vm-update.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/vm-update.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/scripts'; mv /tmp/vm-update.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/scripts/vm-update.tar.gz'"
-
+          tar -C deploy/scripts -czf - vm-update.sh | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/scripts'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/scripts'"
           rm vm_ssh_key.pem
 
-      - name: Extract VM update script on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/scripts"
-            echo "Extracting vm-update script..."
-            tar -xvzf vm-update.tar.gz
-            rm vm-update.tar.gz
-
-      - name: Upload Keycloak themes to VM
+      - name: Sync Keycloak themes to VM (tar over SSH)
         if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading keycloak themes..."
-          tar -cvzf keycloak-themes.tar.gz -C deploy/keycloak/keycloak-themes .
-
+          echo "Streaming keycloak themes to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
-
+          tar -C deploy/keycloak/keycloak-themes -czf - . | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'"
           rm vm_ssh_key.pem
-
-      - name: Extract Keycloak themes on VM
-        if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
-            echo "Extracting keycloak themes..."
-            tar -xvzf keycloak-themes.tar.gz
-            rm keycloak-themes.tar.gz
 
       - name: Deploy on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
@@ -532,33 +483,17 @@ jobs:
             set -e
             mkdir -p "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
 
-      - name: Upload Keycloak themes to VM
+      - name: Sync Keycloak themes to VM (tar over SSH)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading keycloak themes..."
-          tar -cvzf keycloak-themes.tar.gz -C deploy/keycloak/keycloak-themes .
-
+          echo "Streaming keycloak themes to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
-
+          tar -C deploy/keycloak/keycloak-themes -czf - . | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'"
           rm vm_ssh_key.pem
-
-      - name: Extract Keycloak themes on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
-            echo "Extracting keycloak themes..."
-            tar -xvzf keycloak-themes.tar.gz
-            rm keycloak-themes.tar.gz
 
       - name: Restart Keycloak on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3
@@ -634,63 +569,30 @@ jobs:
               chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
             fi
 
-      - name: Upload deploy assets to VM
+      - name: Sync deploy assets to VM (tar over SSH)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading deploy assets..."
-          tar -cvzf deploy-assets.tar.gz -C deploy Caddyfile docker-compose.prod.yml docker-compose.prod.images.yml docker-compose.pgadmin.yml
-
+          echo "Streaming deploy assets to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/deploy-assets.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; mv /tmp/deploy-assets.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz'"
-
+          tar -C deploy -czf - Caddyfile docker-compose.prod.yml docker-compose.prod.images.yml docker-compose.pgadmin.yml | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}'"
           rm vm_ssh_key.pem
 
-      - name: Extract deploy assets on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}"
-            echo "Extracting deploy assets..."
-            tar -xvzf deploy-assets.tar.gz
-            rm deploy-assets.tar.gz
-
-      - name: Upload Keycloak themes to VM
+      - name: Sync Keycloak themes to VM (tar over SSH)
         if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading keycloak themes..."
-          tar -cvzf keycloak-themes.tar.gz -C deploy/keycloak/keycloak-themes .
-
+          echo "Streaming keycloak themes to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
-
+          tar -C deploy/keycloak/keycloak-themes -czf - . | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'"
           rm vm_ssh_key.pem
-
-      - name: Extract Keycloak themes on VM
-        if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
-            echo "Extracting keycloak themes..."
-            tar -xvzf keycloak-themes.tar.gz
-            rm keycloak-themes.tar.gz
 
       - name: Deploy config on VM (SSH, no build)
         uses: appleboy/ssh-action@v1.0.3
@@ -779,121 +681,55 @@ jobs:
               chmod -R u+rwX,go+rX "${{ secrets.VM_DEPLOY_DIR }}" || true
             fi
 
-      - name: Upload deploy assets to VM
+      - name: Sync deploy assets to VM (tar over SSH)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading deploy assets..."
-          tar -cvzf deploy-assets.tar.gz -C deploy Caddyfile docker-compose.prod.yml docker-compose.prod.images.yml docker-compose.pgadmin.yml
-
+          echo "Streaming deploy assets to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem deploy-assets.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/deploy-assets.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; mv /tmp/deploy-assets.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/deploy-assets.tar.gz'"
-
+          tar -C deploy -czf - Caddyfile docker-compose.prod.yml docker-compose.prod.images.yml docker-compose.pgadmin.yml | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}'"
           rm vm_ssh_key.pem
 
-      - name: Extract deploy assets on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}"
-            echo "Extracting deploy assets..."
-            tar -xvzf deploy-assets.tar.gz
-            rm deploy-assets.tar.gz
-
-      - name: Upload Postgres init scripts to VM
+      - name: Sync Postgres init scripts to VM (tar over SSH)
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading postgres init scripts..."
-          tar -cvzf postgres-init.tar.gz -C deploy/postgres/init .
-
+          echo "Streaming postgres init scripts to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem postgres-init.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/postgres-init.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'; mv /tmp/postgres-init.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/postgres/init/postgres-init.tar.gz'"
-
+          tar -C deploy/postgres/init -czf - . | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/postgres/init'"
           rm vm_ssh_key.pem
 
-      - name: Extract Postgres init scripts on VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/postgres/init"
-            echo "Extracting postgres init scripts..."
-            tar -xvzf postgres-init.tar.gz
-            rm postgres-init.tar.gz
-
-      - name: Upload Keycloak realm import to VM
+      - name: Sync Keycloak realm import to VM (tar over SSH)
         if: ${{ hashFiles('deploy/keycloak/import/**') != '' }}
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading keycloak realm import..."
-          tar -cvzf keycloak-import.tar.gz -C deploy/keycloak/import .
-
+          echo "Streaming keycloak realm import to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-import.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-import.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import'; mv /tmp/keycloak-import.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import/keycloak-import.tar.gz'"
-
+          tar -C deploy/keycloak/import -czf - . | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/keycloak/import'"
           rm vm_ssh_key.pem
 
-      - name: Extract Keycloak realm import on VM
-        if: ${{ hashFiles('deploy/keycloak/import/**') != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/keycloak/import"
-            echo "Extracting keycloak realm import..."
-            tar -xvzf keycloak-import.tar.gz
-            rm keycloak-import.tar.gz
-
-      - name: Upload Keycloak themes to VM
+      - name: Sync Keycloak themes to VM (tar over SSH)
         if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
+        shell: bash
         run: |
           set -euo pipefail
-          echo "Archiving and uploading keycloak themes..."
-          tar -cvzf keycloak-themes.tar.gz -C deploy/keycloak/keycloak-themes .
-
+          echo "Streaming keycloak themes to VM..."
           echo "${{ secrets.VM_SSH_KEY }}" > vm_ssh_key.pem
           chmod 600 vm_ssh_key.pem
-
-          scp -v -o StrictHostKeyChecking=no -i vm_ssh_key.pem keycloak-themes.tar.gz "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/keycloak-themes.tar.gz"
-          ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "set -e; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; mv /tmp/keycloak-themes.tar.gz '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes/keycloak-themes.tar.gz'"
-
+          tar -C deploy/keycloak/keycloak-themes -czf - . | \
+            ssh -o StrictHostKeyChecking=no -i vm_ssh_key.pem "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+              "set -eu; mkdir -p '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'; tar -xzf - -C '${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes'"
           rm vm_ssh_key.pem
-
-      - name: Extract Keycloak themes on VM
-        if: ${{ hashFiles('deploy/keycloak/keycloak-themes/**') != '' }}
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.VM_DEPLOY_DIR }}/keycloak/keycloak-themes"
-            echo "Extracting keycloak themes..."
-            tar -xvzf keycloak-themes.tar.gz
-            rm keycloak-themes.tar.gz
 
       - name: Bootstrap minimal stack on VM (SSH)
         uses: appleboy/ssh-action@v1.0.3

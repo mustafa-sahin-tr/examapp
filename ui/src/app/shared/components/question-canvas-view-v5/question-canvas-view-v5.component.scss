@@ -1,14 +1,29 @@
 .qcv4-root {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
+  min-width: 0;
+}
+
+.qcv4-passage {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(45%, 560px);
+
+  &__image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
 }
 
 .qcv4-container {
   display: grid;
   gap: 24px;
-  width: 100%;
+  flex: 1 1 360px;
+  min-width: 0;
   
   // --- Üst-Alt Düzenler (Soru Üstte) ---
 
@@ -97,12 +112,20 @@
 
 @media (max-width: 768px) {
   .qcv4-root {
-    flex-direction: column;
-    align-items: stretch;
     gap: 12px;
   }
 
-  .qcv4-passage,
+  .qcv4-passage {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+
+  .qcv4-container {
+    flex-basis: 100%;
+    gap: 12px;
+    overflow-x: hidden;
+  }
+
   .qcv4-question-image-wrapper,
   .qcv4-main-image-box,
   .qcv4-answers-grid {
@@ -122,11 +145,6 @@
     max-width: 100%;
     height: auto;
     object-fit: contain;
-  }
-
-  .qcv4-container {
-    gap: 12px;
-    overflow-x: hidden;
   }
 
   .qcv4-answer-card {

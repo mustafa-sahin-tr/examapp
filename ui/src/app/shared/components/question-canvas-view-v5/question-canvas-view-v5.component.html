@@ -1,5 +1,5 @@
 <div class="qcv4-root">
-  <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl" style="flex-shrink: 0;">
+  <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl">
     <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
   </div>
   <div class="qcv4-container" [class]="'layout-' + currentLayout()">

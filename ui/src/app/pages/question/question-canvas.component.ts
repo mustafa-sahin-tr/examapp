@@ -459,6 +459,9 @@ export class QuestionCanvasComponent implements OnInit {
           this.imageSelector.sendToFix();
         }
         this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
+        setTimeout(() => {
+          this.nextImage();
+        }, 2000);
       },
       error: (err) => {
         console.log(err);

@@ -434,7 +434,7 @@ export class QuestionCanvasComponent implements OnInit {
     });
   }
 
-  onSave(sendToFix: boolean = false) {
+  onSave(sendToFix: boolean = true) {
     const formData = this.questionForm.value;
 
     if (formData.isExample) {

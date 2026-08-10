@@ -98,6 +98,7 @@ QUESTION_MODEL_PATH = resolve_model_path(
     "QUESTION_MODEL_PATH",
     "/app/models/question-best.pt",
     "data/questions/runs/train5/weights/best.pt",
+    # "data/questions/runs/train-20260622-1/weights/best.pt"
 )
 ANSWER_MODEL_PATH = resolve_model_path(
     "ANSWER_MODEL_PATH",

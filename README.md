@@ -113,3 +113,6 @@ Each service has its own configuration in the respective Docker Compose files an
 - [Keycloak Documentation](https://www.keycloak.org/documentation)
 - [MinIO Documentation](https://docs.min.io)
 - [RabbitMQ Documentation](https://www.rabbitmq.com/documentation.html)
+
+
+# recovery proof

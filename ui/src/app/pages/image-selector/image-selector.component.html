@@ -1,5 +1,6 @@
 <div [ngClass]="{ 'container': !previewMode(), 'selection-mode': selectionMode() }">
   <div [ngClass]="{ 'form-container': !previewMode() }">
+
     <div class="form-column-4" style="border: var(--border-input)">
       <ng-container *ngIf="previewMode()">
         <div class="form-container" style="border: var(--border-input)">
@@ -37,6 +38,7 @@
         </div>
       </ng-container>
 
+
       <div *ngIf="!previewMode() && imageSrc()" class="ms-canvas-wrapper">
         <canvas #canvas (mousedown)="startSelection($event)" (click)="tapCorrectAnswer($event)"
           (mousemove)="onMouseMove($event)" (mouseup)="endSelection($event)"
@@ -66,6 +68,97 @@
           </div>
           <mat-divider></mat-divider>
           <button (click)="dismissWarning($event)">Uyarıyı Kapat</button>
+        </div>
+      </div>
+
+      <div style="max-width: 250px">
+        <!-- <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*"> -->
+        {{ imagName() }}
+
+        <div style="margin: 8px 0; display: flex; gap: 4px; align-items: center">
+          <input type="number" min="1" [max]="imageFiles.length" placeholder="Sayfa" style="width: 60px" #pageInput
+            (keydown.enter)="goToPage(pageInput.value)" />
+          <button mat-button (click)="goToPage(pageInput.value)">Git</button>
+          <span style="font-size: 12px; opacity: 0.7">{{ currentImageIndex + 1 }} / {{ imageFiles.length }}</span>
+        </div>
+
+        <div style="margin: 8px 0">
+          <button mat-button (click)="toggleShowRegions()">
+            {{ showRegions() ? 'Sağ Paneli Gizle' : 'Sağ Paneli Göster' }}
+          </button>
+        </div>
+
+        <div *ngIf="showRegions()" class="regions-list">
+          <h3>Seçilen Bölgeler:</h3>
+          <ul class="regions">
+            <li *ngFor="let region of regions(); let i = index">
+              <!-- <quill-editor *ngIf="isExample(region.name)" [ngModel]="exampleAnswers.get(region.name)" (ngModelChange)="onTextChanged(region.name, $event)">
+          </quill-editor> -->
+              <div class="flex-no-wrap border-none" style="margin: 6px 0">
+                <label style="display: block; font-size: 12px; opacity: 0.8">Interaction Type</label>
+                <select (change)="onInteractionTypeChange($event, region.name)">
+                  <option value="mcq" [selected]="getInteractionType(region.name) === 'mcq'">MCQ</option>
+                  <option value="dragDropLabeling" [selected]="getInteractionType(region.name) === 'dragDropLabeling'">
+                    dragDropLabeling
+                  </option>
+                </select>
+              </div>
+
+              <ul *ngIf="!onlyQuestionMode() && getInteractionType(region.name) !== 'dragDropLabeling'">
+                <li class="flex-no-wrap border-none" *ngFor="let answer of region.answers; let j = index">
+                  <button class="choice-btn" (click)="setCorrectAnswer(i, j, 1)">
+                    {{ answer.label }} {{ answer.isCorrect ? '✅' : '' }}
+                  </button>
+                  <button (click)="removeAnswer(i, j)">❌</button>
+                </li>
+              </ul>
+
+              <div *ngIf="getInteractionType(region.name) === 'dragDropLabeling'" style="margin: 8px 0">
+                <div class="flex-no-wrap border-none" style="gap: 8px; align-items: center">
+                  <button (click)="selectDropZoneMode(i)">🟧 Drop Zone Çiz</button>
+                  <button (click)="removeLastDropZone(region.name)">↩︎ Son Zone</button>
+                  <button (click)="clearDropZones(region.name)">🗑 Zone Temizle</button>
+                  <label style="font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
+                  <input type="number" min="1" max="30" [value]="getLabelCount(region.name)"
+                    (change)="setLabelCount(region.name, $any($event.target).value)" style="width: 70px" />
+                  <button (click)="generateDraggables(region.name)">Etiketleri Oluştur</button>
+                  <button (click)="autoAssignSolutionSequential(region.name)">Auto Solution</button>
+                </div>
+
+                <div style="margin-top: 8px">
+                  <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px">Solution (DropZone → Etiket)</div>
+                  <div *ngFor="let z of getDropZones(region.name)" class="flex-no-wrap border-none" style="gap: 8px">
+                    <span style="min-width: 38px">{{ z.id }}</span>
+                    <select [value]="getZoneAssignedDraggable(region.name, z.id)"
+                      (change)="setZoneSolution(region.name, z.id, $any($event.target).value)">
+                      <option value="0">(boş)</option>
+                      <option *ngFor="let d of getDraggables(region.name)" [value]="d.id">{{ d.label }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <ul>
+                <li class="flex-no-wrap border-none">
+                  <button (click)="removeQuestion(i)">❌ Soru Sil</button>
+                </li>
+                <li class="flex-no-wrap border-none">
+                  <button (click)="selectQuestion(i)" [disabled]="isExample(region.name)">Şık Seç</button>
+                </li>
+                <li class="flex-no-wrap border-none">
+                  <button (click)="alignAnswers(i)" [disabled]="region.answers.length < 2">🔄 Hizala</button>
+                </li>
+                <li class="flex-no-wrap border-none">
+                  <select id="passageSelect" class="passage-select" (change)="onPassageChange($event, region.name)">
+                    <option value="0" [selected]="!selectedPassageMap.has(region.name)">Passage Seçiniz</option>
+                    <option *ngFor="let passage of passages()" [value]="passage.id"
+                      [selected]="selectedPassageMap.get(region.name) === passage.id">
+                      Passage {{ passage.id }}
+                    </option>
+                  </select>
+                </li>
+              </ul>
+            </li>
+          </ul>
         </div>
       </div>
 
@@ -198,88 +291,6 @@
         </ng-container>
       </div>
     </div>
-    <div style="max-width: 250px">
-      <!-- <input type="file" (change)="handleFilesInput2($event)" multiple accept="image/*"> -->
-      {{ imagName() }}
 
-      <div style="margin: 8px 0">
-        <button mat-button (click)="toggleShowRegions()">
-          {{ showRegions() ? 'Sağ Paneli Gizle' : 'Sağ Paneli Göster' }}
-        </button>
-      </div>
-
-      <div *ngIf="showRegions()" class="regions-list">
-        <h3>Seçilen Bölgeler:</h3>
-        <ul class="regions">
-          <li *ngFor="let region of regions(); let i = index">
-            <!-- <quill-editor *ngIf="isExample(region.name)" [ngModel]="exampleAnswers.get(region.name)" (ngModelChange)="onTextChanged(region.name, $event)">
-          </quill-editor> -->
-            <div class="flex-no-wrap border-none" style="margin: 6px 0">
-              <label style="display: block; font-size: 12px; opacity: 0.8">Interaction Type</label>
-              <select (change)="onInteractionTypeChange($event, region.name)">
-                <option value="mcq" [selected]="getInteractionType(region.name) === 'mcq'">MCQ</option>
-                <option value="dragDropLabeling" [selected]="getInteractionType(region.name) === 'dragDropLabeling'">
-                  dragDropLabeling
-                </option>
-              </select>
-            </div>
-
-            <ul *ngIf="!onlyQuestionMode() && getInteractionType(region.name) !== 'dragDropLabeling'">
-              <li class="flex-no-wrap border-none" *ngFor="let answer of region.answers; let j = index">
-                <button class="choice-btn" (click)="setCorrectAnswer(i, j, 1)">
-                  {{ answer.label }} {{ answer.isCorrect ? '✅' : '' }}
-                </button>
-                <button (click)="removeAnswer(i, j)">❌</button>
-              </li>
-            </ul>
-
-            <div *ngIf="getInteractionType(region.name) === 'dragDropLabeling'" style="margin: 8px 0">
-              <div class="flex-no-wrap border-none" style="gap: 8px; align-items: center">
-                <button (click)="selectDropZoneMode(i)">🟧 Drop Zone Çiz</button>
-                <button (click)="removeLastDropZone(region.name)">↩︎ Son Zone</button>
-                <button (click)="clearDropZones(region.name)">🗑 Zone Temizle</button>
-                <label style="font-size: 12px; opacity: 0.8">Etiket Sayısı</label>
-                <input type="number" min="1" max="30" [value]="getLabelCount(region.name)"
-                  (change)="setLabelCount(region.name, $any($event.target).value)" style="width: 70px" />
-                <button (click)="generateDraggables(region.name)">Etiketleri Oluştur</button>
-                <button (click)="autoAssignSolutionSequential(region.name)">Auto Solution</button>
-              </div>
-
-              <div style="margin-top: 8px">
-                <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px">Solution (DropZone → Etiket)</div>
-                <div *ngFor="let z of getDropZones(region.name)" class="flex-no-wrap border-none" style="gap: 8px">
-                  <span style="min-width: 38px">{{ z.id }}</span>
-                  <select [value]="getZoneAssignedDraggable(region.name, z.id)"
-                    (change)="setZoneSolution(region.name, z.id, $any($event.target).value)">
-                    <option value="0">(boş)</option>
-                    <option *ngFor="let d of getDraggables(region.name)" [value]="d.id">{{ d.label }}</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <ul>
-              <li class="flex-no-wrap border-none">
-                <button (click)="removeQuestion(i)">❌ Soru Sil</button>
-              </li>
-              <li class="flex-no-wrap border-none">
-                <button (click)="selectQuestion(i)" [disabled]="isExample(region.name)">Şık Seç</button>
-              </li>
-              <li class="flex-no-wrap border-none">
-                <button (click)="alignAnswers(i)" [disabled]="region.answers.length < 2">🔄 Hizala</button>
-              </li>
-              <li class="flex-no-wrap border-none">
-                <select id="passageSelect" class="passage-select" (change)="onPassageChange($event, region.name)">
-                  <option value="0" [selected]="!selectedPassageMap.has(region.name)">Passage Seçiniz</option>
-                  <option *ngFor="let passage of passages()" [value]="passage.id"
-                    [selected]="selectedPassageMap.get(region.name) === passage.id">
-                    Passage {{ passage.id }}
-                  </option>
-                </select>
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
   </div>
 </div>

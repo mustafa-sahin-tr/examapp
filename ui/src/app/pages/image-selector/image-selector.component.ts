@@ -673,7 +673,9 @@ export class ImageSelectorComponent {
   handleFilesInput2(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.imageFiles = Array.from(input.files).filter((file) => file.type.startsWith('image/'));
+      this.imageFiles = Array.from(input.files)
+        .filter((file) => file.type.startsWith('image/'))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
       const firstFolder = this.extractBookName(this.imageFiles[0]);
       this.bookName.set(firstFolder);
       this.currentImageIndex = 0;
@@ -740,6 +742,13 @@ export class ImageSelectorComponent {
       };
     };
     reader.readAsDataURL(file); // 📦 Sadece o anki resmi belleğe yükle
+  }
+
+  goToPage(pageStr: string) {
+    const page = parseInt(pageStr, 10);
+    if (isNaN(page) || this.isDrawing) return;
+    this.currentImageIndex = Math.max(0, Math.min(page - 1, this.imageFiles.length - 1));
+    this.loadCurrentImage();
   }
 
   nextImage() {

@@ -92,6 +92,26 @@ yolo detect train data=data/dataset.yaml model=yolov8n.pt epochs=50 imgsz=640 ba
 apt-get update
 apt-get install libzbar0 
 
+!pip install ultralytics
+
+!python /content/drive/Othercomputers/PersonalMacBookPro/question-detector/scripts/json_to_yolo_only_questions.py
+
+!yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/dataset.yaml \
+cache=True \
+model=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/questions/runs/train5/weights/best.pt \
+epochs=50 imgsz=640 name=train-20260622-1 \
+project=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/questions/runs
+  
+  model=/content/drive/Othercomputers/PersonalMacBookPro/app/data/questions/runs/train4/weights/best.pt 
+  epochs=50 imgsz=640 name=train5 
+  project=/content/drive/Othercomputers/PersonalMacBookPro/app/data/questions/runs
+
+!python /content/drive/Othercomputers/PersonalMacBookPro/question-detector/scripts/json_to_yolo_answers.py
+
+!yolo detect train data=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/dataset-answers.yaml cache=True  save_period=1 model=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/answers/runs/train-answers-v10/weights/best.pt epochs=50 imgsz=640 name=train-answers-20260622-1 project=/content/drive/Othercomputers/PersonalMacBookPro/question-detector/data/answers/runs
+
+
+
 
 
 

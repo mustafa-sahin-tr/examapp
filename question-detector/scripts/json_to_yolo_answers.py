@@ -42,7 +42,7 @@ for image_name, questions in grouped.items():
         print(f"⚠️ Resim açılamadı: {image_name} -> {e}")
         continue
 
-    if len(questions) == 3:
+    if len(questions) == 4:
         label_lines = []
         for q in questions:        
             x_center = (q["x"] + q["width"] / 2) / img_width

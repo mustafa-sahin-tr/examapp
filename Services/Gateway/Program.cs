@@ -130,6 +130,19 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/oidc-login")
     {
+        // configler eksik ise log yaz
+        if (string.IsNullOrEmpty(builder.Configuration.GetValue<string>("Server:BaseUrl")))
+        {
+            Console.WriteLine("[OIDC] Server:BaseUrl config missing.");
+        }
+        if (string.IsNullOrEmpty(builder.Configuration.GetValue<string>("Keycloak:Realm")))
+        {
+            Console.WriteLine("[OIDC] Keycloak:Realm config missing.");
+        }
+        if (string.IsNullOrEmpty(builder.Configuration.GetValue<string>("Keycloak:ClientCallbackUrl")))
+        {
+            Console.WriteLine("[OIDC] Keycloak:ClientCallbackUrl config missing.");
+        }
         var host = builder.Configuration.GetValue<string>("Server:BaseUrl");
         var realm = builder.Configuration.GetValue<string>("Keycloak:Realm");
         var ClientCallbackUrl = builder.Configuration.GetValue<string>("Keycloak:ClientCallbackUrl");

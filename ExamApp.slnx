@@ -9,4 +9,11 @@
   <Folder Name="/ServiceDefaults/">
     <Project Path="ServiceDefaults/ExamApp.ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/Services/">
+    <Project Path="Services/BadgeService/BadgeService.csproj" />
+    <Project Path="Services/Gateway/Gateway.csproj" />
+  </Folder>
+  <Folder Name="/Services/OutboxPublisher/">
+    <Project Path="Services/OutboxPublisher/OutboxPublisherService.csproj" />
+  </Folder>
 </Solution>

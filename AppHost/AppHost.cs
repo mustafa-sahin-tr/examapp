@@ -22,8 +22,21 @@ var redis = builder.AddRedis("redis")
     .WithDataVolume("examapp-redis-data")
     .WithRedisInsight();
 
-var rabbitmq = builder.AddRabbitMQ("rabbitmq")
+// Explicit user/password parameters (matching docker-compose.yml's
+// rabbituser/rabbitpass) so rabbitmq.Resource.UserNameParameter/
+// PasswordParameter are guaranteed non-null for the WithEnvironment calls
+// below, instead of relying on RabbitMQ's own random-password default.
+var rabbitUser = builder.AddParameter("rabbitmq-user");
+var rabbitPassword = builder.AddParameter("rabbitmq-password", secret: true);
+
+// Pinned to the standard AMQP port 5672 (matching docker-compose.yml) because
+// BadgeService/OutboxPublisher's MassTransit setup (cfg.Host(host, "/", ...))
+// only reads RabbitMQ:Host, not a port — it always assumes 5672. A dynamic
+// Aspire-assigned port would silently connect to the wrong place instead of
+// failing loudly, so this is fixed rather than left to random allocation.
+var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5672)
     .WithManagementPlugin();
+var rabbitmqEndpoint = rabbitmq.GetEndpoint("tcp");
 
 // No first-party or Community Toolkit MinIO hosting integration is used here:
 // CommunityToolkit.Aspire.Hosting.Minio exists but is marked deprecated
@@ -77,5 +90,80 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WaitFor(redis)
     .WaitFor(rabbitmq)
     .WaitFor(minio);
+
+var examDotnetApiHttp = examDotnetApi.GetEndpoint("http");
+
+// ---------------------------------------------------------------------------
+// BadgeService (Services/BadgeService)
+// ---------------------------------------------------------------------------
+
+var badgeService = builder.AddProject<Projects.BadgeService>("exam-badge-api")
+    .WithReference(badgeDb, connectionName: "DefaultConnection")
+    .WithReference(rabbitmq)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", rabbitUser)
+    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    .WithEnvironment("MinioConfig__AccessKey", minioRootUser)
+    .WithEnvironment("MinioConfig__SecretKey", minioRootPassword)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["MinioConfig__Endpoint"] = ReferenceExpression.Create(
+            $"{minioApiEndpoint.Property(EndpointProperty.Host)}:{minioApiEndpoint.Property(EndpointProperty.Port)}");
+    })
+    // ExamApi:BaseUrl is a plain HTTP client base address (not a
+    // ConnectionStrings-style key), so it's mapped directly onto its
+    // existing key rather than left to service-discovery conventions.
+    .WithEnvironment("ExamApi__BaseUrl", examDotnetApiHttp)
+    .WaitFor(postgres)
+    .WaitFor(rabbitmq)
+    .WaitFor(minio)
+    .WaitFor(examDotnetApi);
+
+// ---------------------------------------------------------------------------
+// OutboxPublisher (Services/OutboxPublisher) — pure worker, no HTTP endpoint.
+// Shares ExamDotnetApi's database: outbox rows are written there in the same
+// transaction as the business data, then relayed to RabbitMQ from here
+// (confirmed against deploy/docker-compose.prod.yml, which points both
+// exam-dotnet-api and exam-outbox-publisher at the same database).
+// ---------------------------------------------------------------------------
+
+var outboxPublisher = builder.AddProject<Projects.OutboxPublisherService>("exam-outbox-publisher")
+    .WithReference(examDb, connectionName: "DefaultConnection")
+    .WithReference(rabbitmq)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", rabbitUser)
+    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    .WaitFor(postgres)
+    .WaitFor(rabbitmq);
+
+// ---------------------------------------------------------------------------
+// OcelotGateway (Services/Gateway) — externally reachable entry point.
+// Downstream host/port overrides for exam-dotnet-api and exam-badge-api are
+// read by Program.cs from EXAM_DOTNET_API_HOST/PORT and EXAM_BADGE_API_HOST/
+// PORT; see the comment there for why (the Ocelot problem — static
+// DownstreamHostAndPorts vs. Aspire's dynamic project ports).
+// ---------------------------------------------------------------------------
+
+var badgeServiceHttp = badgeService.GetEndpoint("http");
+
+var ocelotGateway = builder.AddProject<Projects.Gateway>("ocelot-gateway")
+    .WithReference(examDotnetApi)
+    .WithReference(badgeService)
+    .WithExternalHttpEndpoints()
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["EXAM_DOTNET_API_HOST"] = examDotnetApiHttp.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["EXAM_DOTNET_API_PORT"] = examDotnetApiHttp.Property(EndpointProperty.Port);
+        context.EnvironmentVariables["EXAM_BADGE_API_HOST"] = badgeServiceHttp.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["EXAM_BADGE_API_PORT"] = badgeServiceHttp.Property(EndpointProperty.Port);
+    })
+    .WaitFor(examDotnetApi)
+    .WaitFor(badgeService);
 
 builder.Build().Run();

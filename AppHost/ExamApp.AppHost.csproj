@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\api\ExamApp.Api\ExamApp.Api.csproj" />
+    <ProjectReference Include="..\Services\BadgeService\BadgeService.csproj" />
+    <ProjectReference Include="..\Services\OutboxPublisher\OutboxPublisherService.csproj" />
+    <ProjectReference Include="..\Services\Gateway\Gateway.csproj" />
   </ItemGroup>
 
   <ItemGroup>

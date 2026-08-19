@@ -2,8 +2,12 @@ using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Text.Json.Nodes;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 var kestrelPort = builder.Configuration.GetValue<int>("Kestrel:Port", 5678); // Varsayılan 5079
 
@@ -17,7 +21,53 @@ Console.WriteLine($"[Startup] Environment: {environment}, Kestrel Port: {kestrel
 var ocelotConfigFile = File.Exists($"ocelot.{environment}.json")
     ? $"ocelot.{environment}.json"
     : "ocelot.json";
-builder.Configuration.AddJsonFile(ocelotConfigFile, optional: false, reloadOnChange: true);
+
+// Aspire assigns exam-dotnet-api/exam-badge-api dynamic ports, but Ocelot's
+// DownstreamHostAndPorts are static host/port pairs read from ocelot*.json.
+// Rather than rewriting those files with placeholder syntax, every
+// DownstreamHostAndPorts entry whose Host matches a known service name is
+// overridden in-memory — but only when the AppHost has actually set the
+// corresponding *_HOST/*_PORT env vars. If they're absent (standalone
+// `dotnet run`, docker-compose), the file's own values are used untouched.
+var ocelotJson = JsonNode.Parse(File.ReadAllText(ocelotConfigFile))!;
+OverrideDownstreamHost(ocelotJson, "exam-dotnet-api", "EXAM_DOTNET_API_HOST", "EXAM_DOTNET_API_PORT");
+OverrideDownstreamHost(ocelotJson, "exam-badge-api", "EXAM_BADGE_API_HOST", "EXAM_BADGE_API_PORT");
+
+builder.Configuration.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(ocelotJson.ToJsonString())));
+
+static void OverrideDownstreamHost(JsonNode root, string sentinelHost, string hostEnvVar, string portEnvVar)
+{
+    var host = Environment.GetEnvironmentVariable(hostEnvVar);
+    var portRaw = Environment.GetEnvironmentVariable(portEnvVar);
+    if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(portRaw) || !int.TryParse(portRaw, out var port))
+    {
+        return;
+    }
+
+    var routes = root["Routes"]?.AsArray();
+    if (routes is null)
+    {
+        return;
+    }
+
+    foreach (var route in routes)
+    {
+        var hostAndPorts = route?["DownstreamHostAndPorts"]?.AsArray();
+        if (hostAndPorts is null)
+        {
+            continue;
+        }
+
+        foreach (var entry in hostAndPorts)
+        {
+            if (entry is not null && entry["Host"]?.GetValue<string>() == sentinelHost)
+            {
+                entry["Host"] = host;
+                entry["Port"] = port;
+            }
+        }
+    }
+}
 
 StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
 

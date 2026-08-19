@@ -56,7 +56,7 @@ build docker buildx build --push \
 
 build docker buildx build --push \
   --platform "${PLATFORM}" \
-  -f deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile \
+  -f deploy/dockerfiles/dotnet-worker.Dockerfile \
   --build-arg PROJECT_PATH=Services/OutboxPublisher/OutboxPublisherService.csproj \
   --build-arg APP_DLL=OutboxPublisherService.dll \
   -t "${GAR_REPO}/exam-outbox-publisher:${IMAGE_TAG}" \

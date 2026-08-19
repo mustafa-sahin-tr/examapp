@@ -299,7 +299,7 @@ jobs:
 
           if should_build "exam-outbox-publisher"; then
             docker buildx build --push \
-              -f deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile \
+              -f deploy/dockerfiles/dotnet-worker.Dockerfile \
               --build-arg PROJECT_PATH=Services/OutboxPublisher/OutboxPublisherService.csproj \
               --build-arg APP_DLL=OutboxPublisherService.dll \
               -t "$ACR/exam-outbox-publisher:$TAG" \

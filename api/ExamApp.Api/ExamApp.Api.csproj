@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.5.0" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.20.6" />
@@ -37,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../ExamApp.Foundation/ExamApp.Foundation.csproj" />
+    <ProjectReference Include="..\..\ServiceDefaults\ExamApp.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

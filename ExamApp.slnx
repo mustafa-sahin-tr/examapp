@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/api/">
+    <Project Path="api/ExamApp.Api/ExamApp.Api.csproj" />
+    <Project Path="api/ExamApp.Foundation/ExamApp.Foundation.csproj" />
+  </Folder>
+  <Folder Name="/AppHost/">
+    <Project Path="AppHost/ExamApp.AppHost.csproj" />
+  </Folder>
+  <Folder Name="/ServiceDefaults/">
+    <Project Path="ServiceDefaults/ExamApp.ServiceDefaults.csproj" />
+  </Folder>
+</Solution>

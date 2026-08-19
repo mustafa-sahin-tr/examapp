@@ -17,6 +17,8 @@ using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // 📌 Kestrel için port değerini `appsettings.json` veya Environment Variable'dan al
 var kestrelPort = builder.Configuration.GetValue<int>("Kestrel:Port", 5079); // Varsayılan 5079
 
@@ -157,9 +159,9 @@ builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.AddScoped<IBadgeResetApiClient, BadgeResetApiClient>();
 builder.Services.AddScoped<StudentResetJob>();
 
-// PostgreSQL & EF Core
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
+// same key as before, so standalone `dotnet run` against appsettings.json is unaffected)
+builder.AddNpgsqlDbContext<AppDbContext>("DefaultConnection");
 
 // Hangfire (PostgreSQL)
 var hangfireConn = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -242,6 +244,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 app.Run();
 

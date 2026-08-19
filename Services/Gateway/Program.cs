@@ -32,6 +32,15 @@ var ocelotConfigFile = File.Exists($"ocelot.{environment}.json")
 var ocelotJson = JsonNode.Parse(File.ReadAllText(ocelotConfigFile))!;
 OverrideDownstreamHost(ocelotJson, "exam-dotnet-api", "EXAM_DOTNET_API_HOST", "EXAM_DOTNET_API_PORT");
 OverrideDownstreamHost(ocelotJson, "exam-badge-api", "EXAM_BADGE_API_HOST", "EXAM_BADGE_API_PORT");
+OverrideDownstreamHost(ocelotJson, "auth-ui", "AUTH_UI_HOST", "AUTH_UI_PORT");
+OverrideDownstreamHost(ocelotJson, "angular-app", "ANGULAR_APP_HOST", "ANGULAR_APP_PORT");
+OverrideDownstreamHost(ocelotJson, "auth-api", "AUTH_API_HOST", "AUTH_API_PORT");
+OverrideDownstreamHost(ocelotJson, "keycloak", "KEYCLOAK_HOST", "KEYCLOAK_PORT");
+OverrideDownstreamHost(ocelotJson, "minio", "MINIO_HOST", "MINIO_PORT");
+// question-detector-dev's DownstreamHostAndPorts literal ("question-detector-dev")
+// doesn't match this AppHost's resource name ("question-detector") and is
+// left unoverridden — not part of the Keycloak login flow, and out of scope
+// for this fix; noted in the decision log.
 
 builder.Configuration.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(ocelotJson.ToJsonString())));
 

@@ -93,6 +93,25 @@ var keycloakAdminPassword = builder.AddParameter("keycloak-admin-password", secr
 // against 24.x) hasn't been verified against 26.x's realm import format.
 var keycloak = builder.AddKeycloak("keycloak", port: 8081, adminUsername: keycloakAdminUsername, adminPassword: keycloakAdminPassword)
     .WithImageTag("26.7.0")
+    // AddKeycloak's "primary" endpoint auto-switches to HTTPS (container
+    // port 8443) in run mode via an internal SubscribeHttpsEndpointsUpdate
+    // hook — WithDeveloperCertificateTrust(false) does NOT stop this (tried;
+    // Docker still only published 8443/9000, never 8080). Rather than fight
+    // that, a second, independent HTTP endpoint is declared here on
+    // Keycloak's own container port 8080 — which Keycloak's startup log
+    // confirms it listens on regardless ("Listening on: http://0.0.0.0:8080
+    // and https://0.0.0.0:8443") — and used for all downstream wiring
+    // instead of the auto-switched "http"-named one. Ocelot's ocelot*.json
+    // routes hardcode DownstreamScheme: "http" for every Keycloak route, so
+    // sending them at the auto-switched HTTPS endpoint produced TLS
+    // ServerHello bytes misread as a garbled HTTP response
+    // ("ConnectionToDownstreamServiceError: response ended prematurely").
+    .WithHttpEndpoint(port: 8082, targetPort: 8080, name: "http-plain")
+    // Custom login theme — docker-compose.override.yml bind-mounts the same
+    // ./keycloak-themes/my-theme directory to this exact container path.
+    // (keycloak-themes/import, also mounted there, is empty — no realm
+    // content is missed by not wiring it too.)
+    .WithBindMount("../keycloak-themes/my-theme", "/opt/keycloak/themes/my-theme")
     .WithDataVolume("examapp-keycloak-data")
     .WithRealmImport("../deploy/keycloak/import")
     // Own storage in the "keycloak" database on the same Postgres instance —
@@ -111,7 +130,7 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8081, adminUsername: keyclo
     .WithEnvironment("KC_DB_PASSWORD", postgresPassword)
     .WaitFor(postgres);
 
-var keycloakHttp = keycloak.GetEndpoint("http");
+var keycloakHttp = keycloak.GetEndpoint("http-plain");
 
 // ---------------------------------------------------------------------------
 // ExamDotnetApi (api/ExamApp.Api)
@@ -126,7 +145,13 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     // BadgeService/Gateway below) reflects reality, the other so the app
     // actually binds there instead of colliding with auth-api (which has
     // the exact same 5079-default pattern in its own Program.cs).
-    .WithHttpEndpoint(port: 5079, name: "http")
+    // isProxied: false — without it, DCP tries to front this endpoint with
+    // its own loopback (127.0.0.1/::1) proxy, but since ListenAnyIP binds
+    // the wildcard address instead of whatever DCP expected, that proxy
+    // never actually forwards anywhere: every request to "localhost:5079"
+    // hits DCP's dead-end listener and hangs forever instead of reaching
+    // Kestrel. isProxied: false lets Kestrel own the port directly instead.
+    .WithHttpEndpoint(port: 5079, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "5079")
     // connectionName "DefaultConnection" keeps the injected env var named
     // ConnectionStrings__DefaultConnection, matching the existing
@@ -162,7 +187,8 @@ var badgeService = builder.AddProject<Projects.BadgeService>("exam-badge-api")
     // Same reasoning as ExamDotnetApi above — Program.cs hardcodes its own
     // Kestrel:Port default (8006), so it's pinned explicitly rather than
     // left to coincide with whatever Aspire would otherwise assign.
-    .WithHttpEndpoint(port: 8006, name: "http")
+    // isProxied: false for the same dead-end-loopback-proxy reason as above.
+    .WithHttpEndpoint(port: 8006, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "8006")
     .WithReference(badgeDb, connectionName: "DefaultConnection")
     .WithReference(rabbitmq)
@@ -225,7 +251,9 @@ var authApi = builder.AddProject<Projects.AuthApi>("auth-api")
     // processes fight over the same port when run side by side as AppHost
     // host processes (they don't collide in docker-compose because each
     // gets its own container network namespace).
-    .WithHttpEndpoint(port: 6079, name: "http")
+    // isProxied: false for the same dead-end-loopback-proxy reason as
+    // ExamDotnetApi above.
+    .WithHttpEndpoint(port: 6079, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "6079")
     .WithReference(identityDb, connectionName: "DefaultConnection")
     .WithReference(redis)
@@ -240,6 +268,8 @@ var authApi = builder.AddProject<Projects.AuthApi>("auth-api")
     .WaitFor(postgres)
     .WaitFor(redis)
     .WaitFor(minio);
+
+var authApiHttp = authApi.GetEndpoint("http");
 
 // ---------------------------------------------------------------------------
 // OcelotGateway (Services/Gateway) — externally reachable entry point.
@@ -263,7 +293,11 @@ var badgeServiceHttp = badgeService.GetEndpoint("http");
 var ocelotGateway = builder.AddProject<Projects.Gateway>("ocelot-gateway")
     .WithReference(examDotnetApi)
     .WithReference(badgeService)
-    .WithHttpEndpoint(port: 5678, name: "http")
+    // isProxied: false for the same dead-end-loopback-proxy reason as
+    // ExamDotnetApi above — confirmed via netstat that without it, dcp owned
+    // 127.0.0.1:5678/::1:5678 while Gateway.exe only got the wildcard
+    // address, so every "localhost:5678" request timed out.
+    .WithHttpEndpoint(port: 5678, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "5678")
     .WithExternalHttpEndpoints()
     .WithEnvironment(context =>
@@ -272,9 +306,24 @@ var ocelotGateway = builder.AddProject<Projects.Gateway>("ocelot-gateway")
         context.EnvironmentVariables["EXAM_DOTNET_API_PORT"] = examDotnetApiHttp.Property(EndpointProperty.Port);
         context.EnvironmentVariables["EXAM_BADGE_API_HOST"] = badgeServiceHttp.Property(EndpointProperty.Host);
         context.EnvironmentVariables["EXAM_BADGE_API_PORT"] = badgeServiceHttp.Property(EndpointProperty.Port);
+        // auth-api, keycloak and minio's DownstreamHostAndPorts entries are
+        // also docker-compose hostnames Ocelot can't resolve under Aspire —
+        // same fix, same reason. Missing these specifically broke the login
+        // flow: /oidc-login (Gateway's own redirect middleware, which routes
+        // back through /auth/realms/*) needs "keycloak" resolved, and the
+        // BFF password-grant call from auth-ui needs "auth-api" resolved.
+        context.EnvironmentVariables["AUTH_API_HOST"] = authApiHttp.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["AUTH_API_PORT"] = authApiHttp.Property(EndpointProperty.Port);
+        context.EnvironmentVariables["KEYCLOAK_HOST"] = keycloakHttp.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["KEYCLOAK_PORT"] = keycloakHttp.Property(EndpointProperty.Port);
+        context.EnvironmentVariables["MINIO_HOST"] = minioApiEndpoint.Property(EndpointProperty.Host);
+        context.EnvironmentVariables["MINIO_PORT"] = minioApiEndpoint.Property(EndpointProperty.Port);
     })
     .WaitFor(examDotnetApi)
-    .WaitFor(badgeService);
+    .WaitFor(badgeService)
+    .WaitFor(authApi)
+    .WaitFor(keycloak)
+    .WaitFor(minio);
 
 // ---------------------------------------------------------------------------
 // Keycloak wiring — the URL topology, spelled out:
@@ -348,15 +397,44 @@ ocelotGateway = ocelotGateway
 // behaviour is untouched.
 // ---------------------------------------------------------------------------
 
+// Deliberately NOT calling WithHttpEndpoint here. `ng serve` already binds
+// its own fixed port via the "start"/"start:aspire" script's own flags
+// (4200/4201, see above) independently of anything Aspire assigns. Declaring
+// an Aspire-managed HTTP endpoint on top of that made DCP try to front the
+// resource with its own reverse-proxy listener on the *same* port — which
+// only partially bound (it grabbed the loopback addresses, 127.0.0.1/::1,
+// while the real node process kept the wildcard address, 0.0.0.0), so any
+// request to "localhost" hit DCP's half-broken proxy and hung forever
+// instead of ever reaching ng serve. Without a declared endpoint, DCP
+// doesn't create that competing listener, and "localhost:4200/4201" reaches
+// the real process directly. The tradeoff: these two resources have no
+// Aspire-tracked endpoint, so the Gateway wiring below uses plain
+// "localhost"/4200/4201 literals instead of GetEndpoint("http") — safe here
+// specifically because both ports are already hardcoded and stable by
+// design, not dynamically assigned.
 var angularApp = builder.AddJavaScriptApp("angular-app", "../ui", "start")
-    .WithHttpEndpoint(port: 4200, name: "http")
     .WithReference(ocelotGateway)
     .WaitFor(ocelotGateway);
 
 var authUi = builder.AddJavaScriptApp("auth-ui", "../auth-ui", "start:aspire")
-    .WithHttpEndpoint(port: 4201, name: "http")
     .WithReference(ocelotGateway)
     .WaitFor(ocelotGateway);
+
+// Ocelot's /app/* and catch-all routes point at "auth-ui:4200"/
+// "angular-app:4200" (the docker-compose container hostnames), which don't
+// resolve at all under Aspire — both Angular apps run as bare host processes
+// on different ports (4200/4201, see above), not containers on those names.
+// Same fix as the exam-dotnet-api/exam-badge-api overrides above, applied
+// here too (this was missed when the Angular apps were first added and only
+// surfaced when /app/login returned nothing through the gateway). Plain
+// literals rather than GetEndpoint("http") — neither Angular resource has an
+// Aspire-tracked endpoint (see the comment above explaining why), but their
+// ports are hardcoded and stable by design, so this is safe.
+ocelotGateway = ocelotGateway
+    .WithEnvironment("AUTH_UI_HOST", "localhost")
+    .WithEnvironment("AUTH_UI_PORT", "4201")
+    .WithEnvironment("ANGULAR_APP_HOST", "localhost")
+    .WithEnvironment("ANGULAR_APP_PORT", "4200");
 
 // ---------------------------------------------------------------------------
 // question-detector (Python/FastAPI, YOLO + QR/OCR detection) — run via

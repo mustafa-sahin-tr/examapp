@@ -322,4 +322,69 @@ ocelotGateway = ocelotGateway
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     .WaitFor(keycloak);
 
+// ---------------------------------------------------------------------------
+// Angular apps (ui/, auth-ui/) — conveniences only, per the migration brief;
+// nothing above depends on these.
+//
+// Angular env vars set here (WithEnvironment/WithReference) reach the
+// ng serve/Node process, never the browser bundle — a build-time env file or
+// dev-server proxy would be needed to make the *browser* aware of anything
+// dynamic. That step was deliberately skipped: both apps' environment.ts
+// already hardcode http://localhost:5079 (ExamDotnetApi) and
+// http://localhost:5678 (Gateway), which happen to be exactly what's pinned
+// above, so they resolve correctly as-is. This is fragile — if those pins
+// ever move, environment.ts needs a manual update — but reworking the
+// Angular apps to consume Aspire-injected config was judged out of scope for
+// an orchestration migration; noted in the decision log for follow-up.
+//
+// Both apps' package.json "start" script (`ng serve`) defaults to port 4200
+// with no override — as bare host processes under AppHost (not separate
+// containers, unlike docker-compose), running both on the same default port
+// would collide the same way ExamDotnetApi/auth-api did. ui/ keeps the
+// default "start" script (4200, matching docker-compose's own ui port).
+// auth-ui/ got a new "start:aspire" package.json script
+// (`ng serve ... --port 4201`, matching its docker-compose host-port
+// mapping) rather than changing "start" itself, so standalone/docker-compose
+// behaviour is untouched.
+// ---------------------------------------------------------------------------
+
+var angularApp = builder.AddJavaScriptApp("angular-app", "../ui", "start")
+    .WithHttpEndpoint(port: 4200, name: "http")
+    .WithReference(ocelotGateway)
+    .WaitFor(ocelotGateway);
+
+var authUi = builder.AddJavaScriptApp("auth-ui", "../auth-ui", "start:aspire")
+    .WithHttpEndpoint(port: 4201, name: "http")
+    .WithReference(ocelotGateway)
+    .WaitFor(ocelotGateway);
+
+// ---------------------------------------------------------------------------
+// question-detector (Python/FastAPI, YOLO + QR/OCR detection) — run via
+// uvicorn (main.py has no __main__ entrypoint of its own, matching
+// question-detector/commands.sh's `uvicorn main:app --host 0.0.0.0 --port
+// 8080`). Dependency manager auto-detected as pip (requirements.txt present,
+// no pyproject.toml). Does not reference Postgres or RabbitMQ — verified via
+// discovery that the service has no database/broker imports at all, unlike
+// what the brief's Phase 4 step assumed generically.
+// ---------------------------------------------------------------------------
+
+var questionDetector = builder.AddUvicornApp("question-detector", "../question-detector", "main:app")
+    .WithHttpEndpoint(port: 8080, env: "UVICORN_PORT");
+
+// ---------------------------------------------------------------------------
+// n8n — plain container resource. Bind-mounted (not a named volume) to the
+// exact same host path docker-compose.yml already uses (./n8n-data), so
+// existing workflows/credentials are picked up rather than silently starting
+// an empty instance — the failure mode the migration brief explicitly warns
+// about. Verified ./n8n-data exists at the repo root with real content
+// before wiring this.
+// ---------------------------------------------------------------------------
+
+var n8n = builder.AddContainer("n8n", "n8nio/n8n", "latest")
+    .WithBindMount("../n8n-data", "/home/node/.n8n")
+    .WithEnvironment("N8N_PORT", "5678")
+    .WithEnvironment("N8N_PROTOCOL", "http")
+    .WithEnvironment("GENERIC_TIMEZONE", "Europe/Istanbul")
+    .WithHttpEndpoint(port: 5679, targetPort: 5678, name: "http");
+
 builder.Build().Run();

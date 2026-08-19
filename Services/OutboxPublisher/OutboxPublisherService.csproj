@@ -21,5 +21,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../api/ExamApp.Foundation/ExamApp.Foundation.csproj" />
+    <ProjectReference Include="..\..\ServiceDefaults\ExamApp.ServiceDefaults.csproj" />
   </ItemGroup>
 </Project>

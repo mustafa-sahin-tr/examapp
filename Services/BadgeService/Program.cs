@@ -14,6 +14,8 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 var kestrelPort = builder.Configuration.GetValue<int>("Kestrel:Port", 8006); // Varsayılan 5079
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -135,5 +137,6 @@ using (var scope = app.Services.CreateScope())
 
 app.MapHub<BadgeNotificationHub>("/hub/badges");
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 app.Run();

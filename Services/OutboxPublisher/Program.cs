@@ -6,6 +6,8 @@ using OutboxPublisherService.Publishers;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.AddServiceDefaults();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));

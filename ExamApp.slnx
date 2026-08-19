@@ -6,6 +6,9 @@
   <Folder Name="/AppHost/">
     <Project Path="AppHost/ExamApp.AppHost.csproj" />
   </Folder>
+  <Folder Name="/auth-api/">
+    <Project Path="auth-api/ExamApp.Api.csproj" />
+  </Folder>
   <Folder Name="/ServiceDefaults/">
     <Project Path="ServiceDefaults/ExamApp.ServiceDefaults.csproj" />
   </Folder>

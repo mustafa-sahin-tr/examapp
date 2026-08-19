@@ -5,9 +5,14 @@
     <ProjectReference Include="..\Services\BadgeService\BadgeService.csproj" />
     <ProjectReference Include="..\Services\OutboxPublisher\OutboxPublisherService.csproj" />
     <ProjectReference Include="..\Services\Gateway\Gateway.csproj" />
+    <!-- auth-api's csproj is also named ExamApp.Api.csproj (different folder),
+         which would otherwise collide with api/ExamApp.Api's generated
+         Projects.ExamApp_Api type — disambiguated explicitly. -->
+    <ProjectReference Include="..\auth-api\ExamApp.Api.csproj" AspireProjectMetadataTypeName="AuthApi" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Keycloak" Version="13.5.0-preview.1.26417.10" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.5.0" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.5.0" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.5.0" />

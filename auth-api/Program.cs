@@ -11,6 +11,8 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // 📌 Kestrel için port değerini `appsettings.json` veya Environment Variable'dan al
 var kestrelPort = builder.Configuration.GetValue<int>("Kestrel:Port", 5079); // Varsayılan 5079
 
@@ -157,6 +159,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapDefaultEndpoints();
 
 app.Run();
 

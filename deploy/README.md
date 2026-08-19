@@ -164,4 +164,4 @@ docker image prune -f
 
 - Prod stack **tek giriş noktası** olarak Caddy (80/443) kullanır ve tüm trafiği `ocelot-gateway`’e iletir.
 - DB’ler `deploy/postgres/init/01-create-databases.sql` ile **ilk boot’ta** oluşur. Eğer `postgres_data` doluysa init script tekrar çalışmaz.
-- `Services/OutboxPublisher` şu an `net10.0` preview target’lıyor; prod compose bunu çalıştırmak için preview SDK image kullanır. İstersen bunu `net8.0`’a çekip daha “stable” hale getirebiliriz.
+- Tüm .NET servisleri (`exam-dotnet-api`, `auth-api`, `exam-badge-api`, `ocelot-gateway`, `exam-outbox-publisher`, `finance-api`, `CatalogService`) `net10.0` (GA) hedefliyor; prod dockerfile'ları `DOTNET_VERSION=10.0` default'u ile stable SDK/runtime image'larını kullanır.

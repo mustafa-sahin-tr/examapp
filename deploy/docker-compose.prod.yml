@@ -263,7 +263,7 @@ services:
   exam-outbox-publisher:
     build:
       context: ..
-      dockerfile: deploy/dockerfiles/dotnet-worker-net10-preview.Dockerfile
+      dockerfile: deploy/dockerfiles/dotnet-worker.Dockerfile
       args:
         PROJECT_PATH: Services/OutboxPublisher/OutboxPublisherService.csproj
         APP_DLL: OutboxPublisherService.dll

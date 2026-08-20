@@ -153,6 +153,16 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     // Kestrel. isProxied: false lets Kestrel own the port directly instead.
     .WithHttpEndpoint(port: 5079, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "5079")
+    // Program.cs calls app.UseHttpsRedirection(), which — since nothing
+    // configures HttpsRedirectionOptions.HttpsPort explicitly — falls back
+    // to ASPNETCORE_HTTPS_PORT. That env var otherwise resolves to
+    // launchSettings.json's "https" profile port (a leftover from project
+    // scaffolding, e.g. auth-api's 7246), which nothing actually listens on
+    // here (Kestrel only binds plain HTTP). Requests were getting redirected
+    // to that dead port instead of ever reaching the API. Setting it empty
+    // makes the middleware unable to determine a target, so it no-ops
+    // instead of redirecting (logged at Debug level, not an error).
+    .WithEnvironment("ASPNETCORE_HTTPS_PORT", "")
     // connectionName "DefaultConnection" keeps the injected env var named
     // ConnectionStrings__DefaultConnection, matching the existing
     // ConnectionStrings:DefaultConnection key so standalone `dotnet run`
@@ -190,6 +200,9 @@ var badgeService = builder.AddProject<Projects.BadgeService>("exam-badge-api")
     // isProxied: false for the same dead-end-loopback-proxy reason as above.
     .WithHttpEndpoint(port: 8006, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "8006")
+    // Same UseHttpsRedirection()-targets-a-dead-launchSettings-port fix as
+    // ExamDotnetApi above.
+    .WithEnvironment("ASPNETCORE_HTTPS_PORT", "")
     .WithReference(badgeDb, connectionName: "DefaultConnection")
     .WithReference(rabbitmq)
     .WithEnvironment(context =>
@@ -255,6 +268,10 @@ var authApi = builder.AddProject<Projects.AuthApi>("auth-api")
     // ExamDotnetApi above.
     .WithHttpEndpoint(port: 6079, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "6079")
+    // Same UseHttpsRedirection()-targets-a-dead-launchSettings-port fix as
+    // ExamDotnetApi above — this is literally the service (auth-api) where
+    // it was actually observed (redirected to launchSettings' :7246).
+    .WithEnvironment("ASPNETCORE_HTTPS_PORT", "")
     .WithReference(identityDb, connectionName: "DefaultConnection")
     .WithReference(redis)
     .WithEnvironment("Redis__Configuration", redis.Resource.ConnectionStringExpression)
@@ -351,12 +368,27 @@ examDotnetApi = examDotnetApi
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
-    .WaitFor(keycloak);
+    // AuthApiBaseUrl is another docker-compose hostname ("auth-api:5079")
+    // Ocelot's override mechanism never touches, since it's not an Ocelot
+    // route at all — ExamDotnetApi's own AuthApiClient calls auth-api
+    // directly via HttpClient (e.g. AuthController.RefreshProfileInformation
+    // -> GetUserProfileAsync). Surfaced as "No such host is known.
+    // (auth-api:5079)" once JWT validation itself started passing.
+    .WithEnvironment("AuthApiBaseUrl", authApiHttp)
+    .WaitFor(keycloak)
+    .WaitFor(authApi);
 
 badgeService = badgeService
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
+    // Same docker-compose-hostname class of bug as ExamDotnetApi's
+    // AuthApiBaseUrl above (n8n:5678 doesn't resolve under Aspire) — fixed
+    // preemptively here rather than waiting to hit it. A literal, not a
+    // reference to the n8n resource declared further below: n8n's host port
+    // is already pinned (5679), so no dynamic resolution is needed and no
+    // forward-reference ordering problem is introduced.
+    .WithEnvironment("QuestionAnalyzer__BaseUrl", "http://localhost:5679")
     .WaitFor(keycloak);
 
 authApi = authApi
@@ -370,6 +402,31 @@ ocelotGateway = ocelotGateway
     .WithEnvironment("Keycloak__Host", keycloakHttp)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     .WaitFor(keycloak);
+
+// KC_HOSTNAME pins Keycloak's own issuer stamping to the gateway's public
+// URL, regardless of which address a caller actually used to reach it.
+// Without this (hostname-strict=false, matching docker-compose), Keycloak
+// echoes back whatever Host header the caller used as the token's "iss"
+// claim — auth-api calls Keycloak directly at its internal Aspire endpoint
+// (Keycloak:Host, not through the gateway, correctly avoiding unnecessary
+// gateway hops for server-to-server calls) for the actual login token
+// exchange, which minted tokens with iss=<keycloak's internal address>
+// instead of iss=<gateway>, so ExamDotnetApi/BadgeService (which validate
+// against Server:BaseUrl=<gateway>) rejected every token with a 401 that
+// looked unrelated to networking — exactly the failure mode the migration
+// brief warned about. docker-compose.yml sidesteps this the same way, just
+// pointed at Keycloak's own host port (8081) instead of the gateway (5678),
+// since ExamDotnetApi's actual issuer expectation there is a separate,
+// pre-existing gap (Server:BaseUrl is missing from its appsettings.json
+// entirely in dev, outside this migration's scope to fix).
+//
+// A literal string, not gatewayPublicUrl (the EndpointReference) — wiring a
+// container (Keycloak) to a project resource's isProxied:false endpoint
+// creates a dependency DCP's container-tunnel mechanism can't resolve
+// ("Container tunnel service ocelot-gateway-http-1 should have valid
+// address at this point"). The gateway's port is already pinned and stable
+// by design, so no dynamic resolution is actually needed here.
+keycloak = keycloak.WithEnvironment("KC_HOSTNAME", "http://localhost:5678");
 
 // ---------------------------------------------------------------------------
 // Angular apps (ui/, auth-ui/) — conveniences only, per the migration brief;
@@ -412,11 +469,21 @@ ocelotGateway = ocelotGateway
 // "localhost"/4200/4201 literals instead of GetEndpoint("http") — safe here
 // specifically because both ports are already hardcoded and stable by
 // design, not dynamically assigned.
+// WithNpm(install: false) — Aspire's own "npm install" child-process step
+// (spawned via DCP before "start"/"start:aspire" runs) was observed hanging
+// indefinitely on this machine (zero CPU progress over 90+ seconds, while
+// running `npm install` directly in the same folder took 10-16s and found
+// everything already up to date) — a known class of Windows/DCP npm-spawn
+// issue (see microsoft/aspire#13145 for a related report). Disabling it
+// means node_modules must be kept up to date manually (`npm install` in
+// ui/ or auth-ui/) whenever package.json changes, before starting AppHost.
 var angularApp = builder.AddJavaScriptApp("angular-app", "../ui", "start")
+    .WithNpm(install: false)
     .WithReference(ocelotGateway)
     .WaitFor(ocelotGateway);
 
 var authUi = builder.AddJavaScriptApp("auth-ui", "../auth-ui", "start:aspire")
+    .WithNpm(install: false)
     .WithReference(ocelotGateway)
     .WaitFor(ocelotGateway);
 

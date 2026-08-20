@@ -23,9 +23,15 @@ dotnet run
 ```
 
 The first run:
-- Installs npm dependencies for `ui/`/`auth-ui/` and pip dependencies for `question-detector/` (can take a while).
+- Installs pip dependencies for `question-detector/` (can take a while).
 - Pulls container images for Postgres, Redis, RabbitMQ, MinIO, Keycloak, n8n if not already cached.
 - Creates fresh named Docker volumes for Postgres/Redis/MinIO/Keycloak data — these persist across restarts, so subsequent runs are much faster and keep your data.
+
+**npm install is manual, not automatic.** Aspire's own npm-install step was found to hang indefinitely on Windows (a known class of Aspire/DCP npm-spawn issue) and is disabled in `AppHost.cs` (`WithNpm(install: false)`). Whenever `ui/`'s or `auth-ui/`'s `package.json` changes, run `npm install` in that folder yourself before starting the AppHost:
+```bash
+cd ui && npm install
+cd ../auth-ui && npm install
+```
 
 **First-time-only certificate trust:** the first `dotnet run` may prompt to trust the local HTTPS dev certificate — accept it. In a non-interactive/headless shell this step hangs waiting for a dialog that never appears; running from a normal terminal (VS Code, PowerShell) avoids that.
 

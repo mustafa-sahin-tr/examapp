@@ -18,17 +18,14 @@ public class ExamController : BaseController
 {
 
 
-    private readonly UserProfileCacheService _userProfileCacheService;
     private readonly IExamService _examService;
     private readonly IStudentService _studentService;
     public ExamController(IMinIoService minioService, IExamService examService,
-            UserProfileCacheService userProfileCacheService,
             IStudentService studentService
             )
         : base()
     {
         _examService = examService;
-        _userProfileCacheService = userProfileCacheService;
         _studentService = studentService;
     }
 
@@ -48,7 +45,7 @@ public class ExamController : BaseController
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetWorksheetAndInstancessAsync(int gradeId)
     {
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -79,7 +76,7 @@ public class ExamController : BaseController
     [HttpGet("assignments/active")]
     public async Task<IActionResult> GetActiveAssignments()
     {
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -104,7 +101,7 @@ public class ExamController : BaseController
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetCompletedTests(int pageNumber = 1, int pageSize = 10)
     {
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -146,7 +143,7 @@ public class ExamController : BaseController
         };
 
         Paged<WorksheetDto> result = null;
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -185,7 +182,7 @@ public class ExamController : BaseController
     [HttpPost("start-test/{testId}")]
     public async Task<IActionResult> StartTest(int testId)
     {
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -292,7 +289,7 @@ public class ExamController : BaseController
     [HttpGet("student/statistics")]
     public async Task<IActionResult> GetGroupedStudentStatistics()
     {
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -317,7 +314,7 @@ public class ExamController : BaseController
     {
         try
         {
-            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            var user = await GetAuthenticatedUserAsync();
             if (user == null)
             {
                 return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
@@ -349,7 +346,7 @@ public class ExamController : BaseController
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> UpdateWorksheetBackgroundImage(int id, [FromForm] IFormFile file)
     {
-        var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+        var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");

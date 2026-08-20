@@ -504,17 +504,44 @@ ocelotGateway = ocelotGateway
     .WithEnvironment("ANGULAR_APP_PORT", "4200");
 
 // ---------------------------------------------------------------------------
-// question-detector (Python/FastAPI, YOLO + QR/OCR detection) — run via
-// uvicorn (main.py has no __main__ entrypoint of its own, matching
-// question-detector/commands.sh's `uvicorn main:app --host 0.0.0.0 --port
-// 8080`). Dependency manager auto-detected as pip (requirements.txt present,
-// no pyproject.toml). Does not reference Postgres or RabbitMQ — verified via
-// discovery that the service has no database/broker imports at all, unlike
-// what the brief's Phase 4 step assumed generically.
+// question-detector (Python/FastAPI, YOLO + QR/OCR detection) — a container
+// built from question-detector/Dockerfile, not AddUvicornApp (a host
+// process). pyzbar's Windows wheel ships libzbar-64.dll/libiconv.dll
+// directly and repeatedly failed to load them ("Could not find module
+// libiconv.dll (or one of its dependencies)") even though both files were
+// physically present — a native-dependency problem specific to running on
+// the Windows host. The Dockerfile installs the equivalent Linux package
+// (libzbar0) via apt, which resolves its own transitive dependencies
+// correctly, sidestepping the Windows DLL issue entirely and matching
+// docker-compose's own approach (question-detector-dev also runs
+// containerized there).
+//
+// The Dockerfile only installs pip dependencies — it has no COPY for the
+// application source and no CMD (docker-compose's dev setup bind-mounts the
+// source and supplies the run command externally too), so both are
+// replicated here: bind mount question-detector/ to /app (matching the
+// Dockerfile's WORKDIR) for the source, and WithArgs for the uvicorn
+// command matching docker-compose.override.yml's dev command.
+//
+// Does not reference Postgres or RabbitMQ — verified via discovery that the
+// service has no database/broker imports at all, unlike what the brief's
+// Phase 4 step assumed generically.
 // ---------------------------------------------------------------------------
 
-var questionDetector = builder.AddUvicornApp("question-detector", "../question-detector", "main:app")
-    .WithHttpEndpoint(port: 8080, env: "UVICORN_PORT");
+var questionDetector = builder.AddDockerfile("question-detector", "..", "question-detector/Dockerfile")
+    .WithBindMount("../question-detector", "/app")
+    .WithArgs("uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload")
+    .WithHttpEndpoint(port: 8080, targetPort: 8080, name: "http");
+
+// Ocelot's /question-detector-dev/* route points at "question-detector-dev"
+// (docker-compose's hostname), same class of fix as auth-ui/angular-app/
+// auth-api/keycloak/minio above — missed initially since question-detector
+// was still an AddUvicornApp host process at the time and this route hadn't
+// been exercised yet. A literal, not GetEndpoint("http") — the container's
+// port is already pinned (8080), matching the auth-ui/angular-app reasoning.
+ocelotGateway = ocelotGateway
+    .WithEnvironment("QUESTION_DETECTOR_HOST", "localhost")
+    .WithEnvironment("QUESTION_DETECTOR_PORT", "8080");
 
 // ---------------------------------------------------------------------------
 // n8n — plain container resource. Bind-mounted (not a named volume) to the

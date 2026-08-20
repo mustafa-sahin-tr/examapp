@@ -37,10 +37,10 @@ OverrideDownstreamHost(ocelotJson, "angular-app", "ANGULAR_APP_HOST", "ANGULAR_A
 OverrideDownstreamHost(ocelotJson, "auth-api", "AUTH_API_HOST", "AUTH_API_PORT");
 OverrideDownstreamHost(ocelotJson, "keycloak", "KEYCLOAK_HOST", "KEYCLOAK_PORT");
 OverrideDownstreamHost(ocelotJson, "minio", "MINIO_HOST", "MINIO_PORT");
-// question-detector-dev's DownstreamHostAndPorts literal ("question-detector-dev")
-// doesn't match this AppHost's resource name ("question-detector") and is
-// left unoverridden — not part of the Keycloak login flow, and out of scope
-// for this fix; noted in the decision log.
+// Sentinel is "question-detector-dev" (the literal in ocelot*.json), not
+// "question-detector" (this AppHost's resource name) — Ocelot only cares
+// about matching the JSON's Host value, so the names don't need to agree.
+OverrideDownstreamHost(ocelotJson, "question-detector-dev", "QUESTION_DETECTOR_HOST", "QUESTION_DETECTOR_PORT");
 
 builder.Configuration.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(ocelotJson.ToJsonString())));
 

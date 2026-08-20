@@ -160,7 +160,13 @@ builder.Services.AddScoped<IBadgeResetApiClient, BadgeResetApiClient>();
 builder.Services.AddScoped<StudentResetJob>();
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
-// same key as before, so standalone `dotnet run` against appsettings.json is unaffected)
+// same key as before, so standalone `dotnet run` against appsettings.json is unaffected).
+// Retry-on-failure is enabled by default here (a real resiliency win for
+// transient network blips, especially relevant to a containerized setup) —
+// QuestionService.cs and QuestionTransferJobRunner.cs's manual
+// Database.BeginTransaction() calls were updated to run inside
+// Database.CreateExecutionStrategy().Execute(...) instead of being disabled,
+// per EF Core's documented pattern for combining retries with transactions.
 builder.AddNpgsqlDbContext<AppDbContext>("DefaultConnection");
 
 // Hangfire (PostgreSQL)

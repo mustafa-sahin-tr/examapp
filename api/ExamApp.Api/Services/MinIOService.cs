@@ -131,6 +131,28 @@ public class MinIoService : IMinIoService
             {
                 await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName));
                 Console.WriteLine($"[MinIO] Bucket created: {bucketName}");
+
+                // Buckets are private by default; images are served via
+                // direct/unsigned URLs (e.g. the Ocelot /img/* route), which
+                // needs anonymous read access. Equivalent to
+                // `mc anonymous set download` on the bucket.
+                var publicReadPolicy = $$"""
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": { "AWS": ["*"] },
+                      "Action": ["s3:GetObject"],
+                      "Resource": ["arn:aws:s3:::{{bucketName}}/*"]
+                    }
+                  ]
+                }
+                """;
+                await _minioClient.SetPolicyAsync(new SetPolicyArgs()
+                    .WithBucket(bucketName)
+                    .WithPolicy(publicReadPolicy));
+                Console.WriteLine($"[MinIO] Public read policy applied to bucket: {bucketName}");
             }
 
             // Dosyayı MinIO'ya yükle

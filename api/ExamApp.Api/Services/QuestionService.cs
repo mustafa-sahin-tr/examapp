@@ -582,6 +582,12 @@ public class QuestionService : IQuestionService
 
     public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto)
     {
+        // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure
+        // (enabled by the Aspire Npgsql client integration) can retry the
+        // whole transaction as one unit instead of rejecting it outright.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
         using (var transaction = await _context.Database.BeginTransactionAsync())
         {
             try
@@ -1018,6 +1024,7 @@ public class QuestionService : IQuestionService
                 };
             }
         }
+        });
 
     }
 

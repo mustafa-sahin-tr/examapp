@@ -551,6 +551,9 @@ public class QuestionTransferJobRunner
             var subTopicIdByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var passageIdByExternalKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
+            // Reused across iterations for the per-question transaction below.
+            var strategy = _db.Database.CreateExecutionStrategy();
+
             foreach (var qEl in questions)
             {
                 var externalKey = qEl.TryGetProperty("externalKey", out var ek) ? (ek.GetString() ?? string.Empty) : string.Empty;
@@ -580,6 +583,15 @@ public class QuestionTransferJobRunner
                 }
 
                 // Acquire an idempotency lock row inside a transaction to prevent concurrent imports of the same key.
+                // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure
+                // can retry the transaction as one unit instead of rejecting it
+                // outright. Note: a retried attempt would redo this iteration's
+                // MinIO uploads too (they're not transactional) — acceptable
+                // here since retries only fire for genuinely transient DB
+                // errors, not the routine unique-constraint "already imported"
+                // case, which is caught separately below and never retried.
+                await strategy.ExecuteAsync(async () =>
+                {
                 await using var tx = await _db.Database.BeginTransactionAsync();
                 try
                 {
@@ -789,6 +801,7 @@ public class QuestionTransferJobRunner
                     job.Message = $"Import progress {job.ProcessedItems}/{job.TotalItems} (Imported {importedCount}, Skipped {skippedCount}, Failed {failedCount})";
                     await _db.SaveChangesAsync();
                 }
+                });
             }
 
             job.Status = QuestionTransferJobStatus.Completed;

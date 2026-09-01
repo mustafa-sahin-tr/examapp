@@ -9,9 +9,6 @@ services:
   exam-badge-api:
     command: dotnet run --urls=http://+:8006
 
-  # finance-api:
-  #   command: sh -c "cd finance-api && dotnet ef database update && dotnet watch run --urls=http://+:8005"
-
   ocelot-gateway:
     command: dotnet watch run --urls=http://+:5678
 
@@ -20,9 +17,6 @@ services:
 
   angular-app:
     command: sh -c "yarn install && yarn start"
-
-  # finance-ui: 
-  #   command: sh -c "npm install && npm start"
 
   auth-ui:
     command: sh -c "yarn install && yarn start"

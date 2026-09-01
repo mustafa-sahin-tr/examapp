@@ -24,7 +24,6 @@ var postgresEndpoint = postgres.GetEndpoint("tcp");
 var examDb = postgres.AddDatabase("examdb", databaseName: "worksheet");
 var identityDb = postgres.AddDatabase("identitydb", databaseName: "identity");
 var badgeDb = postgres.AddDatabase("badgedb", databaseName: "badge");
-var financeDb = postgres.AddDatabase("financedb", databaseName: "finance_db");
 // Keycloak's own storage — replaces docker-compose's reliance on a
 // postgres/init-scripts entry to pre-create this database.
 var keycloakDb = postgres.AddDatabase("keycloakdb", databaseName: "keycloak");

@@ -22,12 +22,6 @@ public interface IExamService
 
     // GetAllCanvasQuestions stays on the concrete ExamService (admin/debug read, not routed).
 
-    Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId);
-
-    Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId);
-
     Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId);
     Task<List<Grade>> GetGradesAsync();
-    Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId);
-    Task<UpdateWorksheetBackgroundImageDto> UpdateWorksheetBackgroundImageAsync(int worksheetId, IFormFile file, int userId);
 }

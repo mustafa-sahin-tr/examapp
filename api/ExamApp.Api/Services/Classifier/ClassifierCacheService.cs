@@ -113,6 +113,25 @@ public class ClassifierCacheService : IClassifierCacheService
         };
     }
 
+    public async Task RefreshIfStaleAsync(int userId)
+    {
+        var status = await GetStatusAsync();
+        if (!status.Stale)
+        {
+            _logger.LogDebug("Classifier cache already current; reconcile skipped.");
+            return;
+        }
+        if (!status.ConfiguredInSettings)
+        {
+            _logger.LogWarning("Classifier cache is stale but Gemini:ApiKey is not configured; reconcile skipped.");
+            return;
+        }
+
+        var result = await RefreshAsync(userId);
+        if (!result.Success)
+            _logger.LogWarning("Scheduled classifier cache refresh failed: {Message}", result.Message);
+    }
+
     /// <summary>Compact JSON tree the classifier prompt refers to. Returns (json, subtopicCount).</summary>
     private async Task<(string Payload, int SubTopicCount)> BuildTaxonomyPayloadAsync(CancellationToken ct)
     {

@@ -1,20 +1,29 @@
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.Classifier;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.Taxonomy;
 
 public class TaxonomyService : ITaxonomyService
 {
-    private readonly AppDbContext _context;
+    // Debounce window: a burst of edits schedules several jobs, but only the
+    // first finds the cache stale and rebuilds — the rest no-op.
+    private static readonly TimeSpan ReconcileDelay = TimeSpan.FromMinutes(2);
 
-    public TaxonomyService(AppDbContext context)
+    private readonly AppDbContext _context;
+    private readonly IBackgroundJobClient _jobs;
+
+    public TaxonomyService(AppDbContext context, IBackgroundJobClient jobs)
     {
         _context = context;
+        _jobs = jobs;
     }
 
     public async Task<TaxonomyTreeDto> GetTreeAsync(CancellationToken ct = default)
@@ -85,7 +94,7 @@ public class TaxonomyService : ITaxonomyService
         var subject = new Subject { Name = name };
         _context.Subjects.Add(subject);
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders eklendi.", subject.Id);
+        return Ok("Ders eklendi.", subject.Id, userId);
     }
 
     public async Task<ResponseBaseDto> UpdateSubjectAsync(int id, UpsertSubjectDto dto, int userId, CancellationToken ct = default)
@@ -104,7 +113,7 @@ public class TaxonomyService : ITaxonomyService
         _context.SetCurrentUser(userId);
         subject.Name = name;
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders güncellendi.", subject.Id);
+        return Ok("Ders güncellendi.", subject.Id, userId);
     }
 
     public async Task<ResponseBaseDto> DeleteSubjectAsync(int id, int userId, CancellationToken ct = default)
@@ -122,7 +131,7 @@ public class TaxonomyService : ITaxonomyService
         _context.SetCurrentUser(userId);
         _context.Subjects.Remove(subject); // soft delete via AppDbContext.ApplyAuditInfo
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders silindi.", id);
+        return Ok("Ders silindi.", id, userId);
     }
 
     // ---- Topic ----
@@ -141,7 +150,7 @@ public class TaxonomyService : ITaxonomyService
         var topic = new Topic { Name = name, SubjectId = dto.SubjectId, GradeId = dto.GradeId };
         _context.Topics.Add(topic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Konu eklendi.", topic.Id);
+        return Ok("Konu eklendi.", topic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> UpdateTopicAsync(int id, UpsertTopicDto dto, int userId, CancellationToken ct = default)
@@ -163,7 +172,7 @@ public class TaxonomyService : ITaxonomyService
         topic.SubjectId = dto.SubjectId;
         topic.GradeId = dto.GradeId;
         await _context.SaveChangesAsync(ct);
-        return Ok("Konu güncellendi.", topic.Id);
+        return Ok("Konu güncellendi.", topic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> DeleteTopicAsync(int id, int userId, CancellationToken ct = default)
@@ -180,7 +189,7 @@ public class TaxonomyService : ITaxonomyService
         _context.SetCurrentUser(userId);
         _context.Topics.Remove(topic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Konu silindi.", id);
+        return Ok("Konu silindi.", id, userId);
     }
 
     // ---- SubTopic ----
@@ -197,7 +206,7 @@ public class TaxonomyService : ITaxonomyService
         var subTopic = new SubTopic { Name = name, TopicId = dto.TopicId };
         _context.SubTopics.Add(subTopic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Alt konu eklendi.", subTopic.Id);
+        return Ok("Alt konu eklendi.", subTopic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> UpdateSubTopicAsync(int id, UpsertSubTopicDto dto, int userId, CancellationToken ct = default)
@@ -216,7 +225,7 @@ public class TaxonomyService : ITaxonomyService
         subTopic.Name = name;
         subTopic.TopicId = dto.TopicId;
         await _context.SaveChangesAsync(ct);
-        return Ok("Alt konu güncellendi.", subTopic.Id);
+        return Ok("Alt konu güncellendi.", subTopic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> DeleteSubTopicAsync(int id, int userId, CancellationToken ct = default)
@@ -231,9 +240,15 @@ public class TaxonomyService : ITaxonomyService
         _context.SetCurrentUser(userId);
         _context.SubTopics.Remove(subTopic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Alt konu silindi.", id);
+        return Ok("Alt konu silindi.", id, userId);
     }
 
     private static ResponseBaseDto Fail(string message) => new() { Success = false, Message = message };
-    private static ResponseBaseDto Ok(string message, int id) => new() { Success = true, Message = message, ObjectId = id };
+
+    /// <summary>Success result + a debounced job to rebuild the classifier cache.</summary>
+    private ResponseBaseDto Ok(string message, int id, int userId)
+    {
+        _jobs.Schedule<IClassifierCacheService>(s => s.RefreshIfStaleAsync(userId), ReconcileDelay);
+        return new ResponseBaseDto { Success = true, Message = message, ObjectId = id };
+    }
 }

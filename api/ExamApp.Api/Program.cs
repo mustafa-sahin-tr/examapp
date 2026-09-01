@@ -240,5 +240,12 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 app.MapControllers();
 app.MapDefaultEndpoints();
 
+// Safety net: hourly reconcile in case a per-change job was lost. No-ops
+// unless the classifier cache is actually stale vs. the live taxonomy.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.Classifier.IClassifierCacheService>(
+    "classifier-cache-reconcile",
+    s => s.RefreshIfStaleAsync(0),
+    app.Configuration.GetValue<string>("Classifier:ReconcileCron") ?? "0 * * * *");
+
 app.Run();
 

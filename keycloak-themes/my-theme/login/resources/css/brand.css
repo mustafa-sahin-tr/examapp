@@ -1,0 +1,122 @@
+/* =========================================================================
+   ExamApp brand skin — layered on top of keycloak.v2 (PatternFly v5).
+   Only colours, the card, buttons and a decorative left panel. No layout
+   surgery on PatternFly internals, so it survives base-theme changes.
+   ========================================================================= */
+
+:root {
+  --ea-primary: #6438c3;
+  --ea-primary-strong: #4f2fa4;
+  --ea-primary-tint: rgba(100, 56, 195, 0.12);
+  --ea-ink: #1a1a2e;
+  --ea-muted: #6b7280;
+  --ea-page-bg: #f5f7fb;
+  --ea-card-radius: 16px;
+}
+
+/* ---- Page ------------------------------------------------------------- */
+#keycloak-bg,
+body.pf-v5-c-login__parent,
+.pf-v5-c-login {
+  background: var(--ea-page-bg);
+}
+
+.pf-v5-c-login {
+  min-height: 100vh;
+}
+
+/* ---- Card ------------------------------------------------------------- */
+.pf-v5-c-login__main {
+  border-radius: var(--ea-card-radius);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+  border: none;
+}
+
+.pf-v5-c-login__main-header,
+.pf-v5-c-login__main-body {
+  padding-inline: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.pf-v5-c-login__main-title,
+#kc-page-title {
+  color: var(--ea-ink);
+  font-weight: 700;
+}
+
+/* Brand mark in the header (realm displayNameHtml is empty). */
+#kc-header-wrapper {
+  color: var(--ea-primary);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Inputs -------------------------------------------------------- --- */
+.pf-v5-c-form-control,
+.pf-v5-c-form-control > input {
+  border-radius: 8px;
+}
+
+.pf-v5-c-form-control:focus-within,
+.pf-v5-c-form-control > input:focus {
+  outline: none;
+  border-color: var(--ea-primary);
+  box-shadow: 0 0 0 3px var(--ea-primary-tint);
+}
+
+/* ---- Buttons -------------------------------------------------------- -- */
+.pf-v5-c-button.pf-m-primary {
+  background: linear-gradient(135deg, var(--ea-primary) 0%, var(--ea-primary-strong) 100%);
+  border-radius: 8px;
+  font-weight: 600;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+  opacity: 0.92;
+}
+
+.pf-v5-c-button.pf-m-primary:active {
+  transform: scale(0.99);
+}
+
+/* Links and link-style buttons */
+a,
+.pf-v5-c-button.pf-m-link {
+  color: var(--ea-primary);
+}
+
+a:hover,
+.pf-v5-c-button.pf-m-link:hover {
+  color: var(--ea-primary-strong);
+}
+
+/* Checkbox / accent */
+.pf-v5-c-check__input {
+  accent-color: var(--ea-primary);
+}
+
+/* ---- Decorative left panel (wide screens only) ---------------------- -- */
+@media (min-width: 992px) {
+  .pf-v5-c-login__container {
+    position: relative;
+    padding-inline-start: clamp(320px, 34vw, 460px);
+  }
+
+  .pf-v5-c-login__container::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block: 0;
+    inline-size: clamp(280px, 30vw, 400px);
+    background: url("../img/login-illustration.svg") left center / contain no-repeat;
+    opacity: 0.95;
+    pointer-events: none;
+  }
+}
+
+/* Small screens: never let the panel reserve space. */
+@media (max-width: 991px) {
+  .pf-v5-c-login__container {
+    padding-inline-start: 0;
+  }
+}

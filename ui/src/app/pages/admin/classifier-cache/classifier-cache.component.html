@@ -1,0 +1,61 @@
+<mat-card class="cache-card">
+  <mat-progress-bar
+    *ngIf="loading() || refreshing()"
+    mode="indeterminate"
+  ></mat-progress-bar>
+
+  <mat-card-header>
+    <mat-card-title>Soru Sınıflandırma Cache’i</mat-card-title>
+    <mat-card-subtitle>
+      Gemini cached content — ders/konu/alt konu taksonomisi. BadgeService soruları buna göre sınıflandırır.
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content *ngIf="status() as s">
+    <div class="status-line" [class.warn]="s.stale">
+      <mat-icon>{{ s.stale ? 'warning' : 'check_circle' }}</mat-icon>
+      <span *ngIf="!s.cachedContentName">Henüz cache oluşturulmamış.</span>
+      <span *ngIf="s.cachedContentName && s.stale">
+        Cache güncel değil — taksonomi değişmiş. Yenilemen önerilir.
+      </span>
+      <span *ngIf="s.cachedContentName && !s.stale">Cache güncel.</span>
+    </div>
+
+    <dl class="details">
+      <div>
+        <dt>Cached content</dt>
+        <dd>{{ s.cachedContentName || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Model</dt>
+        <dd>{{ s.model || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Alt konu sayısı (son build)</dt>
+        <dd>{{ s.subTopicCount || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Son yenileme</dt>
+        <dd>{{ s.refreshedAt ? (s.refreshedAt | date: 'dd.MM.yyyy HH:mm') : '—' }}</dd>
+      </div>
+      <div>
+        <dt>API anahtarı</dt>
+        <dd>{{ s.configuredInSettings ? 'yapılandırılmış' : 'eksik (Gemini:ApiKey)' }}</dd>
+      </div>
+    </dl>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button mat-stroked-button (click)="load()" [disabled]="loading() || refreshing()">
+      <mat-icon>sync</mat-icon> Durumu yenile
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="refresh()"
+      [disabled]="refreshing() || !status()?.configuredInSettings"
+    >
+      <mat-icon>refresh</mat-icon> Cache’i Yenile
+    </button>
+  </mat-card-actions>
+</mat-card>

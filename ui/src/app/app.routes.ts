@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { StudentRegisterComponent } from './pages/student-register/student-register.component';
 import { authGuard } from './shared/guards/auth.guard';
+import { adminGuard } from './shared/guards/admin.guard';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
@@ -188,6 +189,18 @@ export const routes: Routes = [
     path: 'question-transfer',
     component: EnhancedLayoutComponent,
     children: [{ path: '', component: QuestionTransferComponent }],
+  },
+  {
+    path: 'admin',
+    component: EnhancedLayoutComponent,
+    canActivate: [authGuard, adminGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
+      },
+    ],
   },
   { path: '**', redirectTo: 'welcome' },
 ];

@@ -222,6 +222,40 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookTests");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.ClassifierCacheConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CachedContentName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("RefreshedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("RefreshedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SubTopicCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TaxonomyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClassifierCacheConfigs");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Leaderboard", b =>
                 {
                     b.Property<int>("Id")

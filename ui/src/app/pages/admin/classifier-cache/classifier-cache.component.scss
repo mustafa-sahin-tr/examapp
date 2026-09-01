@@ -1,0 +1,63 @@
+.cache-card {
+  max-width: 640px;
+  border-radius: 12px;
+  overflow: hidden;
+
+  mat-card-header {
+    margin-top: 12px;
+  }
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(46, 111, 82, 0.1);
+  color: #2c6f52;
+  font-size: 14px;
+  margin: 12px 0;
+
+  &.warn {
+    background: rgba(154, 97, 0, 0.12);
+    color: #9a6100;
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.details {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+    padding-bottom: 5px;
+  }
+
+  dt {
+    color: #6b7280;
+  }
+
+  dd {
+    margin: 0;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    text-align: right;
+    word-break: break-all;
+  }
+}
+
+mat-card-actions {
+  gap: 8px;
+  padding: 12px 16px 16px;
+}

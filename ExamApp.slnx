@@ -22,5 +22,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/ExamApp.Foundation.Tests/ExamApp.Foundation.Tests.csproj" />
     <Project Path="tests/ExamApp.Api.Tests/ExamApp.Api.Tests.csproj" />
+    <Project Path="tests/OutboxPublisher.Tests/OutboxPublisher.Tests.csproj" />
   </Folder>
 </Solution>

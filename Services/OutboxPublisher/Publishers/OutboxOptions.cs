@@ -25,4 +25,17 @@ public class OutboxOptions
 
     /// <summary>How often the purge runs.</summary>
     public TimeSpan PurgeInterval { get; set; } = TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Delay before retry <paramref name="attempt"/> (1-based): <see cref="RetryBackoffBase"/>
+    /// × 2^(attempt-1), capped at <see cref="RetryBackoffMax"/>.
+    /// </summary>
+    public TimeSpan ComputeBackoff(int attempt)
+    {
+        var factor = Math.Pow(2, Math.Min(Math.Max(attempt, 1) - 1, 20));
+        var seconds = RetryBackoffBase.TotalSeconds * factor;
+        return seconds >= RetryBackoffMax.TotalSeconds
+            ? RetryBackoffMax
+            : TimeSpan.FromSeconds(seconds);
+    }
 }

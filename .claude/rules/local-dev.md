@@ -29,7 +29,6 @@ docker-compose up -d
 | MinIO API | 9000 | S3-compat storage |
 | MinIO UI | 9001 | http://localhost:9001 |
 | question-detector | 8080 | FastAPI (YOLO servisi) |
-| n8n | 5679 | workflow editor |
 
 ## Run services locally (without Docker)
 

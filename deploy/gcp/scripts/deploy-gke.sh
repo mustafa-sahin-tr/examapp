@@ -84,7 +84,7 @@ if should_deploy "ocelot-gateway"; then
   set_image ocelot-gateway ocelot-gateway "$GAR_REPO/ocelot-gateway:$IMAGE_TAG"
 fi
 
-for d in exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher n8n question-detector angular-app auth-ui ocelot-gateway; do
+for d in exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher question-detector angular-app auth-ui ocelot-gateway; do
   kubectl -n "$NAMESPACE" rollout status deployment/"$d" --timeout=300s || true
 done
 

@@ -37,7 +37,8 @@ builder.Services.AddScoped<AnswerSubmissionAggregationService>();
 builder.Services.AddScoped<BadgeEvaluator>();
 builder.Services.AddScoped<StudentReportService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
-builder.Services.AddScoped<IQuestionAnalyzerService, QuestionAnalyzerService>();
+builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.SectionName));
+builder.Services.AddScoped<IQuestionClassifier, GeminiQuestionClassifier>();
 
 // Badge DbContext
 builder.Services.AddDbContext<BadgeDbContext>(options =>
@@ -87,7 +88,6 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer>();
     x.AddConsumer<QuestionCreatedConsumer>();
-    x.AddConsumer<StudyPageImageUploadedConsumer>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -101,7 +101,6 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);
-            e.ConfigureConsumer<StudyPageImageUploadedConsumer>(context);
         });
     });
 });

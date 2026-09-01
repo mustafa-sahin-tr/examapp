@@ -33,11 +33,6 @@
 		reverse_proxy exam-minio:9001
 	}	
 
-	# Expose n8n editor and webhook endpoints under /n8n.
-	handle_path /n8n* {
-		reverse_proxy n8n:5678
-	}
-
 	# Rewrite bare root to /welcome so Angular serves welcome page without URL change
 	handle / {
 		rewrite * /welcome
@@ -66,15 +61,6 @@ pgadmin.{$DOMAIN} {
 	{$CADDY_TLS}
 
 	reverse_proxy exam-pgadmin:80
-}
-
-# Optional dedicated host for n8n.
-# Example: if DOMAIN=staging.hedefokul.com, this serves n8n.staging.hedefokul.com.
-n8n.{$DOMAIN} {
-	encode gzip
-	{$CADDY_TLS}
-
-	reverse_proxy exam-n8n:5678
 }
 
 # Optional dedicated host for RabbitMQ Management.

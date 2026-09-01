@@ -28,6 +28,8 @@ import {
   WorksheetAssignmentDialogResult,
 } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
+import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -49,6 +51,8 @@ interface AssignmentPanelState {
     MatExpansionModule,
     IsTeacherDirective,
     IsStudentDirective,
+    QuestionCanvasViewComponent,
+    QuestionNavigatorComponent
   ],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],

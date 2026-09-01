@@ -478,7 +478,7 @@ public class QuestionService : IQuestionService
 
                     var outbox = new OutboxMessage
                     {
-                        Type = typeof(QuestionCreatedEvent).AssemblyQualifiedName ?? nameof(QuestionCreatedEvent),
+                        Type = OutboxEventRegistry.NameFor<QuestionCreatedEvent>(),
                         Content = JsonSerializer.Serialize(@event),
                         CreatedAt = DateTime.UtcNow
                     };
@@ -547,21 +547,6 @@ public class QuestionService : IQuestionService
             await using var imageStream = new MemoryStream(imageBytes);
             var objectName = $"books/{Guid.NewGuid()}.jpg";
             var imageUrl = await _minioService.UploadFileAsync(imageStream, objectName, "study-pages", "image/jpeg");
-
-            var @event = new StudyPageImageUploadedEvent
-            {
-                ImageUrl = imageUrl,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.OutboxMessages.Add(new OutboxMessage
-            {
-                Type = typeof(StudyPageImageUploadedEvent).AssemblyQualifiedName ?? nameof(StudyPageImageUploadedEvent),
-                Content = JsonSerializer.Serialize(@event),
-                CreatedAt = DateTime.UtcNow
-            });
-
-            await _context.SaveChangesAsync();
 
             return new StudyPageAttachImageResponseDto
             {
@@ -995,7 +980,7 @@ public class QuestionService : IQuestionService
 
                     var outbox = new OutboxMessage
                     {
-                        Type = typeof(QuestionCreatedEvent).AssemblyQualifiedName ?? nameof(QuestionCreatedEvent),
+                        Type = OutboxEventRegistry.NameFor<QuestionCreatedEvent>(),
                         Content = JsonSerializer.Serialize(@event),
                         CreatedAt = DateTime.UtcNow
                     };

@@ -382,13 +382,6 @@ badgeService = badgeService
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
-    // Same docker-compose-hostname class of bug as ExamDotnetApi's
-    // AuthApiBaseUrl above (n8n:5678 doesn't resolve under Aspire) — fixed
-    // preemptively here rather than waiting to hit it. A literal, not a
-    // reference to the n8n resource declared further below: n8n's host port
-    // is already pinned (5679), so no dynamic resolution is needed and no
-    // forward-reference ordering problem is introduced.
-    .WithEnvironment("QuestionAnalyzer__BaseUrl", "http://localhost:5679")
     .WaitFor(keycloak);
 
 authApi = authApi
@@ -427,6 +420,14 @@ ocelotGateway = ocelotGateway
 // address at this point"). The gateway's port is already pinned and stable
 // by design, so no dynamic resolution is actually needed here.
 keycloak = keycloak.WithEnvironment("KC_HOSTNAME", "http://localhost:5678");
+
+// KC_HOSTNAME (above) makes Keycloak redirect every URL it builds — admin
+// console and welcome page included — to the gateway, which has no Ocelot
+// route for /admin/*, so the admin console becomes unreachable from both the
+// direct Aspire endpoint and the gateway. KC_HOSTNAME_ADMIN splits the admin
+// console onto Keycloak's own http-plain endpoint (:8082) while tokens keep
+// iss=<gateway>. Reach the console at http://localhost:8082/admin/.
+keycloak = keycloak.WithEnvironment("KC_HOSTNAME_ADMIN", "http://localhost:8082");
 
 // ---------------------------------------------------------------------------
 // Angular apps (ui/, auth-ui/) — conveniences only, per the migration brief;
@@ -542,21 +543,5 @@ var questionDetector = builder.AddDockerfile("question-detector", "..", "questio
 ocelotGateway = ocelotGateway
     .WithEnvironment("QUESTION_DETECTOR_HOST", "localhost")
     .WithEnvironment("QUESTION_DETECTOR_PORT", "8080");
-
-// ---------------------------------------------------------------------------
-// n8n — plain container resource. Bind-mounted (not a named volume) to the
-// exact same host path docker-compose.yml already uses (./n8n-data), so
-// existing workflows/credentials are picked up rather than silently starting
-// an empty instance — the failure mode the migration brief explicitly warns
-// about. Verified ./n8n-data exists at the repo root with real content
-// before wiring this.
-// ---------------------------------------------------------------------------
-
-var n8n = builder.AddContainer("n8n", "n8nio/n8n", "latest")
-    .WithBindMount("../n8n-data", "/home/node/.n8n")
-    .WithEnvironment("N8N_PORT", "5678")
-    .WithEnvironment("N8N_PROTOCOL", "http")
-    .WithEnvironment("GENERIC_TIMEZONE", "Europe/Istanbul")
-    .WithHttpEndpoint(port: 5679, targetPort: 5678, name: "http");
 
 builder.Build().Run();

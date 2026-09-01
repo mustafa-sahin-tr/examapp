@@ -7,16 +7,16 @@ namespace BadgeService.Consumers;
 
 public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
 {
-    private readonly IQuestionAnalyzerService _analyzerService;
+    private readonly IQuestionClassifier _classifier;
     private readonly ILogger<QuestionCreatedConsumer> _logger;
     private readonly bool _aiActive;
 
     public QuestionCreatedConsumer(
-        IQuestionAnalyzerService analyzerService,
+        IQuestionClassifier classifier,
         ILogger<QuestionCreatedConsumer> logger,
         IConfiguration configuration)
     {
-        _analyzerService = analyzerService;
+        _classifier = classifier;
         _logger = logger;
         _aiActive = configuration.GetValue<bool?>("QuestionAnalyzer:AIActive") ?? true;
     }
@@ -30,27 +30,25 @@ public class QuestionCreatedConsumer : IConsumer<QuestionCreatedEvent>
 
         if (!_aiActive)
         {
-            _logger.LogInformation("⏭️ AI analyzer is disabled by config. Skipping analysis for question {QuestionId}", @event.QuestionId);
+            _logger.LogInformation("⏭️ AI classifier is disabled by config. Skipping question {QuestionId}", @event.QuestionId);
             return;
         }
 
-        // 🟢 Only call analyze endpoint if ClassificationSource is NOT "AI"
-        if (@event.ClassificationSource != "AI")
+        // Skip questions a human already classified (or a previous AI run).
+        if (@event.ClassificationSource == "AI")
         {
-            try
-            {
-                await _analyzerService.SendQuestionForAnalysisAsync(@event.QuestionId, context.CancellationToken);
-                _logger.LogInformation("✅ Question {QuestionId} sent for analysis", @event.QuestionId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Error sending question {QuestionId} for analysis", @event.QuestionId);
-                throw; // Re-throw to let MassTransit handle retry
-            }
+            _logger.LogInformation("⏭️ Skipping question {QuestionId} (ClassificationSource is AI)", @event.QuestionId);
+            return;
         }
-        else
+
+        try
         {
-            _logger.LogInformation("⏭️ Skipping analysis for question {QuestionId} (ClassificationSource is AI)", @event.QuestionId);
+            await _classifier.ClassifyAndPersistAsync(@event.QuestionId, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error classifying question {QuestionId}", @event.QuestionId);
+            throw; // Let MassTransit retry / dead-letter.
         }
     }
 }

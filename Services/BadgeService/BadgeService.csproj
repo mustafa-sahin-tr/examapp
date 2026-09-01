@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>badge-service-4f1c2a9e-7b3d-4e6a-9c81-2d5f0a8b1e34</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

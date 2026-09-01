@@ -19,4 +19,8 @@
   <Folder Name="/Services/OutboxPublisher/">
     <Project Path="Services/OutboxPublisher/OutboxPublisherService.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ExamApp.Foundation.Tests/ExamApp.Foundation.Tests.csproj" />
+    <Project Path="tests/ExamApp.Api.Tests/ExamApp.Api.Tests.csproj" />
+  </Folder>
 </Solution>

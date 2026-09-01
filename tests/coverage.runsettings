@@ -9,7 +9,9 @@
                data (thousands of `new Topic {...}` HasData lines) from the denominator. -->
           <ExcludeByFile>**/Migrations/*.cs,**/*.Designer.cs,**/*ModelSnapshot.cs,**/obj/**,**/Data/*Seed*.cs,**/Data/SeedData.cs,**/Data/CatalogSeed.cs</ExcludeByFile>
           <Exclude>[*]*.Migrations.*,[*]Program,[*]*ModelSnapshot,[*]StartupConfigDump,[*]Microsoft.AspNetCore.OpenApi.Generated,[*]TopicSeed,[*]*Seed,[*]ExamApp.Api.Data.SeedData,[*]ExamApp.Api.Data.CatalogSeed,[*]ExamApp.Api.Data.ProgramStepSeed,[ExamApp.ServiceDefaults]*,[*]Microsoft.Extensions.*,[*]Microsoft.AspNetCore.*</Exclude>
-          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <!-- NB: do NOT list CompilerGeneratedAttribute here — it also strips async/await
+               state machines, which silently drops coverage for every `async` method body. -->
+          <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
           <SkipAutoProps>true</SkipAutoProps>
         </Configuration>
       </DataCollector>

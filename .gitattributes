@@ -1,0 +1,28 @@
+# Normalize line endings: store text as LF in the repo. Working copies still get
+# the platform ending via core.autocrlf, so Windows checkouts remain CRLF.
+* text=auto
+
+# Force LF for files that tooling/containers read directly regardless of host OS.
+*.sh        text eol=lf
+*.cs        text eol=lf
+Dockerfile* text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+
+# Binary assets — never touch.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.zip  binary
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.eot  binary
+*.pptx binary
+*.docx binary
+*.xlsx binary

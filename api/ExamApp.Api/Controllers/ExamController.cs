@@ -22,15 +22,18 @@ public class ExamController : BaseController
     private readonly IExamService _examService;
     private readonly IStudentService _studentService;
     private readonly IWorksheetAssignmentService _assignmentService;
+    private readonly ITestSessionService _testSession;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
-            IWorksheetAssignmentService assignmentService
+            IWorksheetAssignmentService assignmentService,
+            ITestSessionService testSession
             )
         : base()
     {
         _examService = examService;
         _studentService = studentService;
         _assignmentService = assignmentService;
+        _testSession = testSession;
     }
 
 
@@ -112,7 +115,7 @@ public class ExamController : BaseController
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
-        var result = await _examService.GetCompletedTestsAsync(student, pageNumber, pageSize);
+        var result = await _testSession.GetCompletedTestsAsync(student, pageNumber, pageSize);
         return Ok(result);
     }
 
@@ -197,7 +200,7 @@ public class ExamController : BaseController
 
         try
         {
-            var result = await _examService.StartTestAsync(testId, student);
+            var result = await _testSession.StartTestAsync(testId, student);
             if (result == null)
                 return NotFound(new { message = "Test bulunamadı!" });
 
@@ -214,7 +217,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
 
-        var result = await _examService.GetTestInstanceQuestionsAsync(testInstanceId, user.Id);
+        var result = await _testSession.GetTestInstanceQuestionsAsync(testInstanceId, user.Id);
 
         if (result == null)
             return NotFound(new { message = "Test bulunamadı!" });
@@ -228,7 +231,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetTestCanvasInstanceResults(int testInstanceId)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _examService.GetCanvasTestResultAsync(testInstanceId, user.Id, true);
+        var response = await _testSession.GetCanvasTestResultAsync(testInstanceId, user.Id, true);
         return Ok(response);
     }
 
@@ -237,7 +240,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _examService.GetCanvasTestResultAsync(testInstanceId, user.Id);
+        var response = await _testSession.GetCanvasTestResultAsync(testInstanceId, user.Id);
         return Ok(response);
     }
 
@@ -247,7 +250,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _examService.SaveAnswer(dto, user);
+        var response = await _testSession.SaveAnswer(dto, user);
         return Ok(response);
     }
 
@@ -256,7 +259,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> EndTest(int testInstanceId)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _examService.EndTest(testInstanceId, user.Id);
+        var response = await _testSession.EndTest(testInstanceId, user.Id);
         return Ok(response);
     }
     [HttpPost]

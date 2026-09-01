@@ -3,6 +3,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,7 @@ public class ExamServiceQueryTests : IDisposable
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
 
     private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private TestSessionService NewSession(AppDbContext ctx) => new(ctx);
 
     /// <summary>Worksheet.GradeId is a required FK — every worksheet needs a real grade.</summary>
     private static async Task<int> AddGradeAsync(AppDbContext ctx, string name = "G")
@@ -154,7 +156,7 @@ public class ExamServiceQueryTests : IDisposable
     public async Task EndTest_fails_for_an_unknown_instance()
     {
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).EndTest(999, userId: 1)).Success.ShouldBeFalse();
+        (await NewSession(ctx).EndTest(999, userId: 1)).Success.ShouldBeFalse();
     }
 
     [Fact]
@@ -162,7 +164,7 @@ public class ExamServiceQueryTests : IDisposable
     {
         var (_, instanceId) = await SeedStartedInstanceAsync();
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).EndTest(instanceId, userId: 111)).Success.ShouldBeFalse();
+        (await NewSession(ctx).EndTest(instanceId, userId: 111)).Success.ShouldBeFalse();
     }
 
     [Fact]
@@ -170,7 +172,7 @@ public class ExamServiceQueryTests : IDisposable
     {
         var (userId, instanceId) = await SeedStartedInstanceAsync(WorksheetInstanceStatus.Completed);
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).EndTest(instanceId, userId);
+        var r = await NewSession(ctx).EndTest(instanceId, userId);
         r.Success.ShouldBeFalse();
         r.Message.ShouldContain("zaten");
     }
@@ -180,7 +182,7 @@ public class ExamServiceQueryTests : IDisposable
     {
         var (userId, instanceId) = await SeedStartedInstanceAsync();
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).EndTest(instanceId, userId)).Success.ShouldBeTrue();
+            (await NewSession(ctx).EndTest(instanceId, userId)).Success.ShouldBeTrue();
 
         await using var check = _db.NewContext();
         var inst = await check.TestInstances.FirstAsync(x => x.Id == instanceId);

@@ -1,19 +1,19 @@
 using ExamApp.Api.Data;
-using ExamApp.Api.Helpers;
+
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
 
-public class ExamServiceTestFlowTests : IDisposable
+public class TestSessionServiceFlowTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
 
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private TestSessionService NewService(AppDbContext ctx) => new(ctx);
 
     private sealed record World(int StudentId, int StudentUserId, int WorksheetId, int Q1, int Q2, int CorrectA1, int WrongA1);
 

@@ -23,10 +23,12 @@ public class ExamController : BaseController
     private readonly IStudentService _studentService;
     private readonly IWorksheetAssignmentService _assignmentService;
     private readonly ITestSessionService _testSession;
+    private readonly IWorksheetAuthoringService _authoring;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
             IWorksheetAssignmentService assignmentService,
-            ITestSessionService testSession
+            ITestSessionService testSession,
+            IWorksheetAuthoringService authoring
             )
         : base()
     {
@@ -34,6 +36,7 @@ public class ExamController : BaseController
         _studentService = studentService;
         _assignmentService = assignmentService;
         _testSession = testSession;
+        _authoring = authoring;
     }
 
 
@@ -265,7 +268,7 @@ public class ExamController : BaseController
     [HttpPost]
     public async Task<IActionResult> CreateOrUpdateAsync([FromBody] ExamDto examDto)
     {
-        var response = await _examService.CreateOrUpdateAsync(examDto, 0);
+        var response = await _authoring.CreateOrUpdateAsync(examDto, 0);
         return Ok(response);
     }
 
@@ -276,7 +279,7 @@ public class ExamController : BaseController
         try
         {
             var user = await GetAuthenticatedUserAsync();
-            var response = await _examService.CreateBulkExamsAsync(bulkExamDto, user.Id);
+            var response = await _authoring.CreateBulkExamsAsync(bulkExamDto, user.Id);
             return Ok(response);
         }
         catch (Exception ex)
@@ -326,7 +329,7 @@ public class ExamController : BaseController
             {
                 return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
             }
-            var result = await _examService.DeleteWorksheetAsync(id, user.Id);
+            var result = await _authoring.DeleteWorksheetAsync(id, user.Id);
 
             if (!result.Success)
             {
@@ -359,7 +362,7 @@ public class ExamController : BaseController
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
 
-        var result = await _examService.UpdateWorksheetBackgroundImageAsync(id, file, user.Id);
+        var result = await _authoring.UpdateWorksheetBackgroundImageAsync(id, file, user.Id);
         if (!result.Success)
         {
             return BadRequest(result);

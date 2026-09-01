@@ -16,6 +16,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
     private TestSessionService NewSession(AppDbContext ctx) => new(ctx);
+    private WorksheetAuthoringService NewAuthoring(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
 
     private static IFormFile FakeImage(string contentType = "image/png", int length = 8)
     {
@@ -34,14 +35,14 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     {
         await using var ctx = _db.NewContext();
         var empty = new FormFile(new MemoryStream(), 0, 0, "file", "x") { Headers = new HeaderDictionary() };
-        (await NewService(ctx).UpdateWorksheetBackgroundImageAsync(1, empty, 1)).Success.ShouldBeFalse();
+        (await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(1, empty, 1)).Success.ShouldBeFalse();
     }
 
     [Fact]
     public async Task Background_image_rejects_a_non_image_content_type()
     {
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).UpdateWorksheetBackgroundImageAsync(1, FakeImage("application/pdf"), 1);
+        var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(1, FakeImage("application/pdf"), 1);
         r.Success.ShouldBeFalse();
         r.Message.ShouldContain("görsel");
     }
@@ -50,7 +51,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     public async Task Background_image_fails_for_an_unknown_worksheet()
     {
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).UpdateWorksheetBackgroundImageAsync(9999, FakeImage(), 1)).Success.ShouldBeFalse();
+        (await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(9999, FakeImage(), 1)).Success.ShouldBeFalse();
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            var r = await NewService(ctx).UpdateWorksheetBackgroundImageAsync(wsId, FakeImage(), 7);
+            var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(wsId, FakeImage(), 7);
             r.Success.ShouldBeTrue();
             r.ImageUrl.ShouldBe("http://minio/new.png");
         }

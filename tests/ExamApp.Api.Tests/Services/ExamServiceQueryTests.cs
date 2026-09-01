@@ -16,6 +16,7 @@ public class ExamServiceQueryTests : IDisposable
 
     private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
     private TestSessionService NewSession(AppDbContext ctx) => new(ctx);
+    private WorksheetAuthoringService NewAuthoring(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
 
     /// <summary>Worksheet.GradeId is a required FK — every worksheet needs a real grade.</summary>
     private static async Task<int> AddGradeAsync(AppDbContext ctx, string name = "G")
@@ -196,7 +197,7 @@ public class ExamServiceQueryTests : IDisposable
     public async Task DeleteWorksheet_fails_when_missing()
     {
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).DeleteWorksheetAsync(404, userId: 1)).Success.ShouldBeFalse();
+        (await NewAuthoring(ctx).DeleteWorksheetAsync(404, userId: 1)).Success.ShouldBeFalse();
     }
 
     [Fact]
@@ -212,7 +213,7 @@ public class ExamServiceQueryTests : IDisposable
         }
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).DeleteWorksheetAsync(id, userId: 77)).Success.ShouldBeTrue();
+            (await NewAuthoring(ctx).DeleteWorksheetAsync(id, userId: 77)).Success.ShouldBeTrue();
 
         await using var check = _db.NewContext();
         (await check.Worksheets.AnyAsync(w => w.Id == id)).ShouldBeFalse(); // query filter

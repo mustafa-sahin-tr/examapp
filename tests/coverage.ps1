@@ -17,7 +17,8 @@ dotnet test ExamApp.slnx --nologo `
 reportgenerator `
   -reports:"coverage/**/coverage.cobertura.xml" `
   -targetdir:coverage/report `
-  -reporttypes:"TextSummary;Html"
+  -reporttypes:"TextSummary;Html" `
+  -settings:MergeExecutionRuns=true
 
 Write-Host ""
 Get-Content coverage/report/Summary.txt

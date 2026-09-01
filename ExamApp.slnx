@@ -24,5 +24,6 @@
     <Project Path="tests/ExamApp.Api.Tests/ExamApp.Api.Tests.csproj" />
     <Project Path="tests/OutboxPublisher.Tests/OutboxPublisher.Tests.csproj" />
     <Project Path="tests/BadgeService.Tests/BadgeService.Tests.csproj" />
+    <Project Path="tests/ExamApp.Api.IntegrationTests/ExamApp.Api.IntegrationTests.csproj" />
   </Folder>
 </Solution>

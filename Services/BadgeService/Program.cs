@@ -23,7 +23,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(kestrelPort); // 🟢 Dinamik Port Kullanımı
 });
 
-StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+if (builder.Environment.IsDevelopment())
+{
+    StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+}
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

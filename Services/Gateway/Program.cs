@@ -78,7 +78,10 @@ static void OverrideDownstreamHost(JsonNode root, string sentinelHost, string ho
     }
 }
 
-StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+if (builder.Environment.IsDevelopment())
+{
+    StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+}
 
 builder.Services.AddAuthentication()
     .AddJwtBearer("Bearer", options =>
@@ -94,47 +97,15 @@ builder.Services.AddAuthentication()
         };
         options.Events = new JwtBearerEvents
         {
-            OnMessageReceived = context =>
-            {
-                var authHeader = context.Request.Headers["Authorization"].ToString();
-                Console.WriteLine($"[JWT] OnMessageReceived: Path={context.Request.Path}, Method={context.Request.Method}, AuthorizationHeader={authHeader}");
-                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-                {
-                    var token = authHeader.Substring("Bearer ".Length);
-                    Console.WriteLine($"[JWT] Token (truncated): {token.Substring(0, Math.Min(30, token.Length))}...");
-                }
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                var jwtToken = context.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
-                Console.WriteLine($"[JWT] OnTokenValidated: Path={context.Request.Path}, Method={context.Request.Method}");
-                Console.WriteLine($"[JWT] Token validated. Subject: {jwtToken?.Subject}");
-                Console.WriteLine($"[JWT] Issuer: {jwtToken?.Issuer}");
-                Console.WriteLine($"[JWT] Audience: {string.Join(",", jwtToken?.Audiences ?? new string[0])}");
-                Console.WriteLine($"[JWT] Expiration: {jwtToken?.ValidTo}");
-                if (jwtToken != null)
-                {
-                    foreach (var claim in jwtToken.Claims)
-                    {
-                        if (claim.Type == "exp" || claim.Type == "iss" || claim.Type == "aud")
-                            Console.WriteLine($"[JWT] Claim: {claim.Type} = {claim.Value}");
-                    }
-                }
-                return Task.CompletedTask;
-            },
+            // Log only the failure reason, at Warning. Never the token or the
+            // Authorization header — this is the public edge.
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine($"[JWT] OnAuthenticationFailed: Path={context.Request.Path}, Method={context.Request.Method}");
-                Console.WriteLine($"[JWT] JWT ERROR: {context.Exception.Message}");
-                if (context.Exception != null)
-                {
-                    Console.WriteLine($"[JWT] Exception Type: {context.Exception.GetType().FullName}");
-                    Console.WriteLine($"[JWT] Exception: {context.Exception}");
-                    if (context.Exception.InnerException != null)
-                        Console.WriteLine($"[JWT] InnerException: {context.Exception.InnerException.Message}");
-                    Console.WriteLine($"[JWT] StackTrace: {context.Exception.StackTrace}");
-                }
+                context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Gateway.Jwt")
+                    .LogWarning("JWT rejected on {Method} {Path}: {Reason}",
+                        context.Request.Method, context.Request.Path, context.Exception.Message);
                 return Task.CompletedTask;
             }
         };

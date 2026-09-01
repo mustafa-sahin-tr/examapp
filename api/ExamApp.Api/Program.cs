@@ -26,7 +26,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(kestrelPort); // 🟢 Dinamik Port Kullanımı
 });
 
-StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+if (builder.Environment.IsDevelopment())
+{
+    StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+}
 
 var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 
@@ -73,32 +76,9 @@ builder.Services.AddAuthentication(options =>
             ValidAudiences = validAudiences
         };
         options.RequireHttpsMetadata = false;
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                // Avoid logging raw tokens (security)
-                var hasAuth = !string.IsNullOrWhiteSpace(context.Request.Headers["Authorization"]);
-                if (hasAuth)
-                {
-                    Console.WriteLine("🔹 Authorization header received");
-                }
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                var jwtToken = context.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
-                Console.WriteLine($"✅ Token validated. Subject: {jwtToken?.Subject}");
-                Console.WriteLine($"🔐 Issuer: {jwtToken?.Issuer}");
-                Console.WriteLine($"🕒 Expiration: {jwtToken?.ValidTo}");
-                return Task.CompletedTask;
-            },
-            OnAuthenticationFailed = context =>
-            {
-                Console.WriteLine($"❌ JWT ERROR: {context.Exception.Message}");
-                return Task.CompletedTask;
-            }
-        };
+        // No custom JwtBearerEvents: the framework's own ILogger already logs
+        // token-validation failures at the right level. The previous handlers
+        // wrote the token subject/issuer/expiry to stdout on every request.
     });
 
 builder.Services.AddAuthorization(options =>
@@ -200,7 +180,10 @@ builder.Services.AddScoped<QuestionTransferJobRunner>();
 
 var app = builder.Build();
 
-// Database migration (prod-safe default for single-instance deployments)
+// Database migration (prod-safe default for single-instance deployments).
+// Fail fast: a failed migration means the schema is wrong — the app must not
+// start and serve requests against it. EF's EnableRetryOnFailure already
+// covers transient "DB not ready yet" blips.
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -211,8 +194,9 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the DB.");
+        services.GetRequiredService<ILogger<Program>>()
+            .LogCritical(ex, "Database migration failed — aborting startup.");
+        throw;
     }
 }
 

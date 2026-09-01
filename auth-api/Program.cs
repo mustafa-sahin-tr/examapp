@@ -21,7 +21,10 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(kestrelPort); // 🟢 Dinamik Port Kullanımı
 });
 
-StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+if (builder.Environment.IsDevelopment())
+{
+    StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
+}
 
 var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 
@@ -41,41 +44,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.RequireHttpsMetadata = false;
         options.Events = new JwtBearerEvents
         {
-            OnMessageReceived = context =>
-            {
-                var authHeader = context.Request.Headers["Authorization"].ToString();
-                Console.WriteLine($"[Auth] OnMessageReceived: Path={context.Request.Path}, Method={context.Request.Method}, AuthorizationHeader={authHeader}");
-                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
-                {
-                    var token = authHeader.Substring("Bearer ".Length);
-                    Console.WriteLine($"[Auth] JWT Token (truncated): {token.Substring(0, Math.Min(30, token.Length))}...");
-                }
-                return Task.CompletedTask;
-            },
-            OnTokenValidated = context =>
-            {
-                var jwtToken = context.SecurityToken as System.IdentityModel.Tokens.Jwt.JwtSecurityToken;
-                Console.WriteLine($"[Auth] OnTokenValidated: Path={context.Request.Path}, Method={context.Request.Method}");
-                Console.WriteLine($"[Auth] Token validated. Subject: {jwtToken?.Subject}");
-                Console.WriteLine($"[Auth] Issuer: {jwtToken?.Issuer}");
-                Console.WriteLine($"[Auth] Expiration: {jwtToken?.ValidTo}");
-                if (jwtToken != null)
-                {
-                    foreach (var claim in jwtToken.Claims)
-                    {
-                        Console.WriteLine($"[Auth] Claim: {claim.Type} = {claim.Value}");
-                    }
-                }
-                return Task.CompletedTask;
-            },
+            // Log only the failure reason, at Warning. Never the token or the
+            // Authorization header.
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine($"[Auth] OnAuthenticationFailed: Path={context.Request.Path}, Method={context.Request.Method}");
-                Console.WriteLine($"[Auth] JWT ERROR: {context.Exception.Message}");
-                if (context.Exception != null)
-                {
-                    Console.WriteLine($"[Auth] Exception: {context.Exception}");
-                }
+                context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Auth.Jwt")
+                    .LogWarning("JWT rejected on {Method} {Path}: {Reason}",
+                        context.Request.Method, context.Request.Path, context.Exception.Message);
                 return Task.CompletedTask;
             }
         };
@@ -130,20 +107,19 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 var app = builder.Build();
 
-//Seed Data
+// Database migration — fail fast: don't serve requests against a wrong schema.
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
-        var context = services.GetRequiredService<AppDbContext>();
-        context.Database.Migrate(); // Apply any pending migrations
-        // Seed TopicSeed data everyitme the application starts       
+        services.GetRequiredService<AppDbContext>().Database.Migrate();
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        Console.WriteLine($"[Auth] An error occurred seeding the DB: {ex}");
+        services.GetRequiredService<ILogger<Program>>()
+            .LogCritical(ex, "Database migration failed — aborting startup.");
+        throw;
     }
 }
 

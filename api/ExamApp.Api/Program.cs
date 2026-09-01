@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.Authentication;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,12 +58,20 @@ builder.Services.AddAuthentication(options =>
     {
         options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}";
         options.MetadataAddress = $"{builder.Configuration.GetValue<string>("Keycloak:Host")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}/.well-known/openid-configuration";
+        // Audience: configurable so it can be tightened to an API-specific value
+        // (e.g. "exam-api") once the realm adds a matching audience mapper. Defaults
+        // to "account" — Keycloak's built-in audience — so behaviour is unchanged
+        // until the config key is set.
+        var validAudiences = builder.Configuration.GetSection("Keycloak:ValidAudiences").Get<string[]>()
+            ?? new[] { "account" };
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}"
+            ValidIssuer = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}",
+            ValidateAudience = true,
+            ValidAudiences = validAudiences
         };
-        options.Audience = "account"; // veya client_id değerin
         options.RequireHttpsMetadata = false;
         options.Events = new JwtBearerEvents
         {
@@ -98,21 +105,12 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("ServiceToService", policy =>
         policy.RequireAssertion(context =>
-        {
-            var preferredUsername = context.User.FindFirstValue("preferred_username");
-            // exam-admin client is treated as god/service user
-            return preferredUsername?.Equals("exam-admin", StringComparison.OrdinalIgnoreCase) == true;
-        }));
+            ServicePrincipal.IsService(context.User, builder.Configuration)));
 
     options.AddPolicy("TeacherOrService", policy =>
         policy.RequireAssertion(context =>
-        {
-            var preferredUsername = context.User.FindFirstValue("preferred_username");
-            // exam-admin client is treated as god/service user
-            var isServiceAccount = preferredUsername?.Equals("exam-admin", StringComparison.OrdinalIgnoreCase) == true;
-            if (isServiceAccount) return true;
-            return context.User.IsInRole("Teacher");
-        }));
+            context.User.IsInRole("Teacher") ||
+            ServicePrincipal.IsService(context.User, builder.Configuration)));
 });
 
 var redisConfig = builder.Configuration.GetSection("Redis");

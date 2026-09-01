@@ -124,6 +124,15 @@
         "clientRole": false,
         "containerId": "63021bb7-8910-4a5a-be5e-3e552db8d557",
         "attributes": {}
+      },
+      {
+        "id": "c3b7e5a1-9d24-4f68-8a03-1e6c0b4d2f77",
+        "name": "exam-service",
+        "description": "Trusted service-to-service caller. Assigned to the exam-admin service account; APIs check this role instead of matching the client id by string.",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "63021bb7-8910-4a5a-be5e-3e552db8d557",
+        "attributes": {}
       }
     ],
     "client": {
@@ -547,7 +556,8 @@
       "disableableCredentialTypes": [],
       "requiredActions": [],
       "realmRoles": [
-        "default-roles-exam-realm"
+        "default-roles-exam-realm",
+        "exam-service"
       ],
       "clientRoles": {
         "realm-management": [

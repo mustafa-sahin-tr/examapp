@@ -14,4 +14,11 @@ public interface IClassifierCacheService
 
     /// <summary>Rebuild the Gemini cached content from the live taxonomy and persist the new pointer.</summary>
     Task<ClassifierCacheRefreshResultDto> RefreshAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Rebuild only if the cache is stale vs. the live taxonomy. Entry point for the
+    /// debounced Hangfire job scheduled on every taxonomy change (and the hourly
+    /// safety-net reconciler), so a burst of edits results in a single rebuild.
+    /// </summary>
+    Task RefreshIfStaleAsync(int userId);
 }

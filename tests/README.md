@@ -17,13 +17,14 @@ dotnet test tests/ExamApp.Api.Tests
 > Stop the relevant service (or the whole AppHost) before `dotnet test`, or run
 > the suite in CI where nothing else is running.
 
-## Layout
+## Layout (83 tests)
 
 | Project | Covers |
 |---|---|
 | `ExamApp.Foundation.Tests` | `ServicePrincipal` (service-vs-user decision), `OutboxEventRegistry` (name ↔ type, legacy formats) |
-| `ExamApp.Api.Tests` | `TaxonomyService` (CRUD + guards + soft-delete + cache-reconcile scheduling), `ClassifierCacheService` (stale detection, Gemini call, pointer persistence), `KeycloakRoleTransformer` (realm role mapping, malformed-token tolerance) |
+| `ExamApp.Api.Tests` | `TaxonomyService` (CRUD + guards + soft-delete + cache-reconcile scheduling), `ClassifierCacheService` (stale detection, Gemini call, pointer persistence), `KeycloakRoleTransformer` (realm role mapping, malformed-token tolerance), `ExamService.SaveAnswer` (scoring, outbox event, cross-student isolation, dragDrop handling) |
 | `OutboxPublisher.Tests` | `OutboxOptions.ComputeBackoff` (exponential + cap + overflow) |
+| `BadgeService.Tests` | `ActivityAnalytics` (active days, current/best streak), `BadgeEvaluator` (rule parsing, progress tracking, earning, idempotency, bad-config tolerance) |
 
 ## Test doubles
 

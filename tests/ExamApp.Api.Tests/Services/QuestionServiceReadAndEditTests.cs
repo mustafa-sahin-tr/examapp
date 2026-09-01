@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 
@@ -11,6 +12,7 @@ public class QuestionServiceReadAndEditTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private QuestionService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private QuestionClassificationService NewClassification(AppDbContext ctx) => new(ctx);
 
     // ---- GetQuestionById ----
 
@@ -124,7 +126,7 @@ public class QuestionServiceReadAndEditTests : IDisposable
         }
 
         await using var ctx2 = _db.NewContext();
-        var svc = NewService(ctx2);
+        var svc = NewClassification(ctx2);
 
         (await svc.UpdateCorrectAnswer(9999, ownAnswerId)).Message.ShouldContain("bulunamadı");
         (await svc.UpdateCorrectAnswer(qId, foreignAnswerId)).Message.ShouldContain("ait değil");
@@ -156,8 +158,8 @@ public class QuestionServiceReadAndEditTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            (await NewService(ctx).RemoveQuestionFromTest(testId, questionId)).Success.ShouldBeTrue();
-            (await NewService(ctx).RemoveQuestionFromTest(testId, questionId)).Success.ShouldBeFalse(); // already gone
+            (await NewClassification(ctx).RemoveQuestionFromTest(testId, questionId)).Success.ShouldBeTrue();
+            (await NewClassification(ctx).RemoveQuestionFromTest(testId, questionId)).Success.ShouldBeFalse(); // already gone
         }
     }
 

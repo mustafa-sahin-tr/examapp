@@ -1,18 +1,18 @@
 using ExamApp.Api.Data;
-using ExamApp.Api.Helpers;
+
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
 
-public class QuestionServiceClassificationTests : IDisposable
+public class QuestionClassificationServiceTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
 
-    private QuestionService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private QuestionClassificationService NewService(AppDbContext ctx) => new(ctx);
 
     private sealed record World(int QuestionId, int SubjectId, int TopicId, int SubTopicA, int SubTopicB);
 

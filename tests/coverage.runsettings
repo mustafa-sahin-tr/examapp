@@ -5,9 +5,10 @@
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <!-- Exclude EF migrations, generated code and entry points from the denominator. -->
-          <ExcludeByFile>**/Migrations/*.cs,**/*.Designer.cs,**/*ModelSnapshot.cs,**/obj/**</ExcludeByFile>
-          <Exclude>[*]*.Migrations.*,[*]Program,[*]*ModelSnapshot,[*]StartupConfigDump,[*]Microsoft.AspNetCore.OpenApi.Generated</Exclude>
+          <!-- Exclude EF migrations, generated code, entry points and static seed
+               data (thousands of `new Topic {...}` HasData lines) from the denominator. -->
+          <ExcludeByFile>**/Migrations/*.cs,**/*.Designer.cs,**/*ModelSnapshot.cs,**/obj/**,**/Data/*Seed*.cs,**/Data/SeedData.cs,**/Data/CatalogSeed.cs</ExcludeByFile>
+          <Exclude>[*]*.Migrations.*,[*]Program,[*]*ModelSnapshot,[*]StartupConfigDump,[*]Microsoft.AspNetCore.OpenApi.Generated,[*]TopicSeed,[*]*Seed,[*]ExamApp.Api.Data.SeedData,[*]ExamApp.Api.Data.CatalogSeed,[*]ExamApp.Api.Data.ProgramStepSeed,[ExamApp.ServiceDefaults]*,[*]Microsoft.Extensions.*,[*]Microsoft.AspNetCore.*</Exclude>
           <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
           <SkipAutoProps>true</SkipAutoProps>
         </Configuration>

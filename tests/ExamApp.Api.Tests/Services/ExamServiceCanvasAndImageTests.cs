@@ -4,6 +4,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
 using Microsoft.AspNetCore.Http;
 
@@ -14,6 +15,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private TestSessionService NewSession(AppDbContext ctx) => new(ctx);
 
     private static IFormFile FakeImage(string contentType = "image/png", int length = 8)
     {
@@ -124,7 +126,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     public async Task Canvas_result_returns_null_for_a_missing_or_foreign_instance()
     {
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).GetCanvasTestResultAsync(404, userId: 1)).ShouldBeNull();
+        (await NewSession(ctx).GetCanvasTestResultAsync(404, userId: 1)).ShouldBeNull();
     }
 
     [Fact]
@@ -164,7 +166,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
         }
 
         await using var ctx2 = _db.NewContext();
-        var svc = NewService(ctx2);
+        var svc = NewSession(ctx2);
 
         // not requesting correct answer -> ok, hidden
         var plain = await svc.GetCanvasTestResultAsync(instanceId, 77, includeCorrectAnswer: false);

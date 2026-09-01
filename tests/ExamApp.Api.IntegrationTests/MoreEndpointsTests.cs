@@ -75,6 +75,38 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
         (await Anonymous().GetAsync("/api/program/my-programs")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    // ---- SubjectController ----
+
+    [Fact]
+    public async Task Subject_endpoints_expose_the_taxonomy_tree()
+    {
+        var (subjectId, topicId, gradeId) = await WithDbAsync(async db =>
+        {
+            var subject = new Subject { Name = "Coğrafya" };
+            var grade = new Grade { Name = "7" };
+            db.AddRange(subject, grade);
+            await db.SaveChangesAsync();
+            db.GradeSubjects.Add(new GradeSubject { GradeId = grade.Id, SubjectId = subject.Id });
+            var topic = new Topic { Name = "İklim", SubjectId = subject.Id, GradeId = grade.Id };
+            db.Topics.Add(topic);
+            await db.SaveChangesAsync();
+            db.SubTopics.Add(new SubTopic { Name = "Yağış", TopicId = topic.Id });
+            await db.SaveChangesAsync();
+            return (subject.Id, topic.Id, grade.Id);
+        });
+
+        var client = await ClientAsAsync(1, "Teacher", "kc-t", "Teacher");
+
+        (await client.GetFromJsonAsync<List<Subject>>("/api/subject", Json))!
+            .ShouldContain(s => s.Name == "Coğrafya");
+        (await client.GetFromJsonAsync<List<Topic>>($"/api/subject/topics/{subjectId}", Json))!
+            .ShouldContain(t => t.Id == topicId);
+        (await client.GetFromJsonAsync<List<SubTopic>>($"/api/subject/subtopics/{topicId}", Json))!
+            .ShouldContain(st => st.Name == "Yağış");
+        (await client.GetFromJsonAsync<List<Subject>>($"/api/subject/by-grade/{gradeId}", Json))!
+            .ShouldContain(s => s.Id == subjectId);
+    }
+
     // ---- StudyPagesController ----
 
     [Fact]

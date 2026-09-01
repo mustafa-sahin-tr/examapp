@@ -9,6 +9,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace ExamApp.Api.Services;
 
@@ -16,17 +17,19 @@ public class AuthApiClient : IAuthApiClient
 {
     private readonly IConfiguration _configuration;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ILogger<AuthApiClient> _logger;
 
-    public AuthApiClient(IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
+    public AuthApiClient(IConfiguration configuration, IHttpContextAccessor httpContextAccessor, ILogger<AuthApiClient> logger)
     {
         _configuration = configuration;
         _httpContextAccessor = httpContextAccessor;
+        _logger = logger;
     }
     public async Task<UserProfileDto> GetUserProfileAsync()
     {
         using var httpClient = new HttpClient();
         var baseUrl = _configuration["AuthApiBaseUrl"]; // Configuration'dan URL oku
-        Console.WriteLine($"[AuthApiClient] Base URL: {baseUrl}");
+        _logger.LogDebug("[AuthApiClient] Base URL: {BaseUrl}", baseUrl);
 
         var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/api/auth/user-profile");
 

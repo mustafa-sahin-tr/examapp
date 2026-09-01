@@ -10,6 +10,8 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ExamApp.Api.Services;
 
@@ -17,11 +19,13 @@ public class StudyPageService : IStudyPageService
 {
     private readonly AppDbContext _context;
     private readonly IMinIoService _minioService;
+    private readonly ILogger<StudyPageService> _logger;
 
-    public StudyPageService(AppDbContext context, IMinIoService minioService)
+    public StudyPageService(AppDbContext context, IMinIoService minioService, ILogger<StudyPageService>? logger = null)
     {
         _context = context;
         _minioService = minioService;
+        _logger = logger ?? NullLogger<StudyPageService>.Instance;
     }
 
     public async Task<Paged<StudyPageDto>> GetPagedAsync(StudyPageFilterDto filter, UserProfileDto user)
@@ -140,13 +144,8 @@ public class StudyPageService : IStudyPageService
         {
             try
             {
-                // Debug logging
-                Console.WriteLine($"MinioImages JSON: {request.MinioImages}");
-
                 using var jsonDoc = JsonDocument.Parse(request.MinioImages);
                 var jsonArray = jsonDoc.RootElement;
-
-                Console.WriteLine($"Parsed {jsonArray.GetArrayLength()} MinIO images");
 
                 foreach (var item in jsonArray.EnumerateArray())
                 {
@@ -154,7 +153,6 @@ public class StudyPageService : IStudyPageService
                     var pageNumber = item.GetProperty("pageNumber").GetInt32();
                     var minioUrl = item.GetProperty("minioUrl").GetString() ?? string.Empty;
 
-                    Console.WriteLine($"MinIO Image - Book: {bookName}, Page: {pageNumber}, URL: {minioUrl}");
 
                     _context.StudyPageImages.Add(new StudyPageImage
                     {
@@ -169,8 +167,7 @@ public class StudyPageService : IStudyPageService
             }
             catch (JsonException ex)
             {
-                Console.WriteLine($"JSON parsing error: {ex.Message}");
-                // Log error or handle invalid JSON gracefully
+                _logger.LogWarning(ex, "Invalid MinioImages JSON on study page create; skipping image import");
             }
         }
 
@@ -239,13 +236,8 @@ public class StudyPageService : IStudyPageService
         {
             try
             {
-                // Debug logging
-                Console.WriteLine($"UPDATE MinioImages JSON: {request.MinioImages}");
-
                 using var jsonDoc = JsonDocument.Parse(request.MinioImages);
                 var jsonArray = jsonDoc.RootElement;
-
-                Console.WriteLine($"UPDATE Parsed {jsonArray.GetArrayLength()} MinIO images");
 
                 foreach (var item in jsonArray.EnumerateArray())
                 {
@@ -253,7 +245,6 @@ public class StudyPageService : IStudyPageService
                     var pageNumber = item.GetProperty("pageNumber").GetInt32();
                     var minioUrl = item.GetProperty("minioUrl").GetString() ?? string.Empty;
 
-                    Console.WriteLine($"UPDATE MinIO Image - Book: {bookName}, Page: {pageNumber}, URL: {minioUrl}");
 
                     _context.StudyPageImages.Add(new StudyPageImage
                     {
@@ -268,8 +259,7 @@ public class StudyPageService : IStudyPageService
             }
             catch (JsonException ex)
             {
-                Console.WriteLine($"UPDATE JSON parsing error: {ex.Message}");
-                // Log error or handle invalid JSON gracefully
+                _logger.LogWarning(ex, "Invalid MinioImages JSON on study page update; skipping image import");
             }
         }
 

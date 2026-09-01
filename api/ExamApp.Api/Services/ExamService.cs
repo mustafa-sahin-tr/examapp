@@ -1520,9 +1520,11 @@ public class ExamService : IExamService
                 }
             }
 
+            _context.SetCurrentUser(userId);
             await _context.SaveChangesAsync(); // burada audit çalışır
             return new ExamSavedDto
             {
+                Success = true,
                 Message = examDto.Id > 0 ?
                             "Test başarıyla güncellendi!" : "Test başarıyla kaydedildi!",
                 ExamId = examination.Id,

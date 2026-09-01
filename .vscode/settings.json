@@ -12,5 +12,8 @@
     "editor.defaultFormatter": "vscode.html-language-features"
   },
   // Projede .prettierrc yoksa Prettier’ı çalıştırma
-  "prettier.requireConfig": true
+  "prettier.requireConfig": true,
+
+  // C# Dev Kit test explorer: use the same coverage exclusions as the CLI
+  "dotnet.unitTests.runSettingsPath": "tests/coverage.runsettings"
 }

@@ -11,12 +11,8 @@
         "pattern": "$tsc",
         "background": {
           "activeOnStart": true,
-          "beginsPattern": {
-            "regexp": "(.*?)"
-          },
-          "endsPattern": {
-            "regexp": "bundle generation complete"
-          }
+          "beginsPattern": { "regexp": "(.*?)" },
+          "endsPattern": { "regexp": "bundle generation complete" }
         }
       }
     },
@@ -29,14 +25,31 @@
         "pattern": "$tsc",
         "background": {
           "activeOnStart": true,
-          "beginsPattern": {
-            "regexp": "(.*?)"
-          },
-          "endsPattern": {
-            "regexp": "bundle generation complete"
-          }
+          "beginsPattern": { "regexp": "(.*?)" },
+          "endsPattern": { "regexp": "bundle generation complete" }
         }
       }
+    },
+
+    {
+      "label": ".NET: test",
+      "detail": "Run the whole xUnit suite (ExamApp.slnx). Stop the AppHost first — running services lock their DLLs.",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "ExamApp.slnx", "--nologo"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile",
+      "presentation": { "clear": true }
+    },
+    {
+      "label": ".NET: test + coverage",
+      "detail": "Run tests with coverage, build an HTML report, and open it. Needs: dotnet tool install --global dotnet-reportgenerator-globaltool",
+      "type": "process",
+      "command": "pwsh",
+      "windows": { "command": "powershell" },
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tests/coverage.ps1"],
+      "problemMatcher": [],
+      "presentation": { "clear": true }
     }
   ]
 }

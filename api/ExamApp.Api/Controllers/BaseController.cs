@@ -16,15 +16,10 @@ public class BaseController : ControllerBase
 {
     protected string? KeyCloakId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-    protected bool IsServiceAccount
-    {
-        get
-        {
-            var preferredUsername = User.FindFirstValue("preferred_username");
-            // exam-admin client is treated as god/service user
-            return preferredUsername?.Equals("exam-admin", StringComparison.OrdinalIgnoreCase) == true;
-        }
-    }
+    protected bool IsServiceAccount =>
+        Helpers.ServicePrincipal.IsService(
+            User,
+            HttpContext.RequestServices.GetRequiredService<IConfiguration>());
 
     protected async Task<UserProfileDto> GetAuthenticatedUserAsync()
     {

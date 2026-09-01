@@ -109,3 +109,7 @@ my-secrets.txt
 
 *.Development.json
 
+
+# test coverage output
+coverage/
+TestResults/

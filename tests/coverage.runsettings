@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Exclude EF migrations, generated code and entry points from the denominator. -->
+          <ExcludeByFile>**/Migrations/*.cs,**/*.Designer.cs,**/*ModelSnapshot.cs,**/obj/**</ExcludeByFile>
+          <Exclude>[*]*.Migrations.*,[*]Program,[*]*ModelSnapshot,[*]StartupConfigDump,[*]Microsoft.AspNetCore.OpenApi.Generated</Exclude>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

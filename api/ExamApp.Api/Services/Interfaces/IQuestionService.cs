@@ -17,20 +17,5 @@ public interface IQuestionService
 
     Task<StudyPageAttachImageResponseDto> AttachImageToStudyPage(StudyPageAttachImageDto request);
 
-    Task<ResponseBaseDto> UpdateCorrectAnswer(
-        int questionId,
-        int correctAnswerId);
-
-    Task<ResponseBaseDto> UpdateQuestionClassification(
-        int questionId,
-        int? subjectId = null,
-        int? topicId = null,
-        int? subTopicId = null,
-        int[]? subTopicIds = null,
-        string? classificationSourceStr = null,
-        int? difficulty = null);
-
-    Task<ResponseBaseDto> RemoveQuestionFromTest(int testId, int questionId);
-
     Task<ResponseBaseDto> ResizeQuestionImage(int questionId, double scale);
 }

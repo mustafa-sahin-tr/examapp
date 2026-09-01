@@ -129,6 +129,7 @@ builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionClassificationService, ExamApp.Api.Services.Questions.QuestionClassificationService>();
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();

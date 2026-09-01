@@ -4,6 +4,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Classifier;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,18 +23,21 @@ public class QuestionsController : BaseController
     private readonly ImageHelper _imageHelper;
 
     private readonly IQuestionService _questionService;
+    private readonly IQuestionClassificationService _questionClassification;
     private readonly IClassifierCacheService _classifierCache;
 
     public QuestionsController(
         IMinIoService minioService,
         ImageHelper imageHelper,
         IQuestionService questionService,
+        IQuestionClassificationService questionClassification,
         IClassifierCacheService classifierCache)
         : base()
     {
         _minioService = minioService;
         _imageHelper = imageHelper;
         _questionService = questionService;
+        _questionClassification = questionClassification;
         _classifierCache = classifierCache;
     }
 
@@ -123,7 +127,7 @@ public class QuestionsController : BaseController
             return BadRequest(new { message = "Geçersiz doğru cevap ID'si." });
         }
 
-        var response = await _questionService.UpdateCorrectAnswer(
+        var response = await _questionClassification.UpdateCorrectAnswer(
             questionId,
             request.CorrectAnswerId
         );
@@ -149,7 +153,7 @@ public class QuestionsController : BaseController
             return BadRequest(new { message = "Geçersiz sınıflandırma verisi." });
         }
 
-        var response = await _questionService.UpdateQuestionClassification(
+        var response = await _questionClassification.UpdateQuestionClassification(
             questionId,
             request.SubjectId,
             request.TopicId,
@@ -198,7 +202,7 @@ public class QuestionsController : BaseController
     [Authorize]
     public async Task<IActionResult> RemoveQuestionFromTest(int testId, int questionId)
     {
-        var response = await _questionService.RemoveQuestionFromTest(testId, questionId);
+        var response = await _questionClassification.RemoveQuestionFromTest(testId, questionId);
 
         if (!response.Success)
         {

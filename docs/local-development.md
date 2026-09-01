@@ -9,7 +9,7 @@ Aspire is a **development-time tool only** here. It is never used to publish or 
 | Tool | Needed for | Notes |
 |---|---|---|
 | .NET SDK 10 | AppHost, all .NET services | `dotnet --version` should report `10.0.x` |
-| A container runtime (Docker Desktop) | Postgres, Redis, RabbitMQ, MinIO, Keycloak, n8n | Aspire's DCP auto-detects Docker or Podman |
+| A container runtime (Docker Desktop) | Postgres, Redis, RabbitMQ, MinIO, Keycloak | Aspire's DCP auto-detects Docker or Podman |
 | Node.js (LTS) + npm | `ui/`, `auth-ui/` | Aspire runs `npm`/`ng serve` **directly on the host**, unlike docker-compose which runs it inside a container — Node must actually be installed locally |
 | Python 3.12 | `question-detector/` | Same reasoning as Node — Aspire's `AddUvicornApp` runs `pip`/`uvicorn` on the host |
 
@@ -24,7 +24,7 @@ dotnet run
 
 The first run:
 - Installs pip dependencies for `question-detector/` (can take a while).
-- Pulls container images for Postgres, Redis, RabbitMQ, MinIO, Keycloak, n8n if not already cached.
+- Pulls container images for Postgres, Redis, RabbitMQ, MinIO, Keycloak if not already cached.
 - Creates fresh named Docker volumes for Postgres/Redis/MinIO/Keycloak data — these persist across restarts, so subsequent runs are much faster and keep your data.
 
 **npm install is manual, not automatic.** Aspire's own npm-install step was found to hang indefinitely on Windows (a known class of Aspire/DCP npm-spawn issue) and is disabled in `AppHost.cs` (`WithNpm(install: false)`). Whenever `ui/`'s or `auth-ui/`'s `package.json` changes, run `npm install` in that folder yourself before starting the AppHost:
@@ -56,7 +56,6 @@ Open that link. The dashboard shows every resource's state, structured logs, and
 | Redis Insight | via the Redis resource's link in the dashboard | |
 | RabbitMQ management UI | via the RabbitMQ resource's link in the dashboard (AMQP itself is pinned to `localhost:5672`) | |
 | MinIO API / console | `http://localhost:9000` / `http://localhost:9001` | Same ports as docker-compose |
-| n8n | `http://localhost:5679` | Bind-mounted to the same `./n8n-data` docker-compose already uses — existing workflows are preserved |
 | question-detector | via its resource's link in the dashboard (Aspire-assigned port) | |
 
 ExamDotnetApi (`:5079`), auth-api (`:6079`), and BadgeService (`:8006`) are also directly reachable at their pinned ports for debugging, though normal traffic should go through the gateway.

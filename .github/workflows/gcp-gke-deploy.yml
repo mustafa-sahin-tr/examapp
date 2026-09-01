@@ -35,7 +35,6 @@ on:
           - angular-app
           - auth-ui
           - question-detector
-          - n8n
       image_tag:
         description: Optional image tag override (default git sha)
         type: string

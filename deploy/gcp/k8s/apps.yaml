@@ -375,16 +375,26 @@ spec:
                 configMapKeyRef:
                   name: examapp-config
                   key: EXAM_API_BASE_URL
-            - name: QuestionAnalyzer__BaseUrl
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: N8N_BASE_URL
             - name: QuestionAnalyzer__AIActive
               valueFrom:
                 configMapKeyRef:
                   name: examapp-config
                   key: BADGE_AI_ACTIVE
+            - name: Gemini__Model
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: GEMINI_MODEL
+            - name: Gemini__CachedContent
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: GEMINI_CACHED_CONTENT
+            - name: Gemini__ApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: GEMINI_API_KEY
 ---
 apiVersion: v1
 kind: Service
@@ -441,73 +451,6 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: RABBITMQ_PASS
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: n8n
-  namespace: examapp
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: n8n
-  template:
-    metadata:
-      labels:
-        app: n8n
-    spec:
-      containers:
-        - name: n8n
-          image: n8nio/n8n:1
-          ports:
-            - containerPort: 5678
-          env:
-            - name: N8N_BASIC_AUTH_ACTIVE
-              value: 'true'
-            - name: N8N_BASIC_AUTH_USER
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: N8N_BASIC_AUTH_USER
-            - name: N8N_BASIC_AUTH_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: N8N_BASIC_AUTH_PASSWORD
-            - name: N8N_PORT
-              value: '5678'
-            - name: N8N_PROTOCOL
-              value: https
-            - name: N8N_EDITOR_BASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: N8N_EDITOR_BASE_URL
-            - name: WEBHOOK_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: N8N_WEBHOOK_URL
-            - name: GENERIC_TIMEZONE
-              valueFrom:
-                configMapKeyRef:
-                  name: examapp-config
-                  key: TZ
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: n8n
-  namespace: examapp
-spec:
-  selector:
-    app: n8n
-  ports:
-    - name: http
-      port: 5678
-      targetPort: 5678
 
 ---
 apiVersion: apps/v1

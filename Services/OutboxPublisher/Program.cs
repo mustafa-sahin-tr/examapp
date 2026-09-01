@@ -25,6 +25,7 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
+builder.Services.Configure<OutboxOptions>(builder.Configuration.GetSection(OutboxOptions.SectionName));
 builder.Services.AddHostedService<OutboxProcessor>();
 builder.Services.AddLogging(logging =>
 {

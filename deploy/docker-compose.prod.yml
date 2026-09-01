@@ -62,24 +62,6 @@ services:
     networks:
       - exam-net
 
-  n8n:
-    image: n8nio/n8n:1
-    container_name: exam-n8n
-    restart: unless-stopped
-    environment:
-      N8N_BASIC_AUTH_ACTIVE: 'true'
-      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
-      N8N_PORT: 5678
-      N8N_PROTOCOL: https
-      N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL}
-      WEBHOOK_URL: ${N8N_WEBHOOK_URL}
-      GENERIC_TIMEZONE: ${TZ:-Europe/Istanbul}
-    volumes:
-      - n8n_data:/home/node/.n8n
-    networks:
-      - exam-net
-
   minio:
     image: minio/minio
     container_name: exam-minio
@@ -250,8 +232,10 @@ services:
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       ExamApi__BaseUrl: http://exam-dotnet-api:5079
-      QuestionAnalyzer__BaseUrl: http://n8n:5678
       QuestionAnalyzer__AIActive: ${BADGE_AI_ACTIVE:-true}
+      Gemini__Model: ${GEMINI_MODEL:-models/gemini-3.5-flash-lite}
+      Gemini__CachedContent: ${GEMINI_CACHED_CONTENT}
+      Gemini__ApiKey: ${GEMINI_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -346,7 +330,6 @@ volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
-  n8n_data:
   minio_data:
   caddy_data:
   caddy_config:

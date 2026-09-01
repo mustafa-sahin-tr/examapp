@@ -115,6 +115,15 @@
         "clientRole": false,
         "containerId": "63021bb7-8910-4a5a-be5e-3e552db8d557",
         "attributes": {}
+      },
+      {
+        "id": "a1d0f4c2-3e5b-4a77-9c21-8f0b2d6e4c10",
+        "name": "Admin",
+        "description": "Platform administrator — taxonomy management, classifier cache, operational tooling. Distinct from the exam-admin service client.",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "63021bb7-8910-4a5a-be5e-3e552db8d557",
+        "attributes": {}
       }
     ],
     "client": {
@@ -549,6 +558,33 @@
           "manage-realm"
         ]
       },
+      "notBefore": 0,
+      "groups": []
+    },
+    {
+      "id": "b2e1c9a7-4f6d-4b83-a0e2-1c7d9f3a5b64",
+      "username": "admin",
+      "email": "admin@examapp.local",
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "emailVerified": true,
+      "enabled": true,
+      "totp": false,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": true
+        }
+      ],
+      "requiredActions": [
+        "UPDATE_PASSWORD"
+      ],
+      "disableableCredentialTypes": [],
+      "realmRoles": [
+        "default-roles-exam-realm",
+        "Admin"
+      ],
       "notBefore": 0,
       "groups": []
     }

@@ -362,6 +362,32 @@
                 </ng-container>
               </section>
 
+              <div class="main-content">
+                <!-- Content Area - Full Width -->
+                <div class="content-area">
+                  <!-- Results Section -->
+                  <div *ngIf="instanceCompleted" class="results-section">
+                    <div class="results-header">
+                      <h2>
+                        <mat-icon>assessment</mat-icon>
+                        Test Sonuçları
+                      </h2>
+                    </div>
+                    <div class="results-content">
+                      <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)">
+                      </app-question-navigator>
+
+                      <div class="question-review">
+                        <app-question-canvas-view [questionRegion]="regions()[currentIndex()]"
+                          [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)" [mode]="'result'"
+                          [correctChoice]="correctChoices().get(regions()[currentIndex()].id)">
+                        </app-question-canvas-view>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>

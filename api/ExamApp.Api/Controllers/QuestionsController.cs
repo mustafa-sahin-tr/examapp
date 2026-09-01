@@ -149,6 +149,33 @@ public class QuestionsController : BaseController
         return Ok(response);
     }
 
+    // GET /api/questions/{id}/image?variant=v1|v2 — raw question image bytes.
+    // Used by BadgeService's classifier (service-to-service) so MinIO access stays in this API.
+    [HttpGet("{id}/image")]
+    [Authorize]
+    public async Task<IActionResult> GetQuestionImage(int id, [FromQuery] string variant = "v1")
+    {
+        var question = await _questionService.GetQuestionById(id);
+        if (question == null || string.IsNullOrWhiteSpace(question.ImageUrl))
+        {
+            return NotFound(new { message = "Soru veya soru görseli bulunamadı." });
+        }
+
+        var imageUrl = question.ImageUrl;
+        if (string.Equals(variant, "v2", StringComparison.OrdinalIgnoreCase))
+        {
+            imageUrl = Regex.Replace(imageUrl, @"question\.jpg$", "question-v2.jpg", RegexOptions.IgnoreCase);
+        }
+
+        var stream = await _minioService.GetFileStreamAsync(imageUrl);
+        if (stream == null)
+        {
+            return NotFound(new { message = "Soru görseli depoda bulunamadı." });
+        }
+
+        return File(stream, "image/jpeg");
+    }
+
     [HttpDelete("test/{testId}/question/{questionId}")]
     [Authorize]
     public async Task<IActionResult> RemoveQuestionFromTest(int testId, int questionId)

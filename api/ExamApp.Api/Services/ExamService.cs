@@ -1172,7 +1172,7 @@ public class ExamService : IExamService
         // 2. Outbox'a yaz
         var outbox = new OutboxMessage
         {
-            Type = typeof(AnswerSubmittedEvent).AssemblyQualifiedName ?? nameof(AnswerSubmittedEvent),
+            Type = OutboxEventRegistry.NameFor<AnswerSubmittedEvent>(),
             Content = JsonSerializer.Serialize(evt),
             CreatedAt = DateTime.UtcNow
         };

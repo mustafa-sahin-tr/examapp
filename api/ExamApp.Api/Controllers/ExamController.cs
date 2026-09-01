@@ -11,6 +11,7 @@ using System.Globalization;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Worksheets;
 
 [Route("api/worksheet")]
 [ApiController]
@@ -20,13 +21,16 @@ public class ExamController : BaseController
 
     private readonly IExamService _examService;
     private readonly IStudentService _studentService;
+    private readonly IWorksheetAssignmentService _assignmentService;
     public ExamController(IMinIoService minioService, IExamService examService,
-            IStudentService studentService
+            IStudentService studentService,
+            IWorksheetAssignmentService assignmentService
             )
         : base()
     {
         _examService = examService;
         _studentService = studentService;
+        _assignmentService = assignmentService;
     }
 
 
@@ -62,7 +66,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> AssignWorksheet([FromBody] WorksheetAssignmentRequestDto request)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _examService.AssignWorksheetAsync(request, user.Id);
+        var response = await _assignmentService.AssignWorksheetAsync(request, user.Id);
 
         if (!response.Success)
         {
@@ -83,7 +87,7 @@ public class ExamController : BaseController
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
-        var assignments = await _examService.GetActiveAssignmentsForStudentAsync(student);
+        var assignments = await _assignmentService.GetActiveAssignmentsForStudentAsync(student);
         return Ok(assignments);
     }
 
@@ -92,7 +96,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetAssignmentsOverview(int id)
     {
         var user = await GetAuthenticatedUserAsync();
-        var overview = await _examService.GetWorksheetAssignmentsForTeacherAsync(id, user.Id);
+        var overview = await _assignmentService.GetWorksheetAssignmentsForTeacherAsync(id, user.Id);
         return Ok(overview);
     }
 

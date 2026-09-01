@@ -2,16 +2,17 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
 
-public class ExamServiceAssignmentTests : IDisposable
+public class WorksheetAssignmentServiceTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx);
 
     private static readonly DateTime Start = new(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc);
 

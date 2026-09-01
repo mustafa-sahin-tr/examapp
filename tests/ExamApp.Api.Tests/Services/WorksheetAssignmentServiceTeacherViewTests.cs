@@ -1,15 +1,16 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 
 namespace ExamApp.Api.Tests.Services;
 
-public class ExamServiceTeacherAssignmentsTests : IDisposable
+public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx);
 
     private const int TeacherUserId = 500;
 

@@ -81,16 +81,17 @@ builder.Services.AddAuthentication(options =>
         // wrote the token subject/issuer/expiry to stdout on every request.
     });
 
+var serviceClients = builder.Configuration.GetSection("Keycloak:ServiceClients").Get<string[]>();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("ServiceToService", policy =>
         policy.RequireAssertion(context =>
-            ServicePrincipal.IsService(context.User, builder.Configuration)));
+            ExamApp.Foundation.Security.ServicePrincipal.IsService(context.User, serviceClients)));
 
     options.AddPolicy("TeacherOrService", policy =>
         policy.RequireAssertion(context =>
             context.User.IsInRole("Teacher") ||
-            ServicePrincipal.IsService(context.User, builder.Configuration)));
+            ExamApp.Foundation.Security.ServicePrincipal.IsService(context.User, serviceClients)));
 });
 
 var redisConfig = builder.Configuration.GetSection("Redis");

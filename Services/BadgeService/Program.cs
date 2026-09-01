@@ -57,12 +57,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         options.Authority = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}";
         options.MetadataAddress = $"{builder.Configuration.GetValue<string>("Keycloak:Host")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}/.well-known/openid-configuration";
+        // Audience: configurable (Keycloak:ValidAudiences), defaults to "account"
+        // so behaviour is unchanged until tightened to an API-specific value.
+        var validAudiences = builder.Configuration.GetSection("Keycloak:ValidAudiences").Get<string[]>()
+            ?? new[] { "account" };
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}"
+            ValidIssuer = $"{builder.Configuration.GetValue<string>("Server:BaseUrl")}/realms/{builder.Configuration.GetValue<string>("Keycloak:Realm")}",
+            ValidateAudience = true,
+            ValidAudiences = validAudiences
         };
-        options.Audience = "account"; // veya client_id değerin
         options.RequireHttpsMetadata = false;
 
         // SignalR bağlantısı için token'ı query string'den çek
@@ -83,7 +88,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
-builder.Services.AddAuthorization();
+var serviceClients = builder.Configuration.GetSection("Keycloak:ServiceClients").Get<string[]>();
+builder.Services.AddAuthorization(options =>
+{
+    // Service-to-service only (e.g. the exam API's student-reset job).
+    options.AddPolicy("Service", policy =>
+        policy.RequireAssertion(context =>
+            ExamApp.Foundation.Security.ServicePrincipal.IsService(context.User, serviceClients)));
+});
 
 
 

@@ -9,7 +9,7 @@ namespace BadgeService.Controllers;
 
 [ApiController]
 [Route("api/reset")]
-[Authorize]
+[Authorize(Policy = "Service")]
 public class ResetController : ControllerBase
 {
     private readonly BadgeDbContext _db;

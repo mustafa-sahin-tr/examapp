@@ -17,9 +17,10 @@ public class BaseController : ControllerBase
     protected string? KeyCloakId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     protected bool IsServiceAccount =>
-        Helpers.ServicePrincipal.IsService(
+        ExamApp.Foundation.Security.ServicePrincipal.IsService(
             User,
-            HttpContext.RequestServices.GetRequiredService<IConfiguration>());
+            HttpContext.RequestServices.GetRequiredService<IConfiguration>()
+                .GetSection("Keycloak:ServiceClients").Get<string[]>());
 
     protected async Task<UserProfileDto> GetAuthenticatedUserAsync()
     {

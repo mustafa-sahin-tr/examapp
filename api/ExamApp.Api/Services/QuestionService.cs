@@ -584,21 +584,16 @@ public class QuestionService : IQuestionService
                 {
                     if (soruDto.Header.SubjectId == null || soruDto.Header.SubjectId == 0)
                     {
-                        Console.WriteLine("Worksheet SubjectId: " + worksheet.SubjectId);
-                        Console.WriteLine("soruDto.Header.SubjectId: " + soruDto.Header.SubjectId);
                         soruDto.Header.SubjectId = worksheet.SubjectId;
                     }
 
                     if (soruDto.Header.TopicId == null || soruDto.Header.TopicId == 0)
                     {
-                        Console.WriteLine("Worksheet TopicId: " + worksheet.TopicId);
-                        Console.WriteLine("soruDto.Header.TopicId: " + soruDto.Header.TopicId);
                         soruDto.Header.TopicId = worksheet.TopicId;
                     }
 
                     if (soruDto.Header.Subtopics == null || !soruDto.Header.Subtopics.Any())
                     {
-                        Console.WriteLine("Worksheet SubTopicId: " + worksheet.SubTopicId);
                         soruDto.Header.Subtopics = new List<int>();
                         if (worksheet.SubTopicId != null && worksheet.SubTopicId > 0)
                         {

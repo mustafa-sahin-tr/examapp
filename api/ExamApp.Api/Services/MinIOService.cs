@@ -2,6 +2,7 @@ using Minio;
 using Minio.DataModel;
 using Minio.DataModel.Args;
 using Minio.Exceptions;
+using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -20,8 +21,10 @@ public class MinIoService : IMinIoService
     private readonly IMinioClient _minioClient;
     private readonly string _bucketName;
     private readonly string _baseUrl;
-    public MinIoService(IConfiguration configuration)
+    private readonly ILogger<MinIoService> _logger;
+    public MinIoService(IConfiguration configuration, ILogger<MinIoService> logger)
     {
+        _logger = logger;
         var minioConfig = configuration.GetSection("MinioConfig");
         _bucketName = minioConfig["BucketName"];
         _baseUrl = minioConfig["BaseUrl"];
@@ -49,7 +52,7 @@ public class MinIoService : IMinIoService
         }
         catch (MinioException e)
         {
-            Console.WriteLine($"[MinIO Error]: {e.Message}");
+            _logger.LogError(e, "[MinIO] operation failed");
             return null;
         }
     }
@@ -93,7 +96,7 @@ public class MinIoService : IMinIoService
         }
         catch (MinioException e)
         {
-            Console.WriteLine($"[MinIO Error]: {e.Message}");
+            _logger.LogError(e, "[MinIO] operation failed");
             return false;
         }
     }
@@ -126,11 +129,11 @@ public class MinIoService : IMinIoService
             }
             // Bucket varsa oluşturma, yoksa oluştur
             bool found = await _minioClient.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName));
-            Console.WriteLine($"[MinIO] Bucket '{bucketName}' exists: {found}");
+            _logger.LogDebug("[MinIO] Bucket {Bucket} exists: {Found}", bucketName, found);
             if (!found)
             {
                 await _minioClient.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName));
-                Console.WriteLine($"[MinIO] Bucket created: {bucketName}");
+                _logger.LogInformation("[MinIO] Bucket created: {Bucket}", bucketName);
 
                 // Buckets are private by default; images are served via
                 // direct/unsigned URLs (e.g. the Ocelot /img/* route), which
@@ -152,7 +155,7 @@ public class MinIoService : IMinIoService
                 await _minioClient.SetPolicyAsync(new SetPolicyArgs()
                     .WithBucket(bucketName)
                     .WithPolicy(publicReadPolicy));
-                Console.WriteLine($"[MinIO] Public read policy applied to bucket: {bucketName}");
+                _logger.LogInformation("[MinIO] Public read policy applied to bucket: {Bucket}", bucketName);
             }
 
             // Dosyayı MinIO'ya yükle
@@ -163,12 +166,12 @@ public class MinIoService : IMinIoService
                 .WithObjectSize(fileStream.Length)
                 .WithContentType(contentType));
 
-            Console.WriteLine($"[MinIO] File uploaded successfully: {fileName} to bucket: {bucketName}, ETag: {respo.Etag}, Size: {respo.Size} bytes, ObjectName: {respo.ObjectName} ");
+            _logger.LogInformation("[MinIO] Uploaded {ObjectName} to {Bucket} ({Size} bytes)", respo.ObjectName, bucketName, respo.Size);
             return $"/img/{bucketName}/{fileName}";
         }
         catch (MinioException e)
         {
-            Console.WriteLine($"[MinIO Error]: {e.Message}");
+            _logger.LogError(e, "[MinIO] operation failed");
             throw;
         }
     }

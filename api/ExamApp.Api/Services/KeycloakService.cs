@@ -7,6 +7,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services;
@@ -15,11 +16,13 @@ public class KeycloakService : IKeycloakService
 {
     private readonly HttpClient _http;
     private readonly KeycloakSettings _keycloakSettings;
+    private readonly ILogger<KeycloakService> _logger;
 
-    public KeycloakService(IHttpClientFactory factory, IOptions<KeycloakSettings> options)
+    public KeycloakService(IHttpClientFactory factory, IOptions<KeycloakSettings> options, ILogger<KeycloakService> logger)
     {
         _http = factory.CreateClient();
         _keycloakSettings = options.Value;
+        _logger = logger;
     }
 
 
@@ -33,13 +36,16 @@ public class KeycloakService : IKeycloakService
             new KeyValuePair<string, string>("client_secret", _keycloakSettings.AdminClientSecret)
         });
 
-        Console.WriteLine($"Requesting admin token from Keycloak... {_keycloakSettings.AdminClientId}, {_keycloakSettings.AdminClientSecret}");
+        _logger.LogDebug("Requesting Keycloak admin token from {Host}/{TokenUrl} with client_id={ClientId}",
+            _keycloakSettings.Host, _keycloakSettings.TokenUrl, _keycloakSettings.AdminClientId);
 
-        Console.WriteLine($"Requesting admin token from Keycloak at {_keycloakSettings.Host}/{_keycloakSettings.TokenUrl} with client_id={_keycloakSettings.AdminClientId}");
         var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content);
-        Console.WriteLine($"Received response: {response.StatusCode}");
         var json = await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"Response content: {json}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("Keycloak admin token request failed: {Status}", response.StatusCode);
+            throw new KeycloakException($"Keycloak admin token request failed: {(int)response.StatusCode}");
+        }
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.GetProperty("access_token").GetString();
     }
@@ -74,7 +80,7 @@ public class KeycloakService : IKeycloakService
             var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
                 ? descProp.GetString()
                 : null;
-            Console.WriteLine($"Keycloak login failed: {error} - {description}");
+            _logger.LogWarning("Keycloak token exchange failed: {Error} - {Description}", error, description);
             throw new KeycloakException($"Keycloak login failed: {error} - {description}");
         }
 

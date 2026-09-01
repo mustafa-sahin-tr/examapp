@@ -6,8 +6,13 @@ alwaysApply: true
 ## Start everything (recommended)
 
 ```bash
+cp .env.example .env   # one-time: infra credentials for docker-compose
 docker-compose up -d
 ```
+
+`.env` (git-ignored) holds the local Postgres/MinIO/RabbitMQ/Keycloak/Redis
+credentials that `docker-compose.yml` reads via `${VAR}`. `.env.example` has the
+dev defaults; never reuse them outside local dev.
 
 ## Port map (host → container)
 

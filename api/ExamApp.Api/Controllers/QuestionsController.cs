@@ -23,6 +23,7 @@ public class QuestionsController : BaseController
     private readonly ImageHelper _imageHelper;
 
     private readonly IQuestionService _questionService;
+    private readonly IQuestionQueryService _questionQuery;
     private readonly IQuestionClassificationService _questionClassification;
     private readonly IClassifierCacheService _classifierCache;
 
@@ -30,6 +31,7 @@ public class QuestionsController : BaseController
         IMinIoService minioService,
         ImageHelper imageHelper,
         IQuestionService questionService,
+        IQuestionQueryService questionQuery,
         IQuestionClassificationService questionClassification,
         IClassifierCacheService classifierCache)
         : base()
@@ -37,6 +39,7 @@ public class QuestionsController : BaseController
         _minioService = minioService;
         _imageHelper = imageHelper;
         _questionService = questionService;
+        _questionQuery = questionQuery;
         _questionClassification = questionClassification;
         _classifierCache = classifierCache;
     }
@@ -55,7 +58,7 @@ public class QuestionsController : BaseController
     [HttpGet("{id}")]
     public async Task<IActionResult> GetQuestionById(int id)
     {
-        var response = await _questionService.GetQuestionById(id);
+        var response = await _questionQuery.GetQuestionById(id);
         if (response == null)
         {
             return NotFound(new { message = "Soru bulunamadı!" });
@@ -66,7 +69,7 @@ public class QuestionsController : BaseController
     [HttpGet("passages")]
     public async Task<IActionResult> GetLastTenPassages()
     {
-        var passages = await _questionService.GetLastTenPassages();
+        var passages = await _questionQuery.GetLastTenPassages();
         return Ok(passages);
     }
 
@@ -74,7 +77,7 @@ public class QuestionsController : BaseController
     [HttpGet("bytest/{testid}")]
     public async Task<IActionResult> GetQuestionByTestId(int testid)
     {
-        var questionList = await _questionService.GetQuestionByTestId(testid);
+        var questionList = await _questionQuery.GetQuestionByTestId(testid);
         return Ok(questionList);
     }
 
@@ -177,7 +180,7 @@ public class QuestionsController : BaseController
     [Authorize]
     public async Task<IActionResult> GetQuestionImage(int id, [FromQuery] string variant = "v1")
     {
-        var question = await _questionService.GetQuestionById(id);
+        var question = await _questionQuery.GetQuestionById(id);
         if (question == null || string.IsNullOrWhiteSpace(question.ImageUrl))
         {
             return NotFound(new { message = "Soru veya soru görseli bulunamadı." });

@@ -1,5 +1,5 @@
 using ExamApp.Api.Data;
-using ExamApp.Api.Helpers;
+
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
@@ -7,11 +7,10 @@ using ExamApp.Api.Tests.Support;
 
 namespace ExamApp.Api.Tests.Services;
 
-public class QuestionServiceReadAndEditTests : IDisposable
+public class QuestionQueryServiceTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
-    private QuestionService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private QuestionQueryService NewService(AppDbContext ctx) => new(ctx);
     private QuestionClassificationService NewClassification(AppDbContext ctx) => new(ctx);
 
     // ---- GetQuestionById ----

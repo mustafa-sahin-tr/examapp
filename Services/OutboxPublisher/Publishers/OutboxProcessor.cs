@@ -66,7 +66,7 @@ public class OutboxProcessor : BackgroundService
         }
     }
 
-    private async Task<int> ProcessBatchAsync(CancellationToken ct)
+    internal async Task<int> ProcessBatchAsync(CancellationToken ct)
     {
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -162,7 +162,7 @@ public class OutboxProcessor : BackgroundService
 
     private TimeSpan ComputeBackoff(int attempt) => _options.ComputeBackoff(attempt);
 
-    private async Task PurgeIfDueAsync(CancellationToken ct)
+    internal async Task PurgeIfDueAsync(CancellationToken ct)
     {
         if (_options.Retention <= TimeSpan.Zero)
             return;

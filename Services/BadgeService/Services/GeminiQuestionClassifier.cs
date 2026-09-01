@@ -73,9 +73,9 @@ public class GeminiQuestionClassifier : IQuestionClassifier
 
     public async Task ClassifyAndPersistAsync(int questionId, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(_gemini.ApiKey) || string.IsNullOrWhiteSpace(_gemini.CachedContent))
+        if (string.IsNullOrWhiteSpace(_gemini.ApiKey))
         {
-            _logger.LogWarning("⚠️ Gemini not configured (ApiKey / CachedContent). Skipping classification for {QuestionId}.", questionId);
+            _logger.LogWarning("⚠️ Gemini not configured (ApiKey). Skipping classification for {QuestionId}.", questionId);
             return;
         }
         if (string.IsNullOrWhiteSpace(_examApiBaseUrl))
@@ -86,8 +86,19 @@ public class GeminiQuestionClassifier : IQuestionClassifier
 
         var token = await _tokenProvider.GetAccessTokenAsync(cancellationToken);
 
+        // The taxonomy cache is owned by the exam API (admin rebuilds it there when
+        // the taxonomy drifts). Fall back to the static config value if unset.
+        var (cachedContent, model) = await ResolveCachePointerAsync(token, cancellationToken);
+        if (string.IsNullOrWhiteSpace(cachedContent))
+        {
+            _logger.LogWarning(
+                "⚠️ No classifier cache configured (neither exam API pointer nor Gemini:CachedContent). Skipping question {QuestionId}.",
+                questionId);
+            return;
+        }
+
         var imageBytes = await FetchQuestionImageAsync(questionId, token, cancellationToken);
-        var result = await CallGeminiAsync(imageBytes, cancellationToken);
+        var result = await CallGeminiAsync(imageBytes, cachedContent, model, cancellationToken);
 
         if (result == null)
         {
@@ -103,6 +114,35 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         await PersistAsync(questionId, result, token, cancellationToken);
 
         _logger.LogInformation("✅ Question {QuestionId} classification persisted", questionId);
+    }
+
+    private async Task<(string? CachedContent, string Model)> ResolveCachePointerAsync(string token, CancellationToken ct)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await client.GetAsync($"{_examApiBaseUrl}/api/questions/classifier-cache", ct);
+            if (response.IsSuccessStatusCode)
+            {
+                using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+                var name = doc.RootElement.TryGetProperty("cachedContentName", out var n) ? n.GetString() : null;
+                var model = doc.RootElement.TryGetProperty("model", out var m) ? m.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                    return (name, string.IsNullOrWhiteSpace(model) ? _gemini.Model : model!);
+            }
+            else
+            {
+                _logger.LogWarning("Classifier cache pointer fetch returned {Status}; using configured value", (int)response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Classifier cache pointer fetch failed; using configured value");
+        }
+
+        return (string.IsNullOrWhiteSpace(_gemini.CachedContent) ? null : _gemini.CachedContent, _gemini.Model);
     }
 
     private async Task<byte[]> FetchQuestionImageAsync(int questionId, string token, CancellationToken ct)
@@ -122,14 +162,14 @@ public class GeminiQuestionClassifier : IQuestionClassifier
         return await response.Content.ReadAsByteArrayAsync(ct);
     }
 
-    private async Task<QuestionClassificationResult?> CallGeminiAsync(byte[] imageBytes, CancellationToken ct)
+    private async Task<QuestionClassificationResult?> CallGeminiAsync(byte[] imageBytes, string cachedContent, string model, CancellationToken ct)
     {
         var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(_gemini.TimeoutSeconds);
 
         var requestBody = new
         {
-            cachedContent = _gemini.CachedContent,
+            cachedContent = cachedContent,
             contents = new[]
             {
                 new
@@ -149,7 +189,7 @@ public class GeminiQuestionClassifier : IQuestionClassifier
             },
         };
 
-        var url = $"{_gemini.BaseUrl.TrimEnd('/')}/{_gemini.Model.TrimStart('/')}:generateContent?key={_gemini.ApiKey}";
+        var url = $"{_gemini.BaseUrl.TrimEnd('/')}/{model.TrimStart('/')}:generateContent?key={_gemini.ApiKey}";
         using var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
         var response = await client.PostAsync(url, content, ct);

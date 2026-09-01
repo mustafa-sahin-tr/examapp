@@ -3,6 +3,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 [ApiController]
@@ -20,13 +22,29 @@ public class QuestionsController : BaseController
     private readonly ImageHelper _imageHelper;
 
     private readonly IQuestionService _questionService;
+    private readonly IClassifierCacheService _classifierCache;
 
-    public QuestionsController(IMinIoService minioService, ImageHelper imageHelper, IQuestionService questionService)
+    public QuestionsController(
+        IMinIoService minioService,
+        ImageHelper imageHelper,
+        IQuestionService questionService,
+        IClassifierCacheService classifierCache)
         : base()
     {
         _minioService = minioService;
         _imageHelper = imageHelper;
         _questionService = questionService;
+        _classifierCache = classifierCache;
+    }
+
+    // GET /api/questions/classifier-cache — the Gemini cached-content pointer the
+    // classifier (BadgeService) should use right now. Service-to-service.
+    [HttpGet("classifier-cache")]
+    [Authorize]
+    public async Task<IActionResult> GetClassifierCachePointer(CancellationToken ct)
+    {
+        var (cachedContentName, model) = await _classifierCache.GetActivePointerAsync(ct);
+        return Ok(new { cachedContentName, model });
     }
 
     // 🟢 GET /api/questions/{id} - ID ile Soru Çekme

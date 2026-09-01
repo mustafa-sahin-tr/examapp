@@ -124,7 +124,23 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Computed values
 
   filteredSuggestions: string[] = [];
-  constructor(private router: Router) {}
+  constructor(private router: Router) {
+    if (this.authService.hasRealmRole('Admin')) {
+      const settingsIdx = this.menuItems.findIndex((m) => m.id === 'settings');
+      const adminItem: MenuItem = {
+        id: 'admin',
+        name: 'Yönetim',
+        icon: 'admin_panel_settings',
+        route: '/admin',
+        type: 'menu',
+      };
+      if (settingsIdx >= 0) {
+        this.menuItems.splice(settingsIdx + 1, 0, adminItem);
+      } else {
+        this.menuItems.push(adminItem);
+      }
+    }
+  }
 
   ngOnInit() {
     this.breakpointObserver

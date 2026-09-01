@@ -1,0 +1,165 @@
+.taxonomy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.top-bar {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  align-items: start;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.column {
+  background: var(--main-bg-color, #fff);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 320px;
+
+  &.disabled {
+    opacity: 0.55;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--main-foreground-color, #1a1a2e);
+    }
+
+    .count {
+      font-size: 12px;
+      background: var(--primaryColor, #6438c3);
+      color: #fff;
+      border-radius: 10px;
+      padding: 1px 8px;
+    }
+  }
+}
+
+.add-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+
+  &.stacked {
+    flex-wrap: wrap;
+  }
+
+  .dense {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
+// tighten Material form fields
+.dense {
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+  ::ng-deep .mat-mdc-text-field-wrapper {
+    padding-block: 0;
+  }
+  font-size: 13px;
+}
+
+.inline-grade {
+  width: 110px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 55vh;
+  overflow-y: auto;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+
+    &:hover {
+      background: rgba(100, 56, 195, 0.06);
+    }
+
+    &.selected {
+      background: rgba(100, 56, 195, 0.12);
+    }
+
+    .name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .meta {
+      font-size: 11px;
+      color: var(--main-foreground-color, #6b7280);
+      opacity: 0.7;
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: none;
+
+      button {
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+      }
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+
+    &:hover .actions {
+      display: flex;
+    }
+  }
+}
+
+.inline-edit {
+  flex: 1;
+  border: 1px solid var(--primaryColor, #6438c3);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font: inherit;
+  outline: none;
+}
+
+.hint {
+  font-size: 13px;
+  color: #9ca3af;
+  padding: 12px 4px;
+}

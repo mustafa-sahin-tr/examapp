@@ -128,6 +128,25 @@ export class AuthService {
     return this.getUserRole() === role;
   }
 
+  /** Realm roles carried in the Keycloak access token (realm_access.roles). */
+  getRealmRoles(): string[] {
+    const token = this.getToken();
+    if (!token) {
+      return [];
+    }
+    try {
+      const decoded: any = jwtDecode(token);
+      const roles = decoded?.realm_access?.roles;
+      return Array.isArray(roles) ? roles : [];
+    } catch {
+      return [];
+    }
+  }
+
+  hasRealmRole(role: string): boolean {
+    return this.getRealmRoles().includes(role);
+  }
+
   getUserAvatar(): string | null {
     return localStorage.getItem(this.avatarKey);
   }

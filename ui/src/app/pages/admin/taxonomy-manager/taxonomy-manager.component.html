@@ -1,0 +1,187 @@
+<div class="taxonomy">
+  <mat-progress-bar
+    *ngIf="loading() || busy()"
+    mode="indeterminate"
+    class="top-bar"
+  ></mat-progress-bar>
+
+  <div class="columns">
+    <!-- Subjects -->
+    <section class="column">
+      <header>
+        <h3>Dersler</h3>
+        <span class="count">{{ subjects().length }}</span>
+      </header>
+
+      <div class="add-row">
+        <mat-form-field appearance="outline" class="dense">
+          <input
+            matInput
+            placeholder="Yeni ders"
+            [(ngModel)]="newSubjectName"
+            (keyup.enter)="addSubject()"
+          />
+        </mat-form-field>
+        <button mat-icon-button color="primary" (click)="addSubject()" [disabled]="busy()">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+      <ul class="list">
+        <li
+          *ngFor="let s of subjects()"
+          [class.selected]="s.id === selectedSubjectId()"
+          (click)="selectSubject(s.id)"
+        >
+          <ng-container *ngIf="!isEditing('subject', s.id); else editSubject">
+            <span class="name">{{ s.name }}</span>
+            <span class="meta">{{ s.topics.length }} konu</span>
+            <span class="actions">
+              <button mat-icon-button (click)="startEdit('subject', s); $event.stopPropagation()">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button (click)="remove('subject', s); $event.stopPropagation()">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </span>
+          </ng-container>
+          <ng-template #editSubject>
+            <input
+              class="inline-edit"
+              [(ngModel)]="editName"
+              (keyup.enter)="saveEdit('subject', s)"
+              (click)="$event.stopPropagation()"
+            />
+            <button mat-icon-button color="primary" (click)="saveEdit('subject', s); $event.stopPropagation()">
+              <mat-icon>check</mat-icon>
+            </button>
+            <button mat-icon-button (click)="cancelEdit(); $event.stopPropagation()">
+              <mat-icon>close</mat-icon>
+            </button>
+          </ng-template>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Topics -->
+    <section class="column" [class.disabled]="!selectedSubject()">
+      <header>
+        <h3>Konular</h3>
+        <span class="count" *ngIf="selectedSubject()">{{ topics().length }}</span>
+      </header>
+
+      <ng-container *ngIf="selectedSubject(); else pickSubject">
+        <div class="add-row stacked">
+          <mat-form-field appearance="outline" class="dense">
+            <input
+              matInput
+              placeholder="Yeni konu"
+              [(ngModel)]="newTopicName"
+              (keyup.enter)="addTopic()"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="dense">
+            <mat-select placeholder="Sınıf" [(ngModel)]="newTopicGradeId">
+              <mat-option *ngFor="let g of grades()" [value]="g.id">{{ g.name }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <button mat-icon-button color="primary" (click)="addTopic()" [disabled]="busy()">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        <ul class="list">
+          <li
+            *ngFor="let t of topics()"
+            [class.selected]="t.id === selectedTopicId()"
+            (click)="selectTopic(t.id)"
+          >
+            <ng-container *ngIf="!isEditing('topic', t.id); else editTopic">
+              <span class="name">{{ t.name }}</span>
+              <span class="meta">{{ t.gradeName || gradeName(t.gradeId) }} · {{ t.subTopics.length }} alt</span>
+              <span class="actions">
+                <button mat-icon-button (click)="startEdit('topic', t); $event.stopPropagation()">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button (click)="remove('topic', t); $event.stopPropagation()">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </span>
+            </ng-container>
+            <ng-template #editTopic>
+              <input
+                class="inline-edit"
+                [(ngModel)]="editName"
+                (keyup.enter)="saveEdit('topic', t)"
+                (click)="$event.stopPropagation()"
+              />
+              <mat-form-field appearance="outline" class="dense inline-grade" (click)="$event.stopPropagation()">
+                <mat-select [(ngModel)]="editGradeId">
+                  <mat-option *ngFor="let g of grades()" [value]="g.id">{{ g.name }}</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <button mat-icon-button color="primary" (click)="saveEdit('topic', t); $event.stopPropagation()">
+                <mat-icon>check</mat-icon>
+              </button>
+              <button mat-icon-button (click)="cancelEdit(); $event.stopPropagation()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </ng-template>
+          </li>
+        </ul>
+      </ng-container>
+      <ng-template #pickSubject><p class="hint">Bir ders seç</p></ng-template>
+    </section>
+
+    <!-- SubTopics -->
+    <section class="column" [class.disabled]="!selectedTopic()">
+      <header>
+        <h3>Alt Konular</h3>
+        <span class="count" *ngIf="selectedTopic()">{{ subTopics().length }}</span>
+      </header>
+
+      <ng-container *ngIf="selectedTopic(); else pickTopic">
+        <div class="add-row">
+          <mat-form-field appearance="outline" class="dense">
+            <input
+              matInput
+              placeholder="Yeni alt konu"
+              [(ngModel)]="newSubTopicName"
+              (keyup.enter)="addSubTopic()"
+            />
+          </mat-form-field>
+          <button mat-icon-button color="primary" (click)="addSubTopic()" [disabled]="busy()">
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        <ul class="list">
+          <li *ngFor="let st of subTopics()">
+            <ng-container *ngIf="!isEditing('subtopic', st.id); else editSub">
+              <span class="name">{{ st.name }}</span>
+              <span class="meta" *ngIf="st.questionCount">{{ st.questionCount }} soru</span>
+              <span class="actions">
+                <button mat-icon-button (click)="startEdit('subtopic', st)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button (click)="remove('subtopic', st)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </span>
+            </ng-container>
+            <ng-template #editSub>
+              <input class="inline-edit" [(ngModel)]="editName" (keyup.enter)="saveEdit('subtopic', st)" />
+              <button mat-icon-button color="primary" (click)="saveEdit('subtopic', st)">
+                <mat-icon>check</mat-icon>
+              </button>
+              <button mat-icon-button (click)="cancelEdit()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </ng-template>
+          </li>
+        </ul>
+      </ng-container>
+      <ng-template #pickTopic><p class="hint">Bir konu seç</p></ng-template>
+    </section>
+  </div>
+</div>

@@ -154,6 +154,12 @@ builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 builder.Services.AddScoped<IStudyPageService, StudyPageService>();
 
+// Admin: taxonomy management + question-classifier (Gemini) cache
+builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(
+    builder.Configuration.GetSection(ExamApp.Api.Services.Classifier.GeminiCacheOptions.SectionName));
+builder.Services.AddScoped<ExamApp.Api.Services.Taxonomy.ITaxonomyService, ExamApp.Api.Services.Taxonomy.TaxonomyService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Classifier.IClassifierCacheService, ExamApp.Api.Services.Classifier.ClassifierCacheService>();
+
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.AddScoped<IBadgeResetApiClient, BadgeResetApiClient>();

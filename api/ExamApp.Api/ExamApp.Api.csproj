@@ -4,10 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UserSecretsId>exam-api-7c1e9f34-2a6b-4d80-9e51-3f0a8b2d6c40</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

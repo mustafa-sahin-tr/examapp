@@ -160,15 +160,7 @@ public class OutboxProcessor : BackgroundService
         _logger.LogError("Outbox message {Id} dead-lettered: {Reason}", message.Id, reason);
     }
 
-    private TimeSpan ComputeBackoff(int attempt)
-    {
-        // Base * 2^(attempt-1), capped.
-        var factor = Math.Pow(2, Math.Min(attempt - 1, 20));
-        var seconds = _options.RetryBackoffBase.TotalSeconds * factor;
-        return seconds >= _options.RetryBackoffMax.TotalSeconds
-            ? _options.RetryBackoffMax
-            : TimeSpan.FromSeconds(seconds);
-    }
+    private TimeSpan ComputeBackoff(int attempt) => _options.ComputeBackoff(attempt);
 
     private async Task PurgeIfDueAsync(CancellationToken ct)
     {

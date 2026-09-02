@@ -44,15 +44,17 @@ export class TeacherRegisterComponent {
     this.teacherService.register(this.teacherForm.value).subscribe({
       next: (val) => {
         this.isSubmitting.set(false);
-        if (val.refreshToken) {
-          localStorage.setItem('auth_token', val.refreshToken);
+        if (val.accessToken) {
+          localStorage.setItem('auth_token', val.accessToken);
         }
+        localStorage.setItem('user_role', 'Teacher');
         if (val.profileId) {
           var user = localStorage.getItem('user');
           if (user) {
             try {
               const userObj = JSON.parse(user);
-              userObj.student = { id: val.profileId };
+              userObj.role = 'Teacher';
+              userObj.teacher = { id: val.profileId };
               localStorage.setItem('user', JSON.stringify(userObj));
             } catch (e) {
               console.error('User data parsing error:', e);

@@ -36,6 +36,16 @@
                         <a href="#blog" class="nav-link" (click)="closeMenu()">Blog</a>
                     </li>
 
+                    <li class="nav-item nav-item-register" [class.open]="isRegisterOpen">
+                        <a href="#" class="nav-link" (click)="toggleRegister($event)">
+                            Kayıt Ol <span class="caret">▾</span>
+                        </a>
+                        <ul class="register-submenu">
+                            <li><a href="/oidc-login?intent=student">Öğrenci</a></li>
+                            <li><a href="/oidc-login?intent=teacher">Öğretmen</a></li>
+                            <li><a href="/oidc-login?intent=parent">Veli</a></li>
+                        </ul>
+                    </li>
                     <li class="nav-item">
                         <a href="/app/login" class="nav-link">Giriş Yap</a>
                     </li>

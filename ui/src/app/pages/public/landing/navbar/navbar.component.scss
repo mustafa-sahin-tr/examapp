@@ -165,3 +165,49 @@
     transform: translateY(0);
   }
 }
+
+/* --- Kayıt Ol dropdown --- */
+.nav-item-register {
+  position: relative;
+
+  .caret {
+    font-size: 0.7em;
+    transition: transform 0.15s ease;
+  }
+
+  &.open .caret {
+    transform: rotate(180deg);
+  }
+
+  .register-submenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 160px;
+    margin: 4px 0 0;
+    padding: 6px 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 1200;
+
+    li a {
+      display: block;
+      padding: 10px 16px;
+      color: #1f2937;
+      text-decoration: none;
+      white-space: nowrap;
+
+      &:hover {
+        background: #f3f4f6;
+      }
+    }
+  }
+
+  &.open .register-submenu {
+    display: block;
+  }
+}

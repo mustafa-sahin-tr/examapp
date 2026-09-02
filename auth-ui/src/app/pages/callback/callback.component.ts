@@ -75,8 +75,12 @@ export class CallbackComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(async (params) => {
       const code = params['code'];
-      const navigateTo = params['state'] + '/dashboard';
-      console.log('Callback params:', params);
+
+      // state = "<returnBase>" | "<returnBase>~student|teacher|parent".
+      // A "~role" suffix = the user came through a role-specific register link.
+      const [returnBase = '', intent = ''] = String(params['state'] ?? '').split('~');
+      const hasIntentRole = ['student', 'teacher', 'parent'].includes(intent);
+      console.log('Callback params:', params, '-> intent:', intent);
       if (code) {
         // Add initial delay for better visual experience
         await this.delay(100);
@@ -85,11 +89,18 @@ export class CallbackComponent implements OnInit {
           next: async (res) => {
             this.snackBar.open('Giriş başarılı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
             await this.delay(100);
-            console.log('Unknown role');
             await this.delay(100);
             this.updateStep(3);
             await this.delay(100);
-            window.location.href = navigateTo || '/login'; // Navigate to the main app or default to /tests
+
+            // No app role yet (Student/Teacher/Parent) -> onboarding wizard.
+            // With an intent, jump straight to step 2 for that role; otherwise
+            // the wizard opens on step 1 (role picker). Existing users -> dashboard.
+            const appRoles: string[] = res?.roles ?? [];
+            const hasAppRole = ['Student', 'Teacher', 'Parent'].some((r) => appRoles.includes(r));
+            const dest = hasAppRole ? '/dashboard' : hasIntentRole ? `/register?role=${intent}` : '/register';
+
+            window.location.href = (returnBase + dest) || '/login';
           },
           error: () => {
             this.snackBar.open('Giriş başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });

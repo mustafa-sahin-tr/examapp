@@ -1,0 +1,91 @@
+.register-wizard {
+  max-width: 520px;
+  margin: 48px auto;
+  padding: 0 16px;
+
+  mat-card {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  h2 {
+    margin: 0;
+  }
+
+  .hint {
+    margin: 0;
+    color: var(--main-foreground-color, #6b7280);
+  }
+
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #9ca3af;
+
+    .step.active {
+      color: var(--primaryColor, #6438c3);
+      font-weight: 600;
+    }
+    .step.done {
+      color: #16a34a;
+    }
+  }
+
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .role-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+      color: var(--primaryColor, #6438c3);
+    }
+
+    span {
+      font-weight: 600;
+    }
+
+    &:hover {
+      border-color: var(--primaryColor, #6438c3);
+      box-shadow: 0 6px 18px rgba(100, 56, 195, 0.15);
+    }
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
+  }
+}

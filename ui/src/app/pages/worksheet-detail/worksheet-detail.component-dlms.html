@@ -1,397 +1,526 @@
-<section class="course-details-two">
-  <div class="ms-container">
-    <div class="row">
-      <div class="col-12">
-        <div class="card bg-light">
-          <div class="card-body d-lg-flex align-items-center">
-            <div class="position-relative">
-              <a href="https://www.youtube.com/embed/1trvO6dqQUI" id="openVideoBtn" target="_blank">
-                <img class="img-fluid rounded-2" src="assets/images/courses/zaman-olcme-background.webp"
-                  alt="Sınav tanıtım görseli">
-                <div class="play-icon">
-                  <mat-icon class="fs-26">play_circle</mat-icon>
-                </div>
-              </a>
-            </div>
-            <div id="videoModal">
-              <div class="modal-content1">
-                <span class="close-btn" id="closeModal">×</span>
-                <iframe id="youtubeIframe" allowfullscreen=""></iframe>
-              </div>
-            </div>
-            <div class="w-100 ps-lg-4">
-              <div class="d-flex justify-content-between align-items-start gap-2 mb-2 hero-title-row">
-                <h3 class="mb-0">{{ exam.name }}</h3>
-                <div class="d-inline-flex align-items-center gap-1 hero-quick-actions">
-                  <a class="btn hero-icon-btn" href="student-wishlist.html" aria-label="Sınavı listeye ekle"
-                    title="Listeye Ekle">
-                    <mat-icon class="fs-18">favorite_border</mat-icon>
-                  </a>
-                  <a class="btn hero-icon-btn" href="#" aria-label="Sınavı paylaş" title="Paylaş">
-                    <mat-icon class="fs-18">share</mat-icon>
-                  </a>
-                </div>
-              </div>
-              <p class="fs-14 mb-3">{{ exam.subtitle || exam.description || 'Sınav detayları' }}</p>
-              <div class="overview-stats d-flex align-items-center gap-2 gap-sm-3 gap-xl-4 flex-nowrap my-3 my-sm-0">
-                <p class="fw-medium d-flex align-items-center mb-0"><img class="me-2" src="assets/images/icons/book.svg"
-                    alt="img">{{ exam.questionCount ?? 0 }} Soru</p>
-                <p class="fw-medium d-flex align-items-center mb-0"><img class="me-2"
-                    src="assets/images/icons/timer-start.svg" alt="img">{{ formatDuration(exam.maxDurationSeconds) }}
-                </p>
-                <p class="fw-medium d-flex align-items-center mb-0"><img class="me-2"
-                    src="assets/images/icons/people.svg" alt="img">{{ exam.instanceCount ?? 0 }} Öğrenci</p>
-
-              </div>
-              <div class="d-sm-flex align-items-center justify-content-sm-between mt-3">
-                <p class="fs-14 mb-0 text-gray-7">
-                  {{ exam.badgeText || (exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı') }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+<section class="wd-wrap">
+  @if (detailLoading() && !detail()) {
+    <div class="wd-state">
+      <mat-spinner diameter="40"></mat-spinner>
+      <span>Sınav yükleniyor...</span>
     </div>
-    <div class="row mt-4 worksheet-detail-main-row">
-      <div class="col-lg-8 detail-main-column">
-        <div>
-          <img src="assets/images/courses/zaman-olcme-kurs.webp" alt="Sınav içerik görseli" class="img-fluid mb-4">
+  } @else if (detailError() && !detail()) {
+    <div class="wd-state error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ detailError() }}</span>
+      <button mat-stroked-button (click)="reloadDetail()">Tekrar Dene</button>
+    </div>
+  } @else if (detail()) {
+   @if (detail(); as d) {
+    <div class="wd-page">
+
+      <!-- ================= STUDENT · START ================= -->
+      @if (view() === 'start') {
+        <div class="hero">
+          <div class="hero-media">
+            @if (d.worksheet.imageUrl) {
+              <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" />
+            } @else {
+              <div class="thumb"><mat-icon>schedule</mat-icon></div>
+            }
+          </div>
+          <div class="hero-body">
+            <div class="title-row">
+              <h1>{{ d.worksheet.name }}</h1>
+            </div>
+            @if (d.worksheet.subtitle || d.worksheet.description) {
+              <p class="subtitle">{{ d.worksheet.subtitle || d.worksheet.description }}</p>
+            }
+            <div class="chips">
+              @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
+              <span class="chip">{{ d.worksheet.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</span>
+              @if (d.rewardBadgeText) {
+                <span class="chip badge"><mat-icon>military_tech</mat-icon>{{ d.rewardBadgeText }}</span>
+              }
+            </div>
+
+            <div class="stat-strip">
+              <div class="stat">
+                <mat-icon>menu_book</mat-icon>
+                <span class="st-val">{{ d.worksheet.questionCount ?? 0 }}</span>
+                <span class="st-lbl">Soru</span>
+              </div>
+              <div class="stat">
+                <mat-icon>timer</mat-icon>
+                <span class="st-val">{{ formatDuration(d.worksheet.maxDurationSeconds) }}</span>
+                <span class="st-lbl">Süre</span>
+              </div>
+              <div class="stat">
+                <mat-icon>groups</mat-icon>
+                <span class="st-val">{{ d.stats.solverCount }}</span>
+                <span class="st-lbl">Çözen öğrenci</span>
+              </div>
+              <div class="stat">
+                <mat-icon>trending_up</mat-icon>
+                <span class="st-val">{{ percentLabel(d.stats.averageScorePercent) }}</span>
+                <span class="st-lbl">Ort. başarı</span>
+              </div>
+            </div>
+
+            <div class="cta-row" *appIsStudent>
+              @if (!exam.instance) {
+                <button class="btn btn-primary" (click)="StartTest(exam.id)">
+                  <mat-icon>play_arrow</mat-icon>Sınava Başla
+                </button>
+              } @else if (instanceStarted) {
+                <button class="btn btn-primary" (click)="StartTest(exam.id)">
+                  <mat-icon>play_arrow</mat-icon>Devam Et
+                </button>
+              }
+            </div>
+          </div>
         </div>
-        <div class="course-page-content pt-0">
-          <div class="card mb-4 detail-section-card detail-section-card--overview">
-            <div class="card-body">
-              <h5 class="mb-3">Genel Bakış</h5>
-              <h6 class="mb-2">Sınav Açıklaması</h6>
-              <p>{{ exam.description || exam.subtitle || 'Bu sınav için açıklama bulunmuyor.' }}</p>
-            </div>
-          </div>
-          <div class="card mb-4 detail-section-card detail-section-card--content">
-            <div class="card-body">
-              <h5 class="subs-title mb-2 mb-sm-3">Sınav Detayları</h5>
-              <mat-accordion class="exam-accordion" multi>
-                <mat-expansion-panel class="exam-accordion-panel" [expanded]="true" hideToggle>
-                  <mat-expansion-panel-header class="exam-accordion-header">
-                    <mat-panel-title class="exam-accordion-title">
-                      <span>Kaynak Bilgisi</span>
-                      <mat-icon class="exam-accordion-icon">expand_more</mat-icon>
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
-                  <div class="exam-accordion-body">
-                    <ul>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Kitap</p>
-                        <p class="mb-0 detail-value">{{ exam.newBookName || '-' }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg" alt="img">Test
-                        </p>
-                        <p class="mb-0 detail-value">{{ exam.newBookTestName || '-' }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Sınav No</p>
-                        <p class="mb-0 detail-value">{{ exam.id }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Rozet</p>
-                        <p class="mb-0 detail-value">{{ exam.badgeText || '-' }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Çalışma Türü</p>
-                        <p class="mb-0 detail-value">{{ exam.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı'
-                          }}</p>
-                      </li>
-                    </ul>
-                  </div>
-                </mat-expansion-panel>
 
-                <mat-expansion-panel class="exam-accordion-panel" hideToggle>
-                  <mat-expansion-panel-header class="exam-accordion-header">
-                    <mat-panel-title class="exam-accordion-title">
-                      <span>Katılım Durumu</span>
-                      <mat-icon class="exam-accordion-icon">expand_more</mat-icon>
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
-                  <div class="exam-accordion-body">
-                    <ul>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Katılımcı Sayısı
-                        </p>
-                        <p class="mb-0 detail-value">{{ exam.instanceCount ?? 0 }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Başlangıç Durumu
-                        </p>
-                        <p class="mb-0 detail-value">{{ instanceStarted ? 'Başladı' : 'Bekliyor' }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Tamamlanma Durumu
-                        </p>
-                        <p class="mb-0 detail-value">{{ instanceCompleted ? 'Tamamlandı' : 'Tamamlanmadı' }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Durum Kodu</p>
-                        <p class="mb-0 detail-value">{{ instanceStatus ?? '-' }}</p>
-                      </li>
-                      <li class="p-4 px-3 d-flex justify-content-between detail-list-row">
-                        <p class="mb-0 detail-label"><img class="me-2" src="assets/images/icons/play.svg"
-                            alt="img">Sınav Türü</p>
-                        <p class="mb-0 detail-value">{{ exam.isPracticeTest ? 'Pratik' : 'Resmi' }}</p>
-                      </li>
-                    </ul>
+        <div class="cols">
+          <div class="stack">
+            @if (d.worksheet.description) {
+              <div class="card">
+                <h3><span class="dot"></span>Genel Bakış</h3>
+                <p class="p">{{ d.worksheet.description }}</p>
+              </div>
+            }
+
+            @if (d.topicBreakdown.length) {
+              <div class="card">
+                <h3><span class="dot"></span>Konu Dağılımı</h3>
+                @for (topic of d.topicBreakdown; track trackByTopicId($index, topic)) {
+                  <div class="topic">
+                    <div class="t-head">
+                      <span class="t-name">{{ topic.name }}</span>
+                      <span class="t-count">{{ topic.questionCount }} soru</span>
+                    </div>
+                    <div class="track"><i [style.width.%]="topic.weightPercent"></i></div>
                   </div>
-                </mat-expansion-panel>
-              </mat-accordion>
+                }
+              </div>
+            }
+
+            @if (d.outcomes.length || d.rewardBadgeText) {
+              <div class="card">
+                <h3><span class="dot"></span>Neler Kazanacaksın</h3>
+                @for (outcome of d.outcomes; track outcome) {
+                  <div class="outcome"><span class="ok"><mat-icon>check</mat-icon></span>{{ outcome }}</div>
+                }
+                @if (d.rewardBadgeText) {
+                  <div class="reward">
+                    <span class="medal"><mat-icon>military_tech</mat-icon></span>
+                    <div><div class="r-t">{{ d.rewardBadgeText }}</div>
+                      <div class="r-s">Eşiği geçerek tamamla, rozetini kazan</div></div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="card">
+              <h3><span class="dot"></span>Örnek Soru</h3>
+              @if (d.sampleQuestion?.imageUrl) {
+                <div class="sample">
+                  <img [src]="d.sampleQuestion!.imageUrl" alt="Örnek soru" class="sample-img" />
+                </div>
+              } @else {
+                <div class="sample">
+                  <div class="q-over">
+                    <b>Sınavda seni {{ d.worksheet.questionCount ?? 0 }} soru bekliyor</b>
+                    <span>{{ d.sampleQuestion?.text || 'Başladığında ilk soru burada açılır' }}</span>
+                  </div>
+                </div>
+              }
             </div>
           </div>
 
+          <div class="stack">
+            <div class="sticky-cta" *appIsStudent>
+              <span class="s-status"><i></i>Başlamaya hazır</span>
+              <div class="s-meta">
+                <div><mat-icon>timer</mat-icon>{{ formatDuration(d.worksheet.maxDurationSeconds) }} · süre dolunca otomatik biter</div>
+                <div><mat-icon>swap_horiz</mat-icon>{{ d.worksheet.questionCount ?? 0 }} soru · geri dönüp değiştirebilirsin</div>
+                <div><mat-icon>shield</mat-icon>İnternet kesilse bile cevapların kaydedilir</div>
+              </div>
+              @if (!exam.instance) {
+                <button class="btn btn-primary full" (click)="StartTest(exam.id)">
+                  <mat-icon>play_arrow</mat-icon>Sınava Başla
+                </button>
+              } @else if (instanceStarted) {
+                <button class="btn btn-primary full" (click)="StartTest(exam.id)">
+                  <mat-icon>play_arrow</mat-icon>Devam Et
+                </button>
+              }
+            </div>
+
+            @if (d.attempts.length) {
+              <div class="card">
+                <h3><span class="dot"></span>Denemelerin</h3>
+                @for (attempt of d.attempts; track attempt.instanceId; let first = $first) {
+                  <div class="attempt">
+                    <span class="a-score" [class.weak]="!first">%{{ attempt.scorePercent }}</span>
+                    <span class="a-when">{{ formatShortDate(attempt.completedDate) }} · {{ formatMinutes(attempt.durationSeconds) }} · {{ attempt.correctCount }}/{{ attempt.totalCount }} doğru</span>
+                    @if (first) { <span class="a-tag">En iyi</span> }
+                  </div>
+                }
+                @if (d.improvementPoints !== null) {
+                  <div class="best">
+                    <span>Gelişimin
+                      <svg width="70" height="20" viewBox="0 0 100 32" class="spark" fill="none"
+                        stroke="var(--ms-success-text-weak)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <path [attr.d]="sparkline()" />
+                      </svg>
+                    </span>
+                    <b>{{ d.improvementPoints > 0 ? '+' : '' }}{{ d.improvementPoints }} puan</b>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (d.similarWorksheets.length) {
+              <div class="card">
+                <h3><span class="dot"></span>Benzer Sınavlar</h3>
+                @for (similar of d.similarWorksheets; track similar.id) {
+                  <button class="similar" type="button" (click)="openSimilarWorksheet(similar.id)">
+                    <span class="s-thumb"><mat-icon>quiz</mat-icon></span>
+                    <span class="s-body">
+                      <span class="s-name">{{ similar.name }}</span>
+                      <span class="s-meta">{{ similar.questionCount }} soru ·
+                        {{ similar.isPracticeTest ? 'pratik' : percentLabel(similar.averageScorePercent) + ' ort.' }}</span>
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
         </div>
-      </div>
-      <div class="col-lg-4 detail-sidebar-column">
-        <div class="course-sidebar-sec mt-0">
-          <div class="card mb-4 exam-cta-card">
-            <div class="card-body exam-cta-card__body">
-              <!-- <div class="d-flex justify-content-between align-items-center mb-4 exam-cta-card__header">
-                <h2 class="text-success fs-30 exam-cta-card__title">SINAV</h2>
-                <p class="fs-14 mb-0 exam-cta-card__status">{{ exam.badgeText || 'Hazır' }}</p>
-              </div> -->
-              <ng-container *appIsStudent>
-                <a *ngIf="!exam.instance" (click)="StartTest(exam.id)"
-                  class="btn btn-primary w-100 mt-3 btn-enroll exam-cta-card__primary-action"
-                  aria-label="Sınavı başlat">
-                  <mat-icon>play_arrow</mat-icon>Sınava Başla</a>
-                <a *ngIf="instanceStarted" (click)="StartTest(exam.id)"
-                  class="btn btn-primary w-100 mt-3 btn-enroll exam-cta-card__primary-action"
-                  aria-label="Sınava devam et">
-                  <mat-icon>play_arrow</mat-icon>Devam Et</a>
-              </ng-container>
 
+        <div class="rules">
+          <div class="r"><span class="ri"><mat-icon>timer</mat-icon></span>Süre dolunca test otomatik olarak tamamlanır</div>
+          <div class="r"><span class="ri"><mat-icon>swap_horiz</mat-icon></span>Sorular arasında ileri–geri gezinebilirsin</div>
+          <div class="r"><span class="ri"><mat-icon>check</mat-icon></span>Cevapların anlık kaydedilir, sonra devam edebilirsin</div>
+        </div>
+      }
 
-              <ng-container *appIsTeacher>
-                <div class="teacher-cta-actions">
-                  <button mat-stroked-button class="secondary-action" (click)="editWorksheet(exam.id)">
-                    <mat-icon>edit</mat-icon>
-                    Düzenle
-                  </button>
-                  <button mat-flat-button color="accent" class="accent-action" (click)="navigateToQuestionCanvas()">
-                    <mat-icon>add_circle</mat-icon>
-                    Soru Ekle
-                  </button>
-                </div>
-              </ng-container>
+      <!-- ================= STUDENT · COMPLETED ================= -->
+      @if (view() === 'completed' && completedResult(); as result) {
+        <div class="result-hero">
+          <div class="ring">
+            <svg width="150" height="150" viewBox="0 0 150 150">
+              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--ms-surface-strong)" stroke-width="14" />
+              <circle cx="75" cy="75" r="64" fill="none" stroke="var(--ms-success-text-medium)" stroke-width="14"
+                stroke-linecap="round" [attr.stroke-dasharray]="donutCircumference"
+                [attr.stroke-dashoffset]="donutDashoffset()" transform="rotate(-90 75 75)" />
+            </svg>
+            <div class="rv"><b>%{{ result.scorePercent }}</b><span>Başarı</span></div>
+          </div>
+          <div class="rh-body">
+            <span class="kick">Sınav tamamlandı</span>
+            <h1>{{ result.correctCount }} / {{ result.correctCount + result.wrongCount + result.emptyCount }} doğru</h1>
+            <div class="pills">
+              <span class="pill g"><mat-icon>check</mat-icon>{{ result.correctCount }} doğru</span>
+              <span class="pill r"><mat-icon>close</mat-icon>{{ result.wrongCount }} yanlış</span>
+              <span class="pill n">{{ result.emptyCount }} boş</span>
+              <span class="pill n"><mat-icon>timer</mat-icon>{{ formatDurationDetailed(result.durationSeconds) }}</span>
             </div>
           </div>
-          <div class="card mb-4">
-            <div class="card-body">
-              <!-- Main Content Section -->
-              <section class="teacher-assignment-section" *appIsTeacher>
-                <div class="section-header">
-                  <div class="section-title">
-                    <h2>
-                      <mat-icon>assignment_ind</mat-icon>
-                      Atama Yönetimi
-                    </h2>
-                    <p>Bu çalışma sayfasını sınıflarınıza veya seçili öğrencilere hızla atayın.</p>
-                  </div>
-                  <div class="section-actions">
-                    <button mat-flat-button color="primary" (click)="openAssignmentDialog('grade')">
-                      <mat-icon>class</mat-icon>
-                      Sınıfa Ata
-                    </button>
-                    <button mat-stroked-button (click)="openAssignmentDialog('student')">
-                      <mat-icon>person_add</mat-icon>
-                      Öğrenci Seç
-                    </button>
-                    <button mat-icon-button matTooltip="Yenile" (click)="refreshAssignments()"
-                      [disabled]="assignmentPanel() === 'loading'">
-                      <mat-icon>refresh</mat-icon>
-                    </button>
-                  </div>
-                </div>
+          <div class="rh-actions">
+            <button class="btn btn-amber" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">
+              <mat-icon>add</mat-icon>Yanlışlarımdan Test Oluştur
+            </button>
+          </div>
+        </div>
 
-                <div class="panel-state" *ngIf="assignmentPanel() === 'loading'">
-                  <mat-spinner diameter="36"></mat-spinner>
-                  <span>Atamalar yükleniyor...</span>
-                </div>
-
-                <div class="panel-state error" *ngIf="assignmentPanel() === 'error'">
-                  <mat-icon>error_outline</mat-icon>
-                  <div class="state-content">
-                    <span>{{ teacherError() }}</span>
-                    <button mat-stroked-button color="warn" (click)="refreshAssignments()">Tekrar Dene</button>
-                  </div>
-                </div>
-
-                <div class="panel-state empty" *ngIf="assignmentPanel() === 'empty' && !assignmentPanelState().loading">
-                  <mat-icon>playlist_add</mat-icon>
-                  <div class="state-content">
-                    <h3>Henüz atama yok</h3>
-                    <p>Öğrencilerinizi motive etmek için yeni bir çalışma ataması oluşturabilirsiniz.</p>
-                    <div class="cta-buttons">
-                      <button mat-flat-button color="primary" (click)="openAssignmentDialog('grade')">
-                        <mat-icon>class</mat-icon>
-                        Sınıfa Ata
-                      </button>
-                      <button mat-stroked-button (click)="openAssignmentDialog('student')">
-                        <mat-icon>person_add</mat-icon>
-                        Öğrenci Seç
-                      </button>
+        <div class="cols">
+          <div class="stack">
+            @if (result.topicSuccess.length) {
+              <div class="card">
+                <h3><span class="dot"></span>Konu Bazlı Başarın</h3>
+                @for (topic of result.topicSuccess; track trackByTopicId($index, topic)) {
+                  <div class="brk">
+                    <div class="b-head">
+                      <span class="b-name">{{ topic.name }}</span>
+                      <span class="b-acc" [class.danger]="topic.successPercent < 60">%{{ topic.successPercent }}</span>
                     </div>
+                    <div class="track split">
+                      <i class="ok" [style.width.%]="topic.successPercent"></i>
+                      <i class="no" [style.width.%]="100 - topic.successPercent"></i>
+                    </div>
+                    <span class="b-sub">{{ topic.correctCount }} / {{ topic.totalCount }} doğru</span>
                   </div>
-                </div>
+                }
+              </div>
+            }
 
-                <ng-container *ngIf="assignmentPanel() === 'loaded'">
-                  <div class="assignment-loaded-panel">
-                    <div class="summary-grid" *ngIf="teacherSummary() as summary">
-                      <div class="summary-card">
-                        <span class="summary-label">Toplam Atama</span>
-                        <span class="summary-value">{{ summary.totalAssignments }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Aktif Atama</span>
-                        <span class="summary-value">{{ summary.activeAssignments }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Yaklaşan</span>
-                        <span class="summary-value">{{ summary.upcomingAssignments }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Öğrenci Sayısı</span>
-                        <span class="summary-value">{{ summary.totalStudents }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Tamamlandı</span>
-                        <span class="summary-value positive">{{ summary.completedCount }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Devam Eden</span>
-                        <span class="summary-value warning">{{ summary.inProgressCount }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Bekleyen</span>
-                        <span class="summary-value">{{ summaryPendingCount(summary) }}</span>
-                      </div>
-                      <div class="summary-card">
-                        <span class="summary-label">Süresi Dolan</span>
-                        <span class="summary-value critical">{{ summary.expiredCount }}</span>
-                      </div>
-                    </div>
-
-                    <div class="last-refreshed" *ngIf="lastRefreshed() as refreshed">
-                      <mat-icon>schedule</mat-icon>
-                      <span>Son güncelleme {{ refreshed | date : 'dd MMM yyyy HH:mm' }}</span>
-                    </div>
-
-                    <mat-accordion class="assignment-accordion" multi>
-                      <mat-expansion-panel *ngFor="let assignment of teacherAssignments()"
-                        [expanded]="teacherAssignments().length === 1">
-                        <mat-expansion-panel-header>
-                          <div class="assignment-header">
-                            <div class="assignment-title">
-                              <h3>
-                                <mat-icon>{{ assignment.targetType === 'Grade' ? 'groups' : 'person' }}</mat-icon>
-                                {{ assignment.targetName }}
-                              </h3>
-                              <span class="assignment-time">
-                                <mat-icon>calendar_today</mat-icon>
-                                {{ assignment.startAt | date : 'dd MMM yyyy HH:mm' }}
-                                <ng-container *ngIf="assignment.endAt">
-                                  &ndash;
-                                  {{ assignment.endAt | date : 'dd MMM yyyy HH:mm' }}
-                                </ng-container>
-                              </span>
-                            </div>
-                            <div class="assignment-metrics">
-                              <div class="metric">
-                                <span class="metric-label">Öğrenci</span>
-                                <span class="metric-value">{{ assignment.studentCount }}</span>
-                              </div>
-                              <div class="metric">
-                                <span class="metric-label">Tamamlandı</span>
-                                <span class="metric-value">{{ assignment.completedCount }}</span>
-                              </div>
-                              <div class="metric">
-                                <span class="metric-label">Devam Eden</span>
-                                <span class="metric-value">{{ assignment.inProgressCount }}</span>
-                              </div>
-                              <div class="metric">
-                                <span class="metric-label">Bekleyen</span>
-                                <span class="metric-value">{{ pendingCount(assignment) }}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </mat-expansion-panel-header>
-
-                        <div class="assignment-body">
-                          <div class="student-status-list" *ngIf="assignment.students.length; else noStudents">
-                            <div class="student-row" *ngFor="let student of assignment.students">
-                              <div class="student-info">
-                                <mat-icon>person</mat-icon>
-                                <div>
-                                  <span class="student-number">{{ student.studentNumber }}</span>
-                                  <span class="student-grade">{{ studentGradeLabel(student) }}</span>
-                                </div>
-                              </div>
-                              <div class="student-status">
-                                <span [ngClass]="statusClass(student.status)">{{ statusLabel(student.status) }}</span>
-                              </div>
-                              <div class="student-activity">
-                                <mat-icon matTooltip="Son aktivite">timeline</mat-icon>
-                                <span>{{ lastActivityLabel(student.lastActivity) }}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <ng-template #noStudents>
-                            <div class="no-students">
-                              <mat-icon>info</mat-icon>
-                              <span>Bu atama için öğrenci bilgisi bulunamadı.</span>
-                            </div>
-                          </ng-template>
-                        </div>
-                      </mat-expansion-panel>
-                    </mat-accordion>
-                  </div>
-                </ng-container>
-              </section>
-
-              <div class="main-content">
-                <!-- Content Area - Full Width -->
-                <div class="content-area">
-                  <!-- Results Section -->
-                  <div *ngIf="instanceCompleted" class="results-section">
-                    <div class="results-header">
-                      <h2>
-                        <mat-icon>assessment</mat-icon>
-                        Test Sonuçları
-                      </h2>
-                    </div>
-                    <div class="results-content">
-                      <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)">
-                      </app-question-navigator>
-
+            <div class="card">
+              <h3><span class="dot"></span>Soru Soru Görünüm</h3>
+              @if (regions().length) {
+                <mat-accordion>
+                  <mat-expansion-panel [expanded]="true">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>Sonuçları İncele</mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)">
+                    </app-question-navigator>
+                    @if (regions()[currentIndex()]; as region) {
                       <div class="question-review">
-                        <app-question-canvas-view [questionRegion]="regions()[currentIndex()]"
-                          [selectedChoice]="selectedChoices().get(regions()[currentIndex()].id)" [mode]="'result'"
-                          [correctChoice]="correctChoices().get(regions()[currentIndex()].id)">
+                        <app-question-canvas-view [questionRegion]="region"
+                          [selectedChoice]="selectedChoices().get(region.id)" [mode]="'result'"
+                          [correctChoice]="correctChoices().get(region.id)">
                         </app-question-canvas-view>
                       </div>
-                    </div>
+                    }
+                  </mat-expansion-panel>
+                </mat-accordion>
+              } @else {
+                <p class="p muted">Soru dökümü yükleniyor...</p>
+              }
+            </div>
+          </div>
+
+          <div class="stack">
+            @if (result.rank; as rank) {
+              <div class="card">
+                <h3><span class="dot"></span>Sıralaman</h3>
+                <div class="rank">
+                  <span class="r-num">{{ rank.position }}.</span>
+                  <div>
+                    <div class="r-t">Sınıfında {{ rank.totalStudents }} öğrenci içinde</div>
+                    <div class="r-s">Sınıf ortalaması %{{ rank.classAveragePercent }} · sen %{{ result.scorePercent }}</div>
                   </div>
                 </div>
               </div>
+            }
 
+            @if (d.rewardBadgeText) {
+              <div class="card">
+                <h3><span class="dot"></span>Kazandığın Rozet</h3>
+                <div class="badge-won">
+                  <span class="m"><mat-icon>military_tech</mat-icon></span>
+                  <div><div class="b-t">{{ d.rewardBadgeText }}</div>
+                    <div class="b-s">%{{ result.scorePercent }} ile eşiği geçtin</div></div>
+                </div>
+              </div>
+            }
+
+            @if (d.similarWorksheets.length) {
+              <div class="card">
+                <h3><span class="dot"></span>Sıradaki Adım</h3>
+                @for (similar of d.similarWorksheets; track similar.id) {
+                  <button class="next" type="button" (click)="openSimilarWorksheet(similar.id)">
+                    <mat-icon>arrow_forward</mat-icon>
+                    <span>Benzer sınav: "{{ similar.name }}"</span>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ================= TEACHER ================= -->
+      @if (view() === 'teacher') {
+        <div class="hero">
+          <div class="hero-media small">
+            @if (d.worksheet.imageUrl) {
+              <img [src]="d.worksheet.imageUrl" [alt]="d.worksheet.name" />
+            } @else {
+              <div class="thumb"><mat-icon>schedule</mat-icon></div>
+            }
+          </div>
+          <div class="hero-body">
+            <div class="title-row">
+              <h1>{{ d.worksheet.name }}</h1>
+              <span class="role-tag">ÖĞRETMEN</span>
+            </div>
+            @if (d.worksheet.subtitle || d.worksheet.description) {
+              <p class="subtitle">{{ d.worksheet.subtitle || d.worksheet.description }}</p>
+            }
+            <div class="chips">
+              @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
+              <span class="chip">{{ d.worksheet.questionCount ?? 0 }} soru</span>
+              <span class="chip">{{ d.worksheet.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</span>
+              @if (d.teacherInsights && d.teacherInsights.unclassifiedCount > 0) {
+                <span class="chip draft">{{ d.teacherInsights.unclassifiedCount }} soru sınıflandırılmadı</span>
+              }
+            </div>
+            <div class="actions" *appIsTeacher>
+              <button class="btn btn-primary" (click)="navigateToQuestionCanvas()">
+                <mat-icon>add_circle</mat-icon>Soru Ekle
+              </button>
+              <button class="btn btn-ghost" (click)="editWorksheet(exam.id)">
+                <mat-icon>edit</mat-icon>Düzenle
+              </button>
             </div>
           </div>
         </div>
-      </div>
+
+        <div class="cols">
+          <div class="stack">
+            <div class="card">
+              <h3><span class="dot"></span>Sınıf İlerlemesi</h3>
+
+              @switch (assignmentPanel()) {
+                @case ('loading') {
+                  <div class="panel-state"><mat-spinner diameter="32"></mat-spinner><span>Atamalar yükleniyor...</span></div>
+                }
+                @case ('error') {
+                  <div class="panel-state error">
+                    <mat-icon>error_outline</mat-icon>
+                    <span>{{ teacherError() }}</span>
+                    <button mat-stroked-button (click)="refreshAssignments()">Tekrar Dene</button>
+                  </div>
+                }
+                @case ('empty') {
+                  <div class="panel-state">
+                    <mat-icon>playlist_add</mat-icon>
+                    <span>Henüz atama yok. Bu sınavı sınıfına veya öğrencilerine ata.</span>
+                    <div class="a-btns">
+                      <button class="btn btn-primary btn-sm" (click)="openAssignmentDialog('grade')">
+                        <mat-icon>groups</mat-icon>Sınıfa Ata
+                      </button>
+                      <button class="btn btn-ghost btn-sm" (click)="openAssignmentDialog('student')">
+                        <mat-icon>person_add</mat-icon>Öğrenci Seç
+                      </button>
+                    </div>
+                  </div>
+                }
+                @case ('loaded') {
+                  @if (teacherSummary(); as summary) {
+                    <div class="summary">
+                      <div class="sm"><span class="v">{{ summary.totalStudents }}</span><span class="l">Atanan</span></div>
+                      <div class="sm"><span class="v g">{{ summary.completedCount }}</span><span class="l">Tamamlayan</span></div>
+                      <div class="sm"><span class="v w">{{ summary.inProgressCount }}</span><span class="l">Devam eden</span></div>
+                      <div class="sm"><span class="v">{{ summaryPendingCount(summary) }}</span><span class="l">Başlamadı</span></div>
+                      <div class="sm"><span class="v">{{ percentLabel(d.stats.averageScorePercent) }}</span><span class="l">Sınıf ort.</span></div>
+                    </div>
+                  }
+                  @if (lastRefreshed(); as refreshed) {
+                    <div class="last-refreshed"><mat-icon>schedule</mat-icon>
+                      <span>Son güncelleme {{ refreshed | date : 'dd MMM HH:mm' }}</span></div>
+                  }
+                  <mat-accordion class="assignment-accordion" multi>
+                    @for (assignment of teacherAssignments(); track assignment.assignmentId) {
+                      <mat-expansion-panel [expanded]="teacherAssignments().length === 1">
+                        <mat-expansion-panel-header>
+                          <mat-panel-title>
+                            <mat-icon>{{ assignment.targetType === 'Grade' ? 'groups' : 'person' }}</mat-icon>
+                            {{ assignment.targetName }}
+                          </mat-panel-title>
+                          <mat-panel-description>
+                            {{ assignment.completedCount }}/{{ assignment.studentCount }} tamamladı
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
+                        <table>
+                          <thead><tr><th>Öğrenci</th><th>Durum</th><th>Son aktivite</th></tr></thead>
+                          <tbody>
+                            @for (student of assignment.students; track student.studentId) {
+                              <tr>
+                                <td>{{ student.studentNumber }} · {{ studentGradeLabel(student) }}</td>
+                                <td><span [class]="statusClass(student.status)">{{ statusLabel(student.status) }}</span></td>
+                                <td>{{ lastActivityLabel(student.lastActivity) }}</td>
+                              </tr>
+                            } @empty {
+                              <tr><td colspan="3" class="muted">Bu atama için öğrenci bilgisi bulunamadı.</td></tr>
+                            }
+                          </tbody>
+                        </table>
+                      </mat-expansion-panel>
+                    }
+                  </mat-accordion>
+                }
+              }
+            </div>
+
+            @if (d.teacherInsights && d.teacherInsights.hardestQuestions.length) {
+              <div class="card">
+                <h3><span class="dot"></span>Zorlanılan Sorular</h3>
+                @for (hard of d.teacherInsights.hardestQuestions; track hard.questionId) {
+                  <div class="hardq">
+                    <span class="qn">{{ hard.order }}</span>
+                    <div>
+                      <div class="qt">{{ hard.text || 'Soru ' + hard.order }}</div>
+                      <div class="qs">{{ hard.subtopicName || 'Konu belirtilmemiş' }} · {{ hard.answeredCount }} öğrenci yanıtladı</div>
+                    </div>
+                    <span class="qacc">%{{ hard.correctPercent }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="stack">
+            <div class="card" *appIsTeacher>
+              <h3><span class="dot"></span>Atama</h3>
+              <div class="a-btns">
+                <button class="btn btn-primary btn-sm full" (click)="openAssignmentDialog('grade')">
+                  <mat-icon>groups</mat-icon>Sınıfa Ata
+                </button>
+                <button class="btn btn-ghost btn-sm full" (click)="openAssignmentDialog('student')">
+                  <mat-icon>person_add</mat-icon>Öğrenci Seç
+                </button>
+              </div>
+              @for (assignment of teacherAssignments(); track assignment.assignmentId) {
+                <div class="sched">
+                  <span class="c"><mat-icon>calendar_today</mat-icon></span>
+                  <div>
+                    <div class="s-t">{{ assignment.targetName }} · {{ assignment.startAt | date : 'dd MMM HH:mm' }}
+                      @if (assignment.endAt) { → {{ assignment.endAt | date : 'dd MMM HH:mm' }} }</div>
+                    <div class="s-s">{{ assignment.studentCount }} öğrenci · {{ assignment.isActive ? 'aktif' : 'planlandı' }}</div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            @if (d.teacherInsights; as insights) {
+              <div class="card">
+                <h3><span class="dot"></span>Soru Kalitesi</h3>
+                <p class="p muted">
+                  AI sınıflandırması {{ insights.classifiedCount }} / {{ insights.totalQuestionCount }} soruyu etiketledi. Zorluk dağılımı:
+                </p>
+                <div class="diffbar">
+                  <i class="easy" [style.width.%]="insights.difficultyDistribution.easy /
+                    (insights.difficultyDistribution.easy + insights.difficultyDistribution.medium + insights.difficultyDistribution.hard || 1) * 100"></i>
+                  <i class="med" [style.width.%]="insights.difficultyDistribution.medium /
+                    (insights.difficultyDistribution.easy + insights.difficultyDistribution.medium + insights.difficultyDistribution.hard || 1) * 100"></i>
+                  <i class="hard" [style.width.%]="insights.difficultyDistribution.hard /
+                    (insights.difficultyDistribution.easy + insights.difficultyDistribution.medium + insights.difficultyDistribution.hard || 1) * 100"></i>
+                </div>
+                <div class="legend">
+                  <span><i class="easy"></i>Kolay · {{ insights.difficultyDistribution.easy }}</span>
+                  <span><i class="med"></i>Orta · {{ insights.difficultyDistribution.medium }}</span>
+                  <span><i class="hard"></i>Zor · {{ insights.difficultyDistribution.hard }}</span>
+                </div>
+                @if (insights.unclassifiedCount > 0) {
+                  <div class="warnline">
+                    <mat-icon>warning</mat-icon>
+                    {{ insights.unclassifiedCount }} soru sınıflandırılmadı — konu/zorluk elle atanmalı
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
     </div>
-  </div>
+
+    <!-- Mobil sabit CTA (öğrenci) -->
+    @if (view() !== 'teacher') {
+      <div class="mobile-cta" *appIsStudent>
+        @if (view() === 'start') {
+          <span class="meta">{{ formatDuration(d.worksheet.maxDurationSeconds) }} · süre dolunca otomatik biter</span>
+          @if (!exam.instance) {
+            <button class="btn btn-primary full" (click)="StartTest(exam.id)"><mat-icon>play_arrow</mat-icon>Sınava Başla</button>
+          } @else if (instanceStarted) {
+            <button class="btn btn-primary full" (click)="StartTest(exam.id)"><mat-icon>play_arrow</mat-icon>Devam Et</button>
+          }
+        } @else if (completedResult()) {
+          <button class="btn btn-amber full" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">
+            <mat-icon>add</mat-icon>Yanlışlarımdan Test Oluştur
+          </button>
+        }
+      </div>
+    }
+   }
+  }
 </section>

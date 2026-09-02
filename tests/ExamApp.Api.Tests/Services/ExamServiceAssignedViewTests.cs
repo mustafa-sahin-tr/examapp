@@ -118,5 +118,33 @@ public class ExamServiceAssignedViewTests : IDisposable
         list.Single(x => x.Worksheet.Id == w.WsForStudent).Instance.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task GetWorksheetAndInstances_hides_worksheets_scoped_to_another_student()
+    {
+        var w = await SeedAsync();
+
+        int wsForOther;
+        await using (var ctx = _db.NewContext())
+        {
+            var other = new Student { UserId = 99, StudentNumber = "o", SchoolName = "s", GradeId = w.GradeId };
+            var wsOther = new Worksheet { Name = "B'nin Yanlışları", Description = "", GradeId = w.GradeId, IsPracticeTest = true };
+            ctx.AddRange(other, wsOther);
+            await ctx.SaveChangesAsync();
+
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = wsOther.Id, StudentId = other.Id, StartAt = DateTime.UtcNow.AddDays(-1),
+            });
+            await ctx.SaveChangesAsync();
+            wsForOther = wsOther.Id;
+        }
+
+        await using var read = _db.NewContext();
+        var list = await NewExamService(read).GetWorksheetAndInstancesAsync(Student(w), w.GradeId);
+
+        list.ShouldNotContain(x => x.Worksheet.Id == wsForOther);
+        list.Count.ShouldBe(2); // only the two unscoped grade worksheets
+    }
+
     public void Dispose() => _db.Dispose();
 }

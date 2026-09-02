@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -24,11 +25,13 @@ public class ExamController : BaseController
     private readonly IWorksheetAssignmentService _assignmentService;
     private readonly ITestSessionService _testSession;
     private readonly IWorksheetAuthoringService _authoring;
+    private readonly IWorksheetDetailService _worksheetDetail;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
             IWorksheetAssignmentService assignmentService,
             ITestSessionService testSession,
-            IWorksheetAuthoringService authoring
+            IWorksheetAuthoringService authoring,
+            IWorksheetDetailService worksheetDetail
             )
         : base()
     {
@@ -37,6 +40,7 @@ public class ExamController : BaseController
         _assignmentService = assignmentService;
         _testSession = testSession;
         _authoring = authoring;
+        _worksheetDetail = worksheetDetail;
     }
 
 
@@ -50,6 +54,64 @@ public class ExamController : BaseController
         return Ok(result);
     }
 
+
+    [HttpGet("{id:int}/detail")]
+    [Authorize(Roles = "Student,Teacher")]
+    public async Task<IActionResult> GetWorksheetDetail(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        int? studentId = null;
+        if (user.Role == UserRole.Student.ToString())
+        {
+            var student = await _studentService.GetStudentProfile(user.Id);
+            studentId = student?.Id;
+        }
+
+        var result = await _worksheetDetail.GetWorksheetDetailAsync(id, user.Role, studentId, user.Id, ct);
+        if (result == null)
+            return NotFound();
+
+        return Ok(result);
+    }
+
+    [HttpPost("from-mistakes/{instanceId:int}")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> CreateWorksheetFromMistakes(int instanceId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        if (student == null)
+        {
+            return Unauthorized("Öğrenci profili bulunamadı");
+        }
+
+        try
+        {
+            var result = await _worksheetDetail.CreateWorksheetFromMistakesAsync(instanceId, student.Id, user.Id, ct);
+            if (result == null)
+                return NotFound(new { message = "Test oturumu bulunamadı." });
+
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 
     [HttpGet("student-worksheets")]
     [Authorize(Roles = "Student")]

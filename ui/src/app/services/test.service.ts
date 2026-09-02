@@ -18,6 +18,7 @@ import { AnswerChoice, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
 import { StudentStatisticsResponse } from '../models/statistics';
 import { Question } from '../models/question';
+import { WorksheetDetail, WorksheetFromMistakesResult } from '../models/worksheet-detail';
 
 @Injectable({
   providedIn: 'root',
@@ -29,6 +30,14 @@ export class TestService {
     private http: HttpClient,
     private router: Router
   ) {}
+
+  getWorksheetDetail(worksheetId: number): Observable<WorksheetDetail> {
+    return this.http.get<WorksheetDetail>(`${this.baseUrl}/${worksheetId}/detail`);
+  }
+
+  createWorksheetFromMistakes(instanceId: number): Observable<WorksheetFromMistakesResult> {
+    return this.http.post<WorksheetFromMistakesResult>(`${this.baseUrl}/from-mistakes/${instanceId}`, null);
+  }
 
   getTestWithAnswers(testInstanceId: number): Observable<TestInstance> {
     return this.http.get<TestInstance>(`${this.baseUrl}/test-instance/${testInstanceId}`);

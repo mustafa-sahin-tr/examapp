@@ -243,6 +243,10 @@ namespace ExamApp.Api.Controllers
                 }
             }
 
+            // Provision our local Users row on first login (Keycloak-native
+            // registration no longer hits /api/auth/register). Also keeps the
+            // stored role in sync once the user picks one via profile completion.
+            await EnsureLocalUserAsync(jwt, roles);
 
             Response.Cookies.Append("refresh_token", tokenDto.RefreshToken, new CookieOptions
             {
@@ -261,6 +265,46 @@ namespace ExamApp.Api.Controllers
 
             return Ok(loginResponseDto);
         }
+
+        /// <summary>
+        /// Ensures a local <c>Users</c> row exists for the authenticated Keycloak
+        /// subject and its stored role tracks the realm role once assigned.
+        /// </summary>
+        private async Task EnsureLocalUserAsync(JwtSecurityToken jwt, List<string> appRoles)
+        {
+            var sub = jwt.Claims.First(c => c.Type == "sub").Value;
+            var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ?? string.Empty;
+            var fullName = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value
+                ?? $"{jwt.Claims.FirstOrDefault(c => c.Type == "given_name")?.Value} {jwt.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value}".Trim();
+            if (string.IsNullOrWhiteSpace(fullName)) fullName = email;
+
+            // The app role (Student/Teacher/Parent) — empty until profile completion assigns it.
+            var appRole = appRoles.FirstOrDefault(r =>
+                r.Equals("Student", StringComparison.OrdinalIgnoreCase) ||
+                r.Equals("Teacher", StringComparison.OrdinalIgnoreCase) ||
+                r.Equals("Parent", StringComparison.OrdinalIgnoreCase)) ?? string.Empty;
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.KeycloakId == sub);
+            if (user == null)
+            {
+                _context.Users.Add(new User
+                {
+                    KeycloakId = sub,
+                    Email = email,
+                    FullName = fullName,
+                    Role = appRole
+                });
+                await _context.SaveChangesAsync();
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(appRole) && !string.Equals(user.Role, appRole, StringComparison.OrdinalIgnoreCase))
+            {
+                user.Role = appRole;
+                await _context.SaveChangesAsync();
+            }
+        }
+
         [HttpGet("roles")]
         public async Task<IActionResult> GetRoles()
         {

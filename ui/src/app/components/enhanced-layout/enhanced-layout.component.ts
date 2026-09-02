@@ -187,11 +187,12 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
             localStorage.setItem('user', JSON.stringify(res));
             this.setUserInfo();
           }
-          if (!res || (profile == 'Student' && !res.student)) {
-            this.router.navigate(['/student-register']);
-          }
-          if (!res || (profile == 'Teacher' && !res.teacher)) {
-            this.router.navigate(['/teacher-register']);
+          if (!res) {
+            this.router.navigate(['/register']);
+          } else if (profile == 'Student' && !res.student) {
+            this.router.navigate(['/register'], { queryParams: { role: 'student' } });
+          } else if (profile == 'Teacher' && !res.teacher) {
+            this.router.navigate(['/register'], { queryParams: { role: 'teacher' } });
           }
         },
         error: (err) => {

@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { StudentRegisterComponent } from './pages/student-register/student-register.component';
+import { RegisterWizardComponent } from './pages/register/register-wizard.component';
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
 import { QuestionComponent } from './pages/question/question.component';
@@ -15,7 +15,6 @@ import { WorksheetDetailComponent } from './pages/worksheet-detail/worksheet-det
 import { ProgramCreateComponent } from './pages/program-create/program-create.component';
 import { MyProgramsComponent } from './pages/my-programs/my-programs.component';
 import { BadgeThropyComponent } from './shared/components/badge-thropy/badge-thropy.component';
-import { TeacherRegisterComponent } from './pages/teacher-register/teacher-register.component';
 import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas-enhanced.component';
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
@@ -55,15 +54,16 @@ export const routes: Routes = [
     children: [{ path: '', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } }],
   },
   {
-    path: 'student-register',
+    // Two-step onboarding: step 1 role picker (skipped when the role is known
+    // from ?role= or an already-assigned realm role), step 2 the role form.
+    path: 'register',
     component: EnhancedLayoutComponent,
-    children: [{ path: '', component: StudentRegisterComponent }],
+    children: [{ path: '', component: RegisterWizardComponent }],
   },
-  {
-    path: 'teacher-register',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: TeacherRegisterComponent }],
-  },
+  // Back-compat: the old per-role routes now land on the wizard at step 2.
+  { path: 'student-register', redirectTo: () => '/register?role=student' },
+  { path: 'teacher-register', redirectTo: () => '/register?role=teacher' },
+  { path: 'parent-register', redirectTo: () => '/register?role=parent' },
   {
     path: 'question/:id',
     component: EnhancedLayoutComponent,

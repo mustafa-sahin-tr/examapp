@@ -65,12 +65,14 @@ export class StudentRegisterComponent implements OnInit {
         if (val.accessToken) {
           localStorage.setItem('auth_token', val.accessToken);
         }
+        localStorage.setItem('user_role', 'Student');
         if (val.profileId) {
           var user = localStorage.getItem('user');
           if (user) {
             try {
               const userObj = JSON.parse(user);
-              userObj.teacher = { id: val.profileId };
+              userObj.role = 'Student';
+              userObj.student = { id: val.profileId };
               localStorage.setItem('user', JSON.stringify(userObj));
             } catch (e) {
               console.error('User data parsing error:', e);

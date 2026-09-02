@@ -173,10 +173,33 @@ app.Use(async (context, next) =>
         {
             Console.WriteLine("[OIDC] Keycloak:ClientCallbackUrl config missing.");
         }
-        var host = builder.Configuration.GetValue<string>("Server:BaseUrl");
-        var realm = builder.Configuration.GetValue<string>("Keycloak:Realm");
-        var ClientCallbackUrl = builder.Configuration.GetValue<string>("Keycloak:ClientCallbackUrl");
-        context.Response.Redirect($"{host}/auth/realms/{realm}/protocol/openid-connect/auth?client_id=exam-client&redirect_uri={ClientCallbackUrl}");
+        var host = builder.Configuration.GetValue<string>("Server:BaseUrl") ?? "http://localhost:5678";
+        var realm = builder.Configuration.GetValue<string>("Keycloak:Realm") ?? "exam-realm";
+        var clientId = builder.Configuration.GetValue<string>("Keycloak:ClientId") ?? "exam-client";
+        var redirectUri = builder.Configuration.GetValue<string>("Keycloak:RedirectUri") ?? $"{host}/app/callback";
+
+        // The app carries the post-login return base + an optional registration
+        // intent through the OIDC `state` param (Keycloak passes it back opaquely).
+        //   state = "<returnBase>"            -> normal login,  callback -> <returnBase>/dashboard
+        //   state = "<returnBase>~student"    -> callback routes the new user to /student-register
+        //   state = "<returnBase>~teacher"    -> ... /teacher-register
+        //   state = "<returnBase>~parent"     -> ... /parent-register
+        var intent = context.Request.Query["intent"].ToString().Trim().ToLowerInvariant();
+        var isRegister = intent == "student" || intent == "teacher" || intent == "parent";
+        var state = isRegister ? $"{host}~{intent}" : host;
+
+        // Register intents go straight to Keycloak's registration form via the
+        // dedicated `registrations` endpoint (same params as `auth`). `prompt=create`
+        // needs Keycloak 25+, whereas `registrations` has always been available.
+        var endpoint = isRegister ? "registrations" : "auth";
+
+        var authUrl = $"{host}/auth/realms/{realm}/protocol/openid-connect/{endpoint}"
+            + $"?client_id={Uri.EscapeDataString(clientId)}"
+            + $"&redirect_uri={Uri.EscapeDataString(redirectUri)}"
+            + "&response_type=code&scope=openid"
+            + $"&state={Uri.EscapeDataString(state)}";
+
+        context.Response.Redirect(authUrl);
         return;
     }
 

@@ -29,8 +29,8 @@
   "oauth2DevicePollingInterval": 5,
   "enabled": true,
   "sslRequired": "external",
-  "registrationAllowed": false,
-  "registrationEmailAsUsername": false,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
   "rememberMe": false,
   "verifyEmail": false,
   "loginWithEmailAllowed": true,
@@ -2011,7 +2011,12 @@
       }
     ]
   },
-  "internationalizationEnabled": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "tr",
+    "en"
+  ],
+  "defaultLocale": "tr",
   "authenticationFlows": [
     {
       "id": "f0dc7d8a-174f-40ba-a84f-9a4bbb4aff5d",

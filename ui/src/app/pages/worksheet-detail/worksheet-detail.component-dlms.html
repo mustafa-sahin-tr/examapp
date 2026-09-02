@@ -152,6 +152,60 @@
               }
             </div>
 
+            <div class="card" *appIsStudent>
+              <h3><span class="dot"></span>Planla &amp; Hatırlat</h3>
+
+              @if (hasActiveReminder() && !showReminderForm() && reminder(); as active) {
+                <div class="plan">
+                  <span class="cal"><mat-icon>calendar_today</mat-icon></span>
+                  <div class="plan-info">
+                    <div class="p-when">{{ reminderWhenLabel(active.scheduledFor) }}</div>
+                    <div class="p-sub">{{ remindBeforeLabel(active.remindBeforeMinutes) }} bildirim gönderilecek</div>
+                  </div>
+                </div>
+                <div class="plan-actions">
+                  <button class="btn btn-ghost btn-sm" (click)="startEditReminder()" [disabled]="reminderSaving()">
+                    <mat-icon>edit</mat-icon>Güncelle
+                  </button>
+                  <button class="btn btn-ghost btn-sm danger" (click)="removeReminder()" [disabled]="reminderSaving()">
+                    <mat-icon>close</mat-icon>İptal Et
+                  </button>
+                </div>
+              } @else {
+                <div class="plan-form">
+                  <mat-form-field appearance="outline" class="plan-field">
+                    <mat-label>Tarih</mat-label>
+                    <input matInput [matDatepicker]="picker" [min]="minReminderDate" [(ngModel)]="reminderDate"
+                      name="reminderDate" readonly (click)="picker.open()" />
+                    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="plan-field">
+                    <mat-label>Saat</mat-label>
+                    <input matInput type="time" [(ngModel)]="reminderTime" name="reminderTime" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="plan-field">
+                    <mat-label>Ne zaman hatırlatılsın</mat-label>
+                    <mat-select [(ngModel)]="remindBeforeMinutes" name="remindBefore">
+                      @for (option of remindBeforeOptions; track option) {
+                        <mat-option [value]="option">{{ remindBeforeLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <div class="plan-actions">
+                    <button class="btn btn-primary btn-sm" (click)="saveReminder()" [disabled]="reminderSaving()">
+                      <mat-icon>notifications_active</mat-icon>{{ hasActiveReminder() ? 'Kaydet' : 'Planla' }}
+                    </button>
+                    @if (hasActiveReminder()) {
+                      <button class="btn btn-ghost btn-sm" (click)="cancelEditReminder()" [disabled]="reminderSaving()">
+                        Vazgeç
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
             @if (d.attempts.length) {
               <div class="card">
                 <h3><span class="dot"></span>Denemelerin</h3>

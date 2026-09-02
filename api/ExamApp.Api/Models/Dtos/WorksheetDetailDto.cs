@@ -16,6 +16,9 @@ public class WorksheetDetailDto
     public List<SimilarWorksheetDto> SimilarWorksheets { get; set; } = new();
     public WorksheetTeacherInsightsDto? TeacherInsights { get; set; }
     public WorksheetCompletedResultDto? CompletedResult { get; set; }
+
+    /// <summary>Öğrencinin bu worksheet için planladığı hatırlatma (varsa). Öğretmen için null.</summary>
+    public WorksheetReminderDto? PlannedReminder { get; set; }
 }
 
 public class WorksheetStatsDto

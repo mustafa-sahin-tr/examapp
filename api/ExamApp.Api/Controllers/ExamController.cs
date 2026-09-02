@@ -26,12 +26,14 @@ public class ExamController : BaseController
     private readonly ITestSessionService _testSession;
     private readonly IWorksheetAuthoringService _authoring;
     private readonly IWorksheetDetailService _worksheetDetail;
+    private readonly IWorksheetReminderService _reminderService;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
             IWorksheetAssignmentService assignmentService,
             ITestSessionService testSession,
             IWorksheetAuthoringService authoring,
-            IWorksheetDetailService worksheetDetail
+            IWorksheetDetailService worksheetDetail,
+            IWorksheetReminderService reminderService
             )
         : base()
     {
@@ -41,6 +43,63 @@ public class ExamController : BaseController
         _testSession = testSession;
         _authoring = authoring;
         _worksheetDetail = worksheetDetail;
+        _reminderService = reminderService;
+    }
+
+    [HttpGet("{id:int}/reminder")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetWorksheetReminder(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        if (student == null)
+            return Unauthorized("Öğrenci profili bulunamadı");
+
+        // Frontend Observable<WorksheetReminderDto | null> bekliyor: yok durumunda da 200 + null.
+        var result = await _reminderService.GetAsync(id, student.Id, ct);
+        return Ok(result);
+    }
+
+    [HttpPut("{id:int}/reminder")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> UpsertWorksheetReminder(int id, [FromBody] UpsertWorksheetReminderRequestDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        if (student == null)
+            return Unauthorized("Öğrenci profili bulunamadı");
+
+        try
+        {
+            var result = await _reminderService.UpsertAsync(id, student.Id, user.KeycloakId, request.ScheduledFor, request.RemindBeforeMinutes, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:int}/reminder")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> DeleteWorksheetReminder(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        if (student == null)
+            return Unauthorized("Öğrenci profili bulunamadı");
+
+        await _reminderService.DeleteAsync(id, student.Id, ct);
+        return NoContent();
     }
 
 

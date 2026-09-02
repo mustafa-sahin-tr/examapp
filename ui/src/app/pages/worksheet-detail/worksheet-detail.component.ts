@@ -13,6 +13,12 @@ import { GradesService } from '../../services/grades.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import {
   AssignmentProgressSummary,
   AssignmentStudentStatus,
@@ -29,7 +35,7 @@ import {
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
-import { WorksheetAttempt, WorksheetDetail } from '../../models/worksheet-detail';
+import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -54,7 +60,14 @@ type WorksheetView = 'teacher' | 'completed' | 'start';
     IsStudentDirective,
     QuestionCanvasViewComponent,
     QuestionNavigatorComponent,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
+  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'tr-TR' }],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],
 })
@@ -97,6 +110,23 @@ export class WorksheetDetailComponent implements OnInit {
     }
     return this.completedResult() ? 'completed' : 'start';
   });
+
+  // Planla & Hatırlat
+  protected readonly reminder = signal<WorksheetReminder | null>(null);
+  protected readonly reminderSaving = signal(false);
+  protected readonly reminderEditing = signal(false);
+  protected reminderDate: Date | null = null;
+  protected reminderTime = '09:00';
+  protected remindBeforeMinutes = 60;
+  protected readonly minReminderDate = new Date();
+  protected readonly remindBeforeOptions = [15, 30, 60, 120];
+
+  protected readonly hasActiveReminder = computed(() => {
+    const current = this.reminder();
+    return !!current && current.status !== 'Cancelled';
+  });
+
+  protected readonly showReminderForm = computed(() => !this.hasActiveReminder() || this.reminderEditing());
 
   /** Denemelerin skorlarından türetilen sparkline path (viewBox 0 0 100 32). */
   protected readonly sparkline = computed(() => this.sparklinePath(this.detail()?.attempts ?? []));
@@ -189,6 +219,116 @@ export class WorksheetDetailComponent implements OnInit {
 
   protected openSimilarWorksheet(id: number): void {
     this.router.navigate(['/test', id]);
+  }
+
+  /** İki alandan (tarih + saat) birleşik yerel Date üretir. */
+  private buildScheduledDate(): Date | null {
+    if (!this.reminderDate) {
+      return null;
+    }
+    const [hours, minutes] = (this.reminderTime || '00:00').split(':').map((v) => Number(v));
+    const combined = new Date(this.reminderDate);
+    combined.setHours(hours || 0, minutes || 0, 0, 0);
+    return combined;
+  }
+
+  protected startEditReminder(): void {
+    const current = this.reminder();
+    if (current) {
+      const scheduled = new Date(current.scheduledFor);
+      this.reminderDate = scheduled;
+      this.reminderTime = `${String(scheduled.getHours()).padStart(2, '0')}:${String(
+        scheduled.getMinutes()
+      ).padStart(2, '0')}`;
+      this.remindBeforeMinutes = current.remindBeforeMinutes;
+    }
+    this.reminderEditing.set(true);
+  }
+
+  protected cancelEditReminder(): void {
+    this.reminderEditing.set(false);
+  }
+
+  protected saveReminder(): void {
+    if (this.reminderSaving()) {
+      return;
+    }
+    const worksheetId = this.testId;
+    const scheduled = this.buildScheduledDate();
+    if (!worksheetId || !scheduled) {
+      this.snackBar.open('Lütfen tarih ve saat seçin.', 'Tamam', { duration: 3000 });
+      return;
+    }
+    if (scheduled.getTime() <= Date.now()) {
+      this.snackBar.open('Geçmiş bir tarih seçemezsin.', 'Tamam', { duration: 3000 });
+      return;
+    }
+
+    this.reminderSaving.set(true);
+    this.testService
+      .putWorksheetReminder(worksheetId, {
+        scheduledFor: scheduled.toISOString(),
+        remindBeforeMinutes: this.remindBeforeMinutes,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (reminder) => {
+          this.reminderSaving.set(false);
+          this.reminder.set(reminder);
+          this.reminderEditing.set(false);
+          this.snackBar.open('Hatırlatıcı kuruldu.', 'Tamam', { duration: 3000 });
+        },
+        error: (error) => {
+          this.reminderSaving.set(false);
+          this.snackBar.open(error?.error?.message ?? 'Hatırlatıcı kaydedilemedi.', 'Tamam', { duration: 3000 });
+          if (error?.status === 409) {
+            this.loadDetail();
+          }
+        },
+      });
+  }
+
+  protected removeReminder(): void {
+    if (this.reminderSaving() || !this.testId) {
+      return;
+    }
+    this.reminderSaving.set(true);
+    this.testService
+      .deleteWorksheetReminder(this.testId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reminderSaving.set(false);
+          this.reminder.set(null);
+          this.reminderEditing.set(false);
+          this.snackBar.open('Hatırlatıcı iptal edildi.', 'Tamam', { duration: 3000 });
+        },
+        error: (error) => {
+          this.reminderSaving.set(false);
+          this.snackBar.open(error?.error?.message ?? 'Hatırlatıcı iptal edilemedi.', 'Tamam', { duration: 3000 });
+        },
+      });
+  }
+
+  protected reminderWhenLabel(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleString('tr-TR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  protected remindBeforeLabel(minutes: number): string {
+    if (minutes % 60 === 0) {
+      return `${minutes / 60} saat önce`;
+    }
+    return `${minutes} dakika önce`;
   }
 
   protected refreshAssignments(): void {
@@ -532,6 +672,9 @@ export class WorksheetDetailComponent implements OnInit {
         next: (detail) => {
           this.detail.set(detail ?? null);
           this.detailLoading.set(false);
+          const planned = detail?.plannedReminder ?? null;
+          this.reminder.set(planned && planned.status !== 'Cancelled' ? planned : null);
+          this.reminderEditing.set(false);
           const completedInstanceId = detail?.completedResult?.instanceId;
           if (!this.isTeacher && completedInstanceId) {
             this.loadResultsForInstance(completedInstanceId);

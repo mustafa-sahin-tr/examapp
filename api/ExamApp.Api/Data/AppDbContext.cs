@@ -102,6 +102,8 @@ public class AppDbContext : DbContext
     public DbSet<QuestionTransferExportBundle> QuestionTransferExportBundles { get; set; }
     public DbSet<QuestionTransferExportMap> QuestionTransferExportMaps { get; set; }
 
+    public DbSet<WorksheetReminder> WorksheetReminders { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -286,6 +288,22 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<WorksheetAssignment>()
             .HasIndex(wa => new { wa.GradeId, wa.WorksheetId, wa.StartAt });
+
+        modelBuilder.Entity<WorksheetReminder>()
+            .HasOne(wr => wr.Worksheet)
+            .WithMany()
+            .HasForeignKey(wr => wr.WorksheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorksheetReminder>()
+            .HasOne(wr => wr.Student)
+            .WithMany()
+            .HasForeignKey(wr => wr.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<WorksheetReminder>()
+            .HasIndex(wr => new { wr.WorksheetId, wr.StudentId })
+            .IsUnique();
 
         // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
         modelBuilder.Entity<ProgramStep>()

@@ -103,6 +103,7 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<AnswerSubmittedConsumer>();
     x.AddConsumer<QuestionCreatedConsumer>();
+    x.AddConsumer<WorksheetReminderDueConsumer, WorksheetReminderDueConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -116,6 +117,9 @@ builder.Services.AddMassTransit(x =>
         {
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);
+            // WorksheetReminderDueConsumer'ın retry'ı WorksheetReminderDueConsumerDefinition'da
+            // scope'lu; diğer iki consumer'ın davranışı değişmez.
+            e.ConfigureConsumer<WorksheetReminderDueConsumer>(context);
         });
     });
 });

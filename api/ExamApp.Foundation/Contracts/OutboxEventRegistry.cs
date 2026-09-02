@@ -18,6 +18,7 @@ public static class OutboxEventRegistry
     {
         typeof(AnswerSubmittedEvent),
         typeof(QuestionCreatedEvent),
+        typeof(WorksheetReminderDueEvent),
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

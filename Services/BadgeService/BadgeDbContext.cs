@@ -14,6 +14,7 @@ public class BadgeDbContext : DbContext
     public DbSet<StudentSubjectAggregate> StudentSubjectAggregates => Set<StudentSubjectAggregate>();
     public DbSet<StudentDailyActivity> StudentDailyActivities => Set<StudentDailyActivity>();
     public DbSet<StudentBadgeProgress> StudentBadgeProgresses => Set<StudentBadgeProgress>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,5 +49,16 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<StudentBadgeProgress>()
             .HasIndex(x => new { x.UserId, x.BadgeDefinitionId })
             .IsUnique();
+
+        modelBuilder.Entity<Notification>().HasKey(x => x.Id);
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAt });
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.UserKeycloakId, x.IsRead, x.CreatedAt });
+        // Idempotency: bir reminder tetiklemesi en fazla bir bildirim üretir.
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.Type, x.SourceReminderId })
+            .IsUnique()
+            .HasFilter("\"SourceReminderId\" IS NOT NULL");
     }
 }

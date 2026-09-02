@@ -1836,6 +1836,66 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("TestQuestions");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetReminder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HangfireJobId")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("RemindBeforeMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ScheduledFor")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StudentKeycloakId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("WorksheetId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("WorksheetId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("WorksheetReminders");
+                });
+
             modelBuilder.Entity("ExamApp.Foundation.Persistence.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2728,6 +2788,25 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Question");
+
+                    b.Navigation("Worksheet");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.WorksheetReminder", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Worksheet", "Worksheet")
+                        .WithMany()
+                        .HasForeignKey("WorksheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
 
                     b.Navigation("Worksheet");
                 });

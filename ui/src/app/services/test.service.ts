@@ -18,7 +18,12 @@ import { AnswerChoice, QuestionRegion } from '../models/draws';
 import { Answer } from '../models/answer';
 import { StudentStatisticsResponse } from '../models/statistics';
 import { Question } from '../models/question';
-import { WorksheetDetail, WorksheetFromMistakesResult } from '../models/worksheet-detail';
+import {
+  WorksheetDetail,
+  WorksheetFromMistakesResult,
+  WorksheetReminder,
+  WorksheetReminderRequest,
+} from '../models/worksheet-detail';
 
 @Injectable({
   providedIn: 'root',
@@ -37,6 +42,18 @@ export class TestService {
 
   createWorksheetFromMistakes(instanceId: number): Observable<WorksheetFromMistakesResult> {
     return this.http.post<WorksheetFromMistakesResult>(`${this.baseUrl}/from-mistakes/${instanceId}`, null);
+  }
+
+  getWorksheetReminder(worksheetId: number): Observable<WorksheetReminder | null> {
+    return this.http.get<WorksheetReminder | null>(`${this.baseUrl}/${worksheetId}/reminder`);
+  }
+
+  putWorksheetReminder(worksheetId: number, body: WorksheetReminderRequest): Observable<WorksheetReminder> {
+    return this.http.put<WorksheetReminder>(`${this.baseUrl}/${worksheetId}/reminder`, body);
+  }
+
+  deleteWorksheetReminder(worksheetId: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${worksheetId}/reminder`);
   }
 
   getTestWithAnswers(testInstanceId: number): Observable<TestInstance> {

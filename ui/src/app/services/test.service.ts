@@ -78,6 +78,12 @@ export class TestService {
     return this.http.get<Test[]>(`${this.baseUrl}/latest?pageNumber=${pageNumber}&pageSize=${pageSize}`);
   }
 
+  getPopular(pageNumber: number = 1, pageSize = 10, sinceDays = 30): Observable<Test[]> {
+    return this.http.get<Test[]>(
+      `${this.baseUrl}/popular?pageNumber=${pageNumber}&pageSize=${pageSize}&sinceDays=${sinceDays}`
+    );
+  }
+
   getCompleted(pageNumber: number = 1): Observable<Paged<InstanceSummary>> {
     return this.http.get<Paged<InstanceSummary>>(`${this.baseUrl}/CompletedTests?pageNumber=${pageNumber}&pageSize=10`);
   }

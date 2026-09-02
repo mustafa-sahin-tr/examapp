@@ -62,11 +62,6 @@
             <mat-icon>local_fire_department</mat-icon>
             Popüler
           </button>
-          <button class="section-nav-btn" [class.active]="currentSection() === 'relevant'"
-            (click)="showSection('relevant')">
-            <mat-icon>psychology</mat-icon>
-            İlgili
-          </button>
           <div class="search-box" (focusin)="onFocus()" (focusout)="onBlur()">
             <mat-icon class="search-icon">search</mat-icon>
             <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"

@@ -80,7 +80,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   isAuthenticated = this.authService.isAuthenticated();
   // Örnek öneri listesi (tüm öneriler)
   allSuggestions: string[] = ['Doğal Sayılar', 'Gezegenimiz', 'Çarpma', 'Zıt Anlamlı'];
-  currentSection = signal<'newest' | 'hot' | 'completed' | 'search' | 'relevant'>('newest');
+  currentSection = signal<'newest' | 'hot'>('newest');
 
   // Menu items
   menuItems: MenuItem[] = [
@@ -353,11 +353,14 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     }, 150);
   }
 
-  showSection(section: 'newest' | 'hot' | 'completed' | 'search' | 'relevant') {
+  showSection(section: 'newest' | 'hot') {
     this.currentSection.set(section);
-    if (section === 'search') {
-      // this.performSearch();
-    }
+    // Header'daki Yeni / Popüler butonları test listesine yönlendirir.
+    // Yeni  -> en güncel sınavlar üstte
+    // Popüler -> son zamanlarda öğrenciler tarafından çözülenler (öğrencinin sınıfına göre)
+    this.navigateTo('/tests', {
+      queryParams: { section: section === 'hot' ? 'popular' : 'newest' },
+    });
   }
 
   private updateUserProfileInLocalStorage(themePreset: string, themeCustomConfig: string | null) {

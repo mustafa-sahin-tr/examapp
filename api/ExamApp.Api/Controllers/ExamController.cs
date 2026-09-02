@@ -40,7 +40,7 @@ public class ExamController : BaseController
     }
 
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetWorksheet(int id)
     {
         var result = await _examService.GetWorksheetByIdAsync(id);
@@ -126,6 +126,29 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetLatestWorksheetsAsync(int pageNumber = 1, int pageSize = 10)
     {
         var result = await _examService.GetLatestWorksheetsAsync(pageNumber, pageSize);
+        return Ok(result);
+    }
+
+
+    [Authorize(Roles = "Student,Teacher")]
+    [HttpGet("popular")]
+    public async Task<IActionResult> GetPopularWorksheetsAsync(int? gradeId = null, int pageNumber = 1, int pageSize = 10, int sinceDays = 30)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        // Öğrenci ise kendi sınıfına göre filtrele (istekte gradeId gelmediyse)
+        int? effectiveGradeId = gradeId;
+        if (effectiveGradeId == null && user.Role == UserRole.Student.ToString())
+        {
+            var student = await _studentService.GetStudentProfile(user.Id);
+            effectiveGradeId = student?.GradeId;
+        }
+
+        var result = await _examService.GetPopularWorksheetsAsync(effectiveGradeId, pageNumber, pageSize, sinceDays);
         return Ok(result);
     }
 

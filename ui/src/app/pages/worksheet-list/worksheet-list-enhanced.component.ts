@@ -119,6 +119,16 @@ export class WorksheetListEnhancedComponent {
       if (search) {
         this.currentSection.set('search');
         this.performSearch();
+        return;
+      }
+
+      // Header'daki Yeni / Popüler butonlarından gelen yönlendirme
+      const section = params['section'];
+      if (section === 'popular') {
+        this.currentSection.set('hot');
+        this.loadHotTests();
+      } else if (section === 'newest') {
+        this.currentSection.set('newest');
       }
     });
 
@@ -259,9 +269,9 @@ export class WorksheetListEnhancedComponent {
   }
 
   private loadHotTests() {
-    // Mock hot tests - replace with actual service call
-    this.testService.getLatest(1).subscribe((tests) => {
-      this.hotTestsSignal.set(tests.slice(0, 6));
+    // Son zamanlarda öğrenciler tarafından en çok çözülen testler (öğrencinin sınıfına göre backend'de filtrelenir)
+    this.testService.getPopular(1, 12).subscribe((tests) => {
+      this.hotTestsSignal.set(tests);
     });
   }
 

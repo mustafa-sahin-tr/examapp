@@ -73,6 +73,9 @@ export class WorksheetListComponent {
   totalCount = 0;
   pageSize = 5;
   pageNumber = 1;
+  // Header'daki "Yeni" / "Popüler" butonları ?section= ile buraya yönlendirir.
+  // 'search' = normal arama/filtre modu (varsayılan)
+  currentSection = signal<'search' | 'newest' | 'popular'>('search');
   scrollDistance = 600;
   selectedSubjectIds: number[] = [];
   selectedGradeIds: number[] = [];
@@ -122,9 +125,33 @@ export class WorksheetListComponent {
 
     this.route.queryParams.subscribe((params) => {
       const search = params['search'] ?? '';
+      const section = params['section'] ?? '';
       this.searchControl.setValue(search);
       this.pageNumber = 1;
-      this.updatePagedWorksheets(this.pageNumber);
+
+      if (!search && (section === 'newest' || section === 'popular')) {
+        this.currentSection.set(section);
+        this.loadSectionWorksheets();
+      } else {
+        this.currentSection.set('search');
+        this.updatePagedWorksheets(this.pageNumber);
+      }
+    });
+  }
+
+  private loadSectionWorksheets(): void {
+    const request$ =
+      this.currentSection() === 'popular'
+        ? this.testService.getPopular(this.pageNumber, this.pageSize)
+        : this.testService.getLatest(this.pageNumber, this.pageSize);
+
+    request$.subscribe((tests) => {
+      this.pagedWorksheetsSignal.set({
+        items: tests,
+        totalCount: tests.length,
+        pageNumber: this.pageNumber,
+        pageSize: this.pageSize,
+      });
     });
   }
 
@@ -141,7 +168,11 @@ export class WorksheetListComponent {
   changePage(page: number) {
     console.log('Page changed:', page);
     this.pageNumber = page;
-    this.updatePagedWorksheets(this.pageNumber);
+    if (this.currentSection() === 'search') {
+      this.updatePagedWorksheets(this.pageNumber);
+    } else {
+      this.loadSectionWorksheets();
+    }
   }
 
   nextPage() {
@@ -161,6 +192,8 @@ export class WorksheetListComponent {
   }
 
   private updatePagedWorksheets(page: number): void {
+    // Arama/filtre yapıldığı an section modundan çıkılır.
+    this.currentSection.set('search');
     this.testService
       .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeIds, page, this.pageSize)
       .subscribe((results) => {

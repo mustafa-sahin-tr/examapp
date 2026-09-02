@@ -249,6 +249,66 @@ public class ExamService : IExamService
             .ToListAsync();
     }
 
+    public async Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays)
+    {
+        if (sinceDays <= 0) sinceDays = 30;
+        var since = DateTime.UtcNow.AddDays(-sinceDays);
+
+        // Son zamanlarda öğrenciler tarafından çözülen (instance oluşturulan) worksheet'ler
+        var popularity = await _context.TestInstances
+            .Where(ti => ti.StartTime >= since)
+            .GroupBy(ti => ti.WorksheetId)
+            .Select(g => new
+            {
+                WorksheetId = g.Key,
+                SolveCount = g.Count(),
+                UniqueStudents = g.Select(ti => ti.StudentId).Distinct().Count(),
+                LastSolvedAt = g.Max(ti => ti.StartTime)
+            })
+            .ToListAsync();
+
+        if (popularity.Count == 0)
+            return new List<WorksheetDto>();
+
+        var popMap = popularity.ToDictionary(p => p.WorksheetId);
+        var worksheetIds = popMap.Keys.ToList();
+
+        var worksheetQuery = _context.Worksheets.Where(w => worksheetIds.Contains(w.Id));
+        if (gradeId.HasValue)
+            worksheetQuery = worksheetQuery.Where(w => w.GradeId == gradeId.Value);
+
+        var worksheets = await worksheetQuery
+            .Include(t => t.BookTest)
+            .Include(t => t.WorksheetQuestions)
+            .ToListAsync();
+
+        return worksheets
+            .OrderByDescending(w => popMap[w.Id].SolveCount)
+            .ThenByDescending(w => popMap[w.Id].LastSolvedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(t => new WorksheetDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Description = t.Description,
+                GradeId = t.GradeId,
+                SubjectId = t.SubjectId,
+                TopicId = t.TopicId,
+                SubTopicId = t.SubTopicId,
+                MaxDurationSeconds = t.MaxDurationSeconds,
+                IsPracticeTest = t.IsPracticeTest,
+                Subtitle = t.Subtitle,
+                ImageUrl = t.ImageUrl,
+                BadgeText = t.BadgeText,
+                BookTestId = t.BookTestId,
+                BookId = t.BookTest != null ? t.BookTest.BookId : null,
+                QuestionCount = t.WorksheetQuestions.Count(),
+                InstanceCount = popMap[t.Id].UniqueStudents
+            })
+            .ToList();
+    }
+
     public async Task<List<QuestionDto>> GetExamQuestionsAsync()
     {
         return await _context.Questions

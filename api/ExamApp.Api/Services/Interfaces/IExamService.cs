@@ -14,6 +14,8 @@ public interface IExamService
 
     Task<List<WorksheetDto>> GetLatestWorksheetsAsync(int pageNumber, int pageSize);
 
+    Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays);
+
     Task<List<QuestionDto>> GetExamQuestionsAsync();
 
     Task<WorksheetDto?> GetWorksheetByIdAsync(int id);

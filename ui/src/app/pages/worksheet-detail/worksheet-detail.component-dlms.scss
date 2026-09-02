@@ -540,6 +540,68 @@ h3 {
   }
 }
 
+/* ---------- planla & hatırlat ---------- */
+.plan {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ms-surface-medium);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 11px;
+  padding: 11px 13px;
+
+  .cal {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    background: var(--ms-surface-strong);
+    color: var(--ms-action-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .p-when {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  .p-sub {
+    font-size: 11.5px;
+    color: var(--ms-text-weak);
+  }
+}
+
+.plan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-field {
+  width: 100%;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+
+  .btn.danger {
+    color: var(--ms-danger-text-weak);
+    border-color: var(--ms-danger-border);
+  }
+}
+
 /* ---------- attempts ---------- */
 .attempt {
   display: flex;

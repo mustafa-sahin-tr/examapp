@@ -83,8 +83,23 @@ export interface WorksheetCompletedResult {
   rank: WorksheetRank | null;
 }
 
+export type WorksheetReminderStatus = 'Pending' | 'Sent' | 'Cancelled';
+
+export interface WorksheetReminder {
+  worksheetId: number;
+  scheduledFor: string;
+  remindBeforeMinutes: number;
+  status: WorksheetReminderStatus;
+}
+
+export interface WorksheetReminderRequest {
+  scheduledFor: string;
+  remindBeforeMinutes: number;
+}
+
 export interface WorksheetDetail {
   worksheet: Test;
+  plannedReminder: WorksheetReminder | null;
   stats: WorksheetStats;
   topicBreakdown: WorksheetTopicBreakdown[];
   outcomes: string[];

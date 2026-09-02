@@ -123,6 +123,20 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         await ctx.SaveChangesAsync();
     }
 
+    private async Task AddReminderAsync(int worksheetId, int studentId, WorksheetReminderStatus status)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.WorksheetReminders.Add(new WorksheetReminder
+        {
+            WorksheetId = worksheetId,
+            StudentId = studentId,
+            ScheduledFor = DateTime.UtcNow.AddDays(1),
+            RemindBeforeMinutes = 30,
+            Status = status,
+        });
+        await ctx.SaveChangesAsync();
+    }
+
     private int C(World w, int qId) => w.Ans[qId].correct;
     private int X(World w, int qId) => w.Ans[qId].wrong;
 
@@ -366,6 +380,46 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         dto.CompletedResult.ScorePercent.ShouldBe(50);
         dto.CompletedResult.EmptyCount.ShouldBe(1);
         dto.CompletedResult.WrongCount.ShouldBe(1);
+    }
+
+    // ---- planned reminder ----
+
+    [Fact]
+    public async Task GetWorksheetDetail_StudentWithActiveReminder_PopulatesPlannedReminder()
+    {
+        var w = await SeedAsync();
+        await AddReminderAsync(w.WorksheetId, w.St1, WorksheetReminderStatus.Pending);
+
+        await using var ctx = _db.NewContext();
+        var dto = await AsStudent(ctx, w, w.St1);
+
+        dto!.PlannedReminder.ShouldNotBeNull();
+        dto.PlannedReminder!.RemindBeforeMinutes.ShouldBe(30);
+        dto.PlannedReminder.Status.ShouldBe("Pending");
+    }
+
+    [Fact]
+    public async Task GetWorksheetDetail_StudentWithCancelledReminder_PlannedReminderIsNull()
+    {
+        var w = await SeedAsync();
+        await AddReminderAsync(w.WorksheetId, w.St1, WorksheetReminderStatus.Cancelled);
+
+        await using var ctx = _db.NewContext();
+        var dto = await AsStudent(ctx, w, w.St1);
+
+        dto!.PlannedReminder.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetWorksheetDetail_TeacherRole_PlannedReminderIsNull()
+    {
+        var w = await SeedAsync();
+        await AddReminderAsync(w.WorksheetId, w.St1, WorksheetReminderStatus.Pending);
+
+        await using var ctx = _db.NewContext();
+        var dto = await AsTeacher(ctx, w);
+
+        dto!.PlannedReminder.ShouldBeNull();
     }
 
     [Fact]

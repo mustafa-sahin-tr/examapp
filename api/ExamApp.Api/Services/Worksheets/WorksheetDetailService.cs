@@ -226,6 +226,19 @@ public class WorksheetDetailService : IWorksheetDetailService
                 result.CompletedResult = await BuildCompletedResultAsync(worksheetId, latest, correctMap, topicMap, studentId!.Value, ct);
         }
 
+        // ---- planned reminder (student) ----
+        if (isStudent)
+        {
+            var reminder = await _context.WorksheetReminders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(r => r.WorksheetId == worksheetId
+                    && r.StudentId == studentId!.Value
+                    && r.Status != WorksheetReminderStatus.Cancelled, ct);
+
+            if (reminder != null)
+                result.PlannedReminder = WorksheetReminderService.MapToDto(reminder);
+        }
+
         return result;
     }
 

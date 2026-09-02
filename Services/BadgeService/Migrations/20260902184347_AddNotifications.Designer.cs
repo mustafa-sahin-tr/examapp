@@ -3,6 +3,7 @@ using System;
 using BadgeService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BadgeService.Migrations
 {
     [DbContext(typeof(BadgeDbContext))]
-    partial class BadgeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902184347_AddNotifications")]
+    partial class AddNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -122,9 +125,6 @@ namespace BadgeService.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
-                    b.Property<string>("UserKeycloakId")
-                        .HasColumnType("text");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Type", "SourceReminderId")
@@ -132,8 +132,6 @@ namespace BadgeService.Migrations
                         .HasFilter("\"SourceReminderId\" IS NOT NULL");
 
                     b.HasIndex("UserId", "IsRead", "CreatedAt");
-
-                    b.HasIndex("UserKeycloakId", "IsRead", "CreatedAt");
 
                     b.ToTable("Notifications");
                 });

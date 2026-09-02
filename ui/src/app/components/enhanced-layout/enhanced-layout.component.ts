@@ -18,6 +18,7 @@ import { ThemeConfigService } from '../../services/theme-config.service';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
+import { SignalRService } from '../../services/signalr.service';
 
 interface MenuItem {
   id: string;
@@ -63,6 +64,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
+  private readonly signalR = inject(SignalRService);
   userThemeService = inject(UserThemeService);
   themeConfigService = inject(ThemeConfigService);
   // Search functionality
@@ -143,6 +145,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.signalR.startConnection();
+
     this.breakpointObserver
       .observe([EnhancedLayoutComponent.MOBILE_LAYOUT_QUERY])
       .pipe(takeUntil(this.destroy$))

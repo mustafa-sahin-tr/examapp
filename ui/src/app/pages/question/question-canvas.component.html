@@ -220,8 +220,8 @@
     <aside class="qc-inspector" [class.qc-inspector--hidden]="!showSidePanel()">
       <div class="qc-inspector__head">
         <span>
-          @if (!showQuickCreate() && insRegion) {
-          <span class="qc-badge">S{{ insRegionNo }}</span>
+          @if (!showQuickCreate() && insData; as d) {
+          <span class="qc-badge">S{{ d.no }}</span>
           } @else {
           <span class="qc-dot"></span>
           }
@@ -250,31 +250,36 @@
         </div>
 
         @if (!showQuickCreate()) {
-          @if (!insRegion) {
-          <p class="qc-inspector__hint">
-            Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür.
-          </p>
-          } @else {
+          @if (insData; as d) {
 
           <!-- Etkileşim Tipi -->
           <section class="qc-insp-sec">
             <div class="qc-lbl">Etkileşim Tipi</div>
-            <div class="qc-segmented qc-segmented--full">
-              <button type="button" [class.is-active]="insInteractionType === 'mcq'" (click)="insSetInteractionType('mcq')">Çoktan Seçmeli</button>
-              <button type="button" [class.is-active]="insInteractionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">Sürükle-Bırak</button>
+            <div class="qc-segmented qc-segmented--full" role="group" aria-label="Etkileşim tipi">
+              <button type="button" [class.is-active]="d.interactionType === 'mcq'"
+                [attr.aria-pressed]="d.interactionType === 'mcq'" (click)="insSetInteractionType('mcq')">Çoktan Seçmeli</button>
+              <button type="button" [class.is-active]="d.interactionType === 'dragDropLabeling'"
+                [attr.aria-pressed]="d.interactionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">Sürükle-Bırak</button>
             </div>
           </section>
 
           <!-- Şıklar -->
-          @if (insInteractionType === 'mcq') {
+          @if (d.interactionType === 'mcq') {
           <section class="qc-insp-sec">
             <div class="qc-lbl">Şıklar</div>
             <div class="qc-choices">
-              @for (answer of insRegion.answers; track answer.id; let j = $index) {
-              <button type="button" class="qc-choice" [class.is-correct]="answer.isCorrect" (click)="insSetCorrectAnswer(j)">
-                {{ answer.label }}
-                @if (answer.isCorrect) { <mat-icon>check</mat-icon> }
-              </button>
+              @for (answer of d.answers; track answer.id; let j = $index) {
+              <span class="qc-choice" [class.is-correct]="answer.isCorrect">
+                <button type="button" class="qc-choice__set" [attr.aria-pressed]="answer.isCorrect"
+                  (click)="insSetCorrectAnswer(j)">
+                  {{ answer.label }}
+                  @if (answer.isCorrect) { <mat-icon>check</mat-icon> }
+                </button>
+                <button type="button" class="qc-choice__del" (click)="insRemoveAnswer(j)"
+                  [attr.aria-label]="answer.label + ' şıkkını sil'">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </span>
               } @empty {
               <span class="qc-hint-sm">Henüz şık yok.</span>
               }
@@ -286,7 +291,7 @@
                 <span class="qc-auto-badge">otomatik</span>
               </span>
               } @else {
-              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="insRegion.answers.length < 2" (click)="insAlignAnswers()">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="d.answers.length < 2" (click)="insAlignAnswers()">
                 <mat-icon>format_align_center</mat-icon>Hizala
               </button>
               }
@@ -298,7 +303,7 @@
           }
 
           <!-- Sürükle-Bırak -->
-          @if (insInteractionType === 'dragDropLabeling') {
+          @if (d.interactionType === 'dragDropLabeling') {
           <section class="qc-insp-sec">
             <div class="qc-lbl">Sürükle-Bırak</div>
             <div class="qc-btn-row">
@@ -309,23 +314,31 @@
                 <mat-icon>format_list_numbered</mat-icon>Etiketleri oluştur
               </button>
             </div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!d.dropZones.length" (click)="insRemoveLastZone()">
+                <mat-icon>undo</mat-icon>Son zone
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!d.dropZones.length" (click)="insClearZones()">
+                <mat-icon>delete_sweep</mat-icon>Zone temizle
+              </button>
+            </div>
             <div class="qc-row">
               <span class="qc-lbl">Etiket sayısı</span>
-              <input class="qc-input-sm" type="number" min="1" max="30" [value]="insGetLabelCount()"
-                (change)="insSetLabelCount($any($event.target).value)" />
+              <input class="qc-input-sm" type="number" min="1" max="30" [value]="d.labelCount"
+                (change)="insSetLabelCount($event)" />
             </div>
             <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="insAutoSolution()">
               <mat-icon>auto_fix_high</mat-icon>Auto çözüm
             </button>
             <div class="qc-solution">
-              @for (z of insDropZones(); track z.id) {
+              @for (z of d.dropZones; track z.id) {
               <div class="qc-row">
                 <span class="qc-zone-id">{{ z.id }}</span>
-                <select class="qc-inline-select" [value]="insZoneAssigned(z.id)"
-                  (change)="insSetZoneSolution(z.id, $any($event.target).value)">
+                <select class="qc-inline-select" [value]="d.zoneAssignments[z.id]"
+                  (change)="insSetZoneSolution(z.id, $event)">
                   <option value="0">(boş)</option>
-                  @for (d of insDraggables(); track d.id) {
-                  <option [value]="d.id">{{ d.label }}</option>
+                  @for (dr of d.draggables; track dr.id) {
+                  <option [value]="dr.id">{{ dr.label }}</option>
                   }
                 </select>
               </div>
@@ -342,7 +355,7 @@
               <span class="qc-lbl">Ders</span>
               <select class="qc-inline-select qc-inline-select--block" [ngModel]="insSubjectId"
                 (ngModelChange)="insSubjectId = $event" name="insSubjectId">
-                <option [ngValue]="''">Seçiniz</option>
+                <option [ngValue]="null">Seçiniz</option>
                 @for (s of insSubjects; track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
               </select>
             </div>
@@ -351,7 +364,7 @@
               <span class="qc-lbl">Konu</span>
               <select class="qc-inline-select qc-inline-select--block" [ngModel]="insTopicId"
                 (ngModelChange)="insTopicId = $event" name="insTopicId" [disabled]="!insSubjectId">
-                <option [ngValue]="''">Seçiniz</option>
+                <option [ngValue]="null">Seçiniz</option>
                 @for (t of insTopics; track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
               </select>
             </div>
@@ -360,7 +373,7 @@
               <span class="qc-lbl">Alt Konu</span>
               <select class="qc-inline-select qc-inline-select--block" [ngModel]="insSubtopicId"
                 (ngModelChange)="insSubtopicId = $event" name="insSubtopicId" [disabled]="!insTopicId">
-                <option [ngValue]="''">Seçiniz</option>
+                <option [ngValue]="null">Seçiniz</option>
                 @for (st of insSubtopics; track st.id) { <option [ngValue]="st.id">{{ st.name }}</option> }
               </select>
             </div>
@@ -368,36 +381,38 @@
             <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="askAi()">
               <mat-icon>smart_toy</mat-icon>Yapay Zekâ
             </button>
-            @if (insDifficulty !== null) {
-            <div class="qc-row"><span class="qc-lbl">Zorluk</span><b>{{ insDifficulty }}/10</b></div>
+            @if (d.difficulty !== null) {
+            <div class="qc-row"><span class="qc-lbl">Zorluk</span><b>{{ d.difficulty }}/10</b></div>
             }
           </section>
 
           <!-- Örnek / çözümlü -->
           <section class="qc-insp-sec">
             <div class="qc-row">
-              <button type="button" class="qc-switch" [class.off]="!insIsExample" (click)="insToggleExample()"></button>
+              <button type="button" class="qc-switch" [class.off]="!d.isExample"
+                [attr.aria-pressed]="d.isExample" aria-label="Örnek / çözümlü soru" (click)="insToggleExample()"></button>
               <span>Örnek / çözümlü soru</span>
             </div>
-            @if (insIsExample) {
+            @if (d.isExample) {
             <input class="control qc-input" type="text" placeholder="Doğru cevap / açıklama"
               [ngModel]="insExampleAnswer" (ngModelChange)="insExampleAnswer = $event" name="insExampleAnswer" />
             }
           </section>
 
           <!-- Pasaj -->
-          @if (insPassages.length) {
+          @if (d.passages.length) {
           <section class="qc-insp-sec">
             <div class="qc-lbl">Pasaj</div>
-            <select class="qc-inline-select qc-inline-select--block" [value]="insSelectedPassageId" (change)="insChangePassage($event)">
+            <select class="qc-inline-select qc-inline-select--block" [value]="d.selectedPassageId" (change)="insChangePassage($event)">
               <option value="0">Pasaj seçiniz</option>
-              @for (passage of insPassages; track passage.id) {
+              @for (passage of d.passages; track passage.id) {
               <option [value]="passage.id">Passage {{ passage.id }}</option>
               }
             </select>
-            @if (insSelectedPassageId !== '0') {
+            @if (d.selectedPassageId !== '0') {
             <div class="qc-row">
-              <button type="button" class="qc-switch" [class.off]="!insPassageFirst" (click)="insTogglePassageFirst()"></button>
+              <button type="button" class="qc-switch" [class.off]="!d.passageFirst"
+                [attr.aria-pressed]="d.passageFirst" aria-label="Pasaj önce gösterilsin" (click)="insTogglePassageFirst()"></button>
               <span>Pasaj önce gösterilsin</span>
             </div>
             }
@@ -405,11 +420,11 @@
           }
 
           <!-- Uyarılar -->
-          @if (insWarnings.length) {
+          @if (d.warnings.length) {
           <section class="qc-insp-sec qc-insp-sec--warn">
             <div class="qc-lbl">Uyarılar</div>
             <ul class="qc-warns">
-              @for (w of insWarnings; track w) { <li>{{ w }}</li> }
+              @for (w of d.warnings; track w) { <li>{{ w }}</li> }
             </ul>
             <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDismissWarning($event)">Yoksay</button>
           </section>
@@ -422,6 +437,10 @@
             </button>
           </section>
 
+          } @else {
+          <p class="qc-inspector__hint">
+            Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür.
+          </p>
           }
         }
       </div>

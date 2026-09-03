@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +23,7 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
   private readonly location = inject(Location);
   private readonly snackBar = inject(MatSnackBar);
   private readonly testService = inject(TestService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly returnUrl = signal<string | null>(null);
   readonly returnState = signal<any | null>(null);
@@ -40,8 +42,11 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
     return this.imageSelector?.passages()?.length ?? 0;
   }
 
-  approveAndSave(): void {
-    this.snackBar.open('Sorular onaylandı.', 'Tamam', { duration: 2000 });
+  /**
+   * Önizlemedeki düzenlemeler (doğru cevap, sınıflandırma) `image-selector` içinde anında
+   * persist ediliyor; ayrı bir toplu kaydet endpoint'i yok. Bu yüzden yalnızca önizlemeden çıkar.
+   */
+  exitPreview(): void {
     this.closePreview();
   }
 
@@ -80,10 +85,13 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
 
     this.testId.set(resolvedTestId);
 
-    this.testService.get(resolvedTestId).subscribe({
-      next: (test) => this.testName.set(test?.name ?? test?.subtitle ?? ''),
-      error: () => this.testName.set(''),
-    });
+    this.testService
+      .get(resolvedTestId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (test) => this.testName.set(test?.name ?? test?.subtitle ?? ''),
+        error: () => this.testName.set(''),
+      });
 
     // Ensure ViewChild is ready, then enter preview mode.
     if (!this.imageSelector.previewMode()) {

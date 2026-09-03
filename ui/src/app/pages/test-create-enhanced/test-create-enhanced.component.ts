@@ -58,14 +58,27 @@ export class TestCreateEnhancedComponent implements OnInit {
         next: (res) => {
           this.creatingInline = false;
           this.snackBar.open('Test oluşturuldu.', 'Kapat', { duration: 2000 });
-          this.reloadComponent(res.examId);
+          // NOT: reloadComponent çağırma — parent (onQuickCreated) form senkronunu yönetir,
+          // aksi halde testForm FormGroup yeniden kurulup parent'ın patch'lediği referans uçar.
           this.createdAndContinue.emit(res.examId);
         },
         error: (err) => {
           this.creatingInline = false;
-          this.snackBar.open(err?.error || err?.message || 'Test oluşturulamadı.', 'Kapat', { duration: 3000 });
+          console.error('createAndContinue failed:', err);
+          this.snackBar.open(this.toUserErrorMessage(err), 'Kapat', { duration: 3000 });
         },
       });
+  }
+
+  /** Ham backend hata gövdesini kullanıcıya basmadan okunur mesaja çevirir. */
+  private toUserErrorMessage(err: any): string {
+    if (err?.status >= 500) {
+      return 'Bir hata oluştu, tekrar deneyin.';
+    }
+    if (typeof err?.error === 'string') {
+      return err.error;
+    }
+    return err?.error?.message || err?.message || 'Test oluşturulamadı.';
   }
 
   id!: number | null;

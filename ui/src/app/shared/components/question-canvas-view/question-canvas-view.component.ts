@@ -11,12 +11,11 @@ import {
   ViewChild,
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
-import { SafeHtmlPipe } from '../../../services/safehtml';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-question-canvas-view',
-  imports: [SafeHtmlPipe, MatIconModule],
+  imports: [MatIconModule],
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss',
 })

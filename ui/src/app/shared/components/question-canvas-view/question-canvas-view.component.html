@@ -30,7 +30,7 @@
     @if (correctAnswerVisible) {
       <div class="correct-answer">
         <span class="correct-answer__label">Doğru Cevap</span>
-        <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>
+        <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer"></div>
       </div>
     }
     <button type="button" class="qcv-btn qcv-btn--ghost qcv-btn--sm" (click)="showCorrectAnswer()">

@@ -79,6 +79,11 @@
   --ms-warning-text: #FFF6E0;
   --ms-warning-text-weak: #FFE4A1;
   --ms-warning-text-medium: #FFD262;
+  /* Etkileşim / yükselti token'ları (hardcoded rgba yerine) */
+  --ms-focus-ring: color-mix(in srgb, var(--ms-action-border-focus) 18%, transparent);
+  --ms-shadow-overlay: 0 18px 40px rgb(0 0 0 / 35%);
+  --ms-shadow-menu: 0 14px 34px rgb(0 0 0 / 40%);
+  --ms-border-on-fill: rgb(0 0 0 / 25%);
   --ms-breakpoints-xsmall: 640px;
   --ms-breakpoints-small: 768px;
   --ms-breakpoints-medium: 1024px;

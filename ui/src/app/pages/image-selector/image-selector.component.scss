@@ -1,88 +1,3 @@
-// .container {
-//     text-align: center;
-//     // margin: 20px;
-//   }
-  
-//   button {
-//     margin: 5px;
-//     padding: 5px;
-//     font-size: 14px;
-//     cursor: pointer;
-//     border: none;
-//     border-radius: 5px;
-//     background-color: #007bff;
-//     color: white;
-//   }
-
-//   .question {
-//     background-color: red;
-//   }
-
-//   .answer {
-//     background-color: blue;
-//   }
-
-//   .passage {
-//     background-color: purple;
-//   }
-  
-//   button:disabled {
-//     background-color: #ccc;
-//   }
-  
-//   .canvas-container {
-//     display: flex;
-//     justify-content: center;
-//     margin-top: 20px;
-//   }
-  
-//   canvas {
-//     border: 2px solid #ddd;
-//     cursor: crosshair;
-//   }
-  
-//   .regions-list {
-//     margin-top: 20px;
-//     text-align: left;
-//     // max-width: 500px;
-//     // margin-left: auto;
-//     // margin-right: auto;
-//     background: #f9f9f9;
-//     padding: 10px;
-//     border-radius: 8px;
-//   }
-  
-//   ul {
-//     list-style: none;
-//     padding: 0;
-//   }
-  
-//   li {
-//     padding: 5px;
-//     font-size: 14px;
-//     border-bottom: 1px solid #ddd;
-//   }
-
-//   .regions ul {
-//     display: flex;
-//     flex-wrap: wrap; // Elemanlar sığmazsa alt satıra geçer
-//     gap: 10px; // Elemanlar arasına boşluk ekler
-//     list-style: none; // Liste işaretlerini kaldırır
-//     padding: 0; // Varsayılan padding'i kaldırır
-    
-//   }
-  
-//   .regions li {
-//     display: flex;
-//     align-items: center; // Dikeyde hizalama
-//     gap: 5px; // İçerideki öğeler arasına boşluk ekler
-//   }
-
-//   .choice-btn {
-//     min-width: 50px;
-//     min-height: 30px;
-//   }
-
 :host {
 	font-family: var(--paragraphFontFamily);
 	color: var(--ms-text);
@@ -90,77 +5,6 @@
 
 .container {
 	color: var(--ms-text);
-}
-
-.ms-panel-toggle {
-	margin: 8px 0;
-}
-
-.regions-list {
-	margin-top: 12px;
-	text-align: left;
-	background: var(--ms-surface-weak);
-	border: 1px solid var(--ms-border-weak);
-	border-radius: 16px;
-	padding: 22px;
-
-	h3 {
-		display: flex;
-		align-items: center;
-		gap: 9px;
-		margin: 0 0 14px;
-		font-family: var(--mainFontFamily);
-		font-size: 14px;
-		font-weight: 800;
-		color: var(--ms-text-strong);
-	}
-
-	label {
-		font-size: 11.5px;
-		font-weight: 600;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--ms-text-weak);
-	}
-
-	select,
-	input {
-		background: var(--ms-surface-medium);
-		border: 1px solid var(--ms-border-weak);
-		border-radius: 10px;
-		color: var(--ms-text-strong);
-		font-family: var(--paragraphFontFamily);
-		min-height: 34px;
-		padding: 0 10px;
-
-		&:focus {
-			outline: none;
-			border-color: var(--ms-action-border-focus);
-			box-shadow: 0 0 0 3px rgba(56, 149, 255, 0.18);
-		}
-	}
-
-	button {
-		background: transparent;
-		border: 1px solid var(--ms-border-strong);
-		border-radius: 10px;
-		color: var(--ms-text-strong);
-		font-family: var(--mainFontFamily);
-		font-weight: 700;
-		font-size: 12.5px;
-		padding: 7px 12px;
-		cursor: pointer;
-
-		&:disabled {
-			opacity: 0.5;
-			cursor: default;
-		}
-	}
-
-	.choice-btn {
-		min-width: 46px;
-		background: var(--ms-surface-medium);
-	}
 }
 
 .ins-dot {
@@ -185,7 +29,7 @@
 	background: var(--ms-surface-strong);
 	border: 1px solid var(--ms-border-weak);
 	border-radius: 12px;
-	box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+	box-shadow: var(--ms-shadow-menu);
 	color: var(--ms-text);
 
 	button {

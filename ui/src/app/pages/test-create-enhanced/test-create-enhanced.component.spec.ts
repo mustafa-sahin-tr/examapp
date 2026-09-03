@@ -141,6 +141,74 @@ describe('TestCreateEnhancedComponent', () => {
     });
   });
 
+  describe('isMiniform', () => {
+    it('isMiniform_ModeIsMiniform_ReturnsTrue', () => {
+      const c = configure(null).componentInstance;
+      c.mode = 'miniform';
+      expect(c.isMiniform).toBeTrue();
+    });
+
+    it('isMiniform_DefaultMode_ReturnsFalse', () => {
+      expect(configure(null).componentInstance.isMiniform).toBeFalse();
+    });
+  });
+
+  describe('createAndContinue', () => {
+    it('createAndContinue_ValidForm_CallsOnCreateAsyncWithoutSubtopicRequirement', () => {
+      const c = configure(null).componentInstance;
+      const spy = spyOn(c, 'onCreateAsync').and.returnValue(of({ message: 'ok', examId: 42 }));
+      spyOn(c, 'reloadComponent').and.stub();
+
+      c.createAndContinue();
+
+      expect(spy).toHaveBeenCalledOnceWith(false);
+    });
+
+    it('createAndContinue_EmitsCreatedAndContinueWithExamId', () => {
+      const c = configure(null).componentInstance;
+      spyOn(c, 'onCreateAsync').and.returnValue(of({ message: 'ok', examId: 42 }));
+      spyOn(c, 'reloadComponent').and.stub();
+      const emitted = jasmine.createSpy('createdAndContinue');
+      c.createdAndContinue.subscribe(emitted);
+
+      c.createAndContinue();
+
+      expect(emitted).toHaveBeenCalledWith(42);
+    });
+
+    it('createAndContinue_AlreadyCreatingInline_DoesNotCallOnCreateAsyncAgain', () => {
+      const c = configure(null).componentInstance;
+      const spy = spyOn(c, 'onCreateAsync').and.returnValue(of({ message: 'ok', examId: 42 }));
+      c.creatingInline = true;
+
+      c.createAndContinue();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onCreateAsync', () => {
+    it('onCreateAsync_RequireSubtopicDefaultAndMissingSubtopic_ErrorsWithoutCallingCreate', () => {
+      const c = configure(null).componentInstance;
+      c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1, subtopicId: null });
+
+      let errored = false;
+      c.onCreateAsync().subscribe({ error: () => (errored = true) });
+
+      expect(errored).toBeTrue();
+      expect(testService.create).not.toHaveBeenCalled();
+    });
+
+    it('onCreateAsync_RequireSubtopicFalse_CallsCreateEvenWithoutSubtopic', () => {
+      const c = configure(null).componentInstance;
+      c.testForm.patchValue({ name: 'Yeni Test', gradeId: 1, subtopicId: null });
+
+      c.onCreateAsync(false).subscribe();
+
+      expect(testService.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('onImageSelected', () => {
     it('rejects files larger than 2MB and does not upload', () => {
       const c = configure('5').componentInstance;

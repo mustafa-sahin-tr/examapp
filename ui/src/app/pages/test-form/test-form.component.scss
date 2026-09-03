@@ -124,7 +124,7 @@
   &:focus {
     outline: none;
     border-color: var(--ms-action-border-focus);
-    box-shadow: 0 0 0 3px rgba(56, 149, 255, 0.18);
+    box-shadow: 0 0 0 3px var(--ms-focus-ring);
   }
 }
 
@@ -177,7 +177,7 @@ textarea.control.area {
 
   &:focus-within {
     border-color: var(--ms-action-border-focus);
-    box-shadow: 0 0 0 3px rgba(56, 149, 255, 0.18);
+    box-shadow: 0 0 0 3px var(--ms-focus-ring);
   }
 }
 

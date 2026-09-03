@@ -56,6 +56,22 @@ describe('TestFormComponent', () => {
     expect(applyToAllButtons().length).toBeGreaterThan(0);
   });
 
+  describe('compact input', () => {
+    it('compact_DefaultsToFalse_RendersFullForm', () => {
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(By.css('form.tf'));
+      expect(component.compact).toBeFalse();
+      expect(form.nativeElement.classList.contains('compact')).toBeFalse();
+    });
+
+    it('compact_WhenTrue_AddsCompactClassToForm', () => {
+      component.compact = true;
+      fixture.detectChanges();
+      const form = fixture.debugElement.query(By.css('form.tf'));
+      expect(form.nativeElement.classList.contains('compact')).toBeTrue();
+    });
+  });
+
   it('cannot emit applySubjectToAll while the trigger is hidden', () => {
     component.showApplyToAll = false;
     fixture.detectChanges();

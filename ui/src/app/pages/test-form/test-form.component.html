@@ -1,4 +1,50 @@
-<form class="tf" [formGroup]="form" (ngSubmit)="onSubmit.emit()">
+<form class="tf" [class.compact]="compact" [formGroup]="form" (ngSubmit)="onSubmit.emit()">
+  <!-- KOMPAKT VARYANT -->
+  <ng-container *ngIf="compact; else fullForm">
+    <div class="field">
+      <label>Test Adı<span class="req">*</span></label>
+      <input class="control" type="text" formControlName="name" placeholder="Örn. Zamanı Ölçme Değerlendirme" />
+    </div>
+
+    <div class="field">
+      <label>Alt Başlık<span class="req">*</span></label>
+      <input class="control" type="text" formControlName="subtitle" placeholder="Örn. 5. Sınıfa Geçenler İçin" />
+    </div>
+
+    <div class="settings-row">
+      <div class="field dur">
+        <label>Sınıf<span class="req">*</span></label>
+        <div class="control select">
+          <select formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
+            <option [ngValue]="null">Seçiniz</option>
+            <option *ngFor="let grade of grades" [ngValue]="grade.id">{{ grade.name }}</option>
+          </select>
+          <mat-icon class="chev">expand_more</mat-icon>
+        </div>
+      </div>
+
+      <div class="field dur">
+        <label>Süre (dakika)<span class="req">*</span></label>
+        <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <button
+        type="button"
+        class="switch"
+        [class.off]="!value('isPracticeTest')"
+        [attr.aria-pressed]="!!value('isPracticeTest')"
+        (click)="togglePractice()"
+      ></button>
+      <div>
+        <div class="t-label">Çalışma testi</div>
+        <div class="t-sub">Açıkken puana ve sıralamaya sayılmaz.</div>
+      </div>
+    </div>
+  </ng-container>
+
+  <ng-template #fullForm>
   <!-- KÜNYE -->
   <section class="card">
     <h3><span class="dot"></span>Künye</h3>
@@ -181,4 +227,5 @@
     </button>
     <button type="button" class="btn btn-ghost" (click)="onCancel.emit()">İptal</button>
   </div>
+  </ng-template>
 </form>

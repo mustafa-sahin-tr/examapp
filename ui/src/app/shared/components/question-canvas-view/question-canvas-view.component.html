@@ -4,34 +4,37 @@
 </div>
 
 @if (isPreviewMode) {
-  <div class="preview-actions" style="margin-top: 10px; display: flex; gap: 10px; justify-content: center">
-    <button mat-raised-button color="warn" (click)="removeQuestion()">
-      <mat-icon>delete</mat-icon>
-      Soruyu Testten Çıkar
+  <div class="qcv-actions">
+    <div class="qcv-zoom" role="group" aria-label="Yakınlaştırma">
+      <button type="button" class="qcv-zoom__btn" (click)="shrinkImage()" aria-label="Küçült (-5%)">
+        <mat-icon>remove</mat-icon>
+      </button>
+      <span class="qcv-zoom__val">%{{ zoomPercent }}</span>
+      <button type="button" class="qcv-zoom__btn" (click)="enlargeImage()" aria-label="Büyüt (+5%)">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    <button type="button" class="qcv-btn qcv-btn--primary" (click)="applyClassificationToQuestion()">
+      <mat-icon>check</mat-icon>Uygula
     </button>
-    <button mat-raised-button color="primary" (click)="applyClassificationToQuestion()">
-      <mat-icon>check</mat-icon>
-      Uygula
-    </button>
-    <button mat-raised-button (click)="shrinkImage()" aria-label="Küçült (-5%)">
-      <mat-icon>zoom_out</mat-icon>
-      Küçült (-5%)
-    </button>
-    <button mat-raised-button (click)="enlargeImage()" aria-label="Büyüt (+5%)">
-      <mat-icon>zoom_in</mat-icon>
-      Büyüt (+5%)
+
+    <button type="button" class="qcv-btn qcv-btn--danger" (click)="removeQuestion()">
+      <mat-icon>delete</mat-icon>Soruyu Testten Çıkar
     </button>
   </div>
 }
 
-<div>
+<div class="qcv-result">
   @if (_questionRegion() && _questionRegion().isExample) {
     @if (correctAnswerVisible) {
       <div class="correct-answer">
-        Doğru Cevap:
+        <span class="correct-answer__label">Doğru Cevap</span>
         <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer | safeHtml"></div>
       </div>
     }
-    <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+    <button type="button" class="qcv-btn qcv-btn--ghost qcv-btn--sm" (click)="showCorrectAnswer()">
+      Sonucu Gör
+    </button>
   }
 </div>

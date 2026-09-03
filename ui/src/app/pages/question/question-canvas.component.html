@@ -1,136 +1,430 @@
-<div>
-  <div class="form-container ta-left">
-    <div class="form-column" [class.hidden-panel]="!showSidePanel()" [attr.aria-hidden]="!showSidePanel()">
-      <app-test-create-enhanced [mode]="'miniform'"></app-test-create-enhanced>
+<div class="qc" [class.qc--fullscreen]="fullScreen()">
+  <!-- 1. ÜST BAĞLAM ÇUBUĞU -->
+  <header class="qc-topbar">
+    <div class="qc-brand">
+      <span class="qc-brand__chip"><mat-icon>note_add</mat-icon></span>
+      <span class="qc-brand__title">Soru Ekle</span>
     </div>
-    <div class="form-column-4" [class.centered]="!showSidePanel()">
-      <form [formGroup]="questionForm" (ngSubmit)="onSubmit()">
-        <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center" class="flex-row">
-          <button mat-stroked-button color="primary" class="upload-btn" (click)="fileInput.click()" type="button">
-            <mat-icon>cloud_upload</mat-icon>
-            <span>Yükle</span>
-          </button>
-          <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
 
-          <button mat-stroked-button color="primary" class="upload-btn" (click)="folderInput.click()" type="button">
-            <mat-icon>folder_open</mat-icon>
-            <span>Klasör Yükle</span>
-          </button>
-          <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory
-            hidden />
+    <nav class="qc-breadcrumb" [formGroup]="questionForm">
+      <button type="button" class="qc-crumb" [matMenuTriggerFor]="bookMenu">
+        <mat-icon>menu_book</mat-icon>
+        <span>{{ selectedBookLabel() }}</span>
+        <mat-icon class="qc-crumb__caret">expand_more</mat-icon>
+      </button>
+      <mat-menu #bookMenu="matMenu">
+        @for (book of booksSignal(); track book.id) {
+        <button mat-menu-item type="button" (click)="selectBook(book.id)">{{ book.name }}</button>
+        }
+      </mat-menu>
 
-          <div class="select-wrapper">
-            <label for="subject">Kitap</label>
-            <select id="subject" formControlName="bookId" required class="select-style-1">
-              @for (book of booksSignal(); track book.id) {
-              <option [value]="book.id">{{ book.name }}</option>
-              }
-            </select>
-            <span class="select-icon">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                  d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z">
-                </path>
-              </svg>
-            </span>
-          </div>
+      <mat-icon class="qc-breadcrumb__sep">chevron_right</mat-icon>
 
-          <div class="select-wrapper">
-            <label for="subject">Kitap Testi</label>
-            <select id="subject" formControlName="bookTestId" required class="select-style-1">
-              @for (bt of bookTestsSignal(); track bt.id) {
-              <option [value]="bt.id">{{ bt.name }}</option>
-              }
-            </select>
-            <span class="select-icon">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                  d="m11.646 15.056-4.292-4.292a.5.5 0 0 1 0-.707l.703-.704a.5.5 0 0 1 .707 0L12 12.58l3.236-3.227a.5.5 0 0 1 .707 0l.703.704a.5.5 0 0 1 0 .707l-4.292 4.293a.5.5 0 0 1-.708 0Z">
-                </path>
-              </svg>
-            </span>
-          </div>
-          <label for="subject">Test</label>
+      <button type="button" class="qc-crumb" [matMenuTriggerFor]="bookTestMenu" [disabled]="!bookIdSignal()">
+        <span>{{ selectedBookTestLabel() }}</span>
+        <mat-icon class="qc-crumb__caret">expand_more</mat-icon>
+      </button>
+      <mat-menu #bookTestMenu="matMenu">
+        @for (bt of bookTestsSignal(); track bt.id) {
+        <button mat-menu-item type="button" (click)="selectBookTest(bt.id)">{{ bt.name }}</button>
+        }
+      </mat-menu>
 
-          <div class="search-box" style="max-width: 450px" (focusin)="onFocus()" (focusout)="onBlur()">
-            <mat-icon class="search-icon">search</mat-icon>
-            <input matInput formControlName="testId" class="fill-available" style="max-width: 400px"
-              placeholder="Test Seç ..." />
+      <mat-icon class="qc-breadcrumb__sep">chevron_right</mat-icon>
 
-            <div class="ms-search-dropdown" *ngIf="filteredTestListSignal().length && dropdownVisible()">
-              <ul class="ms-dropdown-list">
-                <li *ngFor="let worksheet of filteredTestListSignal()" (click)="onOptionSelected(worksheet)"
-                  class="ms-dropdown-item">
-                  <div class="ms-item-content">
-                    <span class="ms-item-text">{{ worksheet.name }} - {{ worksheet.subtitle }} </span>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <!-- <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
-      Auto Play
-    </mat-slide-toggle> -->
-
-          <div class="button-group ml-auto">
-            <button mat-raised-button color="primary" (click)="sendToFix()" class="full-width" type="button">
-              Eğit
-            </button>
-            <button mat-raised-button color="primary" (click)="onSaveAndNew()" class="full-width" type="button">
-              Kaydet
-            </button>
-            <button mat-raised-button color="primary" (click)="onSaveAndFix()" class="full-width" type="button">
-              Kaydet ve Düzelt
-            </button>
-            <button mat-raised-button color="primary" (click)="sendToWorkPages()" class="full-width" type="button">
-              Çalışma Sayfasına Gönder
-            </button>
-
-            <button mat-icon-button [matMenuTriggerFor]="actionMenu" aria-label="Open actions" type="button">
-              <mat-icon>more_vert</mat-icon>
-            </button>
-
-            <mat-menu #actionMenu="matMenu">
-              <button mat-menu-item (click)="togglePreviewMode()" type="button">
-                <mat-icon>visibility</mat-icon>
-                <span>Ön İzleme</span>
-              </button>
-              <button mat-menu-item (click)="showSidePanel.set(!showSidePanel())" type="button">
-                <mat-icon>{{ showSidePanel() ? 'view_sidebar' : 'view_sidebar' }}</mat-icon>
-                <span>{{ showSidePanel() ? 'Paneli Gizle' : 'Paneli Göster' }}</span>
-              </button>
-              <div mat-menu-item (click)="$event.stopPropagation()">
-                <mat-slide-toggle class="example-margin" [checked]="autoMode()" (change)="setAutoMode($event.checked)">
-                  Auto Play
-                </mat-slide-toggle>
-              </div>
-              <div mat-menu-item (click)="$event.stopPropagation()">
-                <mat-slide-toggle class="example-margin" [checked]="autoAlign()"
-                  (change)="setAutoAlign($event.checked)">
-                  Hizalama
-                </mat-slide-toggle>
-              </div>
-              <button mat-menu-item (click)="downloadRegionsLite()">
-                <mat-icon>file_download</mat-icon>
-                <span>İndir</span>
-              </button>
-              Şık Sayısı
-              <select (change)="onChangeQuestionCount($event)" (click)="$event.stopPropagation()">
-                <option [value]="3">3</option>
-                <option [value]="4">4</option>
-                <option [value]="5">5</option>
-              </select>
-            </mat-menu>
-
-            <button mat-icon-button aria-label="Enter Fullscreen" (click)="setFullScreen(!fullScreen())">
-              <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
-            </button>
-          </div>
+      <button type="button" class="qc-crumb qc-crumb--test" [matMenuTriggerFor]="testMenu">
+        <mat-icon>assignment</mat-icon>
+        <span>{{ selectedTestLabel }}</span>
+        <mat-icon class="qc-crumb__caret">expand_more</mat-icon>
+      </button>
+      <mat-menu #testMenu="matMenu" class="qc-test-menu">
+        <div class="qc-test-search" (click)="$event.stopPropagation()">
+          <mat-icon>search</mat-icon>
+          <input formControlName="testId" placeholder="Test ara…" (keydown)="$event.stopPropagation()" />
         </div>
-      </form>
+        <button mat-menu-item type="button" (click)="openQuickCreate()">
+          <mat-icon>add</mat-icon><span>Yeni test oluştur</span>
+        </button>
+        <mat-divider></mat-divider>
+        @for (worksheet of filteredTestListSignal(); track worksheet.id) {
+        <button mat-menu-item type="button" (click)="onOptionSelected(worksheet)">
+          {{ worksheet.name }} — {{ worksheet.subtitle }}
+        </button>
+        } @empty {
+        <div class="qc-menu-empty">Sonuç yok</div>
+        }
+      </mat-menu>
+    </nav>
 
-      <app-image-selector [previewMetaProvider]="previewMetaProvider"
-        (previewQuestionChange)="onPreviewQuestionChange($event)"></app-image-selector>
+    <div class="qc-topbar__actions">
+      <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">Eğit</button>
+
+      <div class="qc-split">
+        <button type="button" class="qc-split__main qc-btn qc-btn--primary" (click)="onSaveAndNew()">Kaydet</button>
+        <button type="button" class="qc-split__caret qc-btn qc-btn--primary" [matMenuTriggerFor]="saveMenu">
+          <mat-icon>arrow_drop_down</mat-icon>
+        </button>
+      </div>
+      <mat-menu #saveMenu="matMenu">
+        <button mat-menu-item type="button" (click)="onSaveAndFix()">
+          <mat-icon>build</mat-icon><span>Kaydet ve Düzelt</span>
+        </button>
+        <button mat-menu-item type="button" (click)="sendToWorkPages()">
+          <mat-icon>send</mat-icon><span>Çalışma Sayfasına Gönder</span>
+        </button>
+        <button mat-menu-item type="button" (click)="sendToFix()">
+          <mat-icon>model_training</mat-icon><span>Sadece modeli eğit</span>
+        </button>
+      </mat-menu>
+
     </div>
+  </header>
+
+  @if (previewOn) {
+  <div class="qc-preview-bar">
+    <button type="button" class="qc-btn qc-btn--ghost" (click)="exitPreview()">
+      <mat-icon>arrow_back</mat-icon>Tuvale dön
+    </button>
+    <span class="qc-preview-bar__title">Ön İzleme</span>
+  </div>
+  }
+
+  <div class="qc-body" [class.qc-body--preview]="previewOn">
+    <!-- 2. SOL RAY -->
+    <aside class="qc-rail">
+      <div class="qc-rail__head"><span class="qc-dot"></span>Sayfalar</div>
+
+      <div class="qc-rail__actions">
+        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="fileInput.click()">
+          <mat-icon>file_upload</mat-icon>İçe Aktar
+        </button>
+        <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
+        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="folderInput.click()">
+          <mat-icon>folder_open</mat-icon>Klasör Yükle
+        </button>
+        <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory hidden />
+        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerPredict()">
+          <mat-icon>smart_toy</mat-icon>Otomatik Algıla
+        </button>
+        <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerAlign()">
+          <mat-icon>format_align_center</mat-icon>Hizala
+        </button>
+      </div>
+
+      <div class="qc-filmstrip">
+        @for (page of pageFiles; track $index) {
+        <button type="button" class="qc-thumb" [class.qc-thumb--active]="$index === currentPageIndex"
+          (click)="goToPage(($index + 1) + '')">
+          <span class="qc-thumb__box"><mat-icon>description</mat-icon></span>
+          <span class="qc-thumb__label">{{ $index + 1 }}. {{ page.name }}</span>
+        </button>
+        } @empty {
+        <p class="qc-rail__empty">Henüz sayfa yok.</p>
+        }
+      </div>
+    </aside>
+
+    <!-- 3. MERKEZ TUVAL -->
+    <main class="qc-canvas">
+      @if (pageFiles.length === 0) {
+      <div class="qc-dropzone" (click)="fileInput.click()">
+        <mat-icon>cloud_upload</mat-icon>
+        <div class="qc-dropzone__title">Taranmış sayfaları buraya sürükle</div>
+        <div class="qc-dropzone__actions">
+          <button type="button" class="qc-btn qc-btn--primary" (click)="fileInput.click(); $event.stopPropagation()">Dosya Seç</button>
+          <button type="button" class="qc-btn qc-btn--ghost" (click)="folderInput.click(); $event.stopPropagation()">Klasör Yükle</button>
+        </div>
+        <div class="qc-dropzone__note">Klasör adından kitap adı otomatik doldurulur.</div>
+      </div>
+      }
+
+      <div class="qc-canvas__toolbar" [class.qc-hidden]="(pageFiles.length === 0 && !canPreview) || previewOn"
+        [class.qc-canvas__toolbar--slim]="pageFiles.length === 0">
+        @if (pageFiles.length > 0) {
+        <div class="qc-segmented">
+          <button type="button" [class.is-active]="selectionMode === 'question'" (click)="setSelectionMode('question')">Soru</button>
+          <button type="button" [class.is-active]="selectionMode === 'answer'" (click)="setSelectionMode('answer')">Şık</button>
+          <button type="button" [class.is-active]="selectionMode === 'passage'" (click)="setSelectionMode('passage')">Pasaj</button>
+          <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">Sürükle-Bırak</button>
+        </div>
+        }
+        <div class="qc-canvas__toolbar-right">
+          @if (pageFiles.length > 0) {
+          <span class="qc-count" role="group" aria-label="Şık sayısı">
+            <span class="qc-count__label">Şık</span>
+            <span class="qc-count__seg">
+              <button type="button" [class.is-active]="answerCount === 3" (click)="setAnswerCount(3)">3</button>
+              <button type="button" [class.is-active]="answerCount === 4" (click)="setAnswerCount(4)">4</button>
+              <button type="button" [class.is-active]="answerCount === 5" (click)="setAnswerCount(5)">5</button>
+            </span>
+          </span>
+
+          <span class="qc-tool-sep"></span>
+
+          <button type="button" class="qc-icon-btn" [class.is-active]="autoModeOn"
+            (click)="setAutoMode(!autoModeOn)" title="Otomatik ilerle (kaydettikçe)" aria-label="Otomatik ilerle">
+            <mat-icon>skip_next</mat-icon>
+          </button>
+          <button type="button" class="qc-icon-btn" [class.is-active]="autoAlignOn"
+            (click)="setAutoAlign(!autoAlignOn)" title="Otomatik hizalama" aria-label="Otomatik hizalama">
+            <mat-icon>format_align_center</mat-icon>
+          </button>
+          }
+          <button type="button" class="qc-icon-btn" [class.is-active]="showSidePanel()"
+            (click)="toggleInspector()" [title]="showSidePanel() ? 'Müfettişi gizle' : 'Müfettişi göster'"
+            aria-label="Müfettişi gizle/göster">
+            <mat-icon>view_sidebar</mat-icon>
+          </button>
+          @if (pageFiles.length > 0) {
+          <button type="button" class="qc-icon-btn" (click)="downloadRegionsLite()"
+            title="Bölgeleri indir (JSON)" aria-label="Bölgeleri indir">
+            <mat-icon>file_download</mat-icon>
+          </button>
+          }
+
+          <span class="qc-tool-sep"></span>
+
+          <button type="button" class="qc-icon-btn" (click)="togglePreviewMode()" [disabled]="!canPreview"
+            title="Ön izleme" aria-label="Ön izleme">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button type="button" class="qc-icon-btn" (click)="setFullScreen(!fullScreen())"
+            [title]="fullScreen() ? 'Tam ekrandan çık' : 'Tam ekran'" aria-label="Tam ekran">
+            <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="qc-canvas__stage">
+        <app-image-selector [previewMetaProvider]="previewMetaProvider"
+          (previewQuestionChange)="onPreviewQuestionChange($event)"
+          (selectedQuestionChange)="onInspectorQuestionChange($event)"></app-image-selector>
+      </div>
+
+      @if (pageFiles.length > 1 && !previewOn) {
+      <div class="qc-pagejump">
+        <button type="button" class="qc-icon-btn" (click)="previousImage()" aria-label="Önceki sayfa">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <input #pageJump type="number" min="1" [max]="pageFiles.length"
+          [value]="currentPageIndex + 1" (keydown.enter)="goToPage(pageJump.value)" />
+        <span>/ {{ pageFiles.length }}</span>
+        <button type="button" class="qc-icon-btn" (click)="nextImage()" aria-label="Sonraki sayfa">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+      }
+    </main>
+
+    <!-- 4. SAĞ MÜFETTİŞ -->
+    <aside class="qc-inspector" [class.qc-inspector--hidden]="!showSidePanel()">
+      <div class="qc-inspector__head">
+        <span>
+          @if (!showQuickCreate() && insRegion) {
+          <span class="qc-badge">S{{ insRegionNo }}</span>
+          } @else {
+          <span class="qc-dot"></span>
+          }
+          {{ showQuickCreate() ? 'Yeni Test Oluştur' : 'Soru Müfettişi' }}
+        </span>
+        <span class="qc-inspector__nav">
+          @if (showQuickCreate()) {
+          <button type="button" class="qc-icon-btn" (click)="showQuickCreate.set(false)" aria-label="Kapat">
+            <mat-icon>close</mat-icon>
+          </button>
+          } @else {
+          <button type="button" class="qc-icon-btn" (click)="insSelectPrevious()" aria-label="Önceki soru">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button type="button" class="qc-icon-btn" (click)="insSelectNext()" aria-label="Sonraki soru">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+          }
+        </span>
+      </div>
+
+      <div class="qc-inspector__body">
+        <!-- Hızlı test oluştur -->
+        <div class="qc-quickcreate" [class.qc-hidden]="!showQuickCreate()">
+          <app-test-create-enhanced [mode]="'miniform'" (createdAndContinue)="onQuickCreated($event)"></app-test-create-enhanced>
+        </div>
+
+        @if (!showQuickCreate()) {
+          @if (!insRegion) {
+          <p class="qc-inspector__hint">
+            Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür.
+          </p>
+          } @else {
+
+          <!-- Etkileşim Tipi -->
+          <section class="qc-insp-sec">
+            <div class="qc-lbl">Etkileşim Tipi</div>
+            <div class="qc-segmented qc-segmented--full">
+              <button type="button" [class.is-active]="insInteractionType === 'mcq'" (click)="insSetInteractionType('mcq')">Çoktan Seçmeli</button>
+              <button type="button" [class.is-active]="insInteractionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">Sürükle-Bırak</button>
+            </div>
+          </section>
+
+          <!-- Şıklar -->
+          @if (insInteractionType === 'mcq') {
+          <section class="qc-insp-sec">
+            <div class="qc-lbl">Şıklar</div>
+            <div class="qc-choices">
+              @for (answer of insRegion.answers; track answer.id; let j = $index) {
+              <button type="button" class="qc-choice" [class.is-correct]="answer.isCorrect" (click)="insSetCorrectAnswer(j)">
+                {{ answer.label }}
+                @if (answer.isCorrect) { <mat-icon>check</mat-icon> }
+              </button>
+              } @empty {
+              <span class="qc-hint-sm">Henüz şık yok.</span>
+              }
+            </div>
+            <div class="qc-btn-row">
+              @if (autoAlignOn) {
+              <span class="qc-btn qc-btn--ghost qc-btn--sm is-auto" aria-disabled="true">
+                <mat-icon>format_align_center</mat-icon>Hizala
+                <span class="qc-auto-badge">otomatik</span>
+              </span>
+              } @else {
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="insRegion.answers.length < 2" (click)="insAlignAnswers()">
+                <mat-icon>format_align_center</mat-icon>Hizala
+              </button>
+              }
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDrawAnswerMode()">
+                <mat-icon>crop_square</mat-icon>Şık çiz
+              </button>
+            </div>
+          </section>
+          }
+
+          <!-- Sürükle-Bırak -->
+          @if (insInteractionType === 'dragDropLabeling') {
+          <section class="qc-insp-sec">
+            <div class="qc-lbl">Sürükle-Bırak</div>
+            <div class="qc-btn-row">
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDropZoneMode()">
+                <mat-icon>select_all</mat-icon>Zone çiz
+              </button>
+              <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insGenerateDraggables()">
+                <mat-icon>format_list_numbered</mat-icon>Etiketleri oluştur
+              </button>
+            </div>
+            <div class="qc-row">
+              <span class="qc-lbl">Etiket sayısı</span>
+              <input class="qc-input-sm" type="number" min="1" max="30" [value]="insGetLabelCount()"
+                (change)="insSetLabelCount($any($event.target).value)" />
+            </div>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="insAutoSolution()">
+              <mat-icon>auto_fix_high</mat-icon>Auto çözüm
+            </button>
+            <div class="qc-solution">
+              @for (z of insDropZones(); track z.id) {
+              <div class="qc-row">
+                <span class="qc-zone-id">{{ z.id }}</span>
+                <select class="qc-inline-select" [value]="insZoneAssigned(z.id)"
+                  (change)="insSetZoneSolution(z.id, $any($event.target).value)">
+                  <option value="0">(boş)</option>
+                  @for (d of insDraggables(); track d.id) {
+                  <option [value]="d.id">{{ d.label }}</option>
+                  }
+                </select>
+              </div>
+              }
+            </div>
+          </section>
+          }
+
+          <!-- Sınıflandırma -->
+          <section class="qc-insp-sec">
+            <div class="qc-lbl">Sınıflandırma</div>
+
+            <div class="qc-field">
+              <span class="qc-lbl">Ders</span>
+              <select class="qc-inline-select qc-inline-select--block" [ngModel]="insSubjectId"
+                (ngModelChange)="insSubjectId = $event" name="insSubjectId">
+                <option [ngValue]="''">Seçiniz</option>
+                @for (s of insSubjects; track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
+              </select>
+            </div>
+
+            <div class="qc-field">
+              <span class="qc-lbl">Konu</span>
+              <select class="qc-inline-select qc-inline-select--block" [ngModel]="insTopicId"
+                (ngModelChange)="insTopicId = $event" name="insTopicId" [disabled]="!insSubjectId">
+                <option [ngValue]="''">Seçiniz</option>
+                @for (t of insTopics; track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
+              </select>
+            </div>
+
+            <div class="qc-field">
+              <span class="qc-lbl">Alt Konu</span>
+              <select class="qc-inline-select qc-inline-select--block" [ngModel]="insSubtopicId"
+                (ngModelChange)="insSubtopicId = $event" name="insSubtopicId" [disabled]="!insTopicId">
+                <option [ngValue]="''">Seçiniz</option>
+                @for (st of insSubtopics; track st.id) { <option [ngValue]="st.id">{{ st.name }}</option> }
+              </select>
+            </div>
+
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="askAi()">
+              <mat-icon>smart_toy</mat-icon>Yapay Zekâ
+            </button>
+            @if (insDifficulty !== null) {
+            <div class="qc-row"><span class="qc-lbl">Zorluk</span><b>{{ insDifficulty }}/10</b></div>
+            }
+          </section>
+
+          <!-- Örnek / çözümlü -->
+          <section class="qc-insp-sec">
+            <div class="qc-row">
+              <button type="button" class="qc-switch" [class.off]="!insIsExample" (click)="insToggleExample()"></button>
+              <span>Örnek / çözümlü soru</span>
+            </div>
+            @if (insIsExample) {
+            <input class="control qc-input" type="text" placeholder="Doğru cevap / açıklama"
+              [ngModel]="insExampleAnswer" (ngModelChange)="insExampleAnswer = $event" name="insExampleAnswer" />
+            }
+          </section>
+
+          <!-- Pasaj -->
+          @if (insPassages.length) {
+          <section class="qc-insp-sec">
+            <div class="qc-lbl">Pasaj</div>
+            <select class="qc-inline-select qc-inline-select--block" [value]="insSelectedPassageId" (change)="insChangePassage($event)">
+              <option value="0">Pasaj seçiniz</option>
+              @for (passage of insPassages; track passage.id) {
+              <option [value]="passage.id">Passage {{ passage.id }}</option>
+              }
+            </select>
+            @if (insSelectedPassageId !== '0') {
+            <div class="qc-row">
+              <button type="button" class="qc-switch" [class.off]="!insPassageFirst" (click)="insTogglePassageFirst()"></button>
+              <span>Pasaj önce gösterilsin</span>
+            </div>
+            }
+          </section>
+          }
+
+          <!-- Uyarılar -->
+          @if (insWarnings.length) {
+          <section class="qc-insp-sec qc-insp-sec--warn">
+            <div class="qc-lbl">Uyarılar</div>
+            <ul class="qc-warns">
+              @for (w of insWarnings; track w) { <li>{{ w }}</li> }
+            </ul>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDismissWarning($event)">Yoksay</button>
+          </section>
+          }
+
+          <!-- Footer -->
+          <section class="qc-insp-sec">
+            <button type="button" class="qc-btn qc-btn--danger qc-btn--block" (click)="insRemoveQuestion()">
+              <mat-icon>delete</mat-icon>Soruyu Sil
+            </button>
+          </section>
+
+          }
+        }
+      </div>
+    </aside>
   </div>
 </div>

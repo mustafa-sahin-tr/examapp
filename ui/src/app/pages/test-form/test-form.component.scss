@@ -10,6 +10,25 @@
   gap: 18px;
 }
 
+.tf.compact {
+  gap: 12px;
+
+  .field {
+    margin-bottom: 0;
+  }
+
+  .settings-row {
+    margin-bottom: 0;
+    gap: 12px;
+
+    .dur {
+      width: auto;
+      flex: 1 1 0;
+      min-width: 120px;
+    }
+  }
+}
+
 .card {
   background: var(--ms-surface-weak);
   border: 1px solid var(--ms-border-weak);

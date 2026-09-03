@@ -26,6 +26,8 @@ export class TestFormComponent {
   @Input() isEditMode = false;
   /** "Hepsine uygula" yalnızca yeni test + toplu veri varken görünür. */
   @Input() showApplyToAll = false;
+  /** Kompakt varyant: bölüm kartları/notları ve "hepsine uygula" düğmeleri gizlenir. */
+  @Input() compact = false;
 
   @Output() onBookChange = new EventEmitter<any>();
   @Output() openNewBookAdd = new EventEmitter<void>();

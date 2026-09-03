@@ -477,6 +477,10 @@ public class ExamController : BaseController
 
             if (!result.Success)
             {
+                if (result.NotFound)
+                {
+                    return NotFound(result.Message);
+                }
                 return BadRequest(result.Message);
             }
 
@@ -509,6 +513,10 @@ public class ExamController : BaseController
         var result = await _authoring.UpdateWorksheetBackgroundImageAsync(id, file, user.Id);
         if (!result.Success)
         {
+            if (result.NotFound)
+            {
+                return NotFound(result);
+            }
             return BadRequest(result);
         }
 

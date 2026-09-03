@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
+import { TestService } from '../../services/test.service';
 
 @Component({
   selector: 'app-question-canvas-preview',
@@ -20,10 +21,29 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly testService = inject(TestService);
 
   readonly returnUrl = signal<string | null>(null);
   readonly returnState = signal<any | null>(null);
   readonly testId = signal<number | null>(null);
+  readonly testName = signal<string>('');
+
+  get questionCount(): number {
+    return this.imageSelector?.regions()?.length ?? 0;
+  }
+
+  get exampleCount(): number {
+    return this.imageSelector?.regions()?.filter((r) => r.isExample)?.length ?? 0;
+  }
+
+  get passageCount(): number {
+    return this.imageSelector?.passages()?.length ?? 0;
+  }
+
+  approveAndSave(): void {
+    this.snackBar.open('Sorular onaylandı.', 'Tamam', { duration: 2000 });
+    this.closePreview();
+  }
 
   readonly previewMetaProvider = () => {
     const selection = this.imageSelector?.currentClassification?.() ?? null;
@@ -59,6 +79,11 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
     }
 
     this.testId.set(resolvedTestId);
+
+    this.testService.get(resolvedTestId).subscribe({
+      next: (test) => this.testName.set(test?.name ?? test?.subtitle ?? ''),
+      error: () => this.testName.set(''),
+    });
 
     // Ensure ViewChild is ready, then enter preview mode.
     if (!this.imageSelector.previewMode()) {

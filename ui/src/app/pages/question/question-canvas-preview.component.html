@@ -1,15 +1,20 @@
 <div class="preview-page">
-  <div class="preview-header">
-    <div class="title">
-      <mat-icon>visibility</mat-icon>
-      <span>Ön İzleme</span>
+  <header class="preview-topbar">
+    <button type="button" class="pv-btn pv-btn--ghost" (click)="closePreview()">
+      <mat-icon>arrow_back</mat-icon>Tuvale dön
+    </button>
+
+    <div class="preview-topbar__title">
+      <span class="pv-heading">Ön İzleme@if (testName()) { — {{ testName() }} }</span>
+      <span class="pv-meta">
+        {{ questionCount }} soru · {{ exampleCount }} örnek · {{ passageCount }} pasaj
+      </span>
     </div>
 
-    <button mat-stroked-button color="primary" type="button" (click)="closePreview()">
-      <mat-icon>close</mat-icon>
-      Ön izleme kapat
+    <button type="button" class="pv-btn pv-btn--primary" (click)="approveAndSave()">
+      <mat-icon>check</mat-icon>Onayla ve Kaydet
     </button>
-  </div>
+  </header>
 
   <app-image-selector [previewMetaProvider]="previewMetaProvider"></app-image-selector>
 </div>

@@ -1,21 +1,79 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
 .preview-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  padding: 16px 24px 32px;
 }
 
-.preview-header {
+.preview-topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 16px;
+
+  &__title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 auto 0 8px;
+    min-width: 0;
+  }
 }
 
-.title {
-  display: flex;
+.pv-heading {
+  font-family: var(--mainFontFamily);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ms-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pv-meta {
+  font-size: 12px;
+  color: var(--ms-text-weak);
+}
+
+.pv-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 15px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  font-family: var(--mainFontFamily);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  flex: none;
+
+  mat-icon {
+    font-size: 17px;
+    width: 17px;
+    height: 17px;
+  }
+
+  &--ghost {
+    background: transparent;
+    border-color: var(--ms-border-strong);
+    color: var(--ms-text-strong);
+  }
+
+  &--primary {
+    background: var(--ms-action-background);
+    border-color: var(--ms-action-border);
+    color: var(--ms-text-strong);
+  }
 }

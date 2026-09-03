@@ -1,211 +1,299 @@
-<ng-container *ngIf="!searchControl.value">
-  <app-section-header title="Yeni Testler" iconName="auto_awesome"></app-section-header>
-  <div class="list-container list-container--carousel">
-    <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
-    <div class="cards hidden-scrollable" #cardContainer>
-      <ul class="psds-carousel__track">
-        <li class="psds-carousel__item" *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
-          <app-worksheet-card [test]="worksheet" type="shorts" (cardClick)="onCardClick(worksheet.id || 0)">
-          </app-worksheet-card>
-        </li>
-      </ul>
+<section class="wl">
+  <!-- ============ HEADER ============ -->
+  <header class="wl__header">
+    <div class="wl__heading">
+      <h1>{{ headerTitle() }}</h1>
+      <p>{{ headerSubtitle() }}</p>
     </div>
-    <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
-  </div>
-</ng-container>
-<div class="list-container list-container--results">
-  <div class="search-results">
-    <!-- <div class="form-container results-summary">
-      <div class="form-column">
-        <app-pagination [currentPage]="pageNumber" [totalItems]="pagedWorksheetsSignal().totalCount"
-          (pageChanged)="changePage($event)"></app-pagination>
-        <h2>
-          <span class="desktop-search-prefix">{{ searchControl.value ? searchControl.value + ' için ' : '' }}</span>
-          <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test bulundu
-        </h2>
+
+    @if (isTeacher) {
+      <div class="wl__header-actions">
+        <button type="button" class="wl__btn wl__btn--primary" (click)="onCreate()">
+          <mat-icon>add</mat-icon><span>Yeni Test</span>
+        </button>
+        <button type="button" class="wl__btn wl__btn--ghost" (click)="onImportExcel()">
+          <mat-icon>upload_file</mat-icon><span>Excel'den içe aktar</span>
+        </button>
       </div>
-    </div> -->
+    }
+  </header>
 
-    <div class="desktop-filter-bar" aria-label="Masaustu filtre cubugu">
-      <div class="desktop-filter-left">
-        <button type="button" class="desktop-filter-trigger" [matMenuTriggerFor]="subjectsMenu"
-          [class.is-active]="selectedSubjectIds.length > 0">
-          <mat-icon>menu_book</mat-icon>
-          <span>Dersler</span>
-          @if (selectedSubjectIds.length > 0) {
-          <b>{{ selectedSubjectIds.length }}</b>
-          }
+  <mat-menu #sortMenu="matMenu">
+    @for (option of sortOptions; track option.value) {
+      @if (!option.studentOnly || isStudent) {
+        <button mat-menu-item (click)="setSort(option.value)" [class.is-active]="sortBy() === option.value">
+          <mat-icon>{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
         </button>
+      }
+    }
+  </mat-menu>
 
-        <button type="button" class="desktop-filter-trigger" [matMenuTriggerFor]="gradesMenu"
-          [class.is-active]="selectedGradeIds.length > 0">
-          <mat-icon>school</mat-icon>
-          <span>Sınıflar</span>
-          @if (selectedGradeIds.length > 0) {
-          <b>{{ selectedGradeIds.length }}</b>
-          }
+  <!-- ============ SEGMENT TABS (student) ============ -->
+  @if (isStudent) {
+    <nav class="wl__tabs" aria-label="Bölümler">
+      <button type="button" [class.is-active]="tab() === 'discover'" (click)="setTab('discover')">Keşfet</button>
+      <button type="button" [class.is-active]="tab() === 'assigned'" (click)="setTab('assigned')">
+        Bana Atananlar
+        @if (assignedCount() > 0) { <b>{{ assignedCount() }}</b> }
+      </button>
+      <button type="button" [class.is-active]="tab() === 'inprogress'" (click)="setTab('inprogress')">
+        Devam Edenler
+        @if (inProgressCount() > 0) { <b>{{ inProgressCount() }}</b> }
+      </button>
+      <button type="button" [class.is-active]="tab() === 'completed'" (click)="setTab('completed')">Tamamlananlar</button>
+    </nav>
+  }
+
+  <!-- ============ CONTINUE STRIP (student, discover) ============ -->
+  @if (isStudent && tab() === 'discover' && resumeItems().length) {
+    <div class="wl__strip">
+      <h2>Kaldığın yerden devam et</h2>
+      <div class="wl__strip-scroll">
+        @for (item of resumeItems(); track trackTest($index, item)) {
+          <article class="wl__strip-card">
+            <h3>{{ item.name }}</h3>
+            <p>{{ item.questionCount || 0 }} soru</p>
+            <button type="button" (click)="goToWorksheet(item.id || 0)">Devam Et</button>
+          </article>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="wl__layout">
+    <!-- ============ FILTER RAIL ============ -->
+    @if (showMobileFilters()) {
+      <div class="wl__rail-overlay" (click)="toggleMobileFilters()"></div>
+    }
+    <aside class="wl__rail" [class.is-open]="showMobileFilters()">
+      <div class="wl__rail-head">
+        <h2>Filtreler</h2>
+        <button type="button" class="wl__rail-close" (click)="toggleMobileFilters()" aria-label="Kapat">
+          <mat-icon>close</mat-icon>
         </button>
+      </div>
 
-        @if (hasActiveFilters) {
-        <button type="button" class="desktop-filter-clear" (click)="clearFilters()">Temizle</button>
+      @if (isStudent) {
+        <div class="wl__filter-group">
+          <span class="wl__filter-label">Durum</span>
+          @for (status of [-1, 0, 1]; track status) {
+            <label class="wl__check">
+              <input type="checkbox" [checked]="isStatusSelected($any(status))" (change)="toggleStatus($any(status))" />
+              <span>{{ statusLabel($any(status)) }}</span>
+            </label>
+          }
+        </div>
+      }
+
+      <div class="wl__filter-group">
+        <span class="wl__filter-label">Ders</span>
+        @for (subject of subjects(); track subject.id) {
+          <label class="wl__check">
+            <input type="checkbox" [checked]="isSubjectSelected(subject.id)" (change)="toggleSubject(subject.id)" />
+            <span>{{ subject.name }}</span>
+          </label>
         }
       </div>
 
-      <div class="desktop-filter-right" aria-live="polite">
-        <strong>{{ pagedWorksheetsSignal().totalCount }}</strong>
-        <span>test</span>
-      </div>
-    </div>
-
-    <mat-menu #subjectsMenu="matMenu" xPosition="after" yPosition="below" panelClass="desktop-filter-menu">
-      <div class="desktop-menu-panel" (click)="$event.stopPropagation()">
-        <h4>Dersler</h4>
-        <div class="desktop-menu-list">
-          <label class="desktop-menu-option" *ngFor="let category of subjectsSignal(); trackBy: trackCategory"
-            [attr.for]="'subject-' + category.id">
-            <input [id]="'subject-' + category.id" type="checkbox" [checked]="isSubjectSelected(category.id)"
-              (change)="onCheckboxChange({ checked: $any($event.target).checked, value: category })" />
-            <span>{{ category.name }}</span>
-          </label>
-        </div>
-      </div>
-    </mat-menu>
-
-    <mat-menu #gradesMenu="matMenu" xPosition="after" yPosition="below" panelClass="desktop-filter-menu">
-      <div class="desktop-menu-panel" (click)="$event.stopPropagation()">
-        <h4>Sınıflar</h4>
-        <div class="desktop-menu-list">
-          <label class="desktop-menu-option" *ngFor="let grade of gradesSignal(); trackBy: trackGrades"
-            [attr.for]="'grade-' + (grade.id || 0)">
-            <input [id]="'grade-' + (grade.id || 0)" type="checkbox" [checked]="isGradeSelected(grade.id || 0)"
-              (change)="onGradeCheckboxChange({ checked: $any($event.target).checked, value: grade })" />
-            <span>{{ grade.name }}</span>
-          </label>
-        </div>
-      </div>
-    </mat-menu>
-
-    <!-- Mobile Filter Toggle Button -->
-    <button class="mobile-filter-toggle" (click)="toggleMobileFilters()" [class.has-filters]="hasActiveFilters">
-      <span class="mobile-filter-main">
-        <mat-icon>{{ showMobileFilters() ? 'close' : 'tune' }}</mat-icon>
-        <span>
-          {{ showMobileFilters() ? 'Filtreleri Kapat' : 'Filtreler' }}
-          @if (activeFilterCount > 0) {
-          ({{ activeFilterCount }})
+      <div class="wl__filter-group">
+        <span class="wl__filter-label">Sınıf</span>
+        <div class="wl__chips">
+          @for (grade of grades(); track grade.id) {
+            <button type="button" class="wl__chip" [class.is-active]="isGradeSelected(grade.id)" (click)="toggleGrade(grade.id)">
+              {{ grade.name }}
+            </button>
           }
-        </span>
-      </span>
-      <span class="mobile-filter-total"><strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test</span>
-    </button>
+        </div>
+      </div>
 
-    @if (hasActiveFilters) {
-    <div class="active-filters-bar" aria-label="Aktif filtreler">
-      @for (subjectId of selectedSubjectIds; track subjectId) {
-      <button type="button" class="active-filter-chip" (click)="removeSubjectFilter(subjectId)"
-        [attr.aria-label]="getSubjectName(subjectId) + ' filtresini kaldır'">
-        <span>{{ getSubjectName(subjectId) }}</span>
-        <mat-icon>close</mat-icon>
-      </button>
+      <div class="wl__filter-group">
+        <span class="wl__filter-label">Süre</span>
+        <div class="wl__chips">
+          @for (bucket of durationBuckets; track bucket[0]) {
+            <button type="button" class="wl__chip" [class.is-active]="durationBucket() === bucket[0]" (click)="setDurationBucket(bucket[0])">
+              {{ bucket[1].label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="wl__filter-group">
+        <span class="wl__filter-label">Soru sayısı</span>
+        <div class="wl__chips">
+          @for (bucket of questionBuckets; track bucket[0]) {
+            <button type="button" class="wl__chip" [class.is-active]="questionBucket() === bucket[0]" (click)="setQuestionBucket(bucket[0])">
+              {{ bucket[1].label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="wl__filter-group">
+        <span class="wl__filter-label">Tür</span>
+        <label class="wl__check">
+          <input type="checkbox" [checked]="practiceOnly()" (change)="togglePracticeOnly()" />
+          <span>Sadece çalışma testi</span>
+        </label>
+      </div>
+
+      @if (hasActiveFilters()) {
+        <button type="button" class="wl__clear-all" (click)="clearFilters()">Filtreleri temizle</button>
       }
+    </aside>
 
-      @for (gradeId of selectedGradeIds; track gradeId) {
-      <button type="button" class="active-filter-chip" (click)="removeGradeFilter(gradeId)"
-        [attr.aria-label]="getGradeName(gradeId) + ' filtresini kaldır'">
-        <span>{{ getGradeName(gradeId) }}</span>
-        <mat-icon>close</mat-icon>
-      </button>
-      }
-
-      <button type="button" class="active-filter-chip active-filter-chip--clear" (click)="clearFilters()"
-        [attr.aria-label]="'Tüm filtreleri temizle'">
-        <span>Temizle</span>
-      </button>
-    </div>
-    }
-
-    <div class="form-container" [class.mobile-view]="true">
-      <!-- Mobile Filters Overlay -->
-      <div class="mobile-filters-overlay" *ngIf="showMobileFilters()" (click)="toggleMobileFilters()"></div>
-
-      <!-- Filters Panel -->
-      <div class="form-column-1 filters-column" [class.mobile-open]="showMobileFilters()">
-        <div class="filters-sheet-handle" aria-hidden="true"></div>
-        <div class="filters-header-mobile">
-          <h3>Filtreler</h3>
-          <button type="button" class="filters-close-mobile" (click)="toggleMobileFilters()"
-            [attr.aria-label]="'Filtre panelini kapat'">
+    <!-- ============ RESULTS ============ -->
+    <div class="wl__results">
+      <div class="wl__results-bar">
+        <button type="button" class="wl__mobile-filter-btn" (click)="toggleMobileFilters()">
+          <mat-icon>tune</mat-icon><span>Filtreler</span>
+        </button>
+        @if (search()) {
+          <button type="button" class="wl__search-chip" (click)="clearSearch()">
+            <span>"{{ search() }}" araması</span>
             <mat-icon>close</mat-icon>
           </button>
-        </div>
-        <div class="filters-container">
-          <div class="filters">
-            <button class="clear-btn" (click)="clearFilters()" [disabled]="!hasActiveFilters">Temizle</button>
-            <div class="filter-category">
-              <h4>Dersler</h4>
-              <ul>
-                <li *ngFor="let category of subjectsSignal(); trackBy: trackCategory" class="search-result-item">
-                  <app-custom-checkbox [label]="category.name" [checked]="isSubjectSelected(category.id)"
-                    [value]="category" (checkedChange)="onCheckboxChange($event)">
-                  </app-custom-checkbox>
-                </li>
-              </ul>
-            </div>
-            <div class="filter-category">
-              <h4>Sınıflar</h4>
-              <ul>
-                <li *ngFor="let grade of gradesSignal(); trackBy: trackGrades" class="search-result-item">
-                  <app-custom-checkbox [label]="grade.name" [checked]="isGradeSelected(grade.id || 0)" [value]="grade"
-                    (checkedChange)="onGradeCheckboxChange($event)">
-                  </app-custom-checkbox>
-                </li>
-              </ul>
-            </div>
+        }
+        <span class="wl__count">{{ totalCount() }} test</span>
+
+        <div class="wl__results-bar-right">
+          <div class="wl__viewtoggle" role="group" aria-label="Görünüm">
+            <button type="button" [class.is-active]="viewMode() === 'grid'" (click)="setViewMode('grid')" aria-label="Kart görünümü">
+              <mat-icon>grid_view</mat-icon>
+            </button>
+            <button type="button" [class.is-active]="viewMode() === 'list'" (click)="setViewMode('list')" aria-label="Liste görünümü">
+              <mat-icon>view_list</mat-icon>
+            </button>
           </div>
-        </div>
-
-        <div class="filters-footer-mobile">
-          <button type="button" class="filters-footer-btn filters-footer-btn--ghost" (click)="clearFilters()"
-            [disabled]="!hasActiveFilters">
-            Temizle
-          </button>
-          <button type="button" class="filters-footer-btn filters-footer-btn--primary" (click)="toggleMobileFilters()">
-            Uygula
+          <button type="button" class="wl__sort" [matMenuTriggerFor]="sortMenu">
+            <mat-icon>swap_vert</mat-icon>
+            <span>{{ currentSortLabel() }}</span>
+            <mat-icon>expand_more</mat-icon>
           </button>
         </div>
       </div>
 
-      <!-- Cards Grid -->
-      <div class="form-column-3">
-        <ul class="course-list">
-          <li *ngFor="let course of pagedWorksheetsSignal().items; trackBy: trackWorksheet" class="course-item">
-            <ng-container *ngComponentOutlet="worksheetListViewCardComponent; inputs: { course: course }">
-            </ng-container>
-          </li>
-        </ul>
-      </div>
+      @if (hasActiveFilters()) {
+        <div class="wl__active-filters">
+          @for (id of selectedSubjectIds(); track id) {
+            <button type="button" class="wl__filter-pill" (click)="toggleSubject(id)">
+              {{ subjectName(id) || ('Ders ' + id) }} <mat-icon>close</mat-icon>
+            </button>
+          }
+          @for (id of selectedGradeIds(); track id) {
+            <button type="button" class="wl__filter-pill" (click)="toggleGrade(id)">
+              {{ gradeName(id) || ('Sınıf ' + id) }} <mat-icon>close</mat-icon>
+            </button>
+          }
+          @for (status of selectedStatuses(); track status) {
+            <button type="button" class="wl__filter-pill" (click)="toggleStatus(status)">
+              {{ statusLabel(status) }} <mat-icon>close</mat-icon>
+            </button>
+          }
+          @if (durationBucket(); as bucket) {
+            <button type="button" class="wl__filter-pill" (click)="setDurationBucket(bucket)">
+              {{ durationBucketLabel(bucket) }} <mat-icon>close</mat-icon>
+            </button>
+          }
+          @if (questionBucket(); as bucket) {
+            <button type="button" class="wl__filter-pill" (click)="setQuestionBucket(bucket)">
+              {{ questionBucketLabel(bucket) }} <mat-icon>close</mat-icon>
+            </button>
+          }
+          @if (practiceOnly()) {
+            <button type="button" class="wl__filter-pill" (click)="togglePracticeOnly()">
+              Çalışma testi <mat-icon>close</mat-icon>
+            </button>
+          }
+          <button type="button" class="wl__filter-pill wl__filter-pill--clear" (click)="clearFilters()">Temizle</button>
+        </div>
+      }
+
+      <!-- bulk bar (teacher, list) -->
+      @if (isTeacher && viewMode() === 'list' && selectedIds().size > 0) {
+        <div class="wl__bulkbar">
+          <span>{{ selectedIds().size }} seçildi</span>
+          <button type="button" (click)="onAssign()">Öğrencilere Ata</button>
+          <button type="button" class="wl__bulk-danger" (click)="bulkDelete()">Sil</button>
+          <button type="button" class="wl__bulk-clear" (click)="clearSelection()">Seçimi bırak</button>
+        </div>
+      }
+
+      <!-- states -->
+      @if (loading()) {
+        <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
+          @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="wl__skeleton"></div>
+          }
+        </div>
+      } @else if (error()) {
+        <div class="wl__empty">
+          <mat-icon>error_outline</mat-icon>
+          <p>{{ error() }}</p>
+          <button type="button" class="wl__btn wl__btn--primary" (click)="fetch()">Tekrar dene</button>
+        </div>
+      } @else if (visibleTests().length === 0) {
+        <div class="wl__empty">
+          <mat-icon>search_off</mat-icon>
+          @if (search()) {
+            <p>'{{ search() }}' için sonuç bulunamadı.</p>
+          } @else if (tab() === 'inprogress') {
+            <p>Devam eden testin yok.</p>
+          } @else if (tab() === 'completed') {
+            <p>Henüz bir test tamamlamadın.</p>
+          } @else if (tab() === 'assigned') {
+            <p>Sana atanmış test yok.</p>
+          } @else {
+            <p>Bu kriterlere uygun test yok.</p>
+          }
+          @if (hasActiveFilters() || search()) {
+            <button type="button" class="wl__btn wl__btn--ghost" (click)="clearFilters(); clearSearch()">Filtreleri temizle</button>
+          }
+        </div>
+      } @else {
+        <!-- LIST VIEW HEADER (sortable) -->
+        @if (viewMode() === 'list') {
+          <div class="wl__listhead">
+            @if (isTeacher) { <span class="wl__listhead-check"></span> }
+            <button type="button" (click)="setSort('alphabetical')">Test</button>
+            <span>Ders / Sınıf</span>
+            <button type="button" (click)="setSort('questionCount')">Soru</button>
+            <button type="button" (click)="setSort('duration')">Süre</button>
+            <span>Durum</span>
+            <span></span>
+          </div>
+        }
+
+        <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
+          @for (test of visibleTests(); track trackTest($index, test)) {
+            <div class="wl__grid-item">
+              @if (isTeacher && viewMode() === 'list') {
+                <label class="wl__row-check">
+                  <input type="checkbox" [checked]="isRowSelected(test.id || 0)" (change)="toggleRowSelection(test.id || 0)" />
+                </label>
+              }
+              <app-worksheet-list-view-card
+                [course]="test"
+                [viewMode]="viewMode()"
+                [isTeacher]="isTeacher"
+                [subjectName]="subjectName(test.subjectId)"
+                [gradeName]="gradeName(test.gradeId)"
+                [assignment]="assignmentFor(test.id)"
+                (deleteWorksheet)="onDeleteWorksheet($event)"
+                (assignWorksheet)="onAssign()"
+              ></app-worksheet-list-view-card>
+            </div>
+          }
+        </div>
+
+        @if (tab() === 'discover') {
+          <app-pagination
+            [currentPage]="pageNumber()"
+            [itemsPerPage]="pageSize()"
+            [totalItems]="paged().totalCount"
+            (pageChanged)="changePage($event)"
+          ></app-pagination>
+        }
+      }
     </div>
-
-    <app-pagination [currentPage]="pageNumber" [itemsPerPage]="pageSize"
-      [totalItems]="pagedWorksheetsSignal().totalCount" (pageChanged)="changePage($event)"></app-pagination>
   </div>
-</div>
-<ng-container *appIsStudent>
-  <app-section-header title="Tamamlanmış Testler" iconName="task_alt"></app-section-header>
-  <div class="list-container list-container--carousel">
-    <ng-container *ngIf="completedTestSignal() as tests">
-      <ng-container *ngIf="tests.items.length > 0; else noTests">
-        <button class="nav-btn left" (click)="handleLeftNavigation()">❮</button>
-        <div class="cards" #cardContainer2>
-          <app-completed-worksheet-card *ngFor="let cws of tests.items; trackBy: trackCompletedTests"
-            [completedTest]="cws">
-          </app-completed-worksheet-card>
-        </div>
-        <button class="nav-btn right" (click)="handleRightNavigation()">❯</button>
-      </ng-container>
-      <ng-template #noTests>
-        <p>Henüz bir test tamamlamadınız!</p>
-      </ng-template>
-    </ng-container>
-  </div>
-</ng-container>
+</section>

@@ -27,6 +27,59 @@ public class ExamService : IExamService
         _minioService = minioService;
     }
 
+    private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
+    {
+        if (dto.minQuestionCount.HasValue)
+            query = query.Where(t => t.WorksheetQuestions.Count() >= dto.minQuestionCount.Value);
+        if (dto.maxQuestionCount.HasValue)
+            query = query.Where(t => t.WorksheetQuestions.Count() <= dto.maxQuestionCount.Value);
+        if (dto.minDurationSeconds.HasValue)
+            query = query.Where(t => t.MaxDurationSeconds >= dto.minDurationSeconds.Value);
+        if (dto.maxDurationSeconds.HasValue)
+            query = query.Where(t => t.MaxDurationSeconds <= dto.maxDurationSeconds.Value);
+        if (dto.isPracticeTest.HasValue)
+            query = query.Where(t => t.IsPracticeTest == dto.isPracticeTest.Value);
+        if (dto.bookIds != null && dto.bookIds.Any())
+            query = query.Where(t => t.BookTest != null && dto.bookIds.Contains(t.BookTest.BookId));
+        return query;
+    }
+
+    private static IQueryable<Worksheet> ApplySort(
+        IQueryable<Worksheet> query, AppDbContext context,
+        WorksheetSortBy sortBy, bool descending, int? studentId)
+    {
+        IOrderedQueryable<Worksheet> ordered = sortBy switch
+        {
+            WorksheetSortBy.Popular => descending
+                ? query.OrderByDescending(t => context.TestInstances.Count(ti => ti.WorksheetId == t.Id))
+                : query.OrderBy(t => context.TestInstances.Count(ti => ti.WorksheetId == t.Id)),
+            WorksheetSortBy.Duration => descending
+                ? query.OrderByDescending(t => t.MaxDurationSeconds)
+                : query.OrderBy(t => t.MaxDurationSeconds),
+            WorksheetSortBy.QuestionCount => descending
+                ? query.OrderByDescending(t => t.WorksheetQuestions.Count())
+                : query.OrderBy(t => t.WorksheetQuestions.Count()),
+            WorksheetSortBy.Alphabetical => descending
+                ? query.OrderByDescending(t => t.Name)
+                : query.OrderBy(t => t.Name),
+            WorksheetSortBy.Recent when studentId.HasValue => descending
+                ? query.OrderByDescending(t => context.TestInstances
+                    .Where(ti => ti.StudentId == studentId.Value && ti.WorksheetId == t.Id)
+                    .Max(ti => (DateTime?)ti.StartTime))
+                : query.OrderBy(t => context.TestInstances
+                    .Where(ti => ti.StudentId == studentId.Value && ti.WorksheetId == t.Id)
+                    .Max(ti => (DateTime?)ti.StartTime)),
+            WorksheetSortBy.Recent => descending
+                ? query.OrderByDescending(t => t.UpdateTime ?? t.CreateTime)
+                : query.OrderBy(t => t.UpdateTime ?? t.CreateTime),
+            _ => descending
+                ? query.OrderByDescending(t => t.CreateTime)
+                : query.OrderBy(t => t.CreateTime),
+        };
+
+        return ordered.ThenBy(t => t.Id); // stable tiebreaker
+    }
+
     public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, UserProfileDto userProfile)
     {
         var query = _context.Worksheets.AsQueryable();
@@ -55,15 +108,15 @@ public class ExamService : IExamService
                     EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%"));
             }
         }
-        // Her worksheet için kaç benzersiz öğrenci instance oluşturmuş
+
+        query = ApplyCommonFilters(query, dto);
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
-        var tests = await query
+        var tests = await ApplySort(query, _context, dto.SortByParsed, dto.SortDescending, studentId: null)
             .Include(t => t.BookTest)
                 .ThenInclude(bt => bt.Book)
             .Include(t => t.WorksheetQuestions)
                 .ThenInclude(tq => tq.Question)
-            .OrderBy(t => t.Name) // Sıralama için
             .Skip((dto.pageNumber - 1) * dto.pageSize) // Sayfalama için
             .Take(dto.pageSize)
             .ToListAsync();
@@ -137,6 +190,25 @@ public class ExamService : IExamService
                     EF.Functions.Like(t.Description.ToLower(), $"%{normalizedSearch}%"));
             }
         }
+
+        query = ApplyCommonFilters(query, dto);
+
+        if (dto.statuses != null && dto.statuses.Any())
+        {
+            var studentInstances = _context.TestInstances.Where(ti => ti.StudentId == studentProfile.Id);
+            var wantNotStarted = dto.statuses.Contains(-1);
+            var wantInProgress = dto.statuses.Contains(0);
+            var wantCompleted = dto.statuses.Contains(1);
+
+            query = query.Where(t =>
+                (wantNotStarted && !studentInstances.Any(ti => ti.WorksheetId == t.Id)) ||
+                (wantInProgress && studentInstances.Any(ti => ti.WorksheetId == t.Id
+                    && ti.Status == WorksheetInstanceStatus.Started)) ||
+                (wantCompleted && studentInstances.Any(ti => ti.WorksheetId == t.Id
+                    && (ti.Status == WorksheetInstanceStatus.Completed
+                        || ti.Status == WorksheetInstanceStatus.Expired))));
+        }
+
         // Her worksheet için kaç benzersiz öğrenci instance oluşturmuş
         var worksheetStudentCounts = await _context.TestInstances
             .GroupBy(ti => ti.WorksheetId)
@@ -150,12 +222,11 @@ public class ExamService : IExamService
         var instances = await instanceQuery.ToListAsync(); // 🔥 Burada `ToListAsync()` çağırarak veriyi hafızaya alıyoruz
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
-        var tests = await query
+        var tests = await ApplySort(query, _context, dto.SortByParsed, dto.SortDescending, studentProfile.Id)
             .Include(t => t.BookTest)
                 .ThenInclude(bt => bt.Book)
             .Include(t => t.WorksheetQuestions)
                 .ThenInclude(tq => tq.Question)
-            .OrderBy(t => t.Name) // Sıralama için
             .Skip((dto.pageNumber - 1) * dto.pageSize) // Sayfalama için
             .Take(dto.pageSize)
             .ToListAsync();

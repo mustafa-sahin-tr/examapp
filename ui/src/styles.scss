@@ -305,6 +305,7 @@
   --contribution-default-bgColor-2: #4ac26b;
   --contribution-default-bgColor-3: #2da44e;
   --contribution-default-bgColor-4: #116329;
+  --ms-focus-ring: color-mix(in srgb, var(--ms-action-border-focus) 18%, transparent);
 }
 
 body,

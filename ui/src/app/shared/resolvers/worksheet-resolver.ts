@@ -5,5 +5,6 @@ import { Paged, Test } from '../../models/test-instance';
 
 export const worksheetListResolver: ResolveFn<Paged<Test>> = (route: ActivatedRouteSnapshot) => {
   const testService = inject(TestService);
-  return testService.search('', [], [], 1);
+  const search = route.queryParamMap.get('search') ?? undefined;
+  return testService.listWorksheets({ search, pageNumber: 1, pageSize: 12, sortBy: 'newest' });
 };

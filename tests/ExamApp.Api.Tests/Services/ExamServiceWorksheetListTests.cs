@@ -32,9 +32,16 @@ public class ExamServiceWorksheetListTests : IDisposable
     }
 
     private static ExamFilterDto Filter(int? id = null, List<int>? grades = null, List<int>? subjects = null,
-        string? search = null, int page = 1, int size = 10) => new()
+        string? search = null, int page = 1, int size = 10, string? sortBy = null, string? sortDir = null,
+        List<int>? statuses = null, int? minQuestionCount = null, int? maxQuestionCount = null,
+        int? minDurationSeconds = null, int? maxDurationSeconds = null, bool? isPracticeTest = null,
+        List<int>? bookIds = null) => new()
     {
         id = id ?? 0, gradeIds = grades, subjectIds = subjects, search = search, pageNumber = page, pageSize = size,
+        sortBy = sortBy, sortDir = sortDir, statuses = statuses,
+        minQuestionCount = minQuestionCount, maxQuestionCount = maxQuestionCount,
+        minDurationSeconds = minDurationSeconds, maxDurationSeconds = maxDurationSeconds,
+        isPracticeTest = isPracticeTest, bookIds = bookIds,
     };
 
     private static UserProfileDto Teacher => new() { Id = 1, Role = "Teacher" };
@@ -46,7 +53,8 @@ public class ExamServiceWorksheetListTests : IDisposable
     {
         await SeedAsync();
         await using var ctx = _db.NewContext();
-        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(Filter(size: 2), Teacher);
+        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
+            Filter(size: 2, sortBy: "alphabetical"), Teacher);
 
         page.TotalCount.ShouldBe(3);
         page.Items.Select(i => i.Name).ShouldBe(new[] { "Alfa", "Beta" });
@@ -105,6 +113,53 @@ public class ExamServiceWorksheetListTests : IDisposable
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForStudentsAsync(Filter(grades: new() { w.GradeA }), student);
         page.TotalCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Teacher_list_sorts_alphabetical_desc()
+    {
+        await SeedAsync();
+        await using var ctx = _db.NewContext();
+        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
+            Filter(sortBy: "alphabetical", sortDir: "desc"), Teacher);
+
+        page.Items.Select(i => i.Name).ShouldBe(new[] { "Gama", "Beta", "Alfa" });
+    }
+
+    [Fact]
+    public async Task Teacher_list_filters_by_duration_range()
+    {
+        var w = await SeedAsync();
+        await using (var seed = _db.NewContext())
+        {
+            (await seed.Worksheets.FindAsync(w.WsMathA))!.MaxDurationSeconds = 60;
+            (await seed.Worksheets.FindAsync(w.WsOtherA))!.MaxDurationSeconds = 600;
+            (await seed.Worksheets.FindAsync(w.WsB))!.MaxDurationSeconds = 1800;
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
+            Filter(minDurationSeconds: 120, maxDurationSeconds: 1000, sortBy: "duration"), Teacher);
+
+        page.Items.ShouldHaveSingleItem().Name.ShouldBe("Beta");
+    }
+
+    [Fact]
+    public async Task Teacher_list_filters_by_is_practice_test()
+    {
+        var w = await SeedAsync();
+        await using (var seed = _db.NewContext())
+        {
+            (await seed.Worksheets.FindAsync(w.WsMathA))!.IsPracticeTest = true;
+            await seed.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
+            Filter(isPracticeTest: true), Teacher);
+
+        page.Items.ShouldHaveSingleItem().Name.ShouldBe("Alfa");
     }
 
     public void Dispose() => _db.Dispose();

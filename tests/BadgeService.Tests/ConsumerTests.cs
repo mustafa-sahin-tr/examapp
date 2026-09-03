@@ -1,5 +1,6 @@
 using BadgeService;
 using BadgeService.Consumers;
+using BadgeService.Entities;
 using BadgeService.Hubs;
 using BadgeService.Services;
 using BadgeService.Tests.Support;
@@ -101,6 +102,85 @@ public class ConsumerTests : IDisposable
 
         await Should.ThrowAsync<InvalidOperationException>(() =>
             NewQuestionConsumer(classifier).Consume(Context(new QuestionCreatedEvent { QuestionId = 1, ClassificationSource = "Human" })));
+    }
+
+    // ---- WorksheetReminderDueConsumer ----
+
+    private static IHubContext<BadgeNotificationHub> NewHub()
+    {
+        var hub = Substitute.For<IHubContext<BadgeNotificationHub>>();
+        hub.Clients.User(Arg.Any<string>()).SendCoreAsync(
+            Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        return hub;
+    }
+
+    private WorksheetReminderDueConsumer NewReminderConsumer(IHubContext<BadgeNotificationHub> hub)
+        => new(_db.NewContext(), hub, NullLogger<WorksheetReminderDueConsumer>.Instance);
+
+    private static WorksheetReminderDueEvent ReminderEvent(int reminderId = 500, string keycloakId = "kc-student")
+        => new()
+        {
+            ReminderId = reminderId,
+            WorksheetId = 9,
+            StudentId = 3,
+            UserId = 12,
+            UserKeycloakId = keycloakId,
+            WorksheetName = "Kesirler Testi",
+            ScheduledFor = DateTime.UtcNow.AddHours(1),
+            RemindBeforeMinutes = 30,
+        };
+
+    [Fact]
+    public async Task WorksheetReminderDueConsumer_first_delivery_creates_an_unread_notification()
+    {
+        var e = ReminderEvent();
+        await NewReminderConsumer(NewHub()).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Type.ShouldBe("WorksheetReminderDue");
+        n.SourceReminderId.ShouldBe(e.ReminderId);
+        n.UserId.ShouldBe(e.UserId);
+        n.IsRead.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task WorksheetReminderDueConsumer_duplicate_event_does_not_create_a_second_notification()
+    {
+        var e = ReminderEvent();
+
+        await NewReminderConsumer(NewHub()).Consume(Context(e));
+        await NewReminderConsumer(NewHub()).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        (await check.Notifications.CountAsync(n => n.SourceReminderId == e.ReminderId)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task WorksheetReminderDueConsumer_pushes_to_the_student_via_signalr()
+    {
+        var hub = NewHub();
+        var e = ReminderEvent(keycloakId: "kc-abc");
+
+        await NewReminderConsumer(hub).Consume(Context(e));
+
+        await hub.Clients.User("kc-abc").Received(1).SendCoreAsync(
+            "ReminderDue", Arg.Any<object?[]>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WorksheetReminderDueConsumer_missing_keycloak_id_skips_push_but_still_saves_notification()
+    {
+        var hub = NewHub();
+        var e = ReminderEvent(keycloakId: "");
+
+        await NewReminderConsumer(hub).Consume(Context(e));
+
+        await hub.Clients.User(Arg.Any<string>()).DidNotReceive().SendCoreAsync(
+            Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>());
+
+        await using var check = _db.NewContext();
+        (await check.Notifications.AnyAsync(n => n.SourceReminderId == e.ReminderId)).ShouldBeTrue();
     }
 
     public void Dispose() => _db.Dispose();

@@ -114,3 +114,6 @@ my-secrets.txt
 # test coverage output
 coverage/
 TestResults/
+
+# Subagent private memory
+.claude/agent-memory/

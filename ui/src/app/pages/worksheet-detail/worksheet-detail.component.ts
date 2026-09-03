@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, Input, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, Input, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion } from '../../models/test-instance';
@@ -9,11 +10,15 @@ import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { GradesService } from '../../services/grades.service';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDialog } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import {
   AssignmentProgressSummary,
   AssignmentStudentStatus,
@@ -30,6 +35,7 @@ import {
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
+import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -39,21 +45,29 @@ interface AssignmentPanelState {
   error: string | null;
 }
 
+type WorksheetView = 'teacher' | 'completed' | 'start';
+
 @Component({
   selector: 'app-worksheet-detail',
+  standalone: true,
   imports: [
     CommonModule,
     MatIconModule,
     MatButtonModule,
-    MatChipsModule,
-    MatTooltipModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
     IsTeacherDirective,
     IsStudentDirective,
     QuestionCanvasViewComponent,
-    QuestionNavigatorComponent
+    QuestionNavigatorComponent,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
+  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'tr-TR' }],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],
 })
@@ -62,6 +76,7 @@ export class WorksheetDetailComponent implements OnInit {
   private dialog = inject(MatDialog);
   private authService = inject(AuthService);
   private studentService = inject(StudentService);
+  private destroyRef = inject(DestroyRef);
   @Input() exam!: Test; // Test bilgisi ve sorular
   route = inject(ActivatedRoute);
   testService = inject(TestService);
@@ -71,7 +86,7 @@ export class WorksheetDetailComponent implements OnInit {
   gradeName = signal<string>(''); // Sınıf adı
   private grades = signal<Grade[]>([]);
   private studentLookups = signal<StudentLookup[]>([]);
-  private readonly isTeacher = this.authService.hasRole('Teacher');
+  protected readonly isTeacher = this.authService.hasRole('Teacher');
   private teacherPanelInitialized = false;
   protected readonly assignmentPanelState = signal<AssignmentPanelState>({
     loading: false,
@@ -80,15 +95,58 @@ export class WorksheetDetailComponent implements OnInit {
     lastRefreshed: null,
     error: null,
   });
+
+  // Worksheet detail (yeni tasarım verisi)
+  protected readonly detail = signal<WorksheetDetail | null>(null);
+  protected readonly detailLoading = signal(false);
+  protected readonly detailError = signal<string | null>(null);
+  protected readonly fromMistakesLoading = signal(false);
+
+  protected readonly completedResult = computed(() => this.detail()?.completedResult ?? null);
+
+  protected readonly view = computed<WorksheetView>(() => {
+    if (this.isTeacher) {
+      return 'teacher';
+    }
+    return this.completedResult() ? 'completed' : 'start';
+  });
+
+  // Planla & Hatırlat
+  protected readonly reminder = signal<WorksheetReminder | null>(null);
+  protected readonly reminderSaving = signal(false);
+  protected readonly reminderEditing = signal(false);
+  protected reminderDate: Date | null = null;
+  protected reminderTime = '09:00';
+  protected remindBeforeMinutes = 60;
+  protected readonly minReminderDate = new Date();
+  protected readonly remindBeforeOptions = [15, 30, 60, 120];
+
+  protected readonly hasActiveReminder = computed(() => {
+    const current = this.reminder();
+    return !!current && current.status !== 'Cancelled';
+  });
+
+  protected readonly showReminderForm = computed(() => !this.hasActiveReminder() || this.reminderEditing());
+
+  /** Denemelerin skorlarından türetilen sparkline path (viewBox 0 0 100 32). */
+  protected readonly sparkline = computed(() => this.sparklinePath(this.detail()?.attempts ?? []));
+
+  /** Skor halkası için stroke-dashoffset. */
+  protected readonly donutDashoffset = computed(() => this.donutOffset(this.completedResult()?.scorePercent ?? 0));
+
   public regions = signal<QuestionRegion[]>([]); // Soru bölgeleri
-  public selectedChoices = signal<Map<number, AnswerChoice>>(new Map()); // 🔄 Her soru için seçilen şıkkı sakla
-  public correctChoices = signal<Map<number, AnswerChoice>>(new Map()); // 🔄 Her soru için seçilen şıkkı sakla
+  public selectedChoices = signal<Map<number, AnswerChoice>>(new Map());
+  public correctChoices = signal<Map<number, AnswerChoice>>(new Map());
   testId!: number;
   questions: { status: 'correct' | 'incorrect' | 'unknown' }[] = [];
   public currentIndex = signal(0);
+
   StartTest(id: number | null) {
     if (id) {
-      this.testService.startTest(id).subscribe((response) => {
+      this.testService
+        .startTest(id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((response) => {
         if (response.success) {
           this.router.navigate(['/testsolve', response.instanceId]);
         } else {
@@ -134,6 +192,145 @@ export class WorksheetDetailComponent implements OnInit {
     }, 1000);
   }
 
+  protected createFromMistakes(): void {
+    const instanceId = this.completedResult()?.instanceId;
+    if (!instanceId || this.fromMistakesLoading()) {
+      return;
+    }
+
+    this.fromMistakesLoading.set(true);
+    this.testService
+      .createWorksheetFromMistakes(instanceId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.fromMistakesLoading.set(false);
+          if (result?.worksheetId) {
+            this.router.navigate(['/test', result.worksheetId]);
+          }
+        },
+        error: (error) => {
+          this.fromMistakesLoading.set(false);
+          const message = error?.error?.message ?? 'Test oluşturulamadı.';
+          this.snackBar.open(message, 'Tamam', { duration: 3000 });
+        },
+      });
+  }
+
+  protected openSimilarWorksheet(id: number): void {
+    this.router.navigate(['/test', id]);
+  }
+
+  /** İki alandan (tarih + saat) birleşik yerel Date üretir. */
+  private buildScheduledDate(): Date | null {
+    if (!this.reminderDate) {
+      return null;
+    }
+    const [hours, minutes] = (this.reminderTime || '00:00').split(':').map((v) => Number(v));
+    const combined = new Date(this.reminderDate);
+    combined.setHours(hours || 0, minutes || 0, 0, 0);
+    return combined;
+  }
+
+  protected startEditReminder(): void {
+    const current = this.reminder();
+    if (current) {
+      const scheduled = new Date(current.scheduledFor);
+      this.reminderDate = scheduled;
+      this.reminderTime = `${String(scheduled.getHours()).padStart(2, '0')}:${String(
+        scheduled.getMinutes()
+      ).padStart(2, '0')}`;
+      this.remindBeforeMinutes = current.remindBeforeMinutes;
+    }
+    this.reminderEditing.set(true);
+  }
+
+  protected cancelEditReminder(): void {
+    this.reminderEditing.set(false);
+  }
+
+  protected saveReminder(): void {
+    if (this.reminderSaving()) {
+      return;
+    }
+    const worksheetId = this.testId;
+    const scheduled = this.buildScheduledDate();
+    if (!worksheetId || !scheduled) {
+      this.snackBar.open('Lütfen tarih ve saat seçin.', 'Tamam', { duration: 3000 });
+      return;
+    }
+    if (scheduled.getTime() <= Date.now()) {
+      this.snackBar.open('Geçmiş bir tarih seçemezsin.', 'Tamam', { duration: 3000 });
+      return;
+    }
+
+    this.reminderSaving.set(true);
+    this.testService
+      .putWorksheetReminder(worksheetId, {
+        scheduledFor: scheduled.toISOString(),
+        remindBeforeMinutes: this.remindBeforeMinutes,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (reminder) => {
+          this.reminderSaving.set(false);
+          this.reminder.set(reminder);
+          this.reminderEditing.set(false);
+          this.snackBar.open('Hatırlatıcı kuruldu.', 'Tamam', { duration: 3000 });
+        },
+        error: (error) => {
+          this.reminderSaving.set(false);
+          this.snackBar.open(error?.error?.message ?? 'Hatırlatıcı kaydedilemedi.', 'Tamam', { duration: 3000 });
+          if (error?.status === 409) {
+            this.loadDetail();
+          }
+        },
+      });
+  }
+
+  protected removeReminder(): void {
+    if (this.reminderSaving() || !this.testId) {
+      return;
+    }
+    this.reminderSaving.set(true);
+    this.testService
+      .deleteWorksheetReminder(this.testId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.reminderSaving.set(false);
+          this.reminder.set(null);
+          this.reminderEditing.set(false);
+          this.snackBar.open('Hatırlatıcı iptal edildi.', 'Tamam', { duration: 3000 });
+        },
+        error: (error) => {
+          this.reminderSaving.set(false);
+          this.snackBar.open(error?.error?.message ?? 'Hatırlatıcı iptal edilemedi.', 'Tamam', { duration: 3000 });
+        },
+      });
+  }
+
+  protected reminderWhenLabel(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleString('tr-TR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  protected remindBeforeLabel(minutes: number): string {
+    if (minutes % 60 === 0) {
+      return `${minutes / 60} saat önce`;
+    }
+    return `${minutes} dakika önce`;
+  }
+
   protected refreshAssignments(): void {
     this.loadAssignments();
   }
@@ -158,6 +355,68 @@ export class WorksheetDetailComponent implements OnInit {
     return `${totalMinutes} dakika`;
   }
 
+  protected formatMinutes(totalSeconds: number): string {
+    const minutes = Math.round((totalSeconds ?? 0) / 60);
+    return `${minutes} dk`;
+  }
+
+  protected formatDurationDetailed(totalSeconds: number): string {
+    const safe = Math.max(0, Math.round(totalSeconds ?? 0));
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe % 60;
+    if (minutes > 0 && seconds > 0) {
+      return `${minutes} dk ${seconds} sn`;
+    }
+    if (minutes > 0) {
+      return `${minutes} dk`;
+    }
+    return `${seconds} sn`;
+  }
+
+  protected formatShortDate(value: string | null): string {
+    if (!value) {
+      return '—';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+  }
+
+  protected percentLabel(value: number | null | undefined): string {
+    return value === null || value === undefined ? '—' : `%${value}`;
+  }
+
+  /** Donut halkası için stroke-dashoffset (r = 64, çevre ≈ 402). */
+  protected readonly donutCircumference = 2 * Math.PI * 64;
+
+  protected donutOffset(percent: number): number {
+    const clamped = Math.min(100, Math.max(0, percent ?? 0));
+    return this.donutCircumference * (1 - clamped / 100);
+  }
+
+  /** Denemelerin skorlarından bir sparkline path (viewBox 0 0 100 32). */
+  protected sparklinePath(attempts: WorksheetAttempt[]): string {
+    if (!attempts?.length) {
+      return '';
+    }
+    const scores = [...attempts]
+      .sort((a, b) => new Date(a.completedDate ?? 0).getTime() - new Date(b.completedDate ?? 0).getTime())
+      .map((a) => a.scorePercent);
+    if (scores.length === 1) {
+      return 'M0 16 L100 16';
+    }
+    const step = 100 / (scores.length - 1);
+    return scores
+      .map((score, index) => {
+        const x = index * step;
+        const y = 30 - (Math.min(100, Math.max(0, score)) / 100) * 28;
+        return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
+      })
+      .join(' ');
+  }
+
   protected openAssignmentDialog(scope: 'grade' | 'student'): void {
     if (!this.isTeacher || !this.exam?.id) {
       return;
@@ -173,7 +432,10 @@ export class WorksheetDetailComponent implements OnInit {
       },
     });
 
-    dialogRef.afterClosed().subscribe((result: WorksheetAssignmentDialogResult | undefined) => {
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result: WorksheetAssignmentDialogResult | undefined) => {
       if (!result) {
         return;
       }
@@ -184,7 +446,10 @@ export class WorksheetDetailComponent implements OnInit {
         error: null,
       }));
 
-      this.testService.assignWorksheet(result.request).subscribe({
+      this.testService
+        .assignWorksheet(result.request)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
         next: (response) => {
           const success = response?.success ?? false;
           const message = response?.message ?? (success ? 'Atama oluşturuldu.' : 'Atama oluşturulamadı.');
@@ -214,7 +479,7 @@ export class WorksheetDetailComponent implements OnInit {
   protected statusLabel(status: AssignmentStudentStatus): string {
     switch (status) {
       case 'Completed':
-        return 'Tamamlandı';
+        return 'Tamamladı';
       case 'InProgress':
         return 'Devam ediyor';
       case 'Scheduled':
@@ -229,15 +494,15 @@ export class WorksheetDetailComponent implements OnInit {
   protected statusClass(status: AssignmentStudentStatus): string {
     switch (status) {
       case 'Completed':
-        return 'status-chip completed';
+        return 'st done';
       case 'InProgress':
-        return 'status-chip in-progress';
+        return 'st prog';
       case 'Scheduled':
-        return 'status-chip scheduled';
+        return 'st wait';
       case 'Expired':
-        return 'status-chip expired';
+        return 'st late';
       default:
-        return 'status-chip not-started';
+        return 'st wait';
     }
   }
 
@@ -341,7 +606,10 @@ export class WorksheetDetailComponent implements OnInit {
       error: null,
     }));
 
-    this.testService.getWorksheetAssignmentsForTeacher(this.testId).subscribe({
+    this.testService
+      .getWorksheetAssignmentsForTeacher(this.testId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
       next: (overview) => {
         const retrievedAt = overview?.retrievedAt ? new Date(overview.retrievedAt) : new Date();
         this.assignmentPanelState.set({
@@ -381,74 +649,123 @@ export class WorksheetDetailComponent implements OnInit {
       return;
     }
 
-    this.studentService.getLookup().subscribe({
-      next: (students) => this.studentLookups.set(students ?? []),
-      error: () => this.studentLookups.set([]),
-    });
+    this.studentService
+      .getLookup()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (students) => this.studentLookups.set(students ?? []),
+        error: () => this.studentLookups.set([]),
+      });
+  }
+
+  private loadDetail(): void {
+    if (!this.testId) {
+      return;
+    }
+
+    this.detailLoading.set(true);
+    this.detailError.set(null);
+    this.testService
+      .getWorksheetDetail(this.testId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          this.detail.set(detail ?? null);
+          this.detailLoading.set(false);
+          const planned = detail?.plannedReminder ?? null;
+          this.reminder.set(planned && planned.status !== 'Cancelled' ? planned : null);
+          this.reminderEditing.set(false);
+          const completedInstanceId = detail?.completedResult?.instanceId;
+          if (!this.isTeacher && completedInstanceId) {
+            this.loadResultsForInstance(completedInstanceId);
+          }
+        },
+        error: (error) => {
+          this.detailLoading.set(false);
+          this.detailError.set(error?.error?.message ?? 'Sınav detayları getirilemedi.');
+        },
+      });
+  }
+
+  /** "Tamamlandı" görünümündeki soru dökümünü completedResult.instanceId üzerinden yükler. */
+  private loadResultsForInstance(instanceId: number): void {
+    this.testService
+      .getCanvasTestResults(instanceId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((response: TestInstance) => {
+        if (!response) {
+          return;
+        }
+        this.results = response;
+        this.regions.set(this.testService.convertTestInstanceToRegions(this.results));
+
+        const selected = new Map<number, AnswerChoice>();
+        const correct = new Map<number, AnswerChoice>();
+        this.results.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
+          const region = this.regions().find((a) => a.id == q.question.id);
+          if (q.selectedAnswerId) {
+            const choice = region?.answers.find((a) => a.id === q.selectedAnswerId);
+            if (choice) {
+              selected.set(q.question.id, choice);
+            }
+          }
+          const correctChoice = region?.answers.find((a) => a.id === q.question.correctAnswerId);
+          if (correctChoice) {
+            correct.set(q.question.id, correctChoice);
+          }
+        });
+        this.selectedChoices.set(selected);
+        this.correctChoices.set(correct);
+
+        this.questions = this.results.testInstanceQuestions.map((tiq) => {
+          if (tiq.selectedAnswerId === null) {
+            return { status: 'unknown' };
+          }
+          return tiq.selectedAnswerId === tiq.question.correctAnswerId
+            ? { status: 'correct' }
+            : { status: 'incorrect' };
+        });
+      });
+  }
+
+  protected reloadDetail(): void {
+    this.loadDetail();
   }
 
   questionSelected(index: number) {
-    const question = this.results.testInstanceQuestions[index];
-    console.log('Selected question:', question);
     this.currentIndex.set(index);
   }
 
+  protected trackByTopicId = (_: number, topic: { topicId: number | null }): number =>
+    topic.topicId ?? -1;
+
   ngOnInit() {
-    this.route.paramMap.subscribe(async (params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(async (params) => {
       this.testId = Number(params.get('testId'));
-      if (this.testId) {
-        this.exam = await lastValueFrom(this.testService.get(this.testId));
-        if (this.exam) {
-          this.gradeService.getGrades().subscribe((grades) => {
+      if (!this.testId) {
+        return;
+      }
+
+      this.detail.set(null);
+      this.regions.set([]);
+      this.selectedChoices.set(new Map());
+      this.correctChoices.set(new Map());
+      this.questions = [];
+
+      this.loadDetail();
+      this.exam = await lastValueFrom(this.testService.get(this.testId));
+      if (this.exam) {
+        this.gradeService
+          .getGrades()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((grades) => {
             this.grades.set(grades);
             const grade = grades.find((g) => g.id === this.exam.gradeId);
             this.gradeName.set(grade ? grade.name : 'Bilinmiyor');
           });
 
-          if (this.isTeacher) {
-            this.initializeTeacherPanel();
-          }
-        }
-        if (this.exam && this.exam.instance) {
-          this.testService.getCanvasTestResults(this.exam.instance.id).subscribe((response: TestInstance) => {
-            if (response) {
-              this.results = response;
-              const data: QuestionRegion[] = this.testService.convertTestInstanceToRegions(this.results);
-              this.regions.set(data);
-
-              this.results.testInstanceQuestions.forEach((q: TestInstanceQuestion) => {
-                if (q.selectedAnswerId) {
-                  const selectedChoice = this.regions()
-                    .find((a) => a.id == q.question.id)
-                    ?.answers.find((a) => a.id === q.selectedAnswerId);
-                  if (selectedChoice) {
-                    const updatedChoices = new Map(this.selectedChoices());
-                    updatedChoices.set(q.question.id, selectedChoice);
-                    this.selectedChoices.set(updatedChoices);
-                  }
-                }
-
-                const correctChoice = this.regions()
-                  .find((a) => a.id == q.question.id)
-                  ?.answers.find((a) => a.id === q.question.correctAnswerId);
-                const updatedCorrectChoices = new Map(this.correctChoices());
-                if (correctChoice) {
-                  updatedCorrectChoices.set(q.question.id, correctChoice);
-                  this.correctChoices.set(updatedCorrectChoices);
-                }
-              });
-
-              this.questions = this.results.testInstanceQuestions.map((tiq) => {
-                if (tiq.selectedAnswerId === null) {
-                  return { status: 'unknown' };
-                } else if (tiq.selectedAnswerId === tiq.question.correctAnswerId) {
-                  return { status: 'correct' };
-                } else {
-                  return { status: 'incorrect' };
-                }
-              });
-            }
-          });
+        if (this.isTeacher) {
+          this.initializeTeacherPanel();
         }
       }
     });

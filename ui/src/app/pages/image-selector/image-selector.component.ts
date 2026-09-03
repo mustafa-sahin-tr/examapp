@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   EventEmitter,
   HostListener,
@@ -10,6 +11,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { QuestionRegion, AnswerChoice, RegionOrAnswerHit, ClassificationSource } from '../../models/draws';
 import { QuillModule } from 'ngx-quill';
@@ -24,6 +26,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
+import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
@@ -32,7 +35,6 @@ import {
   ClassificationSelectorComponent,
   ClassificationSelection,
 } from '../../shared/components/classification-selector/classification-selector.component';
-import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 
 interface WarningMarker {
   id: number;
@@ -42,7 +44,7 @@ interface WarningMarker {
   type?: 'error' | 'warning' | 'info';
 }
 
-type QuestionInteractionType = 'mcq' | 'dragDropLabeling';
+export type QuestionInteractionType = 'mcq' | 'dragDropLabeling';
 
 interface DragDropLabelingPlanV1 {
   version: 1;
@@ -59,6 +61,26 @@ interface DragDropLabelingAuthoringState {
   dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
   draggables: Array<{ id: string; label: string }>;
   placements: Array<{ draggableId: string; dropZoneId: string }>;
+}
+
+export interface ActiveInspector {
+  index: number;
+  no: number;
+  region: QuestionRegion;
+  name: string;
+  interactionType: QuestionInteractionType;
+  answers: AnswerChoice[];
+  warnings: string[];
+  dropZones: Array<{ id: string; x: number; y: number; width: number; height: number }>;
+  draggables: Array<{ id: string; label: string }>;
+  zoneAssignments: Record<string, string>;
+  labelCount: number;
+  isExample: boolean;
+  exampleAnswer: string;
+  difficulty: number | null;
+  passages: Array<{ id: string; x: number; y: number; width: number; height: number; showPassageFirst?: boolean }>;
+  selectedPassageId: string;
+  passageFirst: boolean;
 }
 @Component({
   selector: 'app-image-selector',
@@ -106,9 +128,8 @@ export class ImageSelectorComponent {
   public autoAlign = signal<boolean>(false);
   public autoMode = signal<boolean>(false);
   public inProgress = signal<boolean>(false);
-  public showRegions = signal<boolean>(false);
   public onlyQuestionMode = signal<boolean>(false);
-  public answerCount = signal<number>(3);
+  public answerCount = signal<number>(4);
   public selectionMode = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
   public selectionModeLocked = signal<'passage' | 'question' | 'answer' | 'dropzone' | null>(null);
   public passages = signal<
@@ -126,6 +147,7 @@ export class ImageSelectorComponent {
   private subjectService = inject(SubjectService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private destroyRef = inject(DestroyRef);
 
   // Cache: topicId -> gradeId (topic carries gradeId)
   private topicGradeIdCache = new Map<number, number>();
@@ -134,7 +156,11 @@ export class ImageSelectorComponent {
   private startY = 0;
   protected isDrawing = false;
   private selectionStarted = false;
-  private selectedQuestionIndex = -1;
+  public selectedQuestionIndex = -1;
+  /** mousedown anındaki hit — endSelection'da tık/sürükleme ayrımı için. */
+  private pendingHit: RegionOrAnswerHit = null;
+  /** Sağ panel (Soru Müfettişi) senkronizasyonu için seçili soru bildirimi. */
+  @Output() selectedQuestionChange = new EventEmitter<{ index: number; region: QuestionRegion | null }>();
 
   contextMenuType: 'region' | 'answer' | 'worksheet' | 'dropzone' | 'passage' = 'region'; // ✅ Sağ tıklama menüsünün türü
   selectedRegion: number | null = null;
@@ -388,15 +414,27 @@ export class ImageSelectorComponent {
 
   public togglePreviewMode(testId: number) {
     if (!this.previewMode()) {
-      this.previewMode.set(!this.previewMode());
+      this.previewMode.set(true);
       this.previewCurrentIndex.set(0);
       this.currentTestId.set(testId); // Test ID'yi sakla
       // get questions and sets region
-      this.questionService.getAll(testId).subscribe((response) => {
-        const regions = this.testService.convertQuestionsToRegions(response);
-        this.regions.set(regions);
-        this.questionSelected(0);
-      });
+      this.questionService
+        .getAll(testId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (response) => {
+            const regions = this.testService.convertQuestionsToRegions(response);
+            this.regions.set(regions);
+            this.questionSelected(0);
+          },
+          error: (err) => {
+            console.error('Önizleme yüklenemedi:', err);
+            this.snackBar.open('Önizleme yüklenemedi.', 'Tamam', { duration: 3000 });
+            this.previewMode.set(false);
+            this.currentTestId.set(null);
+            this.loadCurrentImage();
+          },
+        });
     } else {
       this.resetRegions();
       this.previewMode.set(!this.previewMode());
@@ -490,8 +528,14 @@ export class ImageSelectorComponent {
     const clickY = event.clientY - canvasRect.top;
 
     const hit = this.getRegionOrAnswerAtPosition(clickX, clickY);
-    this.contextMenuX = event.clientX;
-    this.contextMenuY = event.clientY;
+    const menuWidth = 260;
+    const menuMaxHeight = 320;
+    this.contextMenuX =
+      event.clientX + menuWidth > window.innerWidth ? Math.max(8, event.clientX - menuWidth) : event.clientX;
+    this.contextMenuY =
+      event.clientY + menuMaxHeight > window.innerHeight
+        ? Math.max(8, window.innerHeight - menuMaxHeight - 8)
+        : event.clientY;
 
     if (hit === null) {
       this.contextMenuType = 'worksheet';
@@ -536,6 +580,15 @@ export class ImageSelectorComponent {
     console.log('Exited  onRightClick hit.type === question. IsDrawing :', this.isDrawing);
 
     this.contextMenuVisible = true;
+
+    if (this.selectedRegion != null && this.selectedRegion >= 0 && this.selectedRegion < this.regions().length) {
+      this.selectedQuestionIndex = this.selectedRegion;
+      this.selectedQuestionChange.emit({
+        index: this.selectedRegion,
+        region: this.regions()[this.selectedRegion] ?? null,
+      });
+      this.drawImage();
+    }
   }
 
   closeContextMenu() {
@@ -616,7 +669,7 @@ export class ImageSelectorComponent {
     this.drawImage();
   }
 
-  private toggleShowPassageFirstForPassage(passageId: string) {
+  public toggleShowPassageFirstForPassage(passageId: string) {
     const normalizedId = String(passageId);
     const passages = this.passages();
     const target = passages.find((p) => String(p.id) === normalizedId);
@@ -664,10 +717,6 @@ export class ImageSelectorComponent {
     state.placements = state.placements.filter((p) => p.dropZoneId !== dropZoneId);
     this.labelingState.set(regionName, { ...state });
     this.drawImage();
-  }
-
-  public toggleShowRegions() {
-    this.showRegions.set(!this.showRegions());
   }
 
   handleFilesInput2(event: Event) {
@@ -867,6 +916,10 @@ export class ImageSelectorComponent {
           const questionIndex = this.regions().findIndex((q) => q.name === region.name);
           const answerIndex = region.answers.findIndex((a) => a.label === answer.label);
           this.setCorrectAnswer(questionIndex, answerIndex, 1);
+          this.selectedRegion = questionIndex;
+          this.selectedQuestionIndex = questionIndex;
+          this.selectedQuestionChange.emit({ index: questionIndex, region: this.regions()[questionIndex] ?? null });
+          this.drawImage();
         }
       }
     }
@@ -943,6 +996,12 @@ export class ImageSelectorComponent {
     }
   }
 
+  /** Şık sayısı gibi ayar değişince tüm bölgelerin uyarılarını tazele. */
+  public recomputeWarnings() {
+    this.regions().forEach((region) => this.checkRegionWarning(region));
+    this.drawImage();
+  }
+
   checkRegionWarning(region: QuestionRegion) {
     if (this.warningMarkers.find((w) => w.id === region.id)) {
       // remove warning
@@ -986,6 +1045,45 @@ export class ImageSelectorComponent {
     }
   }
 
+  private cssVar(name: string): string {
+    if (typeof getComputedStyle === 'undefined') return '';
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  /** Çizimde kullanılan token değerleri — bir kez çözümlenip cache'lenir (sıcak yol). */
+  private themeColors?: { accent: string; label: string; fontFamily: string };
+
+  private getThemeColors() {
+    if (!this.themeColors) {
+      this.themeColors = {
+        accent: this.cssVar('--ms-action-border') || this.cssVar('--primaryColor') || 'red',
+        label: this.cssVar('--ms-text-strong') || 'white',
+        fontFamily: this.cssVar('--mainFontFamily') || 'sans-serif',
+      };
+    }
+    return this.themeColors;
+  }
+
+  /** Aktif bölgeyi (Soru Müfettişi seçimi) canvas görünür alanına kaydır. */
+  scrollActiveRegionIntoView() {
+    const region = this.currentRegion;
+    const canvasEl = this.canvas?.nativeElement;
+    if (!region || !canvasEl) return;
+
+    const scroller = canvasEl.closest(
+      '.qc-canvas__stage, .ms-canvas-wrapper, .form-column-4'
+    ) as HTMLElement | null;
+    if (!scroller) return;
+
+    const scale = canvasEl.clientWidth / (canvasEl.width || 1) || 1;
+    const top = region.y * scale;
+    const bottom = (region.y + region.height) * scale;
+
+    if (top < scroller.scrollTop || bottom > scroller.scrollTop + scroller.clientHeight) {
+      scroller.scrollTo({ top: Math.max(0, top - 48), behavior: 'smooth' });
+    }
+  }
+
   drawImage() {
     if (!this.canvas) return;
     const canvasEl = this.canvas.nativeElement;
@@ -1002,13 +1100,43 @@ export class ImageSelectorComponent {
         this.ctx.strokeRect(passage.x, passage.y, passage.width, passage.height);
       }
 
-      // 🔴 **Soru alanlarını kırmızı renkte çiz**
-      for (const region of this.regions()) {
-        this.ctx.strokeStyle = 'red';
-        this.ctx.lineWidth = 2;
+      // 🔴 **Soru alanlarını çiz — aktif bölge vurgulu**
+      const activeIndex = this.activeRegionIndex;
+      const theme = this.getThemeColors();
+      const accent = theme.accent;
+      this.regions().forEach((region, i) => {
+        if (!this.ctx) return;
+        const isActive = i === activeIndex;
+
+        if (isActive) {
+          this.ctx.save();
+          this.ctx.globalAlpha = 0.1;
+          this.ctx.fillStyle = accent;
+          this.ctx.fillRect(region.x, region.y, region.width, region.height);
+          this.ctx.restore();
+
+          this.ctx.strokeStyle = accent;
+          this.ctx.lineWidth = 4;
+        } else {
+          this.ctx.strokeStyle = 'red';
+          this.ctx.globalAlpha = 0.4;
+          this.ctx.lineWidth = 2;
+        }
         this.ctx.strokeRect(region.x, region.y, region.width, region.height);
+        this.ctx.globalAlpha = 1;
+
+        if (isActive) {
+          const label = `S${i + 1}`;
+          this.ctx.font = `bold 15px ${theme.fontFamily}`;
+          const textW = this.ctx.measureText(label).width;
+          this.ctx.fillStyle = accent;
+          this.ctx.fillRect(region.x, Math.max(0, region.y - 20), textW + 12, 20);
+          this.ctx.fillStyle = theme.label;
+          this.ctx.fillText(label, region.x + 6, Math.max(11, region.y - 6));
+        }
+
         this.checkRegionWarning(region);
-      }
+      });
 
       // 🟦 **Şık alanlarını mavi renkte çiz**
       if (!this.onlyQuestionMode()) {
@@ -1114,28 +1242,18 @@ export class ImageSelectorComponent {
     const rect = this.canvas.nativeElement.getBoundingClientRect();
     this.startX = event.clientX - rect.left;
     this.startY = event.clientY - rect.top;
-    var hit = this.getRegionOrAnswerAtPosition(this.startX, this.startY);
+    const hit = this.getRegionOrAnswerAtPosition(this.startX, this.startY);
+    this.pendingHit = hit;
 
-    // if (!this.ctx || !this.selectionMode()) {
-    //   console.log('Exited startSelection ctx or selectionMode is null. IsDrawing :', this.isDrawing);
-    //   return;
-    // }
+    const mode = this.selectionMode();
 
-    if (hit) {
-      // if(hit.type === 'question' && this.selectionMode() === 'question') {
-      //   // bir sorunun içinde tıklanmışsa tekrar bir soru yapmasın.
-      //   console.log('Exited startSelection hit.type === question. IsDrawing :', this.isDrawing);
-      //   return;
-      // }
-      if (hit.type === 'question') {
-        this.selectedQuestionIndex = hit.value.questionIndex;
-        const regionName = this.regions()[this.selectedQuestionIndex]?.name;
-        const interactionType = regionName ? this.getInteractionType(regionName) : 'mcq';
-        this.selectionMode.set(interactionType === 'dragDropLabeling' ? 'dropzone' : 'answer');
-      }
-    } else {
-      // bir hit yoksa cevap giremesin. Cevap girmen için hit olmalı ve question olmalı
-      if (this.selectionMode() === 'answer') {
+    if (hit && hit.type === 'question') {
+      // Şık / drop-zone çizimi hangi soruya ait olacak — modu ZORLAMADAN sadece hedef soruyu belirle.
+      // Mod artık üstteki segmented kontrolden geliyor.
+      this.selectedQuestionIndex = hit.value.questionIndex;
+    } else if (!hit) {
+      // Boş alanda şık / zone çizilemez.
+      if (mode === 'answer' || mode === 'dropzone') {
         console.log('Exited startSelection hit === null. IsDrawing :', this.isDrawing);
         return;
       }
@@ -1179,6 +1297,36 @@ export class ImageSelectorComponent {
     const endY = event.clientY - rect.top;
     const width = endX - this.startX;
     const height = endY - this.startY;
+
+    // --- Tık mı sürükleme mi? (~4px) ---
+    const isClick = Math.hypot(endX - this.startX, endY - this.startY) < 4;
+    const hit = this.pendingHit;
+
+    // Bir bölgenin gövdesine tık (veya "Soru" modunda bölge içinde sürükleme) → o bölgeyi SEÇ, çizme.
+    if (
+      hit &&
+      hit.type === 'question' &&
+      (isClick || this.selectionMode() === 'question')
+    ) {
+      this.isDrawing = false;
+      this.pendingHit = null;
+      this.selectQuestion(hit.value.questionIndex);
+      return;
+    }
+
+    // Şık üstüne tık → o soruyu seç (doğru cevap ayarını tapCorrectAnswer yapar).
+    if (isClick) {
+      this.isDrawing = false;
+      this.pendingHit = null;
+      if (hit && (hit.type === 'answer' || hit.type === 'dropzone')) {
+        this.selectQuestion(hit.value.questionIndex);
+      } else {
+        this.drawImage();
+      }
+      return;
+    }
+
+    this.pendingHit = null;
 
     if (this.selectionMode() === 'passage') {
       if (questionWidthThreshold > width || questionHeightThreshold > height) {
@@ -1236,9 +1384,9 @@ export class ImageSelectorComponent {
         this.drawImage();
         return;
       }
-      const label = `Şık ${this.regions()[this.selectedQuestionIndex].answers.length + 1}`;
-      this.regions()[this.selectedQuestionIndex].answers.push({
-        label,
+      const answerIdx = this.selectedQuestionIndex;
+      this.regions()[answerIdx].answers.push({
+        label: String.fromCharCode(65 + this.regions()[answerIdx].answers.length),
         x: this.startX,
         y: this.startY,
         width,
@@ -1247,13 +1395,12 @@ export class ImageSelectorComponent {
         id: 0,
         imageUrl: '',
       });
-      const answerCount = this.answerCount();
-      if (this.regions()[this.selectedQuestionIndex].answers.length === +answerCount) {
-        if (this.autoAlign()) {
-          this.alignAnswers(this.selectedQuestionIndex);
-        }
-        // this.toggleSelectionMode('question');
+      // Her şık çiziminde harflendirmeyi güncelle (A, B, C, D, E) — son şık da doğru adlansın.
+      this.renameAnswers(answerIdx);
+      if (this.autoAlign() && this.regions()[answerIdx].answers.length >= 2) {
+        this.alignAnswers(answerIdx);
       }
+      this.regions.set([...this.regions()]);
     } else if (this.selectionMode() === 'dropzone' && this.selectedQuestionIndex !== -1) {
       const region = this.regions()[this.selectedQuestionIndex];
       const minW = 10;
@@ -1476,9 +1623,13 @@ export class ImageSelectorComponent {
 
   selectQuestion(index: number) {
     this.selectedQuestionIndex = index;
+    this.selectedRegion = index;
     const regionName = this.regions()[index]?.name;
     const interactionType = regionName ? this.getInteractionType(regionName) : 'mcq';
     this.toggleSelectionMode(interactionType === 'dragDropLabeling' ? 'dropzone' : 'answer');
+    this.selectedQuestionChange.emit({ index, region: this.regions()[index] ?? null });
+    this.drawImage();
+    requestAnimationFrame(() => this.scrollActiveRegionIntoView());
   }
 
   selectQuestionByName(name: string) {
@@ -1486,6 +1637,90 @@ export class ImageSelectorComponent {
     if (index !== -1) {
       this.selectQuestion(index);
     }
+  }
+
+  /** Müfettiş panelinin odaklandığı bölge (sağ tık seçimi ya da son seçilen soru). */
+  get activeRegionIndex(): number | null {
+    const regions = this.regions();
+    if (!regions.length) {
+      return null;
+    }
+    if (this.selectedRegion != null && this.selectedRegion >= 0 && this.selectedRegion < regions.length) {
+      return this.selectedRegion;
+    }
+    if (this.selectedQuestionIndex >= 0 && this.selectedQuestionIndex < regions.length) {
+      return this.selectedQuestionIndex;
+    }
+    return 0;
+  }
+
+  get currentRegion(): QuestionRegion | null {
+    const i = this.activeRegionIndex;
+    return i == null ? null : this.regions()[i];
+  }
+
+  selectNextQuestion() {
+    const n = this.regions().length;
+    if (!n) {
+      return;
+    }
+    const cur = this.activeRegionIndex ?? -1;
+    this.selectQuestion((cur + 1) % n);
+  }
+
+  selectPreviousQuestion() {
+    const n = this.regions().length;
+    if (!n) {
+      return;
+    }
+    const cur = this.activeRegionIndex ?? 0;
+    this.selectQuestion((cur - 1 + n) % n);
+  }
+
+  /**
+   * Soru Müfettişi'nin ihtiyacı olan tüm veriyi tek çağrıda toplar; parent şablonun
+   * onlarca ayrı getter yerine tek nesne okumasını sağlar (CD maliyetini düşürür).
+   */
+  public getActiveInspector(): ActiveInspector | null {
+    const index = this.activeRegionIndex;
+    if (index == null) {
+      return null;
+    }
+    const region = this.regions()[index];
+    if (!region) {
+      return null;
+    }
+    const name = region.name;
+    const interactionType = this.getInteractionType(name);
+    const isLabeling = interactionType === 'dragDropLabeling';
+    const dropZones = isLabeling ? this.getDropZones(name) : [];
+    const draggables = isLabeling ? this.getDraggables(name) : [];
+    const passageId = this.selectedPassageMap.get(name) || '0';
+
+    const zoneAssignments: Record<string, string> = {};
+    for (const z of dropZones) {
+      zoneAssignments[z.id] = this.getZoneAssignedDraggable(name, z.id);
+    }
+
+    return {
+      index,
+      no: index + 1,
+      region,
+      name,
+      interactionType,
+      answers: region.answers ?? [],
+      warnings: this.warningMarkers.filter((m) => m.id === region.id).flatMap((m) => m.messages),
+      dropZones,
+      draggables,
+      zoneAssignments,
+      labelCount: isLabeling ? this.getLabelCount(name) : 0,
+      isExample: this.isExample(name),
+      exampleAnswer: this.getExampleAnswer(name),
+      difficulty: this.previewDifficultyLevel(),
+      passages: this.passages(),
+      selectedPassageId: passageId,
+      passageFirst: this.isPassageFirstEnabledForPassage(passageId === '0' ? null : passageId),
+    };
   }
 
   // getJsonData() {
@@ -2207,11 +2442,9 @@ export class ImageSelectorComponent {
     // **Şıkları sıralayıp A, B, C, D olarak yeniden isimlendir**
     const sortedAnswers = [...region.answers].sort((a, b) => (isVertical ? a.y - b.y : a.x - b.x));
 
-    const labels = ['A', 'B', 'C', 'D'];
+    // A, B, C, D, E ... — şık sayısı kaç olursa olsun son şık dahil harflenir.
     sortedAnswers.forEach((answer, index) => {
-      if (index < labels.length) {
-        answer.label = labels[index]; // Yeni isimleri ata
-      }
+      answer.label = String.fromCharCode(65 + index);
     });
     // 🔁 region.answers'ı yeniden sırala
     region.answers = sortedAnswers;

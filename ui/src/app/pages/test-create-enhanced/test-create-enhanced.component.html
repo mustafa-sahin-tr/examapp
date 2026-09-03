@@ -1,4 +1,19 @@
-<div class="tce" [class.edit-mode]="isEditMode">
+<div class="tce" [class.edit-mode]="isEditMode" [class.miniform]="isMiniform">
+  <!-- MINIFORM: kompakt hızlı test oluştur -->
+  <ng-container *ngIf="isMiniform">
+    <app-test-form
+      [form]="testForm"
+      [grades]="grades"
+      [compact]="true"
+      (onGradeChange)="onGradeChange($event)"
+    ></app-test-form>
+    <button class="btn btn-primary" type="button" [disabled]="testForm.invalid || creatingInline" (click)="createAndContinue()">
+      <mat-icon>{{ creatingInline ? 'hourglass_empty' : 'arrow_forward' }}</mat-icon>
+      {{ creatingInline ? 'Oluşturuluyor…' : 'Oluştur ve devam et' }}
+    </button>
+  </ng-container>
+
+  <ng-container *ngIf="!isMiniform">
   <div class="page-head">
     <div class="ph-text">
       <h1>{{ isEditMode ? 'Testi Düzenle' : 'Yeni Test Oluştur' }}</h1>
@@ -199,4 +214,5 @@
       </section>
     </div>
   </div>
+  </ng-container>
 </div>

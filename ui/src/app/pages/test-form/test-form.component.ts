@@ -1,10 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { FormGroup, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatOptionModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,18 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
   standalone: true,
   templateUrl: './test-form.component.html',
   styleUrls: ['./test-form.component.scss'],
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    FormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatOptionModule,
-    MatCheckboxModule,
-    MatButtonModule,
-    MatIconModule,
-  ],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatCheckboxModule, MatButtonModule, MatIconModule],
 })
 export class TestFormComponent {
   @Input() form!: FormGroup;
@@ -37,6 +22,10 @@ export class TestFormComponent {
   @Input() subtopics: any[] = [];
   @Input() showAddBookInput = false;
   @Input() showAddBookTestInput = false;
+  /** Edit modda alt aksiyonlar (Kaydet/İptal) sidebar'a taşındığı için gizlenir. */
+  @Input() isEditMode = false;
+  /** "Hepsine uygula" yalnızca yeni test + toplu veri varken görünür. */
+  @Input() showApplyToAll = false;
 
   @Output() onBookChange = new EventEmitter<any>();
   @Output() openNewBookAdd = new EventEmitter<void>();
@@ -52,7 +41,10 @@ export class TestFormComponent {
   @Output() applySubtopicToAll = new EventEmitter<any>();
   @Output() applyGradeToAll = new EventEmitter<any>();
 
-  // Template'te çağrılan fonksiyonlar
+  value(name: string): any {
+    return this.form?.get(name)?.value;
+  }
+
   subjectChange(value: any) {
     this.onSubjectChange.emit(value);
   }
@@ -61,5 +53,12 @@ export class TestFormComponent {
   }
   gradeChange(value: any) {
     this.onGradeChange.emit(value);
+  }
+  bookChange(value: any) {
+    this.onBookChange.emit({ value });
+  }
+  togglePractice() {
+    const c = this.form.get('isPracticeTest');
+    c?.setValue(!c.value);
   }
 }

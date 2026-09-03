@@ -357,10 +357,14 @@ public class ExamService : IExamService
 
     public async Task<List<WorksheetWithInstanceDto>> GetWorksheetAndInstancesAsync(StudentProfileDto student, int gradeId)
     {
+        // Student-scoped worksheet'ler (örn. "Yanlışlarım" practice test'i) yalnızca ilgili
+        // öğrenciye görünmeli — sınıf listesine sızmamalı.
         var worksheets = await _context.Worksheets
             .Include(w => w.WorksheetQuestions)
             .Include(w => w.BookTest)
             .Where(w => w.GradeId == gradeId)
+            .Where(w => !_context.WorksheetAssignments.Any(a => a.WorksheetId == w.Id && a.StudentId != null)
+                || _context.WorksheetAssignments.Any(a => a.WorksheetId == w.Id && a.StudentId == student.Id))
             .ToListAsync();
 
         var worksheetIds = worksheets.Select(w => w.Id).ToList();

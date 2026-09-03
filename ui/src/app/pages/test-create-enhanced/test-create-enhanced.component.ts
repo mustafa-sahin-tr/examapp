@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, ViewChild, ElementRef, Input } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, ElementRef, Input, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { BookService } from '../../services/book.service';
 import { GradesService } from '../../services/grades.service';
@@ -7,29 +8,17 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import * as XLSX from 'xlsx';
 import { TestRow } from '../../../models/test-row';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
-import { MatButtonModule } from '@angular/material/button';
-import { FormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
-import { ReactiveFormsModule } from '@angular/forms';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { TestFormComponent } from '../test-form/test-form.component';
 import { TestService } from '../../services/test.service';
 import { Test } from '../../models/test-instance';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
-import { WorksheetListViewCardComponent } from '../worksheet-list/worksheet-list-view-card.component';
-import { A11yModule } from '@angular/cdk/a11y';
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -38,28 +27,15 @@ import { A11yModule } from '@angular/cdk/a11y';
   styleUrls: ['./test-create-enhanced.component.scss'],
   imports: [
     CommonModule,
-    MatCardModule,
-    MatButtonModule,
-    FormsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatCheckboxModule,
     MatIconModule,
-    ReactiveFormsModule,
-    MatChipsModule,
     MatTableModule,
     MatRadioModule,
     MatProgressBarModule,
     MatSnackBarModule,
-    WorksheetCardComponent,
     TestFormComponent,
-    WorksheetListViewCardComponent,
-    A11yModule,
   ],
 })
 export class TestCreateEnhancedComponent implements OnInit {
-  protected readonly worksheetListViewCardComponent = WorksheetListViewCardComponent;
   @Input() mode: string = 'default'; // 'create' veya 'edit' olabilir
   id!: number | null;
   exam!: Test;
@@ -79,7 +55,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   bulkImportData: TestRow[] = [];
   selectedBulkIndex: number | null = null;
   lastPatchedBulkFormValue: any = null;
-  selectedImage: string | ArrayBuffer | undefined | null = null;
+  readonly bulkColumns = ['select', 'bookName', 'name', 'gradeId', 'maxDurationMinutes', 'status'];
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   testService = inject(TestService);
 
@@ -90,6 +66,11 @@ export class TestCreateEnhancedComponent implements OnInit {
   fb = inject(FormBuilder);
   route = inject(ActivatedRoute);
   router = inject(Router);
+  destroyRef = inject(DestroyRef);
+
+  /** Kapak görseli yüklemesi için seçili dosya önizlemesi. */
+  imagePreviewUrl: string | null = null;
+  isImageUploading = false;
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ? Number(this.route.snapshot.paramMap.get('id')) : null;
@@ -128,9 +109,11 @@ export class TestCreateEnhancedComponent implements OnInit {
     this.loadBooks();
     this.loadGrades();
     this.loadSubjects();
-    this.loadTest();
+    if (this.isEditMode) {
+      this.loadTest();
+    }
     // Form değişikliklerini dinle
-    this.testForm.valueChanges.subscribe(() => {
+    this.testForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (this.selectedBulkIndex !== null && this.bulkImportData[this.selectedBulkIndex]) {
         const current = this.testForm.value;
         const last = this.lastPatchedBulkFormValue;
@@ -212,107 +195,180 @@ export class TestCreateEnhancedComponent implements OnInit {
       return;
     }
 
-    this.subjectService.getTopicsBySubjectAndGrade(sId, gradeId).subscribe((topics) => {
-      this.topics = topics;
+    this.subjectService
+      .getTopicsBySubjectAndGrade(sId, gradeId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((topics) => {
+        this.topics = topics;
 
-      // Set topic after list is loaded.
-      this.testForm.patchValue({ topicId: tId }, { emitEvent: false });
+        // Set topic after list is loaded.
+        this.testForm.patchValue({ topicId: tId }, { emitEvent: false });
 
-      if (!tId) {
-        this.subtopics = [];
-        this.testForm.patchValue({ subtopicId: '' }, { emitEvent: false });
-        return;
-      }
+        if (!tId) {
+          this.subtopics = [];
+          this.testForm.patchValue({ subtopicId: '' }, { emitEvent: false });
+          return;
+        }
 
-      this.subjectService.getSubTopicsByTopic(tId).subscribe((subtopics) => {
-        this.subtopics = subtopics;
-        this.testForm.patchValue({ subtopicId: stId }, { emitEvent: false });
+        this.subjectService
+          .getSubTopicsByTopic(tId)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((subtopics) => {
+            this.subtopics = subtopics;
+            this.testForm.patchValue({ subtopicId: stId }, { emitEvent: false });
+          });
       });
-    });
+  }
+
+  get hasBulkData(): boolean {
+    return !this.isEditMode && this.bulkImportData.length > 0;
   }
 
   onImageSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.selectedImage = e.target?.result;
-      };
-      reader.readAsDataURL(file);
+    const file = input.files && input.files[0];
+    if (!file) {
+      return;
     }
+    if (!file.type.startsWith('image/')) {
+      this.snackBar.open('Lütfen bir görsel dosyası seçin.', 'Kapat', { duration: 3000 });
+      input.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.snackBar.open('Görsel en fazla 2 MB olabilir.', 'Kapat', { duration: 3000 });
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.imagePreviewUrl = (e.target?.result as string) ?? null;
+    };
+    reader.readAsDataURL(file);
+
+    if (this.isEditMode && this.id) {
+      const previousImageUrl: string | null = this.testForm.value.imageUrl || null;
+      this.isImageUploading = true;
+      this.testService
+        .updateWorksheetBackgroundImage(this.id, file)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            this.isImageUploading = false;
+            if (res?.imageUrl) {
+              this.testForm.patchValue({ imageUrl: res.imageUrl });
+              this.imagePreviewUrl = res.imageUrl;
+            }
+            this.snackBar.open('Kapak görseli güncellendi.', 'Kapat', { duration: 2500 });
+          },
+          error: () => {
+            this.isImageUploading = false;
+            this.imagePreviewUrl = previousImageUrl;
+            this.snackBar.open('Kapak görseli yüklenemedi.', 'Kapat', { duration: 3000 });
+          },
+        });
+    }
+    input.value = '';
   }
 
   loadTest() {
-    this.testService.get(this.id!).subscribe((exam) => {
-      this.bookService.getTestsByBook(exam.bookId || 0).subscribe((data) => {
-        this.bookTests = data;
-        this.testForm.patchValue({ bookTestId: null, newBookTestName: '' }, { emitEvent: false });
+    this.testService
+      .get(this.id!)
+      .pipe(
+        switchMap((exam) =>
+          this.bookService.getTestsByBook(exam.bookId || 0).pipe(
+            switchMap((bookTests) => {
+              this.bookTests = bookTests;
+              this.testForm.patchValue(
+                {
+                  bookTestId: null,
+                  newBookTestName: '',
+                  name: exam.name,
+                  description: exam.description,
+                  gradeId: exam.gradeId,
+                  maxDurationMinutes: exam.maxDurationSeconds / 60,
+                  isPracticeTest: exam.isPracticeTest,
+                  subtitle: exam.subtitle,
+                  imageUrl: exam.imageUrl,
+                  bookId: exam.bookId,
+                  questionCount: exam.questionCount,
+                },
+                { emitEvent: false }
+              );
+              this.testForm.patchValue({ bookTestId: exam.bookTestId ?? null }, { emitEvent: false });
+              this.imagePreviewUrl = exam.imageUrl || null;
 
-        this.testForm.patchValue({
-          name: exam.name,
-          description: exam.description,
-          gradeId: exam.gradeId,
-          maxDurationMinutes: exam.maxDurationSeconds / 60,
-          isPracticeTest: exam.isPracticeTest,
-          subtitle: exam.subtitle,
-          imageUrl: exam.imageUrl,
-          bookTestId: exam.bookTestId,
-          bookId: exam.bookId,
-          questionCount: exam.questionCount,
-          subjectId: exam.subjectId || null,
-        });
+              return this.subjectService.getSubjectsByGrade(exam.gradeId!).pipe(
+                switchMap((subjects) => {
+                  this.subjects = subjects;
+                  this.testForm.patchValue({ subjectId: exam.subjectId || null }, { emitEvent: false });
 
-        this.subjectService.getSubjectsByGrade(exam.gradeId!).subscribe((subjects) => {
-          this.subjects = subjects;
-          this.testForm.patchValue({ subjectId: exam.subjectId || null }, { emitEvent: false });
+                  if (!(exam.subjectId && exam.gradeId)) {
+                    this.topics = [];
+                    this.subtopics = [];
+                    this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
+                    return of(null);
+                  }
 
-          if (exam.subjectId && exam.gradeId) {
-            this.subjectService.getTopicsBySubjectAndGrade(exam.subjectId, exam.gradeId).subscribe((topics) => {
-              this.topics = topics;
-              this.testForm.patchValue({ topicId: exam.topicId, subtopicId: null }, { emitEvent: false });
-
-              this.subjectService.getSubTopicsByTopic(exam.topicId || 0).subscribe((subtopics) => {
-                this.subtopics = subtopics;
-                this.testForm.patchValue({ subtopicId: exam.subTopicId || null }, { emitEvent: false });
-              });
-            });
-          } else {
-            this.topics = [];
-            this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
-          }
-        });
-      });
-    });
+                  return this.subjectService.getTopicsBySubjectAndGrade(exam.subjectId, exam.gradeId).pipe(
+                    switchMap((topics) => {
+                      this.topics = topics;
+                      this.testForm.patchValue(
+                        { topicId: exam.topicId ?? null, subtopicId: null },
+                        { emitEvent: false }
+                      );
+                      return this.subjectService.getSubTopicsByTopic(exam.topicId || 0).pipe(
+                        tap((subtopics) => {
+                          this.subtopics = subtopics;
+                          this.testForm.patchValue({ subtopicId: exam.subTopicId || null }, { emitEvent: false });
+                        })
+                      );
+                    })
+                  );
+                })
+              );
+            })
+          )
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   loadBooks() {
-    this.bookService.getAll().subscribe((data) => {
-      this.books = data;
-    });
+    this.bookService
+      .getAll()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        this.books = data;
+      });
   }
   loadGrades() {
-    this.gradeService.getGrades().subscribe((data) => {
-      this.grades = data;
-    });
+    this.gradeService
+      .getGrades()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        this.grades = data;
+      });
   }
   loadSubjects(gradeId?: number) {
-    if (gradeId) {
-      this.subjectService.getSubjectsByGrade(gradeId).subscribe((data) => {
-        this.subjects = data;
-      });
-    } else {
-      this.subjectService.loadCategories().subscribe((data) => {
-        this.subjects = data;
-      });
-    }
+    const source$ = gradeId
+      ? this.subjectService.getSubjectsByGrade(gradeId)
+      : this.subjectService.loadCategories();
+    source$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
+      this.subjects = data;
+    });
   }
   onBookChange(bookId: any) {
     this.showAddBookInput = false;
-    this.bookService.getTestsByBook(bookId.value).subscribe((data) => {
-      this.bookTests = data;
-      this.testForm.patchValue({ bookTestId: null, newBookTestName: '' }, { emitEvent: false });
-    });
+    this.bookService
+      .getTestsByBook(bookId.value)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        this.bookTests = data;
+        this.testForm.patchValue({ bookTestId: null, newBookTestName: '' }, { emitEvent: false });
+      });
   }
   openNewBookAdd() {
     this.showAddBookInput = true;
@@ -334,20 +390,26 @@ export class TestCreateEnhancedComponent implements OnInit {
   onSubjectChange(subjectId: any) {
     const gradeId = this.testForm.value.gradeId;
     if (subjectId && gradeId) {
-      this.subjectService.getTopicsBySubjectAndGrade(subjectId, gradeId).subscribe((topics) => {
-        this.topics = topics;
-        this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
-      });
+      this.subjectService
+        .getTopicsBySubjectAndGrade(subjectId, gradeId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((topics) => {
+          this.topics = topics;
+          this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
+        });
     } else {
       this.topics = [];
       this.testForm.patchValue({ topicId: null, subtopicId: null }, { emitEvent: false });
     }
   }
   onTopicChange(topicId: any) {
-    this.subjectService.getSubTopicsByTopic(topicId).subscribe((subtopics) => {
-      this.subtopics = subtopics;
-      this.testForm.patchValue({ subtopicId: null });
-    });
+    this.subjectService
+      .getSubTopicsByTopic(topicId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((subtopics) => {
+        this.subtopics = subtopics;
+        this.testForm.patchValue({ subtopicId: null }, { emitEvent: false });
+      });
   }
 
   private createTestPayload(): Test {
@@ -371,25 +433,24 @@ export class TestCreateEnhancedComponent implements OnInit {
   }
 
   onSubmit() {
-    // Form valid ise kaydet
-    if (this.testForm.valid) {
-      // Burada backend'e kaydetme işlemi yapılabilir
-      // Örneğin: this.testService.create(this.createTestPayload()).subscribe(...)
-      this.snackBar.open('Test kaydedildi!', 'Kapat', { duration: 2000 });
-      // İsterseniz formu veya state'i sıfırlayabilirsiniz
-    } else {
+    if (!this.testForm.valid) {
       this.snackBar.open('Form eksik veya hatalı!', 'Kapat', { duration: 2000 });
+      return;
     }
 
-    if (this.testForm.valid) {
-      this.testService.create(this.createTestPayload()).subscribe((response) => {
+    this.testService
+      .create(this.createTestPayload())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((response) => {
+        this.snackBar.open(this.isEditMode ? 'Değişiklikler kaydedildi.' : 'Test oluşturuldu.', 'Kapat', {
+          duration: 2000,
+        });
         if (this.isEditMode) {
           this.reloadComponent(response.examId);
         } else {
           this.router.navigate(['/exam', response.examId]);
         }
       });
-    }
   }
 
   public onCreateAsync(): Observable<{ message: string; examId: number }> {
@@ -457,12 +518,16 @@ export class TestCreateEnhancedComponent implements OnInit {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-        resolve(json);
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          resolve(json);
+        } catch (err) {
+          reject(err);
+        }
       };
       reader.onerror = (err) => reject(err);
       reader.readAsArrayBuffer(file);
@@ -561,15 +626,37 @@ export class TestCreateEnhancedComponent implements OnInit {
       };
     });
 
-    this.testService.bulkImport({ exams }).subscribe((response) => {
-      this.bulkImportResults = {
-        success: true,
-        message: 'Bulk import işlemi başarılı!',
-        data: response,
-      };
-      this.snackBar.open(this.bulkImportResults.message, 'Kapat', { duration: 3000 });
-      this.clearBulkImport();
-    });
+    this.testService
+      .bulkImport({ exams })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          const failureCount = response?.failureCount ?? 0;
+          const failedExams = response?.failedExams ?? [];
+          const successCount = response?.successCount ?? exams.length - failureCount;
+
+          if (failureCount > 0 || failedExams.length > 0) {
+            this.bulkImportResults = {
+              success: false,
+              message: `Bazı testler oluşturulamadı. Başarılı: ${successCount}, Hatalı: ${failureCount || failedExams.length}`,
+              successCount,
+              failureCount: failureCount || failedExams.length,
+              failedExams,
+            };
+            this.snackBar.open(this.bulkImportResults.message, 'Kapat', { duration: 4000 });
+            return;
+          }
+
+          this.bulkImportResults = { success: true, message: 'Tüm testler oluşturuldu.', successCount };
+          this.snackBar.open(this.bulkImportResults.message, 'Kapat', { duration: 3000 });
+          this.clearBulkImport();
+        },
+        error: () => {
+          this.isUploading = false;
+          this.bulkImportResults = { success: false, message: 'Toplu yükleme sırasında bir hata oluştu.' };
+          this.snackBar.open(this.bulkImportResults.message, 'Kapat', { duration: 4000 });
+        },
+      });
   }
 
   hasUpdatedItems() {
@@ -789,6 +876,44 @@ export class TestCreateEnhancedComponent implements OnInit {
   get getSelectedGradeName(): string {
     const selectedGrade = this.grades.find((grade) => grade.id === this.testForm.value.gradeId);
     return selectedGrade ? selectedGrade.name : 'Sınıf Seçin';
+  }
+
+  private lookupName(list: any[], id: any): string {
+    const found = list.find((x) => x.id === id);
+    return found ? found.name : '';
+  }
+
+  get previewName(): string {
+    return this.testForm?.value.name || 'Test Adı';
+  }
+
+  get previewSubtitle(): string {
+    return this.testForm?.value.subtitle || '';
+  }
+
+  get previewChips(): string[] {
+    const v = this.testForm?.value ?? {};
+    return [
+      this.lookupName(this.grades, v.gradeId),
+      this.lookupName(this.subjects, v.subjectId),
+      this.lookupName(this.topics, v.topicId),
+    ].filter((x) => !!x);
+  }
+
+  get previewDuration(): number {
+    return +(this.testForm?.value.maxDurationMinutes || 0);
+  }
+
+  get previewQuestionCount(): number {
+    return +(this.testForm?.value.questionCount || 0);
+  }
+
+  get previewIsPractice(): boolean {
+    return !!this.testForm?.value.isPracticeTest;
+  }
+
+  get previewImage(): string | null {
+    return this.imagePreviewUrl || this.testForm?.value.imageUrl || null;
   }
 
   navigateToQuestionCanvas() {

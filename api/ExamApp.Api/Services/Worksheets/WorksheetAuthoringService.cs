@@ -25,6 +25,16 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         _minioService = minioService;
     }
 
+    // Allow-list: SVG deliberately excluded (inline-served SVG = stored XSS vector).
+    private const long MaxBackgroundImageBytes = 2 * 1024 * 1024; // 2 MB
+
+    private static readonly Dictionary<string, string[]> AllowedImageTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["image/png"] = new[] { ".png" },
+        ["image/jpeg"] = new[] { ".jpg", ".jpeg" },
+        ["image/webp"] = new[] { ".webp" },
+    };
+
     public async Task<UpdateWorksheetBackgroundImageDto> UpdateWorksheetBackgroundImageAsync(int worksheetId, IFormFile file, int userId)
     {
         if (file == null || file.Length == 0)
@@ -36,29 +46,58 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             };
         }
 
-        if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        if (file.Length > MaxBackgroundImageBytes)
         {
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
-                Message = "Sadece görsel dosyaları yüklenebilir."
+                Message = "Görsel boyutu en fazla 2 MB olabilir."
             };
         }
 
-        var worksheet = await _context.Worksheets.FirstOrDefaultAsync(w => w.Id == worksheetId);
+        var declaredContentType = file.ContentType?.Trim() ?? string.Empty;
+        var extension = Path.GetExtension(file.FileName)?.Trim() ?? string.Empty;
+
+        if (!AllowedImageTypes.TryGetValue(declaredContentType, out var allowedExtensions) ||
+            !allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        {
+            return new UpdateWorksheetBackgroundImageDto
+            {
+                Success = false,
+                Message = "Sadece PNG, JPEG veya WEBP görselleri yüklenebilir."
+            };
+        }
+
+        // Sahiplik kontrolü: worksheet yalnızca oluşturan öğretmen tarafından değiştirilebilir.
+        // Varlık sızmaması için eşleşme yoksa NotFound döner.
+        var worksheet = await _context.Worksheets
+            .FirstOrDefaultAsync(w => w.Id == worksheetId && w.CreateUserId == userId);
         if (worksheet == null)
         {
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
+                NotFound = true,
                 Message = "Worksheet bulunamadı."
             };
         }
 
-        var previousImageUrl = worksheet.ImageUrl;
-        var fileName = $"{worksheetId}-background.png";
         await using var stream = file.OpenReadStream();
-        var uploadedPath = await _minioService.UploadFileAsync(stream, fileName, "worksheets", "image/png");
+        var detectedContentType = await DetectImageContentTypeAsync(stream);
+        if (detectedContentType == null || !string.Equals(detectedContentType, declaredContentType, StringComparison.OrdinalIgnoreCase))
+        {
+            return new UpdateWorksheetBackgroundImageDto
+            {
+                Success = false,
+                Message = "Dosya içeriği geçerli bir PNG, JPEG veya WEBP görseli değil."
+            };
+        }
+        if (stream.CanSeek) stream.Position = 0;
+
+        var previousImageUrl = worksheet.ImageUrl;
+        var fileExtension = AllowedImageTypes[detectedContentType][0];
+        var fileName = $"{worksheetId}-background{fileExtension}";
+        var uploadedPath = await _minioService.UploadFileAsync(stream, fileName, "worksheets", detectedContentType);
 
         worksheet.ImageUrl = uploadedPath;
         await _context.SaveChangesAsync();
@@ -430,11 +469,14 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
     {
         var response = new ResponseBaseDto();
 
-        var worksheet = await _context.Worksheets.FindAsync(worksheetId);
+        // Sahiplik kontrolü: worksheet yalnızca oluşturan öğretmen tarafından silinebilir.
+        var worksheet = await _context.Worksheets
+            .FirstOrDefaultAsync(w => w.Id == worksheetId && w.CreateUserId == userId);
 
         if (worksheet == null || worksheet.IsDeleted)
         {
             response.Success = false;
+            response.NotFound = true;
             response.Message = "Worksheet bulunamadı.";
             return response;
         }
@@ -449,5 +491,46 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         response.Message = "Worksheet başarıyla silindi.";
 
         return response;
+    }
+
+    /// <summary>
+    /// Verifies the actual file content via magic bytes and returns the canonical
+    /// MIME type, or null if the content is not a supported raster image.
+    /// SVG / XML / HTML content will not match any signature and is rejected.
+    /// </summary>
+    private static async Task<string?> DetectImageContentTypeAsync(Stream stream)
+    {
+        var header = new byte[12];
+        var read = await ReadExactlyAsync(stream, header);
+        if (stream.CanSeek) stream.Position = 0;
+        if (read < 12) return null;
+
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47 &&
+            header[4] == 0x0D && header[5] == 0x0A && header[6] == 0x1A && header[7] == 0x0A)
+            return "image/png";
+
+        // JPEG: FF D8 FF
+        if (header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF)
+            return "image/jpeg";
+
+        // WEBP: "RIFF" .... "WEBP"
+        if (header[0] == (byte)'R' && header[1] == (byte)'I' && header[2] == (byte)'F' && header[3] == (byte)'F' &&
+            header[8] == (byte)'W' && header[9] == (byte)'E' && header[10] == (byte)'B' && header[11] == (byte)'P')
+            return "image/webp";
+
+        return null;
+    }
+
+    private static async Task<int> ReadExactlyAsync(Stream stream, byte[] buffer)
+    {
+        var total = 0;
+        while (total < buffer.Length)
+        {
+            var n = await stream.ReadAsync(buffer.AsMemory(total, buffer.Length - total));
+            if (n == 0) break;
+            total += n;
+        }
+        return total;
     }
 }

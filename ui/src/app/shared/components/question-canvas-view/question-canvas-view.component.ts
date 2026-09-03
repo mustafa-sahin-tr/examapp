@@ -11,13 +11,11 @@ import {
   ViewChild,
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
-import { SafeHtmlPipe } from '../../../services/safehtml';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-question-canvas-view',
-  imports: [SafeHtmlPipe, MatButtonModule, MatIconModule],
+  imports: [MatIconModule],
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss',
 })
@@ -350,6 +348,10 @@ export class QuestionCanvasViewComponent implements AfterViewInit, AfterViewChec
     }
 
     this.drawImageSection();
+  }
+
+  get zoomPercent(): number {
+    return Math.round((this.contentScale || 1) * 100);
   }
 
   showCorrectAnswer() {

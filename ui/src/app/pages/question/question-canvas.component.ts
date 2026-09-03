@@ -1,18 +1,11 @@
-import { Component, computed, effect, inject, OnInit, signal, ViewChild } from '@angular/core';
-import { FormGroup, Validators, FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { Component, computed, DestroyRef, effect, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { FormGroup, Validators, FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSelectModule } from '@angular/material/select';
-import { MatRadioModule } from '@angular/material/radio';
-import { MatSliderModule } from '@angular/material/slider';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { CommonModule, Location } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
+import { CommonModule } from '@angular/common';
+import { MatDividerModule } from '@angular/material/divider';
 import { SubjectService } from '../../services/subject.service';
 import { QuestionService } from '../../services/question.service';
-import { QuillModule } from 'ngx-quill';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { Test } from '../../models/test-instance';
@@ -20,39 +13,34 @@ import { TestService } from '../../services/test.service';
 import { QuestionCanvasForm } from '../../models/question-form';
 import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
-import { ImageSelectorComponent } from '../image-selector/image-selector.component';
-import { debounceTime, of, switchMap, tap } from 'rxjs';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import {
+  ImageSelectorComponent,
+  ActiveInspector,
+  QuestionInteractionType,
+} from '../image-selector/image-selector.component';
+import { Subject } from '../../models/subject';
+import { Topic } from '../../models/topic';
+import { SubTopic } from '../../models/subtopic';
+import { debounceTime, of, switchMap } from 'rxjs';
 import { SidenavService } from '../../services/sidenav.service';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatMenuModule } from '@angular/material/menu';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { TestFormComponent } from '../test-form/test-form.component';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
-import { ClassificationSource } from '../../models/draws';
+import { ClassificationSource, QuestionRegion } from '../../models/draws';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
   templateUrl: './question-canvas.component.html',
   styleUrls: ['./question-canvas.component.scss'],
   imports: [
-    MatInputModule,
-    MatFormFieldModule,
-    MatButtonModule,
-    MatSelectModule,
-    MatRadioModule,
-    MatSliderModule,
     MatSnackBarModule,
-    FormsModule,
     ReactiveFormsModule,
+    FormsModule,
     CommonModule,
     MatMenuModule,
-    MatCardModule,
+    MatDividerModule,
     MatIconModule,
-    QuillModule,
     ImageSelectorComponent,
-    MatAutocompleteModule,
-    MatSlideToggleModule,
     TestCreateEnhancedComponent,
   ],
 })
@@ -63,12 +51,9 @@ export class QuestionCanvasComponent implements OnInit {
   id: number | null = null;
   isEditMode: boolean = false;
   resetTest: boolean = false;
-  public autoMode = signal<boolean>(false);
-  public autoAlign = signal<boolean>(false);
   public showSidePanel = signal<boolean>(true);
-  public inProgress = signal<boolean>(false);
-  public previewModeText = signal<string>('visibility');
-  public dropdownVisible = signal<boolean>(false);
+  /** Üst breadcrumb'daki "Yeni test oluştur" ile açılan hızlı oluşturma paneli. */
+  public showQuickCreate = signal<boolean>(false);
 
   // Used by ImageSelector preview mode to send current classification updates along with correct-answer updates.
   public previewMetaProvider = () => {
@@ -93,12 +78,12 @@ export class QuestionCanvasComponent implements OnInit {
   };
   router = inject(Router);
   route = inject(ActivatedRoute);
-  location = inject(Location);
   questionService = inject(QuestionService);
   testService = inject(TestService);
   subjectService = inject(SubjectService);
   sidenavService = inject(SidenavService);
   snackBar = inject(MatSnackBar);
+  private destroyRef = inject(DestroyRef);
   questionForm: FormGroup = new FormGroup<QuestionCanvasForm>({
     subjectId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
     topicId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
@@ -201,33 +186,32 @@ export class QuestionCanvasComponent implements OnInit {
 
   // public isPreviewModeComputed = computed(() => (this.imageSelector ? this.imageSelector.previewMode() : true));
 
-  togglePreviewMode() {
-    let testId = this.id;
-    if (!testId) {
-      testId = Number(this.questionForm.value.testValue);
-    }
+  /** Önizleme artık ayrı route değil — aynı komponentte mod. imageFiles state'i korunur. */
+  get previewOn(): boolean {
+    return this.imageSelector?.previewMode() ?? false;
+  }
 
-    if (!Number.isFinite(Number(testId)) || Number(testId) <= 0) {
-      this.snackBar.open('Ön izleme için önce bir test seçin.', 'Tamam', { duration: 2500 });
+  /** Kayıtlı sorusu olan bir test var mı? (dosya yüklenmemiş olsa da önizleme yapılabilir) */
+  get canPreview(): boolean {
+    return !!this.id || Number(this.questionForm.value.testValue) > 0;
+  }
+
+  togglePreviewMode() {
+    if (this.previewOn) {
+      this.imageSelector.togglePreviewMode(0);
       return;
     }
 
-    const returnUrl = this.router.url;
+    if (!this.canPreview) {
+      return;
+    }
 
-    const rawState = (this.location.getState?.() as any) ?? (globalThis as any)?.history?.state ?? {};
-    const { navigationId, ...returnState } = rawState || {};
-
-    this.router.navigate(['/questioncanvas/preview', testId], {
-      queryParams: { returnUrl },
-      state: {
-        returnUrl,
-        returnState,
-      },
-    });
+    const testId = this.id || Number(this.questionForm.value.testValue);
+    this.imageSelector.togglePreviewMode(Number(testId));
   }
 
-  toggleOnlyQuestionMode() {
-    this.imageSelector.toggleOnlyQuestionMode();
+  exitPreview() {
+    this.togglePreviewMode();
   }
 
   onPreviewQuestionChange(evt: {
@@ -260,9 +244,17 @@ export class QuestionCanvasComponent implements OnInit {
     this.imageSelector.handleFilesInput2(event);
   }
 
-  onChangeQuestionCount(event: any) {
-    const answerCount = event.target.value;
-    this.imageSelector.answerCount.set(answerCount);
+  get answerCount(): number {
+    return this.imageSelector ? this.imageSelector.answerCount() : 4;
+  }
+
+  onChangeQuestionCount(event: Event) {
+    this.setAnswerCount(Number((event.target as HTMLSelectElement).value));
+  }
+
+  setAnswerCount(count: number) {
+    this.imageSelector.answerCount.set(count);
+    this.imageSelector.recomputeWarnings();
   }
 
   resetFormWithDefaultValues(state: any) {
@@ -285,10 +277,6 @@ export class QuestionCanvasComponent implements OnInit {
     this.questionForm.get('testId')?.setValue(state?.testId || '', { emitEvent: false });
   }
 
-  onFocus() {
-    this.dropdownVisible.set(true);
-  }
-
   previousImage() {
     this.imageSelector.previousImage();
   }
@@ -304,30 +292,27 @@ export class QuestionCanvasComponent implements OnInit {
     }
   }
 
+  /** image-selector'daki autoAlign signal'i ile senkron gösterge. */
+  get autoAlignOn(): boolean {
+    return this.imageSelector?.autoAlign() ?? false;
+  }
+
+  get autoModeOn(): boolean {
+    return this.imageSelector?.autoMode() ?? false;
+  }
+
   setAutoAlign(checked: boolean) {
     this.imageSelector.autoAlign.set(checked);
     this.imageSelector.predict();
-  }
-
-  onBlur() {
-    setTimeout(() => {
-      this.dropdownVisible.set(false);
-    }, 150);
   }
 
   loadBooks() {
     const books = this.booksSignal();
   }
 
-  displayFn = (selectedoption: any): string => {
-    return selectedoption ? selectedoption.name + '-' + selectedoption.subtitle : '';
-  };
-
-  onOptionSelected(event: any) {
-    console.log(event);
-    this.questionForm.get('testId')?.setValue(event.subtitle, { emitEvent: false });
-    this.questionForm.get('testValue')?.setValue(event.id);
-    this.dropdownVisible.set(false);
+  onOptionSelected(worksheet: Test) {
+    this.questionForm.get('testId')?.setValue(worksheet.subtitle, { emitEvent: false });
+    this.questionForm.get('testValue')?.setValue(worksheet.id);
   }
 
   ngOnInit() {
@@ -349,6 +334,326 @@ export class QuestionCanvasComponent implements OnInit {
 
   sendToFix() {
     this.imageSelector.sendToFix();
+  }
+
+  // --- Yeni kabuk (redesign) yardımcıları ---
+
+  readonly selectedBookLabel = computed(() => {
+    const id = Number(this.bookIdSignal());
+    const book = this.booksSignal().find((b) => b.id === id);
+    return book?.name || 'Kitap seç';
+  });
+
+  readonly selectedBookTestLabel = computed(() => {
+    const id = Number(this.bookTestIdSignal());
+    const bt = this.bookTestsSignal().find((b) => b.id === id);
+    return bt?.name || 'Kitap testi';
+  });
+
+  get selectedTestLabel(): string {
+    return this.questionForm.get('testId')?.value || 'Test seç';
+  }
+
+  get pageFiles(): File[] {
+    return this.imageSelector?.imageFiles ?? [];
+  }
+
+  get currentPageIndex(): number {
+    return this.imageSelector?.currentImageIndex ?? 0;
+  }
+
+  selectBook(bookId: number) {
+    this.questionForm.get('bookId')?.setValue(bookId);
+  }
+
+  selectBookTest(bookTestId: number) {
+    this.questionForm.get('bookTestId')?.setValue(bookTestId);
+  }
+
+  openQuickCreate() {
+    this.showQuickCreate.set(true);
+    this.showSidePanel.set(true);
+  }
+
+  onQuickCreated(examId: number) {
+    this.showQuickCreate.set(false);
+    this.id = examId;
+    this.testService
+      .get(examId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (testData) => {
+          this.questionForm.get('testId')?.setValue(testData.subtitle, { emitEvent: false });
+          this.questionForm.get('testValue')?.setValue(testData.id, { emitEvent: false });
+        },
+        error: (err) => {
+          console.error('Test bilgisi alınamadı:', err);
+        },
+      });
+  }
+
+  get selectionMode(): 'passage' | 'question' | 'answer' | 'dropzone' | null {
+    return this.imageSelector?.selectionMode() ?? null;
+  }
+
+  setSelectionMode(mode: 'question' | 'answer' | 'passage' | 'dropzone') {
+    this.imageSelector.lockSelectionMode(this.selectionMode === mode ? null : mode);
+  }
+
+  triggerPredict() {
+    this.imageSelector.predict();
+  }
+
+  triggerAlign() {
+    this.imageSelector.autoAlign.set(true);
+    this.imageSelector.predict();
+  }
+
+  goToPage(pageStr: string) {
+    this.imageSelector.goToPage(pageStr);
+  }
+
+  toggleInspector() {
+    this.showSidePanel.set(!this.showSidePanel());
+  }
+
+  askAi() {
+    this.imageSelector.predict();
+  }
+
+  // ---------------- Soru Müfettişi (sağ panel) ----------------
+
+  /** Tüm müfettiş verisi tek nesnede — şablon bunu bir kez okur. */
+  get insData(): ActiveInspector | null {
+    return this.imageSelector?.getActiveInspector() ?? null;
+  }
+
+  private get insName(): string {
+    return this.imageSelector?.currentRegion?.name ?? '';
+  }
+
+  private get insIndex(): number | null {
+    return this.imageSelector?.activeRegionIndex ?? null;
+  }
+
+  insSelectNext() {
+    this.imageSelector.selectNextQuestion();
+  }
+
+  insSelectPrevious() {
+    this.imageSelector.selectPreviousQuestion();
+  }
+
+  insSetInteractionType(type: QuestionInteractionType) {
+    const name = this.insName;
+    if (!name) {
+      return;
+    }
+    this.imageSelector.onInteractionTypeChange({ target: { value: type } } as unknown as Event, name);
+  }
+
+  insSetCorrectAnswer(answerIndex: number) {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.setCorrectAnswer(idx, answerIndex, 1);
+    }
+  }
+
+  insRemoveAnswer(answerIndex: number) {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.removeAnswer(idx, answerIndex);
+    }
+  }
+
+  insAlignAnswers() {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.alignAnswers(idx, true);
+    }
+  }
+
+  insDrawAnswerMode() {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.selectAnswerMode(idx);
+    }
+  }
+
+  insDropZoneMode() {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.selectDropZoneMode(idx);
+    }
+  }
+
+  insRemoveLastZone() {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.removeLastDropZone(name);
+    }
+  }
+
+  insClearZones() {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.clearDropZones(name);
+    }
+  }
+
+  insSetLabelCount(event: Event) {
+    const name = this.insName;
+    const value = (event.target as HTMLInputElement)?.value ?? '';
+    if (name) {
+      this.imageSelector.setLabelCount(name, value);
+    }
+  }
+
+  insGenerateDraggables() {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.generateDraggables(name);
+    }
+  }
+
+  insAutoSolution() {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.autoAssignSolutionSequential(name);
+    }
+  }
+
+  insSetZoneSolution(zoneId: string, event: Event) {
+    const name = this.insName;
+    const draggableId = (event.target as HTMLSelectElement)?.value ?? '0';
+    if (name) {
+      this.imageSelector.setZoneSolution(name, zoneId, draggableId);
+    }
+  }
+
+  insToggleExample() {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.toggleExampleMode(name);
+    }
+  }
+
+  get insExampleAnswer(): string {
+    return this.insData?.exampleAnswer ?? '';
+  }
+
+  set insExampleAnswer(value: string) {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.onTextChanged(name, value);
+    }
+  }
+
+  insChangePassage(event: Event) {
+    const name = this.insName;
+    if (name) {
+      this.imageSelector.onPassageChange(event, name);
+    }
+  }
+
+  insTogglePassageFirst() {
+    const passageId = this.insData?.selectedPassageId;
+    if (passageId && passageId !== '0') {
+      this.imageSelector.toggleShowPassageFirstForPassage(passageId);
+    }
+  }
+
+  insDismissWarning(event: MouseEvent) {
+    this.imageSelector.dismissWarning(event);
+  }
+
+  insRemoveQuestion() {
+    const idx = this.insIndex;
+    if (idx != null) {
+      this.imageSelector.removeQuestion(idx);
+    }
+  }
+
+  // --- Sınıflandırma: quick-create formundan gelen grade ile 3 dropdown ---
+
+  private get tce() {
+    return this.testCreateEnhancedComponent;
+  }
+
+  get insSubjects(): Subject[] {
+    return (this.tce?.subjects ?? []) as Subject[];
+  }
+
+  get insTopics(): Topic[] {
+    return (this.tce?.topics ?? []) as Topic[];
+  }
+
+  get insSubtopics(): SubTopic[] {
+    return (this.tce?.subtopics ?? []) as SubTopic[];
+  }
+
+  get insSubjectId(): number | null {
+    return this.toNullableId(this.tce?.testForm?.value?.subjectId);
+  }
+  set insSubjectId(value: number | null) {
+    const v = value || null;
+    this.tce?.testForm?.patchValue({ subjectId: v ?? '' }, { emitEvent: false });
+    this.tce?.onSubjectChange(v);
+    this.pushInsClassificationToForm();
+  }
+
+  get insTopicId(): number | null {
+    return this.toNullableId(this.tce?.testForm?.value?.topicId);
+  }
+  set insTopicId(value: number | null) {
+    const v = value || null;
+    this.tce?.testForm?.patchValue({ topicId: v ?? '' }, { emitEvent: false });
+    if (v) {
+      this.tce?.onTopicChange(v);
+    }
+    this.pushInsClassificationToForm();
+  }
+
+  get insSubtopicId(): number | null {
+    return this.toNullableId(this.tce?.testForm?.value?.subtopicId);
+  }
+  set insSubtopicId(value: number | null) {
+    const v = value || null;
+    this.tce?.testForm?.patchValue({ subtopicId: v ?? '' }, { emitEvent: false });
+    this.pushInsClassificationToForm();
+  }
+
+  private toNullableId(raw: unknown): number | null {
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  private pushInsClassificationToForm() {
+    const v = this.tce?.testForm?.value ?? {};
+    this.questionForm.patchValue(
+      {
+        subjectId: v.subjectId || 0,
+        topicId: v.topicId || 0,
+        subtopicId: v.subtopicId || 0,
+      },
+      { emitEvent: false }
+    );
+  }
+
+  onInspectorQuestionChange(evt: { index: number; region: QuestionRegion | null }) {
+    const region = evt.region;
+    if (!region) {
+      return;
+    }
+    const subjectId = region.subjectId ?? 0;
+    const topicId = region.topicId ?? 0;
+    const subtopicId = region.subtopicId ?? 0;
+    this.questionForm.patchValue({ subjectId, topicId, subtopicId }, { emitEvent: false });
+    this.testCreateEnhancedComponent?.syncClassification?.(
+      subjectId || null,
+      topicId || null,
+      subtopicId || null
+    );
   }
 
   onSaveAndNew() {

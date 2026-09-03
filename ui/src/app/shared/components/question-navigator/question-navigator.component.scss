@@ -1,5 +1,19 @@
+:host {
+	display: block;
+	font-family: var(--paragraphFontFamily);
+	color: var(--ms-text);
+}
+
+.ms-question-navigator {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, 40px);
+	gap: 8px;
+	justify-content: flex-start;
+	padding: 4px 0;
+}
 
 .ms-question-pager {
+	grid-column: 1 / -1;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -10,20 +24,92 @@
 .ms-pager-btn {
 	padding: 6px 10px;
 	border-radius: 8px;
-	border: 1px solid rgba(255, 255, 255, 0.15);
-	background: rgba(255, 255, 255, 0.06);
-	color: inherit;
+	border: 1px solid var(--ms-border-strong);
+	background: transparent;
+	color: var(--ms-text-strong);
+	font-family: var(--mainFontFamily);
+	font-weight: 700;
+	font-size: 12px;
 	cursor: pointer;
-}
 
-.ms-pager-btn[disabled] {
-	opacity: 0.5;
-	cursor: not-allowed;
+	&[disabled] {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
 }
 
 .ms-pager-info {
-	opacity: 0.8;
+	color: var(--ms-text-weak);
 	font-size: 12px;
 	white-space: nowrap;
 }
 
+.ms-question-item {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	border: 1px solid var(--ms-border-weak);
+	background: var(--ms-surface-medium);
+	color: var(--ms-text-strong);
+	font-family: var(--mainFontFamily);
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	transition: border-color 0.15s ease, background 0.15s ease;
+
+	&:hover {
+		border-color: var(--ms-border-strong);
+	}
+}
+
+.ms-question-icon {
+	position: absolute;
+	top: 3px;
+	right: 3px;
+	width: 12px;
+	height: 12px;
+	fill: currentColor;
+}
+
+.ms-question-correct {
+	border-color: var(--ms-success-border);
+	background: var(--ms-success-surface-weak);
+	color: var(--ms-success-text);
+}
+
+.ms-icon-correct {
+	color: var(--ms-success-text-weak);
+}
+
+.ms-question-incorrect {
+	border-color: var(--ms-warning-border);
+	background: var(--ms-warning-surface-weak);
+	color: var(--ms-warning-text);
+}
+
+.ms-icon-incorrect {
+	color: var(--ms-warning-text-weak);
+}
+
+.ms-question-unknown {
+	color: var(--ms-text-weak);
+}
+
+.ms-question-number {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ms-question-number-active {
+	width: 26px;
+	height: 26px;
+	border-radius: 8px;
+	border: 2px solid var(--ms-action-border-focus);
+	background: var(--ms-action-background);
+	color: var(--ms-text-strong);
+}

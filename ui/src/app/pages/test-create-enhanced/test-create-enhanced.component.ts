@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild, ElementRef, Input, DestroyRef } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, ElementRef, Input, Output, EventEmitter, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { BookService } from '../../services/book.service';
@@ -36,7 +36,51 @@ import { HttpErrorResponse } from '@angular/common/http';
   ],
 })
 export class TestCreateEnhancedComponent implements OnInit {
-  @Input() mode: string = 'default'; // 'create' veya 'edit' olabilir
+  @Input() mode: string = 'default'; // 'default' | 'miniform'
+  /** miniform modunda "Oluştur ve devam et" sonrası tetiklenir (examId). */
+  @Output() createdAndContinue = new EventEmitter<number>();
+
+  get isMiniform(): boolean {
+    return this.mode === 'miniform';
+  }
+
+  creatingInline = false;
+
+  /** miniform: hızlı test oluştur ve devam et. */
+  createAndContinue(): void {
+    if (this.creatingInline) {
+      return;
+    }
+    this.creatingInline = true;
+    this.onCreateAsync(false)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.creatingInline = false;
+          this.snackBar.open('Test oluşturuldu.', 'Kapat', { duration: 2000 });
+          // NOT: reloadComponent çağırma — parent (onQuickCreated) form senkronunu yönetir,
+          // aksi halde testForm FormGroup yeniden kurulup parent'ın patch'lediği referans uçar.
+          this.createdAndContinue.emit(res.examId);
+        },
+        error: (err) => {
+          this.creatingInline = false;
+          console.error('createAndContinue failed:', err);
+          this.snackBar.open(this.toUserErrorMessage(err), 'Kapat', { duration: 3000 });
+        },
+      });
+  }
+
+  /** Ham backend hata gövdesini kullanıcıya basmadan okunur mesaja çevirir. */
+  private toUserErrorMessage(err: any): string {
+    if (err?.status >= 500) {
+      return 'Bir hata oluştu, tekrar deneyin.';
+    }
+    if (typeof err?.error === 'string') {
+      return err.error;
+    }
+    return err?.error?.message || err?.message || 'Test oluşturulamadı.';
+  }
+
   id!: number | null;
   exam!: Test;
   isEditMode: boolean = false;
@@ -453,9 +497,9 @@ export class TestCreateEnhancedComponent implements OnInit {
       });
   }
 
-  public onCreateAsync(): Observable<{ message: string; examId: number }> {
+  public onCreateAsync(requireSubtopic: boolean = true): Observable<{ message: string; examId: number }> {
     var payload = this.createTestPayload();
-    if (!payload.subTopicId) {
+    if (requireSubtopic && !payload.subTopicId) {
       // Observable error olarak dönmek için throwError kullanılır
       return throwError(
         () => new HttpErrorResponse({ status: 400, statusText: 'Alt konu seçilmedi', error: 'Alt konu seçilmedi' })

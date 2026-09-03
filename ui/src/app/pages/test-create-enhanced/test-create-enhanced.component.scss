@@ -14,6 +14,16 @@
   margin: 0 auto;
 }
 
+.tce.miniform {
+  padding: 0;
+  gap: 14px;
+  max-width: none;
+
+  .btn {
+    width: 100%;
+  }
+}
+
 .page-head h1 {
   font-family: var(--mainFontFamily);
   font-size: 26px;

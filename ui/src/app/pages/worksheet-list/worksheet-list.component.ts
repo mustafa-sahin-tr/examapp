@@ -1,13 +1,24 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  Subject as RxSubject,
+  catchError,
+  finalize,
+  forkJoin,
+  from,
+  map,
+  mergeMap,
+  of,
+  reduce,
+  switchMap,
+} from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
 
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
@@ -76,10 +87,67 @@ export class WorksheetListComponent implements OnInit {
   readonly tab = signal<WorksheetListTab>('discover');
   readonly sortBy = signal<WorksheetSortBy>('newest');
 
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
+  // Her veri kaynağının kendi loading/error sinyali var; şablon aktif sekmeye göre birleşik okur.
+  readonly discoverLoading = signal(false);
+  readonly discoverError = signal<string | null>(null);
+  readonly assignmentsLoading = signal(false);
+  readonly assignmentsError = signal<string | null>(null);
+  readonly bucketsLoading = signal(false);
+  readonly bucketsError = signal<string | null>(null);
+
   readonly paged = signal<Paged<Test>>({ items: [], totalCount: 0, pageNumber: 1, pageSize: 12 });
   readonly pageNumber = signal(1);
+
+  private readonly fetchTrigger = new RxSubject<void>();
+
+  constructor() {
+    // Tüm discover fetch'leri tek akıştan geçer: switchMap eskiyen isteği iptal eder,
+    // böylece yavaş kalan cevap yeniyi ezmez ve loading erken kapanmaz.
+    this.fetchTrigger
+      .pipe(
+        switchMap(() => {
+          this.discoverLoading.set(true);
+          this.discoverError.set(null);
+          return this.testService.listWorksheets(this.buildFilter()).pipe(
+            catchError(() => {
+              this.discoverError.set('Testler yüklenirken bir sorun oluştu.');
+              return of(null);
+            })
+          );
+        }),
+        takeUntilDestroyed()
+      )
+      .subscribe((result) => {
+        this.discoverLoading.set(false);
+        if (result) {
+          this.paged.set(result);
+        }
+      });
+  }
+
+  /** Aktif sekmeye göre birleşik loading. */
+  readonly loading = computed(() => {
+    switch (this.tab()) {
+      case 'discover':
+        return this.discoverLoading();
+      case 'assigned':
+        return this.assignmentsLoading();
+      default:
+        return this.bucketsLoading();
+    }
+  });
+
+  /** Aktif sekmeye göre birleşik error. */
+  readonly error = computed(() => {
+    switch (this.tab()) {
+      case 'discover':
+        return this.discoverError();
+      case 'assigned':
+        return this.assignmentsError();
+      default:
+        return this.bucketsError();
+    }
+  });
 
   readonly search = signal('');
   readonly selectedSubjectIds = signal<number[]>([]);
@@ -192,12 +260,14 @@ export class WorksheetListComponent implements OnInit {
       }
       this.pageNumber.set(1);
 
-      // İlk yüklemede resolver zaten aramasız listeyi getirdi; arama yoksa tekrar istek atma.
-      if (first && !search && !section) {
+      // Resolver ilk listeyi (arama dahil) zaten getirdi. `?section=` sortBy'ı değiştirdiği için
+      // yalnızca o durumda ilk emisyonda da fetch gerekir; diğer hallerde çift istek olmaz.
+      if (first) {
         first = false;
-        return;
+        if (!section) {
+          return;
+        }
       }
-      first = false;
       this.fetch();
     });
 
@@ -233,46 +303,65 @@ export class WorksheetListComponent implements OnInit {
     if (this.tab() !== 'discover') {
       return;
     }
-    this.loading.set(true);
-    this.error.set(null);
-    this.testService
-      .listWorksheets(this.buildFilter())
-      .pipe(
-        finalize(() => this.loading.set(false)),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (result) => this.paged.set(result),
-        error: () => this.error.set('Testler yüklenirken bir sorun oluştu.'),
-      });
+    this.fetchTrigger.next();
+  }
+
+  /** Aktif sekmenin veri kaynağını yeniden yükler (error dalındaki "Tekrar dene"). */
+  retry(): void {
+    switch (this.tab()) {
+      case 'discover':
+        this.fetch();
+        break;
+      case 'assigned':
+        this.loadAssignments();
+        break;
+      default:
+        this.loadStatusBuckets();
+        break;
+    }
   }
 
   private loadAssignments(): void {
+    this.assignmentsLoading.set(true);
+    this.assignmentsError.set(null);
     this.testService
       .getActiveAssignments()
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        finalize(() => this.assignmentsLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
       .subscribe({
         next: (items) => this.assignments.set(items ?? []),
-        error: () => this.assignments.set([]),
+        error: () => this.assignmentsError.set('Atanmış testler yüklenirken bir sorun oluştu.'),
       });
   }
 
   /** Öğrenci durum sekmeleri (Devam Edenler / Tamamlananlar) + devam şeridi için ayrı fetch. */
   private loadStatusBuckets(): void {
-    this.testService
-      .listWorksheets({ statuses: [0], pageSize: 50, sortBy: 'recent' })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => this.inProgressTests.set(result.items ?? []),
-        error: () => this.inProgressTests.set([]),
-      });
-
-    this.testService
-      .listWorksheets({ statuses: [1], pageSize: 50, sortBy: 'recent' })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (result) => this.completedTests.set(result.items ?? []),
-        error: () => this.completedTests.set([]),
+    this.bucketsLoading.set(true);
+    this.bucketsError.set(null);
+    forkJoin({
+      inProgress: this.testService
+        .listWorksheets({ statuses: [0], pageSize: 50, sortBy: 'recent' })
+        .pipe(catchError(() => of(null))),
+      completed: this.testService
+        .listWorksheets({ statuses: [1], pageSize: 50, sortBy: 'recent' })
+        .pipe(catchError(() => of(null))),
+    })
+      .pipe(
+        finalize(() => this.bucketsLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ inProgress, completed }) => {
+        if (inProgress) {
+          this.inProgressTests.set(inProgress.items ?? []);
+        }
+        if (completed) {
+          this.completedTests.set(completed.items ?? []);
+        }
+        if (!inProgress && !completed) {
+          this.bucketsError.set('Testler yüklenirken bir sorun oluştu.');
+        }
       });
   }
 
@@ -366,6 +455,22 @@ export class WorksheetListComponent implements OnInit {
   }
 
   clearFilters(): void {
+    this.resetFilterSignals();
+    this.fetch();
+  }
+
+  /** Boş-durum "Filtreleri temizle": filtre + arama tek fetch ile sıfırlanır. */
+  resetAll(): void {
+    this.resetFilterSignals();
+    if (this.search()) {
+      // navigation → queryParams aboneliği tek fetch tetikler
+      this.clearSearch();
+    } else {
+      this.fetch();
+    }
+  }
+
+  private resetFilterSignals(): void {
     this.selectedSubjectIds.set([]);
     this.selectedGradeIds.set([]);
     this.selectedStatuses.set([]);
@@ -373,7 +478,6 @@ export class WorksheetListComponent implements OnInit {
     this.questionBucket.set(null);
     this.practiceOnly.set(false);
     this.pageNumber.set(1);
-    this.fetch();
   }
 
   clearSearch(): void {
@@ -493,26 +597,29 @@ export class WorksheetListComponent implements OnInit {
   }
 
   private performDelete(ids: number[]): void {
-    this.loading.set(true);
-    forkJoin(ids.map((id) => this.testService.delete(id)))
+    this.discoverLoading.set(true);
+    from(ids)
       .pipe(
-        finalize(() => this.loading.set(false)),
+        mergeMap(
+          (id) =>
+            this.testService.delete(id).pipe(
+              map(() => true),
+              catchError(() => of(false))
+            ),
+          4
+        ),
+        reduce((acc, ok) => (ok ? { ...acc, ok: acc.ok + 1 } : { ...acc, fail: acc.fail + 1 }), { ok: 0, fail: 0 }),
+        finalize(() => this.discoverLoading.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
-        next: () => {
-          this.snackBar.open(
-            ids.length > 1 ? `${ids.length} test silindi.` : 'Test silindi.',
-            'Tamam',
-            { duration: 3000 }
-          );
-          this.clearSelection();
-          if (this.paged().items.length === ids.length && this.pageNumber() > 1) {
-            this.pageNumber.update((p) => p - 1);
-          }
-          this.fetch();
-        },
-        error: () => this.snackBar.open('Silme işlemi sırasında bir hata oluştu.', 'Kapat', { duration: 4000 }),
+      .subscribe(({ ok, fail }) => {
+        const message = fail === 0 ? `${ok} test silindi.` : `${ok} test silindi, ${fail} tanesi başarısız.`;
+        this.snackBar.open(message, fail === 0 ? 'Tamam' : 'Kapat', { duration: 4000 });
+        this.clearSelection();
+        if (ok > 0 && this.paged().items.length === ok && this.pageNumber() > 1) {
+          this.pageNumber.update((p) => p - 1);
+        }
+        this.fetch();
       });
   }
 

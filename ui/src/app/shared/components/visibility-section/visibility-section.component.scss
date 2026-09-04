@@ -1,0 +1,94 @@
+.visibility-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.vs-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vs-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mainFontFamily);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ms-text-strong);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--ms-action-text-medium);
+  }
+}
+
+.vs-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vs-radio-option {
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+  font-size: 13px;
+}
+
+.vs-option-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text-weak);
+  line-height: 1.5;
+}
+
+.vs-select {
+  width: 100%;
+}
+
+.vs-toggle-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--ms-surface-medium);
+}
+
+.vs-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vs-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-family: var(--paragraphFontFamily);
+  font-size: 12px;
+  line-height: 1.5;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--ms-info-border);
+  }
+}

@@ -86,6 +86,20 @@
         </div>
         <input #coverInput type="file" accept="image/*" hidden (change)="onImageSelected($event)" />
       </section>
+
+      <!-- GÖRÜNÜRLÜK (yalnız düzenleme, sahibi/admin) -->
+      <section class="card" *ngIf="isEditMode && canEdit()">
+        <h3><span class="dot"></span>Görünürlük</h3>
+        <p class="card-note">
+          Bu testi diğer öğretmenlerin ve öğrencilerin nasıl göreceğini belirle. Değişiklik anında kaydedilir.
+        </p>
+        <app-visibility-section
+          [teacherSharing]="teacherSharing()"
+          [studentVisibility]="studentVisibility()"
+          [disabled]="isSavingVisibility()"
+          (visibilityChange)="onVisibilityChange($event)"
+        ></app-visibility-section>
+      </section>
     </div>
 
     <!-- SAĞ: DÜZENLEME → ÖNİZLEME / CTA -->

@@ -142,35 +142,95 @@ public class KeycloakService : IKeycloakService
         return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
     }
 
+    // App-level roles a user may hold — used both to validate the incoming role and to
+    // recognize which of a user's *current* Keycloak realm-role mappings are "app roles"
+    // that must be cleared before assigning a new one (see SetRoleAsync).
+    private static readonly string[] AppRoleNames = { "Student", "Teacher", "Parent" };
+
     public async Task SetRoleAsync(string keycloakUserId, string userRole)
     {
-
-        var adminToken = await GetKeycloakAdminTokenAsync();
-
-        // 3) Admin API ile session'ları sonlandır
-
-        _http.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", adminToken);
-
         if (string.IsNullOrEmpty(keycloakUserId))
         {
             throw new KeycloakException("Keycloak user ID cannot be null or empty.");
         }
 
-        var rolesResponse = await _http.GetAsync(BuildKeycloakUri(_keycloakSettings.RealmRolesUrl));
-        var rolesJson = await rolesResponse.Content.ReadAsStringAsync();
+        var adminToken = await GetKeycloakAdminTokenAsync();
 
+        _http.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // 1) Resolve the target role's id+name from the realm's role catalog — Keycloak's
+        //    role-mappings API needs the full role representation, not just the name.
+        var rolesResponse = await _http.GetAsync(BuildKeycloakUri(_keycloakSettings.RealmRolesUrl));
+        if (!rolesResponse.IsSuccessStatusCode)
+        {
+            var error = await rolesResponse.Content.ReadAsStringAsync();
+            throw new KeycloakException($"Failed to fetch realm roles from Keycloak: {error}");
+        }
+
+        var rolesJson = await rolesResponse.Content.ReadAsStringAsync();
         var roles = JsonSerializer.Deserialize<List<KeycloakRoleDto>>(rolesJson, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
-        });
+        }) ?? new List<KeycloakRoleDto>();
 
-        var role = roles.FirstOrDefault(f => f.name.Equals(userRole));
+        var role = roles.FirstOrDefault(f => f.name.Equals(userRole, StringComparison.OrdinalIgnoreCase));
+        if (role == null)
+        {
+            throw new KeycloakException($"Realm role '{userRole}' was not found in Keycloak.");
+        }
 
+        // 2) Make the assignment exclusive: remove any *other* app-role (Student/Teacher/
+        //    Parent) realm-role mapping the user currently holds before adding the new
+        //    one. This is what prevents role-stacking — without it, calling this method
+        //    (even a single time, let alone concurrently) is additive and can leave a
+        //    user with multiple app roles in Keycloak.
+        var currentMappingsResponse = await _http.GetAsync(
+            BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"));
+        if (!currentMappingsResponse.IsSuccessStatusCode)
+        {
+            var error = await currentMappingsResponse.Content.ReadAsStringAsync();
+            throw new KeycloakException($"Failed to fetch current role mappings from Keycloak: {error}");
+        }
+
+        var currentMappingsJson = await currentMappingsResponse.Content.ReadAsStringAsync();
+        var currentMappings = JsonSerializer.Deserialize<List<KeycloakRoleDto>>(currentMappingsJson, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        }) ?? new List<KeycloakRoleDto>();
+
+        var mappingsToRemove = currentMappings
+            .Where(m => m != null && !string.IsNullOrEmpty(m.name) &&
+                AppRoleNames.Contains(m.name, StringComparer.OrdinalIgnoreCase) &&
+                !m.name.Equals(role.name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (mappingsToRemove.Count > 0)
+        {
+            var removeJson = JsonSerializer.Serialize(mappingsToRemove);
+            var removeRequest = new HttpRequestMessage(HttpMethod.Delete,
+                BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"))
+            {
+                Content = new StringContent(removeJson, Encoding.UTF8, "application/json")
+            };
+            var removeResponse = await _http.SendAsync(removeRequest);
+            if (!removeResponse.IsSuccessStatusCode)
+            {
+                var error = await removeResponse.Content.ReadAsStringAsync();
+                throw new KeycloakException($"Failed to remove existing role mapping(s) in Keycloak: {error}");
+            }
+        }
+
+        // 3) Assign the new (and now sole) app role.
         var roleAssignJson = JsonSerializer.Serialize(new[] { role });
         var assignContent = new StringContent(roleAssignJson, Encoding.UTF8, "application/json");
-
-        await _http.PostAsync(BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"), assignContent);
+        var assignResponse = await _http.PostAsync(
+            BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"), assignContent);
+        if (!assignResponse.IsSuccessStatusCode)
+        {
+            var error = await assignResponse.Content.ReadAsStringAsync();
+            throw new KeycloakException($"Failed to assign role in Keycloak: {error}");
+        }
     }
 
     public async Task<TokenResponseDto> LoginAsync(string username, string password)

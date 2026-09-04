@@ -101,8 +101,8 @@ export class CallbackComponent implements OnInit {
             const dest = hasAppRole
               ? '/dashboard'
               : hasIntentRole
-              ? `/complete-profile?role=${intent}`
-              : '/complete-profile';
+              ? `/app/complete-profile?role=${intent}`
+              : '/app/complete-profile';
 
             window.location.href = (returnBase + dest) || '/login';
           },

@@ -7,7 +7,15 @@ import { Router } from '@angular/router';
 import { Subject } from '../models/subject';
 import { Topic } from '../models/topic';
 import { SubTopic } from '../models/subtopic';
-import { InstanceSummary, Exam, Paged, Test, TestInstance } from '../models/test-instance';
+import {
+  InstanceSummary,
+  Exam,
+  Paged,
+  Test,
+  TestInstance,
+  WorksheetStudentVisibility,
+  WorksheetTeacherSharing,
+} from '../models/test-instance';
 import {
   ApiResponse,
   AssignedWorksheet,
@@ -201,6 +209,14 @@ export class TestService {
       `${this.baseUrl}/${worksheetId}/background-image`,
       formData
     );
+  }
+
+  /** Öğretmen görünürlük eksenlerini günceller (issue #10). Sahibi/admin dışında 403 döner. */
+  updateVisibility(
+    worksheetId: number,
+    payload: { teacherSharing: WorksheetTeacherSharing; studentVisibility: WorksheetStudentVisibility }
+  ): Observable<Test> {
+    return this.http.put<Test>(`${this.baseUrl}/${worksheetId}/visibility`, payload);
   }
 
   get(id: number): Observable<Test> {

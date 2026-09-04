@@ -26,10 +26,14 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { TestFormComponent } from '../test-form/test-form.component';
 import { TestService } from '../../services/test.service';
-import { Test } from '../../models/test-instance';
+import { Test, WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../models/test-instance';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { Observable, of, switchMap, tap, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import {
+  VisibilityChange,
+  VisibilitySectionComponent,
+} from '../../shared/components/visibility-section/visibility-section.component';
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -44,6 +48,7 @@ import { HttpErrorResponse } from '@angular/common/http';
     MatProgressBarModule,
     MatSnackBarModule,
     TestFormComponent,
+    VisibilitySectionComponent,
   ],
 })
 export class TestCreateEnhancedComponent implements OnInit {
@@ -98,6 +103,10 @@ export class TestCreateEnhancedComponent implements OnInit {
   /** Yeni oluşturmada herkes düzenleyebilir; düzenleme modunda backend `canEdit` alanı belirler. */
   readonly canEdit = signal(true);
   readonly loadError = signal<string | null>(null);
+  /** Görünürlük eksenleri (issue #10) — yalnız düzenleme modunda backend'den doldurulur. */
+  readonly teacherSharing = signal<WorksheetTeacherSharing>(WorksheetTeacherSharing.Private);
+  readonly studentVisibility = signal<WorksheetStudentVisibility>(WorksheetStudentVisibility.Normal);
+  readonly isSavingVisibility = signal(false);
   testForm!: FormGroup;
   books: any[] = [];
   bookTests: any[] = [];
@@ -334,6 +343,39 @@ export class TestCreateEnhancedComponent implements OnInit {
     input.value = '';
   }
 
+  /** Görünürlük bileşeninden gelen değişikliği bağımsız PUT ile kaydeder (issue #10). */
+  onVisibilityChange(change: VisibilityChange): void {
+    if (!this.isEditMode || !this.id || !this.canEdit() || this.isSavingVisibility()) {
+      return;
+    }
+    const previousTeacherSharing = this.teacherSharing();
+    const previousStudentVisibility = this.studentVisibility();
+    this.isSavingVisibility.set(true);
+    this.testService
+      .updateVisibility(this.id, change)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.isSavingVisibility.set(false);
+          this.teacherSharing.set(updated.teacherSharing ?? change.teacherSharing);
+          this.studentVisibility.set(updated.studentVisibility ?? change.studentVisibility);
+          this.snackBar.open('Görünürlük ayarları güncellendi.', 'Kapat', { duration: 2000 });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isSavingVisibility.set(false);
+          this.teacherSharing.set(previousTeacherSharing);
+          this.studentVisibility.set(previousStudentVisibility);
+          if (err?.status === 403) {
+            this.snackBar.open('Bu sınavın görünürlüğünü değiştirme yetkiniz yok.', 'Kapat', { duration: 3000 });
+          } else if (err?.status === 404) {
+            this.snackBar.open('Test bulunamadı.', 'Kapat', { duration: 3000 });
+          } else {
+            this.snackBar.open('Görünürlük ayarları güncellenemedi.', 'Kapat', { duration: 3000 });
+          }
+        },
+      });
+  }
+
   loadTest() {
     this.loadError.set(null);
     this.testService
@@ -350,6 +392,8 @@ export class TestCreateEnhancedComponent implements OnInit {
           if (!this.canEdit()) {
             this.testForm.disable({ emitEvent: false });
           }
+          this.teacherSharing.set(exam.teacherSharing ?? WorksheetTeacherSharing.Private);
+          this.studentVisibility.set(exam.studentVisibility ?? WorksheetStudentVisibility.Normal);
         }),
         switchMap((exam) =>
           this.bookService.getTestsByBook(exam.bookId || 0).pipe(

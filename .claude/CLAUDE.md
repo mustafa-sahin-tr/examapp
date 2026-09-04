@@ -23,6 +23,9 @@ Bu repoda özelleşmiş agent'lar tanımlıdır (`.claude/agents/`). Uygun işi 
 | `ui-tester` | Tarayıcıda uçtan uca akış doğrulama (Puppeteer) |
 | `code-reviewer` | Kalite incelemesi (salt okunur) |
 | `security-reviewer` | Güvenlik incelemesi (salt okunur) |
+| `business-analyst` | Issue detaylandırma, kabul kriteri, epic → alt issue (kod yazmaz) |
+| `product-owner` | Önceliklendirme, kapsam/MVP kararı (kod yazmaz) |
+| `product-designer` | Maket/wireframe (Claude Design canvas), tasarım notu, issue'ya ekleme |
 
 Kural: **yazan agent ile inceleyen agent aynı olmaz.** Reviewer'lar kod düzeltmez, bulgu raporlar;
 düzeltme yazan agent'a geri gönderilir.
@@ -30,8 +33,12 @@ düzeltme yazan agent'a geri gönderilir.
 Birden fazla dosya/servis etkileyen işlerde `/feature`, incelemede `/review`,
 PR öncesi `/ship` komutlarını kullan.
 
+Kod öncesi ürün hazırlığı için: `/refine` (issue detaylandır), `/mockup` (maket üret),
+`/groom` (PO + BA + tasarımcı ile epic'i uçtan uca hazırla). Hazır alt issue'da `/feature` ile geliştirmeye geç.
+
 ## Prosedürler
 
 Tekrar eden işlerin adımları `.claude/skills/` altındadır: `dotnet-endpoint`, `angular-feature`,
-`outbox-event`, `ef-migration`, `gateway-route`, `aspire-migration`, `security-review-checklist`.
+`outbox-event`, `ef-migration`, `gateway-route`, `aspire-migration`, `security-review-checklist`,
+`issue-refinement`, `issue-breakdown`, `design-mockup`.
 İlgili işe başlarken önce skill'i oku.

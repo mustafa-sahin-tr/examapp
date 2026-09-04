@@ -140,6 +140,18 @@ public class AppDbContext : DbContext
             .WithOne(wq => wq.Worksheet)
             .HasForeignKey(wq => wq.TestId);
 
+        // Görünürlük eksenleri (issue #9): non-null, mevcut kayıtlar Private + Normal.
+        modelBuilder.Entity<Worksheet>()
+            .Property(w => w.TeacherSharing)
+            .HasDefaultValue(WorksheetTeacherSharing.Private);
+
+        modelBuilder.Entity<Worksheet>()
+            .Property(w => w.StudentVisibility)
+            .HasDefaultValue(WorksheetStudentVisibility.Normal);
+
+        modelBuilder.Entity<Worksheet>()
+            .HasIndex(w => new { w.TeacherSharing, w.StudentVisibility, w.GradeId, w.CreateUserId });
+
         // 📌 Grade - Subject İlişkisi
         modelBuilder.Entity<GradeSubject>()
             .HasOne(gs => gs.Grade)

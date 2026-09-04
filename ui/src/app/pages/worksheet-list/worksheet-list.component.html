@@ -229,7 +229,7 @@
         <div class="wl__empty">
           <mat-icon>error_outline</mat-icon>
           <p>{{ error() }}</p>
-          <button type="button" class="wl__btn wl__btn--primary" (click)="fetch()">Tekrar dene</button>
+          <button type="button" class="wl__btn wl__btn--primary" (click)="retry()">Tekrar dene</button>
         </div>
       } @else if (visibleTests().length === 0) {
         <div class="wl__empty">
@@ -246,7 +246,7 @@
             <p>Bu kriterlere uygun test yok.</p>
           }
           @if (hasActiveFilters() || search()) {
-            <button type="button" class="wl__btn wl__btn--ghost" (click)="clearFilters(); clearSearch()">Filtreleri temizle</button>
+            <button type="button" class="wl__btn wl__btn--ghost" (click)="resetAll()">Filtreleri temizle</button>
           }
         </div>
       } @else {

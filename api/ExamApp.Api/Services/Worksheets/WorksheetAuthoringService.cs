@@ -35,7 +35,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         ["image/webp"] = new[] { ".webp" },
     };
 
-    public async Task<UpdateWorksheetBackgroundImageDto> UpdateWorksheetBackgroundImageAsync(int worksheetId, IFormFile file, int userId)
+    public async Task<UpdateWorksheetBackgroundImageDto> UpdateWorksheetBackgroundImageAsync(int worksheetId, IFormFile file, int userId, bool isAdmin)
     {
         if (file == null || file.Length == 0)
         {
@@ -68,11 +68,11 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             };
         }
 
-        // Sahiplik kontrolü: worksheet yalnızca oluşturan öğretmen tarafından değiştirilebilir.
-        // Varlık sızmaması için eşleşme yoksa NotFound döner.
+        // Yetki modeli: "sahibi VEYA admin". Legacy (CreateUserId 0/null) kayıtlar owner sayılmaz.
+        // Varlık sızmaması için hem yok hem de yetkisiz durumda aynı NotFound mesajı döner.
         var worksheet = await _context.Worksheets
-            .FirstOrDefaultAsync(w => w.Id == worksheetId && w.CreateUserId == userId);
-        if (worksheet == null)
+            .FirstOrDefaultAsync(w => w.Id == worksheetId && !w.IsDeleted);
+        if (worksheet == null || !WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
         {
             return new UpdateWorksheetBackgroundImageDto
             {
@@ -117,7 +117,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         };
     }
 
-    public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId)
+    public async Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId, bool isAdmin)
     {
         if (examDto == null)
         {
@@ -278,6 +278,16 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     };
                 }
 
+                // Yetki modeli: "sahibi VEYA admin". Legacy kayıtlar owner sayılmaz.
+                if (!WorksheetAccess.CanModify(examination.CreateUserId, userId, isAdmin))
+                {
+                    return new ExamSavedDto
+                    {
+                        Success = false,
+                        Message = "Bu testi düzenleme yetkiniz yok."
+                    };
+                }
+
                 examination.Name = examDto.Name;
                 examination.Description = examDto.Description;
                 examination.GradeId = examDto.GradeId;
@@ -318,6 +328,17 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
 
                 if (existingExam != null)
                 {
+                    // Aynı isim/kitap-test ile mevcut kayda denk gelen "create" isteği aslında bir update'e
+                    // dönüşüyor — yabancı bir kaydı ezmemek için burada da yetki kapısı koy.
+                    if (!WorksheetAccess.CanModify(existingExam.CreateUserId, userId, isAdmin))
+                    {
+                        return new ExamSavedDto
+                        {
+                            Success = false,
+                            Message = "Bu testi düzenleme yetkiniz yok."
+                        };
+                    }
+
                     // Update existing exam
                     existingExam.Name = examDto.Name;
                     existingExam.Description = examDto.Description;
@@ -385,7 +406,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         }
     }
 
-    public async Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId)
+    public async Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId, bool isAdmin)
     {
         var result = new BulkExamResultDto
         {
@@ -421,7 +442,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 };
 
                 // Use existing CreateOrUpdateAsync method
-                var savedExam = await CreateOrUpdateAsync(examDto, userId);
+                var savedExam = await CreateOrUpdateAsync(examDto, userId, isAdmin);
 
                 if (savedExam.Success)
                 {
@@ -465,15 +486,17 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         return result;
     }
 
-    public async Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId)
+    public async Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId, bool isAdmin)
     {
         var response = new ResponseBaseDto();
 
-        // Sahiplik kontrolü: worksheet yalnızca oluşturan öğretmen tarafından silinebilir.
         var worksheet = await _context.Worksheets
-            .FirstOrDefaultAsync(w => w.Id == worksheetId && w.CreateUserId == userId);
+            .FirstOrDefaultAsync(w => w.Id == worksheetId);
 
-        if (worksheet == null || worksheet.IsDeleted)
+        // Yetki modeli: "sahibi VEYA admin". Legacy (CreateUserId 0/null) kayıtlar owner sayılmaz.
+        // Varlık sızmaması için yok/silinmiş/yetkisiz durumunda aynı NotFound cevabı döner.
+        if (worksheet == null || worksheet.IsDeleted ||
+            !WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
         {
             response.Success = false;
             response.NotFound = true;

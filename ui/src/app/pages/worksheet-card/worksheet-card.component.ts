@@ -41,7 +41,16 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroy$ = new Subject<void>();
   readonly backgroundUploading = signal(false);
-  readonly canEditBackground = this.authService.hasRole('Teacher');
+
+  /**
+   * Öğretmen rolü + backend'in bu worksheet için verdiği düzenleme yetkisi.
+   * NOT: `computed()` yerine getter — `test` bir signal input değil (klasik `@Input`)
+   * ve `onBackgroundFileSelected` içinde `this.test` yeniden atanıyor, bu yüzden
+   * signal input'a çevrilemiyor. Getter change-detection'da ucuz (rol Keycloak token'dan).
+   */
+  get canEditBackground(): boolean {
+    return this.authService.hasRole('Teacher') && this.test?.canEdit !== false;
+  }
 
   themeConfig!: WorksheetCardThemeConfig;
 

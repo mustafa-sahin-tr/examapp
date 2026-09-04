@@ -8,7 +8,7 @@ namespace ExamApp.Api.Services.Worksheets;
 /// </summary>
 public interface IWorksheetAssignmentService
 {
-    Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId);
+    Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId, bool isAdmin = false);
 
     Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student);
 

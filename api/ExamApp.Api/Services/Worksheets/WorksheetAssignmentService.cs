@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +17,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         _context = context;
     }
 
-    public async Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId)
+    public async Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId, bool isAdmin = false)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -45,6 +46,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         if (worksheet == null)
         {
             return new ResponseBaseDto { Success = false, Message = "Worksheet bulunamadı." };
+        }
+
+        // Öğretmen yalnızca kendi worksheet'ini atayabilir; admin hepsini.
+        if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        {
+            return new ResponseBaseDto { Success = false, Message = "Bu testi atama yetkiniz yok." };
         }
 
         Student? student = null;

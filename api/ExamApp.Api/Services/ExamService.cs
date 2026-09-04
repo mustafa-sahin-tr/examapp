@@ -7,8 +7,10 @@ using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Globalization;
+using System.Net.Http;
 using System.Numerics;
 using System.Text.Json;
 
@@ -20,11 +22,48 @@ public class ExamService : IExamService
 
     private readonly ImageHelper _imageHelper;
     private readonly IMinIoService _minioService;
-    public ExamService(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService)
+    private readonly IAuthApiClient _authApiClient;
+    private readonly ILogger<ExamService>? _logger;
+    public ExamService(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService,
+        IAuthApiClient authApiClient, ILogger<ExamService>? logger = null)
     {
         _imageHelper = imageHelper;
         _context = context;
         _minioService = minioService;
+        _authApiClient = authApiClient;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Admin isteklerinde worksheet listesindeki CreateUserId'leri isimlere çözer.
+    /// StudentService.GetStudentLookupsAsync ile aynı desen.
+    /// </summary>
+    private async Task<Dictionary<int, string>> ResolveCreatorNamesAsync(IEnumerable<int?> creatorIds)
+    {
+        var ids = creatorIds.Where(id => id.HasValue && id.Value > 0)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(ids);
+            return users
+                .Where(u => !string.IsNullOrWhiteSpace(u.FullName))
+                .GroupBy(u => u.Id)
+                .ToDictionary(g => g.Key, g => g.First().FullName);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // Auth API erişilemez/yavaş — isim çözümü best-effort, istek düşmesin ama sessiz de kalmasın.
+            _logger?.LogWarning(ex, "Worksheet oluşturan kullanıcı adları auth-api'den çözülemedi ({Count} id).", ids.Count);
+            return new Dictionary<int, string>();
+        }
     }
 
     private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
@@ -80,7 +119,7 @@ public class ExamService : IExamService
         return ordered.ThenBy(t => t.Id); // stable tiebreaker
     }
 
-    public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, UserProfileDto userProfile)
+    public async Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, UserProfileDto userProfile, bool isAdmin)
     {
         var query = _context.Worksheets.AsQueryable();
 
@@ -109,6 +148,14 @@ public class ExamService : IExamService
             }
         }
 
+        // Öğretmen yalnızca kendi worksheet'lerini görür; admin hepsini.
+        // Legacy (CreateUserId null/0) kayıtlar yalnızca admin'e görünür.
+        // dto.id > 0 dalı da buna tabidir — başkasının id'siyle çekilemez.
+        if (!isAdmin)
+        {
+            query = query.Where(t => t.CreateUserId != null && t.CreateUserId > 0 && t.CreateUserId == userProfile.Id);
+        }
+
         query = ApplyCommonFilters(query, dto);
 
         var totalCount = await query.CountAsync(); // Toplam kayıt sayısı
@@ -120,6 +167,10 @@ public class ExamService : IExamService
             .Skip((dto.pageNumber - 1) * dto.pageSize) // Sayfalama için
             .Take(dto.pageSize)
             .ToListAsync();
+
+        var creatorNames = isAdmin
+            ? await ResolveCreatorNamesAsync(tests.Select(t => t.CreateUserId))
+            : new Dictionary<int, string>();
 
         var worksheetDtos = tests.Select(t =>
         {
@@ -139,7 +190,13 @@ public class ExamService : IExamService
                 BadgeText = t.BadgeText,
                 BookTestId = t.BookTestId,
                 BookId = t.BookTest?.BookId,
-                QuestionCount = t.WorksheetQuestions.Count()
+                QuestionCount = t.WorksheetQuestions.Count(),
+                CanEdit = WorksheetAccess.CanModify(t.CreateUserId, userProfile.Id, isAdmin),
+                // İç user id enumerasyonunu önlemek için sadece admin veya sahibine dön.
+                CreatedByUserId = (isAdmin || t.CreateUserId == userProfile.Id) ? t.CreateUserId : null,
+                CreatedByName = isAdmin && t.CreateUserId.HasValue && creatorNames.TryGetValue(t.CreateUserId.Value, out var name)
+                    ? name
+                    : null
             };
         }).ToList();
 
@@ -294,9 +351,14 @@ public class ExamService : IExamService
         };
     }
 
-    public async Task<List<WorksheetDto>> GetLatestWorksheetsAsync(int pageNumber, int pageSize)
+    public async Task<List<WorksheetDto>> GetLatestWorksheetsAsync(int pageNumber, int pageSize, int? ownerUserId = null)
     {
-        return await _context.Worksheets
+        var query = _context.Worksheets.AsQueryable();
+        // Öğretmen (admin değil) yalnızca kendi worksheet'lerini görür.
+        if (ownerUserId.HasValue)
+            query = query.Where(t => t.CreateUserId == ownerUserId.Value);
+
+        return await query
             .OrderByDescending(t => t.CreateTime)
             .ThenByDescending(t => t.Id) // stable tiebreaker when CreateTime collides
             .Skip((pageNumber - 1) * pageSize)
@@ -320,7 +382,7 @@ public class ExamService : IExamService
             .ToListAsync();
     }
 
-    public async Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays)
+    public async Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays, int? ownerUserId = null)
     {
         if (sinceDays <= 0) sinceDays = 30;
         var since = DateTime.UtcNow.AddDays(-sinceDays);
@@ -347,6 +409,9 @@ public class ExamService : IExamService
         var worksheetQuery = _context.Worksheets.Where(w => worksheetIds.Contains(w.Id));
         if (gradeId.HasValue)
             worksheetQuery = worksheetQuery.Where(w => w.GradeId == gradeId.Value);
+        // Öğretmen (admin değil) yalnızca kendi worksheet'lerini görür.
+        if (ownerUserId.HasValue)
+            worksheetQuery = worksheetQuery.Where(w => w.CreateUserId == ownerUserId.Value);
 
         var worksheets = await worksheetQuery
             .Include(t => t.BookTest)
@@ -396,7 +461,7 @@ public class ExamService : IExamService
             .ToListAsync();
     }
 
-    public async Task<WorksheetDto?> GetWorksheetByIdAsync(int id)
+    public async Task<WorksheetDto?> GetWorksheetByIdAsync(int id, UserProfileDto userProfile, bool isAdmin)
     {
         var worksheet = await _context.Worksheets
             .Include(t => t.BookTest)
@@ -407,6 +472,19 @@ public class ExamService : IExamService
 
         if (worksheet == null)
             return null;
+
+        // Öğretmen yalnızca kendi worksheet'ini görebilir; admin hepsini. Yetkisizse "yok" gibi davran.
+        // Öğrenci akışı değişmez (öğrenci çözüm için worksheet detayına erişebilir).
+        var isStudent = string.Equals(userProfile.Role, UserRole.Student.ToString(), StringComparison.OrdinalIgnoreCase);
+        if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin))
+            return null;
+
+        string? createdByName = null;
+        if (isAdmin && worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0)
+        {
+            var names = await ResolveCreatorNamesAsync(new[] { worksheet.CreateUserId });
+            names.TryGetValue(worksheet.CreateUserId.Value, out createdByName);
+        }
 
         return new WorksheetDto
         {
@@ -422,7 +500,11 @@ public class ExamService : IExamService
             BadgeText = worksheet.BadgeText,
             BookTestId = worksheet.BookTestId,
             BookId = worksheet.BookTest?.BookId,
-            QuestionCount = worksheet.WorksheetQuestions.Count()
+            QuestionCount = worksheet.WorksheetQuestions.Count(),
+            CanEdit = WorksheetAccess.CanModify(worksheet.CreateUserId, userProfile.Id, isAdmin),
+            // İç user id enumerasyonunu önlemek için sadece admin veya sahibine dön.
+            CreatedByUserId = (isAdmin || worksheet.CreateUserId == userProfile.Id) ? worksheet.CreateUserId : null,
+            CreatedByName = createdByName
         };
     }
 

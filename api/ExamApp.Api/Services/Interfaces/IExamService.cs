@@ -10,15 +10,15 @@ public interface IExamService
 {
     // Define methods for exam-related operations here
     Task<Paged<WorksheetDto>> GetWorksheetsForStudentsAsync(ExamFilterDto dto, StudentProfileDto userProfile);
-    Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, UserProfileDto userProfile);
+    Task<Paged<WorksheetDto>> GetWorksheetsForTeacherAsync(ExamFilterDto dto, UserProfileDto userProfile, bool isAdmin);
 
-    Task<List<WorksheetDto>> GetLatestWorksheetsAsync(int pageNumber, int pageSize);
+    Task<List<WorksheetDto>> GetLatestWorksheetsAsync(int pageNumber, int pageSize, int? ownerUserId = null);
 
-    Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays);
+    Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays, int? ownerUserId = null);
 
     Task<List<QuestionDto>> GetExamQuestionsAsync();
 
-    Task<WorksheetDto?> GetWorksheetByIdAsync(int id);
+    Task<WorksheetDto?> GetWorksheetByIdAsync(int id, UserProfileDto userProfile, bool isAdmin);
 
     Task<List<WorksheetWithInstanceDto>> GetWorksheetAndInstancesAsync(StudentProfileDto student, int gradeId);
 

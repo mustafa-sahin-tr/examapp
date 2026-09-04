@@ -12,7 +12,7 @@ namespace ExamApp.Api.Tests.Services;
 public class ExamServiceCreateAndStatsTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>());
+    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>(), Substitute.For<IAuthApiClient>());
     private WorksheetAuthoringService NewAuthoring(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>());
 
     private async Task<int> AddGradeAsync()
@@ -35,7 +35,7 @@ public class ExamServiceCreateAndStatsTests : IDisposable
     public async Task Null_dto_is_rejected()
     {
         await using var ctx = _db.NewContext();
-        (await NewAuthoring(ctx).CreateOrUpdateAsync(null!, 1)).Message.ShouldContain("eksik");
+        (await NewAuthoring(ctx).CreateOrUpdateAsync(null!, 1, isAdmin: true)).Message.ShouldContain("eksik");
     }
 
     [Fact]
@@ -45,11 +45,11 @@ public class ExamServiceCreateAndStatsTests : IDisposable
         await using var ctx = _db.NewContext();
         var svc = NewAuthoring(ctx);
 
-        (await svc.CreateOrUpdateAsync(Dto(gradeId), 1)).Message.ShouldContain("Kitap seçilmedi");
+        (await svc.CreateOrUpdateAsync(Dto(gradeId), 1, isAdmin: true)).Message.ShouldContain("Kitap seçilmedi");
 
         var d = Dto(gradeId);
         d.NewBookName = "Yeni Kitap";
-        (await svc.CreateOrUpdateAsync(d, 1)).Message.ShouldContain("Test seçilmedi");
+        (await svc.CreateOrUpdateAsync(d, 1, isAdmin: true)).Message.ShouldContain("Test seçilmedi");
     }
 
     [Fact]
@@ -60,7 +60,7 @@ public class ExamServiceCreateAndStatsTests : IDisposable
         var d = Dto(gradeId);
         d.BookId = 9999;
         d.BookTestId = 8888;
-        (await NewAuthoring(ctx).CreateOrUpdateAsync(d, 1)).Message.ShouldContain("Kitap bulunamadı");
+        (await NewAuthoring(ctx).CreateOrUpdateAsync(d, 1, isAdmin: true)).Message.ShouldContain("Kitap bulunamadı");
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class ExamServiceCreateAndStatsTests : IDisposable
             var d = Dto(gradeId, "Ünite 1 Testi");
             d.NewBookName = "Fen 5";
             d.NewBookTestName = "Ünite 1";
-            saved = await NewAuthoring(ctx).CreateOrUpdateAsync(d, userId: 9);
+            saved = await NewAuthoring(ctx).CreateOrUpdateAsync(d, userId: 9, isAdmin: true);
         }
 
         saved.Message.ShouldContain("kaydedildi");
@@ -105,7 +105,7 @@ public class ExamServiceCreateAndStatsTests : IDisposable
             var d = Dto(gradeId, "WS");
             d.BookId = bookId;
             d.BookTestId = bookTestId;
-            var saved = await NewAuthoring(ctx).CreateOrUpdateAsync(d, 1);
+            var saved = await NewAuthoring(ctx).CreateOrUpdateAsync(d, 1, isAdmin: true);
             saved.ExamId.ShouldNotBeNull();
             saved.BookTestId.ShouldBe(bookTestId);
         }
@@ -132,7 +132,7 @@ public class ExamServiceCreateAndStatsTests : IDisposable
         d.Id = 4242;
         d.BookId = bookId;
         d.BookTestId = bookTestId;
-        (await NewAuthoring(ctx2).CreateOrUpdateAsync(d, 1)).Message.ShouldContain("Test bulunamadı");
+        (await NewAuthoring(ctx2).CreateOrUpdateAsync(d, 1, isAdmin: true)).Message.ShouldContain("Test bulunamadı");
     }
 
     // ---- CreateBulkExamsAsync ----
@@ -152,7 +152,7 @@ public class ExamServiceCreateAndStatsTests : IDisposable
             },
         };
 
-        var result = await NewAuthoring(ctx).CreateBulkExamsAsync(bulk, 1);
+        var result = await NewAuthoring(ctx).CreateBulkExamsAsync(bulk, 1, isAdmin: true);
 
         result.TotalProcessed.ShouldBe(2);
         result.SuccessCount.ShouldBe(1, customMessage: string.Join(" | ", result.FailedExams.Select(f => $"{f.ExamName}: {f.ErrorMessage}")));

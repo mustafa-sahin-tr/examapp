@@ -104,6 +104,13 @@ export class WorksheetDetailComponent implements OnInit {
 
   protected readonly completedResult = computed(() => this.detail()?.completedResult ?? null);
 
+  /**
+   * Bu worksheet için düzenleme yetkisi (backend `canEdit`; alan yoksa izin ver).
+   * Öğretmen backend'de zaten başkasının worksheet'ine erişemiyor; bu guard admin
+   * ve ileride public worksheet senaryosu için duruyor.
+   */
+  protected readonly canEditWorksheet = computed(() => this.detail()?.worksheet?.canEdit !== false);
+
   protected readonly view = computed<WorksheetView>(() => {
     if (this.isTeacher) {
       return 'teacher';
@@ -682,6 +689,11 @@ export class WorksheetDetailComponent implements OnInit {
         },
         error: (error) => {
           this.detailLoading.set(false);
+          if (error?.status === 404) {
+            this.snackBar.open('Bu teste erişiminiz yok veya test bulunamadı.', 'Tamam', { duration: 4000 });
+            this.router.navigate(['/tests']);
+            return;
+          }
           this.detailError.set(error?.error?.message ?? 'Sınav detayları getirilemedi.');
         },
       });
@@ -753,7 +765,12 @@ export class WorksheetDetailComponent implements OnInit {
       this.questions = [];
 
       this.loadDetail();
-      this.exam = await lastValueFrom(this.testService.get(this.testId));
+      try {
+        this.exam = await lastValueFrom(this.testService.get(this.testId));
+      } catch {
+        // 404 / erişim yok — loadDetail() error handler'ı yönlendirmeyi üstlenir.
+        return;
+      }
       if (this.exam) {
         this.gradeService
           .getGrades()

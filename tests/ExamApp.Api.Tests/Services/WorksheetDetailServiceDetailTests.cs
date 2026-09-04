@@ -154,37 +154,73 @@ public class WorksheetDetailServiceDetailTests : IDisposable
     private Task<WorksheetDetailDto?> AsTeacher(AppDbContext ctx, World w, int userId = OwnerTeacherUserId) =>
         NewService(ctx).GetWorksheetDetailAsync(w.WorksheetId, "Teacher", null, userId);
 
+    private Task<WorksheetDetailDto?> AsAdmin(AppDbContext ctx, World w, int userId = OtherTeacherUserId) =>
+        NewService(ctx).GetWorksheetDetailAsync(w.WorksheetId, "Teacher", null, userId, isAdmin: true);
+
     private Task<WorksheetDetailDto?> AsStudent(AppDbContext ctx, World w, int studentId) =>
         NewService(ctx).GetWorksheetDetailAsync(w.WorksheetId, "Student", studentId, 0);
 
     // ---- access control ----
 
     [Fact]
-    public async Task GetWorksheetDetail_TeacherNotOwnerAndNoAssignment_ReturnsDtoWithoutTeacherInsights()
+    public async Task GetWorksheetDetail_TeacherNotOwnerAndNoAssignment_ReturnsNull()
     {
         var w = await SeedAsync();
         await SeedStandardAttemptsAsync(w);
 
         await using var ctx = _db.NewContext();
-        var dto = await AsTeacher(ctx, w, OtherTeacherUserId);
-
-        dto.ShouldNotBeNull();
-        dto!.TeacherInsights.ShouldBeNull();
-        dto.TopicBreakdown.ShouldNotBeEmpty(); // base info still present
+        // Bilinçli daralma (issue #4): öğretmen yalnızca kendi worksheet'inin detayını görür.
+        (await AsTeacher(ctx, w, OtherTeacherUserId)).ShouldBeNull();
     }
 
     [Fact]
-    public async Task GetWorksheetDetail_TeacherOwnsViaAssignmentCreatedByThem_ReturnsTeacherInsights()
+    public async Task GetWorksheetDetail_TeacherNotOwnerEvenWithOwnAssignment_ReturnsNull()
     {
         var w = await SeedAsync();
         await SeedStandardAttemptsAsync(w);
         await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId, createUserId: OtherTeacherUserId);
 
         await using var ctx = _db.NewContext();
-        var dto = await AsTeacher(ctx, w, OtherTeacherUserId);
+        // Atamayı kendisi oluşturmuş olsa bile sahibi değilse detay görünmez.
+        (await AsTeacher(ctx, w, OtherTeacherUserId)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetWorksheetDetail_TeacherOwner_ReturnsDtoWithTeacherInsights()
+    {
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var dto = await AsTeacher(ctx, w); // OwnerTeacherUserId
 
         dto.ShouldNotBeNull();
         dto!.TeacherInsights.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task GetWorksheetDetail_AdminNotOwner_ReturnsDto()
+    {
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var dto = await AsAdmin(ctx, w);
+
+        dto.ShouldNotBeNull();
+        dto!.TopicBreakdown.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetWorksheetDetail_StudentViewsWorksheetOwnedByAnotherTeacher_ReturnsDto()
+    {
+        var w = await SeedAsync(); // worksheet OwnerTeacherUserId'e ait
+
+        await using var ctx = _db.NewContext();
+        var dto = await AsStudent(ctx, w, w.StNoAccess); // ilişkisiz öğrenci
+
+        dto.ShouldNotBeNull();
+        dto!.Worksheet.Id.ShouldBe(w.WorksheetId);
     }
 
     [Fact]

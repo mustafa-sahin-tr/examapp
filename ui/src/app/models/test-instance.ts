@@ -72,6 +72,11 @@ export interface Test {
   subjectId?: number;
   topicId?: number;
   subTopicId?: number;
+  /** Backend: (sahibi && CreateUserId>0) || admin */
+  canEdit?: boolean;
+  createdByUserId?: number | null;
+  /** Sadece istek sahibi admin ise dolu gelir. */
+  createdByName?: string | null;
 }
 
 export interface InstanceSummary {

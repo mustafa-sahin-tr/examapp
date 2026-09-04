@@ -397,14 +397,16 @@
                 <span class="chip draft">{{ d.teacherInsights.unclassifiedCount }} soru sınıflandırılmadı</span>
               }
             </div>
-            <div class="actions" *appIsTeacher>
-              <button class="btn btn-primary" (click)="navigateToQuestionCanvas()">
-                <mat-icon>add_circle</mat-icon>Soru Ekle
-              </button>
-              <button class="btn btn-ghost" (click)="editWorksheet(exam.id)">
-                <mat-icon>edit</mat-icon>Düzenle
-              </button>
-            </div>
+            @if (canEditWorksheet()) {
+              <div class="actions" *appIsTeacher>
+                <button class="btn btn-primary" (click)="navigateToQuestionCanvas()">
+                  <mat-icon>add_circle</mat-icon>Soru Ekle
+                </button>
+                <button class="btn btn-ghost" (click)="editWorksheet(exam.id)">
+                  <mat-icon>edit</mat-icon>Düzenle
+                </button>
+              </div>
+            }
           </div>
         </div>
 
@@ -428,14 +430,16 @@
                   <div class="panel-state">
                     <mat-icon>playlist_add</mat-icon>
                     <span>Henüz atama yok. Bu sınavı sınıfına veya öğrencilerine ata.</span>
-                    <div class="a-btns">
-                      <button class="btn btn-primary btn-sm" (click)="openAssignmentDialog('grade')">
-                        <mat-icon>groups</mat-icon>Sınıfa Ata
-                      </button>
-                      <button class="btn btn-ghost btn-sm" (click)="openAssignmentDialog('student')">
-                        <mat-icon>person_add</mat-icon>Öğrenci Seç
-                      </button>
-                    </div>
+                    @if (canEditWorksheet()) {
+                      <div class="a-btns">
+                        <button class="btn btn-primary btn-sm" (click)="openAssignmentDialog('grade')">
+                          <mat-icon>groups</mat-icon>Sınıfa Ata
+                        </button>
+                        <button class="btn btn-ghost btn-sm" (click)="openAssignmentDialog('student')">
+                          <mat-icon>person_add</mat-icon>Öğrenci Seç
+                        </button>
+                      </div>
+                    }
                   </div>
                 }
                 @case ('loaded') {
@@ -505,14 +509,16 @@
           <div class="stack">
             <div class="card" *appIsTeacher>
               <h3><span class="dot"></span>Atama</h3>
-              <div class="a-btns">
-                <button class="btn btn-primary btn-sm full" (click)="openAssignmentDialog('grade')">
-                  <mat-icon>groups</mat-icon>Sınıfa Ata
-                </button>
-                <button class="btn btn-ghost btn-sm full" (click)="openAssignmentDialog('student')">
-                  <mat-icon>person_add</mat-icon>Öğrenci Seç
-                </button>
-              </div>
+              @if (canEditWorksheet()) {
+                <div class="a-btns">
+                  <button class="btn btn-primary btn-sm full" (click)="openAssignmentDialog('grade')">
+                    <mat-icon>groups</mat-icon>Sınıfa Ata
+                  </button>
+                  <button class="btn btn-ghost btn-sm full" (click)="openAssignmentDialog('student')">
+                    <mat-icon>person_add</mat-icon>Öğrenci Seç
+                  </button>
+                </div>
+              }
               @for (assignment of teacherAssignments(); track assignment.assignmentId) {
                 <div class="sched">
                   <span class="c"><mat-icon>calendar_today</mat-icon></span>

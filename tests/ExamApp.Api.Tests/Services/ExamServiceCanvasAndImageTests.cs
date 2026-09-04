@@ -14,14 +14,18 @@ public class ExamServiceCanvasAndImageTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
+    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio, _authApi);
     private TestSessionService NewSession(AppDbContext ctx) => new(ctx);
     private WorksheetAuthoringService NewAuthoring(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
 
-    private static IFormFile FakeImage(string contentType = "image/png", int length = 8)
+    private static readonly byte[] PngHeader =
+        { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D };
+
+    private static IFormFile FakeImage(string contentType = "image/png", string fileName = "bg.png", byte[]? magic = null)
     {
-        var bytes = Encoding.UTF8.GetBytes(new string('x', length));
-        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "bg.png")
+        var bytes = magic ?? PngHeader;
+        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", fileName)
         {
             Headers = new HeaderDictionary(),
             ContentType = contentType,
@@ -35,14 +39,14 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     {
         await using var ctx = _db.NewContext();
         var empty = new FormFile(new MemoryStream(), 0, 0, "file", "x") { Headers = new HeaderDictionary() };
-        (await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(1, empty, 1)).Success.ShouldBeFalse();
+        (await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(1, empty, 1, isAdmin: true)).Success.ShouldBeFalse();
     }
 
     [Fact]
     public async Task Background_image_rejects_a_non_image_content_type()
     {
         await using var ctx = _db.NewContext();
-        var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(1, FakeImage("application/pdf"), 1);
+        var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(1, FakeImage("application/pdf"), 1, isAdmin: true);
         r.Success.ShouldBeFalse();
         r.Message.ShouldContain("görsel");
     }
@@ -51,7 +55,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
     public async Task Background_image_fails_for_an_unknown_worksheet()
     {
         await using var ctx = _db.NewContext();
-        (await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(9999, FakeImage(), 1)).Success.ShouldBeFalse();
+        (await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(9999, FakeImage(), 1, isAdmin: true)).Success.ShouldBeFalse();
     }
 
     [Fact]
@@ -74,7 +78,7 @@ public class ExamServiceCanvasAndImageTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(wsId, FakeImage(), 7);
+            var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(wsId, FakeImage(), 7, isAdmin: true);
             r.Success.ShouldBeTrue();
             r.ImageUrl.ShouldBe("http://minio/new.png");
         }

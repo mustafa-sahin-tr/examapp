@@ -10,13 +10,16 @@ namespace ExamApp.Api.Tests.Services;
 public class ExamServiceWorksheetListTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>());
+    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>(), Substitute.For<IAuthApiClient>());
 
     private sealed record World(int GradeA, int GradeB, int SubjectMath, int WsMathA, int WsOtherA, int WsB);
 
     private async Task<World> SeedAsync()
     {
         await using var ctx = _db.NewContext();
+        // Teacher_list_* senaryoları "öğretmenin tüm worksheet'leri" üzerinde çalışır:
+        // fixture'ı sorgulayan öğretmenin (Teacher.Id == 1) sahipliğinde seed et.
+        ctx.SetCurrentUser(1);
         var gradeA = new Grade { Name = "3" };
         var gradeB = new Grade { Name = "4" };
         var math = new Subject { Name = "Matematik" };
@@ -54,7 +57,7 @@ public class ExamServiceWorksheetListTests : IDisposable
         await SeedAsync();
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(size: 2, sortBy: "alphabetical"), Teacher);
+            Filter(size: 2, sortBy: "alphabetical"), Teacher, isAdmin: false);
 
         page.TotalCount.ShouldBe(3);
         page.Items.Select(i => i.Name).ShouldBe(new[] { "Alfa", "Beta" });
@@ -65,7 +68,7 @@ public class ExamServiceWorksheetListTests : IDisposable
     {
         var w = await SeedAsync();
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).GetWorksheetsForTeacherAsync(Filter(id: w.WsB), Teacher))
+        (await NewService(ctx).GetWorksheetsForTeacherAsync(Filter(id: w.WsB), Teacher, isAdmin: false))
             .Items.ShouldHaveSingleItem().Name.ShouldBe("Gama");
     }
 
@@ -76,9 +79,9 @@ public class ExamServiceWorksheetListTests : IDisposable
         await using var ctx = _db.NewContext();
         var svc = NewService(ctx);
 
-        (await svc.GetWorksheetsForTeacherAsync(Filter(grades: new() { w.GradeA }), Teacher))
+        (await svc.GetWorksheetsForTeacherAsync(Filter(grades: new() { w.GradeA }), Teacher, isAdmin: false))
             .TotalCount.ShouldBe(2);
-        (await svc.GetWorksheetsForTeacherAsync(Filter(subjects: new() { w.SubjectMath }), Teacher))
+        (await svc.GetWorksheetsForTeacherAsync(Filter(subjects: new() { w.SubjectMath }), Teacher, isAdmin: false))
             .Items.ShouldHaveSingleItem().Name.ShouldBe("Alfa");
     }
 
@@ -87,7 +90,7 @@ public class ExamServiceWorksheetListTests : IDisposable
     {
         await SeedAsync();
         await using var ctx = _db.NewContext();
-        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(Filter(search: "toplama"), Teacher);
+        var page = await NewService(ctx).GetWorksheetsForTeacherAsync(Filter(search: "toplama"), Teacher, isAdmin: false);
         page.Items.ShouldHaveSingleItem().Name.ShouldBe("Alfa");
     }
 
@@ -121,7 +124,7 @@ public class ExamServiceWorksheetListTests : IDisposable
         await SeedAsync();
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(sortBy: "alphabetical", sortDir: "desc"), Teacher);
+            Filter(sortBy: "alphabetical", sortDir: "desc"), Teacher, isAdmin: false);
 
         page.Items.Select(i => i.Name).ShouldBe(new[] { "Gama", "Beta", "Alfa" });
     }
@@ -140,7 +143,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(minDurationSeconds: 120, maxDurationSeconds: 1000, sortBy: "duration"), Teacher);
+            Filter(minDurationSeconds: 120, maxDurationSeconds: 1000, sortBy: "duration"), Teacher, isAdmin: false);
 
         page.Items.ShouldHaveSingleItem().Name.ShouldBe("Beta");
     }
@@ -157,7 +160,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(isPracticeTest: true), Teacher);
+            Filter(isPracticeTest: true), Teacher, isAdmin: false);
 
         page.Items.ShouldHaveSingleItem().Name.ShouldBe("Alfa");
     }
@@ -170,7 +173,7 @@ public class ExamServiceWorksheetListTests : IDisposable
         await SeedAsync();
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(sortBy: "Alphabetical"), Teacher);
+            Filter(sortBy: "Alphabetical"), Teacher, isAdmin: false);
 
         page.Items.Select(i => i.Name).ShouldBe(new[] { "Alfa", "Beta", "Gama" });
     }
@@ -192,7 +195,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(sortBy: "questionCount"), Teacher);
+            Filter(sortBy: "questionCount"), Teacher, isAdmin: false);
 
         // Alfa=0, Beta=1, Gama=2  -> ascending
         page.Items.Select(i => i.Name).ShouldBe(new[] { "Alfa", "Beta", "Gama" });
@@ -211,7 +214,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(sortBy: "duration", sortDir: "desc"), Teacher);
+            Filter(sortBy: "duration", sortDir: "desc"), Teacher, isAdmin: false);
 
         page.Items.Select(i => i.Id).ShouldBe(new[] { w.WsMathA, w.WsOtherA, w.WsB });
     }
@@ -235,7 +238,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(minQuestionCount: 2, maxQuestionCount: 5), Teacher);
+            Filter(minQuestionCount: 2, maxQuestionCount: 5), Teacher, isAdmin: false);
 
         page.Items.ShouldHaveSingleItem().Name.ShouldBe("Beta");
     }
@@ -263,7 +266,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(bookIds: new() { bookMatch }), Teacher);
+            Filter(bookIds: new() { bookMatch }), Teacher, isAdmin: false);
 
         page.Items.ShouldHaveSingleItem().Name.ShouldBe("Alfa");
     }
@@ -280,7 +283,7 @@ public class ExamServiceWorksheetListTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(isPracticeTest: false), Teacher);
+            Filter(isPracticeTest: false), Teacher, isAdmin: false);
 
         page.Items.Select(i => i.Name).ShouldBe(new[] { "Beta", "Gama" });
     }
@@ -365,7 +368,7 @@ public class ExamServiceWorksheetListTests : IDisposable
         await SeedAsync();
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForTeacherAsync(
-            Filter(statuses: new() { 1 }), Teacher);
+            Filter(statuses: new() { 1 }), Teacher, isAdmin: false);
 
         page.TotalCount.ShouldBe(3);
     }

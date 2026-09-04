@@ -266,7 +266,7 @@
         <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
           @for (test of visibleTests(); track trackTest($index, test)) {
             <div class="wl__grid-item">
-              @if (isTeacher && viewMode() === 'list') {
+              @if (isTeacher && viewMode() === 'list' && test.canEdit !== false) {
                 <label class="wl__row-check">
                   <input type="checkbox" [checked]="isRowSelected(test.id || 0)" (change)="toggleRowSelection(test.id || 0)" />
                 </label>

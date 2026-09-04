@@ -5,6 +5,40 @@
   font-family: var(--paragraphFontFamily);
 }
 
+.readonly-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface-weak);
+  color: var(--ms-text-weak);
+  font-family: var(--paragraphFontFamily);
+  font-size: 14px;
+
+  mat-icon {
+    color: var(--ms-text-strong);
+    flex-shrink: 0;
+  }
+
+  &--error {
+    border-color: var(--ms-danger-background);
+  }
+
+  .rb-retry {
+    margin-left: auto;
+    border: 1px solid var(--ms-border-weak);
+    background: transparent;
+    color: var(--ms-text-strong);
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-family: var(--paragraphFontFamily);
+    cursor: pointer;
+  }
+}
+
 .tce {
   padding: 28px 40px 40px;
   display: flex;

@@ -40,21 +40,31 @@
           <mat-icon>visibility</mat-icon><span>Detayı gör</span>
         </button>
         @if (isTeacher) {
-          <button mat-menu-item (click)="openQuestionCanvas()">
-            <mat-icon>add_photo_alternate</mat-icon><span>Soru Ekle</span>
-          </button>
+          @if (canEdit) {
+            <button mat-menu-item (click)="openQuestionCanvas()">
+              <mat-icon>add_photo_alternate</mat-icon><span>Soru Ekle</span>
+            </button>
+          }
           <button mat-menu-item (click)="emitAssign()">
             <mat-icon>assignment_ind</mat-icon><span>Ata</span>
           </button>
-          <button mat-menu-item (click)="emitDelete()">
-            <mat-icon>delete</mat-icon><span>Sil</span>
-          </button>
+          @if (canEdit) {
+            <button mat-menu-item (click)="emitDelete()">
+              <mat-icon>delete</mat-icon><span>Sil</span>
+            </button>
+          }
         }
       </mat-menu>
     </div>
 
     @if (subtitle) {
       <p class="wcard__subtitle">{{ subtitle }}</p>
+    }
+
+    @if (createdByName) {
+      <p class="wcard__creator">
+        <mat-icon>person</mat-icon>Oluşturan: {{ createdByName }}
+      </p>
     }
 
     <p class="wcard__meta">
@@ -86,7 +96,11 @@
 
     <div class="wcard__actions">
       @if (isTeacher) {
-        <button type="button" class="wcard__btn wcard__btn--primary" (click)="openPrimary($event)">Düzenle</button>
+        @if (canEdit) {
+          <button type="button" class="wcard__btn wcard__btn--primary" (click)="openPrimary($event)">Düzenle</button>
+        } @else {
+          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">Detayı Gör</button>
+        }
         <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
       } @else {
         <button

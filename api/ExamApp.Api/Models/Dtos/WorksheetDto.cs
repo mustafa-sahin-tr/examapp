@@ -25,6 +25,14 @@ public class WorksheetDto
 
     public int InstanceCount { get; set; } = 0;// ✅ Eklenen alan = 0
 
+    // Yetki modeli: "sahibi VEYA admin". CanEdit istek sahibine göre hesaplanır.
+    public bool CanEdit { get; set; }
+
+    // worksheet.CreateUserId — legacy kayıtlarda null olabilir.
+    public int? CreatedByUserId { get; set; }
+
+    // Sadece istek sahibi admin ise doldurulur; aksi halde null.
+    public string? CreatedByName { get; set; }
 }
 
 public class WorksheetWithInstanceDto

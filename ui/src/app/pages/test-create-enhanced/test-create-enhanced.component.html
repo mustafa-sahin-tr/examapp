@@ -14,6 +14,15 @@
   </ng-container>
 
   <ng-container *ngIf="!isMiniform">
+  <div class="readonly-banner readonly-banner--error" *ngIf="loadError()">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ loadError() }}</span>
+    <button type="button" class="rb-retry" (click)="loadTest()">Tekrar dene</button>
+  </div>
+  <div class="readonly-banner" *ngIf="isEditMode && !canEdit()">
+    <mat-icon>lock</mat-icon>
+    <span>Bu testi yalnızca oluşturan öğretmen veya yönetici düzenleyebilir. Salt görüntüleme modundasınız.</span>
+  </div>
   <div class="page-head">
     <div class="ph-text">
       <h1>{{ isEditMode ? 'Testi Düzenle' : 'Yeni Test Oluştur' }}</h1>
@@ -58,7 +67,7 @@
       ></app-test-form>
 
       <!-- KAPAK GÖRSELİ (yalnız düzenleme) -->
-      <section class="card" *ngIf="isEditMode">
+      <section class="card" *ngIf="isEditMode && canEdit()">
         <h3><span class="dot"></span>Kapak Görseli</h3>
         <p class="card-note">Öğrenci ekranında ve kartlarda görünür. Önerilen 1200×675, en fazla 2 MB.</p>
         <div class="drop">
@@ -103,7 +112,7 @@
         </div>
       </div>
 
-      <div class="cta">
+      <div class="cta" *ngIf="canEdit()">
         <div class="meta-count"><span>Sorular</span><b>{{ previewQuestionCount }} soru</b></div>
         <button class="btn btn-primary" type="button" [disabled]="testForm.invalid" (click)="onSubmit()">
           <mat-icon>check</mat-icon>Değişiklikleri Kaydet

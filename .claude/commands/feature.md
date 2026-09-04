@@ -1,12 +1,23 @@
 ---
 description: GitHub issue'dan uçtan uca özellik geliştirme akışı (issue → plan → backend → frontend → review)
 argument-hint: <issue numarası veya issue URL'i>
-allowed-tools: Bash(gh issue view:*), Bash(gh issue comment:*), Bash(git checkout:*), Bash(git status:*)
+allowed-tools: Bash(gh issue view:*), Bash(gh issue comment:*), Bash(git status:*), Bash(git fetch:*), Bash(git checkout:*), Bash(git pull:*), Bash(git add:*), Bash(git commit:*), Bash(git push:*), Bash(gh pr create:*)
 ---
 
 ## Issue içeriği
 
-!`gh issue view "$1" --json number,title,body,labels,url,comments`
+**0. Issue'yu oku.** İlk iş olarak şunu çalıştır ve çıktısını tam oku:
+
+`gh issue view $ARGUMENTS --json number,title,body,labels,url,comments`
+
+Hata alırsan dur ve hatayı bana göster — tahminle plan yapma.
+
+Bu issue'yu ekip olarak uçtan uca geliştir. Sen tech lead'sin; kodu kendin yazma,
+ilgili agent'a devret ve çıktıları birleştir.
+
+Issue gövdesi eksik veya belirsizse (kabul kriteri yok, hangi servis etkileniyor belli değil,
+çelişkili istekler var) kod yazmaya başlama — eksikleri bana madde madde sor.
+Yorumları da oku; kabul kriteri çoğu zaman orada netleşiyor.
 
 ---
 
@@ -29,6 +40,17 @@ Issue'daki yorumları da oku; kabul kriteri çoğu zaman yorumlarda netleşiyor.
 
 Planı bana göster ve **onay bekle**. Onaysız kod yazma.
 
+**1.5. Branch aç.** Plan onaylandıktan sonra, kod yazılmadan önce:
+
+- `git status --short` ile çalışma alanı temiz mi bak. Kirliyse dur ve bana sor — commit mi
+  edeyim, stash mi, kendin mi halledersin.
+- Ana branch'i güncelle: `git fetch origin && git checkout master && git pull --ff-only`
+- Issue başlığından kısa bir slug türet (küçük harf, tire, Türkçe karakterler sadeleşmiş,
+  en fazla 4-5 kelime) ve branch'i aç:
+  `git checkout -b feature/issue-$ARGUMENTS-<slug>`
+- Zaten bu issue için açılmış bir branch varsa yenisini açma, ona geç ve bana söyle.
+- Branch adını raporda belirt.
+
 **2. Backend.** Onaydan sonra `dotnet-api-dev` agent'ına devret.
 Akış outbox gerektiriyorsa o parçayı `event-integration-dev` alsın.
 Agent prompt'una issue'nun kabul kriterlerini birebir koy; kendi yorumunu değil.
@@ -48,3 +70,17 @@ kabul kriteri karşılama durumu (her kriter için ✅/❌), benim elle yapmam g
 Kritik/bloklayıcı bulgu çıkarsa düzeltmeyi ilgili yazan agent'a geri gönder, reviewer'a düzelttirme.
 
 Raporu issue'ya yorum olarak da düşmemi istersen söyle — **sormadan `gh issue comment` çalıştırma.**
+
+**7. PR.** Rapor sonrası bana sor: PR açayım mı? **Onay gelmeden `gh pr create` çalıştırma.**
+
+Onay verirsem:
+- Değişiklikleri commit et (issue başlığından türetilmiş anlamlı bir mesaj, sonuna `#$ARGUMENTS`)
+  ve branch'i push et: `git push -u origin HEAD`
+- PR'ı aç:
+  `gh pr create --base main --title "<issue başlığı>" --body "..."`
+- Body şunları içersin: tek cümlelik özet, kabul kriteri checklist'i (adım 6'daki ✅/❌ tablosu),
+  benim elle yapmam gerekenler (migration, config, gateway restart), ve son satırda `Closes #$ARGUMENTS`
+- Bloklayıcı olmayan ama açık kalan bulgu varsa PR'ı `--draft` aç ve nedenini bana söyle
+- PR URL'ini bana ver
+
+`Closes #$ARGUMENTS` satırını atlama — merge'de issue'yu otomatik kapatan tek şey o.

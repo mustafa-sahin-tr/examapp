@@ -13,7 +13,7 @@ public interface IWorksheetDetailService
 {
     /// <param name="userId">Authenticated user id (teacher or student user) — used for ownership / access checks.</param>
     /// <param name="studentId">Student profile id when the caller is a student; otherwise null.</param>
-    Task<WorksheetDetailDto?> GetWorksheetDetailAsync(int worksheetId, string role, int? studentId, int userId, CancellationToken ct = default);
+    Task<WorksheetDetailDto?> GetWorksheetDetailAsync(int worksheetId, string role, int? studentId, int userId, bool isAdmin = false, CancellationToken ct = default);
 
     Task<WorksheetFromMistakesResultDto?> CreateWorksheetFromMistakesAsync(int instanceId, int studentId, int userId, CancellationToken ct = default);
 }

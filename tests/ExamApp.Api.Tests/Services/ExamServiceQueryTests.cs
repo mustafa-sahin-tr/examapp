@@ -14,7 +14,9 @@ public class ExamServiceQueryTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
 
-    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
+    private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
+    private ExamService NewService(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio, _authApi);
+    private static readonly UserProfileDto AnyProfile = new() { Id = 1, Role = "Teacher" };
     private TestSessionService NewSession(AppDbContext ctx) => new(ctx);
     private WorksheetAuthoringService NewAuthoring(AppDbContext ctx) => new(ctx, new ImageHelper(), _minio);
 
@@ -93,7 +95,7 @@ public class ExamServiceQueryTests : IDisposable
     public async Task GetWorksheetById_returns_null_when_missing()
     {
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).GetWorksheetByIdAsync(404)).ShouldBeNull();
+        (await NewService(ctx).GetWorksheetByIdAsync(404, AnyProfile, isAdmin: true)).ShouldBeNull();
     }
 
     [Fact]
@@ -109,7 +111,7 @@ public class ExamServiceQueryTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var dto = await NewService(read).GetWorksheetByIdAsync(id);
+        var dto = await NewService(read).GetWorksheetByIdAsync(id, AnyProfile, isAdmin: true);
         dto.ShouldNotBeNull();
         dto!.Name.ShouldBe("Deneme 1");
         dto.Subtitle.ShouldBe("s");
@@ -197,7 +199,7 @@ public class ExamServiceQueryTests : IDisposable
     public async Task DeleteWorksheet_fails_when_missing()
     {
         await using var ctx = _db.NewContext();
-        (await NewAuthoring(ctx).DeleteWorksheetAsync(404, userId: 1)).Success.ShouldBeFalse();
+        (await NewAuthoring(ctx).DeleteWorksheetAsync(404, userId: 1, isAdmin: true)).Success.ShouldBeFalse();
     }
 
     [Fact]
@@ -213,7 +215,7 @@ public class ExamServiceQueryTests : IDisposable
         }
 
         await using (var ctx = _db.NewContext())
-            (await NewAuthoring(ctx).DeleteWorksheetAsync(id, userId: 77)).Success.ShouldBeTrue();
+            (await NewAuthoring(ctx).DeleteWorksheetAsync(id, userId: 77, isAdmin: true)).Success.ShouldBeTrue();
 
         await using var check = _db.NewContext();
         (await check.Worksheets.AnyAsync(w => w.Id == id)).ShouldBeFalse(); // query filter

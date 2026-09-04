@@ -38,6 +38,18 @@ export class WorksheetListViewCardComponent {
     return `/${this.images[id % this.images.length]}`;
   }
 
+  // NOT: `computed()` yerine getter — `course` klasik `@Input` (signal input değil).
+  // Saf alan okuması olduğu için change-detection'da maliyeti yok sayılır.
+  /** Backend yetki alanı; alan yoksa (eski response) düzenlemeye izin ver. */
+  get canEdit(): boolean {
+    return this.course.canEdit !== false;
+  }
+
+  /** Yalnız istek sahibi admin ise dolu gelir. */
+  get createdByName(): string | null {
+    return this.course.createdByName ?? null;
+  }
+
   get instance(): InstanceSummary | null {
     return this.course.instance ?? null;
   }

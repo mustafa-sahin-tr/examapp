@@ -1,4 +1,15 @@
-import { Component, inject, OnInit, ViewChild, ElementRef, Input, Output, EventEmitter, DestroyRef } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  ViewChild,
+  ElementRef,
+  Input,
+  Output,
+  EventEmitter,
+  DestroyRef,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { BookService } from '../../services/book.service';
@@ -84,6 +95,9 @@ export class TestCreateEnhancedComponent implements OnInit {
   id!: number | null;
   exam!: Test;
   isEditMode: boolean = false;
+  /** Yeni oluşturmada herkes düzenleyebilir; düzenleme modunda backend `canEdit` alanı belirler. */
+  readonly canEdit = signal(true);
+  readonly loadError = signal<string | null>(null);
   testForm!: FormGroup;
   books: any[] = [];
   bookTests: any[] = [];
@@ -132,6 +146,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   public reloadComponent(id: number) {
     this.thisId = id;
     this.isEditMode = this.id !== null && this.id !== undefined && this.id > 0;
+    this.canEdit.set(true);
     this.testForm = this.fb.group({
       id: [this.id || null],
       name: ['', Validators.required],
@@ -269,6 +284,9 @@ export class TestCreateEnhancedComponent implements OnInit {
   }
 
   onImageSelected(event: Event) {
+    if (!this.canEdit()) {
+      return;
+    }
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files[0];
     if (!file) {
@@ -317,9 +335,22 @@ export class TestCreateEnhancedComponent implements OnInit {
   }
 
   loadTest() {
+    this.loadError.set(null);
     this.testService
       .get(this.id!)
       .pipe(
+        tap((exam) => {
+          // `get()` erişilemeyen/olmayan worksheet'te boş liste döndürür → undefined.
+          if (!exam) {
+            throw new HttpErrorResponse({ status: 404 });
+          }
+          // Yetkiyi cevap gelir gelmez uygula — alt çağrılar hata verse bile
+          // sahibi olmayan kullanıcı düzenlenebilir form görmesin.
+          this.canEdit.set(exam.canEdit !== false);
+          if (!this.canEdit()) {
+            this.testForm.disable({ emitEvent: false });
+          }
+        }),
         switchMap((exam) =>
           this.bookService.getTestsByBook(exam.bookId || 0).pipe(
             switchMap((bookTests) => {
@@ -377,7 +408,17 @@ export class TestCreateEnhancedComponent implements OnInit {
         ),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe();
+      .subscribe({
+        error: (err) => {
+          if (err?.status === 404) {
+            this.snackBar.open('Bu teste erişiminiz yok veya test bulunamadı.', 'Kapat', { duration: 4000 });
+            this.router.navigate(['/tests']);
+            return;
+          }
+          this.loadError.set('Test bilgileri yüklenemedi.');
+          this.snackBar.open('Test bilgileri yüklenemedi.', 'Kapat', { duration: 3000 });
+        },
+      });
   }
 
   loadBooks() {

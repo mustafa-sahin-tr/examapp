@@ -143,6 +143,22 @@
   color: var(--ms-text-medium);
 }
 
+.wcard__creator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--ms-text-weak);
+  font-family: var(--paragraphFontFamily);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
 .wcard__meta {
   display: flex;
   flex-wrap: wrap;

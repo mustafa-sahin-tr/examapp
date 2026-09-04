@@ -16,9 +16,13 @@ public class WorksheetAssignmentServiceTests : IDisposable
 
     private static readonly DateTime Start = new(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc);
 
+    private const int OwnerUserId = 1;
+
     private async Task<(int worksheetId, int studentId, int gradeId)> SeedAsync()
     {
         await using var ctx = _db.NewContext();
+        // Öğretmen yalnızca kendi worksheet'ini atayabilir: fixture'ı atayan kullanıcı (userId 1) sahipliğinde seed et.
+        ctx.SetCurrentUser(OwnerUserId);
         var grade = new Grade { Name = "8" };
         ctx.Grades.Add(grade);
         await ctx.SaveChangesAsync();
@@ -76,7 +80,8 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync();
         await using (var ctx = _db.NewContext())
         {
-            var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 55);
+            // userId 55 sahibi değil; atayabilmesi için admin. Amaç: atayan kullanıcının kaydedilmesi.
+            var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 55, isAdmin: true);
             r.Success.ShouldBeTrue();
         }
 
@@ -127,6 +132,66 @@ public class WorksheetAssignmentServiceTests : IDisposable
 
         await using var check = _db.NewContext();
         (await check.WorksheetAssignments.CountAsync()).ShouldBe(2);
+    }
+
+    // ---- ownership (issue #4: öğretmen yalnızca kendi worksheet'ini atar) ----
+
+    [Fact]
+    public async Task AssignWorksheetAsync_TeacherNotOwner_IsRejected()
+    {
+        var (ws, student, _) = await SeedAsync(); // worksheet sahibi userId 1
+
+        await using var ctx = _db.NewContext();
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Message.ShouldBe("Bu testi atama yetkiniz yok.");
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_TeacherOwnsWorksheet_Succeeds()
+    {
+        var (ws, student, _) = await SeedAsync();
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
+            .Success.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_AdminNotOwner_Succeeds()
+    {
+        var (ws, student, _) = await SeedAsync();
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: true))
+            .Success.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_LegacyWorksheetNullOwner_TeacherRejected_AdminAllowed()
+    {
+        int wsId, studentId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "8" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            var ws = new Worksheet { Name = "Legacy", Description = "", GradeId = grade.Id }; // CreateUserId null
+            var student = new Student { UserId = 1, StudentNumber = "n", SchoolName = "s", GradeId = grade.Id };
+            ctx.AddRange(ws, student);
+            await ctx.SaveChangesAsync();
+            wsId = ws.Id; studentId = student.Id;
+        }
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).AssignWorksheetAsync(Req(wsId, studentId: studentId), userId: 1, isAdmin: false))
+                .Success.ShouldBeFalse();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).AssignWorksheetAsync(Req(wsId, studentId: studentId), userId: 1, isAdmin: true))
+                .Success.ShouldBeTrue();
     }
 
     public void Dispose() => _db.Dispose();

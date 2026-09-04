@@ -70,6 +70,10 @@
         <div class="test-card-wrapper" *ngFor="let worksheet of newestWorksheetsSignal(); trackBy: trackWorksheet">
           <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
         </div>
+        <div class="empty-state" *ngIf="!newestWorksheetsSignal()?.length">
+          <mat-icon class="empty-icon">quiz</mat-icon>
+          <p>Gösterilecek yeni test yok.</p>
+        </div>
       </div>
 
       <button class="carousel-nav-btn next" (click)="scrollCarousel(newestContainer, 'right')">
@@ -93,6 +97,10 @@
       <div class="carousel-track" #hotContainer>
         <div class="test-card-wrapper" *ngFor="let worksheet of hotTestsSignal(); trackBy: trackWorksheet">
           <app-worksheet-card [test]="worksheet" (cardClick)="onCardClick(worksheet.id || 0)"></app-worksheet-card>
+        </div>
+        <div class="empty-state" *ngIf="!hotTestsSignal().length">
+          <mat-icon class="empty-icon">quiz</mat-icon>
+          <p>Gösterilecek popüler test yok.</p>
         </div>
       </div>
 

@@ -8,7 +8,6 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 1280px;
   margin: 0 auto;
   padding: 8px 0 48px;
 }
@@ -588,6 +587,7 @@
   from {
     background-position: 200% 0;
   }
+
   to {
     background-position: -200% 0;
   }

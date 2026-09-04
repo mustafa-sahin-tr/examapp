@@ -104,9 +104,14 @@ public class ExamController : BaseController
 
 
     [HttpGet("{id:int}")]
+    [Authorize]
     public async Task<IActionResult> GetWorksheet(int id)
     {
-        var result = await _examService.GetWorksheetByIdAsync(id);
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _examService.GetWorksheetByIdAsync(id, user, User.IsInRole("Admin"));
         if (result == null)
             return NotFound();
 
@@ -131,7 +136,7 @@ public class ExamController : BaseController
             studentId = student?.Id;
         }
 
-        var result = await _worksheetDetail.GetWorksheetDetailAsync(id, user.Role, studentId, user.Id, ct);
+        var result = await _worksheetDetail.GetWorksheetDetailAsync(id, user.Role, studentId, user.Id, User.IsInRole("Admin"), ct);
         if (result == null)
             return NotFound();
 
@@ -193,7 +198,7 @@ public class ExamController : BaseController
     public async Task<IActionResult> AssignWorksheet([FromBody] WorksheetAssignmentRequestDto request)
     {
         var user = await GetAuthenticatedUserAsync();
-        var response = await _assignmentService.AssignWorksheetAsync(request, user.Id);
+        var response = await _assignmentService.AssignWorksheetAsync(request, user.Id, User.IsInRole("Admin"));
 
         if (!response.Success)
         {
@@ -246,9 +251,21 @@ public class ExamController : BaseController
     [HttpGet("latest")]
     public async Task<IActionResult> GetLatestWorksheetsAsync(int pageNumber = 1, int pageSize = 10)
     {
-        var result = await _examService.GetLatestWorksheetsAsync(pageNumber, pageSize);
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        var result = await _examService.GetLatestWorksheetsAsync(pageNumber, pageSize, TeacherOwnerFilter(user));
         return Ok(result);
     }
+
+    /// <summary>
+    /// Öğretmen (admin değil) ise sahiplik filtresi için kendi user id'si; öğrenci/admin için null.
+    /// </summary>
+    private int? TeacherOwnerFilter(UserProfileDto user) =>
+        user.Role == UserRole.Teacher.ToString() && !User.IsInRole("Admin") ? user.Id : (int?)null;
 
 
     [Authorize(Roles = "Student,Teacher")]
@@ -269,7 +286,7 @@ public class ExamController : BaseController
             effectiveGradeId = student?.GradeId;
         }
 
-        var result = await _examService.GetPopularWorksheetsAsync(effectiveGradeId, pageNumber, pageSize, sinceDays);
+        var result = await _examService.GetPopularWorksheetsAsync(effectiveGradeId, pageNumber, pageSize, sinceDays, TeacherOwnerFilter(user));
         return Ok(result);
     }
 
@@ -328,7 +345,7 @@ public class ExamController : BaseController
         else if (user.Role == UserRole.Teacher.ToString())
         {
             // var teacher = await _teacherService.GetTeacherProfile(user.Id);
-            result = await _examService.GetWorksheetsForTeacherAsync(filterDto, user);
+            result = await _examService.GetWorksheetsForTeacherAsync(filterDto, user, User.IsInRole("Admin"));
         }
         return Ok(result);
     }
@@ -428,28 +445,39 @@ public class ExamController : BaseController
         return Ok(response);
     }
     [HttpPost]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> CreateOrUpdateAsync([FromBody] ExamDto examDto)
     {
-        var response = await _authoring.CreateOrUpdateAsync(examDto, 0);
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+        var response = await _authoring.CreateOrUpdateAsync(examDto, user.Id, User.IsInRole("Admin"));
         return Ok(response);
     }
 
     [HttpPost("bulk-import")]
-    [Authorize]
+    [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> BulkImportExams([FromBody] BulkExamCreateDto bulkExamDto)
     {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
         try
         {
-            var user = await GetAuthenticatedUserAsync();
-            var response = await _authoring.CreateBulkExamsAsync(bulkExamDto, user.Id);
+            var response = await _authoring.CreateBulkExamsAsync(bulkExamDto, user.Id, User.IsInRole("Admin"));
             return Ok(response);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return BadRequest(new BulkExamResultDto
             {
                 Success = false,
-                Message = $"Bulk import failed: {ex.Message}",
+                Message = "Toplu içe aktarma işlenemedi.",
                 TotalProcessed = bulkExamDto.Exams.Count,
                 SuccessCount = 0,
                 FailureCount = bulkExamDto.Exams.Count
@@ -491,7 +519,7 @@ public class ExamController : BaseController
             {
                 return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
             }
-            var result = await _authoring.DeleteWorksheetAsync(id, user.Id);
+            var result = await _authoring.DeleteWorksheetAsync(id, user.Id, User.IsInRole("Admin"));
 
             if (!result.Success)
             {
@@ -519,7 +547,7 @@ public class ExamController : BaseController
     }
 
     [HttpPut("{id}/background-image")]
-    [Authorize(Roles = "Teacher")]
+    [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> UpdateWorksheetBackgroundImage(int id, [FromForm] IFormFile file)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -528,7 +556,7 @@ public class ExamController : BaseController
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
 
-        var result = await _authoring.UpdateWorksheetBackgroundImageAsync(id, file, user.Id);
+        var result = await _authoring.UpdateWorksheetBackgroundImageAsync(id, file, user.Id, User.IsInRole("Admin"));
         if (!result.Success)
         {
             if (result.NotFound)

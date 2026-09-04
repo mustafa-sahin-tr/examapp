@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,7 +36,7 @@ public class WorksheetDetailService : IWorksheetDetailService
         public DateTime SortKey => EndTime ?? StartTime;
     }
 
-    public async Task<WorksheetDetailDto?> GetWorksheetDetailAsync(int worksheetId, string role, int? studentId, int userId, CancellationToken ct = default)
+    public async Task<WorksheetDetailDto?> GetWorksheetDetailAsync(int worksheetId, string role, int? studentId, int userId, bool isAdmin = false, CancellationToken ct = default)
     {
         var worksheet = await _context.Worksheets
             .AsNoTracking()
@@ -53,6 +54,10 @@ public class WorksheetDetailService : IWorksheetDetailService
         var isTeacher = role == RoleTeacher;
 
         if (!isStudent && !isTeacher)
+            return null;
+
+        // Öğretmen yalnızca kendi worksheet'inin detayını görür; admin hepsini. Öğrenci akışı değişmez.
+        if (isTeacher && !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin))
             return null;
 
         // Base worksheet bilgisi authenticated Student/Teacher'a açık (eski GET {id} ile aynı açıklık).

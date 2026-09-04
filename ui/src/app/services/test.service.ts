@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { WorksheetListFilter } from '../models/worksheet-list-filter';
 import { BehaviorSubject, Observable, of, switchMap, tap } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
@@ -98,6 +99,58 @@ export class TestService {
     var reqUrl = `${this.baseUrl}/list?search=${query}&pageNumber=${pageNumber}&pageSize=${pageSize}${subjectIdsParam}${gradeIdParam}${bookTestIdParam}`;
     console.log(reqUrl);
     return this.http.get<Paged<Test>>(reqUrl);
+  }
+
+  /**
+   * Typed `/api/exam/list` çağrısı. Yeni sıralama / durum / aralık parametrelerini destekler.
+   * Öğrenci rolünde `statuses` sunucu tarafında uygulanır; öğretmen rolünde yok sayılır.
+   */
+  listWorksheets(filter: WorksheetListFilter): Observable<Paged<Test>> {
+    let params = new HttpParams()
+      .set('pageNumber', String(filter.pageNumber ?? 1))
+      .set('pageSize', String(filter.pageSize ?? 12));
+
+    if (filter.search) {
+      params = params.set('search', filter.search);
+    }
+    for (const id of filter.subjectIds ?? []) {
+      params = params.append('subjectIds', String(id));
+    }
+    for (const id of filter.gradeIds ?? []) {
+      params = params.append('gradeIds', String(id));
+    }
+    for (const status of filter.statuses ?? []) {
+      params = params.append('statuses', String(status));
+    }
+    for (const id of filter.bookIds ?? []) {
+      params = params.append('bookIds', String(id));
+    }
+    if (filter.bookTestId) {
+      params = params.set('bookTestId', String(filter.bookTestId));
+    }
+    if (filter.minQuestionCount != null) {
+      params = params.set('minQuestionCount', String(filter.minQuestionCount));
+    }
+    if (filter.maxQuestionCount != null) {
+      params = params.set('maxQuestionCount', String(filter.maxQuestionCount));
+    }
+    if (filter.minDurationSeconds != null) {
+      params = params.set('minDurationSeconds', String(filter.minDurationSeconds));
+    }
+    if (filter.maxDurationSeconds != null) {
+      params = params.set('maxDurationSeconds', String(filter.maxDurationSeconds));
+    }
+    if (filter.isPracticeTest != null) {
+      params = params.set('isPracticeTest', String(filter.isPracticeTest));
+    }
+    if (filter.sortBy) {
+      params = params.set('sortBy', filter.sortBy);
+    }
+    if (filter.sortDir) {
+      params = params.set('sortDir', filter.sortDir);
+    }
+
+    return this.http.get<Paged<Test>>(`${this.baseUrl}/list`, { params });
   }
 
   getLatest(pageNumber: number = 1, pageSize = 10): Observable<Test[]> {

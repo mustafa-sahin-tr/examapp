@@ -1,53 +1,110 @@
-<article class="worksheet-video-card" aria-label="Test karti">
-  <a class="thumb" [routerLink]="['/test', course.id]" [attr.aria-label]="course.name + ' testini ac'"
-    [style.backgroundImage]="'url(' + backgroundImageUrl() + ')'" [style.backgroundSize]="'cover'"
-    [style.backgroundPosition]="'center'" [style.backgroundRepeat]="'no-repeat'">
-    <div class="thumb-chips">
-      <span class="thumb-chip">{{ course.badgeText || 'Yeni' }}</span>
-      <span class="thumb-chip">{{ course.name }}</span>
-    </div>
-    <span class="thumb-meta">{{ course.questionCount || 0 }} soru</span>
+<article class="wcard" [class.wcard--list]="viewMode === 'list'" aria-label="Test kartı">
+  <a
+    class="wcard__cover"
+    [routerLink]="['/test', course.id]"
+    [attr.aria-label]="course.name + ' testini aç'"
+    [style.backgroundImage]="'url(' + coverUrl + ')'"
+  >
+    @if (course.isPracticeTest) {
+      <span class="wcard__tag wcard__tag--info">Çalışma testi</span>
+    } @else if (course.badgeText) {
+      <span class="wcard__tag">{{ course.badgeText }}</span>
+    }
+
+    @if (!isTeacher && status === 'inprogress') {
+      <span class="wcard__tag wcard__tag--warn">Devam ediyor</span>
+    } @else if (!isTeacher && status === 'completed') {
+      <span class="wcard__tag wcard__tag--success">Tamamlandı</span>
+    } @else if (!isTeacher && isAssigned) {
+      <span class="wcard__tag wcard__tag--assigned">Öğretmenin atadı</span>
+    }
   </a>
 
-  <div class="meta-row">
-    <span class="channel-avatar" aria-hidden="true">{{ (course.description || 'T').charAt(0) }}</span>
-
-    <div class="video-content">
-      <h3>
-        <a [routerLink]="['/test', course.id]">{{ course.description }}</a>
+  <div class="wcard__body">
+    <div class="wcard__headline">
+      <h3 class="wcard__title">
+        <a [routerLink]="['/test', course.id]">{{ course.name }}</a>
       </h3>
 
-      <!-- <p class="subtitle">{{ course.description || 'Yeni nesil test icerigi' }}</p> -->
-
-      <div class="meta-rating-row">
-        <div class="rating-line" aria-label="Puan bilgisi">
-          <span class="rating-value">4.9</span>
-          <mat-icon>star</mat-icon>
-          <mat-icon>star</mat-icon>
-          <mat-icon>star</mat-icon>
-          <mat-icon>star</mat-icon>
-          <mat-icon>star_half</mat-icon>
-        </div>
-
-        <p class="meta-line">
-          <span>{{ course.instanceCount ?? 0 }} ogrenci</span>
-          <span aria-hidden="true">•</span>
-          <span>{{ course.questionCount || 0 }} soru</span>
-        </p>
-      </div>
-
-      <div class="action-row" role="group" aria-label="Kart aksiyonlari">
-        <a class="start-btn" [routerLink]="['/test', course.id]">Detay</a>
-        <button type="button" class="buy-btn" [attr.aria-label]="'Satın al'">Satın Al</button>
-        <!-- <button type="button" class="more-btn-mobile" [attr.aria-label]="'Daha fazla islem'">
-          <mat-icon>more_horiz</mat-icon>
-          <span>Daha</span>
-        </button> -->
-      </div>
+      <button
+        type="button"
+        class="wcard__kebab"
+        [matMenuTriggerFor]="kebab"
+        (click)="$event.stopPropagation()"
+        aria-label="Kart menüsü"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #kebab="matMenu">
+        <button mat-menu-item (click)="openDetail()">
+          <mat-icon>visibility</mat-icon><span>Detayı gör</span>
+        </button>
+        @if (isTeacher) {
+          <button mat-menu-item (click)="openQuestionCanvas()">
+            <mat-icon>add_photo_alternate</mat-icon><span>Soru Ekle</span>
+          </button>
+          <button mat-menu-item (click)="emitAssign()">
+            <mat-icon>assignment_ind</mat-icon><span>Ata</span>
+          </button>
+          <button mat-menu-item (click)="emitDelete()">
+            <mat-icon>delete</mat-icon><span>Sil</span>
+          </button>
+        }
+      </mat-menu>
     </div>
 
-    <button type="button" class="menu-btn" [attr.aria-label]="'Kart menusu'">
-      <mat-icon>more_vert</mat-icon>
-    </button>
+    @if (subtitle) {
+      <p class="wcard__subtitle">{{ subtitle }}</p>
+    }
+
+    <p class="wcard__meta">
+      <span>{{ course.questionCount || 0 }} soru</span>
+      <span aria-hidden="true">·</span>
+      <span>{{ durationMinutes }} dk</span>
+      <span aria-hidden="true">·</span>
+      <span>{{ course.instanceCount || 0 }} çözdü</span>
+    </p>
+
+    @if (!isTeacher && status === 'inprogress' && progressPercent > 0) {
+      <div class="wcard__progress" role="progressbar" [attr.aria-valuenow]="progressPercent">
+        <span [style.width.%]="progressPercent"></span>
+      </div>
+    }
+
+    @if (!isTeacher && status === 'completed' && instance) {
+      <div class="wcard__result">
+        <span class="wcard__ring" [style.--v]="scorePercent">{{ scorePercent }}</span>
+        <span class="wcard__resulttext">
+          {{ instance.correctAnswers }} doğru / {{ instance.wrongAnswers }} yanlış
+        </span>
+      </div>
+    }
+
+    @if (!isTeacher && isAssigned && dueLabel) {
+      <span class="wcard__due">{{ dueLabel }}</span>
+    }
+
+    <div class="wcard__actions">
+      @if (isTeacher) {
+        <button type="button" class="wcard__btn wcard__btn--primary" (click)="openPrimary($event)">Düzenle</button>
+        <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
+      } @else {
+        <button
+          type="button"
+          class="wcard__btn"
+          [class.wcard__btn--primary]="status !== 'completed'"
+          [class.wcard__btn--ghost]="status === 'completed'"
+          [class.wcard__btn--success]="status === 'inprogress'"
+          (click)="openPrimary($event)"
+        >
+          {{ primaryLabel }}
+        </button>
+        @if (status === 'completed') {
+          <button type="button" class="wcard__icon" (click)="openPrimary($event)" aria-label="Tekrar çöz">
+            <mat-icon>replay</mat-icon>
+          </button>
+        }
+      }
+    </div>
   </div>
 </article>

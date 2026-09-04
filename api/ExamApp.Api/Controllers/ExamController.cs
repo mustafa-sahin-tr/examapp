@@ -283,7 +283,16 @@ public class ExamController : BaseController
         [FromQuery] List<int>? gradeIds = null,
         int pageNumber = 1,
         int pageSize = 10,
-        int bookTestId = 0)
+        int bookTestId = 0,
+        string? sortBy = null,
+        string? sortDir = null,
+        [FromQuery] List<int>? statuses = null,
+        int? minQuestionCount = null,
+        int? maxQuestionCount = null,
+        int? minDurationSeconds = null,
+        int? maxDurationSeconds = null,
+        bool? isPracticeTest = null,
+        [FromQuery] List<int>? bookIds = null)
     {
         var filterDto = new ExamFilterDto
         {
@@ -293,7 +302,16 @@ public class ExamController : BaseController
             gradeIds = gradeIds,
             pageNumber = pageNumber,
             pageSize = pageSize,
-            bookTestId = bookTestId
+            bookTestId = bookTestId,
+            sortBy = sortBy,
+            sortDir = sortDir,
+            statuses = statuses,
+            minQuestionCount = minQuestionCount,
+            maxQuestionCount = maxQuestionCount,
+            minDurationSeconds = minDurationSeconds,
+            maxDurationSeconds = maxDurationSeconds,
+            isPracticeTest = isPracticeTest,
+            bookIds = bookIds
         };
 
         Paged<WorksheetDto> result = null;

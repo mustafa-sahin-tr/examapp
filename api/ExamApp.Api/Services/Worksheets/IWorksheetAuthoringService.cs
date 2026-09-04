@@ -10,4 +10,5 @@ public interface IWorksheetAuthoringService
     Task<ExamSavedDto> CreateOrUpdateAsync(ExamDto examDto, int userId, bool isAdmin);
     Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId, bool isAdmin);
     Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId, bool isAdmin);
+    Task<ResponseBaseDto> UpdateVisibilityAsync(int worksheetId, UpdateWorksheetVisibilityDto dto, int userId, bool isAdmin);
 }

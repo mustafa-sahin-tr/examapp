@@ -516,6 +516,46 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         return response;
     }
 
+    public async Task<ResponseBaseDto> UpdateVisibilityAsync(int worksheetId, UpdateWorksheetVisibilityDto dto, int userId, bool isAdmin)
+    {
+        var response = new ResponseBaseDto();
+
+        var worksheet = await _context.Worksheets
+            .FirstOrDefaultAsync(w => w.Id == worksheetId);
+
+        if (worksheet == null || worksheet.IsDeleted)
+        {
+            response.Success = false;
+            response.NotFound = true;
+            response.Message = "Worksheet bulunamadı.";
+            return response;
+        }
+
+        // Bu endpoint için (issue #10) yetkisiz çağrı 403 döner — diğer authoring metotlarındaki
+        // "varlık sızmasın" amaçlı NotFound kalıbından bilinçli olarak farklı.
+        if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        {
+            response.Success = false;
+            response.Forbidden = true;
+            response.Message = "Bu worksheet'in görünürlüğünü değiştirme yetkiniz yok.";
+            return response;
+        }
+
+        // PublicView/PublicAssignable -> Private geçişinde mevcut WorksheetAssignment kayıtları
+        // (başka öğretmenler tarafından yapılmış olsa dahi) bilinçli olarak iptal edilmiyor;
+        // öğretmenler arası atama akışı henüz yok (#12/#13'te ele alınacak).
+        worksheet.TeacherSharing = dto.TeacherSharing;
+        worksheet.StudentVisibility = dto.StudentVisibility;
+
+        _context.SetCurrentUser(userId);
+        await _context.SaveChangesAsync();
+
+        response.Success = true;
+        response.ObjectId = worksheetId;
+        response.Message = "Worksheet görünürlüğü güncellendi.";
+        return response;
+    }
+
     /// <summary>
     /// Verifies the actual file content via magic bytes and returns the canonical
     /// MIME type, or null if the content is not a supported raster image.

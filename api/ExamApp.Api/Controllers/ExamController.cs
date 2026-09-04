@@ -569,4 +569,35 @@ public class ExamController : BaseController
         return Ok(result);
     }
 
+    [HttpPut("{id}/visibility")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> UpdateWorksheetVisibility(int id, [FromBody] UpdateWorksheetVisibilityDto dto)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        var result = await _authoring.UpdateVisibilityAsync(id, dto, user.Id, User.IsInRole("Admin"));
+        if (!result.Success)
+        {
+            if (result.NotFound)
+            {
+                return NotFound(result);
+            }
+            if (result.Forbidden)
+            {
+                return Forbid();
+            }
+            return BadRequest(result);
+        }
+
+        var updated = await _examService.GetWorksheetByIdAsync(id, user, User.IsInRole("Admin"));
+        if (updated == null)
+            return NotFound();
+
+        return Ok(updated);
+    }
+
 }

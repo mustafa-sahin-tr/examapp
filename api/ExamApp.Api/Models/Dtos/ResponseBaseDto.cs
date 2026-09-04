@@ -14,4 +14,11 @@ public class ResponseBaseDto
     /// leaking resource existence.
     /// </summary>
     public bool NotFound { get; set; } = false;
+
+    /// <summary>
+    /// True when the resource exists but the caller is not the owner/admin.
+    /// Used where the endpoint explicitly requires 403 instead of the usual
+    /// "don't leak existence" NotFound convention (e.g. issue #10).
+    /// </summary>
+    public bool Forbidden { get; set; } = false;
 }

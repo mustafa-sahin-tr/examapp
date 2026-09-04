@@ -1,0 +1,66 @@
+<div class="visibility-section">
+  <div class="vs-group">
+    <div class="vs-label">
+      <mat-icon>visibility</mat-icon>
+      <span>Öğretmenler Arası Paylaşım</span>
+    </div>
+
+    <!-- Masaüstü: radio group -->
+    <mat-radio-group
+      *ngIf="!isMobile()"
+      class="vs-radio-group"
+      [value]="teacherSharing"
+      [disabled]="disabled"
+      (change)="onTeacherSharingChange($event.value)"
+    >
+      <div class="vs-radio-option" *ngFor="let option of teacherSharingOptions">
+        <mat-radio-button [value]="option.value">{{ option.label }}</mat-radio-button>
+        <p class="vs-option-desc">{{ option.description }}</p>
+      </div>
+    </mat-radio-group>
+
+    <!-- Mobil: select -->
+    <mat-form-field *ngIf="isMobile()" appearance="outline" class="vs-select">
+      <mat-select
+        [value]="teacherSharing"
+        [disabled]="disabled"
+        (selectionChange)="onTeacherSharingChange($event.value)"
+      >
+        <mat-option *ngFor="let option of teacherSharingOptions" [value]="option.value">
+          {{ option.label }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+    <p class="vs-option-desc" *ngIf="isMobile()">
+      {{ selectedTeacherSharingOption()?.description }}
+    </p>
+  </div>
+
+  <div class="vs-group">
+    <div class="vs-toggle-row">
+      <div class="vs-toggle-text">
+        <div class="vs-label">
+          <mat-icon>school</mat-icon>
+          <span>Öğrenciye Görünürlük</span>
+        </div>
+        <p class="vs-option-desc">
+          {{
+            studentVisibility === WorksheetStudentVisibility.Restricted
+              ? 'Restricted: Yalnızca atanan öğrenciler görür ve başlatabilir.'
+              : 'Normal: Öğrenci keşfet listesinde görünür ve başlatabilir.'
+          }}
+        </p>
+      </div>
+      <mat-slide-toggle
+        [checked]="studentVisibility === WorksheetStudentVisibility.Restricted"
+        [disabled]="disabled"
+        (change)="onStudentVisibilityToggle($event.checked)"
+      ></mat-slide-toggle>
+    </div>
+  </div>
+
+  <div class="vs-summary">
+    <mat-icon>info</mat-icon>
+    <span>{{ summary() }}</span>
+  </div>
+</div>

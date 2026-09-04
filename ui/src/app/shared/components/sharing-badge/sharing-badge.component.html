@@ -1,0 +1,9 @@
+@if (visible()) {
+  <span class="sharing-badge" [matTooltip]="ownerName ? (ownerName + ' tarafından paylaşıldı') : label()">
+    <mat-icon class="sharing-badge__icon">{{ icon() }}</mat-icon>
+    <span class="sharing-badge__label">{{ label() }}</span>
+    @if (ownerName) {
+      <span class="sharing-badge__owner">· {{ ownerName }}</span>
+    }
+  </span>
+}

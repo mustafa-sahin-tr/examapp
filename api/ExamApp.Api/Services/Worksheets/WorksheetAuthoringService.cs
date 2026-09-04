@@ -69,16 +69,27 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         }
 
         // Yetki modeli: "sahibi VEYA admin". Legacy (CreateUserId 0/null) kayıtlar owner sayılmaz.
-        // Varlık sızmaması için hem yok hem de yetkisiz durumda aynı NotFound mesajı döner.
+        // issue #11: worksheet caller'a hiç görünmüyorsa (Private/legacy, başkasının) varlık sızmasın
+        // diye NotFound; görünüyor (Public* paylaşım) ama düzenleme yetkisi yoksa Forbidden (403).
         var worksheet = await _context.Worksheets
             .FirstOrDefaultAsync(w => w.Id == worksheetId && !w.IsDeleted);
-        if (worksheet == null || !WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        if (worksheet == null || !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
         {
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
                 NotFound = true,
                 Message = "Worksheet bulunamadı."
+            };
+        }
+
+        if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        {
+            return new UpdateWorksheetBackgroundImageDto
+            {
+                Success = false,
+                Forbidden = true,
+                Message = "Bu worksheet'i düzenleme yetkiniz yok."
             };
         }
 
@@ -274,16 +285,30 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     return new ExamSavedDto
                     {
                         Success = false,
+                        NotFound = true,
                         Message = "Test bulunamadı!"
                     };
                 }
 
                 // Yetki modeli: "sahibi VEYA admin". Legacy kayıtlar owner sayılmaz.
+                // issue #11: hiç görünmüyorsa (Private/legacy, başkasının) NotFound; görünüyor
+                // (Public* paylaşım) ama düzenleme yetkisi yoksa Forbidden (403) — read-only açılır.
+                if (!WorksheetAccess.CanView(examination.CreateUserId, userId, isAdmin, examination.TeacherSharing, examination.StudentVisibility))
+                {
+                    return new ExamSavedDto
+                    {
+                        Success = false,
+                        NotFound = true,
+                        Message = "Test bulunamadı!"
+                    };
+                }
+
                 if (!WorksheetAccess.CanModify(examination.CreateUserId, userId, isAdmin))
                 {
                     return new ExamSavedDto
                     {
                         Success = false,
+                        Forbidden = true,
                         Message = "Bu testi düzenleme yetkiniz yok."
                     };
                 }
@@ -330,11 +355,24 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 {
                     // Aynı isim/kitap-test ile mevcut kayda denk gelen "create" isteği aslında bir update'e
                     // dönüşüyor — yabancı bir kaydı ezmemek için burada da yetki kapısı koy.
+                    // issue #11: hiç görünmüyorsa NotFound; görünüyor (Public* paylaşım) ama düzenleme
+                    // yetkisi yoksa Forbidden.
+                    if (!WorksheetAccess.CanView(existingExam.CreateUserId, userId, isAdmin, existingExam.TeacherSharing, existingExam.StudentVisibility))
+                    {
+                        return new ExamSavedDto
+                        {
+                            Success = false,
+                            NotFound = true,
+                            Message = "Test bulunamadı!"
+                        };
+                    }
+
                     if (!WorksheetAccess.CanModify(existingExam.CreateUserId, userId, isAdmin))
                     {
                         return new ExamSavedDto
                         {
                             Success = false,
+                            Forbidden = true,
                             Message = "Bu testi düzenleme yetkiniz yok."
                         };
                     }
@@ -494,13 +532,22 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             .FirstOrDefaultAsync(w => w.Id == worksheetId);
 
         // Yetki modeli: "sahibi VEYA admin". Legacy (CreateUserId 0/null) kayıtlar owner sayılmaz.
-        // Varlık sızmaması için yok/silinmiş/yetkisiz durumunda aynı NotFound cevabı döner.
+        // issue #11: yok/silinmiş/hiç görünmeyen (Private, başkasının) → NotFound (varlık sızmasın).
+        // Görünen (Public* paylaşım) ama sahibi/admin değilse → Forbidden (403).
         if (worksheet == null || worksheet.IsDeleted ||
-            !WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+            !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
         {
             response.Success = false;
             response.NotFound = true;
             response.Message = "Worksheet bulunamadı.";
+            return response;
+        }
+
+        if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        {
+            response.Success = false;
+            response.Forbidden = true;
+            response.Message = "Bu worksheet'i silme yetkiniz yok.";
             return response;
         }
 

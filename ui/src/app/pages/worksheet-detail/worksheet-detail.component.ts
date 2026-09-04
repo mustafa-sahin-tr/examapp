@@ -3,7 +3,7 @@ import { Component, computed, DestroyRef, inject, Input, OnInit, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
-import { Test, TestInstance, TestInstanceQuestion } from '../../models/test-instance';
+import { Test, TestInstance, TestInstanceQuestion, WorksheetTeacherSharing } from '../../models/test-instance';
 import { lastValueFrom } from 'rxjs';
 import { TestService } from '../../services/test.service';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
@@ -110,6 +110,19 @@ export class WorksheetDetailComponent implements OnInit {
    * ve ileride public worksheet senaryosu için duruyor.
    */
   protected readonly canEditWorksheet = computed(() => this.detail()?.worksheet?.canEdit !== false);
+
+  /**
+   * Paylaşılan (Public*) bir worksheet'i, sahibi olmayan bir öğretmen görüntülüyorsa true.
+   * Bu durumda düzenleme/atama yönetimi gizlenir, salt-görüntüleme şeridi gösterilir (issue #11).
+   */
+  protected readonly isSharedReadOnlyForTeacher = computed(
+    () =>
+      this.isTeacher &&
+      this.detail()?.worksheet?.isOwner === false &&
+      this.detail()?.worksheet?.teacherSharing !== WorksheetTeacherSharing.Private
+  );
+
+  protected readonly sharedOwnerName = computed(() => this.detail()?.worksheet?.ownerName ?? null);
 
   protected readonly view = computed<WorksheetView>(() => {
     if (this.isTeacher) {

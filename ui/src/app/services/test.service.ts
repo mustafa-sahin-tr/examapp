@@ -151,6 +151,9 @@ export class TestService {
     if (filter.isPracticeTest != null) {
       params = params.set('isPracticeTest', String(filter.isPracticeTest));
     }
+    if (filter.includeShared != null) {
+      params = params.set('includeShared', String(filter.includeShared));
+    }
     if (filter.sortBy) {
       params = params.set('sortBy', filter.sortBy);
     }

@@ -1,0 +1,29 @@
+:host {
+  display: inline-flex;
+}
+
+.sharing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ms-info-surface-weak);
+  border: 1px solid var(--ms-info-border);
+  color: var(--ms-info-text);
+  font-family: var(--mainFontFamily);
+  font-size: var(--ms-type-font-size-xsmall, 12px);
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.sharing-badge__icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+}
+
+.sharing-badge__owner {
+  color: var(--ms-info-text-weak);
+}

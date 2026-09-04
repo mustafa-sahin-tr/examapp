@@ -17,13 +17,23 @@ public static class WorksheetAccess
 
     /// <summary>
     /// Öğretmen bir worksheet'i görüntüleyebilir mi (liste/detay/popüler).
-    /// Şu an CanModify ile aynı mantık; niyet ayrışsın diye ayrı isim.
+    /// Sahibi veya admin her zaman görebilir; ayrıca TeacherSharing PublicView/PublicAssignable
+    /// ise herhangi bir kimliği doğrulanmış öğretmen de görüntüleyebilir (issue #11).
+    /// Düzenleme yetkisi bundan ayrıdır — bkz. <see cref="CanModify"/>.
     /// </summary>
     public static bool CanView(int? createUserId, int userId, bool isAdmin,
         WorksheetTeacherSharing? sharing = null,
         WorksheetStudentVisibility? studentVisibility = null)
     {
-        // TODO(#11/#12/#13): sharing == PublicView/PublicAssignable ve studentVisibility == Restricted dalları burada.
-        return isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId);
+        // TODO(#13): studentVisibility == Restricted dalı burada ele alınacak.
+        if (isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId))
+            return true;
+
+        // Legacy (owner'sız) worksheet'ler PublicView/PublicAssignable işaretlenmiş olsa bile
+        // görünür sayılmaz — sadece admin erişebilir. Aksi halde varlığı 403 ile sızdırılır.
+        var hasOwner = createUserId.HasValue && createUserId.Value > 0;
+        return hasOwner &&
+            (sharing == WorksheetTeacherSharing.PublicView
+                || sharing == WorksheetTeacherSharing.PublicAssignable);
     }
 }

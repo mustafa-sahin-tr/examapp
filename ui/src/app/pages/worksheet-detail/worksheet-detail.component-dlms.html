@@ -386,6 +386,12 @@
               <h1>{{ d.worksheet.name }}</h1>
               <span class="role-tag">ÖĞRETMEN</span>
             </div>
+            @if (isSharedReadOnlyForTeacher()) {
+              <div class="readonly-strip">
+                <mat-icon>visibility</mat-icon>
+                <span>{{ sharedOwnerName() || 'Başka bir öğretmenin' }} sınavı · Salt görüntüleme</span>
+              </div>
+            }
             @if (d.worksheet.subtitle || d.worksheet.description) {
               <p class="subtitle">{{ d.worksheet.subtitle || d.worksheet.description }}</p>
             }

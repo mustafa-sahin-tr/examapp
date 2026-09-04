@@ -9,6 +9,18 @@ export enum TestStatus {
   Expired = 2,
 }
 
+// Backend enum'ları number olarak serialize edilir (string-enum converter yok).
+export enum WorksheetTeacherSharing {
+  Private = 0,
+  PublicView = 1,
+  PublicAssignable = 2,
+}
+
+export enum WorksheetStudentVisibility {
+  Normal = 0,
+  Restricted = 1,
+}
+
 // public enum WorksheetInstanceStatus
 // {
 //     Started = 0,   // 🟢 Test başladı
@@ -77,6 +89,16 @@ export interface Test {
   createdByUserId?: number | null;
   /** Sadece istek sahibi admin ise dolu gelir. */
   createdByName?: string | null;
+  /** Öğretmenler arası paylaşım ekseni (issue #9). Backend listelerde her zaman gönderir. */
+  teacherSharing?: WorksheetTeacherSharing;
+  /** Öğrenciye görünürlük ekseni (issue #9). Backend listelerde her zaman gönderir. */
+  studentVisibility?: WorksheetStudentVisibility;
+  /** İstek sahibi bu worksheet'in sahibi mi. */
+  isOwner?: boolean;
+  /** Tekil detay (GetById) akışında admin VEYA sahip için dolu; liste akışlarında yalnız admin için dolu. */
+  ownerName?: string | null;
+  /** İstek sahibi bu worksheet'i öğrenciye atayabilir mi. */
+  canAssign?: boolean;
 }
 
 export interface InstanceSummary {

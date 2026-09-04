@@ -1,4 +1,5 @@
 using System;
+using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Models.Dtos;
 
@@ -33,6 +34,24 @@ public class WorksheetDto
 
     // Sadece istek sahibi admin ise doldurulur; aksi halde null.
     public string? CreatedByName { get; set; }
+
+    // --- Görünürlük eksenleri (issue #9). Davranış değişmez; UI için taşınır. ---
+
+    // Öğretmenler arası paylaşım ekseni. Şu an her kayıt Private.
+    public WorksheetTeacherSharing TeacherSharing { get; set; } = WorksheetTeacherSharing.Private;
+
+    // Öğrenciye görünürlük ekseni. Şu an her kayıt Normal.
+    public WorksheetStudentVisibility StudentVisibility { get; set; } = WorksheetStudentVisibility.Normal;
+
+    // İstek sahibi bu worksheet'in sahibi mi (legacy CreateUserId null/0 => false).
+    public bool IsOwner { get; set; }
+
+    // Tekil detay (GetWorksheetByIdAsync) akışında admin VEYA sahip için dolu.
+    // Liste akışlarında (N+1'den kaçınmak için) yalnız admin için dolu; aksi halde null.
+    public string? OwnerName { get; set; }
+
+    // İstek sahibi bu worksheet'i öğrenciye atayabilir mi (şimdilik CanEdit ile aynı).
+    public bool CanAssign { get; set; }
 }
 
 public class WorksheetWithInstanceDto

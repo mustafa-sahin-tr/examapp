@@ -2241,6 +2241,11 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("StudentVisibility")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<int?>("SubTopicId")
                         .HasColumnType("integer");
 
@@ -2249,6 +2254,11 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<string>("Subtitle")
                         .HasColumnType("text");
+
+                    b.Property<int>("TeacherSharing")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<int?>("TopicId")
                         .HasColumnType("integer");
@@ -2270,6 +2280,8 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("SubjectId");
 
                     b.HasIndex("TopicId");
+
+                    b.HasIndex("TeacherSharing", "StudentVisibility", "GradeId", "CreateUserId");
 
                     b.ToTable("Worksheets");
                 });

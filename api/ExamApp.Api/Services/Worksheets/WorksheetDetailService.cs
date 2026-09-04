@@ -62,6 +62,9 @@ public class WorksheetDetailService : IWorksheetDetailService
 
         // Base worksheet bilgisi authenticated Student/Teacher'a açık (eski GET {id} ile aynı açıklık).
         // Yalnız TeacherInsights sahiplik ile gate'lenir; attempts/completedResult/rank zaten studentId ile sınırlı.
+        var isWorksheetOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0
+            && worksheet.CreateUserId.Value == userId;
+
         var teacherOwnsWorksheet = isTeacher && (
             worksheet.CreateUserId == userId
             || await _context.WorksheetAssignments.AsNoTracking()
@@ -130,7 +133,15 @@ public class WorksheetDetailService : IWorksheetDetailService
                 BadgeText = worksheet.BadgeText,
                 BookTestId = worksheet.BookTestId,
                 BookId = worksheet.BookTest?.BookId,
-                QuestionCount = totalQuestions
+                QuestionCount = totalQuestions,
+                // Görünürlük + sahiplik alanları — ExamService.ApplyOwnershipAndVisibility ile aynı mantık
+                // (bu servis ayrı DbContext/lifetime kullandığı için helper paylaşılmıyor).
+                TeacherSharing = worksheet.TeacherSharing,
+                StudentVisibility = worksheet.StudentVisibility,
+                IsOwner = isWorksheetOwner,
+                // Bu serviste auth-api istemcisi yok; isim çözümü liste/detay (ExamService) akışında yapılır.
+                OwnerName = null,
+                CanAssign = WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
             },
             RewardBadgeText = worksheet.BadgeText,
             Stats = new WorksheetStatsDto

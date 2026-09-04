@@ -17,6 +17,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
@@ -58,6 +59,7 @@ interface GradeOption {
     MatIconModule,
     MatMenuModule,
     MatButtonModule,
+    MatSlideToggleModule,
     PaginationComponent,
     WorksheetListViewCardComponent,
   ],
@@ -156,6 +158,8 @@ export class WorksheetListComponent implements OnInit {
   readonly durationBucket = signal<DurationBucket | null>(null);
   readonly questionBucket = signal<QuestionBucket | null>(null);
   readonly practiceOnly = signal(false);
+  /** "Başkalarının sınavları" toggle — açıkken diğer öğretmenlerin Public* worksheet'leri de listelenir (issue #11). */
+  readonly includeShared = signal(false);
 
   readonly assignments = signal<AssignedWorksheet[]>([]);
   /** `statuses:[0]` — devam eden testler (tüm sayfalardan). */
@@ -292,6 +296,7 @@ export class WorksheetListComponent implements OnInit {
       minQuestionCount: question?.min,
       maxQuestionCount: question?.max,
       isPracticeTest: this.practiceOnly() ? true : undefined,
+      includeShared: this.isTeacher && this.includeShared() ? true : undefined,
       sortBy: this.sortBy(),
       sortDir: this.sortBy() === 'alphabetical' ? 'asc' : undefined,
       pageNumber: this.pageNumber(),
@@ -450,6 +455,12 @@ export class WorksheetListComponent implements OnInit {
 
   togglePracticeOnly(): void {
     this.practiceOnly.update((v) => !v);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  toggleIncludeShared(): void {
+    this.includeShared.update((v) => !v);
     this.pageNumber.set(1);
     this.fetch();
   }

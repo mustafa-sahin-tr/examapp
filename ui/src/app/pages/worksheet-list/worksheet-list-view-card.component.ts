@@ -4,15 +4,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterModule } from '@angular/router';
-import { InstanceSummary, Test } from '../../models/test-instance';
+import { InstanceSummary, Test, WorksheetTeacherSharing } from '../../models/test-instance';
 import { AssignedWorksheet } from '../../models/assignment';
+import { SharingBadgeComponent } from '../../shared/components/sharing-badge/sharing-badge.component';
 
 type CardStatus = 'none' | 'inprogress' | 'completed';
 
 @Component({
   selector: 'app-worksheet-list-view-card',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatMenuModule, MatButtonModule],
+  imports: [CommonModule, RouterModule, MatIconModule, MatMenuModule, MatButtonModule, SharingBadgeComponent],
   templateUrl: './worksheet-list-view-card.component.html',
   styleUrl: './worksheet-list-view-card.component.scss',
 })
@@ -45,9 +46,27 @@ export class WorksheetListViewCardComponent {
     return this.course.canEdit !== false;
   }
 
+  /** Backend yetki alanı; alan yoksa (eski response) atamaya izin ver. */
+  get canAssign(): boolean {
+    return this.course.canAssign !== false;
+  }
+
   /** Yalnız istek sahibi admin ise dolu gelir. */
   get createdByName(): string | null {
     return this.course.createdByName ?? null;
+  }
+
+  /** Diğer öğretmenin paylaştığı satır mı (issue #11 — "Başkalarının sınavları"). */
+  get isShared(): boolean {
+    return this.isTeacher && this.course.isOwner === false && this.teacherSharing !== WorksheetTeacherSharing.Private;
+  }
+
+  get teacherSharing(): WorksheetTeacherSharing {
+    return this.course.teacherSharing ?? WorksheetTeacherSharing.PublicView;
+  }
+
+  get ownerName(): string | null {
+    return this.course.ownerName ?? null;
   }
 
   get instance(): InstanceSummary | null {

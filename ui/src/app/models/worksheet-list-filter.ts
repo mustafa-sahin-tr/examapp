@@ -23,6 +23,8 @@ export interface WorksheetListFilter {
   isPracticeTest?: boolean;
   bookIds?: number[];
   bookTestId?: number;
+  /** Öğretmen: kendi worksheet'lerine ek olarak diğer öğretmenlerin Public* worksheet'lerini de getir (issue #11). */
+  includeShared?: boolean;
   sortBy?: WorksheetSortBy;
   sortDir?: WorksheetSortDir;
   pageNumber?: number;

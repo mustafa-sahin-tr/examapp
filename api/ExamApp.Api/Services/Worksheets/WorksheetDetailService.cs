@@ -1,7 +1,10 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace ExamApp.Api.Services.Worksheets;
 
@@ -16,10 +19,29 @@ public class WorksheetDetailService : IWorksheetDetailService
     private const string RoleStudent = "Student";
 
     private readonly AppDbContext _context;
+    private readonly IAuthApiClient _authApiClient;
 
-    public WorksheetDetailService(AppDbContext context)
+    public WorksheetDetailService(AppDbContext context, IAuthApiClient authApiClient)
     {
         _context = context;
+        _authApiClient = authApiClient;
+    }
+
+    /// <summary>
+    /// Sahip/creator adını best-effort çözer (ExamService.ResolveCreatorNamesAsync ile aynı desen).
+    /// Auth-api erişilemezse sessizce null döner — detay ekranı bu yüzden çökmemeli.
+    /// </summary>
+    private async Task<string?> ResolveOwnerNameAsync(int createUserId, CancellationToken ct)
+    {
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(new[] { createUserId });
+            return users.FirstOrDefault(u => u.Id == createUserId && !string.IsNullOrWhiteSpace(u.FullName))?.FullName;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return null;
+        }
     }
 
     private static int ScorePercent(int correct, int total) => total > 0 ? correct * 100 / total : 0;
@@ -57,7 +79,9 @@ public class WorksheetDetailService : IWorksheetDetailService
             return null;
 
         // Öğretmen yalnızca kendi worksheet'inin detayını görür; admin hepsini. Öğrenci akışı değişmez.
-        if (isTeacher && !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin))
+        // Legacy (CreateUserId null/0) kayıtlar Public* işaretli olsa bile admin dışında kimseye
+        // görünmez — bu kural WorksheetAccess.CanView içinde merkezi olarak uygulanır (issue #11 AC).
+        if (isTeacher && !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
             return null;
 
         // Base worksheet bilgisi authenticated Student/Teacher'a açık (eski GET {id} ile aynı açıklık).
@@ -69,6 +93,15 @@ public class WorksheetDetailService : IWorksheetDetailService
             worksheet.CreateUserId == userId
             || await _context.WorksheetAssignments.AsNoTracking()
                 .AnyAsync(a => a.WorksheetId == worksheetId && a.CreateUserId == userId, ct));
+
+        // OwnerName: admin/sahip için, veya bu satır yalnızca Public* paylaşım sayesinde görünüyorsa
+        // (issue #11 — CanView true ama ne owner ne admin) yine çözülür; öğrenci akışında anlamsız.
+        var isSharedRow = isTeacher && !isWorksheetOwner && !isAdmin;
+        string? ownerName = null;
+        if ((isAdmin || isWorksheetOwner || isSharedRow) && worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0)
+        {
+            ownerName = await ResolveOwnerNameAsync(worksheet.CreateUserId.Value, ct);
+        }
 
         var questions = worksheet.WorksheetQuestions
             .Where(wq => wq.Question != null)
@@ -139,8 +172,8 @@ public class WorksheetDetailService : IWorksheetDetailService
                 TeacherSharing = worksheet.TeacherSharing,
                 StudentVisibility = worksheet.StudentVisibility,
                 IsOwner = isWorksheetOwner,
-                // Bu serviste auth-api istemcisi yok; isim çözümü liste/detay (ExamService) akışında yapılır.
-                OwnerName = null,
+                OwnerName = ownerName,
+                CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin),
                 CanAssign = WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
             },
             RewardBadgeText = worksheet.BadgeText,

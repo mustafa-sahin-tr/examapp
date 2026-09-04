@@ -136,6 +136,15 @@
         </label>
       </div>
 
+      @if (isTeacher) {
+        <div class="wl__filter-group">
+          <span class="wl__filter-label">Paylaşım</span>
+          <mat-slide-toggle [checked]="includeShared()" (change)="toggleIncludeShared()">
+            Başkalarının sınavları
+          </mat-slide-toggle>
+        </div>
+      }
+
       @if (hasActiveFilters()) {
         <button type="button" class="wl__clear-all" (click)="clearFilters()">Filtreleri temizle</button>
       }

@@ -71,9 +71,15 @@ public class ExamService : IExamService
     /// projeksiyonları bunu çağırır ki endpoint'ler arası tutarlı olsun (issue #9).
     /// </summary>
     /// <param name="requesterUserId">İstek sahibinin user id'si; öğrenci akışında null.</param>
-    /// <param name="ownerName">Çözülmüş sahip/creator adı (yalnız admin veya tekil detay). Liste akışlarında null geçilir.</param>
+    /// <param name="ownerName">Çözülmüş sahip/creator adı. Liste akışlarında normalde null geçilir.</param>
+    /// <param name="populateOwnerName">
+    /// True ise (admin/sahip dışında da) <paramref name="ownerName"/> DTO'ya yazılır. Issue #11 ile
+    /// eklendi: bir öğretmen başkasının PublicView/PublicAssignable worksheet'ini görüntülediğinde
+    /// (CanView true ama IsOwner/isAdmin false) sahibinin adını yine de görmesi gerekiyor.
+    /// </param>
     private static void ApplyOwnershipAndVisibility(
-        WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null)
+        WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null,
+        bool populateOwnerName = false)
     {
         dto.TeacherSharing = w.TeacherSharing;
         dto.StudentVisibility = w.StudentVisibility;
@@ -81,8 +87,8 @@ public class ExamService : IExamService
         var isOwner = w.CreateUserId.HasValue && w.CreateUserId.Value > 0
             && requesterUserId.HasValue && w.CreateUserId.Value == requesterUserId.Value;
         dto.IsOwner = isOwner;
-        dto.OwnerName = (isAdmin || isOwner) ? ownerName : null;
-        // TODO(#11/#12/#13): CanAssign public/restricted dallarını da dikkate alacak.
+        dto.OwnerName = (isAdmin || isOwner || populateOwnerName) ? ownerName : null;
+        // TODO(#12/#13): CanAssign public/restricted dallarını da dikkate alacak — şimdilik sahibi/admin dışında hep false.
         dto.CanAssign = WorksheetAccess.CanModify(w.CreateUserId, requesterUserId ?? 0, isAdmin);
     }
 
@@ -171,9 +177,22 @@ public class ExamService : IExamService
         // Öğretmen yalnızca kendi worksheet'lerini görür; admin hepsini.
         // Legacy (CreateUserId null/0) kayıtlar yalnızca admin'e görünür.
         // dto.id > 0 dalı da buna tabidir — başkasının id'siyle çekilemez.
+        // includeShared=true ise (issue #11) sahiplik kapısına ek olarak başka öğretmenlerin
+        // PublicView/PublicAssignable worksheet'leri de dahil edilir.
         if (!isAdmin)
         {
-            query = query.Where(t => t.CreateUserId != null && t.CreateUserId > 0 && t.CreateUserId == userProfile.Id);
+            if (dto.includeShared)
+            {
+                query = query.Where(t =>
+                    (t.CreateUserId != null && t.CreateUserId > 0 && t.CreateUserId == userProfile.Id)
+                    || (t.CreateUserId != null && t.CreateUserId > 0
+                        && (t.TeacherSharing == WorksheetTeacherSharing.PublicView
+                            || t.TeacherSharing == WorksheetTeacherSharing.PublicAssignable)));
+            }
+            else
+            {
+                query = query.Where(t => t.CreateUserId != null && t.CreateUserId > 0 && t.CreateUserId == userProfile.Id);
+            }
         }
 
         query = ApplyCommonFilters(query, dto);
@@ -188,14 +207,18 @@ public class ExamService : IExamService
             .Take(dto.pageSize)
             .ToListAsync();
 
-        // İsim çözümü yalnız admin için (öğretmen listesi zaten kendi kayıtları — auth-api'ye gitme).
-        var creatorNames = isAdmin
+        // İsim çözümü: admin için her zaman; öğretmen için yalnız includeShared=true iken (kendi
+        // kayıtları zaten adını bildiği için normalde auth-api'ye gitmeye gerek yok).
+        var creatorNames = (isAdmin || dto.includeShared)
             ? await ResolveCreatorNamesAsync(tests.Select(t => t.CreateUserId))
             : new Dictionary<int, string>();
 
         var worksheetDtos = tests.Select(t =>
         {
-            // Liste akışı: OwnerName yalnız admin için çözülür (creatorNames admin değilse boş).
+            // Liste akışı: OwnerName admin için, ya da includeShared ile görünür kılınan paylaşılan
+            // satırlar için çözülür (issue #11 — kimin worksheet'i olduğu bu özelliğin amacı).
+            var isOwnRow = t.CreateUserId.HasValue && t.CreateUserId.Value > 0 && t.CreateUserId.Value == userProfile.Id;
+            var isSharedRow = dto.includeShared && !isOwnRow;
             string? ownerName = t.CreateUserId.HasValue
                 && creatorNames.TryGetValue(t.CreateUserId.Value, out var on) ? on : null;
             var d = new WorksheetDto
@@ -222,7 +245,7 @@ public class ExamService : IExamService
                     ? name
                     : null
             };
-            ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName);
+            ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow);
             return d;
         }).ToList();
 
@@ -523,15 +546,20 @@ public class ExamService : IExamService
         // Öğretmen yalnızca kendi worksheet'ini görebilir; admin hepsini. Yetkisizse "yok" gibi davran.
         // Öğrenci akışı değişmez (öğrenci çözüm için worksheet detayına erişebilir).
         var isStudent = string.Equals(userProfile.Role, UserRole.Student.ToString(), StringComparison.OrdinalIgnoreCase);
-        if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin))
+        // Legacy (CreateUserId null/0) kayıtlar Public* işaretli olsa bile admin dışında kimseye
+        // görünmez — bu kural WorksheetAccess.CanView içinde merkezi olarak uygulanır (issue #11 AC).
+        if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
             return null;
 
         var isOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0
             && worksheet.CreateUserId.Value == userProfile.Id;
+        // Bu satır sahiplik/admin dışında yalnızca Public* paylaşım sayesinde görünüyorsa (issue #11),
+        // görüntüleyen öğretmenin kimin worksheet'i olduğunu bilmesi gerekir.
+        var isSharedRow = !isAdmin && !isOwner && !isStudent;
 
         string? createdByName = null;
         string? ownerName = null;
-        if ((isAdmin || isOwner) && worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0)
+        if ((isAdmin || isOwner || isSharedRow) && worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0)
         {
             var names = await ResolveCreatorNamesAsync(new[] { worksheet.CreateUserId });
             names.TryGetValue(worksheet.CreateUserId.Value, out ownerName);
@@ -558,8 +586,8 @@ public class ExamService : IExamService
             CreatedByUserId = (isAdmin || worksheet.CreateUserId == userProfile.Id) ? worksheet.CreateUserId : null,
             CreatedByName = createdByName
         };
-        // Tekil detay: OwnerName admin VEYA sahip için doldurulur.
-        ApplyOwnershipAndVisibility(result, worksheet, userProfile.Id, isAdmin, ownerName);
+        // Tekil detay: OwnerName admin, sahip, veya Public* paylaşım sayesinde görülen satır için doldurulur.
+        ApplyOwnershipAndVisibility(result, worksheet, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow);
         return result;
     }
 

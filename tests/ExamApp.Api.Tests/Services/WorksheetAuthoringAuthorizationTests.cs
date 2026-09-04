@@ -52,6 +52,23 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
         return ws.Id;
     }
 
+    /// <summary>Worksheet oluşturur, TeacherSharing dahil (issue #11 — Public* görünürlük senaryoları).</summary>
+    private async Task<int> SeedWorksheetAsync(int? createUserId, WorksheetTeacherSharing sharing)
+    {
+        await using var ctx = _db.NewContext();
+        var grade = new Grade { Name = "5" };
+        ctx.Grades.Add(grade);
+        await ctx.SaveChangesAsync();
+
+        var ws = new Worksheet { Name = "W", Description = "", GradeId = grade.Id };
+        ctx.Worksheets.Add(ws);
+        await ctx.SaveChangesAsync();
+        ws.CreateUserId = createUserId;
+        ws.TeacherSharing = sharing;
+        await ctx.SaveChangesAsync();
+        return ws.Id;
+    }
+
     // ---- UpdateWorksheetBackgroundImageAsync ----
 
     [Fact]
@@ -110,6 +127,35 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
         await _minio.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
+    // issue #11: worksheet Public* ile görünür ama çağıran sahibi/admin değilse -> Forbidden, NotFound DEĞİL.
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task UpdateWorksheetBackgroundImageAsync_NonOwnerOnVisiblePublicWorksheet_FailsAsForbiddenNotNotFound(
+        WorksheetTeacherSharing sharing)
+    {
+        var wsId = await SeedWorksheetAsync(Owner, sharing);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(wsId, PngImage(), Stranger, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Forbidden.ShouldBeTrue();
+        r.NotFound.ShouldBeFalse();
+        await _minio.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task UpdateWorksheetBackgroundImageAsync_MissingWorksheet_FailsAsNotFound()
+    {
+        await using var ctx = _db.NewContext();
+        var r = await NewAuthoring(ctx).UpdateWorksheetBackgroundImageAsync(999999, PngImage(), Owner, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.NotFound.ShouldBeTrue();
+        r.Forbidden.ShouldBeFalse();
+    }
+
     // ---- DeleteWorksheetAsync ----
 
     [Fact]
@@ -148,6 +194,70 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
         soft.IsDeleted.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task DeleteWorksheetAsync_MissingWorksheet_FailsAsNotFound()
+    {
+        await using var ctx = _db.NewContext();
+        var r = await NewAuthoring(ctx).DeleteWorksheetAsync(999999, Owner, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.NotFound.ShouldBeTrue();
+        r.Forbidden.ShouldBeFalse();
+    }
+
+    // issue #11: worksheet Public* ile görünür ama çağıran sahibi/admin değilse -> Forbidden, NotFound DEĞİL.
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task DeleteWorksheetAsync_NonOwnerOnVisiblePublicWorksheet_FailsAsForbiddenNotNotFound(
+        WorksheetTeacherSharing sharing)
+    {
+        var wsId = await SeedWorksheetAsync(Owner, sharing);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewAuthoring(ctx).DeleteWorksheetAsync(wsId, Stranger, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Forbidden.ShouldBeTrue();
+        r.NotFound.ShouldBeFalse();
+
+        (await _db.NewContext().Worksheets.FindAsync(wsId))!.IsDeleted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteWorksheetAsync_NonOwnerOnPrivateWorksheet_FailsAsNotFoundNotForbidden()
+    {
+        var wsId = await SeedWorksheetAsync(Owner, WorksheetTeacherSharing.Private);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewAuthoring(ctx).DeleteWorksheetAsync(wsId, Stranger, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.NotFound.ShouldBeTrue();
+        r.Forbidden.ShouldBeFalse();
+    }
+
+    // code-reviewer/security-reviewer bulgusu: legacy (owner'sız) worksheet Public* işaretlenmiş
+    // olsa bile CanView false dönmeli (WorksheetAccess.CanView hardening) — aksi halde 403 ile
+    // varlığı sızdırırdı. Burada NotFound bekleniyor.
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task DeleteWorksheetAsync_LegacyOwnerlessPublicWorksheet_NonAdmin_FailsAsNotFoundNotForbidden(
+        WorksheetTeacherSharing sharing)
+    {
+        var wsId = await SeedWorksheetAsync(createUserId: null, sharing);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewAuthoring(ctx).DeleteWorksheetAsync(wsId, Stranger, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.NotFound.ShouldBeTrue();
+        r.Forbidden.ShouldBeFalse();
+
+        (await _db.NewContext().Worksheets.FindAsync(wsId))!.IsDeleted.ShouldBeFalse();
+    }
+
     // ---- CreateOrUpdateAsync (edit branch) ----
 
     private async Task<(int worksheetId, int bookId, int bookTestId)> SeedWorksheetWithBookAsync(int? createUserId)
@@ -176,8 +286,10 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
     };
 
     [Fact]
-    public async Task CreateOrUpdateAsync_EditByNonOwnerNonAdmin_FailsAndDoesNotPersist()
+    public async Task CreateOrUpdateAsync_EditByNonOwnerNonAdmin_PrivateWorksheet_FailsAsNotFoundAndDoesNotPersist()
     {
+        // issue #11: Private (varsayılan) sahiplik → çağırana hiç görünmez → NotFound (varlık sızmasın),
+        // "Bu testi düzenleme yetkiniz yok." (Forbidden) DEĞİL — bu davranış #11 ile netleşti.
         var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
         var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
 
@@ -186,6 +298,36 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
             var r = await NewAuthoring(ctx).CreateOrUpdateAsync(
                 EditDto(wsId, gradeId, bookId, bookTestId), Stranger, isAdmin: false);
             r.Success.ShouldBeFalse();
+            r.NotFound.ShouldBeTrue();
+            r.Forbidden.ShouldBeFalse();
+            r.Message.ShouldBe("Test bulunamadı!");
+        }
+
+        (await _db.NewContext().Worksheets.FindAsync(wsId))!.Name.ShouldBe("Orijinal");
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task CreateOrUpdateAsync_EditByNonOwnerNonAdmin_VisiblePublicWorksheet_FailsAsForbiddenAndDoesNotPersist(
+        WorksheetTeacherSharing sharing)
+    {
+        var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
+        await using (var ctx = _db.NewContext())
+        {
+            var ws = await ctx.Worksheets.FindAsync(wsId);
+            ws!.TeacherSharing = sharing;
+            await ctx.SaveChangesAsync();
+        }
+        var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
+
+        await using (var ctx = _db.NewContext())
+        {
+            var r = await NewAuthoring(ctx).CreateOrUpdateAsync(
+                EditDto(wsId, gradeId, bookId, bookTestId), Stranger, isAdmin: false);
+            r.Success.ShouldBeFalse();
+            r.Forbidden.ShouldBeTrue();
+            r.NotFound.ShouldBeFalse();
             r.Message.ShouldBe("Bu testi düzenleme yetkiniz yok.");
         }
 
@@ -217,8 +359,9 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
     };
 
     [Fact]
-    public async Task CreateOrUpdateAsync_CreateHittingForeignExistingWorksheet_NonOwnerNonAdmin_FailsAndDoesNotOverwrite()
+    public async Task CreateOrUpdateAsync_CreateHittingForeignExistingWorksheet_NonOwnerNonAdmin_PrivateWorksheet_FailsAsNotFoundAndDoesNotOverwrite()
     {
+        // issue #11: Private (varsayılan) → NotFound (varlık sızmasın), Forbidden DEĞİL.
         var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
         var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
 
@@ -227,6 +370,38 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
             var r = await NewAuthoring(ctx).CreateOrUpdateAsync(
                 CollisionDto(gradeId, bookId, bookTestId), Stranger, isAdmin: false);
             r.Success.ShouldBeFalse();
+            r.NotFound.ShouldBeTrue();
+            r.Forbidden.ShouldBeFalse();
+            r.Message.ShouldBe("Test bulunamadı!");
+        }
+
+        var ws = (await _db.NewContext().Worksheets.FindAsync(wsId))!;
+        ws.Name.ShouldBe("Orijinal");
+        ws.Description.ShouldBe("d");
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task CreateOrUpdateAsync_CreateHittingForeignExistingWorksheet_NonOwnerNonAdmin_VisiblePublicWorksheet_FailsAsForbiddenAndDoesNotOverwrite(
+        WorksheetTeacherSharing sharing)
+    {
+        var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
+        await using (var ctx = _db.NewContext())
+        {
+            var ws0 = await ctx.Worksheets.FindAsync(wsId);
+            ws0!.TeacherSharing = sharing;
+            await ctx.SaveChangesAsync();
+        }
+        var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
+
+        await using (var ctx = _db.NewContext())
+        {
+            var r = await NewAuthoring(ctx).CreateOrUpdateAsync(
+                CollisionDto(gradeId, bookId, bookTestId), Stranger, isAdmin: false);
+            r.Success.ShouldBeFalse();
+            r.Forbidden.ShouldBeTrue();
+            r.NotFound.ShouldBeFalse();
             r.Message.ShouldBe("Bu testi düzenleme yetkiniz yok.");
         }
 
@@ -278,6 +453,9 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
     [Fact]
     public async Task CreateBulkExamsAsync_NonAdminHittingForeignWorksheet_ReportsFailureAndDoesNotOverwrite()
     {
+        // issue #11: worksheet Private (varsayılan) → CreateOrUpdateAsync artık NotFound döner (bkz.
+        // CreateOrUpdateAsync_CreateHittingForeignExistingWorksheet_NonOwnerNonAdmin_PrivateWorksheet_*);
+        // bulk akışı bu mesajı olduğu gibi taşır.
         var (wsId, bookId, bookTestId) = await SeedWorksheetWithBookAsync(Owner);
         var gradeId = (await _db.NewContext().Worksheets.FindAsync(wsId))!.GradeId;
 
@@ -287,7 +465,7 @@ public class WorksheetAuthoringAuthorizationTests : IDisposable
                 BulkWithCollision(gradeId, bookId, bookTestId), Stranger, isAdmin: false);
 
         result.FailureCount.ShouldBe(1);
-        result.FailedExams.ShouldContain(f => f.ExamName == "Orijinal" && f.ErrorMessage == "Bu testi düzenleme yetkiniz yok.");
+        result.FailedExams.ShouldContain(f => f.ExamName == "Orijinal" && f.ErrorMessage == "Test bulunamadı!");
         (await _db.NewContext().Worksheets.FindAsync(wsId))!.Description.ShouldBe("d");
     }
 

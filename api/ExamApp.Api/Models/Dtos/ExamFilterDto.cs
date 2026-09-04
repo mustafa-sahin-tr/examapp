@@ -33,6 +33,13 @@ public class ExamFilterDto : FilterBaseDto
     public bool? isPracticeTest = null;
     public List<int>? bookIds = null;
 
+    /// <summary>
+    /// True ise öğretmen kendi worksheet'lerine ek olarak başka öğretmenlerin PublicView/PublicAssignable
+    /// worksheet'lerini de listede görür (issue #11). Admin ve öğrenci akışlarını etkilemez.
+    /// Varsayılan false — mevcut sahiplik-scope'lu davranış aynen korunur.
+    /// </summary>
+    public bool includeShared = false;
+
     /// <summary>Safe-parse of <see cref="sortBy"/>; unknown/empty -> Newest.</summary>
     public WorksheetSortBy SortByParsed =>
         Enum.TryParse<WorksheetSortBy>(sortBy, ignoreCase: true, out var parsed) &&

@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,7 @@ public class WorksheetDetailServiceDetailTests : IDisposable
 
     private readonly TestDb _db = TestDb.Create();
 
-    private static WorksheetDetailService NewService(AppDbContext ctx) => new(ctx);
+    private static WorksheetDetailService NewService(AppDbContext ctx) => new(ctx, Substitute.For<IAuthApiClient>());
 
     private sealed record World(
         int GradeId, int WorksheetId,

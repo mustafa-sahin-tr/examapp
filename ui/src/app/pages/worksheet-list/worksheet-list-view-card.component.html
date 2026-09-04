@@ -45,9 +45,11 @@
               <mat-icon>add_photo_alternate</mat-icon><span>Soru Ekle</span>
             </button>
           }
-          <button mat-menu-item (click)="emitAssign()">
-            <mat-icon>assignment_ind</mat-icon><span>Ata</span>
-          </button>
+          @if (canAssign) {
+            <button mat-menu-item (click)="emitAssign()">
+              <mat-icon>assignment_ind</mat-icon><span>Ata</span>
+            </button>
+          }
           @if (canEdit) {
             <button mat-menu-item (click)="emitDelete()">
               <mat-icon>delete</mat-icon><span>Sil</span>
@@ -56,6 +58,10 @@
         }
       </mat-menu>
     </div>
+
+    @if (isShared) {
+      <app-sharing-badge [teacherSharing]="teacherSharing" [ownerName]="ownerName"></app-sharing-badge>
+    }
 
     @if (subtitle) {
       <p class="wcard__subtitle">{{ subtitle }}</p>
@@ -101,7 +107,9 @@
         } @else {
           <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">Detayı Gör</button>
         }
-        <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
+        @if (canAssign) {
+          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
+        }
       } @else {
         <button
           type="button"

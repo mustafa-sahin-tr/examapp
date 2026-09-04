@@ -309,7 +309,8 @@ public class ExamController : BaseController
         int? minDurationSeconds = null,
         int? maxDurationSeconds = null,
         bool? isPracticeTest = null,
-        [FromQuery] List<int>? bookIds = null)
+        [FromQuery] List<int>? bookIds = null,
+        bool includeShared = false)
     {
         var filterDto = new ExamFilterDto
         {
@@ -328,7 +329,8 @@ public class ExamController : BaseController
             minDurationSeconds = minDurationSeconds,
             maxDurationSeconds = maxDurationSeconds,
             isPracticeTest = isPracticeTest,
-            bookIds = bookIds
+            bookIds = bookIds,
+            includeShared = includeShared
         };
 
         Paged<WorksheetDto> result = null;
@@ -454,6 +456,19 @@ public class ExamController : BaseController
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
         }
         var response = await _authoring.CreateOrUpdateAsync(examDto, user.Id, User.IsInRole("Admin"));
+        if (!response.Success)
+        {
+            // Diğer doğrulama hataları (ör. "Kitap seçilmedi!") geriye dönük uyumluluk için Ok + Success=false
+            // olarak kalır — frontend bu alanları okuyor. NotFound/Forbidden (issue #11) burada özel işlenir.
+            if (response.NotFound)
+            {
+                return NotFound(response);
+            }
+            if (response.Forbidden)
+            {
+                return Forbid();
+            }
+        }
         return Ok(response);
     }
 
@@ -527,6 +542,10 @@ public class ExamController : BaseController
                 {
                     return NotFound(result.Message);
                 }
+                if (result.Forbidden)
+                {
+                    return Forbid();
+                }
                 return BadRequest(result.Message);
             }
 
@@ -562,6 +581,10 @@ public class ExamController : BaseController
             if (result.NotFound)
             {
                 return NotFound(result);
+            }
+            if (result.Forbidden)
+            {
+                return Forbid();
             }
             return BadRequest(result);
         }

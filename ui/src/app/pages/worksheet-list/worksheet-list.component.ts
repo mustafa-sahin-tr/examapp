@@ -1,30 +1,51 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, inject, signal, ViewChild } from '@angular/core';
-import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatInputModule } from '@angular/material/input';
-import { TestService } from '../../services/test.service';
-import { InstanceSummary, Paged, Test } from '../../models/test-instance';
-import { CompletedWorksheetCardComponent } from '../completed-worksheet/completed-worksheet-card.component';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
-import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
-import { SubjectService } from '../../services/subject.service';
-import { Subject } from '../../models/subject';
-import { CustomCheckboxComponent } from '../../shared/components/ms-checkbox/ms-checkbox.component';
-import { IsStudentDirective } from '../../shared/directives/is-student.directive';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { GradesService } from '../../services/grades.service';
-import { Grade } from '../../models/student';
-import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  Subject as RxSubject,
+  catchError,
+  finalize,
+  forkJoin,
+  from,
+  map,
+  mergeMap,
+  of,
+  reduce,
+  switchMap,
+} from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
-import { finalize } from 'rxjs/operators';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { AssignedWorksheet } from '../../models/assignment';
+import { Paged, Test } from '../../models/test-instance';
+import { Subject } from '../../models/subject';
+import {
+  DURATION_BUCKET_RANGES,
+  DurationBucket,
+  QUESTION_BUCKET_RANGES,
+  QuestionBucket,
+  WORKSHEET_SORT_OPTIONS,
+  WorksheetListFilter,
+  WorksheetListTab,
+  WorksheetSortBy,
+  WorksheetStatus,
+} from '../../models/worksheet-list-filter';
+import { AuthService } from '../../services/auth.service';
+import { GradesService } from '../../services/grades.service';
+import { SubjectService } from '../../services/subject.service';
+import { TestService } from '../../services/test.service';
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
+
+interface GradeOption {
+  id: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-worksheet-list',
@@ -33,384 +54,602 @@ import { WorksheetListViewCardComponent } from './worksheet-list-view-card.compo
   standalone: true,
   imports: [
     CommonModule,
-    WorksheetCardComponent,
-    MatAutocompleteModule,
-    MatInputModule,
-    ReactiveFormsModule,
-    CompletedWorksheetCardComponent,
-    CustomCheckboxComponent,
     RouterModule,
-    SectionHeaderComponent,
-    FormsModule,
-    PaginationComponent,
-    IsStudentDirective,
     MatIconModule,
     MatMenuModule,
     MatButtonModule,
+    PaginationComponent,
+    WorksheetListViewCardComponent,
   ],
 })
-export class WorksheetListComponent {
-  private readonly mobileMaxWidth = 767;
-  protected readonly worksheetListViewCardComponent = WorksheetListViewCardComponent;
-  testService = inject(TestService);
-  searchControl = new FormControl('');
-  route = inject(ActivatedRoute);
-  router = inject(Router);
-  dialog = inject(MatDialog);
-  snackBar = inject(MatSnackBar);
-  subjectService = inject(SubjectService);
-  newestWorksheetsSignal = signal<Test[]>([]);
-  pagedWorksheetsSignal = signal<Paged<Test>>({
-    items: [],
-    totalCount: 0,
-    pageNumber: 0,
-    pageSize: 0,
+export class WorksheetListComponent implements OnInit {
+  private readonly testService = inject(TestService);
+  private readonly subjectService = inject(SubjectService);
+  private readonly gradesService = inject(GradesService);
+  private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly sortOptions = WORKSHEET_SORT_OPTIONS;
+  readonly durationBuckets = Object.entries(DURATION_BUCKET_RANGES) as [DurationBucket, { label: string }][];
+  readonly questionBuckets = Object.entries(QUESTION_BUCKET_RANGES) as [QuestionBucket, { label: string }][];
+
+  readonly isStudent = this.auth.hasRole('Student');
+  readonly isTeacher = this.auth.hasRole('Teacher');
+
+  readonly subjects = toSignal(this.subjectService.loadCategories(), { initialValue: [] as Subject[] });
+  readonly grades = toSignal(this.gradesService.getGrades(), { initialValue: [] as GradeOption[] });
+
+  readonly viewMode = signal<'grid' | 'list'>('grid');
+  readonly tab = signal<WorksheetListTab>('discover');
+  readonly sortBy = signal<WorksheetSortBy>('newest');
+
+  // Her veri kaynağının kendi loading/error sinyali var; şablon aktif sekmeye göre birleşik okur.
+  readonly discoverLoading = signal(false);
+  readonly discoverError = signal<string | null>(null);
+  readonly assignmentsLoading = signal(false);
+  readonly assignmentsError = signal<string | null>(null);
+  readonly bucketsLoading = signal(false);
+  readonly bucketsError = signal<string | null>(null);
+
+  readonly paged = signal<Paged<Test>>({ items: [], totalCount: 0, pageNumber: 1, pageSize: 12 });
+  readonly pageNumber = signal(1);
+
+  private readonly fetchTrigger = new RxSubject<void>();
+
+  constructor() {
+    // Tüm discover fetch'leri tek akıştan geçer: switchMap eskiyen isteği iptal eder,
+    // böylece yavaş kalan cevap yeniyi ezmez ve loading erken kapanmaz.
+    this.fetchTrigger
+      .pipe(
+        switchMap(() => {
+          this.discoverLoading.set(true);
+          this.discoverError.set(null);
+          return this.testService.listWorksheets(this.buildFilter()).pipe(
+            catchError(() => {
+              this.discoverError.set('Testler yüklenirken bir sorun oluştu.');
+              return of(null);
+            })
+          );
+        }),
+        takeUntilDestroyed()
+      )
+      .subscribe((result) => {
+        this.discoverLoading.set(false);
+        if (result) {
+          this.paged.set(result);
+        }
+      });
+  }
+
+  /** Aktif sekmeye göre birleşik loading. */
+  readonly loading = computed(() => {
+    switch (this.tab()) {
+      case 'discover':
+        return this.discoverLoading();
+      case 'assigned':
+        return this.assignmentsLoading();
+      default:
+        return this.bucketsLoading();
+    }
   });
-  completedTestSignal = toSignal(this.testService.getCompleted(1));
-  subjectsSignal = toSignal(this.subjectService.loadCategories());
-  gradesService = inject(GradesService);
-  gradesSignal = toSignal(this.gradesService.getGrades());
-  totalCount = 0;
-  pageSize = 5;
-  pageNumber = 1;
-  // Header'daki "Yeni" / "Popüler" butonları ?section= ile buraya yönlendirir.
-  // 'search' = normal arama/filtre modu (varsayılan)
-  currentSection = signal<'search' | 'newest' | 'popular'>('search');
-  scrollDistance = 600;
-  selectedSubjectIds: number[] = [];
-  selectedGradeIds: number[] = [];
-  deletingWorksheetId = signal<number | null>(null);
-  showMobileFilters = signal<boolean>(false);
 
-  @ViewChild('cardContainer', { static: false }) cardContainer!: ElementRef;
+  /** Aktif sekmeye göre birleşik error. */
+  readonly error = computed(() => {
+    switch (this.tab()) {
+      case 'discover':
+        return this.discoverError();
+      case 'assigned':
+        return this.assignmentsError();
+      default:
+        return this.bucketsError();
+    }
+  });
 
-  get totalPages(): number {
-    return Math.ceil(this.pagedWorksheetsSignal().totalCount / this.pageSize);
-  }
+  readonly search = signal('');
+  readonly selectedSubjectIds = signal<number[]>([]);
+  readonly selectedGradeIds = signal<number[]>([]);
+  readonly selectedStatuses = signal<WorksheetStatus[]>([]);
+  readonly durationBucket = signal<DurationBucket | null>(null);
+  readonly questionBucket = signal<QuestionBucket | null>(null);
+  readonly practiceOnly = signal(false);
 
-  get activeFilterCount(): number {
-    return this.selectedSubjectIds.length + this.selectedGradeIds.length;
-  }
+  readonly assignments = signal<AssignedWorksheet[]>([]);
+  /** `statuses:[0]` — devam eden testler (tüm sayfalardan). */
+  readonly inProgressTests = signal<Test[]>([]);
+  /** `statuses:[1]` — tamamlanan testler. */
+  readonly completedTests = signal<Test[]>([]);
 
-  get hasActiveFilters(): boolean {
-    return this.activeFilterCount > 0;
-  }
+  readonly showMobileFilters = signal(false);
+  readonly selectedIds = signal<Set<number>>(new Set());
 
-  trackWorksheet(index: number, worksheet: Test): number {
-    return worksheet.id || index;
-  }
+  readonly pageSize = computed(() => (this.viewMode() === 'list' ? 20 : 12));
 
-  trackCourse(index: number, course: Test): number {
-    return course.id || index;
-  }
+  readonly assignmentByWorksheetId = computed(() => {
+    const map = new Map<number, AssignedWorksheet>();
+    for (const a of this.assignments()) {
+      map.set(a.worksheetId, a);
+    }
+    return map;
+  });
 
-  trackCategory(index: number, category: Subject): number {
-    return category.id;
-  }
+  /** "Kaldığın yerden devam et" şeridi = devam eden testler (worksheet listesinden, instance.status===0). */
+  readonly resumeItems = computed<Test[]>(() => this.inProgressTests());
 
-  trackGrades(index: number, grade: Grade): number {
-    return grade.id || index;
-  }
+  readonly assignedCount = computed(() => this.assignments().length);
+  readonly inProgressCount = computed(() => this.inProgressTests().length);
 
-  trackCompletedTests(index: number, instance: InstanceSummary): number {
-    return instance.id || index;
-  }
+  readonly subjectMap = computed(() => {
+    const map = new Map<number, string>();
+    for (const s of this.subjects()) {
+      map.set(s.id, s.name);
+    }
+    return map;
+  });
 
-  ngOnInit() {
-    const initialWorksheets = this.route.snapshot.data['worksheets'] as Paged<Test>;
-    this.pagedWorksheetsSignal.set(initialWorksheets);
+  readonly gradeMap = computed(() => {
+    const map = new Map<number, string>();
+    for (const g of this.grades()) {
+      map.set(g.id, g.name);
+    }
+    return map;
+  });
 
-    // En yeni testleri yükle
-    this.updateNewestWorksheets();
+  /** Aktif segment sekmesine göre gösterilecek test listesi. */
+  readonly visibleTests = computed<Test[]>(() => {
+    const tab = this.tab();
+    const term = this.search().trim().toLocaleLowerCase('tr');
+    let source: Test[];
+    switch (tab) {
+      case 'discover':
+        return this.paged().items;
+      case 'inprogress':
+        source = this.inProgressTests();
+        break;
+      case 'completed':
+        source = this.completedTests();
+        break;
+      default:
+        source = this.assignments().map((a) => this.mapAssignmentToTest(a));
+    }
+    return source.filter((t) => !term || (t.name ?? '').toLocaleLowerCase('tr').includes(term));
+  });
 
-    this.route.queryParams.subscribe((params) => {
-      const search = params['search'] ?? '';
-      const section = params['section'] ?? '';
-      this.searchControl.setValue(search);
-      this.pageNumber = 1;
+  readonly totalCount = computed(() =>
+    this.tab() === 'discover' ? this.paged().totalCount : this.visibleTests().length
+  );
 
-      if (!search && (section === 'newest' || section === 'popular')) {
-        this.currentSection.set(section);
-        this.loadSectionWorksheets();
-      } else {
-        this.currentSection.set('search');
-        this.updatePagedWorksheets(this.pageNumber);
+  readonly hasActiveFilters = computed(
+    () =>
+      this.selectedSubjectIds().length > 0 ||
+      this.selectedGradeIds().length > 0 ||
+      this.selectedStatuses().length > 0 ||
+      this.durationBucket() !== null ||
+      this.questionBucket() !== null ||
+      this.practiceOnly()
+  );
+
+  readonly headerTitle = computed(() => (this.isTeacher ? 'Testlerim' : 'Sınav Kütüphanesi'));
+  readonly headerSubtitle = computed(() =>
+    this.isTeacher
+      ? 'Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.'
+      : 'Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.'
+  );
+
+  ngOnInit(): void {
+    const resolved = this.route.snapshot.data['worksheets'] as Paged<Test> | undefined;
+    if (resolved) {
+      this.paged.set(resolved);
+    }
+
+    // Arama ve bölüm tamamen query param üzerinden yürür. Global header (enhanced-layout)
+    // aramayı `?search=` ile, "Yeni"/"Popüler" butonlarını `?section=` ile buraya yönlendirir.
+    let first = true;
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const search = ((params['search'] as string) ?? '').trim();
+      const section = (params['section'] as string) ?? '';
+
+      this.search.set(search);
+      if (section === 'newest') {
+        this.sortBy.set('newest');
+      } else if (section === 'popular' || section === 'hot') {
+        this.sortBy.set('popular');
       }
+      this.pageNumber.set(1);
+
+      // Resolver ilk listeyi (arama dahil) zaten getirdi. `?section=` sortBy'ı değiştirdiği için
+      // yalnızca o durumda ilk emisyonda da fetch gerekir; diğer hallerde çift istek olmaz.
+      if (first) {
+        first = false;
+        if (!section) {
+          return;
+        }
+      }
+      this.fetch();
     });
-  }
 
-  private loadSectionWorksheets(): void {
-    const request$ =
-      this.currentSection() === 'popular'
-        ? this.testService.getPopular(this.pageNumber, this.pageSize)
-        : this.testService.getLatest(this.pageNumber, this.pageSize);
-
-    request$.subscribe((tests) => {
-      this.pagedWorksheetsSignal.set({
-        items: tests,
-        totalCount: tests.length,
-        pageNumber: this.pageNumber,
-        pageSize: this.pageSize,
-      });
-    });
-  }
-
-  onEnter() {
-    this.pageNumber = 1;
-    this.updatePagedWorksheets(this.pageNumber);
-  }
-
-  onCardClick(id: number) {
-    console.log('Card clicked:', id);
-    this.router.navigate(['/test', id]);
-  }
-
-  changePage(page: number) {
-    console.log('Page changed:', page);
-    this.pageNumber = page;
-    if (this.currentSection() === 'search') {
-      this.updatePagedWorksheets(this.pageNumber);
-    } else {
-      this.loadSectionWorksheets();
+    this.loadAssignments();
+    if (this.isStudent) {
+      this.loadStatusBuckets();
     }
   }
 
-  nextPage() {
-    console.log('Next page');
-    if (this.pageNumber * this.pageSize < this.pagedWorksheetsSignal().totalCount) {
-      this.pageNumber++;
-      this.updatePagedWorksheets(this.pageNumber);
+  // ---------- data loading ----------
+
+  private buildFilter(): WorksheetListFilter {
+    const duration = this.durationBucket() ? DURATION_BUCKET_RANGES[this.durationBucket()!] : undefined;
+    const question = this.questionBucket() ? QUESTION_BUCKET_RANGES[this.questionBucket()!] : undefined;
+    return {
+      search: this.search() || undefined,
+      subjectIds: this.selectedSubjectIds(),
+      gradeIds: this.selectedGradeIds(),
+      statuses: this.isStudent ? this.selectedStatuses() : undefined,
+      minDurationSeconds: duration?.min,
+      maxDurationSeconds: duration?.max,
+      minQuestionCount: question?.min,
+      maxQuestionCount: question?.max,
+      isPracticeTest: this.practiceOnly() ? true : undefined,
+      sortBy: this.sortBy(),
+      sortDir: this.sortBy() === 'alphabetical' ? 'asc' : undefined,
+      pageNumber: this.pageNumber(),
+      pageSize: this.pageSize(),
+    };
+  }
+
+  fetch(): void {
+    if (this.tab() !== 'discover') {
+      return;
+    }
+    this.fetchTrigger.next();
+  }
+
+  /** Aktif sekmenin veri kaynağını yeniden yükler (error dalındaki "Tekrar dene"). */
+  retry(): void {
+    switch (this.tab()) {
+      case 'discover':
+        this.fetch();
+        break;
+      case 'assigned':
+        this.loadAssignments();
+        break;
+      default:
+        this.loadStatusBuckets();
+        break;
     }
   }
 
-  prevPage() {
-    console.log('Prev page');
-    if (this.pageNumber > 1) {
-      this.pageNumber--;
-      this.updatePagedWorksheets(this.pageNumber);
-    }
-  }
-
-  private updatePagedWorksheets(page: number): void {
-    // Arama/filtre yapıldığı an section modundan çıkılır.
-    this.currentSection.set('search');
+  private loadAssignments(): void {
+    this.assignmentsLoading.set(true);
+    this.assignmentsError.set(null);
     this.testService
-      .search(this.searchControl.value || '', this.selectedSubjectIds, this.selectedGradeIds, page, this.pageSize)
-      .subscribe((results) => {
-        this.pagedWorksheetsSignal.set(results);
+      .getActiveAssignments()
+      .pipe(
+        finalize(() => this.assignmentsLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (items) => this.assignments.set(items ?? []),
+        error: () => this.assignmentsError.set('Atanmış testler yüklenirken bir sorun oluştu.'),
       });
   }
 
-  private updateNewestWorksheets(): void {
-    this.testService.getLatest(1).subscribe((latestTests) => {
-      this.newestWorksheetsSignal.set(latestTests);
+  /** Öğrenci durum sekmeleri (Devam Edenler / Tamamlananlar) + devam şeridi için ayrı fetch. */
+  private loadStatusBuckets(): void {
+    this.bucketsLoading.set(true);
+    this.bucketsError.set(null);
+    forkJoin({
+      inProgress: this.testService
+        .listWorksheets({ statuses: [0], pageSize: 50, sortBy: 'recent' })
+        .pipe(catchError(() => of(null))),
+      completed: this.testService
+        .listWorksheets({ statuses: [1], pageSize: 50, sortBy: 'recent' })
+        .pipe(catchError(() => of(null))),
+    })
+      .pipe(
+        finalize(() => this.bucketsLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(({ inProgress, completed }) => {
+        if (inProgress) {
+          this.inProgressTests.set(inProgress.items ?? []);
+        }
+        if (completed) {
+          this.completedTests.set(completed.items ?? []);
+        }
+        if (!inProgress && !completed) {
+          this.bucketsError.set('Testler yüklenirken bir sorun oluştu.');
+        }
+      });
+  }
+
+  // ---------- shell interactions ----------
+
+  setViewMode(mode: 'grid' | 'list'): void {
+    if (this.viewMode() === mode) {
+      return;
+    }
+    this.viewMode.set(mode);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  setTab(tab: WorksheetListTab): void {
+    if (this.tab() === tab) {
+      return;
+    }
+    this.tab.set(tab);
+    this.pageNumber.set(1);
+    this.selectedIds.set(new Set());
+    if (tab === 'discover') {
+      this.fetch();
+    } else if (this.isStudent) {
+      this.loadStatusBuckets();
+    }
+  }
+
+  setSort(sort: WorksheetSortBy): void {
+    if (this.sortBy() === sort) {
+      return;
+    }
+    this.sortBy.set(sort);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  currentSortLabel(): string {
+    return this.sortOptions.find((o) => o.value === this.sortBy())?.label ?? 'Sırala';
+  }
+
+  changePage(page: number): void {
+    this.pageNumber.set(page);
+    this.fetch();
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  toggleMobileFilters(): void {
+    this.showMobileFilters.update((v) => !v);
+  }
+
+  // ---------- filters ----------
+
+  private toggleInArray<T>(sig: { (): T[]; set(v: T[]): void }, value: T): void {
+    const current = sig();
+    sig.set(current.includes(value) ? current.filter((v) => v !== value) : [...current, value]);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  toggleSubject(id: number): void {
+    this.toggleInArray(this.selectedSubjectIds, id);
+  }
+
+  toggleGrade(id: number): void {
+    this.toggleInArray(this.selectedGradeIds, id);
+  }
+
+  toggleStatus(status: WorksheetStatus): void {
+    this.toggleInArray(this.selectedStatuses, status);
+  }
+
+  setDurationBucket(bucket: DurationBucket): void {
+    this.durationBucket.set(this.durationBucket() === bucket ? null : bucket);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  setQuestionBucket(bucket: QuestionBucket): void {
+    this.questionBucket.set(this.questionBucket() === bucket ? null : bucket);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  togglePracticeOnly(): void {
+    this.practiceOnly.update((v) => !v);
+    this.pageNumber.set(1);
+    this.fetch();
+  }
+
+  clearFilters(): void {
+    this.resetFilterSignals();
+    this.fetch();
+  }
+
+  /** Boş-durum "Filtreleri temizle": filtre + arama tek fetch ile sıfırlanır. */
+  resetAll(): void {
+    this.resetFilterSignals();
+    if (this.search()) {
+      // navigation → queryParams aboneliği tek fetch tetikler
+      this.clearSearch();
+    } else {
+      this.fetch();
+    }
+  }
+
+  private resetFilterSignals(): void {
+    this.selectedSubjectIds.set([]);
+    this.selectedGradeIds.set([]);
+    this.selectedStatuses.set([]);
+    this.durationBucket.set(null);
+    this.questionBucket.set(null);
+    this.practiceOnly.set(false);
+    this.pageNumber.set(1);
+  }
+
+  clearSearch(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { search: null, section: null },
+      queryParamsHandling: 'merge',
     });
   }
 
-  onAutocompleteSelect(worksheetName: string) {
-    this.searchControl.setValue(worksheetName, { emitEvent: false });
-    this.onEnter();
+  isSubjectSelected(id: number): boolean {
+    return this.selectedSubjectIds().includes(id);
   }
 
-  onCheckboxChange(event: { checked: boolean; value: any }) {
-    const subjectId = event.value.id;
-    if (event.checked) {
-      if (!this.selectedSubjectIds.includes(subjectId)) {
-        this.selectedSubjectIds.push(subjectId);
-      }
-    } else {
-      const index = this.selectedSubjectIds.indexOf(subjectId);
-      if (index > -1) {
-        this.selectedSubjectIds.splice(index, 1);
-      }
-    }
-
-    this.pageNumber = 1;
-    this.updatePagedWorksheets(this.pageNumber);
-    console.log('Checkbox State:', event.checked, 'Value:', event.value);
+  isGradeSelected(id: number): boolean {
+    return this.selectedGradeIds().includes(id);
   }
 
-  onGradeCheckboxChange(event: { checked: boolean; value: any }) {
-    if (event.checked) {
-      if (!this.selectedGradeIds.includes(event.value.id)) {
-        this.selectedGradeIds = [...this.selectedGradeIds, event.value.id];
-      }
-    } else {
-      this.selectedGradeIds = this.selectedGradeIds.filter((id) => id !== event.value.id);
-    }
-    this.pageNumber = 1;
-    this.updatePagedWorksheets(this.pageNumber);
-    console.log('Grade Checkbox State:', event.checked, 'Value:', event.value);
+  isStatusSelected(status: WorksheetStatus): boolean {
+    return this.selectedStatuses().includes(status);
   }
 
-  handleLeftNavigation() {
-    if (this.cardContainer) {
-      const container = this.cardContainer.nativeElement;
-      if (container.scrollLeft > 0) {
-        container.scrollBy({ left: -this.scrollDistance, behavior: 'smooth' });
-      } else if (this.pageNumber > 1) {
-        // this.prevPage();
-      }
-    }
+  statusLabel(status: WorksheetStatus): string {
+    return status === -1 ? 'Başlanmadı' : status === 0 ? 'Devam ediyor' : 'Tamamlandı';
   }
 
-  handleRightNavigation() {
-    if (this.cardContainer) {
-      const container = this.cardContainer.nativeElement;
-      if (container.scrollLeft + container.clientWidth < container.scrollWidth) {
-        container.scrollBy({ left: this.scrollDistance, behavior: 'smooth' });
-      } else if (this.pageNumber * this.pageSize < this.pagedWorksheetsSignal().totalCount) {
-        // this.nextPage();
-      }
-    }
+  subjectName(id?: number): string {
+    return id != null ? this.subjectMap().get(id) ?? '' : '';
   }
 
-  searchQuery = 'dotnet';
-  totalResults = 288;
-  sortOptions = ['Newest', 'Relevance', 'Popularity'];
-  selectedSort = 'Relevance';
+  gradeName(id?: number): string {
+    return id != null ? this.gradeMap().get(id) ?? '' : '';
+  }
 
-  onDeleteWorksheet(worksheetId: number) {
-    console.log('Deleting worksheet:', worksheetId);
+  durationBucketLabel(bucket: DurationBucket): string {
+    return DURATION_BUCKET_RANGES[bucket].label;
+  }
 
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      width: '500px',
+  questionBucketLabel(bucket: QuestionBucket): string {
+    return QUESTION_BUCKET_RANGES[bucket].label;
+  }
+
+  // ---------- teacher / bulk actions ----------
+
+  assignmentFor(worksheetId: number | null): AssignedWorksheet | null {
+    return worksheetId != null ? this.assignmentByWorksheetId().get(worksheetId) ?? null : null;
+  }
+
+  onAssign(): void {
+    this.snackBar.open('Atama ekranı yakında kullanıma açılacak.', 'Tamam', { duration: 3000 });
+  }
+
+  onImportExcel(): void {
+    this.snackBar.open('Excel içe aktarma yakında kullanıma açılacak.', 'Tamam', { duration: 3000 });
+  }
+
+  onCreate(): void {
+    this.router.navigate(['/exam']);
+  }
+
+  onDeleteWorksheet(id: number): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '480px',
       maxWidth: '90vw',
-      disableClose: false,
-      hasBackdrop: true,
-      backdropClass: 'custom-backdrop',
-      panelClass: 'custom-dialog-container',
-      enterAnimationDuration: '300ms',
-      exitAnimationDuration: '200ms',
       data: {
         title: 'Testi Sil',
-        message: 'Bu testi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm veriler kaybolacaktır.',
+        message: 'Bu testi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
         confirmText: 'Evet, Sil',
         cancelText: 'İptal',
         icon: 'delete_forever',
         confirmColor: 'warn',
       },
     });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        this.performDelete(worksheetId);
+    ref.afterClosed().subscribe((ok) => {
+      if (ok) {
+        this.performDelete([id]);
       }
     });
   }
 
-  private performDelete(worksheetId: number): void {
-    // Loading state'i başlat
-    this.deletingWorksheetId.set(worksheetId);
+  toggleRowSelection(id: number): void {
+    const next = new Set(this.selectedIds());
+    next.has(id) ? next.delete(id) : next.add(id);
+    this.selectedIds.set(next);
+  }
 
-    this.testService
-      .delete(worksheetId)
+  isRowSelected(id: number): boolean {
+    return this.selectedIds().has(id);
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+  }
+
+  bulkDelete(): void {
+    const ids = [...this.selectedIds()];
+    if (ids.length === 0) {
+      return;
+    }
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '480px',
+      maxWidth: '90vw',
+      data: {
+        title: `${ids.length} test silinsin mi?`,
+        message: 'Seçili testlerin tümü kalıcı olarak silinecek. Bu işlem geri alınamaz.',
+        confirmText: 'Evet, Sil',
+        cancelText: 'İptal',
+        icon: 'delete_forever',
+        confirmColor: 'warn',
+      },
+    });
+    ref.afterClosed().subscribe((ok) => {
+      if (ok) {
+        this.performDelete(ids);
+      }
+    });
+  }
+
+  private performDelete(ids: number[]): void {
+    this.discoverLoading.set(true);
+    from(ids)
       .pipe(
-        finalize(() => {
-          // Loading state'i kapat
-          this.deletingWorksheetId.set(null);
-        })
+        mergeMap(
+          (id) =>
+            this.testService.delete(id).pipe(
+              map(() => true),
+              catchError(() => of(false))
+            ),
+          4
+        ),
+        reduce((acc, ok) => (ok ? { ...acc, ok: acc.ok + 1 } : { ...acc, fail: acc.fail + 1 }), { ok: 0, fail: 0 }),
+        finalize(() => this.discoverLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe({
-        next: (response) => {
-          console.log('Test başarıyla silindi:', response);
-
-          // Başarı mesajı göster
-          this.showSuccessMessage('✅ Test başarıyla silindi!');
-
-          // Listeyi güncelle
-          this.updatePagedWorksheets(this.pageNumber);
-
-          // En yeni testleri de güncelle
-          this.updateNewestWorksheets();
-
-          // Eğer bu sayfada başka test kalmadıysa ve ilk sayfa değilse, önceki sayfaya git
-          const currentItems = this.pagedWorksheetsSignal().items;
-          if (currentItems.length === 1 && this.pageNumber > 1) {
-            this.pageNumber--;
-            this.updatePagedWorksheets(this.pageNumber);
-          }
-        },
-        error: (error) => {
-          console.error('Test silinirken hata oluştu:', error);
-          this.showErrorMessage('❌ Test silinirken bir hata oluştu. Lütfen tekrar deneyin.');
-        },
+      .subscribe(({ ok, fail }) => {
+        const message = fail === 0 ? `${ok} test silindi.` : `${ok} test silindi, ${fail} tanesi başarısız.`;
+        this.snackBar.open(message, fail === 0 ? 'Tamam' : 'Kapat', { duration: 4000 });
+        this.clearSelection();
+        if (ok > 0 && this.paged().items.length === ok && this.pageNumber() > 1) {
+          this.pageNumber.update((p) => p - 1);
+        }
+        this.fetch();
       });
   }
 
-  private showSuccessMessage(message: string): void {
-    this.snackBar.open(message, 'Tamam', {
-      duration: 4000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['success-snackbar'],
-    });
+  // ---------- helpers ----------
+
+  trackTest = (_: number, test: Test): number => test.id ?? _;
+
+  goToWorksheet(worksheetId: number): void {
+    this.router.navigate(['/test', worksheetId]);
   }
 
-  private showErrorMessage(message: string): void {
-    this.snackBar.open(message, 'Kapat', {
-      duration: 6000,
-      horizontalPosition: 'end',
-      verticalPosition: 'top',
-      panelClass: ['error-snackbar'],
-    });
+  private mapAssignmentToTest(a: AssignedWorksheet): Test {
+    return {
+      id: a.worksheetId,
+      name: a.name,
+      description: a.description,
+      gradeId: a.gradeId,
+      maxDurationSeconds: a.maxDurationSeconds,
+      isPracticeTest: a.isPracticeTest,
+      imageUrl: a.imageUrl ?? undefined,
+      subtitle: a.subtitle ?? undefined,
+      badgeText: a.badgeText ?? undefined,
+      bookId: a.bookId ?? undefined,
+      bookTestId: a.bookTestId ?? undefined,
+      questionCount: a.questionCount,
+      subjectId: a.subjectId ?? undefined,
+      topicId: a.topicId ?? undefined,
+      subTopicId: a.subTopicId ?? undefined,
+      instanceCount: 0,
+    };
   }
 
-  toggleMobileFilters(): void {
-    this.showMobileFilters.set(!this.showMobileFilters());
-  }
-
-  clearFilters(): void {
-    this.selectedSubjectIds = [];
-    this.selectedGradeIds = [];
-    this.pageNumber = 1;
-    this.updatePagedWorksheets(this.pageNumber);
-
-    if (this.isMobileViewport()) {
-      this.showMobileFilters.set(false);
-    }
-  }
-
-  removeSubjectFilter(subjectId: number): void {
-    const index = this.selectedSubjectIds.indexOf(subjectId);
-    if (index === -1) {
-      return;
-    }
-
-    this.selectedSubjectIds.splice(index, 1);
-    this.pageNumber = 1;
-    this.updatePagedWorksheets(this.pageNumber);
-  }
-
-  removeGradeFilter(gradeId: number): void {
-    if (!this.selectedGradeIds.includes(gradeId)) {
-      return;
-    }
-
-    this.selectedGradeIds = this.selectedGradeIds.filter((id) => id !== gradeId);
-    this.pageNumber = 1;
-    this.updatePagedWorksheets(this.pageNumber);
-  }
-
-  isSubjectSelected(subjectId: number): boolean {
-    return this.selectedSubjectIds.includes(subjectId);
-  }
-
-  isGradeSelected(gradeId: number): boolean {
-    return this.selectedGradeIds.includes(gradeId);
-  }
-
-  getSubjectName(subjectId: number): string {
-    const subject = this.subjectsSignal()?.find((item) => item.id === subjectId);
-    return subject?.name ?? `Ders ${subjectId}`;
-  }
-
-  getGradeName(gradeId: number): string {
-    const grade = this.gradesSignal()?.find((item) => item.id === gradeId);
-    return grade?.name ?? `Sınıf ${gradeId}`;
-  }
-
-  private isMobileViewport(): boolean {
-    return typeof window !== 'undefined' && window.innerWidth <= this.mobileMaxWidth;
-  }
 }

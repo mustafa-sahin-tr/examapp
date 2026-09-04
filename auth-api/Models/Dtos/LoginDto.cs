@@ -31,6 +31,12 @@ public class CodeDto
     // public string? Department { get; set; } // opsiyonel
 }
 
+public class CompleteProfileDto
+{
+    [Required]
+    public string Role { get; set; } = string.Empty;
+}
+
 public class RealmAccess
 {
     public required List<string> roles {get;set;}

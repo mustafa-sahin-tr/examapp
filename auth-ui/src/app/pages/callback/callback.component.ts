@@ -93,12 +93,16 @@ export class CallbackComponent implements OnInit {
             this.updateStep(3);
             await this.delay(100);
 
-            // No app role yet (Student/Teacher/Parent) -> onboarding wizard.
-            // With an intent, jump straight to step 2 for that role; otherwise
-            // the wizard opens on step 1 (role picker). Existing users -> dashboard.
+            // No app role yet (Student/Teacher/Parent) -> profile completion screen.
+            // With an intent, pre-select that role; otherwise the picker opens
+            // with nothing selected. Existing users -> dashboard.
             const appRoles: string[] = res?.roles ?? [];
             const hasAppRole = ['Student', 'Teacher', 'Parent'].some((r) => appRoles.includes(r));
-            const dest = hasAppRole ? '/dashboard' : hasIntentRole ? `/register?role=${intent}` : '/register';
+            const dest = hasAppRole
+              ? '/dashboard'
+              : hasIntentRole
+              ? `/complete-profile?role=${intent}`
+              : '/complete-profile';
 
             window.location.href = (returnBase + dest) || '/login';
           },

@@ -74,6 +74,10 @@ export class AuthService {
     );
   }
 
+  completeProfile(role: string): Observable<UserProfile> {
+    return this.http.post<UserProfile>('/api/auth/complete-profile', { role });
+  }
+
   registerStudent(studentData: any): Observable<any> {
     return this.http.post('/api/exam/students/register-student', studentData);
   }
@@ -145,6 +149,38 @@ export class AuthService {
     } catch {
       return true;
     }
+  }
+
+  /**
+   * Persists a freshly refreshed access token the same way login()/exchangeCodeForToken()
+   * persist a brand-new session: updates auth_token, re-derives user_role (and the
+   * stored user, when present) from the new JWT's realm_access roles, and flips the
+   * authenticated subject. Use this after refreshToken() succeeds instead of writing
+   * to localStorage directly, so user_role never goes stale relative to the token.
+   */
+  applyRefreshedSession(token: string): void {
+    localStorage.setItem(this.tokenKey, token);
+
+    try {
+      const decoded: any = jwtDecode(token);
+      const roles: string[] = decoded?.realm_access?.roles ?? [];
+      const relevantRole = roles.find(
+        (role: string) => !!role && !role.startsWith('default-roles') && !role.includes('uma_')
+      );
+
+      if (relevantRole) {
+        localStorage.setItem(this.roleKey, relevantRole);
+
+        const existingUser = this.getUser();
+        if (existingUser) {
+          localStorage.setItem('user', JSON.stringify({ ...existingUser, role: relevantRole }));
+        }
+      }
+    } catch (error) {
+      console.error('Yenilenen token çözümlenemedi:', error);
+    }
+
+    this.isAuthenticatedSubject.next(true);
   }
 
   refreshToken(): Observable<string> {

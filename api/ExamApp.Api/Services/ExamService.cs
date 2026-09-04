@@ -66,6 +66,26 @@ public class ExamService : IExamService
         }
     }
 
+    /// <summary>
+    /// WorksheetDto'nun görünürlük + sahiplik alanlarını tek yerden doldurur; tüm liste/detay
+    /// projeksiyonları bunu çağırır ki endpoint'ler arası tutarlı olsun (issue #9).
+    /// </summary>
+    /// <param name="requesterUserId">İstek sahibinin user id'si; öğrenci akışında null.</param>
+    /// <param name="ownerName">Çözülmüş sahip/creator adı (yalnız admin veya tekil detay). Liste akışlarında null geçilir.</param>
+    private static void ApplyOwnershipAndVisibility(
+        WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null)
+    {
+        dto.TeacherSharing = w.TeacherSharing;
+        dto.StudentVisibility = w.StudentVisibility;
+
+        var isOwner = w.CreateUserId.HasValue && w.CreateUserId.Value > 0
+            && requesterUserId.HasValue && w.CreateUserId.Value == requesterUserId.Value;
+        dto.IsOwner = isOwner;
+        dto.OwnerName = (isAdmin || isOwner) ? ownerName : null;
+        // TODO(#11/#12/#13): CanAssign public/restricted dallarını da dikkate alacak.
+        dto.CanAssign = WorksheetAccess.CanModify(w.CreateUserId, requesterUserId ?? 0, isAdmin);
+    }
+
     private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
     {
         if (dto.minQuestionCount.HasValue)
@@ -168,13 +188,17 @@ public class ExamService : IExamService
             .Take(dto.pageSize)
             .ToListAsync();
 
+        // İsim çözümü yalnız admin için (öğretmen listesi zaten kendi kayıtları — auth-api'ye gitme).
         var creatorNames = isAdmin
             ? await ResolveCreatorNamesAsync(tests.Select(t => t.CreateUserId))
             : new Dictionary<int, string>();
 
         var worksheetDtos = tests.Select(t =>
         {
-            return new WorksheetDto
+            // Liste akışı: OwnerName yalnız admin için çözülür (creatorNames admin değilse boş).
+            string? ownerName = t.CreateUserId.HasValue
+                && creatorNames.TryGetValue(t.CreateUserId.Value, out var on) ? on : null;
+            var d = new WorksheetDto
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -198,6 +222,8 @@ public class ExamService : IExamService
                     ? name
                     : null
             };
+            ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName);
+            return d;
         }).ToList();
 
         return new Paged<WorksheetDto>
@@ -320,7 +346,7 @@ public class ExamService : IExamService
                 };
             }
 
-            return new WorksheetDto
+            var d = new WorksheetDto
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -340,6 +366,10 @@ public class ExamService : IExamService
                 Instance = instanceDto, // 💡 Eklenen alan
                 InstanceCount = worksheetStudentCounts.TryGetValue(t.Id, out var count) ? count : 0 // 💡 Yeni eklenen alan
             };
+            // Öğrenci akışı: sahiplik alanları anlamsız (requesterUserId=null, isAdmin=false)
+            // → IsOwner=false, OwnerName=null, CanAssign=false; TeacherSharing/StudentVisibility yine set edilir.
+            ApplyOwnershipAndVisibility(d, t, requesterUserId: null, isAdmin: false);
+            return d;
         }).ToList();
 
         return new Paged<WorksheetDto>
@@ -358,12 +388,18 @@ public class ExamService : IExamService
         if (ownerUserId.HasValue)
             query = query.Where(t => t.CreateUserId == ownerUserId.Value);
 
-        return await query
+        var worksheets = await query
             .OrderByDescending(t => t.CreateTime)
             .ThenByDescending(t => t.Id) // stable tiebreaker when CreateTime collides
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Select(t => new WorksheetDto
+            .Include(t => t.BookTest)
+            .Include(t => t.WorksheetQuestions)
+            .ToListAsync();
+
+        return worksheets.Select(t =>
+        {
+            var d = new WorksheetDto
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -376,10 +412,15 @@ public class ExamService : IExamService
                 ImageUrl = t.ImageUrl,
                 BadgeText = t.BadgeText,
                 BookTestId = t.BookTestId,
-                BookId = t.BookTest != null ? t.BookTest.BookId : null,
+                BookId = t.BookTest?.BookId,
                 QuestionCount = t.WorksheetQuestions.Count()
-            })
-            .ToListAsync();
+            };
+            // ownerUserId yalnız admin olmayan öğretmen için dolu → o durumda tüm satırlar sahibinin.
+            // Admin/öğrenci için ownerUserId null: IsOwner/CanAssign false (keşif listesi; /tests ile
+            // admin farkı kabul edilebilir). OwnerName liste akışında çözülmez.
+            ApplyOwnershipAndVisibility(d, t, requesterUserId: ownerUserId, isAdmin: false);
+            return d;
+        }).ToList();
     }
 
     public async Task<List<WorksheetDto>> GetPopularWorksheetsAsync(int? gradeId, int pageNumber, int pageSize, int sinceDays, int? ownerUserId = null)
@@ -423,24 +464,30 @@ public class ExamService : IExamService
             .ThenByDescending(w => popMap[w.Id].LastSolvedAt)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .Select(t => new WorksheetDto
+            .Select(t =>
             {
-                Id = t.Id,
-                Name = t.Name,
-                Description = t.Description,
-                GradeId = t.GradeId,
-                SubjectId = t.SubjectId,
-                TopicId = t.TopicId,
-                SubTopicId = t.SubTopicId,
-                MaxDurationSeconds = t.MaxDurationSeconds,
-                IsPracticeTest = t.IsPracticeTest,
-                Subtitle = t.Subtitle,
-                ImageUrl = t.ImageUrl,
-                BadgeText = t.BadgeText,
-                BookTestId = t.BookTestId,
-                BookId = t.BookTest != null ? t.BookTest.BookId : null,
-                QuestionCount = t.WorksheetQuestions.Count(),
-                InstanceCount = popMap[t.Id].UniqueStudents
+                var d = new WorksheetDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Description = t.Description,
+                    GradeId = t.GradeId,
+                    SubjectId = t.SubjectId,
+                    TopicId = t.TopicId,
+                    SubTopicId = t.SubTopicId,
+                    MaxDurationSeconds = t.MaxDurationSeconds,
+                    IsPracticeTest = t.IsPracticeTest,
+                    Subtitle = t.Subtitle,
+                    ImageUrl = t.ImageUrl,
+                    BadgeText = t.BadgeText,
+                    BookTestId = t.BookTestId,
+                    BookId = t.BookTest?.BookId,
+                    QuestionCount = t.WorksheetQuestions.Count(),
+                    InstanceCount = popMap[t.Id].UniqueStudents
+                };
+                // ownerUserId yalnız admin olmayan öğretmen için dolu (bkz. GetLatestWorksheetsAsync).
+                ApplyOwnershipAndVisibility(d, t, requesterUserId: ownerUserId, isAdmin: false);
+                return d;
             })
             .ToList();
     }
@@ -479,14 +526,19 @@ public class ExamService : IExamService
         if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin))
             return null;
 
+        var isOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0
+            && worksheet.CreateUserId.Value == userProfile.Id;
+
         string? createdByName = null;
-        if (isAdmin && worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0)
+        string? ownerName = null;
+        if ((isAdmin || isOwner) && worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0)
         {
             var names = await ResolveCreatorNamesAsync(new[] { worksheet.CreateUserId });
-            names.TryGetValue(worksheet.CreateUserId.Value, out createdByName);
+            names.TryGetValue(worksheet.CreateUserId.Value, out ownerName);
+            if (isAdmin) createdByName = ownerName;
         }
 
-        return new WorksheetDto
+        var result = new WorksheetDto
         {
             Id = worksheet.Id,
             Name = worksheet.Name,
@@ -506,6 +558,9 @@ public class ExamService : IExamService
             CreatedByUserId = (isAdmin || worksheet.CreateUserId == userProfile.Id) ? worksheet.CreateUserId : null,
             CreatedByName = createdByName
         };
+        // Tekil detay: OwnerName admin VEYA sahip için doldurulur.
+        ApplyOwnershipAndVisibility(result, worksheet, userProfile.Id, isAdmin, ownerName);
+        return result;
     }
 
     public async Task<List<WorksheetWithInstanceDto>> GetWorksheetAndInstancesAsync(StudentProfileDto student, int gradeId)
@@ -526,9 +581,9 @@ public class ExamService : IExamService
             .Where(i => worksheetIds.Contains(i.WorksheetId) && i.StudentId == student.Id)
             .ToListAsync();
 
-        var result = worksheets.Select(w => new WorksheetWithInstanceDto
+        var result = worksheets.Select(w =>
         {
-            Worksheet = new WorksheetDto
+            var wsDto = new WorksheetDto
             {
                 Id = w.Id,
                 Name = w.Name,
@@ -543,8 +598,14 @@ public class ExamService : IExamService
                 BookTestId = w.BookTestId,
                 BookId = w.BookTest?.BookId,
                 QuestionCount = w.WorksheetQuestions.Count
-            },
-            Instance = instances.FirstOrDefault(i => i.WorksheetId == w.Id)
+            };
+            // Öğrenci akışı: sahiplik alanları anlamsız → IsOwner=false, OwnerName=null, CanAssign=false.
+            ApplyOwnershipAndVisibility(wsDto, w, requesterUserId: null, isAdmin: false);
+            return new WorksheetWithInstanceDto
+            {
+                Worksheet = wsDto,
+                Instance = instances.FirstOrDefault(i => i.WorksheetId == w.Id)
+            };
         }).ToList();
 
         return result;

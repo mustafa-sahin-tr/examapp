@@ -43,4 +43,8 @@ public class Worksheet : BaseEntity
     [ForeignKey("BookTestId")]
     public BookTest? BookTest { get; set; }  // Navigation Property
 
+    // Görünürlük eksenleri (issue #9). Davranış değişmez; #11/#12/#13'te aktifleşir.
+    public WorksheetTeacherSharing TeacherSharing { get; set; } = WorksheetTeacherSharing.Private;
+    public WorksheetStudentVisibility StudentVisibility { get; set; } = WorksheetStudentVisibility.Normal;
+
 }

@@ -10,6 +10,8 @@ public class StudentProfileDto
     public string FullName { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
     public int? GradeId { get; set; }
+    public string? SchoolName { get; set; }
+    public int? SchoolId { get; set; }
     public int XP { get; set; }
     public int Level { get; set; } // 🟢 En son seviy
 
@@ -73,7 +75,8 @@ public class StudentDto
     public int? GradeId { get; set; }
     public int XP { get; set; }
     public int Level { get; set; } // 🟢 En son seviy
-    public string SchoolName { get; set; } = string.Empty;
+    public string? SchoolName { get; set; }
+    public int? SchoolId { get; set; }
     public string StudentNumber { get; set; } = string.Empty;
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
@@ -84,7 +87,8 @@ public class TeacherDto
     public int Id { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
-    public string SchoolName { get; set; } = string.Empty;
+    public string? SchoolName { get; set; }
+    public int? SchoolId { get; set; }
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
 }
@@ -94,7 +98,8 @@ public class StudentLookupDto
     public int Id { get; set; }
     public int UserId { get; set; }
     public string StudentNumber { get; set; } = string.Empty;
-    public string SchoolName { get; set; } = string.Empty;
+    public string? SchoolName { get; set; }
+    public int? SchoolId { get; set; }
     public int? GradeId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;

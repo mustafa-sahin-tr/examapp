@@ -6,10 +6,8 @@ public class RegisterStudentDto
     [MaxLength(50)]
     public string StudentNumber { get; set; }
 
-    [Required]
-    [MaxLength(100)]
-    public string SchoolName { get; set; }
+    public int? SchoolId { get; set; }
 
-    [Required] 
+    [Required]
     public int GradeId { get; set; }
 }

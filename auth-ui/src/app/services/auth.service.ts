@@ -8,6 +8,7 @@ import {
   RegisterProfileResponse,
   RegisterStudentPayload,
   RegisterTeacherPayload,
+  School,
 } from '../models/registration.model';
 
 export interface UserProfile {
@@ -91,6 +92,11 @@ export class AuthService {
   /** Grade lookup used by the student registration step. */
   getGrades(): Observable<Grade[]> {
     return this.http.get<Grade[]>('/api/exam/worksheet/grades');
+  }
+
+  /** School lookup used by the student/teacher registration steps — anonymous endpoint, callable pre-login. */
+  getSchools(): Observable<School[]> {
+    return this.http.get<School[]>('/api/school');
   }
 
   /** Assigns the Student realm role, creates the Student profile row, and refreshes the session cookie. */

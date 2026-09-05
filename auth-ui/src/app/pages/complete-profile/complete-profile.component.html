@@ -6,6 +6,7 @@
     </div>
 
     <div class="auth-form-col">
+      @if (step() === 1) {
       <div class="auth-form-header">
         <h3>Profilini Tamamla</h3>
         <p>Devam etmeden önce sana en uygun rolü seç.</p>
@@ -24,12 +25,95 @@
         </button>
         }
       </div>
+      }
+
+      @if (step() === 2 && selectedRole() === 'Student') {
+      <div class="auth-form-header">
+        <h3>Öğrenci Bilgilerin</h3>
+        <p>Devam etmek için okul bilgilerini gir.</p>
+      </div>
+
+      <form class="profile-form" [formGroup]="studentForm" (ngSubmit)="onSubmit()">
+        <div class="form-field">
+          <label for="studentNumber">Öğrenci Numarası</label>
+          <input id="studentNumber" type="text" formControlName="studentNumber" maxlength="50" />
+          @if (studentForm.get('studentNumber')?.invalid && studentForm.get('studentNumber')?.touched) {
+          <span class="field-error">Öğrenci numarası gerekli.</span>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="schoolName">Okul Adı</label>
+          <input id="schoolName" type="text" formControlName="schoolName" maxlength="100" />
+          @if (studentForm.get('schoolName')?.invalid && studentForm.get('schoolName')?.touched) {
+          <span class="field-error">Okul adı gerekli.</span>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="gradeId">Sınıf</label>
+          @if (gradesLoading()) {
+          <span class="field-hint">Sınıflar yükleniyor...</span>
+          } @else if (gradesError()) {
+          <span class="field-error">{{ gradesError() }}</span>
+          } @else if (grades().length === 0) {
+          <span class="field-hint">Sınıf listesi boş.</span>
+          } @else {
+          <select id="gradeId" formControlName="gradeId">
+            <option [ngValue]="null" disabled>Sınıf seç</option>
+            @for (grade of grades(); track grade.id) {
+            <option [ngValue]="grade.id">{{ grade.name }}</option>
+            }
+          </select>
+          }
+          @if (studentForm.get('gradeId')?.invalid && studentForm.get('gradeId')?.touched) {
+          <span class="field-error">Sınıf seçimi gerekli.</span>
+          }
+        </div>
+
+        <div class="auth-submit">
+          <button type="button" class="text-btn" [disabled]="isLoading()" (click)="back()">Geri</button>
+          <button type="submit" class="default-btn" [disabled]="isLoading()">
+            @if (isLoading()) { Kaydediliyor... } @else { Devam Et }
+          </button>
+        </div>
+      </form>
+      }
+
+      @if (step() === 2 && selectedRole() === 'Teacher') {
+      <div class="auth-form-header">
+        <h3>Öğretmen Bilgilerin</h3>
+        <p>Devam etmek için okul bilgini gir.</p>
+      </div>
+
+      <form class="profile-form" [formGroup]="teacherForm" (ngSubmit)="onSubmit()">
+        <div class="form-field">
+          <label for="teacherSchoolName">Okul Adı</label>
+          <input id="teacherSchoolName" type="text" formControlName="schoolName" maxlength="100" />
+          @if (teacherForm.get('schoolName')?.invalid && teacherForm.get('schoolName')?.touched) {
+          <span class="field-error">Okul adı gerekli.</span>
+          }
+        </div>
+
+        <div class="auth-submit">
+          <button type="button" class="text-btn" [disabled]="isLoading()" (click)="back()">Geri</button>
+          <button type="submit" class="default-btn" [disabled]="isLoading()">
+            @if (isLoading()) { Kaydediliyor... } @else { Devam Et }
+          </button>
+        </div>
+      </form>
+      }
+
+      @if (step() === 2 && selectedRole() === 'Parent') {
+      <div class="auth-form-header">
+        <h3>Son Adım</h3>
+        <p>Veli hesabını onaylayarak devam edebilirsin.</p>
+      </div>
 
       <div class="auth-submit">
-        <button type="button" class="default-btn" [disabled]="!selectedRole() || isLoading()" (click)="onSubmit()">
-          @if (isLoading()) {
-          Kaydediliyor...
-          } @else {
+        <button type="button" class="text-btn" [disabled]="isLoading()" (click)="back()">Geri</button>
+        <button type="button" class="default-btn" [disabled]="isLoading()" (click)="onSubmit()">
+          @if (isLoading()) { Kaydediliyor... } @else {
           Devam Et
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 18 14" fill="none">
             <path opacity="0.5" d="M16.25 6.75V7.25H1.25V6.75H16.25Z" fill="white" stroke="white" />
@@ -44,6 +128,8 @@
           }
         </button>
       </div>
+      }
+
     </div>
 
   </div>

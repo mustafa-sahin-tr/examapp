@@ -37,6 +37,12 @@ namespace ExamApp.Api.Controllers
 
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Teacher);
 
+            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
+            // (Role boş) haliyle Redis'e cache'lemiş olabilir. Cache'i güncel rolle tazele
+            // ki 1 saat boyunca diğer endpoint'ler eski/boş rolü görmesin.
+            user.Role = UserRole.Teacher.ToString();
+            await _userProfileCacheService.SetAsync(user.KeycloakId, user);
+
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
                 return Unauthorized("No refresh token provided.");

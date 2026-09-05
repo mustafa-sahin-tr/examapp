@@ -1178,8 +1178,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("ParentId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("SchoolName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -1209,6 +1211,8 @@ namespace ExamApp.Api.Migrations
                     b.HasIndex("GradeId");
 
                     b.HasIndex("ParentId");
+
+                    b.HasIndex("SchoolId");
 
                     b.ToTable("Students");
                 });
@@ -1555,8 +1559,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("SchoolName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -1577,6 +1583,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId");
 
                     b.ToTable("Teachers");
                 });
@@ -2670,7 +2678,13 @@ namespace ExamApp.Api.Migrations
                         .WithMany("Children")
                         .HasForeignKey("ParentId");
 
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId");
+
                     b.Navigation("Grade");
+
+                    b.Navigation("School");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.StudentBadge", b =>
@@ -2771,6 +2785,15 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("StudyPage");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId");
+
+                    b.Navigation("School");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>

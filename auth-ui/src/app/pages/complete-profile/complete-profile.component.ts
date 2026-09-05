@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
-import { Grade, RegisterProfileResponse } from '../../models/registration.model';
+import { Grade, RegisterProfileResponse, School } from '../../models/registration.model';
 
 type AppRole = 'Student' | 'Teacher' | 'Parent';
 
@@ -42,6 +42,10 @@ export class CompleteProfileComponent implements OnInit {
   readonly gradesLoading = signal(false);
   readonly gradesError = signal<string | null>(null);
 
+  readonly schools = signal<School[]>([]);
+  readonly schoolsLoading = signal(false);
+  readonly schoolsError = signal<string | null>(null);
+
   private readonly intentMap: Record<string, AppRole> = {
     student: 'Student',
     teacher: 'Teacher',
@@ -50,12 +54,12 @@ export class CompleteProfileComponent implements OnInit {
 
   readonly studentForm = this.fb.group({
     studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
-    schoolName: ['', [Validators.required, Validators.maxLength(100)]],
+    schoolId: [null as number | null],
     gradeId: [null as number | null, [Validators.required]],
   });
 
   readonly teacherForm = this.fb.group({
-    schoolName: ['', [Validators.required, Validators.maxLength(100)]],
+    schoolId: [null as number | null],
   });
 
   ngOnInit(): void {
@@ -73,6 +77,7 @@ export class CompleteProfileComponent implements OnInit {
 
     this.selectedRole.set(resolved);
     this.loadGrades();
+    this.loadSchools();
   }
 
   selectRole(role: AppRole): void {
@@ -94,6 +99,21 @@ export class CompleteProfileComponent implements OnInit {
       error: () => {
         this.gradesError.set('Sınıf listesi yüklenemedi.');
         this.gradesLoading.set(false);
+      },
+    });
+  }
+
+  private loadSchools(): void {
+    this.schoolsLoading.set(true);
+    this.schoolsError.set(null);
+    this.authService.getSchools().subscribe({
+      next: (schools) => {
+        this.schools.set(schools);
+        this.schoolsLoading.set(false);
+      },
+      error: () => {
+        this.schoolsError.set('Okul listesi yüklenemedi.');
+        this.schoolsLoading.set(false);
       },
     });
   }
@@ -145,16 +165,16 @@ export class CompleteProfileComponent implements OnInit {
 
   private buildRequest(role: AppRole) {
     if (role === 'Student') {
-      const { studentNumber, schoolName, gradeId } = this.studentForm.getRawValue();
+      const { studentNumber, schoolId, gradeId } = this.studentForm.getRawValue();
       return this.authService.registerStudentProfile({
         studentNumber: studentNumber ?? '',
-        schoolName: schoolName ?? '',
+        schoolId: schoolId ?? null,
         gradeId: gradeId as number,
       });
     }
     if (role === 'Teacher') {
-      const { schoolName } = this.teacherForm.getRawValue();
-      return this.authService.registerTeacherProfile({ schoolName: schoolName ?? '' });
+      const { schoolId } = this.teacherForm.getRawValue();
+      return this.authService.registerTeacherProfile({ schoolId: schoolId ?? null });
     }
     return this.authService.registerParentProfile();
   }

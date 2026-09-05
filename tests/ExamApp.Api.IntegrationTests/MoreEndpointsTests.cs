@@ -36,7 +36,7 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
     [Fact]
     public async Task Teacher_endpoints_reject_anonymous_callers()
     {
-        (await Anonymous().PostAsJsonAsync("/api/teacher/register", new RegisterTeacherDto { SchoolName = "x" }))
+        (await Anonymous().PostAsJsonAsync("/api/teacher/register", new RegisterTeacherDto { SchoolId = null }))
             .StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await Anonymous().GetAsync("/api/teacher/check-teacher"))
             .StatusCode.ShouldBe(HttpStatusCode.Unauthorized);

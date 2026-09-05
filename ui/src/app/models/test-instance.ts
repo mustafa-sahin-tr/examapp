@@ -99,6 +99,8 @@ export interface Test {
   ownerName?: string | null;
   /** İstek sahibi bu worksheet'i öğrenciye atayabilir mi. */
   canAssign?: boolean;
+  /** Öğrenci discover listesinde: true ise "Atanan sınavlar", false ise "Keşfet" grubunda gösterilir (issue #14). */
+  isAssigned?: boolean;
 }
 
 export interface InstanceSummary {

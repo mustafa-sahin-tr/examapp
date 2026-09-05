@@ -15,7 +15,7 @@ public class TestSessionServiceFlowTests : IDisposable
 
     private TestSessionService NewService(AppDbContext ctx) => new(ctx);
 
-    private sealed record World(int StudentId, int StudentUserId, int WorksheetId, int Q1, int Q2, int CorrectA1, int WrongA1);
+    private sealed record World(int StudentId, int StudentUserId, int WorksheetId, int Q1, int Q2, int CorrectA1, int WrongA1, int GradeId);
 
     /// <summary>Student + a 2-question worksheet. Q1 has answers (A1 correct), Q2 has none.</summary>
     private async Task<World> SeedAsync()
@@ -43,10 +43,12 @@ public class TestSessionServiceFlowTests : IDisposable
             new WorksheetQuestion { TestId = worksheet.Id, QuestionId = q2.Id, Order = 2 });
         await ctx.SaveChangesAsync();
 
-        return new World(student.Id, student.UserId, worksheet.Id, q1.Id, q2.Id, a1.Id, a2.Id);
+        return new World(student.Id, student.UserId, worksheet.Id, q1.Id, q2.Id, a1.Id, a2.Id, grade.Id);
     }
 
-    private static StudentProfileDto Student(World w) => new() { Id = w.StudentId };
+    // issue #14: StartTestAsync artık öğrencinin sınıfını da kontrol ediyor — fixture, seed'de
+    // öğrenciye atanan gerçek sınıfı taşımalı (aksi halde her zaman grade-mismatch sayılır).
+    private static StudentProfileDto Student(World w) => new() { Id = w.StudentId, GradeId = w.GradeId };
 
     // ---- StartTestAsync ----
 

@@ -390,6 +390,10 @@ public class ExamController : BaseController
 
             return Ok(result);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(ex.Message);

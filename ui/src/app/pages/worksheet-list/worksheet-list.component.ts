@@ -202,6 +202,15 @@ export class WorksheetListComponent implements OnInit {
     return map;
   });
 
+  /**
+   * "discover" sekmesi tek bir sayfalı listeden gelir (issue #14); arama zaten backend'e gönderildiği
+   * için (`buildFilter().search`) burada yalnızca `isAssigned` alanına göre "Atanan sınavlar" / "Keşfet"
+   * olmak üzere iki gruba ayrılır.
+   */
+  readonly discoverAssignedTests = computed<Test[]>(() => this.paged().items.filter((t) => t.isAssigned === true));
+
+  readonly discoverExploreTests = computed<Test[]>(() => this.paged().items.filter((t) => t.isAssigned !== true));
+
   /** Aktif segment sekmesine göre gösterilecek test listesi. */
   readonly visibleTests = computed<Test[]>(() => {
     const tab = this.tab();

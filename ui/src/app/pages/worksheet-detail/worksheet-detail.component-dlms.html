@@ -436,7 +436,7 @@
                   <div class="panel-state">
                     <mat-icon>playlist_add</mat-icon>
                     <span>Henüz atama yok. Bu sınavı sınıfına veya öğrencilerine ata.</span>
-                    @if (canEditWorksheet()) {
+                    @if (canAssignWorksheet()) {
                       <div class="a-btns">
                         <button class="btn btn-primary btn-sm" (click)="openAssignmentDialog('grade')">
                           <mat-icon>groups</mat-icon>Sınıfa Ata
@@ -515,7 +515,7 @@
           <div class="stack">
             <div class="card" *appIsTeacher>
               <h3><span class="dot"></span>Atama</h3>
-              @if (canEditWorksheet()) {
+              @if (canAssignWorksheet()) {
                 <div class="a-btns">
                   <button class="btn btn-primary btn-sm full" (click)="openAssignmentDialog('grade')">
                     <mat-icon>groups</mat-icon>Sınıfa Ata

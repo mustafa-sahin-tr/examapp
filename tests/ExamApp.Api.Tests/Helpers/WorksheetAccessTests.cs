@@ -122,4 +122,23 @@ public class WorksheetAccessTests
         ws.TeacherSharing.ShouldBe(WorksheetTeacherSharing.Private);
         ws.StudentVisibility.ShouldBe(WorksheetStudentVisibility.Normal);
     }
+
+    // ---- issue #14: CanStudentStartTest access matrix ----
+    // (hasActiveAssignment) x (isGradeMatch) x (StudentVisibility) -> expected
+
+    [Theory]
+    [InlineData(true, true, WorksheetStudentVisibility.Normal, true)]
+    [InlineData(true, true, WorksheetStudentVisibility.Restricted, true)]
+    [InlineData(true, false, WorksheetStudentVisibility.Normal, true)]
+    [InlineData(true, false, WorksheetStudentVisibility.Restricted, true)]
+    [InlineData(false, true, WorksheetStudentVisibility.Normal, true)]
+    [InlineData(false, true, WorksheetStudentVisibility.Restricted, false)]
+    [InlineData(false, false, WorksheetStudentVisibility.Normal, false)]
+    [InlineData(false, false, WorksheetStudentVisibility.Restricted, false)]
+    public void CanStudentStartTest_AccessMatrix_ReturnsExpected(
+        bool hasActiveAssignment, bool isGradeMatch, WorksheetStudentVisibility studentVisibility, bool expected)
+    {
+        WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, studentVisibility)
+            .ShouldBe(expected);
+    }
 }

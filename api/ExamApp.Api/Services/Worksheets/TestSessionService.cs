@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Foundation.Contracts;
@@ -78,6 +79,28 @@ public class TestSessionService : ITestSessionService
 
     public async Task<TestStartResultDto> StartTestAsync(int testId, StudentProfileDto student)
     {
+        var worksheet = await _context.Worksheets
+            .Where(w => w.Id == testId)
+            .Select(w => new { w.Id, w.GradeId, w.StudentVisibility })
+            .FirstOrDefaultAsync();
+
+        if (worksheet == null)
+        {
+            return null!;
+        }
+
+        var now = DateTime.UtcNow;
+
+        var hasActiveAssignment = await _context.ActiveAssignmentsFor(student.Id, student.GradeId, now)
+            .AnyAsync(a => a.WorksheetId == testId);
+
+        var isGradeMatch = student.GradeId.HasValue && worksheet.GradeId == student.GradeId.Value;
+
+        if (!WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, worksheet.StudentVisibility))
+        {
+            throw new UnauthorizedAccessException("Bu sınava erişim izniniz yok.");
+        }
+
         var existing = await _context.TestInstances
             .FirstOrDefaultAsync(ti => ti.StudentId == student.Id && ti.WorksheetId == testId
                 && ti.EndTime == null);

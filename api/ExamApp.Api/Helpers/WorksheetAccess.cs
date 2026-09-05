@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Helpers;
@@ -35,5 +37,37 @@ public static class WorksheetAccess
         return hasOwner &&
             (sharing == WorksheetTeacherSharing.PublicView
                 || sharing == WorksheetTeacherSharing.PublicAssignable);
+    }
+
+    /// <summary>
+    /// Öğrenci bir testi başlatabilir mi (issue #14). Öğretmen sahiplik/paylaşım ekseniyle
+    /// (<see cref="CanView"/>, <see cref="CanModify"/>) ilgisi yok — tamamen ayrı bir kural:
+    /// ya öğrenciye/sınıfına aktif bir atama olmalı, ya da sınav "keşfedilebilir" olmalı
+    /// (grade uyumlu + StudentVisibility=Normal). TeacherSharing bu kararı etkilemez.
+    /// </summary>
+    public static bool CanStudentStartTest(bool hasActiveAssignment, bool isGradeMatch,
+        WorksheetStudentVisibility studentVisibility)
+    {
+        if (hasActiveAssignment)
+            return true;
+
+        return isGradeMatch && studentVisibility == WorksheetStudentVisibility.Normal;
+    }
+
+    /// <summary>
+    /// Bir öğrenciye/sınıfına şu an aktif olan (StartAt/EndAt penceresi içindeki) atamalar.
+    /// "Aktif atama" tanımı tek yerde tutulur — <see cref="CanStudentStartTest"/> ile kullanılan
+    /// öğrencinin test başlatabilme koşulu, görünürlük filtresi (issue #14) ve "IsAssigned"
+    /// hesaplaması hepsi buradan beslenir; tanım sadece burada değişir.
+    /// IQueryable döner ki EF Core SQL'e çevirebilsin — bool döndüren
+    /// <see cref="CanStudentStartTest"/> ile karıştırma, o bellek-içi bir karardır.
+    /// </summary>
+    public static IQueryable<WorksheetAssignment> ActiveAssignmentsFor(
+        this AppDbContext context, int studentId, int? gradeId, DateTime now)
+    {
+        return context.WorksheetAssignments.Where(a =>
+            (a.StudentId == studentId
+                || (a.StudentId == null && a.GradeId != null && a.GradeId == gradeId))
+            && a.StartAt <= now && (a.EndAt == null || a.EndAt > now));
     }
 }

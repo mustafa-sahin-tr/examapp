@@ -514,6 +514,29 @@
   }
 }
 
+/* ---------- discover sections (issue #14: "Atanan sınavlar" + "Keşfet") ---------- */
+.wl__section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  & + .wl__section {
+    margin-top: 8px;
+  }
+}
+
+.wl__section-title {
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ms-text-strong);
+}
+
+.wl__empty--section {
+  padding: 28px 20px;
+}
+
 /* ---------- grid / list ---------- */
 .wl__grid {
   display: grid;
@@ -672,5 +695,14 @@
 
   .wl__listhead {
     display: none;
+  }
+
+  /* Keşfet sekmesi bölüm başlıkları (Atanan sınavlar / Keşfet) mobilde scroll sırasında sabit kalır. */
+  .wl__section-title {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 8px 0;
+    background: var(--main-bg-color);
   }
 }

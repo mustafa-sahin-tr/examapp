@@ -61,6 +61,7 @@ namespace ExamApp.Api.Controllers
                         Id = student.Id,
                         GradeId = student.GradeId,
                         SchoolName = student.SchoolName,
+                        SchoolId = student.SchoolId,
                         AvatarUrl = profile.Avatar,
                         FullName = profile.FullName,
                         ThemePreset = student.ThemePreset,
@@ -80,6 +81,7 @@ namespace ExamApp.Api.Controllers
                         AvatarUrl = profile.Avatar,
                         FullName = profile.FullName,
                         SchoolName = teacher.SchoolName,
+                        SchoolId = teacher.SchoolId,
                         ThemePreset = teacher.ThemePreset,
                         ThemeCustomConfig = teacher.ThemeCustomConfig
                     };

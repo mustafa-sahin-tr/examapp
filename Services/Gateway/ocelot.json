@@ -39,6 +39,21 @@
       "UpstreamPathTemplate": "/api/auth/{everything}"
     },
     {
+      "DownstreamPathTemplate": "/api/school",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "exam-dotnet-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/school",
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
+      "Priority": 1
+    },
+    {
       "DownstreamPathTemplate": "/api/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

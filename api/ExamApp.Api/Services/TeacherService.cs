@@ -24,10 +24,20 @@ public class TeacherService : ITeacherService
 
     public async Task<ResponseBaseDto> Save(int userId, RegisterTeacherDto dto)
     {
+        if (dto.SchoolId.HasValue &&
+            !await _context.Schools.AnyAsync(s => s.Id == dto.SchoolId.Value))
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = "Seçilen okul bulunamadı."
+            };
+        }
+
         var existingTeacher = await _context.Teachers.FirstOrDefaultAsync(s => s.UserId == userId);
         if (existingTeacher != null)
         {
-            existingTeacher.SchoolName = dto.SchoolName;
+            existingTeacher.SchoolId = dto.SchoolId;
             await _context.SaveChangesAsync();
             return new ResponseBaseDto
             {
@@ -41,7 +51,7 @@ public class TeacherService : ITeacherService
         var teacher = new Teacher
         {
             UserId = userId,
-            SchoolName = dto.SchoolName
+            SchoolId = dto.SchoolId
         };
 
         _context.Teachers.Add(teacher);

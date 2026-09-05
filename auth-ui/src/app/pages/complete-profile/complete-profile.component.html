@@ -43,10 +43,20 @@
         </div>
 
         <div class="form-field">
-          <label for="schoolName">Okul Adı</label>
-          <input id="schoolName" type="text" formControlName="schoolName" maxlength="100" />
-          @if (studentForm.get('schoolName')?.invalid && studentForm.get('schoolName')?.touched) {
-          <span class="field-error">Okul adı gerekli.</span>
+          <label for="schoolId">Okul</label>
+          @if (schoolsLoading()) {
+          <span class="field-hint">Okullar yükleniyor...</span>
+          } @else if (schoolsError()) {
+          <span class="field-error">{{ schoolsError() }}</span>
+          } @else if (schools().length === 0) {
+          <span class="field-hint">Okul listesi boş.</span>
+          } @else {
+          <select id="schoolId" formControlName="schoolId">
+            <option [ngValue]="null">Okul seç (opsiyonel)</option>
+            @for (school of schools(); track school.id) {
+            <option [ngValue]="school.id">{{ school.name }}</option>
+            }
+          </select>
           }
         </div>
 
@@ -88,10 +98,20 @@
 
       <form class="profile-form" [formGroup]="teacherForm" (ngSubmit)="onSubmit()">
         <div class="form-field">
-          <label for="teacherSchoolName">Okul Adı</label>
-          <input id="teacherSchoolName" type="text" formControlName="schoolName" maxlength="100" />
-          @if (teacherForm.get('schoolName')?.invalid && teacherForm.get('schoolName')?.touched) {
-          <span class="field-error">Okul adı gerekli.</span>
+          <label for="teacherSchoolId">Okul</label>
+          @if (schoolsLoading()) {
+          <span class="field-hint">Okullar yükleniyor...</span>
+          } @else if (schoolsError()) {
+          <span class="field-error">{{ schoolsError() }}</span>
+          } @else if (schools().length === 0) {
+          <span class="field-hint">Okul listesi boş.</span>
+          } @else {
+          <select id="teacherSchoolId" formControlName="schoolId">
+            <option [ngValue]="null">Okul seç (opsiyonel)</option>
+            @for (school of schools(); track school.id) {
+            <option [ngValue]="school.id">{{ school.name }}</option>
+            }
+          </select>
           }
         </div>
 

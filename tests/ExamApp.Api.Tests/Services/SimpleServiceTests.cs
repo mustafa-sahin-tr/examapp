@@ -15,26 +15,64 @@ public class SimpleServiceTests : IDisposable
 
     // ---------------- TeacherService ----------------
 
+    private async Task<int> SeedSchoolAsync(string name = "A Okulu")
+    {
+        await using var ctx = _db.NewContext();
+        var school = new School { Name = name };
+        ctx.Schools.Add(school);
+        await ctx.SaveChangesAsync();
+        return school.Id;
+    }
+
     [Fact]
     public async Task Teacher_Save_creates_then_updates_the_same_row()
     {
+        var schoolAId = await SeedSchoolAsync("A Okulu");
+        var schoolBId = await SeedSchoolAsync("B Okulu");
+
         await using (var ctx = _db.NewContext())
         {
-            var created = await new TeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolName = "A Okulu" });
+            var created = await new TeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolId = schoolAId });
             created.Success.ShouldBeTrue();
             created.Message.ShouldContain("kaydedildi");
         }
 
         await using (var ctx = _db.NewContext())
         {
-            var updated = await new TeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolName = "B Okulu" });
+            var updated = await new TeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolId = schoolBId });
             updated.Message.ShouldContain("güncellendi");
         }
 
         await using var check = _db.NewContext();
         var rows = check.Teachers.Where(t => t.UserId == 10).ToList();
         rows.Count.ShouldBe(1);
-        rows[0].SchoolName.ShouldBe("B Okulu");
+        rows[0].SchoolId.ShouldBe(schoolBId);
+    }
+
+    [Fact]
+    public async Task Teacher_Save_fails_when_the_given_school_id_does_not_exist()
+    {
+        await using var ctx = _db.NewContext();
+        var response = await new TeacherService(ctx).Save(userId: 11, new RegisterTeacherDto { SchoolId = 99999 });
+
+        response.Success.ShouldBeFalse();
+        response.Message.ShouldBe("Seçilen okul bulunamadı.");
+
+        await using var check = _db.NewContext();
+        check.Teachers.Any(t => t.UserId == 11).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Teacher_Save_succeeds_and_stores_null_when_school_id_is_not_provided()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var response = await new TeacherService(ctx).Save(userId: 12, new RegisterTeacherDto { SchoolId = null });
+            response.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        check.Teachers.Single(t => t.UserId == 12).SchoolId.ShouldBeNull();
     }
 
     [Fact]
@@ -105,16 +143,64 @@ public class SimpleServiceTests : IDisposable
             await ctx.SaveChangesAsync();
             gradeId = g.Id;
         }
+        var schoolId = await SeedSchoolAsync("Okul");
 
         await using (var ctx = _db.NewContext())
         {
             var r = await NewStudentService(ctx).Save(userId: 20,
-                new RegisterStudentDto { StudentNumber = "123", SchoolName = "Okul", GradeId = gradeId });
+                new RegisterStudentDto { StudentNumber = "123", SchoolId = schoolId, GradeId = gradeId });
             r.Success.ShouldBeTrue();
         }
 
         await using var check = _db.NewContext();
-        check.Students.Count(s => s.UserId == 20).ShouldBe(1);
+        var student = check.Students.Single(s => s.UserId == 20);
+        student.SchoolId.ShouldBe(schoolId);
+    }
+
+    [Fact]
+    public async Task Student_Save_fails_when_the_given_school_id_does_not_exist()
+    {
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var g = new Grade { Name = "6" };
+            ctx.Grades.Add(g);
+            await ctx.SaveChangesAsync();
+            gradeId = g.Id;
+        }
+
+        await using var ctx2 = _db.NewContext();
+        var response = await NewStudentService(ctx2).Save(userId: 21,
+            new RegisterStudentDto { StudentNumber = "n21", SchoolId = 99999, GradeId = gradeId });
+
+        response.Success.ShouldBeFalse();
+        response.Message.ShouldBe("Seçilen okul bulunamadı.");
+
+        await using var check = _db.NewContext();
+        check.Students.Any(s => s.UserId == 21).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Student_Save_succeeds_and_stores_null_when_school_id_is_not_provided()
+    {
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var g = new Grade { Name = "7" };
+            ctx.Grades.Add(g);
+            await ctx.SaveChangesAsync();
+            gradeId = g.Id;
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var response = await NewStudentService(ctx).Save(userId: 22,
+                new RegisterStudentDto { StudentNumber = "n22", SchoolId = null, GradeId = gradeId });
+            response.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        check.Students.Single(s => s.UserId == 22).SchoolId.ShouldBeNull();
     }
 
     [Fact]

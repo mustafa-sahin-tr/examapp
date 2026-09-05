@@ -33,6 +33,8 @@ public class StudentService : IStudentService
                 // FullName = s.User.FullName,
                 // AvatarUrl = s.User.AvatarUrl,
                 GradeId = s.GradeId,
+                SchoolName = s.SchoolName,
+                SchoolId = s.SchoolId,
                 XP = s.StudentPoints.Sum(sp => sp.XP),
                 Level = s.StudentPoints.OrderByDescending(sp => sp.LastUpdated).Select(sp => sp.Level).FirstOrDefault(), // 🟢 En son seviye
                 TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == s.Id),
@@ -70,11 +72,21 @@ public class StudentService : IStudentService
 
     public async Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto)
     {
+        if (dto.SchoolId.HasValue &&
+            !await _context.Schools.AnyAsync(s => s.Id == dto.SchoolId.Value))
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Message = "Seçilen okul bulunamadı."
+            };
+        }
+
         var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
         if (student != null)
         {
             student.StudentNumber = dto.StudentNumber;
-            student.SchoolName = dto.SchoolName;
+            student.SchoolId = dto.SchoolId;
             student.GradeId = dto.GradeId;
         }
         else
@@ -84,7 +96,7 @@ public class StudentService : IStudentService
             {
                 UserId = userId,
                 StudentNumber = dto.StudentNumber,
-                SchoolName = dto.SchoolName,
+                SchoolId = dto.SchoolId,
                 GradeId = dto.GradeId
             };
             _context.Students.Add(student);
@@ -146,6 +158,7 @@ public class StudentService : IStudentService
                 UserId = s.UserId,
                 StudentNumber = s.StudentNumber,
                 SchoolName = s.SchoolName,
+                SchoolId = s.SchoolId,
                 GradeId = s.GradeId
             })
             .OrderBy(s => s.StudentNumber)

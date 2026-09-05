@@ -16,8 +16,15 @@ public class Student : BaseEntity
     [Required, MaxLength(50)]
     public string StudentNumber { get; set; }
 
-    [Required, MaxLength(100)]
-    public string SchoolName { get; set; }
+    // 🟢 Geçiş dönemi: register akışı artık SchoolId kullanıyor, bu alan legacy veri için nullable.
+    [MaxLength(100)]
+    public string? SchoolName { get; set; }
+
+    // 🟢 Geçiş dönemi: SchoolId nullable, mevcut kayıtlar SchoolName ile kalmaya devam eder.
+    public int? SchoolId { get; set; }
+
+    [ForeignKey("SchoolId")]
+    public School? School { get; set; }
 
     public int? GradeId { get; set; } // 🟢 Grade artık opsiyonel (nullable)
 

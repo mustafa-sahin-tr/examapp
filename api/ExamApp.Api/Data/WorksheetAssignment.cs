@@ -25,6 +25,13 @@ public class WorksheetAssignment : BaseEntity
     [ForeignKey(nameof(GradeId))]
     public Grade? Grade { get; set; }
 
+    // 🟢 issue #12: sınıf hedefli atamalarda (özellikle non-owner PublicAssignable atamalarında)
+    // atamanın hangi okulla sınırlı olduğunu tutar. Null ise okul kısıtlaması yok (legacy/admin ataması).
+    public int? SchoolId { get; set; }
+
+    [ForeignKey(nameof(SchoolId))]
+    public School? School { get; set; }
+
     [Required]
     public DateTime StartAt { get; set; }
 

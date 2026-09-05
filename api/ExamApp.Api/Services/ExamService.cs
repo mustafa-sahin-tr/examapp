@@ -77,9 +77,16 @@ public class ExamService : IExamService
     /// eklendi: bir öğretmen başkasının PublicView/PublicAssignable worksheet'ini görüntülediğinde
     /// (CanView true ama IsOwner/isAdmin false) sahibinin adını yine de görmesi gerekiyor.
     /// </param>
+    /// <param name="isTeacher">
+    /// True ise (varsayılan) çağıran gerçek bir öğretmen/admin kimliğiyle geliyor demektir ve
+    /// CanAssign hesaplanabilir. Öğrenci akışlarında (requesterUserId genelde null geçilir) ve
+    /// sahiplik-scope dışı keşif listelerinde (latest/popular; ownerUserId admin/öğrenci için null)
+    /// false geçilmeli — aksi halde TeacherSharing=PublicAssignable olan bir worksheet, atama
+    /// yapamayacak bir çağıran için CanAssign=true sızdırır (issue #12 review bulgusu).
+    /// </param>
     private static void ApplyOwnershipAndVisibility(
         WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null,
-        bool populateOwnerName = false)
+        bool populateOwnerName = false, bool isTeacher = true)
     {
         dto.TeacherSharing = w.TeacherSharing;
         dto.StudentVisibility = w.StudentVisibility;
@@ -88,8 +95,9 @@ public class ExamService : IExamService
             && requesterUserId.HasValue && w.CreateUserId.Value == requesterUserId.Value;
         dto.IsOwner = isOwner;
         dto.OwnerName = (isAdmin || isOwner || populateOwnerName) ? ownerName : null;
-        // TODO(#12/#13): CanAssign public/restricted dallarını da dikkate alacak — şimdilik sahibi/admin dışında hep false.
-        dto.CanAssign = WorksheetAccess.CanModify(w.CreateUserId, requesterUserId ?? 0, isAdmin);
+        // TODO(#13): CanAssign StudentVisibility=Restricted dalını da dikkate alacak.
+        dto.CanAssign = isTeacher
+            && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing);
     }
 
     private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
@@ -413,8 +421,9 @@ public class ExamService : IExamService
                 IsAssigned = assignedWorksheetIds.Contains(t.Id)
             };
             // Öğrenci akışı: sahiplik alanları anlamsız (requesterUserId=null, isAdmin=false)
-            // → IsOwner=false, OwnerName=null, CanAssign=false; TeacherSharing/StudentVisibility yine set edilir.
-            ApplyOwnershipAndVisibility(d, t, requesterUserId: null, isAdmin: false);
+            // → IsOwner=false, OwnerName=null, CanAssign=false (isTeacher=false ile garanti edilir);
+            // TeacherSharing/StudentVisibility yine set edilir.
+            ApplyOwnershipAndVisibility(d, t, requesterUserId: null, isAdmin: false, isTeacher: false);
             return d;
         }).ToList();
 
@@ -461,10 +470,12 @@ public class ExamService : IExamService
                 BookId = t.BookTest?.BookId,
                 QuestionCount = t.WorksheetQuestions.Count()
             };
-            // ownerUserId yalnız admin olmayan öğretmen için dolu → o durumda tüm satırlar sahibinin.
-            // Admin/öğrenci için ownerUserId null: IsOwner/CanAssign false (keşif listesi; /tests ile
-            // admin farkı kabul edilebilir). OwnerName liste akışında çözülmez.
-            ApplyOwnershipAndVisibility(d, t, requesterUserId: ownerUserId, isAdmin: false);
+            // ownerUserId yalnız admin olmayan öğretmen için dolu → o durumda tüm satırlar sahibinin
+            // (bu durumda isOwner=true olduğundan CanAssign zaten CanModify yoluyla true olur).
+            // Admin/öğrenci için ownerUserId null: bu bir sahiplik-scope dışı keşif listesi;
+            // isTeacher=false ile CanAssign her koşulda false kalır (PublicAssignable sızıntısını önler).
+            // OwnerName liste akışında çözülmez.
+            ApplyOwnershipAndVisibility(d, t, requesterUserId: ownerUserId, isAdmin: false, isTeacher: ownerUserId.HasValue);
             return d;
         }).ToList();
     }
@@ -532,7 +543,7 @@ public class ExamService : IExamService
                     InstanceCount = popMap[t.Id].UniqueStudents
                 };
                 // ownerUserId yalnız admin olmayan öğretmen için dolu (bkz. GetLatestWorksheetsAsync).
-                ApplyOwnershipAndVisibility(d, t, requesterUserId: ownerUserId, isAdmin: false);
+                ApplyOwnershipAndVisibility(d, t, requesterUserId: ownerUserId, isAdmin: false, isTeacher: ownerUserId.HasValue);
                 return d;
             })
             .ToList();
@@ -650,8 +661,9 @@ public class ExamService : IExamService
                 BookId = w.BookTest?.BookId,
                 QuestionCount = w.WorksheetQuestions.Count
             };
-            // Öğrenci akışı: sahiplik alanları anlamsız → IsOwner=false, OwnerName=null, CanAssign=false.
-            ApplyOwnershipAndVisibility(wsDto, w, requesterUserId: null, isAdmin: false);
+            // Öğrenci akışı: sahiplik alanları anlamsız → IsOwner=false, OwnerName=null, CanAssign=false
+            // (isTeacher=false ile garanti edilir).
+            ApplyOwnershipAndVisibility(wsDto, w, requesterUserId: null, isAdmin: false, isTeacher: false);
             return new WorksheetWithInstanceDto
             {
                 Worksheet = wsDto,

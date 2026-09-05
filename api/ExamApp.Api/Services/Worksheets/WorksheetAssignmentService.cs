@@ -48,10 +48,43 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             return new ResponseBaseDto { Success = false, Message = "Worksheet bulunamadı." };
         }
 
-        // Öğretmen yalnızca kendi worksheet'ini atayabilir; admin hepsini.
-        if (!WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin))
+        // Görünürlük kapısı (issue #11/#12 review bulgusu): CanAssign'e göre farklılaştırılmış red
+        // mesajları, CanView'e göre zaten görünmez olan (ör. başkasının Private worksheet'i) bir
+        // kaydın varlığını/paylaşım durumunu sızdırmasın. CanView=false ise CanAssign'e hiç bakmadan
+        // aynı "bulunamadı" mesajıyla çık — ExamService/WorksheetDetailService ile aynı desen.
+        if (!WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
         {
-            return new ResponseBaseDto { Success = false, Message = "Bu testi atama yetkiniz yok." };
+            return new ResponseBaseDto { Success = false, Message = "Worksheet bulunamadı." };
+        }
+
+        // Öğretmen kendi worksheet'ini her zaman atayabilir; admin hepsini; ayrıca
+        // TeacherSharing=PublicAssignable ise sahibi olmayan öğretmenler de onaysız atayabilir (issue #12).
+        var isOwnerOrAdmin = WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin);
+        if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing))
+        {
+            var hasOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0;
+            var message = hasOwner
+                ? "Bu testi atamak için sahibinden atama izni istemeniz gerekir."
+                : "Bu testi atama yetkiniz yok.";
+            return new ResponseBaseDto { Success = false, Message = message };
+        }
+
+        // Non-owner atama (PublicAssignable) yalnızca atayan öğretmenin kendi okulundaki
+        // öğrenci/sınıfları hedefleyebilir. Sahip/admin atamalarında da grade hedefliyse
+        // atamayı öğretmenin okuluna daraltıyoruz (admin hariç, admin okula bağlı değil).
+        int? assignmentSchoolId = null;
+        if (!isOwnerOrAdmin || (!isAdmin && request.GradeId.HasValue))
+        {
+            var assigningTeacher = await _context.Teachers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.UserId == userId);
+
+            if (!isOwnerOrAdmin && (assigningTeacher == null || !assigningTeacher.SchoolId.HasValue))
+            {
+                return new ResponseBaseDto { Success = false, Message = "Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz." };
+            }
+
+            assignmentSchoolId = assigningTeacher?.SchoolId;
         }
 
         Student? student = null;
@@ -65,6 +98,14 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             {
                 return new ResponseBaseDto { Success = false, Message = "Öğrenci bulunamadı." };
             }
+
+            if (!isOwnerOrAdmin && student.SchoolId != assignmentSchoolId)
+            {
+                return new ResponseBaseDto { Success = false, Message = "Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz." };
+            }
+
+            // Öğrenci hedefli atamalarda SchoolId set edilmez — zaten öğrenciye özel.
+            assignmentSchoolId = null;
         }
 
         Grade? grade = null;
@@ -108,6 +149,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             WorksheetId = worksheet.Id,
             StudentId = student?.Id,
             GradeId = grade?.Id,
+            SchoolId = grade != null ? assignmentSchoolId : null,
             StartAt = startAtUtc,
             EndAt = endAtUtc
         };
@@ -139,7 +181,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         assignmentsQuery = assignmentsQuery.Where(wa =>
             (wa.StudentId.HasValue && wa.StudentId == student.Id) ||
-            (gradeId.HasValue && wa.GradeId.HasValue && wa.GradeId == gradeId));
+            (gradeId.HasValue && wa.GradeId.HasValue && wa.GradeId == gradeId
+                && (!wa.SchoolId.HasValue || wa.SchoolId == student.SchoolId)));
 
         var assignments = await assignmentsQuery
             .OrderBy(wa => wa.StartAt)
@@ -290,7 +333,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 ? studentsById.TryGetValue(assignment.StudentId.Value, out var singleStudent)
                     ? new List<Student> { singleStudent }
                     : new List<Student>()
-                : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value).ToList();
+                : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value
+                    && (!assignment.SchoolId.HasValue || s.SchoolId == assignment.SchoolId)).ToList();
 
             var studentDtos = new List<TeacherAssignmentStudentDto>();
 

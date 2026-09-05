@@ -3,6 +3,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
+import {
+  Grade,
+  RegisterProfileResponse,
+  RegisterStudentPayload,
+  RegisterTeacherPayload,
+} from '../models/registration.model';
 
 export interface UserProfile {
   email: string;
@@ -82,6 +88,26 @@ export class AuthService {
     return this.http.post('/api/exam/students/register-student', studentData);
   }
 
+  /** Grade lookup used by the student registration step. */
+  getGrades(): Observable<Grade[]> {
+    return this.http.get<Grade[]>('/api/exam/worksheet/grades');
+  }
+
+  /** Assigns the Student realm role, creates the Student profile row, and refreshes the session cookie. */
+  registerStudentProfile(payload: RegisterStudentPayload): Observable<RegisterProfileResponse> {
+    return this.http.post<RegisterProfileResponse>('/api/exam/student/register', payload);
+  }
+
+  /** Assigns the Teacher realm role, creates the Teacher profile row, and refreshes the session cookie. */
+  registerTeacherProfile(payload: RegisterTeacherPayload): Observable<RegisterProfileResponse> {
+    return this.http.post<RegisterProfileResponse>('/api/exam/teacher/register', payload);
+  }
+
+  /** Assigns the Parent realm role, creates the Parent profile row, and refreshes the session cookie. */
+  registerParentProfile(): Observable<RegisterProfileResponse> {
+    return this.http.post<RegisterProfileResponse>('/api/exam/parent/register', {});
+  }
+
   logout(): void {
     console.log('Logging out...');
     // logout işlemi için gerekli olan API çağrısını yapıyoruz
@@ -107,6 +133,22 @@ export class AuthService {
 
   getUserRole(): string | null {
     return localStorage.getItem(this.roleKey);
+  }
+
+  /** Realm roles from the current JWT (`realm_access.roles`) — used to detect an already
+   *  role-assigned-but-profile-incomplete account (e.g. admin-created users). */
+  getRealmRoles(): string[] {
+    const token = this.getToken();
+    if (!token) {
+      return [];
+    }
+    try {
+      const decoded: any = jwtDecode(token);
+      const roles = decoded?.realm_access?.roles;
+      return Array.isArray(roles) ? roles : [];
+    } catch {
+      return [];
+    }
   }
 
   hasRole(role: string): boolean {

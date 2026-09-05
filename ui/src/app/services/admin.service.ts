@@ -5,6 +5,7 @@ import {
   ApiResult,
   ClassifierCacheRefreshResult,
   ClassifierCacheStatus,
+  School,
   TaxonomyTree,
 } from '../models/taxonomy';
 
@@ -19,6 +20,10 @@ interface UpsertTopic {
 interface UpsertSubTopic {
   name: string;
   topicId: number;
+}
+interface UpsertSchool {
+  name: string;
+  city?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -59,6 +64,20 @@ export class AdminService {
   }
   deleteSubTopic(id: number) {
     return this.http.delete<ApiResult>(`${this.baseUrl}/subtopics/${id}`);
+  }
+
+  // ---- schools ----
+  getSchools(): Observable<School[]> {
+    return this.http.get<School[]>(`${this.baseUrl}/schools`);
+  }
+  createSchool(body: UpsertSchool) {
+    return this.http.post<ApiResult>(`${this.baseUrl}/schools`, body);
+  }
+  updateSchool(id: number, body: UpsertSchool) {
+    return this.http.put<ApiResult>(`${this.baseUrl}/schools/${id}`, body);
+  }
+  deleteSchool(id: number) {
+    return this.http.delete<ApiResult>(`${this.baseUrl}/schools/${id}`);
   }
 
   // ---- classifier cache ----

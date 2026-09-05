@@ -299,6 +299,18 @@ public class ExamService : IExamService
 
         query = ApplyCommonFilters(query, dto);
 
+        var now = DateTime.UtcNow;
+
+        // Görünürlük kapısı (issue #14): öğrenci yalnızca (a) kendisine/sınıfına aktif ataması
+        // olan, VEYA (b) grade uyumlu + StudentVisibility=Normal olan (keşfedilebilir) sınavları
+        // görebilir. TeacherSharing bu eksenle ilgisizdir — öğretmenler arası paylaşım öğrencinin
+        // kendi öğretmeninin worksheet'lerini görmesini etkilemez.
+        query = query.Where(t =>
+            _context.ActiveAssignmentsFor(studentProfile.Id, studentProfile.GradeId, now)
+                .Any(a => a.WorksheetId == t.Id)
+            || (t.StudentVisibility == WorksheetStudentVisibility.Normal
+                && studentProfile.GradeId.HasValue && t.GradeId == studentProfile.GradeId.Value));
+
         if (dto.statuses != null && dto.statuses.Any())
         {
             var studentInstances = _context.TestInstances.Where(ti => ti.StudentId == studentProfile.Id);
@@ -336,6 +348,16 @@ public class ExamService : IExamService
             .Skip((dto.pageNumber - 1) * dto.pageSize) // Sayfalama için
             .Take(dto.pageSize)
             .ToListAsync();
+
+        // Bu sayfadaki worksheet'lerden hangileri öğrenciye/sınıfına aktif olarak atanmış
+        // (IsAssigned) — kalanlar yalnızca keşfet ile görünüyor demektir.
+        var pageWorksheetIds = tests.Select(t => t.Id).ToList();
+        var assignedWorksheetIds = (await _context.ActiveAssignmentsFor(studentProfile.Id, studentProfile.GradeId, now)
+            .Where(a => pageWorksheetIds.Contains(a.WorksheetId))
+            .Select(a => a.WorksheetId)
+            .Distinct()
+            .ToListAsync())
+            .ToHashSet();
 
         var worksheetDtos = tests.Select(t =>
         {
@@ -387,7 +409,8 @@ public class ExamService : IExamService
                 BookId = t.BookTest?.BookId,
                 QuestionCount = t.WorksheetQuestions.Count(),
                 Instance = instanceDto, // 💡 Eklenen alan
-                InstanceCount = worksheetStudentCounts.TryGetValue(t.Id, out var count) ? count : 0 // 💡 Yeni eklenen alan
+                InstanceCount = worksheetStudentCounts.TryGetValue(t.Id, out var count) ? count : 0, // 💡 Yeni eklenen alan
+                IsAssigned = assignedWorksheetIds.Contains(t.Id)
             };
             // Öğrenci akışı: sahiplik alanları anlamsız (requesterUserId=null, isAdmin=false)
             // → IsOwner=false, OwnerName=null, CanAssign=false; TeacherSharing/StudentVisibility yine set edilir.

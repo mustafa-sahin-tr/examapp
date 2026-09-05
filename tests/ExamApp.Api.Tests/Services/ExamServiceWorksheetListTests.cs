@@ -108,14 +108,18 @@ public class ExamServiceWorksheetListTests : IDisposable
     }
 
     [Fact]
-    public async Task Student_list_honours_an_explicit_grade_filter()
+    public async Task Student_list_explicit_grade_filter_does_not_widen_visibility_beyond_the_students_own_grade()
     {
+        // issue #14: keşfedilebilirlik (StudentVisibility=Normal, atanmamış) yalnızca öğrencinin
+        // KENDİ sınıfına göre değerlendirilir; sorgudaki gradeIds filtresi bunu genişletmez.
+        // Önceden (bu güvenlik kuralından önce) bir öğrenci başka bir sınıfın worksheet'lerini
+        // sadece filtre parametresiyle görebiliyordu — bu artık kapatıldı.
         var w = await SeedAsync();
         var student = new StudentProfileDto { Id = 10, GradeId = w.GradeB };
 
         await using var ctx = _db.NewContext();
         var page = await NewService(ctx).GetWorksheetsForStudentsAsync(Filter(grades: new() { w.GradeA }), student);
-        page.TotalCount.ShouldBe(2);
+        page.TotalCount.ShouldBe(0);
     }
 
     [Fact]
@@ -306,8 +310,10 @@ public class ExamServiceWorksheetListTests : IDisposable
     }
 
     [Fact]
-    public async Task Student_list_statuses_not_started_returns_only_worksheets_without_an_instance()
+    public async Task Student_list_statuses_not_started_excludes_worksheets_outside_the_students_own_grade()
     {
+        // issue #14: Gama (GradeB) öğrencinin kendi sınıfı (GradeA) değil, atanmamış da olduğu için
+        // artık görünür değil — hiç instance'ı olmasa bile "not started" listesine giremiyor.
         var w = await SeedAsync();
         var studentId = await SeedStudentWithInstancesAsync(w);
         var student = new StudentProfileDto { Id = studentId, GradeId = w.GradeA };
@@ -316,7 +322,7 @@ public class ExamServiceWorksheetListTests : IDisposable
         var page = await NewService(ctx).GetWorksheetsForStudentsAsync(
             Filter(grades: new() { w.GradeA, w.GradeB }, statuses: new() { -1 }), student);
 
-        page.Items.Select(i => i.Name).ShouldBe(new[] { "Gama" });
+        page.Items.ShouldBeEmpty();
     }
 
     [Fact]

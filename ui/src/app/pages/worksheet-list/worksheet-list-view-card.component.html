@@ -15,7 +15,7 @@
       <span class="wcard__tag wcard__tag--warn">Devam ediyor</span>
     } @else if (!isTeacher && status === 'completed') {
       <span class="wcard__tag wcard__tag--success">Tamamlandı</span>
-    } @else if (!isTeacher && isAssigned) {
+    } @else if (!isTeacher && hasActiveAssignmentInput) {
       <span class="wcard__tag wcard__tag--assigned">Öğretmenin atadı</span>
     }
   </a>
@@ -96,7 +96,7 @@
       </div>
     }
 
-    @if (!isTeacher && isAssigned && dueLabel) {
+    @if (!isTeacher && hasActiveAssignmentInput && dueLabel) {
       <span class="wcard__due">{{ dueLabel }}</span>
     }
 

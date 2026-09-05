@@ -30,6 +30,12 @@ export interface TaxonomyTree {
   grades: TaxonomyGrade[];
 }
 
+export interface School {
+  id: number;
+  name: string;
+  city?: string | null;
+}
+
 export interface ApiResult {
   success: boolean;
   message: string;

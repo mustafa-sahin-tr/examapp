@@ -104,6 +104,8 @@ public class AppDbContext : DbContext
 
     public DbSet<WorksheetReminder> WorksheetReminders { get; set; }
 
+    public DbSet<School> Schools { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

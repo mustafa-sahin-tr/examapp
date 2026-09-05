@@ -11,13 +11,13 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
-import { TaxonomySubject, TaxonomyTopic } from '../../../models/taxonomy';
+import { School, TaxonomySubject, TaxonomyTopic } from '../../../models/taxonomy';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
-type Level = 'subject' | 'topic' | 'subtopic';
+type Level = 'subject' | 'topic' | 'subtopic' | 'school';
 
 @Component({
   selector: 'app-taxonomy-manager',
@@ -47,6 +47,10 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly subjects = signal<TaxonomySubject[]>([]);
   readonly grades = signal<{ id: number; name: string }[]>([]);
 
+  readonly schoolsLoading = signal(false);
+  readonly schoolsError = signal<string | null>(null);
+  readonly schools = signal<School[]>([]);
+
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
 
@@ -64,14 +68,18 @@ export class TaxonomyManagerComponent implements OnInit {
   newTopicName = '';
   newTopicGradeId: number | null = null;
   newSubTopicName = '';
+  newSchoolName = '';
+  newSchoolCity = '';
 
   // inline edit state
   editing = signal<{ level: Level; id: number } | null>(null);
   editName = '';
   editGradeId: number | null = null;
+  editCity = '';
 
   ngOnInit(): void {
     this.load();
+    this.loadSchools();
   }
 
   load(): void {
@@ -90,6 +98,21 @@ export class TaxonomyManagerComponent implements OnInit {
       error: () => {
         this.snack.open('Taksonomi yüklenemedi', 'Kapat', { duration: 4000 });
         this.loading.set(false);
+      },
+    });
+  }
+
+  loadSchools(): void {
+    this.schoolsLoading.set(true);
+    this.schoolsError.set(null);
+    this.admin.getSchools().subscribe({
+      next: (list) => {
+        this.schools.set(list);
+        this.schoolsLoading.set(false);
+      },
+      error: () => {
+        this.schoolsError.set('Okullar yüklenemedi');
+        this.schoolsLoading.set(false);
       },
     });
   }
@@ -139,12 +162,27 @@ export class TaxonomyManagerComponent implements OnInit {
     this.newSubTopicName = '';
   }
 
+  async addSchool(): Promise<void> {
+    const name = this.newSchoolName.trim();
+    if (!name) return;
+    const city = this.newSchoolCity.trim();
+    await this.runSchools(() =>
+      firstValueFrom(this.admin.createSchool({ name, city: city || null }))
+    );
+    this.newSchoolName = '';
+    this.newSchoolCity = '';
+  }
+
   // ---- edit ----
 
-  startEdit(level: Level, item: { id: number; name: string; gradeId?: number }): void {
+  startEdit(
+    level: Level,
+    item: { id: number; name: string; gradeId?: number; city?: string | null }
+  ): void {
     this.editing.set({ level, id: item.id });
     this.editName = item.name;
     this.editGradeId = item.gradeId ?? null;
+    this.editCity = item.city ?? '';
   }
 
   cancelEdit(): void {
@@ -156,7 +194,10 @@ export class TaxonomyManagerComponent implements OnInit {
     return !!e && e.level === level && e.id === id;
   }
 
-  async saveEdit(level: Level, original: TaxonomySubject | TaxonomyTopic | { id: number }): Promise<void> {
+  async saveEdit(
+    level: Level,
+    original: TaxonomySubject | TaxonomyTopic | School | { id: number }
+  ): Promise<void> {
     const name = this.editName.trim();
     if (!name) return;
     const id = original.id;
@@ -174,9 +215,14 @@ export class TaxonomyManagerComponent implements OnInit {
           })
         )
       );
-    } else {
+    } else if (level === 'subtopic') {
       const topicId = this.selectedTopicId()!;
       await this.run(() => firstValueFrom(this.admin.updateSubTopic(id, { name, topicId })));
+    } else {
+      const city = this.editCity.trim();
+      await this.runSchools(() =>
+        firstValueFrom(this.admin.updateSchool(id, { name, city: city || null }))
+      );
     }
     this.cancelEdit();
   }
@@ -184,7 +230,12 @@ export class TaxonomyManagerComponent implements OnInit {
   // ---- delete ----
 
   async remove(level: Level, item: { id: number; name: string }): Promise<void> {
-    const labels: Record<Level, string> = { subject: 'ders', topic: 'konu', subtopic: 'alt konu' };
+    const labels: Record<Level, string> = {
+      subject: 'ders',
+      topic: 'konu',
+      subtopic: 'alt konu',
+      school: 'okul',
+    };
     const data: ConfirmDialogData = {
       title: `${labels[level]} sil`,
       message: `"${item.name}" ${labels[level]}unu silmek istediğine emin misin?`,
@@ -203,8 +254,10 @@ export class TaxonomyManagerComponent implements OnInit {
     } else if (level === 'topic') {
       await this.run(() => firstValueFrom(this.admin.deleteTopic(item.id)));
       if (this.selectedTopicId() === item.id) this.selectedTopicId.set(null);
-    } else {
+    } else if (level === 'subtopic') {
       await this.run(() => firstValueFrom(this.admin.deleteSubTopic(item.id)));
+    } else {
+      await this.runSchools(() => firstValueFrom(this.admin.deleteSchool(item.id)));
     }
   }
 
@@ -214,6 +267,22 @@ export class TaxonomyManagerComponent implements OnInit {
       const res = await action();
       this.snack.open(res.message, 'Kapat', { duration: 3000 });
       if (res.success) this.load();
+    } catch (err: any) {
+      const msg = err?.error?.message ?? 'İşlem başarısız';
+      this.snack.open(msg, 'Kapat', { duration: 4000 });
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private async runSchools(
+    action: () => Promise<{ success: boolean; message: string }>
+  ): Promise<void> {
+    this.busy.set(true);
+    try {
+      const res = await action();
+      this.snack.open(res.message, 'Kapat', { duration: 3000 });
+      if (res.success) this.loadSchools();
     } catch (err: any) {
       const msg = err?.error?.message ?? 'İşlem başarısız';
       this.snack.open(msg, 'Kapat', { duration: 4000 });

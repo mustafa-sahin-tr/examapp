@@ -1,6 +1,6 @@
 <div class="taxonomy">
   <mat-progress-bar
-    *ngIf="loading() || busy()"
+    *ngIf="loading() || busy() || schoolsLoading()"
     mode="indeterminate"
     class="top-bar"
   ></mat-progress-bar>
@@ -184,4 +184,66 @@
       <ng-template #pickTopic><p class="hint">Bir konu seç</p></ng-template>
     </section>
   </div>
+
+  <!-- Schools -->
+  <section class="column schools-section">
+    <header>
+      <h3>Okullar</h3>
+      <span class="count">{{ schools().length }}</span>
+    </header>
+
+    <div class="add-row stacked">
+      <mat-form-field appearance="outline" class="dense">
+        <input
+          matInput
+          placeholder="Yeni okul adı"
+          [(ngModel)]="newSchoolName"
+          (keyup.enter)="addSchool()"
+        />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense">
+        <input
+          matInput
+          placeholder="Şehir (opsiyonel)"
+          [(ngModel)]="newSchoolCity"
+          (keyup.enter)="addSchool()"
+        />
+      </mat-form-field>
+      <button mat-icon-button color="primary" (click)="addSchool()" [disabled]="busy()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    <p class="hint" *ngIf="schoolsError()">{{ schoolsError() }}</p>
+    <p class="hint" *ngIf="!schoolsLoading() && !schoolsError() && schools().length === 0">
+      Henüz okul eklenmemiş.
+    </p>
+
+    <ul class="list schools-list">
+      <li *ngFor="let sc of schools()">
+        <ng-container *ngIf="!isEditing('school', sc.id); else editSchool">
+          <span class="name">{{ sc.name }}</span>
+          <span class="meta" *ngIf="sc.city">{{ sc.city }}</span>
+          <span class="actions">
+            <button mat-icon-button (click)="startEdit('school', sc)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button (click)="remove('school', sc)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </span>
+        </ng-container>
+        <ng-template #editSchool>
+          <input class="inline-edit" [(ngModel)]="editName" (keyup.enter)="saveEdit('school', sc)" />
+          <input class="inline-edit" placeholder="Şehir" [(ngModel)]="editCity" (keyup.enter)="saveEdit('school', sc)" />
+          <button mat-icon-button color="primary" (click)="saveEdit('school', sc)">
+            <mat-icon>check</mat-icon>
+          </button>
+          <button mat-icon-button (click)="cancelEdit()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </ng-template>
+      </li>
+    </ul>
+  </section>
 </div>

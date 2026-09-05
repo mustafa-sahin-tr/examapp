@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
+using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +22,13 @@ public class AdminController : BaseController
 {
     private readonly ITaxonomyService _taxonomy;
     private readonly IClassifierCacheService _classifierCache;
+    private readonly ISchoolService _schools;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools)
     {
         _taxonomy = taxonomy;
         _classifierCache = classifierCache;
+        _schools = schools;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -74,6 +78,24 @@ public class AdminController : BaseController
     [HttpDelete("subtopics/{id:int}")]
     public async Task<IActionResult> DeleteSubTopic(int id, CancellationToken ct)
         => Result(await _taxonomy.DeleteSubTopicAsync(id, await CurrentUserIdAsync(), ct));
+
+    // ---- Schools ----
+
+    [HttpGet("schools")]
+    public async Task<ActionResult<List<SchoolDto>>> GetSchools(CancellationToken ct)
+        => Ok(await _schools.GetAllAsync(ct));
+
+    [HttpPost("schools")]
+    public async Task<IActionResult> CreateSchool([FromBody] UpsertSchoolDto dto, CancellationToken ct)
+        => Result(await _schools.CreateAsync(dto, await CurrentUserIdAsync(), ct));
+
+    [HttpPut("schools/{id:int}")]
+    public async Task<IActionResult> UpdateSchool(int id, [FromBody] UpsertSchoolDto dto, CancellationToken ct)
+        => Result(await _schools.UpdateAsync(id, dto, await CurrentUserIdAsync(), ct));
+
+    [HttpDelete("schools/{id:int}")]
+    public async Task<IActionResult> DeleteSchool(int id, CancellationToken ct)
+        => Result(await _schools.DeleteAsync(id, await CurrentUserIdAsync(), ct));
 
     // ---- Classifier cache ----
 

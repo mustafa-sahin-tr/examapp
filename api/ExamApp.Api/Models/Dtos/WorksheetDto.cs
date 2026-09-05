@@ -52,6 +52,11 @@ public class WorksheetDto
 
     // İstek sahibi bu worksheet'i öğrenciye atayabilir mi (şimdilik CanEdit ile aynı).
     public bool CanAssign { get; set; }
+
+    // Öğrenci akışı (issue #14): bu sınav istek sahibi öğrenciye/sınıfına aktif olarak
+    // atanmış mı (true), yoksa yalnızca keşfet listesinden mi görünüyor (false).
+    // Öğretmen akışlarında anlamsız, her zaman false döner.
+    public bool IsAssigned { get; set; }
 }
 
 public class WorksheetWithInstanceDto

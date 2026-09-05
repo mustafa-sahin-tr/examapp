@@ -258,6 +258,66 @@
             <button type="button" class="wl__btn wl__btn--ghost" (click)="resetAll()">Filtreleri temizle</button>
           }
         </div>
+      } @else if (tab() === 'discover' && isStudent) {
+        <!-- ============ DISCOVER (student): "Atanan sınavlar" + "Keşfet" (issue #14) ============ -->
+        <div class="wl__section">
+          <h3 class="wl__section-title">Atanan sınavlar</h3>
+          @if (discoverAssignedTests().length === 0) {
+            <div class="wl__empty wl__empty--section">
+              <p>Sana atanmış aktif bir sınav yok.</p>
+            </div>
+          } @else {
+            <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
+              @for (test of discoverAssignedTests(); track trackTest($index, test)) {
+                <div class="wl__grid-item">
+                  <app-worksheet-list-view-card
+                    [course]="test"
+                    [viewMode]="viewMode()"
+                    [isTeacher]="isTeacher"
+                    [subjectName]="subjectName(test.subjectId)"
+                    [gradeName]="gradeName(test.gradeId)"
+                    [assignment]="assignmentFor(test.id)"
+                    (deleteWorksheet)="onDeleteWorksheet($event)"
+                    (assignWorksheet)="onAssign()"
+                  ></app-worksheet-list-view-card>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="wl__section">
+          <h3 class="wl__section-title">Keşfet</h3>
+          @if (discoverExploreTests().length === 0) {
+            <div class="wl__empty wl__empty--section">
+              <p>Şu an keşfedilecek yeni sınav yok.</p>
+            </div>
+          } @else {
+            <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
+              @for (test of discoverExploreTests(); track trackTest($index, test)) {
+                <div class="wl__grid-item">
+                  <app-worksheet-list-view-card
+                    [course]="test"
+                    [viewMode]="viewMode()"
+                    [isTeacher]="isTeacher"
+                    [subjectName]="subjectName(test.subjectId)"
+                    [gradeName]="gradeName(test.gradeId)"
+                    [assignment]="assignmentFor(test.id)"
+                    (deleteWorksheet)="onDeleteWorksheet($event)"
+                    (assignWorksheet)="onAssign()"
+                  ></app-worksheet-list-view-card>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <app-pagination
+          [currentPage]="pageNumber()"
+          [itemsPerPage]="pageSize()"
+          [totalItems]="paged().totalCount"
+          (pageChanged)="changePage($event)"
+        ></app-pagination>
       } @else {
         <!-- LIST VIEW HEADER (sortable) -->
         @if (viewMode() === 'list') {
@@ -293,15 +353,6 @@
             </div>
           }
         </div>
-
-        @if (tab() === 'discover') {
-          <app-pagination
-            [currentPage]="pageNumber()"
-            [itemsPerPage]="pageSize()"
-            [totalItems]="paged().totalCount"
-            (pageChanged)="changePage($event)"
-          ></app-pagination>
-        }
       }
     </div>
   </div>

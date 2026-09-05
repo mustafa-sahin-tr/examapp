@@ -111,7 +111,8 @@ export class WorksheetListViewCardComponent {
     return Math.max(0, Math.min(100, Math.round(this.instance?.score ?? 0)));
   }
 
-  get isAssigned(): boolean {
+  /** `assignment` input'u geçilmiş ve tamamlanmamış mı — DTO'daki `Test.isAssigned` ile karıştırılmamalı. */
+  get hasActiveAssignmentInput(): boolean {
     return !!this.assignment && !this.assignment.isCompleted;
   }
 

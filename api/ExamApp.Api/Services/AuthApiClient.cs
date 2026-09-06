@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
@@ -53,7 +54,7 @@ public class AuthApiClient : IAuthApiClient
         return userProfile;
     }
 
-    public async Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds)
+    public async Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
     {
         if (userIds == null)
         {
@@ -82,10 +83,10 @@ public class AuthApiClient : IAuthApiClient
             request.Headers.Add("Authorization", authHeader.ToString());
         }
 
-        var response = await httpClient.SendAsync(request);
+        var response = await httpClient.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(ct);
         var options = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using ExamApp.Api.Models.Dtos;
 
 namespace ExamApp.Api.Services.Interfaces;
@@ -6,5 +7,5 @@ namespace ExamApp.Api.Services.Interfaces;
 public interface IAuthApiClient
 {
     Task<UserProfileDto> GetUserProfileAsync();
-    Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds);
+    Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default);
 }

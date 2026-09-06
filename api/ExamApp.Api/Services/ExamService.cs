@@ -86,7 +86,7 @@ public class ExamService : IExamService
     /// </param>
     private static void ApplyOwnershipAndVisibility(
         WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null,
-        bool populateOwnerName = false, bool isTeacher = true)
+        bool populateOwnerName = false, bool isTeacher = true, bool hasApprovedGrant = false)
     {
         dto.TeacherSharing = w.TeacherSharing;
         dto.StudentVisibility = w.StudentVisibility;
@@ -97,7 +97,7 @@ public class ExamService : IExamService
         dto.OwnerName = (isAdmin || isOwner || populateOwnerName) ? ownerName : null;
         // TODO(#13): CanAssign StudentVisibility=Restricted dalını da dikkate alacak.
         dto.CanAssign = isTeacher
-            && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing);
+            && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing, hasApprovedGrant);
     }
 
     private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
@@ -221,6 +221,18 @@ public class ExamService : IExamService
             ? await ResolveCreatorNamesAsync(tests.Select(t => t.CreateUserId))
             : new Dictionary<int, string>();
 
+        // issue #13: paylaşılan satırlarda bu öğretmene onaylı (aktif) atama izni verilmiş worksheet'ler
+        // için CanAssign=true olmalı. Sayfadaki id'ler için tek sorguda çekilir (N+1 yok).
+        var grantedWorksheetIds = new HashSet<int>();
+        if (!isAdmin && dto.includeShared)
+        {
+            var pageWorksheetIds = tests.Select(t => t.Id).ToList();
+            grantedWorksheetIds = (await _context.WorksheetAccessGrants.AsNoTracking()
+                .Where(g => g.TeacherUserId == userProfile.Id && g.RevokedAt == null && pageWorksheetIds.Contains(g.WorksheetId))
+                .Select(g => g.WorksheetId)
+                .ToListAsync()).ToHashSet();
+        }
+
         var worksheetDtos = tests.Select(t =>
         {
             // Liste akışı: OwnerName admin için, ya da includeShared ile görünür kılınan paylaşılan
@@ -253,7 +265,8 @@ public class ExamService : IExamService
                     ? name
                     : null
             };
-            ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow);
+            ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow,
+                hasApprovedGrant: grantedWorksheetIds.Contains(t.Id));
             return d;
         }).ToList();
 

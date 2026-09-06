@@ -27,6 +27,8 @@ public class ExamControllerStartTestTests
     private readonly IWorksheetAuthoringService _authoring = Substitute.For<IWorksheetAuthoringService>();
     private readonly IWorksheetDetailService _worksheetDetail = Substitute.For<IWorksheetDetailService>();
     private readonly IWorksheetReminderService _reminderService = Substitute.For<IWorksheetReminderService>();
+    private readonly IWorksheetCalendarService _calendarService = Substitute.For<IWorksheetCalendarService>();
+    private readonly IWorksheetAccessRequestService _accessRequestService = Substitute.For<IWorksheetAccessRequestService>();
     private readonly IAuthApiClient _authApiClient = Substitute.For<IAuthApiClient>();
 
     private ExamController NewController(UserProfileDto authenticatedUser)
@@ -54,7 +56,7 @@ public class ExamControllerStartTestTests
         };
 
         var controller = new ExamController(_minio, _examService, _studentService, _assignmentService,
-            _testSession, _authoring, _worksheetDetail, _reminderService)
+            _testSession, _authoring, _worksheetDetail, _reminderService, _calendarService, _accessRequestService)
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext }
         };

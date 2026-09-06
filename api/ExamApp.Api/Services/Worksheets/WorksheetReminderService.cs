@@ -179,15 +179,15 @@ public class WorksheetReminderService : IWorksheetReminderService
         if (!worksheetExists)
             throw new InvalidOperationException("Worksheet bulunamadı");
 
-        var gradeId = await _context.Students.AsNoTracking()
+        var studentScope = await _context.Students.AsNoTracking()
             .Where(s => s.Id == studentId)
-            .Select(s => s.GradeId)
+            .Select(s => new { s.GradeId, s.SchoolId })
             .FirstOrDefaultAsync(ct);
 
         var assigned = await _context.WorksheetAssignments.AsNoTracking()
-            .AnyAsync(a => a.WorksheetId == worksheetId
-                && (a.StudentId == studentId
-                    || (a.StudentId == null && a.GradeId != null && a.GradeId == gradeId)), ct);
+            .Where(a => a.WorksheetId == worksheetId)
+            .Where(WorksheetStudentAccess.AssignmentVisibleTo(studentId, studentScope?.GradeId, studentScope?.SchoolId))
+            .AnyAsync(ct);
 
         if (assigned)
             return;

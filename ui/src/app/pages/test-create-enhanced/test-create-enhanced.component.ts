@@ -174,6 +174,20 @@ export class TestCreateEnhancedComponent implements OnInit {
       subtopicId: [''],
       questionCount: [0],
     });
+    // Issue #7: sınıf seçilmeden ders/konu/alt konu seçilemez.
+    this.applyClassificationEnabledState();
+    this.testForm
+      .get('gradeId')!
+      .valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((gradeId) => {
+        if (gradeId) {
+          ['subjectId', 'topicId', 'subtopicId'].forEach((n) => this.testForm.get(n)?.enable({ emitEvent: false }));
+        } else {
+          this.testForm.patchValue({ subjectId: '', topicId: '', subtopicId: '' }, { emitEvent: false });
+          ['subjectId', 'topicId', 'subtopicId'].forEach((n) => this.testForm.get(n)?.disable({ emitEvent: false }));
+        }
+      });
+
     this.loadBooks();
     this.loadGrades();
     this.loadSubjects();
@@ -230,6 +244,28 @@ export class TestCreateEnhancedComponent implements OnInit {
           this.bulkImportData[this.selectedBulkIndex] = updatedItem;
           this.bulkImportData = [...this.bulkImportData]; // tabloyu güncelle
         }
+      }
+    });
+  }
+
+  /** Issue #7: gradeId yoksa ders/konu/alt konu kontrollerini disable, varsa enable eder. */
+  private applyClassificationEnabledState(): void {
+    if (!this.testForm) {
+      return;
+    }
+    if (this.isEditMode && !this.canEdit()) {
+      return;
+    }
+    const hasGrade = !!this.testForm.get('gradeId')?.value;
+    ['subjectId', 'topicId', 'subtopicId'].forEach((name) => {
+      const control = this.testForm.get(name);
+      if (!control) {
+        return;
+      }
+      if (hasGrade && control.disabled) {
+        control.enable({ emitEvent: false });
+      } else if (!hasGrade && control.enabled) {
+        control.disable({ emitEvent: false });
       }
     });
   }
@@ -453,6 +489,11 @@ export class TestCreateEnhancedComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
+        next: () => {
+          // Edit modunda grade patchValue emitEvent:false ile geldiği için valueChanges tetiklenmez;
+          // enable/disable durumunu burada elle uygula.
+          this.applyClassificationEnabledState();
+        },
         error: (err) => {
           if (err?.status === 404) {
             this.snackBar.open('Bu teste erişiminiz yok veya test bulunamadı.', 'Kapat', { duration: 4000 });

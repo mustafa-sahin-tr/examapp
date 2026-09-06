@@ -24,9 +24,12 @@ export class WorksheetListViewCardComponent {
   @Input() assignment: AssignedWorksheet | null = null;
   @Input() viewMode: 'grid' | 'list' = 'grid';
   @Input() isTeacher = false;
+  /** Kopyalama isteği uçuşta — kopyala aksiyonu devre dışı (issue #16). */
+  @Input() copying = false;
 
   @Output() deleteWorksheet = new EventEmitter<number>();
   @Output() assignWorksheet = new EventEmitter<number>();
+  @Output() copy = new EventEmitter<number>();
 
   private readonly router = inject(Router);
   private readonly images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
@@ -63,6 +66,17 @@ export class WorksheetListViewCardComponent {
 
   get teacherSharing(): WorksheetTeacherSharing {
     return this.course.teacherSharing ?? WorksheetTeacherSharing.PublicView;
+  }
+
+  /** Başkasının public sınavı — kendi hesabına kopyalanabilir (issue #16). */
+  get canCopy(): boolean {
+    return (
+      this.isTeacher &&
+      this.course.canEdit === false &&
+      this.course.isOwner === false &&
+      (this.teacherSharing === WorksheetTeacherSharing.PublicView ||
+        this.teacherSharing === WorksheetTeacherSharing.PublicAssignable)
+    );
   }
 
   get ownerName(): string | null {
@@ -172,6 +186,13 @@ export class WorksheetListViewCardComponent {
   emitAssign(): void {
     if (this.course.id != null) {
       this.assignWorksheet.emit(this.course.id);
+    }
+  }
+
+  emitCopy(event: Event): void {
+    event.stopPropagation();
+    if (this.course.id != null) {
+      this.copy.emit(this.course.id);
     }
   }
 }

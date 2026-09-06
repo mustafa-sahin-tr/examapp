@@ -390,6 +390,16 @@
               <div class="readonly-strip">
                 <mat-icon>visibility</mat-icon>
                 <span>{{ sharedOwnerName() || 'Başka bir öğretmenin' }} sınavı · Salt görüntüleme</span>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="readonly-strip__copy"
+                  [disabled]="copyLoading()"
+                  (click)="copyWorksheet()"
+                >
+                  <mat-icon>content_copy</mat-icon>
+                  Kendi hesabıma kopyala
+                </button>
               </div>
             }
             @if (d.worksheet.subtitle || d.worksheet.description) {

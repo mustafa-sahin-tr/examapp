@@ -115,3 +115,7 @@ export interface WorksheetDetail {
 export interface WorksheetFromMistakesResult {
   worksheetId: number;
 }
+
+export interface CopyWorksheetResult {
+  worksheetId: number;
+}

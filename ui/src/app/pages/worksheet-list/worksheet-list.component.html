@@ -279,6 +279,8 @@
                     [assignment]="assignmentFor(test.id)"
                     (deleteWorksheet)="onDeleteWorksheet($event)"
                     (assignWorksheet)="onAssign()"
+                    [copying]="copyingIds().has(test.id ?? 0)"
+                    (copy)="onCopyWorksheet($event)"
                   ></app-worksheet-list-view-card>
                 </div>
               }
@@ -305,6 +307,8 @@
                     [assignment]="assignmentFor(test.id)"
                     (deleteWorksheet)="onDeleteWorksheet($event)"
                     (assignWorksheet)="onAssign()"
+                    [copying]="copyingIds().has(test.id ?? 0)"
+                    (copy)="onCopyWorksheet($event)"
                   ></app-worksheet-list-view-card>
                 </div>
               }
@@ -349,6 +353,8 @@
                 [assignment]="assignmentFor(test.id)"
                 (deleteWorksheet)="onDeleteWorksheet($event)"
                 (assignWorksheet)="onAssign()"
+                [copying]="copyingIds().has(test.id ?? 0)"
+                (copy)="onCopyWorksheet($event)"
               ></app-worksheet-list-view-card>
             </div>
           }

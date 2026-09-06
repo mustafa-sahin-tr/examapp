@@ -1814,6 +1814,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("SchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("StartAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1830,6 +1833,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SchoolId");
 
                     b.HasIndex("WorksheetId");
 
@@ -2833,6 +2838,10 @@ namespace ExamApp.Api.Migrations
                         .HasForeignKey("GradeId")
                         .OnDelete(DeleteBehavior.Cascade);
 
+                    b.HasOne("ExamApp.Api.Data.School", "School")
+                        .WithMany()
+                        .HasForeignKey("SchoolId");
+
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
@@ -2845,6 +2854,8 @@ namespace ExamApp.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Grade");
+
+                    b.Navigation("School");
 
                     b.Navigation("Student");
 

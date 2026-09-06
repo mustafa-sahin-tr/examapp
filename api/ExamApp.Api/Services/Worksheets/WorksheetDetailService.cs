@@ -174,7 +174,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 IsOwner = isWorksheetOwner,
                 OwnerName = ownerName,
                 CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin),
-                CanAssign = WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin)
+                CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing)
             },
             RewardBadgeText = worksheet.BadgeText,
             Stats = new WorksheetStatsDto

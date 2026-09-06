@@ -18,7 +18,8 @@ public class WorksheetAssignmentServiceTests : IDisposable
 
     private const int OwnerUserId = 1;
 
-    private async Task<(int worksheetId, int studentId, int gradeId)> SeedAsync()
+    private async Task<(int worksheetId, int studentId, int gradeId)> SeedAsync(
+        WorksheetTeacherSharing sharing = WorksheetTeacherSharing.Private)
     {
         await using var ctx = _db.NewContext();
         // Öğretmen yalnızca kendi worksheet'ini atayabilir: fixture'ı atayan kullanıcı (userId 1) sahipliğinde seed et.
@@ -26,11 +27,42 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var grade = new Grade { Name = "8" };
         ctx.Grades.Add(grade);
         await ctx.SaveChangesAsync();
-        var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id };
+        var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id, TeacherSharing = sharing };
         var student = new Student { UserId = 1, StudentNumber = "n", SchoolName = "s", GradeId = grade.Id };
         ctx.AddRange(ws, student);
         await ctx.SaveChangesAsync();
         return (ws.Id, student.Id, grade.Id);
+    }
+
+    /// <summary>
+    /// issue #12 senaryoları için: sahibi (userId=OwnerUserId) belirtilen sharing ile bir worksheet,
+    /// ve iki okul + o okullara bağlı öğrenci/öğretmenler seed eder.
+    /// </summary>
+    private async Task<(int worksheetId, int gradeId, int schoolAId, int schoolBId,
+        int studentInSchoolAId, int studentInSchoolBId, int nonOwnerTeacherUserId)>
+        SeedWithSchoolsAsync(WorksheetTeacherSharing sharing)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(OwnerUserId);
+
+        var grade = new Grade { Name = "8" };
+        ctx.Grades.Add(grade);
+        await ctx.SaveChangesAsync();
+
+        var schoolA = new School { Name = "Okul A" };
+        var schoolB = new School { Name = "Okul B" };
+        ctx.AddRange(schoolA, schoolB);
+        await ctx.SaveChangesAsync();
+
+        var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id, TeacherSharing = sharing };
+        var studentA = new Student { UserId = 10, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
+        var studentB = new Student { UserId = 11, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+        const int nonOwnerTeacherUserId = 777;
+        var nonOwnerTeacher = new Teacher { UserId = nonOwnerTeacherUserId, SchoolId = schoolA.Id };
+        ctx.AddRange(ws, studentA, studentB, nonOwnerTeacher);
+        await ctx.SaveChangesAsync();
+
+        return (ws.Id, grade.Id, schoolA.Id, schoolB.Id, studentA.Id, studentB.Id, nonOwnerTeacherUserId);
     }
 
     private static WorksheetAssignmentRequestDto Req(int worksheetId, int? studentId = null, int? gradeId = null,
@@ -145,7 +177,10 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
 
         r.Success.ShouldBeFalse();
-        r.Message.ShouldBe("Bu testi atama yetkiniz yok.");
+        // issue #12 (security review): seed varsayılanı Private — CanView'e göre sahibi olmayan
+        // öğretmene worksheet hiç görünmez, bu yüzden CanAssign'e hiç bakılmadan "bulunamadı" döner
+        // (varlık/paylaşım durumu sızdırılmaz). PublicView/PublicAssignable ayrımı diğer testlerde.
+        r.Message.ShouldBe("Worksheet bulunamadı.");
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
     }
 
@@ -192,6 +227,176 @@ public class WorksheetAssignmentServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
             (await NewService(ctx).AssignWorksheetAsync(Req(wsId, studentId: studentId), userId: 1, isAdmin: true))
                 .Success.ShouldBeTrue();
+    }
+
+    // ---- issue #12: PublicAssignable — sahibi olmayan öğretmen onaysız atama ----
+
+    [Fact]
+    public async Task AssignWorksheetAsync_PublicAssignable_NonOwnerTeacherSameSchoolStudent_Succeeds()
+    {
+        var (ws, _, schoolA, _, studentInSchoolA, _, nonOwnerTeacherUserId) =
+            await SeedWithSchoolsAsync(WorksheetTeacherSharing.PublicAssignable);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewService(ctx).AssignWorksheetAsync(
+            Req(ws, studentId: studentInSchoolA), userId: nonOwnerTeacherUserId, isAdmin: false);
+
+        r.Success.ShouldBeTrue();
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_PublicView_NonOwnerTeacher_IsRejectedWithAskOwnerMessage()
+    {
+        var (ws, student, _) = await SeedAsync(WorksheetTeacherSharing.PublicView);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Message.ShouldBe("Bu testi atamak için sahibinden atama izni istemeniz gerekir.");
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_Private_NonOwnerTeacher_IsRejectedAsNotFound()
+    {
+        var (ws, student, _) = await SeedAsync(WorksheetTeacherSharing.Private);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        // issue #12 (security review): Private paylaşım CanView=false → varlığı sızdırmadan "bulunamadı".
+        r.Message.ShouldBe("Worksheet bulunamadı.");
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_PublicAssignable_NonOwnerTeacherDifferentSchoolStudent_IsRejected()
+    {
+        var (ws, _, _, _, _, studentInSchoolB, nonOwnerTeacherUserId) =
+            await SeedWithSchoolsAsync(WorksheetTeacherSharing.PublicAssignable);
+
+        await using var ctx = _db.NewContext();
+        var r = await NewService(ctx).AssignWorksheetAsync(
+            Req(ws, studentId: studentInSchoolB), userId: nonOwnerTeacherUserId, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Message.ShouldBe("Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz.");
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_PublicAssignable_NonOwnerTeacherWithoutSchool_IsRejected()
+    {
+        var (ws, student, _) = await SeedAsync(WorksheetTeacherSharing.PublicAssignable);
+
+        await using var ctx = _db.NewContext();
+        // 888 kullanıcısı için Teacher kaydı yok (legacy/eksik profil) — SchoolId çözülemez.
+        var r = await NewService(ctx).AssignWorksheetAsync(
+            Req(ws, studentId: student), userId: 888, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Message.ShouldBe("Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz.");
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.Private)]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public async Task AssignWorksheetAsync_OwnerOrAdmin_SucceedsRegardlessOfSharing(WorksheetTeacherSharing sharing)
+    {
+        var (ws, student, _) = await SeedAsync(sharing);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
+                .Success.ShouldBeTrue();
+
+        var (ws2, student2, _) = await SeedAsync(sharing);
+        await using var ctx2 = _db.NewContext();
+        (await NewService(ctx2).AssignWorksheetAsync(Req(ws2, studentId: student2), userId: 12345, isAdmin: true))
+            .Success.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AssignWorksheetAsync_OwnerAssignsToGrade_RecordsAssignmentSchoolIdFromOwnersSchool()
+    {
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(OwnerUserId);
+        var school = new School { Name = "Sahip Okulu" };
+        ctx.Schools.Add(school);
+        await ctx.SaveChangesAsync();
+        var grade = new Grade { Name = "8" };
+        ctx.Grades.Add(grade);
+        await ctx.SaveChangesAsync();
+        var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id };
+        var ownerTeacher = new Teacher { UserId = OwnerUserId, SchoolId = school.Id };
+        ctx.AddRange(ws, ownerTeacher);
+        await ctx.SaveChangesAsync();
+
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws.Id, gradeId: grade.Id), userId: OwnerUserId, isAdmin: false);
+        r.Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var assignment = await check.WorksheetAssignments.SingleAsync();
+        assignment.GradeId.ShouldBe(grade.Id);
+        assignment.SchoolId.ShouldBe(school.Id);
+    }
+
+    [Fact]
+    public async Task GetActiveAssignmentsForStudentAsync_GradeAssignmentScopedToSchool_OnlyReturnedForSameSchoolStudent()
+    {
+        int worksheetId, gradeId, schoolAId, schoolBId, studentInSchoolAId, studentInSchoolBId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(OwnerUserId);
+            var grade = new Grade { Name = "8" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+
+            var schoolA = new School { Name = "Okul A" };
+            var schoolB = new School { Name = "Okul B" };
+            ctx.AddRange(schoolA, schoolB);
+            await ctx.SaveChangesAsync();
+
+            var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id };
+            var studentA = new Student { UserId = 20, StudentNumber = "a", SchoolId = schoolA.Id, GradeId = grade.Id };
+            var studentB = new Student { UserId = 21, StudentNumber = "b", SchoolId = schoolB.Id, GradeId = grade.Id };
+            ctx.AddRange(ws, studentA, studentB);
+            await ctx.SaveChangesAsync();
+
+            var assignment = new WorksheetAssignment
+            {
+                WorksheetId = ws.Id,
+                GradeId = grade.Id,
+                SchoolId = schoolA.Id,
+                StartAt = Start,
+                EndAt = null
+            };
+            ctx.WorksheetAssignments.Add(assignment);
+            await ctx.SaveChangesAsync();
+
+            worksheetId = ws.Id; gradeId = grade.Id;
+            schoolAId = schoolA.Id; schoolBId = schoolB.Id;
+            studentInSchoolAId = studentA.Id; studentInSchoolBId = studentB.Id;
+        }
+
+        await using var ctx2 = _db.NewContext();
+        var svc = NewService(ctx2);
+
+        var resultForSchoolA = await svc.GetActiveAssignmentsForStudentAsync(new StudentProfileDto
+        {
+            Id = studentInSchoolAId, GradeId = gradeId, SchoolId = schoolAId
+        });
+        resultForSchoolA.ShouldContain(a => a.WorksheetId == worksheetId);
+
+        var resultForSchoolB = await svc.GetActiveAssignmentsForStudentAsync(new StudentProfileDto
+        {
+            Id = studentInSchoolBId, GradeId = gradeId, SchoolId = schoolBId
+        });
+        resultForSchoolB.ShouldNotContain(a => a.WorksheetId == worksheetId);
     }
 
     public void Dispose() => _db.Dispose();

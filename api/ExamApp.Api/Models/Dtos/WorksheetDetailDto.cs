@@ -119,3 +119,12 @@ public class WorksheetFromMistakesResultDto
 {
     public int WorksheetId { get; set; }
 }
+
+/// <summary>
+/// issue #16: bir sınavın kopyalanması sonucu. Success/NotFound/Forbidden ile
+/// controller 200/403/404 ayrımı yapar; başarıda <see cref="WorksheetId"/> yeni kopyanın id'sidir.
+/// </summary>
+public class CopyWorksheetResultDto : ResponseBaseDto
+{
+    public int WorksheetId { get; set; }
+}

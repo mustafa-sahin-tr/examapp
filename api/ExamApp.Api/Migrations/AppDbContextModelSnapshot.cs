@@ -2297,6 +2297,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("SourceWorksheetId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("StudentVisibility")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

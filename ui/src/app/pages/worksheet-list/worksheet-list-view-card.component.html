@@ -39,6 +39,11 @@
         <button mat-menu-item (click)="openDetail()">
           <mat-icon>visibility</mat-icon><span>Detayı gör</span>
         </button>
+        @if (canCopy) {
+          <button mat-menu-item [disabled]="copying" (click)="emitCopy($event)">
+            <mat-icon>content_copy</mat-icon><span>Kendi hesabıma kopyala</span>
+          </button>
+        }
         @if (isTeacher) {
           @if (canEdit) {
             <button mat-menu-item (click)="openQuestionCanvas()">

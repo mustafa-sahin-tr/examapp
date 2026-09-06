@@ -578,6 +578,42 @@ export class WorksheetListComponent implements OnInit {
     });
   }
 
+  /** Kopyalama isteği uçuşta olan worksheet id'leri — çift-tık koruması (issue #16). */
+  readonly copyingIds = signal<Set<number>>(new Set());
+
+  /** Başkasının public sınavını kendi hesabına kopyalar ve düzenleme ekranına gider (issue #16). */
+  onCopyWorksheet(id: number): void {
+    if (this.copyingIds().has(id)) {
+      return;
+    }
+    this.copyingIds.update((set) => new Set(set).add(id));
+    this.testService
+      .copyWorksheet(id)
+      .pipe(
+        finalize(() =>
+          this.copyingIds.update((set) => {
+            const next = new Set(set);
+            next.delete(id);
+            return next;
+          })
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          if (res?.worksheetId) {
+            this.snackBar.open('Sınav kendi hesabına kopyalandı.', 'Tamam', { duration: 3000 });
+            this.router.navigate(['/exam', res.worksheetId]);
+          } else {
+            this.snackBar.open('Kopyalama başarısız.', 'Tamam', { duration: 3000 });
+          }
+        },
+        error: (error) => {
+          this.snackBar.open(error?.error?.message ?? 'Kopyalama başarısız.', 'Tamam', { duration: 3000 });
+        },
+      });
+  }
+
   toggleRowSelection(id: number): void {
     const next = new Set(this.selectedIds());
     next.has(id) ? next.delete(id) : next.add(id);

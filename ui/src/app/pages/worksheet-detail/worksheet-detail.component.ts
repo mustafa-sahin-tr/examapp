@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
 import { Test, TestInstance, TestInstanceQuestion, WorksheetTeacherSharing } from '../../models/test-instance';
-import { lastValueFrom } from 'rxjs';
+import { finalize, lastValueFrom } from 'rxjs';
 import { TestService } from '../../services/test.service';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
@@ -101,6 +101,7 @@ export class WorksheetDetailComponent implements OnInit {
   protected readonly detailLoading = signal(false);
   protected readonly detailError = signal<string | null>(null);
   protected readonly fromMistakesLoading = signal(false);
+  protected readonly copyLoading = signal(false);
 
   protected readonly completedResult = computed(() => this.detail()?.completedResult ?? null);
 
@@ -240,6 +241,35 @@ export class WorksheetDetailComponent implements OnInit {
           this.fromMistakesLoading.set(false);
           const message = error?.error?.message ?? 'Test oluşturulamadı.';
           this.snackBar.open(message, 'Tamam', { duration: 3000 });
+        },
+      });
+  }
+
+  /** Başkasının public sınavını kendi hesabına kopyalar ve düzenleme ekranına gider (issue #16). */
+  protected copyWorksheet(): void {
+    const worksheetId = this.detail()?.worksheet?.id;
+    if (!worksheetId || this.copyLoading()) {
+      return;
+    }
+
+    this.copyLoading.set(true);
+    this.testService
+      .copyWorksheet(worksheetId)
+      .pipe(
+        finalize(() => this.copyLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (result) => {
+          if (result?.worksheetId) {
+            this.snackBar.open('Sınav kendi hesabına kopyalandı', 'Tamam', { duration: 3000 });
+            this.router.navigate(['/exam', result.worksheetId]);
+          } else {
+            this.snackBar.open('Kopyalama başarısız', 'Tamam', { duration: 3000 });
+          }
+        },
+        error: (error) => {
+          this.snackBar.open(error?.error?.message ?? 'Kopyalama başarısız', 'Tamam', { duration: 3000 });
         },
       });
   }

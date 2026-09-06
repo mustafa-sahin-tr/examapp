@@ -141,4 +141,63 @@ public class WorksheetAccessTests
         WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, studentVisibility)
             .ShouldBe(expected);
     }
+
+    // ---- issue #16: CanCopy semantiği CanView ile birebir aynı (içeride onu çağırır) ----
+
+    public static IEnumerable<object[]> CanCopyParityCases() =>
+        from c in OwnershipCases()
+        from s in Enum.GetValues<WorksheetTeacherSharing>()
+        from v in Enum.GetValues<WorksheetStudentVisibility>()
+        select new[] { c[0], c[1], c[2], s, v };
+
+    [Theory]
+    [MemberData(nameof(CanCopyParityCases))]
+    public void CanCopy_AnyInput_MatchesCanViewResult(
+        int? createUserId, int userId, bool isAdmin,
+        WorksheetTeacherSharing sharing, WorksheetStudentVisibility studentVisibility)
+    {
+        var expected = WorksheetAccess.CanView(createUserId, userId, isAdmin, sharing, studentVisibility);
+
+        WorksheetAccess.CanCopy(createUserId, userId, isAdmin, sharing, studentVisibility).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void CanCopy_OwnerCopiesOwnPrivateWorksheet_ReturnsTrue()
+    {
+        WorksheetAccess.CanCopy(createUserId: 5, userId: 5, isAdmin: false, WorksheetTeacherSharing.Private)
+            .ShouldBeTrue();
+    }
+
+    [Fact]
+    public void CanCopy_StrangerOnPrivateWorksheet_ReturnsFalse()
+    {
+        WorksheetAccess.CanCopy(createUserId: 5, userId: 9, isAdmin: false, WorksheetTeacherSharing.Private)
+            .ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public void CanCopy_StrangerOnPublicWorksheet_ReturnsTrue(WorksheetTeacherSharing sharing)
+    {
+        WorksheetAccess.CanCopy(createUserId: 5, userId: 9, isAdmin: false, sharing).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.Private)]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public void CanCopy_Admin_ReturnsTrueForEverything(WorksheetTeacherSharing sharing)
+    {
+        WorksheetAccess.CanCopy(createUserId: 5, userId: 9, isAdmin: true, sharing).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(WorksheetTeacherSharing.PublicView)]
+    [InlineData(WorksheetTeacherSharing.PublicAssignable)]
+    public void CanCopy_LegacyOwnerlessPublicWorksheet_NonAdminReturnsFalse(WorksheetTeacherSharing sharing)
+    {
+        WorksheetAccess.CanCopy(createUserId: null, userId: 9, isAdmin: false, sharing).ShouldBeFalse();
+        WorksheetAccess.CanCopy(createUserId: null, userId: 9, isAdmin: true, sharing).ShouldBeTrue();
+    }
 }

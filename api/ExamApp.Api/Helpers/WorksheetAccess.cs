@@ -56,6 +56,19 @@ public static class WorksheetAccess
     }
 
     /// <summary>
+    /// Öğretmen bir public sınavı kendi hesabına kopyalayabilir mi (issue #16).
+    /// Kaynak PublicView/PublicAssignable olmalı; sahibi/admin her durumda.
+    /// Düzenleme yetkisi (<see cref="CanModify"/>) bundan ayrı — kopya yeni bir worksheet olur,
+    /// kopyalayan onun sahibidir.
+    /// </summary>
+    public static bool CanCopy(int? createUserId, int userId, bool isAdmin,
+        WorksheetTeacherSharing? sharing = null,
+        WorksheetStudentVisibility? studentVisibility = null)
+    {
+        return CanView(createUserId, userId, isAdmin, sharing, studentVisibility);
+    }
+
+    /// <summary>
     /// Öğrenci bir testi başlatabilir mi (issue #14). Öğretmen sahiplik/paylaşım ekseniyle
     /// (<see cref="CanView"/>, <see cref="CanModify"/>) ilgisi yok — tamamen ayrı bir kural:
     /// ya öğrenciye/sınıfına aktif bir atama olmalı, ya da sınav "keşfedilebilir" olmalı

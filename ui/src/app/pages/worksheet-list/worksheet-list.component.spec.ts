@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { of, throwError } from 'rxjs';
 
 import { WorksheetListComponent } from './worksheet-list.component';
 import { TestService } from '../../services/test.service';
@@ -20,6 +21,7 @@ describe('WorksheetListComponent', () => {
       'listWorksheets',
       'getActiveAssignments',
       'delete',
+      'copyWorksheet',
     ]);
     testService.listWorksheets.and.returnValue(
       of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 12 } as Paged<Test>)
@@ -126,6 +128,37 @@ describe('WorksheetListComponent', () => {
 
       expect(component.discoverAssignedTests()).toEqual([]);
       expect(component.discoverExploreTests()).toEqual([]);
+    });
+  });
+
+  describe('onCopyWorksheet', () => {
+    let router: jasmine.SpyObj<Router>;
+    let snackBar: jasmine.SpyObj<MatSnackBar>;
+
+    beforeEach(() => {
+      router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+      snackBar = TestBed.inject(MatSnackBar) as jasmine.SpyObj<MatSnackBar>;
+      spyOn(snackBar, 'open');
+    });
+
+    it('onCopyWorksheet_Success_CallsServiceThenSnackBarAndNavigatesToNewWorksheet', () => {
+      testService.copyWorksheet.and.returnValue(of({ worksheetId: 321 } as any));
+
+      component.onCopyWorksheet(12);
+
+      expect(testService.copyWorksheet).toHaveBeenCalledWith(12);
+      expect(snackBar.open).toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledWith(['/exam', 321]);
+    });
+
+    it('onCopyWorksheet_Error_ShowsSnackBarAndDoesNotNavigate', () => {
+      router.navigate.calls.reset();
+      testService.copyWorksheet.and.returnValue(throwError(() => ({ error: { message: 'Kopyalama başarısız.' } })));
+
+      component.onCopyWorksheet(9);
+
+      expect(snackBar.open).toHaveBeenCalledWith('Kopyalama başarısız.', 'Tamam', jasmine.any(Object));
+      expect(router.navigate).not.toHaveBeenCalled();
     });
   });
 });

@@ -128,6 +128,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAuthoringSe
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetDetailService, ExamApp.Api.Services.Worksheets.WorksheetDetailService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderService, ExamApp.Api.Services.Worksheets.WorksheetReminderService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderDispatcher, ExamApp.Api.Services.Worksheets.WorksheetReminderDispatcher>();
+builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAccessRequestService, ExamApp.Api.Services.Worksheets.WorksheetAccessRequestService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();

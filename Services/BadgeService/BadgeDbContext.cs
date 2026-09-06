@@ -60,5 +60,10 @@ public class BadgeDbContext : DbContext
             .HasIndex(x => new { x.Type, x.SourceReminderId })
             .IsUnique()
             .HasFilter("\"SourceReminderId\" IS NOT NULL");
+        // Idempotency: bir atama izni talebi/kararı, tipi başına en fazla bir bildirim üretir.
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.Type, x.SourceAccessRequestId })
+            .IsUnique()
+            .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
     }
 }

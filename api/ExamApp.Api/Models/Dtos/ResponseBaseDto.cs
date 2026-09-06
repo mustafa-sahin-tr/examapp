@@ -21,4 +21,10 @@ public class ResponseBaseDto
     /// "don't leak existence" NotFound convention (e.g. issue #10).
     /// </summary>
     public bool Forbidden { get; set; } = false;
+
+    /// <summary>
+    /// True when the operation failed because it conflicts with existing state
+    /// (e.g. a pending request already exists). Lets controllers map to HTTP 409.
+    /// </summary>
+    public bool Conflict { get; set; } = false;
 }

@@ -191,6 +191,20 @@ export const routes: Routes = [
     children: [{ path: '', component: QuestionTransferComponent }],
   },
   {
+    path: 'assignment-permission-requests',
+    component: EnhancedLayoutComponent,
+    canActivate: [authGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/assignment-permission-requests/assignment-permission-requests.component').then(
+            (m) => m.AssignmentPermissionRequestsComponent
+          ),
+      },
+    ],
+  },
+  {
     path: 'admin',
     component: EnhancedLayoutComponent,
     canActivate: [authGuard, adminGuard],

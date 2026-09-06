@@ -27,16 +27,19 @@ public class ExamController : BaseController
     private readonly IWorksheetAuthoringService _authoring;
     private readonly IWorksheetDetailService _worksheetDetail;
     private readonly IWorksheetReminderService _reminderService;
+    private readonly IWorksheetAccessRequestService _accessRequestService;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
             IWorksheetAssignmentService assignmentService,
             ITestSessionService testSession,
             IWorksheetAuthoringService authoring,
             IWorksheetDetailService worksheetDetail,
-            IWorksheetReminderService reminderService
+            IWorksheetReminderService reminderService,
+            IWorksheetAccessRequestService accessRequestService
             )
         : base()
     {
+        _accessRequestService = accessRequestService;
         _examService = examService;
         _studentService = studentService;
         _assignmentService = assignmentService;
@@ -232,6 +235,99 @@ public class ExamController : BaseController
         return Ok(overview);
     }
 
+
+    // ── Atama izni akışı (issue #13) ──────────────────────────────────────────
+
+    [Authorize(Roles = "Teacher")]
+    [HttpPost("access-requests")]
+    public async Task<IActionResult> CreateAccessRequest([FromBody] CreateWorksheetAccessRequestDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _accessRequestService.CreateRequestAsync(
+            request.WorksheetId, request.Note, user.Id, user.KeycloakId, User.IsInRole("Admin"), ct);
+
+        if (!result.Success)
+        {
+            if (result.Conflict)
+                return Conflict(result);
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Teacher")]
+    [HttpGet("access-requests/incoming")]
+    public async Task<IActionResult> GetIncomingAccessRequests(CancellationToken ct, bool includeDecided = false)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _accessRequestService.GetIncomingAsync(user.Id, includeDecided, ct);
+        return Ok(result);
+    }
+
+    [Authorize(Roles = "Teacher")]
+    [HttpGet("access-requests/incoming/count")]
+    public async Task<IActionResult> GetIncomingAccessRequestCount(CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var count = await _accessRequestService.GetIncomingPendingCountAsync(user.Id, ct);
+        return Ok(count);
+    }
+
+    [Authorize(Roles = "Teacher")]
+    [HttpPost("access-requests/{id:int}/approve")]
+    public async Task<IActionResult> ApproveAccessRequest(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _accessRequestService.ApproveAsync(id, user.Id, User.IsInRole("Admin"), ct);
+        return MapAccessDecisionResult(result);
+    }
+
+    [Authorize(Roles = "Teacher")]
+    [HttpPost("access-requests/{id:int}/reject")]
+    public async Task<IActionResult> RejectAccessRequest(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _accessRequestService.RejectAsync(id, user.Id, User.IsInRole("Admin"), ct);
+        return MapAccessDecisionResult(result);
+    }
+
+    [Authorize(Roles = "Teacher")]
+    [HttpDelete("access-grants")]
+    public async Task<IActionResult> RevokeAccessGrant(int worksheetId, int teacherUserId, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _accessRequestService.RevokeGrantAsync(worksheetId, teacherUserId, user.Id, User.IsInRole("Admin"), ct);
+        return MapAccessDecisionResult(result);
+    }
+
+    private IActionResult MapAccessDecisionResult(ResponseBaseDto result)
+    {
+        if (result.Success)
+            return Ok(result);
+        // Yetki reddi de dahil "varlığı sızdırma" deseni (issue #10): NotFound.
+        if (result.NotFound)
+            return NotFound(result);
+        return BadRequest(result);
+    }
 
     [HttpGet("CompletedTests")]
     [Authorize(Roles = "Student")]

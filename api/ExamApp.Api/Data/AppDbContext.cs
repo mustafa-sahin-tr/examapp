@@ -104,6 +104,9 @@ public class AppDbContext : DbContext
 
     public DbSet<WorksheetReminder> WorksheetReminders { get; set; }
 
+    public DbSet<WorksheetAccessRequest> WorksheetAccessRequests { get; set; }
+    public DbSet<WorksheetAccessGrant> WorksheetAccessGrants { get; set; }
+
     public DbSet<School> Schools { get; set; }
 
 
@@ -318,6 +321,32 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorksheetReminder>()
             .HasIndex(wr => new { wr.WorksheetId, wr.StudentId })
             .IsUnique();
+
+        // Atama izni akışı (issue #13)
+        modelBuilder.Entity<WorksheetAccessRequest>()
+            .HasOne(r => r.Worksheet)
+            .WithMany()
+            .HasForeignKey(r => r.WorksheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Tek bekleyen talep: (WorksheetId, RequesterUserId) yalnız Status=Pending iken unique
+        // — 409'un DB dayanağı.
+        modelBuilder.Entity<WorksheetAccessRequest>()
+            .HasIndex(r => new { r.WorksheetId, r.RequesterUserId })
+            .IsUnique()
+            .HasFilter("\"Status\" = 0");
+
+        modelBuilder.Entity<WorksheetAccessGrant>()
+            .HasOne(g => g.Worksheet)
+            .WithMany()
+            .HasForeignKey(g => g.WorksheetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Aktif tek grant: (WorksheetId, TeacherUserId) yalnız RevokedAt IS NULL iken unique.
+        modelBuilder.Entity<WorksheetAccessGrant>()
+            .HasIndex(g => new { g.WorksheetId, g.TeacherUserId })
+            .IsUnique()
+            .HasFilter("\"RevokedAt\" IS NULL");
 
         // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
         modelBuilder.Entity<ProgramStep>()

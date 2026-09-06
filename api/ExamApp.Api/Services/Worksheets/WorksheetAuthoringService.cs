@@ -603,6 +603,66 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         return response;
     }
 
+    public async Task<CopyWorksheetResultDto> CopyWorksheetAsync(int sourceWorksheetId, int userId, bool isAdmin, CancellationToken ct = default)
+    {
+        var result = new CopyWorksheetResultDto();
+
+        var source = await _context.Worksheets
+            .Include(w => w.WorksheetQuestions)
+            .FirstOrDefaultAsync(w => w.Id == sourceWorksheetId && !w.IsDeleted, ct);
+
+        // issue #16: kopyalama yetkisi CanView ile aynı semantikte (CanCopy -> CanView).
+        // Kaynak caller'a hiç görünmüyorsa varlık sızmasın diye NotFound.
+        if (source == null ||
+            !WorksheetAccess.CanCopy(source.CreateUserId, userId, isAdmin, source.TeacherSharing, source.StudentVisibility))
+        {
+            result.Success = false;
+            result.NotFound = true;
+            result.Message = "Worksheet bulunamadı.";
+            return result;
+        }
+
+        var newWorksheet = new Worksheet
+        {
+            Name = source.Name,
+            Description = source.Description,
+            GradeId = source.GradeId,
+            SubjectId = source.SubjectId,
+            TopicId = source.TopicId,
+            SubTopicId = source.SubTopicId,
+            MaxDurationSeconds = source.MaxDurationSeconds,
+            IsPracticeTest = source.IsPracticeTest,
+            Subtitle = source.Subtitle,
+            BadgeText = source.BadgeText,
+            ImageUrl = source.ImageUrl, // aynı MinIO objesine referans
+            BookTestId = source.BookTestId,
+            TeacherSharing = WorksheetTeacherSharing.Private,
+            StudentVisibility = WorksheetStudentVisibility.Normal,
+            SourceWorksheetId = sourceWorksheetId,
+            CreateUserId = userId
+        };
+
+        foreach (var q in source.WorksheetQuestions)
+        {
+            newWorksheet.WorksheetQuestions.Add(new WorksheetQuestion
+            {
+                Order = q.Order,
+                QuestionId = q.QuestionId,
+                Worksheet = newWorksheet
+            });
+        }
+
+        _context.Worksheets.Add(newWorksheet);
+        _context.SetCurrentUser(userId);
+        await _context.SaveChangesAsync(ct);
+
+        result.Success = true;
+        result.Message = "Sınav kopyalandı.";
+        result.ObjectId = newWorksheet.Id;
+        result.WorksheetId = newWorksheet.Id;
+        return result;
+    }
+
     /// <summary>
     /// Verifies the actual file content via magic bytes and returns the canonical
     /// MIME type, or null if the content is not a supported raster image.

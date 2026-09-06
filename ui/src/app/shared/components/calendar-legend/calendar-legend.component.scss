@@ -1,0 +1,102 @@
+:host {
+  display: block;
+  font-family: var(--mainFontFamily);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ms-layout-spacing-small);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: var(--ms-type-font-size-xsmall);
+
+    &--reminder-pending {
+      background: var(--ms-action-background);
+      border-color: var(--ms-action-border);
+      color: var(--ms-action-text);
+    }
+
+    &--reminder-sent {
+      background: var(--ms-action-background-weak);
+      color: var(--ms-action-text-weak);
+    }
+
+    &--deadline-open {
+      background: var(--ms-warning-surface);
+      border-color: var(--ms-warning-border);
+      color: var(--ms-warning-text);
+    }
+
+    &--deadline-done {
+      background: var(--ms-success-surface);
+      border-color: var(--ms-success-border);
+      color: var(--ms-success-text);
+    }
+  }
+
+  &__dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+
+    &--reminder-pending,
+    &--reminder-sent {
+      border-radius: 999px;
+    }
+
+    &--deadline-open,
+    &--deadline-done {
+      border-radius: 3px;
+    }
+
+    &--reminder-pending {
+      background: var(--ms-action-border);
+      color: var(--ms-action-text);
+    }
+
+    &--reminder-sent {
+      border: 1px solid var(--ms-action-text-weak);
+      color: var(--ms-action-text-weak);
+    }
+
+    &--deadline-open {
+      background: var(--ms-warning-border);
+      color: var(--ms-warning-surface);
+    }
+
+    &--deadline-done {
+      border: 1px solid var(--ms-success-border);
+      color: var(--ms-success-text-medium);
+    }
+  }
+
+  &__dot-icon {
+    width: 12px;
+    height: 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 767px) {
+  .legend {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .legend__chip {
+    flex-shrink: 0;
+  }
+}

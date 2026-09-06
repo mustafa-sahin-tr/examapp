@@ -1,0 +1,122 @@
+:host {
+  display: block;
+  min-width: 0;
+  font-family: var(--mainFontFamily);
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: var(--ms-type-font-size-xsmall);
+  line-height: 1.2;
+
+  &__icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  &__subject {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--ms-type-font-size-xsmall);
+    opacity: 0.85;
+  }
+
+  &--reminder-pending {
+    background: var(--ms-action-background);
+    border-color: var(--ms-action-border);
+    color: var(--ms-action-text);
+  }
+
+  &--reminder-sent {
+    background: var(--ms-action-background-weak);
+    color: var(--ms-action-text-weak);
+    opacity: 0.7;
+
+    .badge__title {
+      text-decoration: line-through;
+    }
+  }
+
+  &--deadline-open {
+    background: var(--ms-warning-surface);
+    border-color: var(--ms-warning-border);
+    color: var(--ms-warning-text);
+  }
+
+  &--deadline-done {
+    background: var(--ms-success-surface);
+    border-color: var(--ms-success-border);
+    color: var(--ms-success-text);
+    opacity: 0.7;
+  }
+}
+
+.badge__dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+
+  &-icon {
+    width: 12px;
+    height: 12px;
+    font-size: 12px;
+  }
+
+  // Şekil + doluluk farkı, renk-dışı ayrım için:
+  // reminder = daire, deadline = kare; pending/open = dolu, sent/done = ince kenarlı.
+  &--reminder-pending,
+  &--reminder-sent {
+    border-radius: 999px;
+  }
+
+  &--deadline-open,
+  &--deadline-done {
+    border-radius: 3px;
+  }
+
+  &--reminder-pending {
+    background: var(--ms-action-border);
+    color: var(--ms-action-text);
+  }
+
+  &--reminder-sent {
+    border: 1px solid var(--ms-action-text-weak);
+    color: var(--ms-action-text-weak);
+    opacity: 0.7;
+  }
+
+  &--deadline-open {
+    background: var(--ms-warning-border);
+    color: var(--ms-warning-surface);
+  }
+
+  &--deadline-done {
+    border: 1px solid var(--ms-success-border);
+    color: var(--ms-success-text-medium);
+    opacity: 0.7;
+  }
+}

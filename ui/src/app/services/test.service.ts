@@ -28,6 +28,7 @@ import { Answer } from '../models/answer';
 import { StudentStatisticsResponse } from '../models/statistics';
 import { Question } from '../models/question';
 import {
+  CopyWorksheetResult,
   WorksheetDetail,
   WorksheetFromMistakesResult,
   WorksheetReminder,
@@ -51,6 +52,15 @@ export class TestService {
 
   createWorksheetFromMistakes(instanceId: number): Observable<WorksheetFromMistakesResult> {
     return this.http.post<WorksheetFromMistakesResult>(`${this.baseUrl}/from-mistakes/${instanceId}`, null);
+  }
+
+  /**
+   * Başkasının (public) sınavını kendi hesabına kopyalar (issue #16).
+   * Kopya `Private` bir worksheet olarak açılır; kopyalayan sahibidir.
+   * 401 / 403 / 404 hata döner.
+   */
+  copyWorksheet(worksheetId: number): Observable<CopyWorksheetResult> {
+    return this.http.post<CopyWorksheetResult>(`${this.baseUrl}/${worksheetId}/copy`, null);
   }
 
   getWorksheetReminder(worksheetId: number): Observable<WorksheetReminder | null> {

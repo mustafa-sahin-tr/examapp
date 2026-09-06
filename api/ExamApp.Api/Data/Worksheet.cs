@@ -47,4 +47,7 @@ public class Worksheet : BaseEntity
     public WorksheetTeacherSharing TeacherSharing { get; set; } = WorksheetTeacherSharing.Private;
     public WorksheetStudentVisibility StudentVisibility { get; set; } = WorksheetStudentVisibility.Normal;
 
+    // issue #16: kopya kaynağına atıf; sync yok. Kaynak silinse bile bu değer kalır (FK/navigation yok).
+    public int? SourceWorksheetId { get; set; }
+
 }

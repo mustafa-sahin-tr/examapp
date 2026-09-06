@@ -569,6 +569,34 @@ public class ExamController : BaseController
         }
     }
 
+    [HttpPost("{id:int}/copy")]
+    [Authorize(Roles = "Teacher,Admin")]
+    public async Task<IActionResult> CopyWorksheet(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+        {
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+        }
+
+        var result = await _authoring.CopyWorksheetAsync(id, user.Id, User.IsInRole("Admin"), ct);
+        if (!result.Success)
+        {
+            if (result.NotFound)
+            {
+                return NotFound(result);
+            }
+            // CanCopy şu an CanView ile aynı; ileride ayrışırsa 403 dalı burada devreye girer.
+            if (result.Forbidden)
+            {
+                return Forbid();
+            }
+            return BadRequest(result);
+        }
+
+        return Ok(result);
+    }
+
     [HttpPut("{id}/background-image")]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> UpdateWorksheetBackgroundImage(int id, [FromForm] IFormFile file)

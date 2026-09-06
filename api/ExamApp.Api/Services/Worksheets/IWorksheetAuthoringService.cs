@@ -11,4 +11,7 @@ public interface IWorksheetAuthoringService
     Task<BulkExamResultDto> CreateBulkExamsAsync(BulkExamCreateDto bulkExamDto, int userId, bool isAdmin);
     Task<ResponseBaseDto> DeleteWorksheetAsync(int worksheetId, int userId, bool isAdmin);
     Task<ResponseBaseDto> UpdateVisibilityAsync(int worksheetId, UpdateWorksheetVisibilityDto dto, int userId, bool isAdmin);
+
+    /// <summary>issue #16: bir sınavı kopyalayanın hesabına yeni bir worksheet olarak çoğaltır.</summary>
+    Task<CopyWorksheetResultDto> CopyWorksheetAsync(int sourceWorksheetId, int userId, bool isAdmin, CancellationToken ct = default);
 }

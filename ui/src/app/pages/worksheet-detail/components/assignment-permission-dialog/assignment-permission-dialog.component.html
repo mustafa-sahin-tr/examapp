@@ -1,0 +1,51 @@
+<h2 mat-dialog-title>Atama izni iste</h2>
+
+<mat-dialog-content>
+  <p class="apd-desc">
+    <strong>{{ data.ownerName || 'Sınav sahibi' }}</strong> öğretmeninden
+    <strong>{{ data.worksheetName }}</strong> sınavını öğrencilerine atamak için izin iste.
+  </p>
+
+  @if (conflict()) {
+    <div class="apd-alert" role="alert">
+      <mat-icon>info</mat-icon>
+      <span>Bu sınav için zaten bekleyen bir talebiniz var.</span>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="apd-alert apd-alert--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <mat-form-field appearance="outline" class="apd-note">
+    <mat-label>Not (opsiyonel)</mat-label>
+    <textarea
+      matInput
+      [formControl]="noteControl"
+      rows="3"
+      maxlength="500"
+      placeholder="İzin nedeninizi kısaca yazabilirsiniz"
+    ></textarea>
+    <mat-hint align="end">{{ noteLength() }} / 500</mat-hint>
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Vazgeç</button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    (click)="submit()"
+    [disabled]="submitting() || conflict() || noteControl.invalid"
+  >
+    @if (submitting()) {
+      <mat-spinner diameter="18"></mat-spinner>
+    } @else {
+      <span>Gönder</span>
+    }
+  </button>
+</mat-dialog-actions>

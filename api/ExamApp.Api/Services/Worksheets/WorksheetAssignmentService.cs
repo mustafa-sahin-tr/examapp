@@ -60,7 +60,17 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // Öğretmen kendi worksheet'ini her zaman atayabilir; admin hepsini; ayrıca
         // TeacherSharing=PublicAssignable ise sahibi olmayan öğretmenler de onaysız atayabilir (issue #12).
         var isOwnerOrAdmin = WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin);
+
+        // issue #13: sahibinden alınmış onaylı (aktif) atama izni de non-owner atamaya yeter.
+        // Sahibi/admin veya PublicAssignable zaten izin veriyorsa grant sorgusunu atla.
+        var hasGrant = false;
         if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing))
+        {
+            hasGrant = await _context.WorksheetAccessGrants
+                .AnyAsync(g => g.WorksheetId == worksheet.Id && g.TeacherUserId == userId && g.RevokedAt == null);
+        }
+
+        if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant))
         {
             var hasOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0;
             var message = hasOwner

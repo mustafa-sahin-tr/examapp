@@ -18,19 +18,20 @@ public static class WorksheetAccess
     }
 
     /// <summary>
-    /// Bir worksheet atanabilir mi (issue #12). Sahibi/admin her zaman atayabilir (CanModify ile aynı);
-    /// ayrıca worksheet'in bir sahibi varsa ve TeacherSharing=PublicAssignable ise, sahibi olmayan
-    /// bir öğretmen de onay almadan atayabilir. Düzenleme yetkisi (<see cref="CanModify"/>) bundan
-    /// ayrıdır — PublicAssignable atama izni verir, düzenleme izni vermez.
+    /// Bir worksheet atanabilir mi (issue #12/#13). Sahibi/admin her zaman atayabilir (CanModify ile aynı);
+    /// ayrıca worksheet'in bir sahibi varsa ve TeacherSharing=PublicAssignable ise <em>veya</em> bu öğretmen
+    /// için onaylı bir atama izni (aktif <c>WorksheetAccessGrant</c>) varsa, sahibi olmayan bir öğretmen de
+    /// atayabilir. Düzenleme yetkisi (<see cref="CanModify"/>) bundan ayrıdır — PublicAssignable veya onaylı
+    /// grant atama izni verir, düzenleme izni vermez.
     /// </summary>
     public static bool CanAssign(int? createUserId, int userId, bool isAdmin,
-        WorksheetTeacherSharing? sharing = null)
+        WorksheetTeacherSharing? sharing = null, bool hasApprovedGrant = false)
     {
         if (isAdmin || (createUserId.HasValue && createUserId.Value > 0 && createUserId.Value == userId))
             return true;
 
         var hasOwner = createUserId.HasValue && createUserId.Value > 0;
-        return hasOwner && sharing == WorksheetTeacherSharing.PublicAssignable;
+        return hasOwner && (sharing == WorksheetTeacherSharing.PublicAssignable || hasApprovedGrant);
     }
 
     /// <summary>

@@ -1,0 +1,39 @@
+:host {
+  display: block;
+  max-width: 420px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.apd-desc {
+  margin: 0 0 1rem;
+  color: var(--main-foreground-color);
+  line-height: 1.5;
+}
+
+.apd-note {
+  width: 100%;
+}
+
+.apd-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primaryColor) 12%, transparent);
+  color: var(--main-foreground-color);
+  font-size: 0.875rem;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  &--error {
+    background: color-mix(in srgb, var(--ms-danger-background) 15%, transparent);
+  }
+}
+
+mat-spinner {
+  display: inline-block;
+}

@@ -108,6 +108,9 @@ namespace BadgeService.Migrations
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("SourceAccessRequestId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SourceReminderId")
                         .HasColumnType("integer");
 
@@ -126,6 +129,10 @@ namespace BadgeService.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Type", "SourceAccessRequestId")
+                        .IsUnique()
+                        .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
 
                     b.HasIndex("Type", "SourceReminderId")
                         .IsUnique()

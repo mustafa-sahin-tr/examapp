@@ -23,7 +23,10 @@
           <div *ngIf="item.type === 'menu'" class="menu-item" [class.active]="item.id === activeMenuItem()"
             (click)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? item.name : ''"
             [matTooltip]="isSidenavCollapsed() ? item.name : ''" matTooltipPosition="right">
-            <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+            <mat-icon class="menu-icon"
+              [matBadge]="accessRequestCount()"
+              [matBadgeHidden]="item.id !== 'access-requests' || accessRequestCount() === 0"
+              matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
             <span class="menu-text" *ngIf="!isSidenavCollapsed()">{{ item.name }}</span>
             <div class="ripple-effect"></div>
           </div>

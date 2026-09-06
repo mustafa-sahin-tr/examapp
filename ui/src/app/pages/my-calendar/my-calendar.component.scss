@@ -1,0 +1,136 @@
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.my-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-large);
+  padding: var(--ms-layout-spacing-large);
+  font-family: var(--mainFontFamily);
+  color: var(--ms-text);
+
+  &__hero-title {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-layout-spacing-small);
+
+    h1 {
+      margin: 0;
+      font-size: var(--ms-type-font-size-xlarge);
+      color: var(--ms-text-strong);
+    }
+
+    mat-icon {
+      color: var(--primaryColor);
+    }
+  }
+
+  &__hero-subtitle {
+    margin: var(--ms-layout-spacing-xsmall) 0 0;
+    color: var(--ms-text-weak);
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ms-layout-spacing-medium);
+    padding: var(--ms-layout-spacing-large);
+    background: var(--ms-surface-weak);
+    border: 1px solid var(--ms-border-weak);
+    border-radius: 16px;
+  }
+
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--ms-layout-spacing-small);
+  }
+
+  &__month-label {
+    margin: 0;
+    font-size: var(--ms-type-font-size-medium);
+    color: var(--ms-text-strong);
+    min-width: 160px;
+    text-align: center;
+  }
+
+  &__today-btn {
+    margin-left: auto;
+  }
+
+  &__grid-wrap {
+    position: relative;
+  }
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ms-layout-spacing-small);
+    background: color-mix(in srgb, var(--ms-surface) 70%, transparent);
+    border-radius: 12px;
+    color: var(--ms-text-weak);
+  }
+
+  &__state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--ms-layout-spacing-small);
+    padding: var(--ms-layout-spacing-large);
+    text-align: center;
+    color: var(--ms-text-weak);
+
+    mat-icon {
+      width: 40px;
+      height: 40px;
+      font-size: 40px;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    &--error mat-icon {
+      color: var(--ms-danger-background);
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .my-calendar {
+    padding: var(--ms-layout-spacing-medium);
+    gap: var(--ms-layout-spacing-medium);
+  }
+
+  .my-calendar__card {
+    padding: var(--ms-layout-spacing-medium);
+  }
+
+  .my-calendar__toolbar {
+    flex-wrap: nowrap;
+  }
+
+  .my-calendar__month-label {
+    min-width: 0;
+    flex: 1;
+    font-size: var(--ms-type-font-size-small);
+  }
+
+  .my-calendar__today-btn {
+    margin-left: var(--ms-layout-spacing-xsmall);
+  }
+}

@@ -1,0 +1,139 @@
+:host {
+  display: block;
+  font-family: var(--mainFontFamily);
+  color: var(--main-foreground-color);
+}
+
+.day-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-medium, 1rem);
+  padding: var(--ms-layout-spacing-medium, 1rem);
+  max-width: 32rem;
+  max-height: 80vh;
+  overflow-y: auto;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 1.125rem;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: start;
+    gap: 0.5rem;
+    padding: 0.75rem 0.75rem 0.75rem 1rem;
+    border: 1px solid var(--main-foreground-color);
+    border-radius: 0.5rem;
+    background: var(--main-bg-color);
+
+    &--sunk {
+      opacity: 0.62;
+    }
+  }
+
+  &__strip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0.375rem;
+    border-radius: 0.5rem 0 0 0.5rem;
+    background: var(--primaryColor);
+  }
+
+  &__row--reminder-pending &__strip {
+    background: var(--ms-action-border, var(--primaryColor));
+  }
+
+  &__row--reminder-sent &__strip {
+    background: var(--ms-action-text-weak, var(--secondaryColor));
+  }
+
+  &__row--deadline-open &__strip {
+    background: var(--ms-warning-border, var(--ms-danger-background));
+  }
+
+  &__row--deadline-done &__strip {
+    background: var(--ms-success-border, var(--primaryColor));
+  }
+
+  &__row-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 1.25rem;
+  }
+
+  &__body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  &__row-title {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  &__row-meta {
+    margin: 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 0.8125rem;
+    color: var(--secondaryColor);
+  }
+
+  &__row-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0.125rem 0 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 0.8125rem;
+    font-weight: 600;
+
+    mat-icon {
+      width: 1rem;
+      height: 1rem;
+      font-size: 1rem;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  &__action {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+
+  &__close {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}

@@ -1,0 +1,57 @@
+<section class="day-dialog" role="region" [attr.aria-labelledby]="titleId">
+  <header class="day-dialog__head">
+    <h2 class="day-dialog__title" [id]="titleId">{{ title }}</h2>
+    <button
+      mat-icon-button
+      type="button"
+      class="day-dialog__close"
+      aria-label="Kapat"
+      (click)="close()"
+    >
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <ul class="day-dialog__list">
+    @for (row of rows; track row.variant + '|' + row.time + '|' + row.title) {
+      <li
+        class="day-dialog__row"
+        [class.day-dialog__row--sunk]="row.sunk"
+        [class.day-dialog__row--reminder-pending]="row.variant === 'reminder-pending'"
+        [class.day-dialog__row--reminder-sent]="row.variant === 'reminder-sent'"
+        [class.day-dialog__row--deadline-open]="row.variant === 'deadline-open'"
+        [class.day-dialog__row--deadline-done]="row.variant === 'deadline-done'"
+      >
+        <span class="day-dialog__strip" aria-hidden="true"></span>
+        <mat-icon class="day-dialog__row-icon">{{ row.icon }}</mat-icon>
+
+        <div class="day-dialog__body">
+          <p class="day-dialog__row-title">{{ row.title }}</p>
+          @if (row.meta) {
+            <p class="day-dialog__row-meta">{{ row.meta }}</p>
+          }
+          @if (row.sunkLabel) {
+            <p class="day-dialog__row-status">
+              <mat-icon>{{ row.sunkIcon }}</mat-icon>
+              <span>{{ row.sunkLabel }}</span>
+            </p>
+          }
+
+          <div class="day-dialog__actions">
+            @for (action of row.actions; track action.label) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="day-dialog__action"
+                (click)="action.run()"
+              >
+                <mat-icon>{{ action.icon }}</mat-icon>
+                {{ action.label }}
+              </button>
+            }
+          </div>
+        </div>
+      </li>
+    }
+  </ul>
+</section>

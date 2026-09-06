@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject, of, throwError } from 'rxjs';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { WorksheetDetailComponent } from './worksheet-detail.component';
 import { TestService } from '../../services/test.service';
@@ -102,5 +103,61 @@ describe('WorksheetDetailComponent', () => {
 
       expect(testService.copyWorksheet).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('WorksheetDetailComponent reminder=edit deep link', () => {
+  it('ngOnInit_QueryParamReminderEditWithLoadedStudentDetail_StartsReminderEditing', () => {
+    const testService = jasmine.createSpyObj<TestService>('TestService', [
+      'getWorksheetDetail',
+      'copyWorksheet',
+      'get',
+    ]);
+    testService.getWorksheetDetail.and.returnValue(
+      of({
+        worksheet: { id: 12, canEdit: true, canAssign: true },
+        plannedReminder: {
+          scheduledFor: new Date(2026, 9, 1, 9, 0).toISOString(),
+          remindBeforeMinutes: 60,
+          status: 'Pending',
+        },
+        attempts: [],
+      } as any),
+    );
+    testService.get.and.returnValue(of(null as any));
+
+    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
+
+    TestBed.configureTestingModule({
+      imports: [WorksheetDetailComponent, NoopAnimationsModule],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TestService, useValue: testService },
+        { provide: Router, useValue: router },
+        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
+        { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
+        { provide: AuthService, useValue: { hasRole: () => false } },
+        { provide: StudentService, useValue: {} },
+        { provide: GradesService, useValue: { getGrades: () => of([]) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({}), data: {} },
+            params: of({ testId: '12' }),
+            queryParams: of({ reminder: 'edit' }),
+            paramMap: of(convertToParamMap({ testId: '12' })),
+            queryParamMap: of(convertToParamMap({ reminder: 'edit' })),
+          },
+        },
+      ],
+    });
+
+    const component = TestBed.createComponent(WorksheetDetailComponent).componentInstance;
+    component.ngOnInit();
+
+    expect(testService.getWorksheetDetail).toHaveBeenCalledWith(12);
+    expect((component as any)['reminderEditing']()).toBeTrue();
+    expect((component as any)['showReminderForm']()).toBeTrue();
   });
 });

@@ -1,15 +1,21 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Observable, Subject, catchError, map, merge, of, switchMap, tap } from 'rxjs';
 import { MonthCalendarGridComponent } from '../../shared/components/month-calendar-grid/month-calendar-grid.component';
 import { CalendarLegendComponent } from '../../shared/components/calendar-legend/calendar-legend.component';
-import { addMonths, buildMonthWeeks, formatMonthYear, startOfMonth } from '../../shared/utils/calendar-month.util';
+import { addMonths, buildMonthWeeks, formatMonthYear, startOfMonth, toLocalIso } from '../../shared/utils/calendar-month.util';
 import { TestService } from '../../services/test.service';
 import { CalendarEvent } from '../../models/calendar-event';
+import {
+  CalendarDayDialogComponent,
+  CalendarDayDialogData,
+} from '../../shared/components/calendar-day-dialog/calendar-day-dialog.component';
 
 type CalendarStatus = 'loading' | 'error' | 'empty' | 'ready';
 
@@ -43,6 +49,9 @@ interface CalendarResult {
 export class MyCalendarComponent {
   private readonly testService = inject(TestService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   readonly viewMonth = signal<Date>(startOfMonth(new Date()));
   readonly status = signal<CalendarStatus>('loading');
@@ -106,8 +115,34 @@ export class MyCalendarComponent {
     this.viewMonth.set(startOfMonth(month));
   }
 
-  onDayClick(_date: Date): void {
-    // Gün detayı bu issue kapsamı değil (issue #38).
+  /**
+   * Gün hücresine tıklandığında (issue #39): o güne düşen etkinliklerle
+   * mobilde bottom-sheet, masaüstünde — tek etkinlik varsa doğrudan gezinme,
+   * birden fazla varsa dialog açar. Etkinlik yoksa hiçbir şey yapmaz.
+   */
+  onDayClick(date: Date): void {
+    const iso = toLocalIso(date);
+    const dayEvents = this.events()
+      .filter((ev) => toLocalIso(new Date(ev.date)) === iso)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    if (dayEvents.length === 0) {
+      return;
+    }
+
+    const data: CalendarDayDialogData = { date, events: dayEvents };
+
+    if (this.isMobile()) {
+      this.bottomSheet.open(CalendarDayDialogComponent, { data, restoreFocus: true });
+      return;
+    }
+
+    if (dayEvents.length === 1) {
+      void this.router.navigate(['/test', dayEvents[0].worksheetId]);
+      return;
+    }
+
+    this.dialog.open(CalendarDayDialogComponent, { data, restoreFocus: true, autoFocus: 'dialog', width: '32rem' });
   }
 
   retry(): void {

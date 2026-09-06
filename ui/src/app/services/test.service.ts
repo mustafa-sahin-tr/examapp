@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { WorksheetListFilter } from '../models/worksheet-list-filter';
-import { BehaviorSubject, Observable, of, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Observable, of, switchMap, tap, map } from 'rxjs';
+import { CalendarEvent, StudentCalendarResponse } from '../models/calendar-event';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 import { Subject } from '../models/subject';
@@ -73,6 +74,18 @@ export class TestService {
 
   deleteWorksheetReminder(worksheetId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${worksheetId}/reminder`);
+  }
+
+  /**
+   * Öğrencinin `[from, to)` aralığındaki takvim etkinlikleri (planlanmış hatırlatmalar
+   * + atama teslim tarihleri). `to` hariç (exclusive). from/to `.toISOString()` ile
+   * her zaman 'Z' içeren UTC olarak gönderilir; aralık en fazla 180 gün.
+   */
+  getMyCalendar(from: Date, to: Date): Observable<CalendarEvent[]> {
+    const params = new HttpParams().set('from', from.toISOString()).set('to', to.toISOString());
+    return this.http
+      .get<StudentCalendarResponse>('/api/exam/calendar/me', { params })
+      .pipe(map((r) => r.events));
   }
 
   getTestWithAnswers(testInstanceId: number): Observable<TestInstance> {

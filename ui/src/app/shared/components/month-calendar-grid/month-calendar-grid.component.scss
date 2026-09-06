@@ -36,6 +36,8 @@
   }
 
   &__cell {
+    display: flex;
+    flex-direction: column;
     min-height: 120px;
     padding: var(--ms-layout-spacing-xsmall);
     border-right: 1px solid var(--ms-border-weak);
@@ -81,8 +83,29 @@
   }
 
   &__daynum {
+    align-self: flex-start;
     font-size: var(--ms-type-font-size-small);
     font-weight: 600;
+  }
+
+  &__events {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 4px;
+    min-width: 0;
+
+    &--compact {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+  }
+
+  &__more {
+    align-self: flex-start;
+    color: var(--ms-text-weak);
+    font-size: var(--ms-type-font-size-xsmall);
   }
 }
 

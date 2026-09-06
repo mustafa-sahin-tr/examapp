@@ -150,6 +150,22 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       }
     }
 
+    if (this.authService.hasRealmRole('Student')) {
+      const settingsIdx = this.menuItems.findIndex((m) => m.id === 'settings');
+      const planItem: MenuItem = {
+        id: 'my-calendar',
+        name: 'Planım',
+        icon: 'event_note',
+        route: '/my-calendar',
+        type: 'menu',
+      };
+      if (settingsIdx >= 0) {
+        this.menuItems.splice(settingsIdx, 0, planItem);
+      } else {
+        this.menuItems.push(planItem);
+      }
+    }
+
     if (this.authService.hasRealmRole('Admin')) {
       const settingsIdx = this.menuItems.findIndex((m) => m.id === 'settings');
       const adminItem: MenuItem = {

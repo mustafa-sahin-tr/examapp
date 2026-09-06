@@ -1,0 +1,30 @@
+<div class="calendar-grid" role="grid" aria-label="Aylık takvim">
+  <div class="calendar-grid__row calendar-grid__row--head" role="row">
+    @for (weekday of weekdays; track weekday) {
+      <div class="calendar-grid__weekday" role="columnheader">{{ weekday }}</div>
+    }
+  </div>
+
+  <div class="calendar-grid__body">
+    @for (week of weeks(); track $index) {
+      <div class="calendar-grid__row" role="row">
+        @for (cell of week; track cell.iso) {
+          <div
+            class="calendar-grid__cell"
+            role="gridcell"
+            [id]="'cal-day-' + cell.iso"
+            [attr.aria-label]="cell.label"
+            [class.calendar-grid__cell--outside]="!cell.inCurrentMonth"
+            [class.calendar-grid__cell--today]="cell.isToday"
+            [attr.aria-current]="cell.isToday ? 'date' : null"
+            [attr.tabindex]="isFocusTarget(cell) ? 0 : -1"
+            (click)="onDayClick(cell)"
+            (keydown)="onKeydown($event, cell)"
+          >
+            <span class="calendar-grid__daynum">{{ cell.day }}</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

@@ -13,7 +13,7 @@
             class="calendar-grid__cell"
             role="gridcell"
             [id]="'cal-day-' + cell.iso"
-            [attr.aria-label]="cell.label"
+            [attr.aria-label]="cellAriaLabel(cell)"
             [class.calendar-grid__cell--outside]="!cell.inCurrentMonth"
             [class.calendar-grid__cell--today]="cell.isToday"
             [attr.aria-current]="cell.isToday ? 'date' : null"
@@ -22,6 +22,20 @@
             (keydown)="onKeydown($event, cell)"
           >
             <span class="calendar-grid__daynum">{{ cell.day }}</span>
+
+            @if (eventsFor(cell).length) {
+              <div
+                class="calendar-grid__events"
+                [class.calendar-grid__events--compact]="compact()"
+              >
+                @for (ev of visibleEvents(cell); track ev.kind + '-' + ev.worksheetId + '-' + ev.date) {
+                  <app-calendar-event-badge [event]="ev" [compact]="compact()" />
+                }
+                @if (overflowCount(cell); as more) {
+                  <span class="calendar-grid__more" aria-hidden="true">+{{ more }} daha</span>
+                }
+              </div>
+            }
           </div>
         }
       </div>

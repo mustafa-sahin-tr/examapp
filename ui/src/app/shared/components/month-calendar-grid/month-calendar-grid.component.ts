@@ -15,7 +15,10 @@ import {
   CalendarCell,
   mondayIndex,
   startOfMonth,
+  toLocalIso,
 } from '../../utils/calendar-month.util';
+import { CalendarEvent } from '../../../models/calendar-event';
+import { CalendarEventBadgeComponent } from '../calendar-event-badge/calendar-event-badge.component';
 
 /**
  * Static monthly calendar grid (no event data). Monday-first.
@@ -32,12 +35,20 @@ import {
 @Component({
   selector: 'app-month-calendar-grid',
   standalone: true,
+  imports: [CalendarEventBadgeComponent],
   templateUrl: './month-calendar-grid.component.html',
   styleUrls: ['./month-calendar-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MonthCalendarGridComponent {
   readonly month = input.required<Date>();
+  /** Aralık dışı günlere denk gelen etkinlikler yok sayılır (görünen hücre yoksa gösterilmez). */
+  readonly events = input<CalendarEvent[]>([]);
+  /** Mobil: rozetler nokta olarak render edilir (parent geçer). */
+  readonly compact = input(false);
+
+  /** Maksimum kaç rozet gösterilecek; fazlası "+N daha" olur. */
+  readonly maxBadges = 3;
 
   readonly dayClick = output<Date>();
   readonly monthChange = output<Date>();
@@ -48,6 +59,47 @@ export class MonthCalendarGridComponent {
 
   readonly weeks = computed<CalendarCell[][]>(() => buildMonthWeeks(this.month()));
   readonly cells = computed<CalendarCell[]>(() => this.weeks().flat());
+
+  /** Local gün ISO (yyyy-mm-dd) -> o güne düşen etkinlikler, sıralı. */
+  readonly eventsByDay = computed<Map<string, CalendarEvent[]>>(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    for (const ev of this.events()) {
+      const iso = toLocalIso(new Date(ev.date));
+      const bucket = map.get(iso);
+      if (bucket) {
+        bucket.push(ev);
+      } else {
+        map.set(iso, [ev]);
+      }
+    }
+    for (const bucket of map.values()) {
+      bucket.sort((a, b) => {
+        if (a.kind !== b.kind) {
+          return a.kind === 'reminder' ? -1 : 1;
+        }
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+    }
+    return map;
+  });
+
+  eventsFor(cell: CalendarCell): CalendarEvent[] {
+    return this.eventsByDay().get(cell.iso) ?? [];
+  }
+
+  visibleEvents(cell: CalendarCell): CalendarEvent[] {
+    return this.eventsFor(cell).slice(0, this.maxBadges);
+  }
+
+  overflowCount(cell: CalendarCell): number {
+    return Math.max(0, this.eventsFor(cell).length - this.maxBadges);
+  }
+
+  /** Hücrenin erişilebilir etiketi — tarih + varsa etkinlik sayısı. */
+  cellAriaLabel(cell: CalendarCell): string {
+    const count = this.eventsFor(cell).length;
+    return count ? `${cell.label}, ${count} etkinlik` : cell.label;
+  }
 
   /** ISO (yyyy-mm-dd, local) of the day that currently owns tabindex=0. */
   readonly focusedIso = signal<string | null>(null);
@@ -98,7 +150,7 @@ export class MonthCalendarGridComponent {
 
   private moveFocus(from: Date, deltaDays: number): void {
     const target = new Date(from.getFullYear(), from.getMonth(), from.getDate() + deltaDays);
-    const iso = this.toLocalIso(target);
+    const iso = toLocalIso(target);
 
     if (this.cells().some((c) => c.iso === iso)) {
       this.focusedIso.set(iso);
@@ -120,7 +172,7 @@ export class MonthCalendarGridComponent {
       const parsed = new Date(`${currentFocus}T00:00:00`);
       const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
       const moved = new Date(next.getFullYear(), next.getMonth(), Math.min(parsed.getDate(), lastDay));
-      const iso = this.toLocalIso(moved);
+      const iso = toLocalIso(moved);
       this.focusedIso.set(iso);
       afterNextRender(() => this.focusCell(iso), { injector: this.injector });
     }
@@ -129,12 +181,5 @@ export class MonthCalendarGridComponent {
   private focusCell(iso: string): void {
     const el = document.getElementById(`cal-day-${iso}`);
     el?.focus();
-  }
-
-  private toLocalIso(d: Date): string {
-    const y = d.getFullYear();
-    const m = `${d.getMonth() + 1}`.padStart(2, '0');
-    const day = `${d.getDate()}`.padStart(2, '0');
-    return `${y}-${m}-${day}`;
   }
 }

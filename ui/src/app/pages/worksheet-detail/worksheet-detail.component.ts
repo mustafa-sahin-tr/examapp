@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, DestroyRef, inject, Input, OnInit, signal } from '@angular/core';
+import { afterNextRender, Component, computed, DestroyRef, inject, Injector, Input, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, NavigationExtras, Router } from '@angular/router';
@@ -81,6 +81,10 @@ export class WorksheetDetailComponent implements OnInit {
   private authService = inject(AuthService);
   private studentService = inject(StudentService);
   private destroyRef = inject(DestroyRef);
+  private injector = inject(Injector);
+
+  /** queryParam `reminder=edit` ile gelindiğinde detay yüklenince hatırlatıcı formunu aç + karta odaklan. */
+  private pendingReminderEdit = false;
   @Input() exam!: Test; // Test bilgisi ve sorular
   route = inject(ActivatedRoute);
   testService = inject(TestService);
@@ -774,6 +778,12 @@ export class WorksheetDetailComponent implements OnInit {
           const planned = detail?.plannedReminder ?? null;
           this.reminder.set(planned && planned.status !== 'Cancelled' ? planned : null);
           this.reminderEditing.set(false);
+          if (this.pendingReminderEdit && !this.isTeacher && detail) {
+            this.pendingReminderEdit = false;
+            this.startEditReminder();
+            this.focusReminderCard();
+            this.clearReminderQueryParam();
+          }
           const completedInstanceId = detail?.completedResult?.instanceId;
           if (!this.isTeacher && completedInstanceId) {
             this.loadResultsForInstance(completedInstanceId);
@@ -832,6 +842,31 @@ export class WorksheetDetailComponent implements OnInit {
       });
   }
 
+  /** `?reminder=edit` işlendikten sonra URL'den düşür — detay yenilenince form tekrar açılmasın. */
+  private clearReminderQueryParam(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { reminder: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  /** "Planla & Hatırlat" kartını görünür alana getirir ve odağı verir (queryParam reminder=edit). */
+  private focusReminderCard(): void {
+    afterNextRender(
+      () => {
+        const card = document.getElementById('planla-hatirlat');
+        if (!card) {
+          return;
+        }
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.focus({ preventScroll: true });
+      },
+      { injector: this.injector },
+    );
+  }
+
   protected reloadDetail(): void {
     this.loadDetail();
   }
@@ -844,6 +879,19 @@ export class WorksheetDetailComponent implements OnInit {
     topic.topicId ?? -1;
 
   ngOnInit() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((query) => {
+      if (query.get('reminder') === 'edit') {
+        this.pendingReminderEdit = true;
+        // Detay zaten yüklüyse (sayfa içi query değişimi) hemen uygula.
+        if (this.detail() && !this.isTeacher) {
+          this.pendingReminderEdit = false;
+          this.startEditReminder();
+          this.focusReminderCard();
+          this.clearReminderQueryParam();
+        }
+      }
+    });
+
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(async (params) => {
       this.testId = Number(params.get('testId'));
       if (!this.testId) {

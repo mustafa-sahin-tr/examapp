@@ -84,7 +84,7 @@ export class TestService {
   getMyCalendar(from: Date, to: Date): Observable<CalendarEvent[]> {
     const params = new HttpParams().set('from', from.toISOString()).set('to', to.toISOString());
     return this.http
-      .get<StudentCalendarResponse>('/api/exam/calendar/me', { params })
+      .get<StudentCalendarResponse>('/api/exam/worksheet/calendar/me', { params })
       .pipe(map((r) => r.events));
   }
 

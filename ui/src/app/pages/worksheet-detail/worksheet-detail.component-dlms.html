@@ -400,6 +400,24 @@
                   <mat-icon>content_copy</mat-icon>
                   Kendi hesabıma kopyala
                 </button>
+                @if (canRequestAssignPermission()) {
+                  @if (accessRequestPending()) {
+                    <span class="readonly-strip__pending">
+                      <mat-icon>hourglass_top</mat-icon>
+                      Talebiniz bekleniyor
+                    </span>
+                  } @else {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      class="readonly-strip__copy"
+                      (click)="openAssignPermissionDialog()"
+                    >
+                      <mat-icon>how_to_reg</mat-icon>
+                      Atama izni iste
+                    </button>
+                  }
+                }
               </div>
             }
             @if (d.worksheet.subtitle || d.worksheet.description) {

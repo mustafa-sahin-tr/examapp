@@ -1,0 +1,87 @@
+<section class="apr">
+  <header class="apr__head">
+    <div>
+      <h1>Atama İzin Talepleri</h1>
+      <p>Diğer öğretmenlerin sınavlarını öğrencilerine atamak için gönderdiği izin talepleri.</p>
+    </div>
+    <mat-button-toggle-group
+      [value]="filter()"
+      (change)="setFilter($event.value)"
+      aria-label="Talep filtresi"
+    >
+      <mat-button-toggle value="pending">Bekleyenler</mat-button-toggle>
+      <mat-button-toggle value="all">Tümü</mat-button-toggle>
+    </mat-button-toggle-group>
+  </header>
+
+  @if (loading()) {
+    <div class="apr__state">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>Talepler yükleniyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="apr__state apr__state--error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button (click)="load()">Tekrar dene</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="apr__state">
+      <mat-icon class="apr__empty-icon">how_to_reg</mat-icon>
+      <span>Bekleyen atama izni talebi yok</span>
+    </div>
+  } @else {
+    <table mat-table [dataSource]="requests()" class="apr__table">
+      <ng-container matColumnDef="requester">
+        <th mat-header-cell *matHeaderCellDef>Talep eden</th>
+        <td mat-cell *matCellDef="let row">{{ row.requesterName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="worksheet">
+        <th mat-header-cell *matHeaderCellDef>Sınav</th>
+        <td mat-cell *matCellDef="let row">{{ row.worksheetName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="date">
+        <th mat-header-cell *matHeaderCellDef>Tarih</th>
+        <td mat-cell *matCellDef="let row">{{ formatDate(row.createTime) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="note">
+        <th mat-header-cell *matHeaderCellDef>Not</th>
+        <td mat-cell *matCellDef="let row" class="apr__note">{{ row.note || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Durum</th>
+        <td mat-cell *matCellDef="let row">
+          <span class="apr__chip" [class]="statusClass(row.status)">{{ statusLabel(row.status) }}</span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Aksiyon</th>
+        <td mat-cell *matCellDef="let row">
+          @if (row.status === 'Pending') {
+            <div class="apr__actions">
+              <button
+                mat-flat-button
+                color="primary"
+                (click)="approve(row)"
+                [disabled]="actingId() !== null"
+              >
+                Onayla
+              </button>
+              <button mat-stroked-button (click)="reject(row)" [disabled]="actingId() !== null">
+                Reddet
+              </button>
+            </div>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+  }
+</section>

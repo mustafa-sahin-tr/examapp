@@ -33,6 +33,10 @@ import {
   WorksheetAssignmentDialogResult,
 } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
+import {
+  AssignmentPermissionDialogComponent,
+  AssignmentPermissionDialogResult,
+} from './components/assignment-permission-dialog/assignment-permission-dialog.component';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
@@ -102,6 +106,14 @@ export class WorksheetDetailComponent implements OnInit {
   protected readonly detailError = signal<string | null>(null);
   protected readonly fromMistakesLoading = signal(false);
   protected readonly copyLoading = signal(false);
+
+  /** Atama izni talebi (issue #13): bu öğretmenin bu sınav için bekleyen talebi var mı. */
+  protected readonly accessRequestPending = signal(false);
+
+  /** Salt-görüntüleme şeridinde "Atama izni iste" aksiyonu gösterilsin mi. */
+  protected readonly canRequestAssignPermission = computed(
+    () => this.isSharedReadOnlyForTeacher() && !this.canAssignWorksheet()
+  );
 
   protected readonly completedResult = computed(() => this.detail()?.completedResult ?? null);
 
@@ -271,6 +283,36 @@ export class WorksheetDetailComponent implements OnInit {
         error: (error) => {
           this.snackBar.open(error?.error?.message ?? 'Kopyalama başarısız', 'Tamam', { duration: 3000 });
         },
+      });
+  }
+
+  /** "Atama izni iste" dialogunu açar (issue #13). 409 → "Talebiniz bekleniyor" durumuna geçer. */
+  protected openAssignPermissionDialog(): void {
+    const worksheet = this.detail()?.worksheet;
+    if (!worksheet?.id || this.accessRequestPending()) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(AssignmentPermissionDialogComponent, {
+      width: '420px',
+      data: {
+        worksheetId: worksheet.id,
+        worksheetName: worksheet.name,
+        ownerName: this.sharedOwnerName(),
+      },
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result: AssignmentPermissionDialogResult | undefined) => {
+        if (!result) {
+          return;
+        }
+        this.accessRequestPending.set(true);
+        if (result.submitted) {
+          this.snackBar.open('Atama izni talebiniz gönderildi.', 'Tamam', { duration: 3000 });
+        }
       });
   }
 

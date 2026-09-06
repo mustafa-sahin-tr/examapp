@@ -103,6 +103,11 @@ public class WorksheetDetailService : IWorksheetDetailService
             ownerName = await ResolveOwnerNameAsync(worksheet.CreateUserId.Value, ct);
         }
 
+        // issue #13: sahibinden alınmış onaylı (aktif) atama izni de non-owner öğretmene atama hakkı verir.
+        var hasApprovedGrant = isTeacher && !isWorksheetOwner && !isAdmin
+            && await _context.WorksheetAccessGrants.AsNoTracking()
+                .AnyAsync(g => g.WorksheetId == worksheetId && g.TeacherUserId == userId && g.RevokedAt == null, ct);
+
         var questions = worksheet.WorksheetQuestions
             .Where(wq => wq.Question != null)
             .OrderBy(wq => wq.Order)
@@ -174,7 +179,7 @@ public class WorksheetDetailService : IWorksheetDetailService
                 IsOwner = isWorksheetOwner,
                 OwnerName = ownerName,
                 CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin),
-                CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing)
+                CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasApprovedGrant)
             },
             RewardBadgeText = worksheet.BadgeText,
             Stats = new WorksheetStatsDto

@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterOutlet, Router } from '@angular/router';
@@ -19,6 +20,7 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { SignalRService } from '../../services/signalr.service';
+import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 
 interface MenuItem {
   id: string;
@@ -40,6 +42,7 @@ interface MenuItem {
     MatInputModule,
     MatFormFieldModule,
     MatMenuModule,
+    MatBadgeModule,
     MatDividerModule,
     MatTooltipModule,
     RouterOutlet,
@@ -64,7 +67,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
+  private readonly isTeacher =
+    this.authService.hasRealmRole('Teacher') || this.authService.hasRole('Teacher');
   private readonly signalR = inject(SignalRService);
+  private readonly accessRequestService = inject(WorksheetAccessRequestService);
+  readonly accessRequestCount = this.accessRequestService.pendingCount;
   userThemeService = inject(UserThemeService);
   themeConfigService = inject(ThemeConfigService);
   // Search functionality
@@ -127,6 +134,22 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   filteredSuggestions: string[] = [];
   constructor(private router: Router) {
+    if (this.isTeacher) {
+      const studentsIdx = this.menuItems.findIndex((m) => m.id === 'students');
+      const accessItem: MenuItem = {
+        id: 'access-requests',
+        name: 'Atama İzin Talepleri',
+        icon: 'how_to_reg',
+        route: '/assignment-permission-requests',
+        type: 'menu',
+      };
+      if (studentsIdx >= 0) {
+        this.menuItems.splice(studentsIdx + 1, 0, accessItem);
+      } else {
+        this.menuItems.push(accessItem);
+      }
+    }
+
     if (this.authService.hasRealmRole('Admin')) {
       const settingsIdx = this.menuItems.findIndex((m) => m.id === 'settings');
       const adminItem: MenuItem = {
@@ -146,6 +169,15 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.signalR.startConnection();
+
+    if (this.isTeacher) {
+      this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
+      this.signalR.accessRequestUpdates$.pipe(takeUntil(this.destroy$)).subscribe((update) => {
+        if (update.kind === 'requested') {
+          this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
+        }
+      });
+    }
 
     this.breakpointObserver
       .observe([EnhancedLayoutComponent.MOBILE_LAYOUT_QUERY])

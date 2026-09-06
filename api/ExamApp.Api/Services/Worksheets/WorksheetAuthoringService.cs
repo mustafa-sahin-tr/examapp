@@ -589,10 +589,34 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         }
 
         // PublicView/PublicAssignable -> Private geçişinde mevcut WorksheetAssignment kayıtları
-        // (başka öğretmenler tarafından yapılmış olsa dahi) bilinçli olarak iptal edilmiyor;
-        // öğretmenler arası atama akışı henüz yok (#12/#13'te ele alınacak).
+        // (başka öğretmenler tarafından yapılmış olsa dahi) bilinçli olarak iptal edilmiyor.
         worksheet.TeacherSharing = dto.TeacherSharing;
         worksheet.StudentVisibility = dto.StudentVisibility;
+
+        // issue #13: sınav Private'a çekilince atama izni akışındaki tüm aktif grant'lar ve
+        // bekleyen talepler sessizce iptal edilir (outbox event üretilmez — issue bildirim demiyor).
+        if (dto.TeacherSharing == WorksheetTeacherSharing.Private)
+        {
+            var now = DateTime.UtcNow;
+
+            var activeGrants = await _context.WorksheetAccessGrants
+                .Where(g => g.WorksheetId == worksheetId && g.RevokedAt == null)
+                .ToListAsync();
+            foreach (var grant in activeGrants)
+            {
+                grant.RevokedAt = now;
+            }
+
+            var pendingRequests = await _context.WorksheetAccessRequests
+                .Where(r => r.WorksheetId == worksheetId && r.Status == WorksheetAccessRequestStatus.Pending)
+                .ToListAsync();
+            foreach (var pending in pendingRequests)
+            {
+                pending.Status = WorksheetAccessRequestStatus.Rejected;
+                pending.DecisionAt = now;
+                pending.DecidedByUserId = userId;
+            }
+        }
 
         _context.SetCurrentUser(userId);
         await _context.SaveChangesAsync();

@@ -1,0 +1,10 @@
+<ul class="legend" aria-label="Takvim gösterge açıklaması">
+  @for (item of items; track item.variant) {
+    <li class="legend__chip" [class]="'legend__chip--' + item.variant">
+      <span class="legend__dot" [class]="'legend__dot--' + item.variant" aria-hidden="true">
+        <mat-icon class="legend__dot-icon">{{ item.icon }}</mat-icon>
+      </span>
+      <span class="legend__label">{{ item.label }}</span>
+    </li>
+  }
+</ul>

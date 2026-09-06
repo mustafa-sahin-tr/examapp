@@ -53,6 +53,8 @@
       } @else {
         <app-month-calendar-grid
           [month]="viewMonth()"
+          [events]="events()"
+          [compact]="isMobile()"
           (dayClick)="onDayClick($event)"
           (monthChange)="onMonthChange($event)"
         />
@@ -72,6 +74,10 @@
         <p>Bu ay planlanmış sınav veya atama yok</p>
         <button mat-stroked-button type="button" routerLink="/tests">Sınavlara git</button>
       </div>
+    }
+
+    @if (status() !== 'error') {
+      <app-calendar-legend />
     }
   </div>
 </section>

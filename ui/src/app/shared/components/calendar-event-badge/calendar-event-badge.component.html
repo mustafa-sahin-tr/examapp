@@ -1,0 +1,25 @@
+@if (compact()) {
+  <span
+    class="badge__dot"
+    [class]="'badge__dot--' + variant()"
+    role="img"
+    [attr.aria-label]="ariaLabel()"
+  >
+    <mat-icon class="badge__dot-icon">{{ icon() }}</mat-icon>
+  </span>
+} @else {
+  <span
+    class="badge"
+    [class]="'badge--' + variant()"
+    [attr.title]="event().worksheetTitle"
+    [attr.aria-label]="ariaLabel()"
+  >
+    <mat-icon class="badge__icon">{{ icon() }}</mat-icon>
+    <span class="badge__body">
+      <span class="badge__title">{{ event().worksheetTitle }}</span>
+      @if (event().subject) {
+        <span class="badge__subject">{{ event().subject }}</span>
+      }
+    </span>
+  </span>
+}

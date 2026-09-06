@@ -47,6 +47,11 @@ export class TestFormComponent {
     return this.form?.get(name)?.value;
   }
 
+  /** Ders/Konu/Alt Konu alanları yalnızca sınıf seçiliyken kullanılabilir. */
+  get gradeSelected(): boolean {
+    return !!this.value('gradeId');
+  }
+
   subjectChange(value: any) {
     this.onSubjectChange.emit(value);
   }

@@ -71,6 +71,29 @@
     <h3><span class="dot"></span>Sınıflandırma</h3>
     <p class="card-note">Kaynak kitap ve konu bilgisi; soruların doğru öğrencilere önerilmesini sağlar.</p>
 
+    <div class="seg"><i></i><span>Sınıf</span><span class="ln"></span></div>
+    <div class="grid3">
+      <div class="field">
+        <label>Sınıf<span class="req">*</span></label>
+        <div class="control select">
+          <select formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
+            <option [ngValue]="null">Seçiniz</option>
+            <option *ngFor="let grade of grades" [ngValue]="grade.id">{{ grade.name }}</option>
+          </select>
+          <mat-icon class="chev">expand_more</mat-icon>
+        </div>
+        <button
+          type="button"
+          class="add-link"
+          *ngIf="showApplyToAll"
+          [disabled]="!value('gradeId')"
+          (click)="applyGradeToAll.emit(value('gradeId'))"
+        >
+          <mat-icon>done_all</mat-icon>Hepsine uygula
+        </button>
+      </div>
+    </div>
+
     <div class="seg"><i></i><span>Kaynak</span><span class="ln"></span></div>
     <div class="grid2">
       <div class="field" *ngIf="!showAddBookInput">
@@ -130,6 +153,7 @@
         >
           <mat-icon>done_all</mat-icon>Hepsine uygula
         </button>
+        <p class="card-note field-hint" *ngIf="!gradeSelected">Önce sınıf seçin.</p>
       </div>
 
       <div class="field">
@@ -180,26 +204,6 @@
     <p class="card-note">Testin nasıl çözüleceğini belirler.</p>
 
     <div class="settings-row">
-      <div class="field dur">
-        <label>Sınıf<span class="req">*</span></label>
-        <div class="control select">
-          <select formControlName="gradeId" (change)="gradeChange(value('gradeId'))">
-            <option [ngValue]="null">Seçiniz</option>
-            <option *ngFor="let grade of grades" [ngValue]="grade.id">{{ grade.name }}</option>
-          </select>
-          <mat-icon class="chev">expand_more</mat-icon>
-        </div>
-        <button
-          type="button"
-          class="add-link"
-          *ngIf="showApplyToAll"
-          [disabled]="!value('gradeId')"
-          (click)="applyGradeToAll.emit(value('gradeId'))"
-        >
-          <mat-icon>done_all</mat-icon>Hepsine uygula
-        </button>
-      </div>
-
       <div class="field dur">
         <label>Süre (dakika)<span class="req">*</span></label>
         <input class="control" type="number" min="1" formControlName="maxDurationMinutes" />

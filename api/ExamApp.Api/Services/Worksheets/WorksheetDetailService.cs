@@ -478,15 +478,16 @@ public class WorksheetDetailService : IWorksheetDetailService
         int studentId,
         CancellationToken ct)
     {
-        var gradeId = await _context.Students.AsNoTracking()
+        var studentScope = await _context.Students.AsNoTracking()
             .Where(s => s.Id == studentId)
-            .Select(s => s.GradeId)
+            .Select(s => new { s.GradeId, s.SchoolId })
             .FirstOrDefaultAsync(ct);
+        var gradeId = studentScope?.GradeId;
 
         var hasAssignment = await _context.WorksheetAssignments.AsNoTracking()
-            .AnyAsync(a => a.WorksheetId == worksheetId
-                && (a.StudentId == studentId
-                    || (a.StudentId == null && a.GradeId != null && a.GradeId == gradeId)), ct);
+            .Where(a => a.WorksheetId == worksheetId)
+            .Where(WorksheetStudentAccess.AssignmentVisibleTo(studentId, gradeId, studentScope?.SchoolId))
+            .AnyAsync(ct);
         if (!hasAssignment)
             return null;
 

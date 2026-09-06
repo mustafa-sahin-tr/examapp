@@ -27,6 +27,7 @@ public class ExamController : BaseController
     private readonly IWorksheetAuthoringService _authoring;
     private readonly IWorksheetDetailService _worksheetDetail;
     private readonly IWorksheetReminderService _reminderService;
+    private readonly IWorksheetCalendarService _calendarService;
     private readonly IWorksheetAccessRequestService _accessRequestService;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
@@ -35,11 +36,13 @@ public class ExamController : BaseController
             IWorksheetAuthoringService authoring,
             IWorksheetDetailService worksheetDetail,
             IWorksheetReminderService reminderService,
+            IWorksheetCalendarService calendarService,
             IWorksheetAccessRequestService accessRequestService
             )
         : base()
     {
         _accessRequestService = accessRequestService;
+        _calendarService = calendarService;
         _examService = examService;
         _studentService = studentService;
         _assignmentService = assignmentService;
@@ -103,6 +106,58 @@ public class ExamController : BaseController
 
         await _reminderService.DeleteAsync(id, student.Id, ct);
         return NoContent();
+    }
+
+    private const int MaxRangeDays = 180;
+
+    /// <summary>
+    /// Öğrencinin [from, to) aralığındaki takvim etkinlikleri (planlanmış hatırlatmalar + atama son teslim tarihleri).
+    /// from/to zorunlu ve açık offset/'Z' içeren ISO-8601 tarih olmalı; <c>to</c> hariç (exclusive).
+    /// Aralık en fazla <see cref="MaxRangeDays"/> gün olabilir.
+    /// </summary>
+    [HttpGet("calendar/me")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> GetMyCalendar([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to))
+            return BadRequest(new { message = "from ve to parametreleri zorunludur" });
+
+        if (!TryParseIsoUtc(from, out var fromUtc) || !TryParseIsoUtc(to, out var toUtc))
+            return BadRequest(new { message = "from ve to açık saat dilimi ('Z' veya ±hh:mm) içeren ISO-8601 tarih olmalıdır" });
+
+        if (toUtc <= fromUtc)
+            return BadRequest(new { message = "to, from tarihinden sonra olmalıdır" });
+
+        if ((toUtc - fromUtc).TotalDays > MaxRangeDays)
+            return BadRequest(new { message = $"Tarih aralığı en fazla {MaxRangeDays} gün olabilir" });
+
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var student = await _studentService.GetStudentProfile(user.Id);
+        if (student == null)
+            return Unauthorized("Öğrenci profili bulunamadı");
+
+        var result = await _calendarService.GetMyCalendarAsync(
+            student.Id, student.GradeId, student.SchoolId, fromUtc, toUtc, ct);
+        return Ok(result);
+    }
+
+    private static bool TryParseIsoUtc(string value, out DateTime utc)
+    {
+        utc = default;
+        if (!DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind, out var dto))
+            return false;
+
+        // Offset/'Z' yoksa .NET yerel saati varsayar; katı ISO-8601 UTC istiyoruz.
+        if (!value.Contains('Z') && !value.Contains('z')
+            && !System.Text.RegularExpressions.Regex.IsMatch(value, @"[+\-]\d{2}:?\d{2}$"))
+            return false;
+
+        utc = dto.UtcDateTime;
+        return true;
     }
 
 

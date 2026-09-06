@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { RegisterWizardComponent } from './pages/register/register-wizard.component';
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
+import { studentGuard } from './shared/guards/student.guard';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
@@ -213,6 +214,18 @@ export const routes: Routes = [
         path: '',
         loadComponent: () =>
           import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
+      },
+    ],
+  },
+  {
+    path: 'my-calendar',
+    component: EnhancedLayoutComponent,
+    canActivate: [authGuard, studentGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/my-calendar/my-calendar.component').then((m) => m.MyCalendarComponent),
       },
     ],
   },

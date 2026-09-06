@@ -104,11 +104,14 @@
       @if (isTeacher) {
         @if (canEdit) {
           <button type="button" class="wcard__btn wcard__btn--primary" (click)="openPrimary($event)">Düzenle</button>
+          @if (canAssign) {
+            <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
+          }
+        } @else if (canAssign) {
+          <button type="button" class="wcard__btn wcard__btn--primary" (click)="emitAssign()">Öğrenciye ata</button>
+          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">Detayı Gör</button>
         } @else {
           <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">Detayı Gör</button>
-        }
-        @if (canAssign) {
-          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
         }
       } @else {
         <button

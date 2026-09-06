@@ -112,6 +112,13 @@ export class WorksheetDetailComponent implements OnInit {
   protected readonly canEditWorksheet = computed(() => this.detail()?.worksheet?.canEdit !== false);
 
   /**
+   * Bu worksheet'e öğrenci/sınıf atama yetkisi (backend `canAssign`; alan yoksa izin ver).
+   * Sahip/admin için her zaman true; sahibi olmayan öğretmen için worksheet
+   * `TeacherSharing === PublicAssignable` ise backend bunu true döner (issue #12).
+   */
+  protected readonly canAssignWorksheet = computed(() => this.detail()?.worksheet?.canAssign !== false);
+
+  /**
    * Paylaşılan (Public*) bir worksheet'i, sahibi olmayan bir öğretmen görüntülüyorsa true.
    * Bu durumda düzenleme/atama yönetimi gizlenir, salt-görüntüleme şeridi gösterilir (issue #11).
    */

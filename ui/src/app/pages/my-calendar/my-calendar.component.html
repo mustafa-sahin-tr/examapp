@@ -1,0 +1,77 @@
+<section class="my-calendar">
+  <header class="my-calendar__hero">
+    <div class="my-calendar__hero-title">
+      <mat-icon>event_note</mat-icon>
+      <h1>Planım</h1>
+    </div>
+    <p class="my-calendar__hero-subtitle">
+      Planladığın sınavları ve atama teslim tarihlerini tek takvimde gör.
+    </p>
+  </header>
+
+  <span aria-live="polite" class="sr-only">{{ monthLabel() }}</span>
+
+  <div class="my-calendar__card">
+    <div class="my-calendar__toolbar">
+      <button
+        mat-icon-button
+        type="button"
+        (click)="prevMonth()"
+        aria-label="Önceki ay"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+
+      <h2 class="my-calendar__month-label">{{ monthLabel() }}</h2>
+
+      <button
+        mat-icon-button
+        type="button"
+        (click)="nextMonth()"
+        aria-label="Sonraki ay"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+
+      <button
+        mat-stroked-button
+        type="button"
+        class="my-calendar__today-btn"
+        (click)="goToday()"
+      >
+        Bugün
+      </button>
+    </div>
+
+    <div class="my-calendar__grid-wrap" [attr.aria-busy]="status() === 'loading' ? 'true' : null">
+      @if (status() === 'error') {
+        <div class="my-calendar__state my-calendar__state--error" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <p>Takvim yüklenemedi</p>
+          <button mat-flat-button type="button" (click)="retry()">Tekrar dene</button>
+        </div>
+      } @else {
+        <app-month-calendar-grid
+          [month]="viewMonth()"
+          (dayClick)="onDayClick($event)"
+          (monthChange)="onMonthChange($event)"
+        />
+
+        @if (status() === 'loading') {
+          <div class="my-calendar__overlay">
+            <mat-progress-spinner mode="indeterminate" diameter="40" />
+            <p>Takvimin hazırlanıyor…</p>
+          </div>
+        }
+      }
+    </div>
+
+    @if (status() === 'empty') {
+      <div class="my-calendar__state my-calendar__state--empty">
+        <mat-icon>event_available</mat-icon>
+        <p>Bu ay planlanmış sınav veya atama yok</p>
+        <button mat-stroked-button type="button" routerLink="/tests">Sınavlara git</button>
+      </div>
+    }
+  </div>
+</section>

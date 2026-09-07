@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { TeacherDashboardSummary } from '../models/teacher-dashboard.model';
+import { TeacherDashboardSummary, TeacherWorksheetOverview } from '../models/teacher-dashboard.model';
 
 @Injectable({
   providedIn: 'root',
@@ -21,5 +21,13 @@ export class TeacherService {
    */
   getDashboardSummary(): Observable<TeacherDashboardSummary> {
     return this.http.get<TeacherDashboardSummary>(`${this.baseUrl}/dashboard-summary`);
+  }
+
+  /**
+   * Issue #54: giriş yapan öğretmenin sınavları — atanan öğrenci sayısı ve tamamlanma yüzdesiyle.
+   * Ada göre sıralı gelir; hiç worksheet yoksa boş dizi.
+   */
+  getWorksheetsOverview(): Observable<TeacherWorksheetOverview[]> {
+    return this.http.get<TeacherWorksheetOverview[]>(`${this.baseUrl}/worksheets-overview`);
   }
 }

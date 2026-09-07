@@ -159,6 +159,67 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
         (await Anonymous().GetAsync("/api/student/check-student")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    // ---- TeacherController: dashboard-summary (issue #53) ----
+
+    [Fact]
+    public async Task Dashboard_summary_rejects_anonymous_callers()
+    {
+        (await Anonymous().GetAsync("/api/teacher/dashboard-summary"))
+            .StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Dashboard_summary_returns_zeros_for_a_teacher_with_no_worksheets()
+    {
+        var client = await ClientAsAsync(40, "Teacher", "kc-40", "Teacher");
+
+        var summary = await client.GetFromJsonAsync<TeacherDashboardSummaryDto>(
+            "/api/teacher/dashboard-summary", Json);
+
+        summary!.TotalWorksheets.ShouldBe(0);
+        summary.TotalUniqueStudents.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Dashboard_summary_reflects_only_the_authenticated_teachers_own_worksheets_and_assigned_students()
+    {
+        var gradeId = await SeedGradeAsync();
+        const int ownerId = 41;
+        const int otherTeacherId = 42;
+
+        await WithDbAsync(async db =>
+        {
+            db.SetCurrentUser(ownerId);
+            var ws = new Worksheet { Name = "Sahibin testi", Description = "", GradeId = gradeId };
+            var student = new Student { UserId = 900, StudentNumber = "900", SchoolName = "S", GradeId = gradeId };
+            db.AddRange(ws, student);
+            await db.SaveChangesAsync();
+
+            db.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, StudentId = student.Id, StartAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+
+            // Diğer öğretmenin worksheet'i — sahibinin özetine sızmamalı.
+            db.SetCurrentUser(otherTeacherId);
+            db.Worksheets.Add(new Worksheet { Name = "Diğer öğretmenin", Description = "", GradeId = gradeId });
+            await db.SaveChangesAsync();
+        });
+
+        var ownerClient = await ClientAsAsync(ownerId, "Teacher", "kc-41", "Teacher");
+        var ownerSummary = await ownerClient.GetFromJsonAsync<TeacherDashboardSummaryDto>(
+            "/api/teacher/dashboard-summary", Json);
+        ownerSummary!.TotalWorksheets.ShouldBe(1);
+        ownerSummary.TotalUniqueStudents.ShouldBe(1);
+
+        var otherClient = await ClientAsAsync(otherTeacherId, "Teacher", "kc-42", "Teacher");
+        var otherSummary = await otherClient.GetFromJsonAsync<TeacherDashboardSummaryDto>(
+            "/api/teacher/dashboard-summary", Json);
+        otherSummary!.TotalWorksheets.ShouldBe(1);
+        otherSummary.TotalUniqueStudents.ShouldBe(0); // kendi worksheet'ine hiç atama yapılmadı
+    }
+
     private sealed record CheckStudentResponse(bool HasStudentRecord);
     private sealed record CheckTeacherResponse(bool HasTeacherRecord);
 }

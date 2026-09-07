@@ -39,4 +39,86 @@
       }
     }
   </div>
+
+  <!-- Issue #54: Sınavlarım -->
+  <div class="dashboard-section">
+    <app-section-header title="Sınavlarım" iconName="list_alt"></app-section-header>
+
+    @if (worksheetsLoading()) {
+      <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
+        <mat-spinner diameter="28"></mat-spinner>
+        <p class="state-text">Sınavlar yükleniyor...</p>
+      </div>
+    } @else if (worksheetsError()) {
+      <div class="state-box state-box--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ worksheetsError() }}</p>
+        <button mat-stroked-button type="button" (click)="loadWorksheetsOverview()">Tekrar dene</button>
+      </div>
+    } @else if (worksheetsEmpty()) {
+      <div class="state-box state-box--empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="state-text">Henüz hiç sınavınız yok. Sınav oluşturduğunuzda burada listelenecek.</p>
+      </div>
+    } @else {
+      <!-- Masaüstü: tablo -->
+      <table mat-table [dataSource]="worksheets()" class="worksheets-table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Sınav adı</th>
+          <td mat-cell *matCellDef="let row" class="worksheets-table__name">{{ row.name }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="assignedStudentCount">
+          <th mat-header-cell *matHeaderCellDef>Atanan öğrenci</th>
+          <td mat-cell *matCellDef="let row">{{ row.assignedStudentCount }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="completionPercentage">
+          <th mat-header-cell *matHeaderCellDef>Tamamlanma</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="completion-chip" [class]="completionClass(row.completionPercentage)">
+              %{{ row.completionPercentage | number: '1.0-2' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          class="worksheets-table__row"
+          tabindex="0"
+          role="link"
+          [attr.aria-label]="row.name + ' detayına git'"
+          (click)="openWorksheet(row)"
+          (keydown.enter)="openWorksheet(row)"
+        ></tr>
+      </table>
+
+      <!-- Mobil: kart listesi (aynı veri, CSS ile değişir) -->
+      <ul class="worksheet-cards" aria-label="Sınavlarım">
+        @for (row of worksheets(); track row.worksheetId) {
+          <li
+            class="worksheet-card"
+            tabindex="0"
+            role="link"
+            [attr.aria-label]="row.name + ' detayına git'"
+            (click)="openWorksheet(row)"
+            (keydown.enter)="openWorksheet(row)"
+          >
+            <div class="worksheet-card__header">
+              <span class="worksheet-card__name">{{ row.name }}</span>
+              <span class="completion-chip" [class]="completionClass(row.completionPercentage)">
+                %{{ row.completionPercentage | number: '1.0-2' }}
+              </span>
+            </div>
+            <div class="worksheet-card__meta">
+              <mat-icon>groups</mat-icon>
+              <span>{{ row.assignedStudentCount }} öğrenci</span>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
 </div>

@@ -321,7 +321,7 @@ export class TestCreateComponent implements OnInit {
       bookId: !this.testForm.value.bookId ? 0 : this.testForm.value.bookId,
       subjectId: this.testForm.value.subjectId ? this.testForm.value.subjectId : null,
       topicId: this.testForm.value.topicId ? this.testForm.value.topicId : null,
-      subtopicId: this.testForm.value.subtopicId ? this.testForm.value.subtopicId : null,
+      subTopicId: this.testForm.value.subtopicId ? this.testForm.value.subtopicId : null,
     };
   }
 

@@ -17,4 +17,10 @@ public interface ITeacherService
     /// benzersiz öğrenci sayısı (direkt + sınıf bazlı atamalar genişletilerek).
     /// </summary>
     Task<TeacherDashboardSummaryDto> GetDashboardSummaryAsync(int teacherId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #54: öğretmenin sahip olduğu her worksheet için atanan benzersiz öğrenci sayısı ve
+    /// tamamlanma yüzdesi. Sahiplik/hedefleme mantığı GetDashboardSummaryAsync ile aynıdır.
+    /// </summary>
+    Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(int teacherId, CancellationToken ct = default);
 }

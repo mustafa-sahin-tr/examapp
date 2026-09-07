@@ -51,3 +51,11 @@ Kontrol edilecekler: Keycloak `hostname` / frontend URL ayarı, API tarafındaki
 ## Kural
 
 Aspire çalıştı diye compose dosyasını silme. Taşıma tamamlanıp ekip doğrulayana kadar ikisi de kalır.
+
+## Daha derin bilgi
+
+AppHost kurulumu ve service defaults için `.claude/skills/aspire-service-defaults/SKILL.md` ve
+`.claude/skills/aspire-configuration/SKILL.md`. Her fazın sonunda yazılan "smoke test"i xUnit ile
+Aspire üzerinden otomatikleştirmek istersen `.claude/skills/aspire-integration-testing/SKILL.md`
+(dynamic port binding, endpoint discovery, health check bekleme desenleri) — bu proje için özellikle
+Faz 3'teki Keycloak/Ocelot smoke testini otomatize etmekte işe yarar. (Upstream: Aaronontheweb/dotnet-skills)

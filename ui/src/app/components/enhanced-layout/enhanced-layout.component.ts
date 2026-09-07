@@ -28,6 +28,8 @@ interface MenuItem {
   icon: string;
   route: string;
   type: 'menu' | 'divider';
+  /** Realm roles allowed to see this item. Omitted = visible to every role. */
+  roles?: string[];
 }
 
 @Component({
@@ -67,8 +69,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
-  private readonly isTeacher =
-    this.authService.hasRealmRole('Teacher') || this.authService.hasRole('Teacher');
+  private readonly isTeacher = this.authService.hasRealmRole('Teacher');
   private readonly signalR = inject(SignalRService);
   private readonly accessRequestService = inject(WorksheetAccessRequestService);
   readonly accessRequestCount = this.accessRequestService.pendingCount;
@@ -91,97 +92,71 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   allSuggestions: string[] = ['Doğal Sayılar', 'Gezegenimiz', 'Çarpma', 'Zıt Anlamlı'];
   currentSection = signal<'newest' | 'hot'>('newest');
 
-  // Menu items
+  // Realm roles the current user holds (used to filter the menu).
+  private readonly userRoles = ['Student', 'Teacher', 'Admin'].filter((r) =>
+    this.authService.hasRealmRole(r)
+  );
+
+  // Menu items — single source of truth. `roles` omitted = visible to every role.
   menuItems: MenuItem[] = [
-    { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu' },
-    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu' },
-    { id: 'study', name: 'Ders Çalışma', icon: 'school', route: '/study', type: 'menu' },
-    { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu' },
-    { id: 'students', name: 'Öğrenciler', icon: 'people', route: '/students', type: 'menu' },
+    { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'study', name: 'Ders Çalışma', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
+    { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu', roles: ['Student'] },
+    { id: 'my-calendar', name: 'Planım', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student'] },
+    { id: 'students', name: 'Öğrenciler', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
+    { id: 'access-requests', name: 'Atama İzin Talepleri', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
     { id: 'divider1', name: '', icon: '', route: '', type: 'divider' },
-    { id: 'study-pages', name: 'Çalışma Ekleme', icon: 'library_add', route: '/study-pages', type: 'menu' },
-    { id: 'exam', name: 'Test Ekleme', icon: 'app_registration', route: '/exam', type: 'menu' },
-    { id: 'questiontransfer', name: 'Soru Transferi', icon: 'swap_horiz', route: '/question-transfer', type: 'menu' },
+    { id: 'study-pages', name: 'Çalışma Ekleme', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
+    { id: 'exam', name: 'Test Ekleme', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
+    { id: 'questiontransfer', name: 'Soru Transferi', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Teacher'] },
     { id: 'reports', name: 'Raporlar', icon: 'analytics', route: '/certificates', type: 'menu' },
     { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
+    { id: 'admin', name: 'Yönetim', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
     { id: 'divider2', name: '', icon: '', route: '', type: 'divider' },
     { id: 'help', name: 'Yardım', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' },
   ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [
-    { id: 'dashboard', name: 'Ana Sayfa', icon: 'home', route: '/dashboard', type: 'menu' },
-    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu' },
-    { id: 'study', name: 'Çalışma', icon: 'school', route: '/study', type: 'menu' },
+    { id: 'dashboard', name: 'Ana Sayfa', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'study', name: 'Çalışma', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
     { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
   ];
 
-  /*
-    menuItems = [
-    { type: 'menu', name: 'Sınavlar', icon: 'folder', route: '/tests' },
-    { type: 'menu', name: 'Programlarım', icon: 'assignment_ind', route: '/programs' },
-    { type: 'menu', name: 'Sertifikalar', icon: 'verified', route: '/certificates' },
-    { type: 'menu', name: 'Parkur', icon: 'timeline' },
-    { type: 'menu', name: 'Sonuçlar', icon: 'track_changes' },
-    { type: 'divider' },
-    { type: 'menu', name: 'Destek', icon: 'help' },
-    { type: 'menu', name: 'Geri Bildirim', icon: 'feedback' },
-    { type: 'divider' },
-    { type: 'menu', name: 'Test Ekleme', icon: 'add_circle', route: '/exam' },
-  ];*/
+  private isItemAllowed(item: MenuItem): boolean {
+    return !item.roles || item.roles.some((r) => this.userRoles.includes(r));
+  }
+
+  /** Drop leading/trailing dividers and collapse consecutive ones. */
+  private stripDividers(items: MenuItem[]): MenuItem[] {
+    const result: MenuItem[] = [];
+    for (const item of items) {
+      if (item.type === 'divider') {
+        if (result.length === 0 || result[result.length - 1].type === 'divider') {
+          continue;
+        }
+      }
+      result.push(item);
+    }
+    while (result.length && result[result.length - 1].type === 'divider') {
+      result.pop();
+    }
+    return result;
+  }
+
+  readonly visibleMenuItems: MenuItem[] = this.stripDividers(
+    this.menuItems.filter((item) => this.isItemAllowed(item))
+  );
+  readonly visibleBottomNavItems: MenuItem[] = this.bottomNavItems.filter((item) =>
+    this.isItemAllowed(item)
+  );
 
   // Computed values
 
   filteredSuggestions: string[] = [];
-  constructor(private router: Router) {
-    if (this.isTeacher) {
-      const studentsIdx = this.menuItems.findIndex((m) => m.id === 'students');
-      const accessItem: MenuItem = {
-        id: 'access-requests',
-        name: 'Atama İzin Talepleri',
-        icon: 'how_to_reg',
-        route: '/assignment-permission-requests',
-        type: 'menu',
-      };
-      if (studentsIdx >= 0) {
-        this.menuItems.splice(studentsIdx + 1, 0, accessItem);
-      } else {
-        this.menuItems.push(accessItem);
-      }
-    }
-
-    if (this.authService.hasRealmRole('Student')) {
-      const settingsIdx = this.menuItems.findIndex((m) => m.id === 'settings');
-      const planItem: MenuItem = {
-        id: 'my-calendar',
-        name: 'Planım',
-        icon: 'event_note',
-        route: '/my-calendar',
-        type: 'menu',
-      };
-      if (settingsIdx >= 0) {
-        this.menuItems.splice(settingsIdx, 0, planItem);
-      } else {
-        this.menuItems.push(planItem);
-      }
-    }
-
-    if (this.authService.hasRealmRole('Admin')) {
-      const settingsIdx = this.menuItems.findIndex((m) => m.id === 'settings');
-      const adminItem: MenuItem = {
-        id: 'admin',
-        name: 'Yönetim',
-        icon: 'admin_panel_settings',
-        route: '/admin',
-        type: 'menu',
-      };
-      if (settingsIdx >= 0) {
-        this.menuItems.splice(settingsIdx + 1, 0, adminItem);
-      } else {
-        this.menuItems.push(adminItem);
-      }
-    }
-  }
+  constructor(private router: Router) {}
 
   ngOnInit() {
     this.signalR.startConnection();

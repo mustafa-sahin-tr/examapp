@@ -15,6 +15,9 @@ public class SimpleServiceTests : IDisposable
 
     // ---------------- TeacherService ----------------
 
+    private TeacherService NewTeacherService(AppDbContext ctx)
+        => new(ctx, Substitute.For<IAuthApiClient>());
+
     private async Task<int> SeedSchoolAsync(string name = "A Okulu")
     {
         await using var ctx = _db.NewContext();
@@ -32,14 +35,14 @@ public class SimpleServiceTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            var created = await new TeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolId = schoolAId });
+            var created = await NewTeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolId = schoolAId });
             created.Success.ShouldBeTrue();
             created.Message.ShouldContain("kaydedildi");
         }
 
         await using (var ctx = _db.NewContext())
         {
-            var updated = await new TeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolId = schoolBId });
+            var updated = await NewTeacherService(ctx).Save(userId: 10, new RegisterTeacherDto { SchoolId = schoolBId });
             updated.Message.ShouldContain("güncellendi");
         }
 
@@ -53,7 +56,7 @@ public class SimpleServiceTests : IDisposable
     public async Task Teacher_Save_fails_when_the_given_school_id_does_not_exist()
     {
         await using var ctx = _db.NewContext();
-        var response = await new TeacherService(ctx).Save(userId: 11, new RegisterTeacherDto { SchoolId = 99999 });
+        var response = await NewTeacherService(ctx).Save(userId: 11, new RegisterTeacherDto { SchoolId = 99999 });
 
         response.Success.ShouldBeFalse();
         response.Message.ShouldBe("Seçilen okul bulunamadı.");
@@ -67,7 +70,7 @@ public class SimpleServiceTests : IDisposable
     {
         await using (var ctx = _db.NewContext())
         {
-            var response = await new TeacherService(ctx).Save(userId: 12, new RegisterTeacherDto { SchoolId = null });
+            var response = await NewTeacherService(ctx).Save(userId: 12, new RegisterTeacherDto { SchoolId = null });
             response.Success.ShouldBeTrue();
         }
 
@@ -79,14 +82,14 @@ public class SimpleServiceTests : IDisposable
     public async Task Teacher_GetTeacher_returns_null_when_absent()
     {
         await using var ctx = _db.NewContext();
-        (await new TeacherService(ctx).GetTeacher(999)).ShouldBeNull();
+        (await NewTeacherService(ctx).GetTeacher(999)).ShouldBeNull();
     }
 
     [Fact]
     public async Task Teacher_UpdateTheme_fails_for_an_unknown_teacher_and_succeeds_otherwise()
     {
         await using (var ctx = _db.NewContext())
-            (await new TeacherService(ctx).UpdateTeacherTheme(5, "enhanced", null)).Success.ShouldBeFalse();
+            (await NewTeacherService(ctx).UpdateTeacherTheme(5, "enhanced", null)).Success.ShouldBeFalse();
 
         await using (var ctx = _db.NewContext())
         {
@@ -96,7 +99,7 @@ public class SimpleServiceTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
-            var r = await new TeacherService(ctx).UpdateTeacherTheme(5, "full", "{\"x\":1}");
+            var r = await NewTeacherService(ctx).UpdateTeacherTheme(5, "full", "{\"x\":1}");
             r.Success.ShouldBeTrue();
             r.ThemePreset.ShouldBe("full");
         }

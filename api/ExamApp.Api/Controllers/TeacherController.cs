@@ -118,5 +118,18 @@ namespace ExamApp.Api.Controllers
             return Ok(response);
         }
 
+        /// <summary>
+        /// Issue #53: öğretmen dashboard özet kartları.
+        /// teacherId route/query'den değil, authenticated user'dan alınır — başka öğretmenin verisi sızmaz.
+        /// </summary>
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("dashboard-summary")]
+        public async Task<ActionResult<TeacherDashboardSummaryDto>> GetDashboardSummary(CancellationToken ct)
+        {
+            var user = await GetAuthenticatedUserAsync();
+            var summary = await _teacherService.GetDashboardSummaryAsync(user.Id, ct);
+            return Ok(summary);
+        }
+
     }
 }

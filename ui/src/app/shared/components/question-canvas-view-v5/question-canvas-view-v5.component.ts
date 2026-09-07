@@ -38,6 +38,9 @@ interface LayoutResult {
   answerMinWidth: number;
 }
 
+/** visualScale güncellemesi için minimum anlamlı fark (~%1). */
+const VISUAL_SCALE_EPSILON = 0.01;
+
 @Component({
   selector: 'app-question-canvas-view-v5',
   standalone: true,
@@ -237,6 +240,12 @@ export class QuestionCanvasViewComponentv5 {
     }
 
     const ratio = Math.max(0.2, Math.min(1, renderedWidth / questionWidth));
+    // Eşik altı farklarda signal'ı güncelleme: şık genişliği → sayfa yüksekliği → scrollbar →
+    // konteyner genişliği → ResizeObserver zinciriyle oluşabilecek piksellik salınımı keser
+    // ve (load) + microtask + ResizeObserver'ın aynı değeri art arda yazmasını engeller.
+    if (Math.abs(ratio - this.visualScale()) < VISUAL_SCALE_EPSILON) {
+      return;
+    }
     this.visualScale.set(ratio);
   }
 

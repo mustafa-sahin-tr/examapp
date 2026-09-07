@@ -1,7 +1,8 @@
 <div class="enhanced-layout">
   <mat-sidenav-container class="layout-container" [hasBackdrop]="isMobile()">
-    <!-- Enhanced Sidebar -->
-    <mat-sidenav [mode]="isMobile() ? 'over' : 'side'" [opened]="isMobile() ? isMobileSidenavOpen() : true"
+    <!-- Enhanced Sidebar (sınav çözme ekranında masaüstü/mobil fark etmeksizin kapalı: tam odak) -->
+    <mat-sidenav [mode]="isMobile() ? 'over' : 'side'"
+      [opened]="isExamRoute() ? false : (isMobile() ? isMobileSidenavOpen() : true)"
       [fixedInViewport]="isMobile()" class="enhanced-sidenav" [class.collapsed]="isSidenavCollapsed()">
       <!-- Sidebar Header -->
       <div class="sidebar-header">
@@ -51,8 +52,10 @@
     </mat-sidenav>
 
     <!-- Main Content Area -->
-    <mat-sidenav-content class="main-content-wrapper" [class.sidebar-collapsed]="isSidenavCollapsed()">
-      <mat-toolbar color="primary" class="mobile-toolbar" *ngIf="isMobile() && !isFullScreen()">
+    <!-- margin-left tek kaynaktan (sidenavContentOffsetPx) gelir; SCSS'te durum bazlı override yoktur -->
+    <mat-sidenav-content class="main-content-wrapper" [class.no-bottom-nav]="isExamRoute()"
+      [style.margin-left.px]="sidenavContentOffsetPx()">
+      <mat-toolbar color="primary" class="mobile-toolbar" *ngIf="isMobile() && !isFullScreen() && !isExamRoute()">
         <button mat-icon-button (click)="toggleSidenav()" aria-label="Menüyü Aç">
           <mat-icon>menu</mat-icon>
         </button>
@@ -175,14 +178,14 @@
       </mat-toolbar>
 
       <!-- Main Content -->
-      <main class="main-content">
+      <main class="main-content" [class.no-bottom-nav]="isExamRoute()">
         <router-outlet></router-outlet>
       </main>
     </mat-sidenav-content>
   </mat-sidenav-container>
 
-  <!-- Mobile Bottom Navigation Bar -->
-  <nav class="mobile-bottom-nav" *ngIf="isMobile()">
+  <!-- Mobile Bottom Navigation Bar (sınav çözme ekranında gizli: ekranın kendi dock'u var) -->
+  <nav class="mobile-bottom-nav" *ngIf="isMobile() && !isExamRoute()">
     <div class="bottom-nav-item" *ngFor="let item of visibleBottomNavItems" [class.active]="item.id === activeMenuItem()"
       role="button" tabindex="0"
       (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)" (keydown.space)="navigateTo(item.route)">

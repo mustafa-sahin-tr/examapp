@@ -267,28 +267,11 @@
 }
 
 // Main Content Layout
+// margin-left burada AYARLANMAZ: komponentteki `sidenavContentOffsetPx` computed'ı
+// (280 / 72 / 0) şablonda `[style.margin-left.px]` ile uygular. Yalnızca geçiş animasyonu buradadır.
 .main-content-wrapper {
     transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     padding-left: 10px;
-}
-
-// PC modda Angular Material'ın otomatik margin hesaplamasını override et
-// (CSS ile daralan sidenav genişliğini Material kendi takip edemiyor)
-@media (min-width: 769px) {
-    mat-sidenav-content.main-content-wrapper {
-        margin-left: 280px !important;
-        transition: margin-left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-
-        &.sidebar-collapsed {
-            margin-left: 72px !important;
-        }
-    }
-}
-
-@media ((max-height: 500px) and (orientation: landscape)) {
-    mat-sidenav-content.main-content-wrapper {
-        margin-left: 0 !important;
-    }
 }
 
 .mobile-toolbar {
@@ -320,6 +303,12 @@
 
     .main-content {
         padding-bottom: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom) + 20px);
+    }
+
+    // Alt nav gizliyken (sınav çözme) ona ayrılan boşluk da kalkar
+    .main-content-wrapper.no-bottom-nav,
+    .main-content.no-bottom-nav {
+        padding-bottom: 0;
     }
 
     .mobile-toolbar {

@@ -4382,3 +4382,12 @@ app-root,
   }
 }
 
+
+/* Sınav çözme (testsolve) mobil soru haritası bottom-sheet paneli — issue #72 */
+.solve-map-sheet.mat-bottom-sheet-container {
+  padding: 0;
+  max-height: 80vh;
+  background: var(--ms-surface-strong);
+  color: var(--ms-text-strong);
+  border-radius: 20px 20px 0 0;
+}

@@ -8,7 +8,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -39,7 +38,6 @@ export interface WorksheetAssignmentDialogResult {
     MatSelectModule,
     MatInputModule,
     MatDatepickerModule,
-    MatNativeDateModule,
     MatRadioModule,
     MatChipsModule,
     MatCheckboxModule,

@@ -12,7 +12,23 @@ import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
 import { CoreModule } from './core/core.module';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideClientHydration } from '@angular/platform-browser';
+import { MAT_DATE_LOCALE, MatDateFormats } from '@angular/material/core';
+import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
+import { tr } from 'date-fns/locale/tr';
+
+// Tüm datepicker'lar için Türkçe GG/AA/YYYY parse + display formatı.
+export const TR_DATE_FORMATS: MatDateFormats = {
+  parse: {
+    dateInput: 'dd/MM/yyyy',
+  },
+  display: {
+    dateInput: 'dd/MM/yyyy',
+    monthYearLabel: 'MMMM yyyy',
+    dateA11yLabel: 'dd MMMM yyyy',
+    monthYearA11yLabel: 'MMMM yyyy',
+  },
+};
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -21,6 +37,9 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),
     provideAnimationsAsync(),
     provideStore(reducers),
-    importProvidersFrom(ReactiveFormsModule, CoreModule), provideClientHydration(withEventReplay()),
+    importProvidersFrom(ReactiveFormsModule, CoreModule),
+    provideClientHydration(),
+    provideDateFnsAdapter(TR_DATE_FORMATS),
+    { provide: MAT_DATE_LOCALE, useValue: tr },
   ],
 };

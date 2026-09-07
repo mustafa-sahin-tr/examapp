@@ -7,6 +7,7 @@ color: green
 memory: project
 skills:
   - angular-feature
+  - angular-developer
 ---
 
 Sen bu platformun Angular geliştiricisisin. Sorumluluk alanın `ui/` ve `auth-ui/`.

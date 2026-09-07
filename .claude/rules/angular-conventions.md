@@ -36,3 +36,12 @@ globs:
 - New page components → `ui/src/app/pages/<name>/`
 - New services → `ui/src/app/services/`
 - New TypeScript models/interfaces → `ui/src/app/models/`
+
+## Daha derin bilgi
+
+Bu dosya bizim proje-özel kararlarımızı listeler (Material, CSS token, dizin yerleşimi). Angular'ın
+kendisine dair güncel resmi rehberlik (Signal Forms, `linkedSignal`, `resource`/`httpResource`,
+routing, testing) için `.claude/skills/angular-developer/` (upstream: angular/skills, Angular ekibinin
+resmi repo'su) — `angular-dev` agent'ı bu skill'i zaten otomatik yükler. Çakışma olursa **bu dosya
+önceliklidir** (örn. upstream skill Tailwind'den bahsediyor, biz Material + CSS custom property
+kullanıyoruz).

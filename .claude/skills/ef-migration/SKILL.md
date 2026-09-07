@@ -36,3 +36,9 @@ Kolon silme, kolon tipi daraltma ve rename veri kaybettirir. Böyle bir değişi
 - [ ] Sık filtrelenen kolona index gerekiyor mu?
 - [ ] Üretilen `Up()` beklediğin SQL'i mi içeriyor? (okumadan `database update` çalıştırma)
 - [ ] `Down()` mantıklı mı?
+
+## Daha derin bilgi
+
+Query splitting, NoTracking/DI lifetime, ExecutionStrategy ile retry ve dedicated migration service
+deseni için `.claude/skills/efcore-patterns/SKILL.md`'ye bak (upstream: Aaronontheweb/dotnet-skills).
+Sorgu performansı sorunuysa (N+1, indeksleme, sayfalama) `.claude/skills/database-performance/SKILL.md`.

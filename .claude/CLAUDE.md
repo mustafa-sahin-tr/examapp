@@ -42,3 +42,12 @@ Tekrar eden işlerin adımları `.claude/skills/` altındadır: `dotnet-endpoint
 `outbox-event`, `ef-migration`, `gateway-route`, `aspire-migration`, `security-review-checklist`,
 `issue-refinement`, `issue-breakdown`, `design-mockup`.
 İlgili işe başlarken önce skill'i oku.
+
+## Üçüncü parti referans skill'ler
+
+Bunlar bu projeye özel değil, framework'ün resmi/uzman bilgisini taşır — ilgili agent'lar
+otomatik yükler, elle çağırman gerekmez: `angular-developer` (angular/skills, resmi Angular ekibi),
+`efcore-patterns`, `database-performance`, `csharp-coding-standards`,
+`microsoft-extensions-dependency-injection`, `aspire-integration-testing`, `aspire-configuration`,
+`aspire-service-defaults`, `testcontainers` (Aaronontheweb/dotnet-skills). Kaynak ve lisans detayı:
+`.claude/skills/THIRD_PARTY_NOTICES.md`.

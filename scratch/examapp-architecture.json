@@ -1,0 +1,475 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "ExamApp Runtime Architecture",
+    "output": "examapp-architecture.html",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "views": [
+      {
+        "id": "primary-path",
+        "label": "Soru oluşturma ve AI sınıflandırma",
+        "focus": [
+          "angular-app",
+          "gateway",
+          "exam-api",
+          "postgres",
+          "outbox-publisher",
+          "rabbitmq",
+          "badge-service",
+          "gemini"
+        ],
+        "note": "Öğretmen soru yükler; outbox pattern ile Gemini AI sınıflandırma sonucu geri yazılır."
+      },
+      {
+        "id": "auth-flow",
+        "label": "Kimlik doğrulama",
+        "focus": [
+          "angular-app",
+          "auth-ui",
+          "gateway",
+          "auth-api",
+          "keycloak"
+        ],
+        "note": "Login ve token akışı Ocelot Gateway üzerinden Keycloak'a gider."
+      },
+      {
+        "id": "storage-cache",
+        "label": "Depolama ve önbellek",
+        "focus": [
+          "exam-api",
+          "postgres",
+          "redis",
+          "minio",
+          "question-detector"
+        ],
+        "note": "Exam API dosya, önbellek ve görsel kırpma servisine bağlanır."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis",
+      "sublabel": "cache :6379",
+      "pos": [
+        220,
+        50
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "minio",
+      "type": "cloud",
+      "label": "MinIO",
+      "sublabel": "object storage :9000",
+      "pos": [
+        400,
+        50
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "question-detector",
+      "type": "backend",
+      "label": "question-detector",
+      "sublabel": "Python/YOLO :8080",
+      "pos": [
+        590,
+        50
+      ],
+      "size": [
+        160,
+        60
+      ]
+    },
+    {
+      "id": "angular-app",
+      "type": "frontend",
+      "label": "Angular App",
+      "sublabel": "ui/ :4200",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "gateway",
+      "type": "backend",
+      "label": "Ocelot Gateway",
+      "sublabel": ":5678",
+      "pos": [
+        220,
+        200
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "exam-api",
+      "type": "backend",
+      "label": "Exam API",
+      "sublabel": ".NET :5079",
+      "pos": [
+        400,
+        200
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": ":5433",
+      "pos": [
+        590,
+        200
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "outbox-publisher",
+      "type": "backend",
+      "label": "OutboxPublisher",
+      "sublabel": ".NET :5081",
+      "pos": [
+        770,
+        200
+      ],
+      "size": [
+        160,
+        60
+      ]
+    },
+    {
+      "id": "rabbitmq",
+      "type": "messagebus",
+      "label": "RabbitMQ",
+      "sublabel": ":5672",
+      "pos": [
+        960,
+        200
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "badge-service",
+      "type": "backend",
+      "label": "BadgeService",
+      "sublabel": ".NET :5080",
+      "tag": "outbox consumer",
+      "pos": [
+        1140,
+        200
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "auth-ui",
+      "type": "frontend",
+      "label": "Auth UI",
+      "sublabel": "auth-ui/ :4201",
+      "pos": [
+        40,
+        350
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "keycloak",
+      "type": "security",
+      "label": "Keycloak",
+      "sublabel": ":8081",
+      "pos": [
+        220,
+        350
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "auth-api",
+      "type": "backend",
+      "label": "Auth API",
+      "sublabel": ".NET :6079",
+      "pos": [
+        400,
+        350
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "gemini",
+      "type": "external",
+      "label": "Google Gemini API",
+      "sublabel": "AI classification",
+      "pos": [
+        1140,
+        350
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "ExamApp Platform",
+      "wraps": [
+        "redis",
+        "minio",
+        "question-detector",
+        "angular-app",
+        "gateway",
+        "exam-api",
+        "postgres",
+        "outbox-publisher",
+        "rabbitmq",
+        "badge-service",
+        "auth-ui",
+        "keycloak",
+        "auth-api"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "region",
+      "label": "External Dependencies",
+      "wraps": [
+        "gemini"
+      ],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    {
+      "id": "ui-to-gateway",
+      "from": "angular-app",
+      "to": "gateway",
+      "label": "HTTP",
+      "variant": "emphasis"
+    },
+    {
+      "id": "authui-to-gateway",
+      "from": "auth-ui",
+      "to": "gateway",
+      "label": "login"
+    },
+    {
+      "id": "gateway-to-keycloak",
+      "from": "gateway",
+      "to": "keycloak",
+      "label": "OIDC token",
+      "variant": "dashed",
+      "labelDy": 24
+    },
+    {
+      "id": "gateway-to-examapi",
+      "from": "gateway",
+      "to": "exam-api",
+      "label": "route",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "id": "gateway-to-authapi",
+      "from": "gateway",
+      "to": "auth-api",
+      "label": "route"
+    },
+    {
+      "id": "authapi-to-postgres",
+      "from": "auth-api",
+      "to": "postgres",
+      "label": "veri erişimi"
+    },
+    {
+      "id": "examapi-to-redis",
+      "from": "exam-api",
+      "to": "redis",
+      "label": "cache",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        295,
+        34
+      ]
+    },
+    {
+      "id": "examapi-to-minio",
+      "from": "exam-api",
+      "to": "minio",
+      "label": "dosya depolama",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        475,
+        34
+      ]
+    },
+    {
+      "id": "examapi-to-detector",
+      "from": "exam-api",
+      "to": "question-detector",
+      "label": "soru kırpma",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        670,
+        34
+      ]
+    },
+    {
+      "id": "examapi-to-postgres",
+      "from": "exam-api",
+      "to": "postgres",
+      "label": "kaydet + outbox insert",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "id": "postgres-to-outbox",
+      "from": "postgres",
+      "to": "outbox-publisher",
+      "label": "outbox poll",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "id": "outbox-to-rabbitmq",
+      "from": "outbox-publisher",
+      "to": "rabbitmq",
+      "label": "publish event",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "id": "rabbitmq-to-badge",
+      "from": "rabbitmq",
+      "to": "badge-service",
+      "label": "consume",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "id": "badge-to-gemini",
+      "from": "badge-service",
+      "to": "gemini",
+      "label": "görsel sınıflandır",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        1310,
+        270
+      ]
+    },
+    {
+      "id": "gemini-to-badge",
+      "from": "gemini",
+      "to": "badge-service",
+      "label": "sonuç",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelAt": [
+        1310,
+        330
+      ]
+    },
+    {
+      "id": "badge-to-postgres",
+      "from": "badge-service",
+      "to": "postgres",
+      "label": "AI sınıflandırma yaz",
+      "variant": "emphasis",
+      "via": [
+        [
+          1215,
+          160
+        ],
+        [
+          665,
+          160
+        ]
+      ],
+      "fromSide": "top",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Giriş Katmanı",
+      "items": [
+        "Angular App (:4200) öğretmen/öğrenci arayüzü",
+        "Auth UI (:4201) Keycloak login akışını yönetir",
+        "Tüm trafik Ocelot Gateway (:5678) üzerinden geçer"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Ana Akış — Soru Sınıflandırma",
+      "items": [
+        "Exam API soruyu kaydeder ve outbox'a QuestionCreatedEvent yazar",
+        "OutboxPublisher Postgres'i poll edip RabbitMQ'ya publish eder",
+        "BadgeService event'i tüketir, Gemini API ile sınıflandırır ve sonucu Postgres'e yazar (ClassificationSource=AI)"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Veri ve Depolama",
+      "items": [
+        "PostgreSQL: ana veri deposu (Exam API, Auth API, Keycloak, BadgeService)",
+        "Redis: önbellek",
+        "MinIO: yüklenen görseller için S3 uyumlu depolama"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Dış Bağımlılıklar",
+      "items": [
+        "Keycloak (:8081): kimlik sağlayıcı",
+        "Google Gemini API: soru görseli sınıflandırma (ders/konu/zorluk)"
+      ]
+    }
+  ]
+}

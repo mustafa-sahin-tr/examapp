@@ -8,7 +8,11 @@ import { MatTableModule } from '@angular/material/table';
 import { finalize } from 'rxjs';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TeacherService } from '../../services/teacher.service';
-import { TeacherDashboardSummary, TeacherWorksheetOverview } from '../../models/teacher-dashboard.model';
+import {
+  TeacherDashboardSummary,
+  TeacherLaggingStudent,
+  TeacherWorksheetOverview,
+} from '../../models/teacher-dashboard.model';
 
 interface SummaryCardViewModel {
   key: 'worksheets' | 'students';
@@ -24,7 +28,8 @@ const COMPLETION_SUCCESS_THRESHOLD = 50;
  * Öğretmen dashboard'u.
  * - Issue #53: özet kartları.
  * - Issue #54: "Sınavlarım" tablosu (mobilde kart listesi).
- * Geride kalanlar ve aktivite kartları sonraki alt issue'larda (#55-#56).
+ * - Issue #55: "Geride Kalan Öğrenciler" tablosu (etiketli).
+ * Aktivite kartları sonraki alt issue'da (#56).
  */
 @Component({
   selector: 'app-teacher-dashboard',
@@ -74,9 +79,39 @@ export class TeacherDashboardComponent implements OnInit {
 
   readonly displayedColumns: readonly string[] = ['name', 'assignedStudentCount', 'completionPercentage'];
 
+  // ── Issue #55: Geride Kalan Öğrenciler tablosu ────────────────────────────
+  readonly laggingStudentsLoading = signal(true);
+  readonly laggingStudentsError = signal<string | null>(null);
+  readonly laggingStudents = signal<TeacherLaggingStudent[]>([]);
+  readonly laggingStudentsEmpty = computed(() => this.laggingStudents().length === 0);
+
+  readonly laggingDisplayedColumns: readonly string[] = ['studentName', 'worksheetName', 'flags'];
+
   ngOnInit(): void {
     this.loadSummary();
     this.loadWorksheetsOverview();
+    this.loadLaggingStudents();
+  }
+
+  loadLaggingStudents(): void {
+    this.laggingStudentsLoading.set(true);
+    this.laggingStudentsError.set(null);
+
+    this.teacherService
+      .getLaggingStudents()
+      .pipe(finalize(() => this.laggingStudentsLoading.set(false)))
+      .subscribe({
+        next: (rows) => this.laggingStudents.set(rows),
+        error: () => {
+          this.laggingStudents.set([]);
+          this.laggingStudentsError.set('Geride kalan öğrenci listesi alınırken bir sorun oluştu.');
+        },
+      });
+  }
+
+  /** Satır anahtarı: aynı öğrenci birden fazla worksheet'te geride kalabilir. */
+  trackLaggingRow(_index: number, row: TeacherLaggingStudent): string {
+    return `${row.studentId}-${row.worksheetId}`;
   }
 
   loadSummary(): void {

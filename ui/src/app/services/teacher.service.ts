@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { TeacherDashboardSummary, TeacherWorksheetOverview } from '../models/teacher-dashboard.model';
+import {
+  TeacherDashboardSummary,
+  TeacherLaggingStudent,
+  TeacherWorksheetOverview,
+} from '../models/teacher-dashboard.model';
 
 @Injectable({
   providedIn: 'root',
@@ -29,5 +33,13 @@ export class TeacherService {
    */
   getWorksheetsOverview(): Observable<TeacherWorksheetOverview[]> {
     return this.http.get<TeacherWorksheetOverview[]>(`${this.baseUrl}/worksheets-overview`);
+  }
+
+  /**
+   * Issue #55: giriş yapan öğretmenin geride kalan öğrencileri (düşük tamamlama ve/veya süresi geçmiş atama).
+   * Backend sadece en az bir bayrağı true olan satırları döndürür; hiç yoksa boş dizi.
+   */
+  getLaggingStudents(): Observable<TeacherLaggingStudent[]> {
+    return this.http.get<TeacherLaggingStudent[]>(`${this.baseUrl}/lagging-students`);
   }
 }

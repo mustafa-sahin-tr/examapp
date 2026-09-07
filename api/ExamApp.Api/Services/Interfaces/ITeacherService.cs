@@ -23,4 +23,10 @@ public interface ITeacherService
     /// tamamlanma yüzdesi. Sahiplik/hedefleme mantığı GetDashboardSummaryAsync ile aynıdır.
     /// </summary>
     Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(int teacherId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #55: öğretmenin sahip olduğu worksheet'lerde geride kalan (düşük tamamlama ve/veya
+    /// süresi geçmiş) öğrenci-worksheet çiftleri. Sadece en az bir bayrağı true olan satırlar döner; boşsa [].
+    /// </summary>
+    Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(int teacherId, CancellationToken ct = default);
 }

@@ -268,6 +268,37 @@
     color: var(--ms-warning-text);
     border: 1px solid var(--ms-warning-border);
   }
+
+  &.is-danger {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text);
+    border: 1px solid var(--ms-danger-border);
+  }
+}
+
+// ── Issue #55: Geride Kalan Öğrenciler — tablo (dar ekranda yatay kaydırma) ─
+.lagging-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  background: var(--ms-surface-weak);
+}
+
+.lagging-table {
+  width: 100%;
+  min-width: 480px;
+  background: transparent;
+
+  &__student {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+}
+
+.flag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 @media (max-width: 767px) {

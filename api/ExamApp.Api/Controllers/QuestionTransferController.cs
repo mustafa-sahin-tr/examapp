@@ -16,6 +16,7 @@ namespace ExamApp.Api.Controllers;
 
 [ApiController]
 [Route("api/question-transfer")]
+[Authorize(Roles = "Teacher,Admin")]
 public class QuestionTransferController : ControllerBase
 {
     private readonly IQuestionTransferService _service;
@@ -28,7 +29,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpPost("exports")]
-    [Authorize]
     public async Task<ActionResult<QuestionTransferJobDto>> StartExport([FromBody] StartQuestionExportDto request, CancellationToken ct)
     {
         var job = await _service.StartExportAsync(request, ct);
@@ -36,7 +36,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpPost("imports")]
-    [Authorize]
     [RequestSizeLimit(200_000_000)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<QuestionTransferJobDto>> StartImport([FromForm] StartQuestionImportFormDto request, CancellationToken ct)
@@ -62,7 +61,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpPost("imports/preview")]
-    [Authorize]
     [RequestSizeLimit(200_000_000)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<QuestionTransferImportPreviewDto>> PreviewImport([FromForm] StartQuestionImportFormDto request, CancellationToken ct)
@@ -77,7 +75,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("exports/{sourceKey}/bundles")]
-    [Authorize]
     public async Task<ActionResult> ListExportBundles([FromRoute] string sourceKey, CancellationToken ct)
     {
         var bundles = await _service.ListExportBundlesAsync(sourceKey, ct);
@@ -85,7 +82,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("exports/sources")]
-    [Authorize]
     public async Task<ActionResult> ListSources(CancellationToken ct)
     {
         var sources = await _service.ListSourceKeysAsync(ct);
@@ -93,7 +89,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("exports/{sourceKey}/bundles/{bundleNo:int}/download")]
-    [Authorize]
     public async Task<IActionResult> DownloadBundle([FromRoute] string sourceKey, [FromRoute] int bundleNo, CancellationToken ct)
     {
         var stream = await _service.GetExportBundleStreamAsync(sourceKey, bundleNo, ct);
@@ -102,7 +97,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("exports/{sourceKey}/bundles/{bundleNo:int}/map")]
-    [Authorize]
     public async Task<IActionResult> DownloadBundleMap([FromRoute] string sourceKey, [FromRoute] int bundleNo, CancellationToken ct)
     {
         var stream = await _service.GetExportBundleMapStreamAsync(sourceKey, bundleNo, ct);
@@ -111,7 +105,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("exports/{sourceKey}/index")]
-    [Authorize]
     public async Task<IActionResult> DownloadSourceIndex([FromRoute] string sourceKey, CancellationToken ct)
     {
         var stream = await _service.GetExportSourceIndexStreamAsync(sourceKey, ct);
@@ -121,7 +114,6 @@ public class QuestionTransferController : ControllerBase
 
     // Downloads a single ZIP that contains index.json + all bundle zips (+ bundle map JSONs if present).
     [HttpGet("exports/{sourceKey}/package")]
-    [Authorize]
     public IActionResult DownloadSourcePackage([FromRoute] string sourceKey)
     {
         sourceKey = string.IsNullOrWhiteSpace(sourceKey) ? "default" : sourceKey.Trim();
@@ -270,7 +262,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("jobs")]
-    [Authorize]
     public async Task<ActionResult> ListJobs([FromQuery] int take = 50, CancellationToken ct = default)
     {
         var jobs = await _service.ListJobsAsync(take, ct);
@@ -278,7 +269,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("jobs/{id:guid}")]
-    [Authorize]
     public async Task<ActionResult> GetJob([FromRoute] Guid id, CancellationToken ct)
     {
         var job = await _service.GetJobAsync(id, ct);
@@ -287,7 +277,6 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpGet("jobs/{id:guid}/download")]
-    [Authorize]
     public async Task<IActionResult> Download([FromRoute] Guid id, CancellationToken ct)
     {
         var job = await _service.GetJobAsync(id, ct);
@@ -318,8 +307,9 @@ public class QuestionTransferController : ControllerBase
     }
 
     // Creates an HttpOnly cookie scoped to /hangfire so the dashboard can be opened in a browser.
+    // Roles must stay in sync with HangfireDashboardAuthFilter (dashboard also allows SuperAdmin).
     [HttpPost("hangfire/login")]
-    [Authorize]
+    [Authorize(Roles = "Teacher,Admin,SuperAdmin")]
     public async Task<IActionResult> HangfireLogin(CancellationToken ct)
     {
         await HttpContext.SignInAsync(
@@ -335,7 +325,7 @@ public class QuestionTransferController : ControllerBase
     }
 
     [HttpPost("hangfire/logout")]
-    [Authorize]
+    [Authorize(Roles = "Teacher,Admin,SuperAdmin")]
     public async Task<IActionResult> HangfireLogout(CancellationToken ct)
     {
         await HttpContext.SignOutAsync("HangfireCookie");

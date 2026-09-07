@@ -31,6 +31,13 @@ const EMPTY_REGION: QuestionRegion = {
 
 type LayoutType = 'side-1col' | 'side-2col' | 'top-1row' | 'top-2row' | 'top-4row';
 
+interface LayoutResult {
+  layout: LayoutType;
+  currentMarginLeft: number;
+  answerMarginLeft: number;
+  answerMinWidth: number;
+}
+
 @Component({
   selector: 'app-question-canvas-view-v5',
   standalone: true,
@@ -50,10 +57,10 @@ export class QuestionCanvasViewComponentv5 {
   public questionImageSource = signal<string | null>(null);
   public passageImageSource = signal<string | null>(null);
   public _questionRegion = signal<QuestionRegion>(EMPTY_REGION);
-  currentLayout = signal<LayoutType>('top-4row');
-  currentMarginLeft = signal<number>(0);
-  answerMarginLeft = signal<number>(0);
-  answerMinWidth = signal<number>(0);
+  readonly currentLayout = signal<LayoutType>('top-4row');
+  readonly currentMarginLeft = signal<number>(0);
+  readonly answerMarginLeft = signal<number>(0);
+  readonly answerMinWidth = signal<number>(0);
 
   // Sıralı cevaplar getter'ı: order > tag > id
   public get sortedAnswers(): AnswerChoice[] {
@@ -67,14 +74,12 @@ export class QuestionCanvasViewComponentv5 {
   }
   @Input({ required: true }) set questionRegion(value: QuestionRegion) {
     const region = value ?? EMPTY_REGION;
-    this.currentLayout = signal<LayoutType>('top-4row');
-    this.currentMarginLeft = signal<number>(0);
-    this.answerMarginLeft = signal<number>(0);
-    this.answerMinWidth = signal<number>(0);
-    // Veri elimizde olduğu için direkt hesaplıyoruz
-    const bestLayout = this.calculateBestLayout(region);
-    console.log('Calculated best layout:', bestLayout, 'for question region:', region);
-    this.currentLayout.set(bestLayout);
+    // Veri elimizde olduğu için direkt hesaplıyoruz; saf hesap sonucu component state'ine burada yazılır
+    const result = this.calculateBestLayout(region);
+    this.currentLayout.set(result.layout);
+    this.currentMarginLeft.set(result.currentMarginLeft);
+    this.answerMarginLeft.set(result.answerMarginLeft);
+    this.answerMinWidth.set(result.answerMinWidth);
 
     // 2. Cevapları ID'ye göre sırala
     if (region.answers) {
@@ -82,7 +87,6 @@ export class QuestionCanvasViewComponentv5 {
     }
 
     this._questionRegion.set(region);
-    console.log('Input Question Region:', region);
     const transformedQuestionUrl = this.transformQuestionImageUrl(region.imageUrl);
     this.questionImageSource.set(transformedQuestionUrl);
     const passageUrl = region?.passage?.imageUrl ?? null;
@@ -117,80 +121,56 @@ export class QuestionCanvasViewComponentv5 {
     this.resizeObserver?.disconnect();
   }
 
-  private calculateBestLayout(region: QuestionRegion): LayoutType {
+  /**
+   * Saf hesap fonksiyonu: region'dan layout + margin/genişlik değerlerini üretir.
+   * Component state'ine yan etki yapmaz; sonucu setter kendi signal'larına yazar.
+   * Eşikler (1.1, 800, 0.6, %10 tolerans, maxAns) docs/question-layout-algorithm-analysis.md ile doğrulanmıştır.
+   */
+  private calculateBestLayout(region: QuestionRegion): LayoutResult {
     const { width: qW, sanitizedHeight, height: qH, answers } = region;
     const effectiveHeight = sanitizedHeight || qH;
     const qRatio = qW / effectiveHeight;
 
     const maxAns = answers?.reduce((max, ans) => (ans.width > (max?.width || 0) ? ans : max), answers?.[0]);
-    const aW = 20 + (maxAns?.width || 0); // Cevap kartlarının minimum genişliği (padding(8) + border(2) + görsel)
-    this.answerMinWidth.set(aW);
+    const aW = 20 + (maxAns?.width || 0); // 2 × (padding 8 + border ~2) — iki taraflı pay + en geniş şık görseli
+    const answerMinWidth = aW;
+    let currentMarginLeft = 0;
+    let answerMarginLeft = 0;
     const gap = 12; // CSS'teki gap değeriyle uyumlu olmalı
 
     // 1. Durum: Soru Dikey veya Kareyse (Yan yana yerleşim)
     if (qRatio < 1.1) {
-      return effectiveHeight > 800 || qRatio < 0.6 ? 'side-1col' : 'side-2col';
+      const layout: LayoutType = effectiveHeight > 800 || qRatio < 0.6 ? 'side-1col' : 'side-2col';
+      return { layout, currentMarginLeft, answerMarginLeft, answerMinWidth };
     }
 
     // 2. Durum: Soru Yatay ise (Genişlik bazlı hiyerarşik kontrol)
-    this.currentMarginLeft.set(0);
-    // 4 şık yan yana sığar mı? (Soru genişliğinin %95'ini baz alalım)
+    // 4 şık yan yana sığar mı? (%10 tolerans)
     const totalWidth4 = aW * 4 + gap * 3;
     if (totalWidth4 < qW * 1.1) {
       if (totalWidth4 > qW) {
-        this.currentMarginLeft.set(Math.max(0, (totalWidth4 - qW) / 2));
+        currentMarginLeft = Math.max(0, (totalWidth4 - qW) / 2);
       } else {
-        this.currentMarginLeft.set(0);
-        this.answerMarginLeft.set(Math.max(0, (qW - totalWidth4) / 2));
+        currentMarginLeft = 0;
+        answerMarginLeft = Math.max(0, (qW - totalWidth4) / 2);
       }
-      return 'top-1row'; // 4 tane yan yana (Senin örneğin tam buraya düşer)
+      return { layout: 'top-1row', currentMarginLeft, answerMarginLeft, answerMinWidth }; // 4 tane yan yana
     }
 
     // 2 şık yan yana sığar mı?
     const totalWidth2 = aW * 2 + gap;
     if (totalWidth2 < qW * 1.1) {
       if (totalWidth2 > qW) {
-        this.currentMarginLeft.set(Math.max(0, (totalWidth2 - qW) / 2));
+        currentMarginLeft = Math.max(0, (totalWidth2 - qW) / 2);
       } else {
-        this.currentMarginLeft.set(0);
-        this.answerMarginLeft.set(Math.max(0, (qW - totalWidth2) / 2));
+        currentMarginLeft = 0;
+        answerMarginLeft = Math.max(0, (qW - totalWidth2) / 2);
       }
-      return 'top-2row'; // 2 satır 2 sütun (2x2)
+      return { layout: 'top-2row', currentMarginLeft, answerMarginLeft, answerMinWidth }; // 2 satır 2 sütun (2x2)
     }
 
     // Sığmıyorsa alt alta
-    return 'top-4row';
-  }
-
-  private calculateBestLayoutv1(region: QuestionRegion): LayoutType {
-    const { width: qW, height: qH, answers } = region;
-    const qRatio = qW / qH;
-
-    const firstAns = answers?.[0];
-    const aW = firstAns?.width || 0;
-    const gap = 12; // CSS'teki gap değeriyle uyumlu olmalı
-
-    // 1. Durum: Soru Dikey veya Kareyse (Yan yana yerleşim)
-    if (qRatio < 1.1) {
-      return qH > 800 || qRatio < 0.6 ? 'side-1col' : 'side-2col';
-    }
-
-    // 2. Durum: Soru Yatay ise (Genişlik bazlı hiyerarşik kontrol)
-
-    // 4 şık yan yana sığar mı? (Soru genişliğinin %95'ini baz alalım)
-    const totalWidth4 = aW * 4 + gap * 3;
-    if (totalWidth4 < qW * 0.95) {
-      return 'top-1row'; // 4 tane yan yana (Senin örneğin tam buraya düşer)
-    }
-
-    // 2 şık yan yana sığar mı?
-    const totalWidth2 = aW * 2 + gap;
-    if (totalWidth2 < qW * 0.95) {
-      return 'top-2row'; // 2 satır 2 sütun (2x2)
-    }
-
-    // Sığmıyorsa alt alta
-    return 'top-4row';
+    return { layout: 'top-4row', currentMarginLeft, answerMarginLeft, answerMinWidth };
   }
 
   @Output() hoverRegion = new EventEmitter<MouseEvent>();

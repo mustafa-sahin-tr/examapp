@@ -41,7 +41,8 @@
   </div>
 
   <!-- Issue #54: Sınavlarım -->
-  <div class="dashboard-section">
+  <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
+  <div class="dashboard-section" ngSkipHydration>
     <app-section-header title="Sınavlarım" iconName="list_alt"></app-section-header>
 
     @if (worksheetsLoading()) {
@@ -119,6 +120,61 @@
           </li>
         }
       </ul>
+    }
+  </div>
+
+  <!-- Issue #55: Geride Kalan Öğrenciler -->
+  <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
+  <div class="dashboard-section" ngSkipHydration>
+    <app-section-header title="Geride Kalan Öğrenciler" iconName="report_problem"></app-section-header>
+
+    @if (laggingStudentsLoading()) {
+      <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
+        <mat-spinner diameter="28"></mat-spinner>
+        <p class="state-text">Geride kalan öğrenciler yükleniyor...</p>
+      </div>
+    } @else if (laggingStudentsError()) {
+      <div class="state-box state-box--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ laggingStudentsError() }}</p>
+        <button mat-stroked-button type="button" (click)="loadLaggingStudents()">Tekrar dene</button>
+      </div>
+    } @else if (laggingStudentsEmpty()) {
+      <div class="state-box state-box--empty">
+        <mat-icon>celebration</mat-icon>
+        <p class="state-text">Geride kalan öğrenci yok, harika gidiyorsunuz!</p>
+      </div>
+    } @else {
+      <div class="lagging-table-wrapper">
+        <table mat-table [dataSource]="laggingStudents()" [trackBy]="trackLaggingRow" class="lagging-table">
+          <ng-container matColumnDef="studentName">
+            <th mat-header-cell *matHeaderCellDef>Öğrenci adı</th>
+            <td mat-cell *matCellDef="let row" class="lagging-table__student">{{ row.studentName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="worksheetName">
+            <th mat-header-cell *matHeaderCellDef>Sınav adı</th>
+            <td mat-cell *matCellDef="let row">{{ row.worksheetName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="flags">
+            <th mat-header-cell *matHeaderCellDef>Etiketler</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="flag-chips">
+                @if (row.isLowCompletion) {
+                  <span class="completion-chip is-warning">Düşük Tamamlama</span>
+                }
+                @if (row.isExpired) {
+                  <span class="completion-chip is-danger">Süresi Geçti</span>
+                }
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="laggingDisplayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: laggingDisplayedColumns"></tr>
+        </table>
+      </div>
     }
   </div>
 </div>

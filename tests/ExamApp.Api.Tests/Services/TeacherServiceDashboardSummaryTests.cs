@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,8 +14,9 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private const int TeacherId = 1;
     private const int OtherTeacherId = 2;
+    private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
 
-    private TeacherService NewService(AppDbContext ctx) => new(ctx);
+    private TeacherService NewService(AppDbContext ctx) => new(ctx, _authApi);
 
     [Fact]
     public async Task GetDashboardSummaryAsync_TeacherHasNoWorksheets_ReturnsZeros()

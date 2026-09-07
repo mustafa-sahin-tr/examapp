@@ -4,7 +4,11 @@ import { of, throwError } from 'rxjs';
 
 import { TeacherDashboardComponent } from './teacher-dashboard.component';
 import { TeacherService } from '../../services/teacher.service';
-import { TeacherDashboardSummary, TeacherWorksheetOverview } from '../../models/teacher-dashboard.model';
+import {
+  TeacherDashboardSummary,
+  TeacherLaggingStudent,
+  TeacherWorksheetOverview,
+} from '../../models/teacher-dashboard.model';
 
 describe('TeacherDashboardComponent', () => {
   let fixture: ComponentFixture<TeacherDashboardComponent>;
@@ -19,13 +23,36 @@ describe('TeacherDashboardComponent', () => {
     { worksheetId: 2, name: 'WS 2', assignedStudentCount: 2, completionPercentage: 25 },
   ];
 
+  const laggingRows: TeacherLaggingStudent[] = [
+    {
+      studentId: 1,
+      studentName: 'Ayşe Yılmaz',
+      worksheetId: 1,
+      worksheetName: 'WS 1',
+      completionPercentage: 0,
+      isLowCompletion: true,
+      isExpired: false,
+    },
+    {
+      studentId: 2,
+      studentName: 'Mehmet Kaya',
+      worksheetId: 2,
+      worksheetName: 'WS 2',
+      completionPercentage: 0,
+      isLowCompletion: true,
+      isExpired: true,
+    },
+  ];
+
   function configure(): ComponentFixture<TeacherDashboardComponent> {
     teacherService = jasmine.createSpyObj<TeacherService>('TeacherService', [
       'getDashboardSummary',
       'getWorksheetsOverview',
+      'getLaggingStudents',
     ]);
     teacherService.getDashboardSummary.and.returnValue(of(summary));
     teacherService.getWorksheetsOverview.and.returnValue(of(worksheetRows));
+    teacherService.getLaggingStudents.and.returnValue(of(laggingRows));
 
     TestBed.configureTestingModule({
       imports: [TeacherDashboardComponent],
@@ -82,5 +109,86 @@ describe('TeacherDashboardComponent', () => {
     component.openWorksheet(worksheetRows[0]);
 
     expect(navigateSpy).toHaveBeenCalledWith(['/test', worksheetRows[0].worksheetId]);
+  });
+
+  // ── Issue #55: Geride Kalan Öğrenciler ────────────────────────────────────
+
+  it('loadLaggingStudents_SuccessfulResponse_FillsLaggingStudentsSignal', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+
+    fixture.detectChanges(); // triggers ngOnInit -> loadLaggingStudents
+
+    expect(component.laggingStudents()).toEqual(laggingRows);
+    expect(component.laggingStudentsError()).toBeNull();
+  });
+
+  it('loadLaggingStudents_RequestFails_SetsLaggingStudentsError', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(throwError(() => new Error('network error')));
+
+    fixture.detectChanges();
+
+    expect(component.laggingStudents()).toEqual([]);
+    expect(component.laggingStudentsError()).toBe('Geride kalan öğrenci listesi alınırken bir sorun oluştu.');
+  });
+
+  it('laggingStudentsEmpty_NoRows_IsTrue', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of([]));
+
+    fixture.detectChanges();
+
+    expect(component.laggingStudentsEmpty()).toBeTrue();
+  });
+
+  it('laggingStudentsEmpty_HasRows_IsFalse', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+
+    expect(component.laggingStudentsEmpty()).toBeFalse();
+  });
+
+  it('laggingStudentsTable_RowWithBothFlagsTrue_RendersWarningAndDangerChips', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+
+    const chips = fixture.nativeElement.querySelectorAll('.lagging-table .flag-chips .completion-chip');
+    const classesByRow: string[][] = [];
+    chips.forEach((chip: HTMLElement) => classesByRow.push(Array.from(chip.classList)));
+
+    // Row 0 (isLowCompletion=true, isExpired=false): only the warning chip.
+    // Row 1 (isLowCompletion=true, isExpired=true): both warning and danger chips.
+    const warningChips = Array.from(chips as NodeListOf<HTMLElement>).filter((c) =>
+      c.classList.contains('is-warning'),
+    );
+    const dangerChips = Array.from(chips as NodeListOf<HTMLElement>).filter((c) =>
+      c.classList.contains('is-danger'),
+    );
+
+    expect(warningChips.length).toBe(2); // both rows are low completion
+    expect(dangerChips.length).toBe(1); // only the second row is expired
+  });
+
+  it('laggingStudentsTable_RowWithOnlyLowCompletion_RendersOnlyWarningChip', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    teacherService.getLaggingStudents.and.returnValue(of([laggingRows[0]]));
+
+    fixture.detectChanges();
+
+    const chips: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.lagging-table .flag-chips .completion-chip'),
+    );
+
+    expect(chips.length).toBe(1);
+    expect(chips[0].classList.contains('is-warning')).toBeTrue();
+    expect(chips[0].classList.contains('is-danger')).toBeFalse();
   });
 });

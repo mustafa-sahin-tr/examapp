@@ -2,7 +2,7 @@
 name: dotnet-api-dev
 description: exam-dotnet-api ve diğer .NET servislerinde C# backend işi yapar (controller, service, DTO, EF entity). Backend endpoint, iş kuralı veya veri modeli değişikliği gerektiğinde kullan.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: sonnet
+model: fable
 color: blue
 memory: project
 skills:

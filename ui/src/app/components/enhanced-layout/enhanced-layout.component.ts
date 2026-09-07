@@ -10,14 +10,15 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RouterOutlet, Router } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { AuthService } from '../../services/auth.service';
 import { UserThemeService } from '../../services/user-theme.service';
 import { ThemeConfigService } from '../../services/theme-config.service';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { filter, map, takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
@@ -58,14 +59,48 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private static readonly MOBILE_LAYOUT_QUERY =
     '(max-width: 768px), ((max-height: 500px) and (orientation: landscape))';
+  /** `.enhanced-sidenav { width }` ile aynı tutulmalı (enhanced-layout.component.scss). */
+  private static readonly SIDENAV_WIDTH_EXPANDED = 280;
+  /** `.enhanced-sidenav.collapsed { width }` ile aynı tutulmalı (enhanced-layout.component.scss). */
+  private static readonly SIDENAV_WIDTH_COLLAPSED = 72;
 
   // Signals for state management
+  private readonly router = inject(Router);
   private readonly sidenavService = inject(SidenavService);
   private readonly breakpointObserver = inject(BreakpointObserver);
+  /** Aktif URL (redirect sonrası). NavigationEnd ile güncellenir; ilk değer mevcut URL. */
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects)
+    ),
+    { initialValue: this.router.url }
+  );
+  /**
+   * Sınav çözme ekranı (/testsolve/...) aktif mi. Bu ekranın kendi alt dock'u var;
+   * genel mobil alt nav aynı alanı paylaşıp dock'u kapatıyordu (issue #72), bu yüzden gizlenir.
+   */
+  readonly isExamRoute = computed(() => this.currentUrl().startsWith('/testsolve'));
   isMobile = signal(false);
   isMobileSidenavOpen = signal(false);
   isSidenavCollapsed = computed(() => !this.isMobile() && this.sidenavService.isSidenavCollapsed());
   isFullScreen = computed(() => this.sidenavService.isFullScreen());
+  /**
+   * Sidenav'ın kapladığı gerçek piksel genişliği — içerik margin'i buradan TEK KAYNAKTAN türetilir
+   * ve şablonda `[style.margin-left.px]` ile uygulanır. Material, CSS class'ıyla daralan sidenav
+   * genişliğini kendi takip edemediği için margin'i biz hesaplıyoruz.
+   * Yeni bir sidenav durumu (yeni bir route/mod) eklendiğinde SADECE bu computed güncellenir;
+   * SCSS'te ayrı bir !important override eklemeye gerek kalmaz.
+   * Değerler `.enhanced-sidenav` (280px) ve `.enhanced-sidenav.collapsed` (72px) ile birebir aynıdır.
+   */
+  readonly sidenavContentOffsetPx = computed(() => {
+    if (this.isMobile() || this.isExamRoute()) {
+      return 0;
+    }
+    return this.isSidenavCollapsed()
+      ? EnhancedLayoutComponent.SIDENAV_WIDTH_COLLAPSED
+      : EnhancedLayoutComponent.SIDENAV_WIDTH_EXPANDED;
+  });
   activeMenuItem = signal('dashboard');
   isSearchFocused = signal(false);
   authService = inject(AuthService);
@@ -156,7 +191,6 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Computed values
 
   filteredSuggestions: string[] = [];
-  constructor(private router: Router) {}
 
   ngOnInit() {
     this.signalR.startConnection();
@@ -276,6 +310,11 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   }
 
   toggleSidenav() {
+    // Sınav ekranında sidenav her zaman kapalı; açma denemesi yok sayılır.
+    if (this.isExamRoute()) {
+      return;
+    }
+
     if (this.isMobile()) {
       this.isMobileSidenavOpen.update((value) => !value);
       return;

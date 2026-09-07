@@ -6,7 +6,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { ProgramStep } from '../../models/programstep';
 import { ProgramService } from '../../services/program.service';
@@ -40,7 +39,6 @@ export interface UserStepSelection {
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
-    MatNativeDateModule,
     FormsModule,
   ],
   templateUrl: './program-create.component.html',

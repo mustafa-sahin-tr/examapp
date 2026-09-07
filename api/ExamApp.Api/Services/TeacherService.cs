@@ -175,4 +175,212 @@ public class TeacherService : ITeacherService
         };
     }
 
+    public async Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(int teacherId, CancellationToken ct = default)
+    {
+        // 1) Sahip olunan worksheet'ler (GetDashboardSummaryAsync ile aynı sahiplik kuralı).
+        var ownedWorksheets = await _context.Worksheets
+            .AsNoTracking()
+            .Where(w => w.CreateUserId == teacherId)
+            .OrderBy(w => w.Name)
+            .Select(w => new { w.Id, w.Name })
+            .ToListAsync(ct);
+
+        if (ownedWorksheets.Count == 0)
+        {
+            return new List<TeacherWorksheetOverviewDto>();
+        }
+
+        var worksheetIds = ownedWorksheets.Select(w => w.Id).ToList();
+
+        // 2) Bu worksheet'lere ait TÜM atamalar tek sorguda (N+1 yok).
+        var assignments = await _context.WorksheetAssignments
+            .AsNoTracking()
+            .Where(wa => worksheetIds.Contains(wa.WorksheetId))
+            .Select(wa => new
+            {
+                wa.WorksheetId,
+                wa.StudentId,
+                wa.GradeId,
+                wa.SchoolId,
+                wa.StartAt,
+                wa.EndAt
+            })
+            .ToListAsync(ct);
+
+        // 3) Hedef öğrenciler tek sorguda: direkt atananlar + ilgili sınıflardaki tüm öğrenciler.
+        var directStudentIds = assignments
+            .Where(a => a.StudentId.HasValue)
+            .Select(a => a.StudentId!.Value)
+            .Distinct()
+            .ToList();
+
+        var gradeIds = assignments
+            .Where(a => a.GradeId.HasValue && !a.StudentId.HasValue)
+            .Select(a => a.GradeId!.Value)
+            .Distinct()
+            .ToList();
+
+        var students = (directStudentIds.Count == 0 && gradeIds.Count == 0)
+            ? new List<StudentTarget>()
+            : await _context.Students
+                .AsNoTracking()
+                .Where(s => directStudentIds.Contains(s.Id)
+                            || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
+                .Select(s => new StudentTarget(s.Id, s.GradeId, s.SchoolId))
+                .ToListAsync(ct);
+
+        var studentsById = students.ToDictionary(s => s.Id);
+        var studentsByGrade = students
+            .Where(s => s.GradeId.HasValue)
+            .GroupBy(s => s.GradeId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // 4) Worksheet bazında hedef öğrenci kümesi + her öğrencinin ilgili atama pencereleri.
+        //    Aynı öğrenci bir worksheet'e birden fazla atamayla hedeflenebilir; distinct sayılır.
+        var targetsByWorksheet = new Dictionary<int, Dictionary<int, List<AssignmentWindow>>>();
+
+        foreach (var assignment in assignments)
+        {
+            if (!targetsByWorksheet.TryGetValue(assignment.WorksheetId, out var studentWindows))
+            {
+                studentWindows = new Dictionary<int, List<AssignmentWindow>>();
+                targetsByWorksheet[assignment.WorksheetId] = studentWindows;
+            }
+
+            var window = new AssignmentWindow(assignment.StartAt, assignment.EndAt);
+
+            if (assignment.StudentId.HasValue)
+            {
+                // Direkt atama: öğrenci Students tablosunda mevcutsa (soft-delete dışlanır) hedeftir.
+                if (studentsById.ContainsKey(assignment.StudentId.Value))
+                {
+                    AddWindow(studentWindows, assignment.StudentId.Value, window);
+                }
+            }
+            else if (assignment.GradeId.HasValue
+                     && studentsByGrade.TryGetValue(assignment.GradeId.Value, out var gradeStudents))
+            {
+                foreach (var student in gradeStudents)
+                {
+                    if (!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
+                    {
+                        AddWindow(studentWindows, student.Id, window);
+                    }
+                }
+            }
+        }
+
+        // 5) İlgili test instance'ları tek sorguda (worksheet + hedef öğrenci filtresiyle).
+        var allTargetStudentIds = targetsByWorksheet.Values
+            .SelectMany(d => d.Keys)
+            .Distinct()
+            .ToList();
+
+        var instances = allTargetStudentIds.Count == 0
+            ? new List<InstanceSnapshot>()
+            : await _context.TestInstances
+                .AsNoTracking()
+                .Where(ti => worksheetIds.Contains(ti.WorksheetId) && allTargetStudentIds.Contains(ti.StudentId))
+                .Select(ti => new InstanceSnapshot(ti.WorksheetId, ti.StudentId, ti.StartTime, ti.EndTime, ti.Status))
+                .ToListAsync(ct);
+
+        var instancesByWorksheetStudent = instances
+            .GroupBy(i => (i.WorksheetId, i.StudentId))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // 6) Bellekte hesapla.
+        var result = new List<TeacherWorksheetOverviewDto>(ownedWorksheets.Count);
+
+        foreach (var worksheet in ownedWorksheets)
+        {
+            var assignedCount = 0;
+            var completedCount = 0;
+
+            if (targetsByWorksheet.TryGetValue(worksheet.Id, out var studentWindows))
+            {
+                assignedCount = studentWindows.Count;
+
+                foreach (var (studentId, windows) in studentWindows)
+                {
+                    instancesByWorksheetStudent.TryGetValue((worksheet.Id, studentId), out var studentInstances);
+
+                    if (IsCompletedInAnyWindow(windows, studentInstances))
+                    {
+                        completedCount++;
+                    }
+                }
+            }
+
+            result.Add(new TeacherWorksheetOverviewDto
+            {
+                WorksheetId = worksheet.Id,
+                Name = worksheet.Name,
+                AssignedStudentCount = assignedCount,
+                CompletionPercentage = assignedCount == 0
+                    ? 0
+                    : Math.Round(completedCount * 100.0 / assignedCount, 2)
+            });
+        }
+
+        return result;
+    }
+
+    private static void AddWindow(Dictionary<int, List<AssignmentWindow>> studentWindows, int studentId, AssignmentWindow window)
+    {
+        if (!studentWindows.TryGetValue(studentId, out var windows))
+        {
+            windows = new List<AssignmentWindow>();
+            studentWindows[studentId] = windows;
+        }
+
+        windows.Add(window);
+    }
+
+    /// <summary>
+    /// WorksheetAssignmentService.ResolveStudentAssignmentStatus ile aynı "Completed" kuralı:
+    /// atama penceresi içindeki en son instance Completed ise ya da Started olup EndTime dolmuşsa tamamlanmıştır.
+    /// Öğrenci birden fazla atamayla hedeflenmişse herhangi birinde tamamlamış olması yeterlidir.
+    /// </summary>
+    private static bool IsCompletedInAnyWindow(List<AssignmentWindow> windows, List<InstanceSnapshot>? studentInstances)
+    {
+        if (studentInstances == null || studentInstances.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var window in windows)
+        {
+            var relevantInstance = studentInstances
+                .Where(ti => ti.StartTime >= window.StartAt
+                             && (!window.EndAt.HasValue || ti.StartTime <= window.EndAt.Value))
+                .OrderByDescending(ti => ti.StartTime)
+                .FirstOrDefault();
+
+            if (relevantInstance == null)
+            {
+                continue;
+            }
+
+            var isCompleted = relevantInstance.Status switch
+            {
+                WorksheetInstanceStatus.Completed => true,
+                WorksheetInstanceStatus.Started => relevantInstance.EndTime.HasValue,
+                _ => false
+            };
+
+            if (isCompleted)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private sealed record StudentTarget(int Id, int? GradeId, int? SchoolId);
+
+    private sealed record AssignmentWindow(DateTime StartAt, DateTime? EndAt);
+
+    private sealed record InstanceSnapshot(int WorksheetId, int StudentId, DateTime StartTime, DateTime? EndTime, WorksheetInstanceStatus Status);
+
 }

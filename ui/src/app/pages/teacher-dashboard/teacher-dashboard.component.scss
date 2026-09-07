@@ -166,6 +166,110 @@
   }
 }
 
+// ── Issue #54: Sınavlarım — tablo (masaüstü) ────────────────────────────────
+.worksheets-table {
+  width: 100%;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  overflow: hidden;
+
+  &__name {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  &__row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--ms-surface-medium);
+      outline: none;
+    }
+  }
+}
+
+// ── Issue #54: Sınavlarım — kart listesi (mobil) ────────────────────────────
+.worksheet-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.worksheet-card {
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--ms-surface-medium);
+    outline: none;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  &__name {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+    font-family: var(--mainFontFamily);
+    overflow-wrap: anywhere;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--ms-text-medium);
+    font-family: var(--paragraphFontFamily);
+
+    mat-icon {
+      font-size: 1.1rem;
+      width: 1.1rem;
+      height: 1.1rem;
+    }
+  }
+}
+
+// ── Tamamlanma chip'i (assignment-permission-requests'teki .apr__chip deseni) ─
+.completion-chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.is-success {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text);
+    border: 1px solid var(--ms-success-border);
+  }
+
+  &.is-warning {
+    background: var(--ms-warning-surface);
+    color: var(--ms-warning-text);
+    border: 1px solid var(--ms-warning-border);
+  }
+}
+
 @media (max-width: 767px) {
   $mobile-bottom-nav-height: 64px;
 
@@ -183,5 +287,14 @@
     button {
       width: 100%;
     }
+  }
+
+  // Sınavlarım: tablo gizlenir, kart listesi görünür
+  .worksheets-table {
+    display: none;
+  }
+
+  .worksheet-cards {
+    display: flex;
   }
 }

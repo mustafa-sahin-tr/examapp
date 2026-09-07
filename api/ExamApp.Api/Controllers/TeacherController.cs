@@ -131,5 +131,18 @@ namespace ExamApp.Api.Controllers
             return Ok(summary);
         }
 
+        /// <summary>
+        /// Issue #54: öğretmen dashboard "Sınavlarım" tablosu.
+        /// Sadece authenticated öğretmenin sahip olduğu worksheet'ler döner; boşsa [].
+        /// </summary>
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("worksheets-overview")]
+        public async Task<ActionResult<List<TeacherWorksheetOverviewDto>>> GetWorksheetsOverview(CancellationToken ct)
+        {
+            var user = await GetAuthenticatedUserAsync();
+            var overview = await _teacherService.GetWorksheetsOverviewAsync(user.Id, ct);
+            return Ok(overview);
+        }
+
     }
 }

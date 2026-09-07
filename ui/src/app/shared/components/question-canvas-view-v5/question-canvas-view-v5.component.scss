@@ -72,6 +72,22 @@
   }
 }
 
+// Soru görseli: grid track'in img'in intrinsic genişliğine sabitlenmesini engelle.
+// Ebeveyn kutulara min-width:0 verilmezse grid/flex item'ın varsayılan
+// min-width:auto davranışı replaced element genişliğini min-content sayıp taşmaya izin verir.
+.qcv4-question-image-wrapper,
+.qcv4-main-image-box,
+.qcv4-answers-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.qcv4-question-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 // Şık Kartı Tasarımı
 .qcv4-answer-card {
   border: 1.5px solid #d1d5db;

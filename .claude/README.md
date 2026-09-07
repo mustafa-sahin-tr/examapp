@@ -1,7 +1,7 @@
 # Exam Platform — Agent Harness
 
-Bu paket, mevcut `.claude/rules/` yapının üstüne bir agent ekibi kurar: 8 agent, 7 skill,
-4 slash command ve 3 hook.
+Bu paket, mevcut `.claude/rules/` yapının üstüne bir agent ekibi kurar: 11 agent, 18 skill
+(10'u proje-özel + 8'i üçüncü parti referans), 7 slash command ve 3 hook.
 
 ## Katmanlar ne işe yarıyor
 
@@ -119,3 +119,14 @@ komut + agent yapısı yeterli, workflow'a gerek yok.
 - `memory: project` tanımlı agent'lar `.claude/agent-memory/` altında öğrendiklerini biriktirir;
   bu dizini repoya commit'lersen ekip ortak hafıza kazanır.
 - Bir reviewer aynı bulguyu üçüncü kez raporluyorsa, o kural ya bir hook'a ya da bir skill'e taşınmalıdır.
+
+## Üçüncü parti referans skill'ler
+
+`angular-dev`, `dotnet-api-dev`, `devops-aspire` ve `test-engineer` agent'larına, framework'ün resmi/
+uzman bilgisini taşıyan 8 skill daha eklendi (`angular-developer` — angular/skills resmi Angular ekibi;
+`efcore-patterns`, `database-performance`, `csharp-coding-standards`,
+`microsoft-extensions-dependency-injection`, `aspire-integration-testing`, `aspire-configuration`,
+`aspire-service-defaults`, `testcontainers` — Aaronontheweb/dotnet-skills). Bunlar proje-özel skill'lerin
+(`ef-migration`, `aspire-migration`, `angular-feature`) **yerine değil, yanına** eklendi: proje-özel
+skill "bizde nasıl yapılır"ı, üçüncü parti skill "framework'te doğrusu ne"yi anlatır. Elle kopyalandılar,
+otomatik güncellenmezler — detay ve lisans bilgisi `.claude/skills/THIRD_PARTY_NOTICES.md`.

@@ -20,6 +20,18 @@
   --mat-sys-on-surface: rgb(165, 170, 207);
   --main-foreground-color: #242244;
   --border-input: 1px solid rgb(88, 95, 162);
+  // Sidenav (enhanced-layout) tokens
+  --sidenav-bg: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  --sidenav-solid-bg: #1a1a2e;
+  --sidenav-fg: #cbd5e1;
+  --sidenav-fg-strong: #ffffff;
+  --sidenav-fg-muted: #64748b;
+  --sidenav-border: rgba(255, 255, 255, 0.1);
+  --sidenav-hover-bg: rgba(255, 255, 255, 0.08);
+  --sidenav-active-bg: color-mix(in srgb, var(--primaryColor) 16%, transparent);
+  --sidenav-active-accent: var(--primaryColor);
+  --sidenav-focus-ring: var(--ms-action-border-focus);
+  --sidenav-scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --ms-action-background: #4A33D1;
   --ms-action-background-hover: #3C28B1;
   --ms-action-background-active: #30208D;

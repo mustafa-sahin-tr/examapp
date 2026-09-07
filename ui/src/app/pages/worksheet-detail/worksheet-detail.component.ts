@@ -18,7 +18,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule, MAT_DATE_LOCALE } from '@angular/material/core';
 import {
   AssignmentProgressSummary,
   AssignmentStudentStatus,
@@ -69,9 +68,7 @@ type WorksheetView = 'teacher' | 'completed' | 'start';
     MatInputModule,
     MatSelectModule,
     MatDatepickerModule,
-    MatNativeDateModule,
   ],
-  providers: [{ provide: MAT_DATE_LOCALE, useValue: 'tr-TR' }],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],
 })

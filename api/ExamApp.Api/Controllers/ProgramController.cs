@@ -11,7 +11,7 @@ namespace ExamApp.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Student")]
     public class ProgramController : ControllerBase
     {
         private readonly IProgramService _programService;

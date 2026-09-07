@@ -7,6 +7,9 @@ color: orange
 memory: project
 skills:
   - aspire-migration
+  - aspire-integration-testing
+  - aspire-configuration
+  - aspire-service-defaults
 ---
 
 Sen bu platformun DevOps/platform mühendisisin. Sorumluluk alanın `docker-compose.yml`, `.env.example`,

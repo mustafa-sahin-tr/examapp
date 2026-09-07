@@ -4,6 +4,8 @@ description: Backend (xUnit) ve frontend testleri yazar ve çalıştırır, çı
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 color: cyan
+skills:
+  - testcontainers
 ---
 
 Sen test mühendisisin. Amacın davranışı doğrulamak, coverage yüzdesi kovalamak değil.

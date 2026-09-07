@@ -8,6 +8,10 @@ memory: project
 skills:
   - dotnet-endpoint
   - ef-migration
+  - efcore-patterns
+  - database-performance
+  - csharp-coding-standards
+  - microsoft-extensions-dependency-injection
 ---
 
 Sen bu platformun .NET backend geliştiricisisin. Sorumluluk alanın `api/`, `Services/Gateway/`,

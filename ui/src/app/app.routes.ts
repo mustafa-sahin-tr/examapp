@@ -3,6 +3,7 @@ import { RegisterWizardComponent } from './pages/register/register-wizard.compon
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
 import { studentGuard } from './shared/guards/student.guard';
+import { roleGuard } from './shared/guards/role.guard';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
@@ -42,188 +43,84 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/public/terms/terms.component').then((m) => m.TermsComponent),
   },
   { path: '', redirectTo: 'welcome', pathMatch: 'full' },
-  // Main app (protected) routes
-  // Main app routes, each wrapped in EnhancedLayoutComponent
-  {
-    path: 'dashboard',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: DashboardComponent }],
-  },
-  {
-    path: 'tests',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: WorksheetListComponent, resolve: { worksheets: worksheetListResolver } }],
-  },
-  {
-    // Two-step onboarding: step 1 role picker (skipped when the role is known
-    // from ?role= or an already-assigned realm role), step 2 the role form.
-    path: 'register',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: RegisterWizardComponent }],
-  },
   // Back-compat: the old per-role routes now land on the wizard at step 2.
   { path: 'student-register', redirectTo: () => '/register?role=student' },
   { path: 'teacher-register', redirectTo: () => '/register?role=teacher' },
   { path: 'parent-register', redirectTo: () => '/register?role=parent' },
+  // Main app (protected) routes — all nested under a single EnhancedLayoutComponent
+  // instance so the sidenav is not destroyed/recreated on every navigation.
   {
-    path: 'question/:id',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionComponent }],
-  },
-  {
-    path: 'questioncanvas',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionCanvasComponent }],
-  },
-  {
-    path: 'questioncanvas/preview',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionCanvasPreviewComponent }],
-  },
-  {
-    path: 'questioncanvas/preview/:testId',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionCanvasPreviewComponent }],
-  },
-  {
-    path: 'questioncanvas/:id',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionCanvasComponent }],
-  },
-  {
-    path: 'question',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionComponent }],
-  },
-  {
-    path: 'imageselect',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: ImageSelectorComponent }],
-  },
-  {
-    path: 'tests-enhanced',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: WorksheetListEnhancedComponent, resolve: { worksheets: worksheetListResolver } }],
-  },
-  {
-    path: 'questions/view',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionViewComponent }],
-  },
-  {
-    path: 'testsolve/:testInstanceId',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: TestSolveCanvasComponentv3 }],
-  },
-  {
-    path: 'testsolve/v2/:testInstanceId',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: TestSolveCanvasComponentv2 }],
-  },
-  {
-    path: 'test/:testId',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: WorksheetDetailComponent }],
-  },
-  {
-    path: 'student-profile',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: StudentProfileComponent }],
-  },
-  {
-    path: 'exam',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: TestCreateEnhancedComponent }],
-  },
-  {
-    path: 'exam/:id',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: TestCreateEnhancedComponent }],
-  },
-  {
-    path: 'programs',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: MyProgramsComponent }],
-  },
-  {
-    path: 'programs/:id/detail',
+    path: '',
     component: EnhancedLayoutComponent,
     children: [
+      { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
       {
-        path: '',
+        path: 'tests',
+        component: WorksheetListComponent,
+        canActivate: [authGuard],
+        resolve: { worksheets: worksheetListResolver },
+      },
+      // Two-step onboarding: step 1 role picker (skipped when the role is known
+      // from ?role= or an already-assigned realm role), step 2 the role form.
+      { path: 'register', component: RegisterWizardComponent },
+      { path: 'question/:id', component: QuestionComponent, canActivate: [authGuard] },
+      { path: 'questioncanvas', component: QuestionCanvasComponent, canActivate: [authGuard] },
+      { path: 'questioncanvas/preview', component: QuestionCanvasPreviewComponent, canActivate: [authGuard] },
+      {
+        path: 'questioncanvas/preview/:testId',
+        component: QuestionCanvasPreviewComponent,
+        canActivate: [authGuard],
+      },
+      { path: 'questioncanvas/:id', component: QuestionCanvasComponent, canActivate: [authGuard] },
+      { path: 'question', component: QuestionComponent, canActivate: [authGuard] },
+      { path: 'imageselect', component: ImageSelectorComponent, canActivate: [authGuard] },
+      {
+        path: 'tests-enhanced',
+        component: WorksheetListEnhancedComponent,
+        canActivate: [authGuard],
+        resolve: { worksheets: worksheetListResolver },
+      },
+      { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard] },
+      { path: 'testsolve/v2/:testInstanceId', component: TestSolveCanvasComponentv2, canActivate: [authGuard] },
+      { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard] },
+      { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },
+      { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher')] },
+      { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher')] },
+      { path: 'programs', component: MyProgramsComponent, canActivate: [authGuard, roleGuard('Student')] },
+      {
+        path: 'programs/:id/detail',
         loadComponent: () =>
           import('./pages/my-programs/program-detail.component').then((m) => m.ProgramDetailComponent),
+        canActivate: [authGuard, roleGuard('Student')],
       },
-    ],
-  },
-  {
-    path: 'program-create',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: ProgramCreateComponent }],
-  },
-  {
-    path: 'certificates',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: BadgeThropyComponent }],
-  },
-  {
-    path: 'study',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: StudyPageComponent }],
-  },
-  {
-    path: 'study-pages',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: StudyPagesComponent }],
-  },
-  {
-    path: 'study-pages/new',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: StudyPageEditorComponent }],
-  },
-  {
-    path: 'study-pages/:id',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: StudyPageEditorComponent }],
-  },
-  {
-    path: 'question-transfer',
-    component: EnhancedLayoutComponent,
-    children: [{ path: '', component: QuestionTransferComponent }],
-  },
-  {
-    path: 'assignment-permission-requests',
-    component: EnhancedLayoutComponent,
-    canActivate: [authGuard],
-    children: [
+      { path: 'program-create', component: ProgramCreateComponent, canActivate: [authGuard, roleGuard('Student')] },
+      { path: 'certificates', component: BadgeThropyComponent, canActivate: [authGuard] },
+      { path: 'study', component: StudyPageComponent, canActivate: [authGuard, roleGuard('Student')] },
+      { path: 'study-pages', component: StudyPagesComponent, canActivate: [authGuard, roleGuard('Teacher')] },
+      { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher')] },
+      { path: 'study-pages/:id', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher')] },
       {
-        path: '',
+        path: 'question-transfer',
+        component: QuestionTransferComponent,
+        canActivate: [authGuard, roleGuard('Teacher')],
+      },
+      {
+        path: 'assignment-permission-requests',
+        canActivate: [authGuard, roleGuard('Teacher')],
         loadComponent: () =>
           import('./pages/assignment-permission-requests/assignment-permission-requests.component').then(
             (m) => m.AssignmentPermissionRequestsComponent
           ),
       },
-    ],
-  },
-  {
-    path: 'admin',
-    component: EnhancedLayoutComponent,
-    canActivate: [authGuard, adminGuard],
-    children: [
       {
-        path: '',
-        loadComponent: () =>
-          import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
+        path: 'admin',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () => import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
       },
-    ],
-  },
-  {
-    path: 'my-calendar',
-    component: EnhancedLayoutComponent,
-    canActivate: [authGuard, studentGuard],
-    children: [
       {
-        path: '',
+        path: 'my-calendar',
+        canActivate: [authGuard, studentGuard],
         loadComponent: () =>
           import('./pages/my-calendar/my-calendar.component').then((m) => m.MyCalendarComponent),
       },

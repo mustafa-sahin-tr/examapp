@@ -12,7 +12,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -64,7 +63,6 @@ interface ScheduleBar {
     MatTooltipModule,
     MatButtonModule,
     MatDatepickerModule,
-    MatNativeDateModule,
     MatSnackBarModule,
     MatCheckboxModule,
     MatDialogModule,

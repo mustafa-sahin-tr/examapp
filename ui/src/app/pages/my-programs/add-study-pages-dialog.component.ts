@@ -8,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { StudyPage } from '../../models/study-page';
 
@@ -34,7 +33,6 @@ export interface AddStudyPagesDialogResult {
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
-    MatNativeDateModule,
     FormsModule,
   ],
   templateUrl: './add-study-pages-dialog.component.html',

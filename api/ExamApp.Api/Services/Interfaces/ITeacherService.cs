@@ -11,4 +11,10 @@ public interface ITeacherService
     Task<Teacher?> GetTeacher(int userId);
 
     Task<UpdateThemeDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig);
+
+    /// <summary>
+    /// Issue #53: öğretmenin sahip olduğu worksheet sayısı ve bu worksheet'lerin atamalarındaki
+    /// benzersiz öğrenci sayısı (direkt + sınıf bazlı atamalar genişletilerek).
+    /// </summary>
+    Task<TeacherDashboardSummaryDto> GetDashboardSummaryAsync(int teacherId, CancellationToken ct = default);
 }

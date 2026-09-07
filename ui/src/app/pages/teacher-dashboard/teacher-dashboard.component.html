@@ -1,0 +1,42 @@
+<div class="teacher-dashboard">
+  <div class="dashboard-section">
+    <app-section-header title="Özet" iconName="dashboard"></app-section-header>
+
+    @if (loading()) {
+      <div class="summary-grid" aria-busy="true" aria-live="polite">
+        @for (i of [0, 1]; track i) {
+          <div class="summary-card summary-card--skeleton">
+            <span class="summary-label skeleton-line skeleton-line--label"></span>
+            <span class="summary-value skeleton-line skeleton-line--value"></span>
+          </div>
+        }
+        <mat-spinner class="summary-spinner" diameter="28"></mat-spinner>
+      </div>
+    } @else if (error()) {
+      <div class="state-box state-box--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ error() }}</p>
+        <button mat-stroked-button type="button" (click)="loadSummary()">Tekrar dene</button>
+      </div>
+    } @else {
+      <div class="summary-grid">
+        @for (card of cards(); track card.key) {
+          <div class="summary-card" [attr.data-key]="card.key">
+            <div class="summary-card__header">
+              <span class="summary-label">{{ card.label }}</span>
+              <mat-icon class="summary-icon">{{ card.icon }}</mat-icon>
+            </div>
+            <span class="summary-value">{{ card.value }}</span>
+          </div>
+        }
+      </div>
+
+      @if (isEmpty()) {
+        <div class="state-box state-box--empty">
+          <mat-icon>inbox</mat-icon>
+          <p class="state-text">Henüz hiç sınav oluşturmadınız. İlk sınavınızı oluşturduğunuzda özet burada görünecek.</p>
+        </div>
+      }
+    }
+  </div>
+</div>

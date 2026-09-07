@@ -21,7 +21,7 @@ import { TestSolveCanvasComponentv2 } from './pages/test-solve/test-solve-canvas
 import { EnhancedLayoutComponent } from './components/enhanced-layout/enhanced-layout.component';
 import { TestCreateEnhancedComponent } from './pages/test-create-enhanced/test-create-enhanced.component';
 import { StudyPageComponent } from './components/study-page/study-page.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { DashboardSwitchComponent } from './pages/dashboard/dashboard-switch.component';
 import { TestSolveCanvasComponentv3 } from './pages/test-solve/test-solve-canvas-v3.component';
 import { QuestionTransferComponent } from './pages/question-transfer/question-transfer.component';
 import { StudyPagesComponent } from './pages/study-pages/study-pages.component';
@@ -53,7 +53,8 @@ export const routes: Routes = [
     path: '',
     component: EnhancedLayoutComponent,
     children: [
-      { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
+      // Issue #53: Teacher rolü → TeacherDashboardComponent, diğerleri → mevcut DashboardComponent.
+      { path: 'dashboard', component: DashboardSwitchComponent, canActivate: [authGuard] },
       {
         path: 'tests',
         component: WorksheetListComponent,

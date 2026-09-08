@@ -79,4 +79,77 @@
       }
     }
   }
+
+  <!-- Phase 2 (Issue #88): 52 haftalık takvim heatmap'leri — sayaçlardan bağımsız durum seti, full-width stack -->
+  <section class="trend-section" aria-labelledby="trend-heading">
+    <h2 id="trend-heading" class="trend-section__title">Son 1 Yıl</h2>
+
+    @if (trendLoading()) {
+      <div class="trend-stack" aria-busy="true" aria-live="polite">
+        @for (i of [0, 1]; track i) {
+          <div class="trend-card trend-card--skeleton">
+            <span class="skeleton-line skeleton-line--label"></span>
+            <span class="skeleton-line skeleton-line--chart"></span>
+          </div>
+        }
+        <mat-spinner class="trend-spinner" diameter="28"></mat-spinner>
+      </div>
+    } @else if (trendError()) {
+      <div class="state-box state-box--error" role="alert" data-section="trend">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ trendError() }}</p>
+        <button mat-stroked-button type="button" (click)="loadTrends()">Tekrar dene</button>
+      </div>
+    } @else {
+      <div class="trend-stack">
+        @for (card of trendCards(); track card.key) {
+          <article
+            class="trend-card"
+            [attr.data-trend]="card.key"
+            [attr.aria-label]="card.title + ' trendi, son 1 yıl'"
+            [attr.aria-describedby]="'trend-summary-' + card.key"
+          >
+            <div class="trend-card__header">
+              <div class="trend-card__title">
+                <mat-icon class="trend-card__icon" [class.trend-card__icon--solved]="card.key === 'solved'">
+                  {{ card.icon }}
+                </mat-icon>
+                <span class="summary-label">{{ card.title }}</span>
+              </div>
+              @if (!card.isEmpty) {
+                <span class="trend-card__total">{{ card.total | number }} soru</span>
+              }
+            </div>
+
+            <p class="visually-hidden" [id]="'trend-summary-' + card.key">{{ card.summaryText }}</p>
+
+            @if (card.isEmpty) {
+              <div class="state-box state-box--empty trend-card__empty">
+                <mat-icon>calendar_view_month</mat-icon>
+                <p class="state-text">Henüz yeterli veri yok</p>
+              </div>
+            } @else {
+              <!-- dashboard.component'teki heatmap-scroll + ngx-charts-heat-map kullanımıyla aynı -->
+              <div #heatmapScroll class="heatmap-scroll" aria-hidden="true">
+                <ngx-charts-heat-map
+                  [view]="heatmapView()"
+                  [scheme]="card.scheme"
+                  [results]="card.results"
+                  [xAxis]="true"
+                  [yAxis]="true"
+                  [legend]="false"
+                  [showXAxisLabel]="false"
+                  [showYAxisLabel]="false"
+                  [gradient]="false"
+                  [rotateXAxisTicks]="false"
+                  [xAxisTickFormatting]="card.xAxisTickFormatting"
+                  [tooltipText]="formatHeatmapTooltip"
+                ></ngx-charts-heat-map>
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
+  </section>
 </div>

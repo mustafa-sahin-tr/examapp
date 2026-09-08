@@ -1,45 +1,63 @@
 @if (testInstance) {
+<!-- Aktif soru: header'daki soru aksiyonları ve dock aynı referansı kullanır. -->
+@let activeQuestion = currentQuestions().length ? currentQuestions()[0] : null;
 <div class="solve-v3" [class.solve-v3--mobile]="isMobileViewport()" [class.solve-v3--fullscreen]="fullscreenOpen()">
+  <!-- Tek satır header (issue #74): başlık + süre + soru sayacı + aksiyonlar aynı blokta;
+       ilerleme yüzdesi ayrı bir rail yerine bloğun alt kenarında dolan çizgi olarak gösterilir. -->
   <header class="solve-v3__header">
-    <div class="header-block header-block--primary">
-      <div class="test-ident">
-        <mat-icon class="test-ident__icon">quiz</mat-icon>
-        <div class="test-ident__text">
-          <h1 class="test-ident__title">{{ testInstance.testName }}</h1>
-          <p class="test-ident__subtitle">Toplam {{ testInstance.testInstanceQuestions.length }} soru</p>
-        </div>
-      </div>
+    <div class="test-ident">
+      <mat-icon class="test-ident__icon">quiz</mat-icon>
+      <h1 class="test-ident__title">{{ testInstance.testName }}</h1>
     </div>
 
-    <div class="header-block header-block--progress">
-      <div class="progress-label">
-        <span>İlerleme</span>
-        <span class="progress-value">
-          {{ answeredCount() }} / {{ testInstance.testInstanceQuestions.length }}
-          · %{{ progressPercentage() | number: '1.0-0' }}
-        </span>
-      </div>
-      <div class="progress-rail" role="progressbar" aria-label="İlerleme" [attr.aria-valuenow]="progressPercentage()"
-        aria-valuemin="0" aria-valuemax="100">
-        <div class="progress-rail__fill" [style.width.%]="progressPercentage()"></div>
-      </div>
-    </div>
-
-    <div class="header-block header-block--actions">
+    <div class="header-status">
       <app-countdown class="header-countdown" [durationInSeconds]="testDuration"
         [totalDurationInSeconds]="testInstance.maxDurationSeconds" [showProgressBar]="false" [size]="'small'"
-        [label]="'Kalan Süre'"></app-countdown>
-      <div class="header-buttons">
-        @if (showStopButton) {
-        <button mat-icon-button color="warn" (click)="pauseTest()" matTooltip="Testi duraklat" aria-label="Testi duraklat">
-          <mat-icon>pause</mat-icon>
-        </button>
-        }
-        <button mat-raised-button color="primary" class="header-finish" (click)="completeTest()" aria-label="Sınavı bitir">
-          <mat-icon>done_all</mat-icon>
-          <span class="header-finish__label">Sınavı Bitir</span>
-        </button>
-      </div>
+        [showLabel]="!isMobileViewport()" [label]="'Kalan Süre'"></app-countdown>
+      <span class="header-counter" matTooltip="Soru sırası"
+        [attr.aria-label]="'Soru ' + (currentIndex() + 1) + ' / ' + testInstance.testInstanceQuestions.length">
+        {{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length }}
+      </span>
+    </div>
+
+    <!-- Tek soru görünümünde kartın üstündeki bookmark / bildir / tam ekran buraya taşınır;
+         çoklu kart (2/4), fullscreen ve MOBİL'de (header'a sığmaz) kart kendi aksiyonlarını gösterir. -->
+    @if (questionsPerView() === 1 && !fullscreenOpen() && !isMobileViewport() && activeQuestion) {
+    <div class="header-question-actions" role="group" aria-label="Soru işlemleri">
+      <button mat-icon-button [class.is-active]="isQuestionBookmarked(activeQuestion.index)"
+        [matTooltip]="isQuestionBookmarked(activeQuestion.index) ? 'İşareti kaldır' : 'Soruyu işaretle'"
+        [attr.aria-label]="isQuestionBookmarked(activeQuestion.index) ? 'İşareti kaldır' : 'Soruyu işaretle'"
+        [attr.aria-pressed]="isQuestionBookmarked(activeQuestion.index)"
+        (click)="focusOnQuestion(activeQuestion.index); toggleBookmark()">
+        <mat-icon>{{ isQuestionBookmarked(activeQuestion.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Soruyu bildir" aria-label="Soruyu bildir"
+        (click)="focusOnQuestion(activeQuestion.index); reportQuestion()">
+        <mat-icon>flag</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Tam ekran" aria-label="Soruyu tam ekran göster"
+        (click)="openFullscreen(activeQuestion.index)">
+        <mat-icon>fullscreen</mat-icon>
+      </button>
+    </div>
+    }
+
+    <div class="header-buttons">
+      @if (showStopButton) {
+      <button mat-icon-button color="warn" (click)="pauseTest()" matTooltip="Testi duraklat" aria-label="Testi duraklat">
+        <mat-icon>pause</mat-icon>
+      </button>
+      }
+      <button mat-raised-button color="primary" class="header-finish" (click)="completeTest()" aria-label="Sınavı bitir">
+        <mat-icon>done_all</mat-icon>
+        <span class="header-finish__label">Sınavı Bitir</span>
+      </button>
+    </div>
+
+    <div class="header-progress" role="progressbar" aria-label="Cevaplanma oranı"
+      [attr.aria-valuenow]="progressPercentage()" aria-valuemin="0" aria-valuemax="100"
+      [attr.aria-valuetext]="'%' + (progressPercentage() | number: '1.0-0') + ' tamamlandı'">
+      <div class="header-progress__fill" [style.width.%]="progressPercentage()"></div>
     </div>
   </header>
 
@@ -53,8 +71,7 @@
         }
       </div>
 
-      <!-- Tek birleşik dock: masaüstünde sticky alt bar, mobilde fixed alt tab bar -->
-      @let activeQuestion = currentQuestions().length ? currentQuestions()[0] : null;
+      <!-- Tek birleşik dock: tüm genişliklerde ekranın altına yapışık sabit bar -->
       <nav class="solve-dock" aria-label="Soru gezinme">
         <button mat-icon-button class="solve-dock__nav" matTooltip="Önceki" aria-label="Önceki soru"
           (click)="prevQuestion()" [disabled]="!canGoPrev()">
@@ -223,10 +240,15 @@
     [attr.aria-modal]="isFullscreenCard(questionData.index) ? true : null"
     [attr.role]="isFullscreenCard(questionData.index) ? 'dialog' : null">
     <header class="question-card__header">
+      @let cardActionsInHeader =
+        questionsPerView() === 1 && !isFullscreenCard(questionData.index) && !isMobileViewport();
       <div class="question-card__meta">
+        <!-- Tek soru görünümünde sıra bilgisi header'daki sayaçta; fullscreen ve 2/4 kart modunda kartta kalır. -->
+        @if (!cardActionsInHeader) {
         <span class="chip chip--index">
           Soru {{ questionData.index + 1 }} / {{ testInstance.testInstanceQuestions.length }}
         </span>
+        }
         @if (isQuestionBookmarked(questionData.index)) {
         <span class="chip chip--bookmark">
           <mat-icon>bookmark</mat-icon>
@@ -245,6 +267,8 @@
           <mat-icon>chevron_right</mat-icon>
         </button>
         }
+        <!-- Bookmark / bildir / tam ekran: tek soru görünümünde header'a taşındı (issue #74) -->
+        @if (!cardActionsInHeader) {
         <button mat-icon-button matTooltip="Soruyu işaretle" aria-label="Soruyu işaretle"
           [class.is-active]="isQuestionBookmarked(questionData.index)"
           (click)="focusOnQuestion(questionData.index); toggleBookmark()">
@@ -254,12 +278,13 @@
           (click)="focusOnQuestion(questionData.index); reportQuestion()">
           <mat-icon>flag</mat-icon>
         </button>
+        }
         @if (isFullscreenCard(questionData.index)) {
         <button mat-icon-button matTooltip="Tam ekrandan çık (Esc)" aria-label="Tam ekrandan çık"
           (click)="closeFullscreen()">
           <mat-icon>fullscreen_exit</mat-icon>
         </button>
-        } @else {
+        } @else if (!cardActionsInHeader) {
         <button mat-icon-button matTooltip="Tam ekran" aria-label="Soruyu tam ekran göster"
           (click)="openFullscreen(questionData.index)">
           <mat-icon>fullscreen</mat-icon>
@@ -308,7 +333,7 @@
           (answered)="focusOnQuestion(questionData.index)"></app-question-canvas-dragdrop-labeling>
         } @else {
         <app-question-canvas-view-v5 #canvasView class="canvas-stage" [questionRegion]="questionData.region"
-          [hidePassage]="isPassageFirstActive(questionData.index)"
+          [enableHeightFit]="true" [hidePassage]="isPassageFirstActive(questionData.index)"
           [selectedChoice]="selectedChoices().get(questionData.region.id)"
           (choiceSelected)="selectChoiceForQuestion($event, questionData.index)"
           (answerOpened)="openAnswer($event)"

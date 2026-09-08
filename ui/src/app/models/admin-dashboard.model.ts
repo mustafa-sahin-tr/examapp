@@ -24,11 +24,13 @@ export interface AdminDashboardTrendPoint {
 }
 
 /**
- * Issue #87/#88 — GET /api/exam/admin/dashboard/trends?days=N yanıtı (DashboardTrendsDto).
+ * Issue #87/#88/#89 — GET /api/exam/admin/dashboard/trends?days=N yanıtı (DashboardTrendsDto).
  * Her seri tam olarak N eleman içerir, tarihe göre artan, veri olmayan günler 0 ile doldurulmuş.
  * `questionSolved` practice + worksheet toplamı olarak tek seridir.
+ * `studentLogin` (Issue #89) yalnızca Success=true ve Role=Student login olaylarını sayar.
  */
 export interface AdminDashboardTrends {
   questionCreated: AdminDashboardTrendPoint[];
   questionSolved: AdminDashboardTrendPoint[];
+  studentLogin: AdminDashboardTrendPoint[];
 }

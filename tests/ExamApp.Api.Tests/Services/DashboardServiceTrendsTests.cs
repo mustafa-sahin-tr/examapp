@@ -314,6 +314,107 @@ public class DashboardServiceTrendsTests : IDisposable
         result.QuestionSolved.ShouldAllBe(p => p.Count == 0);
     }
 
+    // ---- StudentLogin series (issue #89) ----
+
+    private static async Task AddLoginEventAsync(AppDbContext ctx, DateTime occurredAtUtc, string role, bool success)
+    {
+        ctx.LoginEvents.Add(new LoginEvent
+        {
+            KeycloakUserId = Guid.NewGuid().ToString(),
+            Role = role,
+            OccurredAtUtc = occurredAtUtc,
+            Success = success,
+        });
+        await ctx.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_SuccessfulStudentLogin_IsGroupedIntoCorrectDay()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Today, "Student", success: true);
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetTrendsAsync(30);
+
+        result.StudentLogin.Last().Date.ShouldBe(DateOnly.FromDateTime(Today));
+        result.StudentLogin.Last().Count.ShouldBe(1);
+        result.StudentLogin.Where(p => p.Date != DateOnly.FromDateTime(Today)).ShouldAllBe(p => p.Count == 0);
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_FailedStudentLogin_IsNotCounted()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Today, "Student", success: false);
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetTrendsAsync(30);
+
+        result.StudentLogin.ShouldAllBe(p => p.Count == 0);
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_TeacherOrAdminLogin_IsNotCounted()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Today, "Teacher", success: true);
+            await AddLoginEventAsync(ctx, Today, "Admin", success: true);
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetTrendsAsync(30);
+
+        result.StudentLogin.ShouldAllBe(p => p.Count == 0);
+    }
+
+    [Theory]
+    [InlineData("student")]
+    [InlineData("STUDENT")]
+    [InlineData("Student")]
+    public async Task GetTrendsAsync_StudentRoleIsCaseInsensitive_IsCounted(string roleCasing)
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Today, roleCasing, success: true);
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetTrendsAsync(30);
+
+        result.StudentLogin.Last().Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_StudentLoginSeries_LengthMatchesDaysParameter()
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx).GetTrendsAsync(14);
+
+        result.StudentLogin.Count.ShouldBe(14);
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_StudentLoginOutsideDateWindow_IsNotCounted()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            // days=30 window's cutoff is today-29; a login 31 days ago falls outside it.
+            await AddLoginEventAsync(ctx, Today.AddDays(-31), "Student", success: true);
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetTrendsAsync(30);
+
+        result.StudentLogin.ShouldAllBe(p => p.Count == 0);
+    }
+
     [Fact]
     public async Task GetTrendsAsync_QuestionCreatedOnCutoffBoundary_IsIncluded()
     {
@@ -328,6 +429,21 @@ public class DashboardServiceTrendsTests : IDisposable
         var result = await NewService(check).GetTrendsAsync(7);
 
         result.QuestionCreated.First().Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetTrendsAsync_StudentLoginOnCutoffBoundary_IsIncluded()
+    {
+        // cutoff = today - (days - 1); the boundary day itself must be included (>=).
+        await using (var ctx = _db.NewContext())
+        {
+            await AddLoginEventAsync(ctx, Today.AddDays(-6), "Student", success: true); // exact cutoff for days=7
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetTrendsAsync(7);
+
+        result.StudentLogin.First().Count.ShouldBe(1);
     }
 
     public void Dispose() => _db.Dispose();

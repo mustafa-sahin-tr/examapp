@@ -38,6 +38,9 @@ Issue'daki yorumları da oku; kabul kriteri çoğu zaman yorumlarda netleşiyor.
 - Issue'daki kabul kriterlerinin karşılık geldiği somut değişiklikler
 - Hangi agent hangi parçayı alacak
 
+Planı bana göstermeden önce `grilling` skill'ini kullanarak planı kendi içinde sorgula
+(varsayımlar, kaçırılan uç durumlar, kabul kriteriyle çelişki var mı).
+
 Planı bana göster ve **onay bekle**. Onaysız kod yazma.
 
 **1.5. Branch aç.** Plan onaylandıktan sonra, kod yazılmadan önce:

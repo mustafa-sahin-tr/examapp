@@ -19,6 +19,9 @@
   --main-bg-color: #120F20;
   --mat-sys-on-surface: rgb(165, 170, 207);
   --main-foreground-color: #242244;
+  // Koyu yüzey (--main-bg-color / --ms-surface-*) üzerindeki başlık metni. --main-foreground-color
+  // bir ARKA PLAN tonudur (kart/toolbar/menü); metin rengi olarak kullanma (issue #45).
+  --heading-on-dark: #F5F4FF;
   --border-input: 1px solid rgb(88, 95, 162);
   // Sidenav (enhanced-layout) tokens
   --sidenav-bg: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);

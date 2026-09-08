@@ -11,8 +11,10 @@
     </div>
     <div class="qcv4-answers-grid" [style.marginLeft.px]="answerMarginLeft()">
       @for (answer of _questionRegion().answers; track $index) {
-      <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" (mouseenter)="hoverAnswer(answer)"
-        (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)">
+      <div class="qcv4-answer-card" [ngClass]="getAnswerClasses(answer)" role="button" tabindex="0"
+        [attr.aria-pressed]="isSelected(answer)" attr.aria-label="Şık {{ answer.label || $index + 1 }}"
+        (mouseenter)="hoverAnswer(answer)" (mouseleave)="hoverAnswer(null)" (click)="selectAnswer($index)"
+        (keydown.enter)="selectAnswer($index)" (keydown.space)="$event.preventDefault(); selectAnswer($index)">
         <img class="qcv4-answer-image" [src]="answer.imageUrl" alt="Şık {{ $index + 1 }}"
           [style.width.px]="getScaledAnswerWidth(answer)" />
       </div>

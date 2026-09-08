@@ -120,6 +120,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
       },
       {
+        // Issue #63: "Soru Çöz" pratik akışı (kapsam seç → tek tek rastgele soru → anlık geri bildirim).
+        path: 'practice',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/practice-solve/practice-solve.component').then((m) => m.PracticeSolveComponent),
+      },
+      {
         path: 'my-calendar',
         canActivate: [authGuard, studentGuard],
         loadComponent: () =>

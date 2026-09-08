@@ -106,6 +106,15 @@
   }
 }
 
+.qcv4-answer-card {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+  }
+}
+
 .qcv4-answer-card.is-selected {
   border: 2px solid #1976d2;
   background: #e3f0fd;

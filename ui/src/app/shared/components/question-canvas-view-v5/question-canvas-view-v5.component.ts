@@ -200,6 +200,11 @@ export class QuestionCanvasViewComponentv5 {
     };
   }
 
+  /** Klavye/ekran okuyucu için `aria-pressed` durumu. */
+  isSelected(answer: AnswerChoice): boolean {
+    return this._selectedChoice() === answer;
+  }
+
   hoverAnswer(answer: AnswerChoice | null) {
     this.hoveredChoice.set(answer);
   }

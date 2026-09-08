@@ -1,0 +1,467 @@
+// "Soru Çöz" pratik akışı (issue #63). Renkler yalnızca global token'lardan türetilir.
+// Soru kartı sınav çözme ekranıyla (test-solve-canvas-v3) aynı yüzey/ink token'larını kullanır.
+$bp-mobile: 640px;
+
+:host {
+  display: block;
+  font-family: var(--mainFontFamily);
+  color: var(--ms-text);
+
+  --practice-card: var(--ms-surface-inverse);
+  --practice-card-alt: color-mix(in srgb, var(--ms-surface-inverse) 90%, var(--main-bg-color));
+  --practice-ink: var(--ms-text-inverse);
+  --practice-ink-muted: color-mix(in srgb, var(--ms-text-inverse) 62%, transparent);
+  --practice-border: color-mix(in srgb, var(--ms-text-inverse) 14%, transparent);
+  --practice-accent-soft: color-mix(in srgb, var(--primaryColor) 14%, transparent);
+  --practice-shadow: 0 18px 44px color-mix(in srgb, var(--main-bg-color) 14%, transparent);
+}
+
+.practice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-medium);
+  padding: var(--ms-layout-spacing-large);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+// ── Genel kart / durum kutuları ─────────────────────────────────────────────
+.practice__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-medium);
+  padding: var(--ms-layout-spacing-large);
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 16px;
+}
+
+.practice__card--setup {
+  max-width: 720px;
+}
+
+.practice__card-title {
+  margin: 0;
+  font-size: var(--ms-type-font-size-medium);
+  color: var(--ms-text-strong);
+}
+
+.practice__card-hint {
+  margin: calc(-1 * var(--ms-layout-spacing-small)) 0 0;
+  color: var(--ms-text-weak);
+  font-family: var(--paragraphFontFamily);
+}
+
+.practice__field {
+  width: 100%;
+}
+
+.practice__chips {
+  margin-top: calc(-1 * var(--ms-layout-spacing-small));
+}
+
+.practice__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ms-layout-spacing-small);
+  padding: var(--ms-layout-spacing-large);
+  color: var(--ms-text-weak);
+
+  p {
+    margin: 0;
+  }
+}
+
+// teacher-dashboard'daki state-box deseni + bilgi varyantı
+.state-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  .state-text {
+    margin: 0;
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.9rem;
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &--error {
+    border-color: var(--ms-danger-background);
+
+    mat-icon {
+      color: var(--ms-danger-background);
+    }
+  }
+
+  &--empty {
+    color: var(--ms-text-medium);
+
+    mat-icon {
+      color: var(--ms-text-weak);
+    }
+  }
+
+  &--info {
+    border-color: var(--ms-info-border);
+    background: var(--ms-info-surface-weak);
+    color: var(--ms-info-text);
+
+    mat-icon {
+      color: var(--ms-info-text-medium);
+    }
+  }
+}
+
+.practice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ms-layout-spacing-small);
+
+  button,
+  a {
+    border-radius: 14px;
+  }
+
+  &--center {
+    justify-content: center;
+  }
+
+  &--stage {
+    width: min(100%, clamp(680px, 78vw, 1180px));
+    margin: 0 auto;
+  }
+}
+
+// ── İstatistik çubuğu ────────────────────────────────────────────────────────
+.practice__stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ms-layout-spacing-small);
+  width: min(100%, clamp(680px, 78vw, 1180px));
+  margin: 0 auto;
+  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-small);
+  border-radius: 18px;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+  box-sizing: border-box;
+}
+
+.stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &__value {
+    font-size: 1rem;
+    color: var(--ms-text-strong);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &--correct {
+    background: var(--ms-success-surface);
+    color: var(--ms-success-text-weak);
+
+    .stat__value {
+      color: var(--ms-success-text);
+    }
+  }
+
+  &--wrong {
+    background: var(--ms-danger-surface);
+    color: var(--ms-danger-text-weak);
+
+    .stat__value {
+      color: var(--ms-danger-text);
+    }
+  }
+}
+
+.practice__finish {
+  margin-left: auto;
+  border-radius: 14px;
+}
+
+// ── Soru kartı (test-solve-canvas-v3 .question-card ile aynı yüzey) ─────────
+.question-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-small);
+  width: min(100%, clamp(680px, 78vw, 1180px));
+  margin: 0 auto;
+  padding: var(--ms-layout-spacing-large) var(--ms-layout-spacing-medium);
+  border-radius: 24px;
+  background: var(--practice-card);
+  border: 1px solid var(--practice-border);
+  box-shadow: var(--practice-shadow);
+  box-sizing: border-box;
+  color: var(--practice-ink);
+}
+
+.question-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-medium);
+  min-width: 0;
+  min-height: 0;
+}
+
+.question-card__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--practice-card) 60%, transparent);
+}
+
+.canvas-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-small);
+  min-width: 0;
+}
+
+.canvas-stage {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  overflow-x: auto;
+}
+
+.text-question {
+  padding: var(--ms-layout-spacing-medium);
+  border-radius: 18px;
+  background: var(--practice-card-alt);
+  border: 1px solid var(--practice-border);
+}
+
+.passage-first-toolbar {
+  display: flex;
+  justify-content: flex-end;
+
+  button {
+    border-radius: 14px;
+  }
+}
+
+.passage-only {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-xsmall);
+  padding: var(--ms-layout-spacing-medium);
+  border-radius: 18px;
+  background: var(--practice-card-alt);
+  border: 1px solid var(--practice-border);
+}
+
+.passage-only__text {
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-family: var(--paragraphFontFamily);
+}
+
+.passage-only__image {
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  display: block;
+}
+
+// ── Geri bildirim ────────────────────────────────────────────────────────────
+.feedback {
+  width: min(100%, clamp(680px, 78vw, 1180px));
+  margin: 0 auto;
+}
+
+.feedback__banner {
+  display: flex;
+  align-items: center;
+  gap: var(--ms-layout-spacing-small);
+  padding: var(--ms-layout-spacing-small) var(--ms-layout-spacing-medium);
+  border-radius: 16px;
+  border: 1px solid transparent;
+  font-weight: 700;
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  &--correct {
+    background: var(--ms-success-surface);
+    border-color: var(--ms-success-border);
+    color: var(--ms-success-text);
+
+    mat-icon {
+      color: var(--ms-success-text-weak);
+    }
+  }
+
+  &--wrong {
+    background: var(--ms-danger-surface);
+    border-color: var(--ms-danger-border);
+    color: var(--ms-danger-text);
+
+    mat-icon {
+      color: var(--ms-danger-text-weak);
+    }
+  }
+
+  &--skipped {
+    background: var(--ms-info-surface);
+    border-color: var(--ms-info-border);
+    color: var(--ms-info-text);
+
+    mat-icon {
+      color: var(--ms-info-text-medium);
+    }
+  }
+}
+
+// ── Boş durum / özet ────────────────────────────────────────────────────────
+.practice__state {
+  align-items: center;
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+
+  > mat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 48px;
+    color: var(--ms-text-weak);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: var(--ms-type-font-size-medium);
+    color: var(--ms-text-strong);
+  }
+
+  p {
+    margin: 0;
+    color: var(--ms-text-weak);
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &--ended > mat-icon {
+    color: var(--primaryColor);
+  }
+}
+
+.practice__summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: var(--ms-layout-spacing-xsmall);
+  width: 100%;
+  margin: 0;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--ms-surface-medium);
+    border: 1px solid var(--ms-border-weak);
+  }
+
+  dt {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ms-text-medium);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--ms-text-strong);
+    font-variant-numeric: tabular-nums;
+
+    &.is-correct {
+      color: var(--ms-success-text-weak);
+    }
+
+    &.is-wrong {
+      color: var(--ms-danger-text-weak);
+    }
+  }
+}
+
+// ── Mobil ───────────────────────────────────────────────────────────────────
+@media (max-width: $bp-mobile) {
+  .practice {
+    padding: var(--ms-layout-spacing-medium) var(--ms-layout-spacing-small);
+    gap: var(--ms-layout-spacing-small);
+  }
+
+  .practice__card {
+    padding: var(--ms-layout-spacing-medium);
+  }
+
+  .practice__stats {
+    gap: var(--ms-layout-spacing-xsmall);
+  }
+
+  .stat {
+    padding: 5px 10px;
+    font-size: 0.74rem;
+  }
+
+  .practice__finish span {
+    display: none;
+  }
+
+  .practice__finish mat-icon {
+    margin: 0;
+  }
+
+  .question-card {
+    padding: var(--ms-layout-spacing-medium) var(--ms-layout-spacing-small);
+    border-radius: 18px;
+  }
+
+  .canvas-zone {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .practice__actions--stage button {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice *,
+  .practice *::before,
+  .practice *::after {
+    animation: none;
+    transition: none;
+  }
+}

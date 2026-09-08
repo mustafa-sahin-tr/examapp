@@ -136,6 +136,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   menuItems: MenuItem[] = [
     { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'practice', name: 'Soru Çöz', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
     { id: 'study', name: 'Ders Çalışma', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
     { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu', roles: ['Student'] },
     { id: 'my-calendar', name: 'Planım', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student'] },

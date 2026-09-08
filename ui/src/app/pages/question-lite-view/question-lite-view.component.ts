@@ -52,4 +52,14 @@ export class QuestionLiteViewComponent implements OnInit {
   public getCorrectAnswerId(question: Question, answerId: number) {
     return question.correctAnswer?.id == answerId;
   }
+
+  /** Doğru cevap açıkken seçilen şık doğru değilse (pratik geri bildirimi). */
+  public isWrongAnswer(question: Question, answerId: number): boolean {
+    return (
+      this.correctAnswerVisible &&
+      question.correctAnswer != null &&
+      answerId === this.selectedAnswerId &&
+      answerId !== question.correctAnswer.id
+    );
+  }
 }

@@ -151,6 +151,7 @@ builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(
 builder.Services.AddScoped<ExamApp.Api.Services.Taxonomy.ITaxonomyService, ExamApp.Api.Services.Taxonomy.TaxonomyService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Schools.ISchoolService, ExamApp.Api.Services.Schools.SchoolService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Classifier.IClassifierCacheService, ExamApp.Api.Services.Classifier.ClassifierCacheService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Dashboard.IDashboardService, ExamApp.Api.Services.Dashboard.DashboardService>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

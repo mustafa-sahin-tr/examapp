@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 
 import { QuestionCanvasViewComponentv5 } from './question-canvas-view-v5.component';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
@@ -63,6 +64,56 @@ describe('QuestionCanvasViewComponentv5', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('answer selection (keyboard/aria)', () => {
+    function setRegionWithTwoAnswers(): QuestionRegion {
+      const region = buildRegion({
+        width: 586,
+        height: 513,
+        answers: [buildAnswer(1, 'A', 300), buildAnswer(2, 'B', 300)],
+      });
+      component.questionRegion = region;
+      fixture.detectChanges();
+      return region;
+    }
+
+    it('selectAnswer_ByIndex_SetsIsSelectedTrueForChosenAnswerOnly', () => {
+      setRegionWithTwoAnswers();
+
+      component.selectAnswer(0);
+
+      const [first, second] = component.sortedAnswers;
+      expect(component.isSelected(first)).toBeTrue();
+      expect(component.isSelected(second)).toBeFalse();
+    });
+
+    it('selectAnswer_Called_EmitsChoiceSelectedWithChosenAnswer', () => {
+      setRegionWithTwoAnswers();
+      const emitted = jasmine.createSpy('choiceSelected');
+      component.choiceSelected.subscribe(emitted);
+
+      component.selectAnswer(1);
+
+      const [, second] = component.sortedAnswers;
+      expect(emitted).toHaveBeenCalledWith(second);
+    });
+
+    it('answerCard_KeyboardEnter_TriggersSameSelectionAsClick', () => {
+      setRegionWithTwoAnswers();
+
+      const cards = fixture.debugElement.queryAll(By.css('.qcv4-answer-card'));
+      expect(cards.length).toBe(2);
+      expect(cards[0].attributes['role']).toBe('button');
+      expect(cards[0].attributes['tabindex']).toBe('0');
+
+      cards[0].triggerEventHandler('keydown.enter', {});
+      fixture.detectChanges();
+
+      const [first] = component.sortedAnswers;
+      expect(component.isSelected(first)).toBeTrue();
+      expect(cards[0].attributes['aria-pressed']).toBe('true');
+    });
   });
 
   describe('calculateBestLayout', () => {

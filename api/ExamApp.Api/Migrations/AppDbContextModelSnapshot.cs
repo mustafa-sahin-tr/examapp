@@ -496,6 +496,130 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Passage");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.PracticeSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GradeId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SubjectIdsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TopicIdsJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GradeId");
+
+                    b.HasIndex("StudentId", "Status");
+
+                    b.ToTable("PracticeSessions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PracticeSessionQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSkipped")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PracticeSessionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SelectedAnswerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("ShownAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TimeTaken")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("SelectedAnswerId");
+
+                    b.HasIndex("PracticeSessionId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("PracticeSessionQuestions");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ProgramStep", b =>
                 {
                     b.Property<int>("Id")
@@ -2720,6 +2844,51 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("LearningOutcome");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.PracticeSession", b =>
+                {
+                    b.HasOne("Grade", "Grade")
+                        .WithMany()
+                        .HasForeignKey("GradeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Grade");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PracticeSessionQuestion", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.PracticeSession", "PracticeSession")
+                        .WithMany("Questions")
+                        .HasForeignKey("PracticeSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Answer", "SelectedAnswer")
+                        .WithMany()
+                        .HasForeignKey("SelectedAnswerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("PracticeSession");
+
+                    b.Navigation("Question");
+
+                    b.Navigation("SelectedAnswer");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ProgramStepAction", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.ProgramStep", "ProgramStep")
@@ -3229,6 +3398,11 @@ namespace ExamApp.Api.Migrations
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Passage", b =>
+                {
+                    b.Navigation("Questions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.PracticeSession", b =>
                 {
                     b.Navigation("Questions");
                 });

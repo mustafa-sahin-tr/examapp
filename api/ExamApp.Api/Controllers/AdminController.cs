@@ -106,6 +106,15 @@ public class AdminController : BaseController
     public async Task<ActionResult<DashboardSummaryDto>> GetDashboardSummary(CancellationToken ct)
         => Ok(await _dashboard.GetSummaryAsync(ct));
 
+    [HttpGet("dashboard/trends")]
+    public async Task<ActionResult<DashboardTrendsDto>> GetDashboardTrends([FromQuery] int days = 30, CancellationToken ct = default)
+    {
+        if (days < 1 || days > 365)
+            return BadRequest(new { message = "days 1 ile 365 arasında olmalı." });
+
+        return Ok(await _dashboard.GetTrendsAsync(days, ct));
+    }
+
     // ---- Classifier cache ----
 
     [HttpGet("classifier-cache")]

@@ -8,7 +8,7 @@ import {
   School,
   TaxonomyTree,
 } from '../models/taxonomy';
-import { AdminDashboardSummary } from '../models/admin-dashboard.model';
+import { AdminDashboardSummary, AdminDashboardTrends } from '../models/admin-dashboard.model';
 
 interface UpsertSubject {
   name: string;
@@ -81,9 +81,16 @@ export class AdminService {
     return this.http.delete<ApiResult>(`${this.baseUrl}/schools/${id}`);
   }
 
-  // ---- dashboard (Issue #86) ----
+  // ---- dashboard (Issue #86 / #88) ----
   getDashboardSummary(): Observable<AdminDashboardSummary> {
     return this.http.get<AdminDashboardSummary>(`${this.baseUrl}/dashboard/summary`);
+  }
+
+  /** Son `days` günün (1..365, varsayılan 30) günlük soru oluşturma / çözme serileri. */
+  getDashboardTrends(days = 30): Observable<AdminDashboardTrends> {
+    return this.http.get<AdminDashboardTrends>(`${this.baseUrl}/dashboard/trends`, {
+      params: { days },
+    });
   }
 
   // ---- classifier cache ----

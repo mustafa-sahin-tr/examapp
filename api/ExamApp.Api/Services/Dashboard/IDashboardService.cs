@@ -8,4 +8,7 @@ namespace ExamApp.Api.Services.Dashboard;
 public interface IDashboardService
 {
     Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken ct = default);
+
+    /// <summary>Bugün dahil son <paramref name="days"/> gün için günlük trend serileri.</summary>
+    Task<DashboardTrendsDto> GetTrendsAsync(int days, CancellationToken ct = default);
 }

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
@@ -35,5 +38,70 @@ public class DashboardService : IDashboardService
             AiClassifiedQuestionCount = aiClassifiedCount,
             AiClassifiedRatio = questionCount == 0 ? 0 : (double)aiClassifiedCount / questionCount
         };
+    }
+
+    public async Task<DashboardTrendsDto> GetTrendsAsync(int days, CancellationToken ct = default)
+    {
+        // Audit interceptor (AppDbContext.ApplyAuditInfo) tüm zaman damgalarını UtcNow ile yazar;
+        // cutoff da Kind=Utc olmalı, aksi halde Npgsql timestamptz karşılaştırmasında hata verir.
+        var today = DateTime.UtcNow.Date;
+        var cutoff = today.AddDays(-(days - 1)); // bugün dahil son `days` gün
+
+        // Üç sorgu da tarih aralığına göre filtrelenip SQL tarafında group-by yapılır; yalnızca
+        // veri olan günler döner (sparse). 0-dolgu bellek içinde yapılır, tam tablo taraması yok.
+        // AppDbContext thread-safe olmadığı için art arda await edilir.
+        var created = await _context.Questions.AsNoTracking()
+            .Where(q => q.CreateTime >= cutoff)
+            .GroupBy(q => q.CreateTime.Date)
+            .Select(g => new DayCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        // Pratik oturumu: "çözüldü" anı = AnsweredAt.
+        var practiceSolved = await _context.PracticeSessionQuestions.AsNoTracking()
+            .Where(p => p.AnsweredAt != null && p.AnsweredAt >= cutoff)
+            .GroupBy(p => p.AnsweredAt!.Value.Date)
+            .Select(g => new DayCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        // Test/worksheet instance: satır test başlarken boş açılır (CreateTime = başlama anı);
+        // cevap verildiğinde SelectedAnswerId/AnswerPayload set edilir ve UpdateTime cevap anını taşır.
+        var instanceSolved = await _context.TestInstanceQuestions.AsNoTracking()
+            .Where(w => (w.SelectedAnswerId != null || w.AnswerPayload != null)
+                        && w.UpdateTime != null && w.UpdateTime >= cutoff)
+            .GroupBy(w => w.UpdateTime!.Value.Date)
+            .Select(g => new DayCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        return new DashboardTrendsDto
+        {
+            QuestionCreated = BuildSeries(cutoff, days, created),
+            QuestionSolved = BuildSeries(cutoff, days, practiceSolved.Concat(instanceSolved))
+        };
+    }
+
+    private sealed record DayCount(DateTime Day, int Count);
+
+    /// <summary>
+    /// Sparse (yalnızca veri olan günler) sonuçları, cutoff'tan başlayan <paramref name="days"/> günlük
+    /// boşluksuz seriye dönüştürür. Aynı güne düşen birden fazla kaynak (practice + instance) toplanır.
+    /// </summary>
+    private static List<DailyPointDto> BuildSeries(DateTime cutoff, int days, IEnumerable<DayCount> sparse)
+    {
+        var byDay = new Dictionary<DateOnly, int>();
+        foreach (var item in sparse)
+        {
+            var day = DateOnly.FromDateTime(item.Day);
+            byDay[day] = byDay.TryGetValue(day, out var existing) ? existing + item.Count : item.Count;
+        }
+
+        var series = new List<DailyPointDto>(days);
+        var start = DateOnly.FromDateTime(cutoff);
+        for (var i = 0; i < days; i++)
+        {
+            var day = start.AddDays(i);
+            series.Add(new DailyPointDto { Date = day, Count = byDay.GetValueOrDefault(day) });
+        }
+
+        return series;
     }
 }

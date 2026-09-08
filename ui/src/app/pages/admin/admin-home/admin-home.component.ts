@@ -45,7 +45,7 @@ import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.c
           margin: 0;
           font-size: 22px;
           font-weight: 700;
-          color: var(--main-foreground-color, #1a1a2e);
+          color: var(--heading-on-dark, #F5F4FF);
         }
         mat-icon {
           color: var(--primaryColor, #6438c3);

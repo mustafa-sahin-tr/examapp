@@ -16,7 +16,7 @@ import { DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Color, HeatMapModule, ScaleType } from '@swimlane/ngx-charts';
+import { BarChartModule, Color, HeatMapModule, ScaleType } from '@swimlane/ngx-charts';
 import { finalize } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import {
@@ -72,16 +72,12 @@ interface HeatmapTooltipPayload {
 
 type TrendKey = 'created' | 'solved';
 
-/** Bir trend kartının şablon için hazır hâli; her ikisi de aynı kart bileşenini kullanır. */
-interface TrendCardViewModel {
-  key: TrendKey;
+/** Heatmap ve bar chart kartlarının ortak başlık/özet alanları. */
+interface TrendCardBase {
   title: string;
   icon: string;
-  /** Heatmap yoğunluk şeması: seviye 0..HEAT_LEVELS için token'ın açık tonundan tam rengine kademeli geçiş. */
-  scheme: Color;
-  results: HeatmapWeek[];
-  /** x ekseni tick'i: aynı ay tekrar etmez (kart başına ayrı durum). */
-  xAxisTickFormatting: (label: string) => string;
+  /** Kart başlığının yanında görünen dönem etiketi: "Son 1 yıl" / "Son 30 gün". */
+  period: string;
   total: number;
   /** Tüm günler 0 ise "yeterli veri yok" gösterilir. */
   isEmpty: boolean;
@@ -89,8 +85,50 @@ interface TrendCardViewModel {
   summaryText: string;
 }
 
+/** Bir heatmap trend kartının şablon için hazır hâli; her ikisi de aynı kart bileşenini kullanır. */
+interface TrendCardViewModel extends TrendCardBase {
+  key: TrendKey;
+  /** Heatmap yoğunluk şeması: seviye 0..HEAT_LEVELS için token'ın açık tonundan tam rengine kademeli geçiş. */
+  scheme: Color;
+  results: HeatmapWeek[];
+  /** x ekseni tick'i: aynı ay tekrar etmez (kart başına ayrı durum). */
+  xAxisTickFormatting: (label: string) => string;
+}
+
+/** Tooltip için çubuğa iliştirilen veri (ngx-charts `extra`, `tooltipTemplate` `model.extra` olarak gelir). */
+interface LoginBarExtra {
+  /** "10 Ağu 2026" */
+  label: string;
+}
+
+/**
+ * ngx-charts bar-vertical `results` girdisi. `name` x ekseni kategorisi; tekil olması gerektiği için
+ * `yyyy-MM-dd` tutulur ve görünen etiket `xAxisTickFormatting` ile üretilir. `value` gerçek giriş sayısıdır
+ * (heatmap'ten farklı olarak seviye değil; bar yüksekliği doğrusal ölçekte anlamlı).
+ */
+interface LoginBarPoint {
+  name: string;
+  value: number;
+  extra: LoginBarExtra;
+}
+
+/**
+ * Issue #89 — öğrenci login bar chart kartı. Heatmap kartından ayrı şekil: 30 günlük tek seri,
+ * sabit `[view]` yok (kap genişliğine uyar), tick'ler seyreltilmiş açık tarih listesi.
+ */
+interface LoginTrendViewModel extends TrendCardBase {
+  /** Tek renkli ordinal şema (`--ms-info-text-medium`). */
+  scheme: Color;
+  results: LoginBarPoint[];
+  /** Gösterilecek tick'lerin `name` değerleri (her N günde bir, bugün her zaman dahil). */
+  xAxisTicks: string[];
+}
+
 /** Skeleton'da çizilecek kart sayısı: 4 sayaç + 1 AI kartı. */
 const SKELETON_CARD_COUNT = 5;
+
+/** Trend bölümü skeleton'u: 2 heatmap + 1 bar chart. */
+const TREND_SKELETON_CARD_COUNT = 3;
 
 const TOTAL_WEEKS = 52;
 const DAYS_PER_WEEK = 7;
@@ -101,6 +139,16 @@ const TREND_DAYS = TOTAL_WEEKS * DAYS_PER_WEEK;
 
 /** Mobilde gösterilen son hafta sayısı (dashboard.component `mobileHeatmapWeeks` ile aynı). */
 const MOBILE_HEATMAP_WEEKS = 17;
+
+/**
+ * Login bar chart penceresi (gün). Backend'e ayrı istek atılmaz; 364 günlük `studentLogin` serisinin
+ * son 30 günü dilimlenir (kullanıcı kararı: login trendi 1 aylık bar chart, heatmap değil).
+ */
+const LOGIN_TREND_DAYS = 30;
+
+/** Bar chart x ekseni tick aralığı (gün): 30 çubukta her gün etiketlenirse "10 Ağu" etiketleri üst üste biner. */
+const LOGIN_TICK_STEP_DESKTOP = 3;
+const LOGIN_TICK_STEP_MOBILE = 6;
 
 /** Sıfır dışı günler için yoğunluk seviyesi sayısı; hücre `value` 0..HEAT_LEVELS (0 = o gün etkinlik yok). */
 const HEAT_LEVELS = 4;
@@ -202,6 +250,19 @@ function buildHeatScheme(name: string, tokenName: string): Color {
   };
 }
 
+/**
+ * Bar chart renk şeması: tek renkli ordinal domain. ngx-charts bar-vertical her çubuğu `name`'e göre
+ * ordinal skaladan boyar; domain tek elemanlı olunca tüm çubuklar aynı token rengini alır.
+ */
+function buildBarScheme(name: string, tokenName: string): Color {
+  return {
+    name,
+    selectable: false,
+    group: ScaleType.Ordinal,
+    domain: [readCssToken(tokenName)],
+  };
+}
+
 /** `yyyy-MM-dd` → yerel gece yarısı Date (saat dilimi kayması olmadan takvim günü). */
 function parseIsoDate(isoDate: string): Date {
   const [y, m, d] = isoDate.split('-').map(Number);
@@ -267,6 +328,34 @@ function createMonthTickFormatter(firstWeekLabel: string): (label: string) => st
   };
 }
 
+/** Bar chart x ekseni etiketi: `yyyy-MM-dd` → "10 Ağu". Tanınmayan girdi olduğu gibi döner. */
+function formatIsoDayTick(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+    return isoDate;
+  }
+  return formatWeekLabel(parseIsoDate(isoDate));
+}
+
+/**
+ * Bar chart y ekseni: giriş sayısı tam sayıdır; d3 küçük aralıkta 0.5, 1.5 gibi ara tick üretebilir,
+ * onlar boş döner (`roundDomains` üst sınırı yuvarlar ama ara tick'leri garanti etmez).
+ */
+function formatIntegerTick(value: number): string {
+  return Number.isInteger(value) ? String(value) : '';
+}
+
+/**
+ * Serinin sondan başlayarak her `step` günde bir `name`'ini seçer; bugün (son eleman) her zaman dahil.
+ * Baştan sayılsaydı en güncel gün etiketsiz kalabilirdi.
+ */
+function pickTickNames(points: LoginBarPoint[], step: number): string[] {
+  const ticks: string[] = [];
+  for (let i = points.length - 1; i >= 0; i -= step) {
+    ticks.unshift(points[i].name);
+  }
+  return ticks;
+}
+
 /**
  * `yyyy-MM-dd` → bugünden kaç gün önce (0 = bugün). Yerel takvim günü ile karşılaştırılır — `parseIsoDate`
  * ve heatmap ızgarasıyla aynı gün tanımı; UTC kullanılsaydı yerel gece yarısından sonraki ilk saatlerde
@@ -278,17 +367,35 @@ function daysAgo(isoDate: string): number {
   return Math.max(0, Math.round((today - then) / MS_PER_DAY));
 }
 
+/** "bugün" / "dün" / "N gün önce" */
+function describeDaysAgo(isoDate: string): string {
+  const ago = daysAgo(isoDate);
+  return ago === 0 ? 'bugün' : ago === 1 ? 'dün' : `${ago} gün önce`;
+}
+
+/** Eşitlikte en güncel günü seç (tarihler artan sıralı → sondan tarama). Boş dizi için `undefined`. */
+function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint | undefined {
+  let peak = points[points.length - 1];
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (points[i].count > peak.count) {
+      peak = points[i];
+    }
+  }
+  return peak;
+}
+
 /**
- * Issue #86 / #88 — Admin dashboard.
+ * Issue #86 / #88 / #89 — Admin dashboard.
  * Phase 1: sayaç kartları (summary). Phase 2: son 1 yılın (52 hafta) soru oluşturma / çözme takvim
  * heatmap'leri — öğrenci dashboard'undaki aktivite heatmap'i ile aynı ngx-charts deseni ve boyut.
+ * Phase 3 (#89): son 30 günün öğrenci login bar chart'ı; aynı trends isteğinden beslenir.
  * İki bölümün loading/error/data durumları birbirinden bağımsızdır; trend endpoint'i düşerse
  * yalnızca trend bölümü hata gösterir, sayaç kartları etkilenmez.
  */
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, HeatMapModule],
+  imports: [DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, HeatMapModule, BarChartModule],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss'],
 })
@@ -305,6 +412,7 @@ export class AdminDashboardComponent implements OnInit {
   readonly summary = signal<AdminDashboardSummary | null>(null);
 
   readonly skeletonCards = Array.from({ length: SKELETON_CARD_COUNT }, (_, i) => i);
+  readonly trendSkeletonCards = Array.from({ length: TREND_SKELETON_CARD_COUNT }, (_, i) => i);
 
   /** Platformda hiç veri yoksa: kartlar 0 gösterir, ayırt edici boş-durum metni çıkar. */
   readonly isEmpty = computed(() => {
@@ -367,6 +475,7 @@ export class AdminDashboardComponent implements OnInit {
    */
   private readonly createdScheme = buildHeatScheme('trend-created', '--primaryColor');
   private readonly solvedScheme = buildHeatScheme('trend-solved', '--ms-success-text-medium');
+  private readonly loginScheme = buildBarScheme('trend-login', '--ms-info-text-medium');
 
   readonly trendCards = computed<TrendCardViewModel[]>(() => {
     const t = this.trends();
@@ -378,6 +487,39 @@ export class AdminDashboardComponent implements OnInit {
       this.buildTrendCard('created', 'Soru Oluşturma', 'add_circle_outline', 'oluşturuldu', t.questionCreated, this.createdScheme, visibleWeeks),
       this.buildTrendCard('solved', 'Soru Çözme', 'task_alt', 'çözüldü', t.questionSolved, this.solvedScheme, visibleWeeks),
     ];
+  });
+
+  /**
+   * Issue #89 — öğrenci login bar chart kartı. `trendCards`'tan ayrı tutulur: heatmap değil, sabit `[view]`
+   * yok, dolayısıyla `scrollToLatestWeekOnTrendChange` effect'ini de tetiklemez (kaydırılacak kap yok).
+   * Aynı trends yanıtının `studentLogin` serisinden son 30 gün dilimlenir; tick seyreltmesi viewport'a bağlı.
+   */
+  readonly loginTrendCard = computed<LoginTrendViewModel | null>(() => {
+    const t = this.trends();
+    if (!t) {
+      return null;
+    }
+    const points = t.studentLogin.slice(-LOGIN_TREND_DAYS);
+    const total = points.reduce((acc, p) => acc + p.count, 0);
+    const isEmpty = points.length === 0 || total === 0;
+    const results = points.map((p) => ({
+      name: p.date,
+      value: p.count,
+      extra: { label: formatTooltipDate(parseIsoDate(p.date)) },
+    }) satisfies LoginBarPoint);
+    const tickStep = this.isMobileViewport() ? LOGIN_TICK_STEP_MOBILE : LOGIN_TICK_STEP_DESKTOP;
+
+    return {
+      title: 'Öğrenci Login Trendi',
+      icon: 'login',
+      period: `Son ${LOGIN_TREND_DAYS} gün`,
+      scheme: this.loginScheme,
+      results,
+      xAxisTicks: pickTickNames(results, tickStep),
+      total,
+      isEmpty,
+      summaryText: this.buildLoginSummary(points, total, isEmpty),
+    };
   });
 
   /**
@@ -463,6 +605,10 @@ export class AdminDashboardComponent implements OnInit {
     return `${extra.label}: ${extra.count} soru ${extra.verb}`;
   };
 
+  // Bar chart eksen formatlayıcıları; ngx-charts `this` bağlamı vermeden çağırdığı için property olarak tutulur.
+  readonly formatLoginXAxisTick = formatIsoDayTick;
+  readonly formatLoginYAxisTick = formatIntegerTick;
+
   private updateViewportWidth(): void {
     if (typeof window === 'undefined') {
       return;
@@ -487,6 +633,7 @@ export class AdminDashboardComponent implements OnInit {
       key,
       title,
       icon,
+      period: 'Son 1 yıl',
       scheme,
       results,
       xAxisTickFormatting: createMonthTickFormatter(results[0]?.name ?? ''),
@@ -547,15 +694,22 @@ export class AdminDashboardComponent implements OnInit {
     if (isEmpty) {
       return 'Son 1 yıl: henüz yeterli veri yok.';
     }
-    // Eşitlikte en güncel günü seç (tarihler artan sıralı → sondan tarama).
-    let peak = points[points.length - 1];
-    for (let i = points.length - 1; i >= 0; i--) {
-      if (points[i].count > peak.count) {
-        peak = points[i];
-      }
+    const peak = findPeak(points);
+    if (!peak) {
+      return 'Son 1 yıl: henüz yeterli veri yok.';
     }
-    const ago = daysAgo(peak.date);
-    const when = ago === 0 ? 'bugün' : ago === 1 ? 'dün' : `${ago} gün önce`;
-    return `Son 1 yıl: toplam ${total} soru ${verb}. En yüksek gün ${when}, ${peak.count} soru.`;
+    return `Son 1 yıl: toplam ${total} soru ${verb}. En yüksek gün ${describeDaysAgo(peak.date)}, ${peak.count} soru.`;
+  }
+
+  /**
+   * Login kartı erişilebilirlik özeti. Örn:
+   * "Son 30 gün: toplam 120 öğrenci girişi. En yüksek gün dün, 14 giriş."
+   */
+  private buildLoginSummary(points: AdminDashboardTrendPoint[], total: number, isEmpty: boolean): string {
+    const peak = isEmpty ? undefined : findPeak(points);
+    if (!peak) {
+      return `Son ${LOGIN_TREND_DAYS} gün: henüz yeterli veri yok.`;
+    }
+    return `Son ${LOGIN_TREND_DAYS} gün: toplam ${total} öğrenci girişi. En yüksek gün ${describeDaysAgo(peak.date)}, ${peak.count} giriş.`;
   }
 }

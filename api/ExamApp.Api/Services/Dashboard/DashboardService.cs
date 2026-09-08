@@ -47,7 +47,7 @@ public class DashboardService : IDashboardService
         var today = DateTime.UtcNow.Date;
         var cutoff = today.AddDays(-(days - 1)); // bugün dahil son `days` gün
 
-        // Üç sorgu da tarih aralığına göre filtrelenip SQL tarafında group-by yapılır; yalnızca
+        // Dört sorgu da tarih aralığına göre filtrelenip SQL tarafında group-by yapılır; yalnızca
         // veri olan günler döner (sparse). 0-dolgu bellek içinde yapılır, tam tablo taraması yok.
         // AppDbContext thread-safe olmadığı için art arda await edilir.
         var created = await _context.Questions.AsNoTracking()
@@ -72,10 +72,20 @@ public class DashboardService : IDashboardService
             .Select(g => new DayCount(g.Key, g.Count()))
             .ToListAsync(ct);
 
+        // Öğrenci login'i (issue #89): yalnızca başarılı denemeler ve Student rolü sayılır. Role
+        // alanının yazımı (Student / student) garanti değil; ToLower() Npgsql'de LOWER() olarak
+        // SQL tarafına çevrilir, bellek içi filtre yapılmaz.
+        var studentLogins = await _context.LoginEvents.AsNoTracking()
+            .Where(l => l.Success && l.OccurredAtUtc >= cutoff && l.Role.ToLower() == "student")
+            .GroupBy(l => l.OccurredAtUtc.Date)
+            .Select(g => new DayCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+
         return new DashboardTrendsDto
         {
             QuestionCreated = BuildSeries(cutoff, days, created),
-            QuestionSolved = BuildSeries(cutoff, days, practiceSolved.Concat(instanceSolved))
+            QuestionSolved = BuildSeries(cutoff, days, practiceSolved.Concat(instanceSolved)),
+            StudentLogin = BuildSeries(cutoff, days, studentLogins)
         };
     }
 

@@ -80,13 +80,16 @@
     }
   }
 
-  <!-- Phase 2 (Issue #88): 52 haftalık takvim heatmap'leri — sayaçlardan bağımsız durum seti, full-width stack -->
+  <!--
+    Phase 2 (Issue #88): 52 haftalık takvim heatmap'leri; Phase 3 (Issue #89): 30 günlük login bar chart.
+    Sayaçlardan bağımsız durum seti, full-width stack. Dönem kart başına farklı olduğu için başlıkta değil kartta.
+  -->
   <section class="trend-section" aria-labelledby="trend-heading">
-    <h2 id="trend-heading" class="trend-section__title">Son 1 Yıl</h2>
+    <h2 id="trend-heading" class="trend-section__title">Trendler</h2>
 
     @if (trendLoading()) {
       <div class="trend-stack" aria-busy="true" aria-live="polite">
-        @for (i of [0, 1]; track i) {
+        @for (i of trendSkeletonCards; track i) {
           <div class="trend-card trend-card--skeleton">
             <span class="skeleton-line skeleton-line--label"></span>
             <span class="skeleton-line skeleton-line--chart"></span>
@@ -106,7 +109,7 @@
           <article
             class="trend-card"
             [attr.data-trend]="card.key"
-            [attr.aria-label]="card.title + ' trendi, son 1 yıl'"
+            [attr.aria-label]="card.title + ' trendi, ' + card.period.toLowerCase()"
             [attr.aria-describedby]="'trend-summary-' + card.key"
           >
             <div class="trend-card__header">
@@ -115,6 +118,7 @@
                   {{ card.icon }}
                 </mat-icon>
                 <span class="summary-label">{{ card.title }}</span>
+                <span class="trend-card__period">{{ card.period }}</span>
               </div>
               @if (!card.isEmpty) {
                 <span class="trend-card__total">{{ card.total | number }} soru</span>
@@ -145,6 +149,61 @@
                   [xAxisTickFormatting]="card.xAxisTickFormatting"
                   [tooltipText]="formatHeatmapTooltip"
                 ></ngx-charts-heat-map>
+              </div>
+            }
+          </article>
+        }
+
+        <!-- Phase 3 (Issue #89): son 30 gün öğrenci login bar chart; heatmap kartıyla aynı dış yapı -->
+        @if (loginTrendCard(); as card) {
+          <article
+            class="trend-card"
+            data-trend="login"
+            [attr.aria-label]="card.title + ', ' + card.period.toLowerCase()"
+            aria-describedby="trend-summary-login"
+          >
+            <div class="trend-card__header">
+              <div class="trend-card__title">
+                <mat-icon class="trend-card__icon trend-card__icon--login">{{ card.icon }}</mat-icon>
+                <span class="summary-label">{{ card.title }}</span>
+                <span class="trend-card__period">{{ card.period }}</span>
+              </div>
+              @if (!card.isEmpty) {
+                <span class="trend-card__total">{{ card.total | number }} giriş</span>
+              }
+            </div>
+
+            <p class="visually-hidden" id="trend-summary-login">{{ card.summaryText }}</p>
+
+            @if (card.isEmpty) {
+              <div class="state-box state-box--empty trend-card__empty">
+                <mat-icon>bar_chart</mat-icon>
+                <p class="state-text">Henüz yeterli veri yok</p>
+              </div>
+            } @else {
+              <!-- `[view]` verilmez: bar chart kabın genişliğine uyar, yükseklik CSS'te sabitlenir -->
+              <div class="login-bar-chart" aria-hidden="true">
+                <ngx-charts-bar-vertical
+                  [scheme]="card.scheme"
+                  [results]="card.results"
+                  [xAxis]="true"
+                  [yAxis]="true"
+                  [legend]="false"
+                  [showXAxisLabel]="false"
+                  [showYAxisLabel]="false"
+                  [gradient]="false"
+                  [roundDomains]="true"
+                  [roundEdges]="true"
+                  [rotateXAxisTicks]="false"
+                  [xAxisTicks]="card.xAxisTicks"
+                  [xAxisTickFormatting]="formatLoginXAxisTick"
+                  [yAxisTickFormatting]="formatLoginYAxisTick"
+                >
+                  <!-- ngx-charts tooltip'i input değil @ContentChild('tooltipTemplate') ile alır; model = LoginBarPoint -->
+                  <ng-template #tooltipTemplate let-model="model">
+                    <span class="login-bar-chart__tooltip">{{ model.extra.label }}: {{ model.value }} giriş</span>
+                  </ng-template>
+                </ngx-charts-bar-vertical>
               </div>
             }
           </article>

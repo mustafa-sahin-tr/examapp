@@ -2,7 +2,7 @@
   display: block;
   padding: 1.5rem;
   font-family: var(--paragraphFontFamily);
-  color: var(--main-foreground-color);
+  color: var(--ms-text);
 }
 
 .apr__head {
@@ -49,7 +49,7 @@
 
 .apr__table {
   width: 100%;
-  background: var(--main-bg-color);
+  background: var(--main-foreground-color);
 }
 
 .apr__note {

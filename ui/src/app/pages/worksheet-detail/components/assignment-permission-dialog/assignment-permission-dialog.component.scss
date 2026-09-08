@@ -6,7 +6,7 @@
 
 .apd-desc {
   margin: 0 0 1rem;
-  color: var(--main-foreground-color);
+  color: var(--ms-text);
   line-height: 1.5;
 }
 
@@ -22,7 +22,7 @@
   margin-bottom: 1rem;
   border-radius: 8px;
   background: color-mix(in srgb, var(--primaryColor) 12%, transparent);
-  color: var(--main-foreground-color);
+  color: var(--ms-text);
   font-size: 0.875rem;
 
   mat-icon {

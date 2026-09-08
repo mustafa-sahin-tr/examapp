@@ -11,47 +11,41 @@ namespace ExamApp.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // NOTE: "OutboxMessages" already exists in the identity DB (created by the
-            // 20250501203010_outboxpatternchanges / 20250513093603_outbox_changes migrations),
-            // but AppDbContext never had a DbSet<OutboxMessage> until now, so the model
-            // snapshot never tracked the table. The scaffolded migration therefore emitted a
-            // full CreateTable (which would fail against the real DB where the table already
-            // exists) instead of the intended AddColumn diff. Hand-edited to only add the three
-            // new columns — everything else (Id/Type/Content/CreatedAt/ProcessedAt) is unchanged.
-            migrationBuilder.AddColumn<int>(
-                name: "RetryCount",
-                table: "OutboxMessages",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
+            // "OutboxMessages" is *supposed* to already exist in the identity DB (created by
+            // 20250501203010_outboxpatternchanges / 20250513093603_outbox_changes) — AppDbContext
+            // never had a DbSet<OutboxMessage> until now, so nobody ever actually ran those
+            // migrations' Up() against a real dev DB, or a dev DB drifted (table manually dropped
+            // without reverting migration history). Either way, `Database.Migrate()` on a
+            // dev machine where that history entry is present but the table is missing throws
+            // "relation OutboxMessages does not exist" here. Written defensively with raw SQL so
+            // it succeeds whether the table already exists (adds the 3 columns) or not (creates
+            // the full table matching ExamApp.Foundation.Persistence.OutboxMessage first).
+            migrationBuilder.Sql(
+                """
+                CREATE TABLE IF NOT EXISTS "OutboxMessages" (
+                    "Id" uuid NOT NULL,
+                    "Type" text NOT NULL,
+                    "Content" text NOT NULL,
+                    "CreatedAt" timestamp with time zone NOT NULL,
+                    "ProcessedAt" timestamp with time zone NULL,
+                    CONSTRAINT "PK_OutboxMessages" PRIMARY KEY ("Id")
+                );
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "NextAttemptAt",
-                table: "OutboxMessages",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "Error",
-                table: "OutboxMessages",
-                type: "text",
-                nullable: true);
+                ALTER TABLE "OutboxMessages" ADD COLUMN IF NOT EXISTS "RetryCount" integer NOT NULL DEFAULT 0;
+                ALTER TABLE "OutboxMessages" ADD COLUMN IF NOT EXISTS "NextAttemptAt" timestamp with time zone NULL;
+                ALTER TABLE "OutboxMessages" ADD COLUMN IF NOT EXISTS "Error" text NULL;
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "RetryCount",
-                table: "OutboxMessages");
-
-            migrationBuilder.DropColumn(
-                name: "NextAttemptAt",
-                table: "OutboxMessages");
-
-            migrationBuilder.DropColumn(
-                name: "Error",
-                table: "OutboxMessages");
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE "OutboxMessages" DROP COLUMN IF EXISTS "RetryCount";
+                ALTER TABLE "OutboxMessages" DROP COLUMN IF EXISTS "NextAttemptAt";
+                ALTER TABLE "OutboxMessages" DROP COLUMN IF EXISTS "Error";
+                """);
         }
     }
 }

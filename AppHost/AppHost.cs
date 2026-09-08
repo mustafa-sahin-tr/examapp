@@ -247,6 +247,28 @@ var outboxPublisher = builder.AddProject<Projects.OutboxPublisherService>("exam-
     .WaitFor(rabbitmq);
 
 // ---------------------------------------------------------------------------
+// IdentityOutboxPublisher (Services/OutboxPublisher) — a second instance of
+// the exact same OutboxPublisherService project, pointed at identityDb
+// instead of examDb (issue #84: auth-api/identity DB needs its own outbox
+// relay to RabbitMQ, independent of the worksheet DB's publisher above).
+// OutboxProcessor.cs/Program.cs are untouched — it's generic and only reads
+// ConnectionStrings:DefaultConnection + RabbitMQ:* from config, exactly like
+// outboxPublisher, just wired to a different database resource here.
+// ---------------------------------------------------------------------------
+
+var identityOutboxPublisher = builder.AddProject<Projects.OutboxPublisherService>("identity-outbox-publisher")
+    .WithReference(identityDb, connectionName: "DefaultConnection")
+    .WithReference(rabbitmq)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", rabbitUser)
+    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    .WaitFor(postgres)
+    .WaitFor(rabbitmq);
+
+// ---------------------------------------------------------------------------
 // auth-api — same-named ExamApp.Api.csproj as api/ExamApp.Api, disambiguated
 // in ExamApp.AppHost.csproj via AspireProjectMetadataTypeName="AuthApi".
 // Not in the original migration brief's inventory (a Phase 0 discovery gap:

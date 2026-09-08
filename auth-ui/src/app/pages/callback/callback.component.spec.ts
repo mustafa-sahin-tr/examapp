@@ -100,8 +100,10 @@ describe('CallbackComponent', () => {
   );
 
   // --- Issue #28 acceptance criteria: blocked, see file header comment. ---
-  xit('ngOnInit_AdminRoleOnly_RedirectsToDashboardNotCompleteProfile', () => {});
-  xit('ngOnInit_AdminAndTeacherRoles_RedirectsToDashboard', () => {});
+  // Issue #86: Admin role -> '/admin/dashboard' (takes precedence over other app roles).
+  xit('ngOnInit_AdminRoleOnly_RedirectsToAdminDashboardNotCompleteProfile', () => {});
+  xit('ngOnInit_AdminAndTeacherRoles_RedirectsToAdminDashboard', () => {});
+  xit('ngOnInit_TeacherRoleOnly_RedirectsToDashboard', () => {});
   xit('ngOnInit_NoAppRoles_RedirectsToCompleteProfile', () => {});
   xit('ngOnInit_NoAppRolesWithRoleIntent_RedirectsToCompleteProfileWithRoleQueryParam', () => {});
 });

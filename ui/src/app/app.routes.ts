@@ -120,6 +120,13 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/admin-home/admin-home.component').then((m) => m.AdminHomeComponent),
       },
       {
+        // Issue #86: admin dashboard sayaç kartları (Phase 1).
+        path: 'admin/dashboard',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-dashboard/admin-dashboard.component').then((m) => m.AdminDashboardComponent),
+      },
+      {
         // Issue #63: "Soru Çöz" pratik akışı (kapsam seç → tek tek rastgele soru → anlık geri bildirim).
         path: 'practice',
         canActivate: [authGuard, studentGuard],

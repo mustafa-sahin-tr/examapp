@@ -1,0 +1,82 @@
+<div class="admin-dashboard">
+  <header class="admin-header">
+    <div class="admin-header__title">
+      <mat-icon>admin_panel_settings</mat-icon>
+      <h1>Yönetim Paneli</h1>
+    </div>
+    <p class="admin-header__subtitle">
+      Platformun genel durumu — öğretmen, öğrenci, test ve soru istatistikleri
+    </p>
+  </header>
+
+  @if (loading()) {
+    <div class="summary-grid" aria-busy="true" aria-live="polite">
+      @for (i of skeletonCards; track i) {
+        <div class="summary-card summary-card--skeleton" [class.summary-card--ai]="$last">
+          <span class="summary-label skeleton-line skeleton-line--label"></span>
+          <span class="summary-value skeleton-line skeleton-line--value"></span>
+        </div>
+      }
+      <mat-spinner class="summary-spinner" diameter="28"></mat-spinner>
+    </div>
+  } @else if (error()) {
+    <div class="state-box state-box--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p class="state-text">{{ error() }}</p>
+      <button mat-stroked-button type="button" (click)="loadSummary()">Tekrar dene</button>
+    </div>
+  } @else {
+    @if (summary(); as s) {
+      <div class="summary-grid">
+        @for (card of cards(); track card.key) {
+          <div class="summary-card" [attr.data-key]="card.key">
+            <div class="summary-card__header">
+              <span class="summary-label">{{ card.label }}</span>
+              <mat-icon class="summary-icon">{{ card.icon }}</mat-icon>
+            </div>
+            <span class="summary-value">{{ card.value | number }}</span>
+          </div>
+        }
+
+        <div class="summary-card summary-card--ai" data-key="ai">
+          <div class="summary-card__header">
+            <span class="summary-label">AI Sınıflandırılmış</span>
+            <mat-icon class="summary-icon">auto_awesome</mat-icon>
+          </div>
+
+          @if (hasQuestions()) {
+            <div class="summary-card__row">
+              <span class="summary-value">
+                {{ s.aiClassifiedQuestionCount | number }}
+                <span class="summary-value__total">/ {{ s.questionCount | number }}</span>
+              </span>
+              <span class="summary-badge">%{{ aiPercent() | number: '1.0-0' }}</span>
+            </div>
+            <div
+              class="summary-progress"
+              role="progressbar"
+              aria-label="AI sınıflandırma oranı"
+              [attr.aria-valuenow]="aiPercent() | number: '1.0-0'"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span class="summary-progress__bar" [style.width.%]="aiPercent()"></span>
+            </div>
+          } @else {
+            <span class="summary-value">0</span>
+            <span class="summary-hint">Henüz soru yok</span>
+          }
+        </div>
+      </div>
+
+      @if (isEmpty()) {
+        <div class="state-box state-box--empty">
+          <mat-icon>inbox</mat-icon>
+          <p class="state-text">
+            Platformda henüz veri yok. Öğretmen, öğrenci, test veya soru eklendiğinde sayaçlar burada güncellenecek.
+          </p>
+        </div>
+      }
+    }
+  }
+</div>

@@ -106,6 +106,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<WorksheetReminderDueConsumer, WorksheetReminderDueConsumerDefinition>();
     x.AddConsumer<WorksheetAccessRequestedConsumer, WorksheetAccessRequestedConsumerDefinition>();
     x.AddConsumer<WorksheetAccessDecisionConsumer, WorksheetAccessDecisionConsumerDefinition>();
+    x.AddConsumer<LoginAttemptedConsumer, LoginAttemptedConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -124,6 +125,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<WorksheetReminderDueConsumer>(context);
             e.ConfigureConsumer<WorksheetAccessRequestedConsumer>(context);
             e.ConfigureConsumer<WorksheetAccessDecisionConsumer>(context);
+            e.ConfigureConsumer<LoginAttemptedConsumer>(context);
         });
     });
 });

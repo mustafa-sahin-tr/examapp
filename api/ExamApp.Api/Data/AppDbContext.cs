@@ -113,6 +113,9 @@ public class AppDbContext : DbContext
     public DbSet<PracticeSession> PracticeSessions { get; set; }
     public DbSet<PracticeSessionQuestion> PracticeSessionQuestions { get; set; }
 
+    // Login denemeleri (issue #84) — BadgeService servis-to-servis yazar, admin dashboard (issue #6) okur.
+    public DbSet<LoginEvent> LoginEvents { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -390,6 +393,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<PracticeSessionQuestion>()
             .HasIndex(pq => new { pq.PracticeSessionId, pq.QuestionId })
             .IsUnique();
+
+        // Login event'leri (issue #84). Index'ler ileride admin dashboard'un (issue #6)
+        // "kullanıcı bazlı son login" ve "tarih aralığı / rol bazlı sayım" sorguları için.
+        modelBuilder.Entity<LoginEvent>()
+            .HasIndex(le => new { le.KeycloakUserId, le.OccurredAtUtc });
+
+        modelBuilder.Entity<LoginEvent>()
+            .HasIndex(le => new { le.OccurredAtUtc, le.Role, le.Success });
 
         // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
         modelBuilder.Entity<ProgramStep>()

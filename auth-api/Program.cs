@@ -60,6 +60,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// Login/exchange brute-force koruması (bkz. Helpers/AuthRateLimiting.cs). Forwarded-headers
+// kaydı da burada: gateway arkasında limiter anahtarı gerçek istemci IP'si olmalı.
+builder.Services.AddAuthForwardedHeaders(builder.Configuration);
+builder.Services.AddAuthRateLimiting(builder.Configuration);
+
 var redisConfig = builder.Configuration.GetSection("Redis");
 
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -130,8 +135,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// X-Forwarded-For'u RemoteIpAddress'e uygulayan middleware, adresi okuyan her şeyden önce gelmeli.
+app.UseForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
+// Routing'den sonra (WebApplication UseRouting'i pipeline başına örtük ekler), auth'tan önce:
+// limit aşan istek JWT doğrulaması yapılmadan 429 ile reddedilir.
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

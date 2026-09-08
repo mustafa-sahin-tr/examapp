@@ -15,6 +15,9 @@ services:
   exam-outbox-publisher:
     command: dotnet watch run --urls=http://+:8007
 
+  identity-outbox-publisher:
+    command: dotnet watch run --urls=http://+:8008
+
   angular-app:
     command: sh -c "yarn install && yarn start"
 

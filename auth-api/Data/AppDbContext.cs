@@ -55,6 +55,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; } = null!;
+    public DbSet<OutboxMessage> OutboxMessages { get; set; } = null!;
     // BaseController'dan çağrılacak metod
     public void SetCurrentUser(int userId)
     {

@@ -21,6 +21,10 @@ public class TaxonomySubjectDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>Grades this subject is linked to via GradeSubject. Empty = "Sınıf atanmamış".</summary>
+    public List<int> GradeIds { get; set; } = new();
+
     public List<TaxonomyTopicDto> Topics { get; set; } = new();
 }
 
@@ -47,6 +51,13 @@ public class TaxonomySubTopicDto
 public class UpsertSubjectDto
 {
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional. When provided (non-null, non-empty) the subject's GradeSubject links are
+    /// synchronised to exactly this set (missing ones added, extra ones removed).
+    /// When null or empty the existing links are left untouched.
+    /// </summary>
+    public List<int>? GradeIds { get; set; }
 }
 
 public class UpsertTopicDto

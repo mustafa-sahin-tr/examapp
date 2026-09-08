@@ -12,6 +12,75 @@
   top: 0;
 }
 
+// ---- grade filter (Issue #119) ----
+
+.grade-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+
+  .grade-filter-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--heading-on-dark);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .grade-filter-group {
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+    border: none;
+    gap: 6px;
+    font-family: var(--paragraphFontFamily);
+
+    --mat-standard-button-toggle-height: 32px;
+    --mat-standard-button-toggle-shape: 16px;
+    --mat-standard-button-toggle-background-color: var(--ms-surface);
+    --mat-standard-button-toggle-text-color: var(--ms-text);
+    --mat-standard-button-toggle-selected-state-background-color: var(--ms-action-background);
+    --mat-standard-button-toggle-selected-state-text-color: var(--ms-action-text);
+    --mat-standard-button-toggle-divider-color: transparent;
+    --mat-standard-button-toggle-label-text-size: 12px;
+  }
+
+  mat-button-toggle {
+    border: 1px solid var(--ms-border-weak);
+    border-radius: 16px;
+    overflow: hidden;
+
+    &.mat-button-toggle-checked {
+      border-color: var(--ms-action-border);
+    }
+  }
+
+  .unassigned-toggle {
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+      vertical-align: -3px;
+      color: var(--ms-warning-text-medium);
+    }
+  }
+}
+
 .columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -167,6 +236,54 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  // Ders satırı: ad + bağlı sınıf chip'leri (Issue #119)
+  .name-block {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    .name {
+      flex: none;
+    }
+  }
+
+  .grade-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .grade-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 18px;
+    padding: 0 7px;
+    border-radius: 9px;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 18px;
+    white-space: nowrap;
+    background: var(--ms-action-background-weak);
+    color: var(--ms-action-text);
+    border: 1px solid var(--ms-action-border);
+
+    mat-icon {
+      font-size: 13px;
+      width: 13px;
+      height: 13px;
+      line-height: 13px;
+    }
+
+    &--warn {
+      background: var(--ms-warning-surface-weak);
+      color: var(--ms-warning-text-medium);
+      border-color: var(--ms-warning-border);
+    }
   }
 
   .meta {

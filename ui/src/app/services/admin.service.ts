@@ -1,17 +1,20 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   ApiResult,
   ClassifierCacheRefreshResult,
   ClassifierCacheStatus,
   School,
+  TaxonomyFilter,
   TaxonomyTree,
 } from '../models/taxonomy';
 import { AdminDashboardSummary, AdminDashboardTrends } from '../models/admin-dashboard.model';
 
 interface UpsertSubject {
   name: string;
+  /** null/undefined → GradeSubject'e dokunulmaz; dizi → backend tam senkron yapar. */
+  gradeIds?: number[] | null;
 }
 interface UpsertTopic {
   name: string;
@@ -33,8 +36,20 @@ export class AdminService {
   private readonly baseUrl = '/api/exam/admin';
 
   // ---- taxonomy ----
-  getTaxonomy(): Observable<TaxonomyTree> {
-    return this.http.get<TaxonomyTree>(`${this.baseUrl}/taxonomy`);
+  getTaxonomy(filter?: TaxonomyFilter): Observable<TaxonomyTree> {
+    let params = new HttpParams();
+    if (filter?.gradeId != null) params = params.set('gradeId', filter.gradeId);
+    if (filter?.unassigned) params = params.set('unassigned', 'true');
+    return this.http.get<TaxonomyTree>(`${this.baseUrl}/taxonomy`, { params });
+  }
+
+  /** Dersi sınıfa bağlar (idempotent). */
+  addSubjectGrade(subjectId: number, gradeId: number) {
+    return this.http.post<ApiResult>(`${this.baseUrl}/subjects/${subjectId}/grades/${gradeId}`, {});
+  }
+  /** Ders–sınıf bağlantısını kaldırır (idempotent; ders/konu/soru verisi silinmez). */
+  removeSubjectGrade(subjectId: number, gradeId: number) {
+    return this.http.delete<ApiResult>(`${this.baseUrl}/subjects/${subjectId}/grades/${gradeId}`);
   }
 
   createSubject(body: UpsertSubject) {

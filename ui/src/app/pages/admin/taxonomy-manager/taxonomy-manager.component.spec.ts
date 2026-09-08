@@ -21,6 +21,7 @@ describe('TaxonomyManagerComponent', () => {
     {
       id: 1,
       name: 'Matematik',
+      gradeIds: [5],
       topics: [
         {
           id: 10,
@@ -57,6 +58,8 @@ describe('TaxonomyManagerComponent', () => {
       'createSchool',
       'updateSchool',
       'deleteSchool',
+      'addSubjectGrade',
+      'removeSubjectGrade',
     ]);
     adminService.getTaxonomy.and.returnValue(of(tree));
     adminService.getSchools.and.returnValue(of(schools));
@@ -74,6 +77,17 @@ describe('TaxonomyManagerComponent', () => {
         { provide: MatSnackBar, useValue: snackBar },
         provideNoopAnimations(),
       ],
+    });
+
+    // Komponent MatDialogModule/MatSnackBarModule import ettiği için standalone injector gerçek
+    // servisleri sağlar ve root-level mock'lar gölgelenir; mock'ları komponent seviyesinde ver.
+    TestBed.overrideComponent(TaxonomyManagerComponent, {
+      add: {
+        providers: [
+          { provide: MatDialog, useValue: dialog },
+          { provide: MatSnackBar, useValue: snackBar },
+        ],
+      },
     });
 
     return TestBed.createComponent(TaxonomyManagerComponent);
@@ -310,10 +324,138 @@ describe('TaxonomyManagerComponent', () => {
     });
   });
 
+  // ── Sınıf filtresi / GradeSubject (Issue #119) ────────────────────────────
+
+  it('load_DefaultFilter_CallsGetTaxonomyWithoutParams', () => {
+    fixture = configure();
+    fixture.detectChanges();
+
+    expect(adminService.getTaxonomy).toHaveBeenCalledOnceWith(undefined);
+  });
+
+  it('setGradeFilter_SpecificGrade_ReloadsWithGradeIdAndResetsSelections', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.selectSubject(1);
+    component.selectTopic(10);
+
+    component.setGradeFilter(5);
+
+    expect(adminService.getTaxonomy).toHaveBeenCalledWith({ gradeId: 5 });
+    expect(component.selectedSubjectId()).toBeNull();
+    expect(component.selectedTopicId()).toBeNull();
+  });
+
+  it('setGradeFilter_Unassigned_ReloadsWithUnassignedFlag', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setGradeFilter('unassigned');
+
+    expect(adminService.getTaxonomy).toHaveBeenCalledWith({ unassigned: true });
+  });
+
+  it('setGradeFilter_SameValue_DoesNotReload', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.setGradeFilter('all');
+
+    expect(adminService.getTaxonomy).toHaveBeenCalledTimes(1);
+  });
+
+  it('visibleSubjects_AllFilter_HidesSubjectsWithoutGrades', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    adminService.getTaxonomy.and.returnValue(
+      of({
+        grades: [{ id: 5, name: '5. Sınıf' }],
+        subjects: [
+          { id: 1, name: 'Matematik', gradeIds: [5], topics: [] },
+          { id: 2, name: 'Sınıfsız', gradeIds: [], topics: [] },
+        ],
+      })
+    );
+    fixture.detectChanges();
+
+    expect(component.visibleSubjects().map((s) => s.id)).toEqual([1]);
+    const emptyState = fixture.nativeElement.querySelector('.column:nth-child(1) .empty-state');
+    expect(emptyState).toBeNull();
+  });
+
+  it('subjectRow_NoGrades_ShowsUnassignedWarnChip', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    adminService.getTaxonomy.and.returnValue(
+      of({
+        grades: [{ id: 5, name: '5. Sınıf' }],
+        subjects: [{ id: 2, name: 'Sınıfsız', gradeIds: [], topics: [] }],
+      })
+    );
+    fixture.detectChanges();
+    component.setGradeFilter('unassigned');
+    fixture.detectChanges();
+
+    const chip: HTMLElement = fixture.nativeElement.querySelector('.grade-chip--warn');
+    expect(chip).toBeTruthy();
+    expect(chip.textContent).toContain('Sınıf atanmamış');
+  });
+
+  it('subjectRow_WithGrades_ShowsGradeNameChips', () => {
+    fixture = configure();
+    fixture.detectChanges();
+
+    const chips: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll(
+      '.column:nth-child(1) .grade-chip'
+    );
+    expect(chips.length).toBe(1);
+    expect(chips[0].textContent).toContain('5. Sınıf');
+  });
+
+  it('manageGrades_DialogReportsChange_ReloadsTaxonomy', async () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    dialog.open.and.returnValue({ afterClosed: () => of(true) } as any);
+
+    await component.manageGrades(subjects[0]);
+
+    expect(dialog.open).toHaveBeenCalled();
+    expect(adminService.getTaxonomy).toHaveBeenCalledTimes(2);
+  });
+
+  it('manageGrades_OpensDialog_WithDisableCloseSoPartialSuccessIsNotLost', async () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    await component.manageGrades(subjects[0]);
+
+    // ESC/backdrop `close()`'u argümansız çağırır; `applied` bilgisi kaybolmasın diye kapalı olmalı.
+    const config = dialog.open.calls.mostRecent().args[1];
+    expect(config?.disableClose).toBeTrue();
+  });
+
+  it('manageGrades_DialogReportsNoChange_DoesNotReload', async () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    dialog.open.and.returnValue({ afterClosed: () => of(false) } as any);
+
+    await component.manageGrades(subjects[0]);
+
+    expect(adminService.getTaxonomy).toHaveBeenCalledTimes(1);
+  });
+
   // ── Breadcrumb ────────────────────────────────────────────────────────────
 
   it('breadcrumb_NoSelection_NotRendered', () => {
     fixture = configure();
+    // İlk yükleme ilk dersi otomatik seçer; seçimsiz durumu boş ağaçla kur.
+    adminService.getTaxonomy.and.returnValue(of({ subjects: [], grades: [] }));
     fixture.detectChanges();
 
     const crumbs = fixture.nativeElement.querySelectorAll('.crumb');

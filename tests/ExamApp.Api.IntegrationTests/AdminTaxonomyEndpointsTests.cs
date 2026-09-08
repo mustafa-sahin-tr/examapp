@@ -25,6 +25,16 @@ public class AdminTaxonomyEndpointsTests(IntegrationApiFactory factory) : Integr
     }
 
     [Fact]
+    public async Task Taxonomy_returns_400_when_gradeId_and_unassigned_are_both_supplied()
+    {
+        var admin = await ClientAsAsync(2, "Admin", realmRoles: "Admin");
+
+        var res = await admin.GetAsync("/api/admin/taxonomy?gradeId=1&unassigned=true");
+
+        res.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
     public async Task An_admin_can_create_a_subject_and_read_it_back_in_the_tree()
     {
         var admin = await ClientAsAsync(2, "Admin", realmRoles: "Admin");

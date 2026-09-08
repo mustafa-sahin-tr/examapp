@@ -207,7 +207,7 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   grid-template-rows: minmax(0, 1fr);
   gap: var(--ms-layout-spacing-large);
   // Alt padding yok: dock (.main-stage'in son çocuğu) viewport'un alt kenarına tam yapışır.
-  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-xsmall) 0;
+  padding: var(--ms-layout-spacing-xxsmall) var(--ms-layout-spacing-xxsmall) 0;
   transition: grid-template-columns 200ms ease;
 }
 

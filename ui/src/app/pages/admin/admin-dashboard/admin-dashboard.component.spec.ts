@@ -53,11 +53,13 @@ describe('AdminDashboardComponent', () => {
   const trends: AdminDashboardTrends = {
     questionCreated: makeSeries(TREND_DAYS, (i) => (i === TREND_DAYS - 3 ? 9 : 1)), // tepe: 2 gün önce, 9 soru
     questionSolved: makeSeries(TREND_DAYS, (i) => (i === TREND_DAYS - 1 ? 5 : 2)), // tepe: bugün, 5 soru
+    studentLogin: makeSeries(TREND_DAYS, (i) => (i === TREND_DAYS - 2 ? 14 : 3)), // tepe: dün, 14 giriş
   };
 
   const emptyTrends: AdminDashboardTrends = {
     questionCreated: makeSeries(TREND_DAYS, () => 0),
     questionSolved: makeSeries(TREND_DAYS, () => 0),
+    studentLogin: makeSeries(TREND_DAYS, () => 0),
   };
 
   /** Heatmap boyutu viewport'a bağlı; testleri masaüstü (52 hafta) düzenine sabitle. */
@@ -297,7 +299,7 @@ describe('AdminDashboardComponent', () => {
 
     expect(component.trendLoading()).toBeTrue();
     expect(component.loading()).toBeFalse();
-    expect(fixture.nativeElement.querySelectorAll('.trend-card--skeleton').length).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('.trend-card--skeleton').length).toBe(3); // 2 heatmap + 1 bar chart
     expect(fixture.nativeElement.querySelector('[data-key="teachers"]')).toBeTruthy();
   });
 
@@ -358,7 +360,9 @@ describe('AdminDashboardComponent', () => {
     fixture = configure();
     component = fixture.componentInstance;
     const oldestPeak = makeSeries(TREND_DAYS, (i) => (i === 0 ? 40 : i % 3));
-    adminService.getDashboardTrends.and.returnValue(of({ questionCreated: oldestPeak, questionSolved: oldestPeak }));
+    adminService.getDashboardTrends.and.returnValue(
+      of({ questionCreated: oldestPeak, questionSolved: oldestPeak, studentLogin: trends.studentLogin }),
+    );
 
     fixture.detectChanges();
     useDesktopViewport();
@@ -388,7 +392,9 @@ describe('AdminDashboardComponent', () => {
     component = fixture.componentInstance;
     const seeded: Record<number, number> = { 10: 2, 50: 3, 100: 4, 150: 8, 200: 18, [TREND_DAYS - 1]: 79 };
     const skewed = makeSeries(TREND_DAYS, (i) => seeded[i] ?? 0);
-    adminService.getDashboardTrends.and.returnValue(of({ questionCreated: skewed, questionSolved: skewed }));
+    adminService.getDashboardTrends.and.returnValue(
+      of({ questionCreated: skewed, questionSolved: skewed, studentLogin: trends.studentLogin }),
+    );
 
     fixture.detectChanges();
     useDesktopViewport();
@@ -430,7 +436,9 @@ describe('AdminDashboardComponent', () => {
     fixture = configure();
     component = fixture.componentInstance;
     const uniform = makeSeries(TREND_DAYS, (i) => (i % 2 === 0 ? 2 : 0));
-    adminService.getDashboardTrends.and.returnValue(of({ questionCreated: uniform, questionSolved: uniform }));
+    adminService.getDashboardTrends.and.returnValue(
+      of({ questionCreated: uniform, questionSolved: uniform, studentLogin: trends.studentLogin }),
+    );
 
     fixture.detectChanges();
     useDesktopViewport();
@@ -603,7 +611,7 @@ describe('AdminDashboardComponent', () => {
     expect(cards[0].summaryText).toContain('henüz yeterli veri yok');
 
     const emptyBoxes = fixture.nativeElement.querySelectorAll('.trend-card__empty');
-    expect(emptyBoxes.length).toBe(2);
+    expect(emptyBoxes.length).toBe(3); // 2 heatmap + 1 login bar chart
     expect(emptyBoxes[0].textContent).toContain('Henüz yeterli veri yok');
     expect(fixture.nativeElement.querySelectorAll('ngx-charts-heat-map').length).toBe(0);
     expect(fixture.nativeElement.querySelector('.trend-card__total')).toBeFalsy();
@@ -613,7 +621,11 @@ describe('AdminDashboardComponent', () => {
     fixture = configure();
     component = fixture.componentInstance;
     adminService.getDashboardTrends.and.returnValue(
-      of({ questionCreated: emptyTrends.questionCreated, questionSolved: trends.questionSolved }),
+      of({
+        questionCreated: emptyTrends.questionCreated,
+        questionSolved: trends.questionSolved,
+        studentLogin: trends.studentLogin,
+      }),
     );
 
     fixture.detectChanges();
@@ -679,6 +691,66 @@ describe('AdminDashboardComponent', () => {
     fixture.detectChanges();
 
     expect(el.scrollLeft).toBe(0);
+  });
+
+  // ── Phase 3 (Issue #89): öğrenci login bar chart ─────────────────────────
+
+  it('loginTrendCard_SuccessfulResponse_RendersLoginCardInTemplate', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+    useDesktopViewport();
+
+    const loginCard: HTMLElement = fixture.nativeElement.querySelector('[data-trend="login"]');
+    expect(loginCard).toBeTruthy();
+    expect(loginCard.querySelector('ngx-charts-bar-vertical')).toBeTruthy();
+    expect(loginCard.textContent).toContain('Öğrenci Login Trendi');
+  });
+
+  it('loginTrendCard_SuccessfulResponse_SlicesStudentLoginSeriesToLast30Days', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+    useDesktopViewport();
+
+    const card = component.loginTrendCard();
+    expect(card).not.toBeNull();
+    expect(card?.results.length).toBe(30);
+    // Son gün (bugün) her zaman dahil olmalı
+    expect(card?.results[card.results.length - 1].name).toBe(trends.studentLogin[TREND_DAYS - 1].date);
+  });
+
+  it('loginTrendCard_MobileViewport_UsesFewerXAxisTicksThanDesktop', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+    useDesktopViewport();
+    const desktopTickCount = component.loginTrendCard()?.xAxisTicks.length ?? 0;
+
+    component.viewportWidth.set(400);
+    fixture.detectChanges();
+
+    expect(component.isMobileViewport()).toBeTrue();
+    const mobileTickCount = component.loginTrendCard()?.xAxisTicks.length ?? 0;
+    expect(mobileTickCount).toBeLessThan(desktopTickCount);
+  });
+
+  it('loginTrendCard_StudentLoginSeriesAllZero_ShowsEmptyStateInsteadOfChart', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    adminService.getDashboardTrends.and.returnValue(of(emptyTrends));
+
+    fixture.detectChanges();
+
+    expect(component.loginTrendCard()?.isEmpty).toBeTrue();
+
+    const loginCard: HTMLElement = fixture.nativeElement.querySelector('[data-trend="login"]');
+    expect(loginCard).toBeTruthy();
+    expect(loginCard.querySelector('.trend-card__empty')).toBeTruthy();
+    expect(loginCard.querySelector('ngx-charts-bar-vertical')).toBeFalsy();
   });
 
 });

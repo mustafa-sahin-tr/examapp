@@ -1,0 +1,1 @@
+- [Karma broken specs workaround](project-karma-broken-specs.md) — `ng test` compile fails on 3 old specs; narrow tsconfig.spec include + --include to run one spec

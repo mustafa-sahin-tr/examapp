@@ -4,9 +4,13 @@
 $bp-compact: 1024px;
 $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: landscape))';
 
+// Sayfa asla viewport'tan büyük olmaz (issue #74): dış seviyede scroll çıkmaz,
+// soru alanı kalan yüksekliğe sığar. 100vh eski tarayıcılar için fallback.
 :host {
   display: block;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   font-family: var(--mainFontFamily);
   color: var(--solve-ink);
 }
@@ -35,8 +39,13 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   --solve-panel-muted: var(--ms-text-medium);
   --solve-panel-border: var(--ms-border-weak);
 
-  --solve-dock-height: 64px;
-  --solve-header-height: 76px;
+  // Dock: 48px nav butonu + 8px dikey padding ×2 + 1px üst border = 65px; 66px küçük pay bırakır.
+  --solve-dock-height: 66px;
+  // Tek satır header: `.solve-v3__header` bu değeri `height` + box-sizing: border-box ile SABİT
+  // yükseklik olarak kullanır (dikey padding yok, içerik align-items: center ile ortalanır).
+  // 60px = en yüksek içerik 44px (ikon / mobil 44px buton) + 1px alt border + ~15px nefes payı.
+  // insight-panel'in top/max-height ve body'nin height hesapları da buna bağlıdır.
+  --solve-header-height: 60px;
 }
 
 .solve-fullscreen-root {
@@ -51,53 +60,38 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 .solve-v3 {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background:
     radial-gradient(circle at top left, var(--solve-accent-soft), transparent 28%),
     var(--solve-surface);
 }
 
+// Tek satır / tek blok header. Sabit yükseklik `--solve-header-height` ile verilir;
+// ilerleme çizgisi bloğun alt kenarına absolute konumlanır (bkz. .header-progress).
 .solve-v3__header {
   position: sticky;
   top: 0;
   z-index: 10;
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto;
-  gap: var(--ms-layout-spacing-medium);
+  display: flex;
   align-items: center;
-  padding: var(--ms-layout-spacing-small) var(--ms-layout-spacing-large);
+  gap: var(--ms-layout-spacing-medium);
+  height: var(--solve-header-height);
+  box-sizing: border-box;
+  padding: 0 var(--ms-layout-spacing-large);
   background: color-mix(in srgb, var(--solve-card) 86%, transparent);
   border-bottom: 1px solid var(--solve-border);
   box-shadow: var(--solve-shadow-soft);
   backdrop-filter: blur(16px);
-}
-
-.header-block {
-  display: flex;
-  gap: var(--ms-layout-spacing-small);
-  align-items: center;
-  padding: var(--ms-layout-spacing-small) var(--ms-layout-spacing-medium);
-  border-radius: 18px;
-  background: var(--solve-card);
-  border: 1px solid var(--solve-border);
-  min-width: 0;
-}
-
-.header-block--progress {
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
-  gap: var(--ms-layout-spacing-xsmall);
-}
-
-.header-block--actions {
-  justify-content: space-between;
+  overflow: hidden;
 }
 
 .test-ident {
   display: flex;
   align-items: center;
   gap: var(--ms-layout-spacing-small);
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -112,12 +106,9 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   box-sizing: border-box;
 }
 
-.test-ident__text {
-  min-width: 0;
-}
-
 .test-ident__title {
   margin: 0;
+  min-width: 0;
   font-size: 1.15rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -126,45 +117,47 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   text-overflow: ellipsis;
 }
 
-.test-ident__subtitle {
-  margin: 4px 0 0;
-  color: var(--solve-ink-muted);
-  font-family: var(--paragraphFontFamily);
-  font-size: 0.9rem;
-}
-
-.progress-label {
+.header-status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--ms-layout-spacing-small);
-  color: var(--solve-ink-muted);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.progress-value {
-  font-variant-numeric: tabular-nums;
-  color: var(--solve-ink);
-}
-
-.progress-rail {
-  width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--solve-border);
-  overflow: hidden;
-}
-
-.progress-rail__fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--solve-accent) 0%, var(--solve-accent-strong) 100%);
-  transition: width 200ms ease;
+  flex: 0 0 auto;
 }
 
 .header-countdown {
   flex: 0 0 auto;
+}
+
+// "3/10" soru sayacı: eski "Toplam X soru" alt yazısının yerini alır.
+.header-counter {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--solve-accent-soft);
+  color: var(--solve-accent);
+  font-size: 0.9rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+// Aktif sorunun işaretle / bildir / tam ekran aksiyonları (tek soru görünümünde karttan buraya taşındı)
+.header-question-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding-right: var(--ms-layout-spacing-xsmall);
+  border-right: 1px solid var(--solve-border);
+
+  button {
+    border-radius: 12px;
+    color: var(--solve-ink-muted);
+  }
+
+  .is-active {
+    color: var(--solve-accent);
+    background: var(--solve-accent-soft);
+  }
 }
 
 .header-buttons {
@@ -172,31 +165,69 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   align-items: center;
   gap: var(--ms-layout-spacing-xsmall);
   justify-content: flex-end;
+  flex: 0 0 auto;
 }
 
 .header-finish {
   border-radius: 14px;
 }
 
+// İlerleme yüzdesi: header'ın alt border'ında soldan dolan çizgi.
+.header-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--solve-border);
+  pointer-events: none;
+}
+
+.header-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--solve-accent) 0%, var(--solve-accent-strong) 100%);
+  transition: width 200ms ease;
+}
+
 // ---------------------------------------------------------------------------
 // Gövde: soru sahnesi + insight paneli
 // ---------------------------------------------------------------------------
 
+// Header dışında kalan alanın tamamı; viewport'tan taşmaz, kendi içinde scroll üretmez.
 .solve-v3__body {
-  flex: 1;
+  flex: 1 1 auto;
+  height: calc(100vh - var(--solve-header-height));
+  height: calc(100dvh - var(--solve-header-height));
   min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 260px;
+  // Tek satır, gövde yüksekliğine kilitli: auto satır içerik kadar büyüyüp overflow:hidden'a takılmasın.
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--ms-layout-spacing-large);
-  padding: var(--ms-layout-spacing-large) var(--ms-layout-spacing-medium) var(--ms-layout-spacing-medium);
+  // Alt padding yok: dock (.main-stage'in son çocuğu) viewport'un alt kenarına tam yapışır.
+  padding: var(--ms-layout-spacing-xxsmall) var(--ms-layout-spacing-xxsmall) 0;
   transition: grid-template-columns 200ms ease;
 }
 
+// Soru sahnesi gövdenin yüksekliğine kilitlenir. Canvas sorular shrink-to-fit ile sığar;
+// olağan dışı uzun içerikte scroll sayfa seviyesine değil sadece bu sahneye düşer.
+// Dock bu sütunun akışındaki SON flex çocuğudur (margin-top:auto ile alta itilir, sticky ile
+// olası iç scroll'da da altta kalır). Böylece dock yalnızca soru sütunu genişliğindedir,
+// insight-panel'in üstüne binmez ve soru kartı için ayrıca alt pay ayırmaya gerek kalmaz.
 .main-stage {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--ms-layout-spacing-medium);
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  box-sizing: border-box;
 }
 
 .question-grid {
@@ -207,6 +238,14 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   gap: var(--ms-layout-spacing-medium);
   justify-content: center;
   align-content: flex-start;
+  // Yükseklik zinciri (issue #74 "sığdır, scroll etme"): grid main-stage'in kalan yüksekliğine
+  // sıkışır (definite), satırlar minmax(0,1fr) ile o yüksekliği paylaşır, kart max-height:100% ile
+  // satırına kilitlenir → app-question-canvas-view-v5 host'u gerçek "kullanılabilir yükseklik"
+  // alır ve içerik dikeyde de ölçeklenir. Kart grid'den taşmadığı için main-stage'in
+  // padding-bottom (dock) payı da her zaman kartın altında kalır.
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
   min-width: 0;
 }
 
@@ -233,12 +272,20 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   width: 100%;
   margin: 0 auto;
   max-width: min(100%, clamp(680px, 78vw, 1180px));
-  padding: var(--ms-layout-spacing-large) var(--ms-layout-spacing-medium);
+  // Grid alanını (header–dock arası) aşmaz; içerik v5 tarafından bu yüksekliğe sığdırılır.
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--ms-layout-spacing-xxsmall) var(--ms-layout-spacing-xxsmall);
   border-radius: 24px;
   background: var(--solve-card);
   border: 1px solid var(--solve-border);
   box-shadow: var(--solve-shadow);
   box-sizing: border-box;
+}
+
+.question-card__header {
+  flex: 0 0 auto;
 }
 
 // Canvas sorular yatayda ne kadar yer varsa kullanır (shrink-to-fit v5 içinde),
@@ -322,35 +369,48 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   font-size: 16px;
 }
 
+// Kart yüksekliğinin kalanı gövdeye, oradan canvas-zone → canvas-stage (v5 host) zincirine iner.
 .question-card__body {
   display: flex;
   flex-direction: column;
   gap: var(--ms-layout-spacing-medium);
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
 }
 
 .canvas-zone {
   display: flex;
   flex-direction: column;
   gap: var(--ms-layout-spacing-small);
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
 }
 
-// Normal görünüm: v5'in kendi shrink-to-fit mantığı; taşarsa sadece yatay scroll.
+.passage-first-toolbar {
+  flex: 0 0 auto;
+}
+
+// v5 host'u: definite yükseklik alır → v5 min(genişlik, yükseklik) oranıyla sığdırır.
+// 0.2 alt sınırında bile sığmayan istisnai içerik burada (header–dock arasında) kaydırılır,
+// dock'un arkasına asla girmez.
 .canvas-stage {
   display: block;
   width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
-  overflow-x: auto;
+  overflow: auto;
 }
 
 .text-question {
   display: flex;
   flex-direction: column;
   gap: var(--ms-layout-spacing-small);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .text-question__content {
@@ -425,7 +485,14 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     backdrop-filter: blur(12px);
   }
 
-  .canvas-stage {
+  // Tam ekranda yükseklik zinciri KAPALI: gövde/zone/host içerik kadar büyür, v5 host'u
+  // kısıtlı görmez ve küçültmez; kartın kendi overflow:auto'su kaydırır.
+  .question-card__body,
+  .canvas-zone,
+  .canvas-stage,
+  .text-question {
+    flex: 0 0 auto;
+    min-height: auto;
     overflow: visible;
   }
 }
@@ -439,31 +506,43 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 // Birleşik dock
 // ---------------------------------------------------------------------------
 
+// Tüm genişliklerde aynı: soru sütununun (.main-stage) tam genişliği, alt kenara yapışık bar
+// (issue #74). position:fixed viewport'a göre konumlanıp masaüstünde insight-panel'in üstüne
+// biniyordu; akışta + sticky olduğu için containing block artık .main-stage'dir.
+// (Not: absolute, scroll container içinde içerikle birlikte kayar; bu yüzden sticky kullanılır.)
 .solve-dock {
   position: sticky;
-  bottom: var(--ms-layout-spacing-small);
+  bottom: 0;
   z-index: 12;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ms-layout-spacing-small);
-  width: min(100%, clamp(680px, 78vw, 1180px));
-  margin: var(--ms-layout-spacing-xsmall) auto 0;
-  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-small);
-  border-radius: 18px;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: var(--solve-dock-height);
+  margin: auto 0 0;
+  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-small) calc(var(--ms-layout-spacing-xsmall) + env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
   background: color-mix(in srgb, var(--solve-card) 96%, transparent);
   border: 1px solid var(--solve-border);
-  box-shadow: var(--solve-shadow-soft);
+  border-bottom: none;
+  box-shadow: var(--ms-shadow-overlay);
   backdrop-filter: blur(10px);
   box-sizing: border-box;
 }
 
+// Dock sabit yükseklikli (--solve-dock-height) olduğundan araçlar asla ikinci satıra sarmaz;
+// dar ekranda taşan araçlar yatay kaydırılır.
 .solve-dock__tools {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
   gap: var(--ms-layout-spacing-xsmall);
   min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
 
 .solve-dock__tool {
@@ -506,7 +585,11 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   position: sticky;
   top: calc(var(--solve-header-height) + var(--ms-layout-spacing-small));
   align-self: start;
-  max-height: calc(100vh - var(--solve-header-height) - var(--ms-layout-spacing-large));
+  // Grid alanı (body satırı minmax(0,1fr)) definite olduğundan yüzde doğrudan çözülür:
+  // header/dock/dvh hesabına gerek yok; dock artık yalnızca soru sütununda, panelle çakışmaz.
+  // Altta küçük pay bırakmak için margin-bottom düşülür.
+  max-height: calc(100% - var(--ms-layout-spacing-medium));
+  margin-bottom: var(--ms-layout-spacing-medium);
   overflow: auto;
   min-width: 0;
   display: flex;
@@ -653,8 +736,7 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
   display: flex;
   flex-direction: column;
   gap: var(--ms-layout-spacing-small);
-  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-medium)
-    calc(var(--ms-layout-spacing-medium) + env(safe-area-inset-bottom));
+  padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-medium) calc(var(--ms-layout-spacing-medium) + env(safe-area-inset-bottom));
   color: var(--solve-panel-ink);
 }
 
@@ -690,7 +772,7 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 .toast-container {
   position: fixed;
   right: var(--ms-layout-spacing-large);
-  bottom: var(--ms-layout-spacing-large);
+  bottom: calc(var(--solve-dock-height) + env(safe-area-inset-bottom) + var(--ms-layout-spacing-large));
   z-index: 20;
 }
 
@@ -724,12 +806,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 
 @media (max-width: $bp-compact) {
   .solve-v3__header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-  }
-
-  .header-block--progress {
-    grid-column: 1 / -1;
+    gap: var(--ms-layout-spacing-small);
+    padding: 0 var(--ms-layout-spacing-medium);
   }
 
   .solve-v3__body {
@@ -744,10 +822,6 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 
   .question-grid[data-layout='1'] .question-card {
     min-height: auto;
-  }
-
-  .solve-dock {
-    width: 100%;
   }
 
   .solve-dock__label {
@@ -772,20 +846,14 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 // ---------------------------------------------------------------------------
 
 @media #{$mobile-query} {
+
+  // Header mobilde de tek satır: başlık ellipsis ile kısalır, aksiyonlar ikon-only kalır.
   .solve-v3__header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
     gap: var(--ms-layout-spacing-xsmall);
-    padding: var(--ms-layout-spacing-xsmall);
+    padding: 0 var(--ms-layout-spacing-small);
   }
 
-  .header-block {
-    padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-small);
-    border-radius: 14px;
-  }
-
-  .test-ident__icon,
-  .test-ident__subtitle {
+  .test-ident__icon {
     display: none;
   }
 
@@ -794,18 +862,28 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     line-height: 1.2;
   }
 
-  .header-block--progress {
-    grid-column: 1 / -1;
-    gap: 6px;
+  .header-status {
+    gap: var(--ms-layout-spacing-xsmall);
+  }
+
+  .header-counter {
+    padding: 4px 8px;
+    font-size: 0.82rem;
   }
 
   .header-finish__label {
     display: none;
   }
 
+  // Dokunma hedefi: minimum 44px (.header-question-actions mobilde render edilmez, karttadır)
+  .header-buttons button {
+    width: 44px;
+    height: 44px;
+  }
+
   .header-finish {
     min-width: 44px;
-    padding: 0 10px;
+    padding: 0;
 
     mat-icon {
       margin: 0;
@@ -816,8 +894,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     display: flex;
     flex-direction: column;
     gap: var(--ms-layout-spacing-small);
-    padding: var(--ms-layout-spacing-xsmall) 0
-      calc(var(--solve-dock-height) + env(safe-area-inset-bottom) + var(--ms-layout-spacing-medium));
+    // Dock payı artık .main-stage padding-bottom'ında (base), burada tekrar edilmez.
+    padding: var(--ms-layout-spacing-xsmall) 0 0;
   }
 
   .question-grid {
@@ -845,9 +923,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     padding: 6px;
   }
 
+  // Yatay taşma .canvas-stage'in kendi overflow:auto'sunda; zone'a ayrı scroll verilmez.
   .canvas-zone {
-    overflow-x: auto;
-    overflow-y: visible;
     max-width: 100%;
   }
 
@@ -861,21 +938,8 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
     }
   }
 
-  .solve-dock {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    margin: 0;
-    min-height: var(--solve-dock-height);
-    padding: var(--ms-layout-spacing-xsmall) var(--ms-layout-spacing-small)
-      calc(var(--ms-layout-spacing-xsmall) + env(safe-area-inset-bottom));
-    border-radius: 18px 18px 0 0;
-    border-bottom: none;
-    box-shadow: var(--ms-shadow-overlay);
-  }
-
+  // .solve-dock: base tanım (sticky, .main-stage genişliği) mobilde de geçerli; insight-panel
+  // DOM'da olmadığından .main-stage = tam genişlik → dock tam genişlik. Ek kural gerekmez.
   .solve-dock__tools {
     flex-wrap: nowrap;
   }
@@ -893,6 +957,7 @@ $mobile-query: '(max-width: 640px), ((max-height: 500px) and (orientation: lands
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .solve-v3 *,
   .solve-v3 *::before,
   .solve-v3 *::after {

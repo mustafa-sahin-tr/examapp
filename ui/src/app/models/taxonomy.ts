@@ -22,7 +22,15 @@ export interface TaxonomyTopic {
 export interface TaxonomySubject {
   id: number;
   name: string;
+  /** GradeSubject üzerinden bağlı sınıf id'leri; boşsa ders hiçbir sınıfa atanmamış. */
+  gradeIds: number[];
   topics: TaxonomyTopic[];
+}
+
+/** GET api/admin/taxonomy sorgu filtresi — gradeId ve unassigned birlikte kullanılamaz. */
+export interface TaxonomyFilter {
+  gradeId?: number;
+  unassigned?: boolean;
 }
 
 export interface TaxonomyTree {

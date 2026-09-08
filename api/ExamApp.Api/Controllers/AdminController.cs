@@ -42,9 +42,31 @@ public class AdminController : BaseController
 
     // ---- Taxonomy ----
 
+    /// <summary>
+    /// GET api/admin/taxonomy            → all subjects (unfiltered)
+    /// GET api/admin/taxonomy?gradeId=3  → only subjects linked to grade 3
+    /// GET api/admin/taxonomy?unassigned=true → only subjects with no grade link
+    /// gradeId and unassigned are mutually exclusive.
+    /// </summary>
     [HttpGet("taxonomy")]
-    public async Task<ActionResult<TaxonomyTreeDto>> GetTaxonomy(CancellationToken ct)
-        => Ok(await _taxonomy.GetTreeAsync(ct));
+    public async Task<ActionResult<TaxonomyTreeDto>> GetTaxonomy(
+        [FromQuery] int? gradeId,
+        [FromQuery] bool unassigned = false,
+        CancellationToken ct = default)
+    {
+        if (gradeId.HasValue && unassigned)
+            return BadRequest("gradeId ve unassigned birlikte kullanılamaz.");
+
+        return Ok(await _taxonomy.GetTreeAsync(gradeId, unassigned, ct));
+    }
+
+    [HttpPost("subjects/{subjectId:int}/grades/{gradeId:int}")]
+    public async Task<IActionResult> AddSubjectGrade(int subjectId, int gradeId, CancellationToken ct)
+        => Result(await _taxonomy.AddSubjectGradeAsync(subjectId, gradeId, await CurrentUserIdAsync(), ct));
+
+    [HttpDelete("subjects/{subjectId:int}/grades/{gradeId:int}")]
+    public async Task<IActionResult> RemoveSubjectGrade(int subjectId, int gradeId, CancellationToken ct)
+        => Result(await _taxonomy.RemoveSubjectGradeAsync(subjectId, gradeId, await CurrentUserIdAsync(), ct));
 
     [HttpPost("subjects")]
     public async Task<IActionResult> CreateSubject([FromBody] UpsertSubjectDto dto, CancellationToken ct)

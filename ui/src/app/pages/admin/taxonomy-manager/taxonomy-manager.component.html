@@ -13,12 +13,45 @@
     </div>
   }
 
+  <!-- Grade filter (Issue #119) -->
+  <div class="grade-filter">
+    <span class="grade-filter-label">
+      <mat-icon>school</mat-icon>
+      Sınıf
+    </span>
+    <mat-button-toggle-group
+      class="grade-filter-group"
+      name="gradeFilter"
+      aria-label="Sınıf filtresi"
+      hideSingleSelectionIndicator
+      [value]="selectedGradeFilter()"
+      [disabled]="loading()"
+      (change)="setGradeFilter($event.value)"
+    >
+      <mat-button-toggle value="all">Tüm Sınıflar</mat-button-toggle>
+      @for (g of grades(); track g.id) {
+        <mat-button-toggle [value]="g.id">{{ g.name }}</mat-button-toggle>
+      }
+      <mat-button-toggle value="unassigned" class="unassigned-toggle">
+        <mat-icon>warning_amber</mat-icon>
+        Sınıf atanmamış
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
   <div class="columns">
     <!-- Subjects -->
     <mat-card class="column" appearance="outlined">
       <header class="column-header">
-        <h3>Dersler</h3>
-        <span class="count">{{ subjects().length }}</span>
+        <h3>
+          Dersler
+          @if (selectedGradeFilter() !== 'all') {
+            <span class="crumb">
+              — {{ selectedGradeFilter() === 'unassigned' ? 'Sınıf atanmamış' : gradeName(+selectedGradeFilter()) }}
+            </span>
+          }
+        </h3>
+        <span class="count">{{ visibleSubjects().length }}</span>
       </header>
 
       <div class="add-row">
@@ -42,15 +75,15 @@
         </button>
       </div>
 
-      @if (!loading() && !error() && subjects().length === 0) {
+      @if (!loading() && !error() && visibleSubjects().length === 0) {
         <div class="empty-state">
           <mat-icon>menu_book</mat-icon>
-          <p class="empty-title">Henüz ders eklenmemiş</p>
-          <p class="empty-hint">Yukarıdaki alandan ilk dersi ekle</p>
+          <p class="empty-title">{{ subjectsEmptyText().title }}</p>
+          <p class="empty-hint">{{ subjectsEmptyText().hint }}</p>
         </div>
       } @else {
         <ul class="list">
-          @for (s of subjects(); track s.id) {
+          @for (s of visibleSubjects(); track s.id) {
             <li
               class="item"
               role="button"
@@ -62,9 +95,32 @@
               (keydown.space)="selectSubject(s.id); $event.preventDefault()"
             >
               @if (!isEditing('subject', s.id)) {
-                <span class="name">{{ s.name }}</span>
+                <span class="name-block">
+                  <span class="name">{{ s.name }}</span>
+                  <span class="grade-chips" aria-label="Bağlı sınıflar">
+                    @if (s.gradeIds.length === 0) {
+                      <span class="grade-chip grade-chip--warn">
+                        <mat-icon>warning_amber</mat-icon>
+                        Sınıf atanmamış
+                      </span>
+                    } @else {
+                      @for (gn of subjectGradeNames(s); track gn) {
+                        <span class="grade-chip">{{ gn }}</span>
+                      }
+                    }
+                  </span>
+                </span>
                 <span class="meta">{{ s.topics.length }} konu</span>
                 <span class="actions" (keydown)="$event.stopPropagation()">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Sınıfları yönet"
+                    title="Sınıfları yönet"
+                    (click)="manageGrades(s); $event.stopPropagation()"
+                  >
+                    <mat-icon>school</mat-icon>
+                  </button>
                   <button
                     mat-icon-button
                     type="button"

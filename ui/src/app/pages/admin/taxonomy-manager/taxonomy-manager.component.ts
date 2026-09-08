@@ -7,17 +7,29 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
-import { School, TaxonomySubject, TaxonomyTopic } from '../../../models/taxonomy';
+import {
+  School,
+  TaxonomyFilter,
+  TaxonomySubject,
+  TaxonomyTopic,
+} from '../../../models/taxonomy';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import {
+  ManageSubjectGradesDialogComponent,
+  ManageSubjectGradesDialogData,
+} from './manage-subject-grades-dialog/manage-subject-grades-dialog.component';
 
 type Level = 'subject' | 'topic' | 'subtopic' | 'school';
+/** Sınıf filtresi: 'all' → en az bir sınıfa bağlı dersler, 'unassigned' → sınıfsız dersler, number → o sınıfa bağlı dersler. */
+export type GradeFilter = number | 'all' | 'unassigned';
 
 @Component({
   selector: 'app-taxonomy-manager',
@@ -33,6 +45,7 @@ type Level = 'subject' | 'topic' | 'subtopic' | 'school';
     MatInputModule,
     MatSelectModule,
     MatProgressBarModule,
+    MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
   ],
@@ -55,8 +68,16 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
 
+  /** Issue #119: Sınıf filtresi. Backend sadece gradeId/unassigned filtreler; 'all' için sınıfsız dersler istemcide gizlenir. */
+  readonly selectedGradeFilter = signal<GradeFilter>('all');
+  readonly visibleSubjects = computed(() =>
+    this.selectedGradeFilter() === 'all'
+      ? this.subjects().filter((s) => s.gradeIds.length > 0)
+      : this.subjects()
+  );
+
   readonly selectedSubject = computed(
-    () => this.subjects().find((s) => s.id === this.selectedSubjectId()) ?? null
+    () => this.visibleSubjects().find((s) => s.id === this.selectedSubjectId()) ?? null
   );
   readonly topics = computed(() => this.selectedSubject()?.topics ?? []);
   readonly selectedTopic = computed(
@@ -83,16 +104,20 @@ export class TaxonomyManagerComponent implements OnInit {
     this.loadSchools();
   }
 
-  load(): void {
+  /**
+   * @param autoSelectFirst seçim geçersizse ilk dersi otomatik seç (ilk yükleme / CRUD sonrası).
+   * Filtre değişiminde `false` verilir: issue AC gereği alt seçimler sıfır kalır.
+   */
+  load(autoSelectFirst = true): void {
     this.loading.set(true);
     this.error.set(null);
-    this.admin.getTaxonomy().subscribe({
+    this.admin.getTaxonomy(this.filterParams()).subscribe({
       next: (tree) => {
         this.subjects.set(tree.subjects);
         this.grades.set(tree.grades);
         // keep selections if still valid
-        if (!this.subjects().some((s) => s.id === this.selectedSubjectId())) {
-          this.selectedSubjectId.set(this.subjects()[0]?.id ?? null);
+        if (!this.visibleSubjects().some((s) => s.id === this.selectedSubjectId())) {
+          this.selectedSubjectId.set(autoSelectFirst ? (this.visibleSubjects()[0]?.id ?? null) : null);
           this.selectedTopicId.set(null);
         }
         this.loading.set(false);
@@ -133,6 +158,70 @@ export class TaxonomyManagerComponent implements OnInit {
 
   gradeName(id: number): string {
     return this.grades().find((g) => g.id === id)?.name ?? `#${id}`;
+  }
+
+  // ---- grade filter (Issue #119) ----
+
+  setGradeFilter(filter: GradeFilter | null | undefined): void {
+    if (filter == null || filter === this.selectedGradeFilter()) return;
+    this.selectedGradeFilter.set(filter);
+    // AC: filtre değişince Ders → Konu → Alt Konu seçimleri sıfırlanır
+    this.selectedSubjectId.set(null);
+    this.selectedTopicId.set(null);
+    this.cancelEdit();
+    this.load(false);
+  }
+
+  private filterParams(): TaxonomyFilter | undefined {
+    const f = this.selectedGradeFilter();
+    if (f === 'unassigned') return { unassigned: true };
+    if (typeof f === 'number') return { gradeId: f };
+    return undefined;
+  }
+
+  /** Dersin bağlı olduğu sınıfların adları (chip listesi için). */
+  subjectGradeNames(s: TaxonomySubject): string[] {
+    return s.gradeIds.map((id) => this.gradeName(id));
+  }
+
+  /** Filtreye göre boş liste başlığı / ipucu. */
+  subjectsEmptyText(): { title: string; hint: string } {
+    const f = this.selectedGradeFilter();
+    if (f === 'unassigned') {
+      return { title: 'Sınıf atanmamış ders yok', hint: 'Tüm dersler en az bir sınıfa bağlı' };
+    }
+    if (typeof f === 'number') {
+      return {
+        title: 'Bu sınıfa bağlı ders yok',
+        hint: 'Bir dersin "Sınıfları Yönet" aksiyonundan bu sınıfı ekleyebilirsin',
+      };
+    }
+    if (this.subjects().length > 0) {
+      return {
+        title: 'Sınıfa bağlı ders yok',
+        hint: '"Sınıf atanmamış" filtresinden derslere sınıf ata',
+      };
+    }
+    return { title: 'Henüz ders eklenmemiş', hint: 'Yukarıdaki alandan ilk dersi ekle' };
+  }
+
+  async manageGrades(s: TaxonomySubject): Promise<void> {
+    const data: ManageSubjectGradesDialogData = {
+      subjectId: s.id,
+      subjectName: s.name,
+      grades: this.grades(),
+      selectedGradeIds: s.gradeIds,
+    };
+    const changed = await firstValueFrom(
+      this.dialog
+        .open<ManageSubjectGradesDialogComponent, ManageSubjectGradesDialogData, boolean>(
+          ManageSubjectGradesDialogComponent,
+          // ESC/backdrop kapatılırsa `applied` bilgisi afterClosed'a taşınmaz; sadece butonlarla kapansın.
+          { data, autoFocus: 'first-tabbable', disableClose: true }
+        )
+        .afterClosed()
+    );
+    if (changed) this.load();
   }
 
   // ---- create ----
@@ -270,8 +359,9 @@ export class TaxonomyManagerComponent implements OnInit {
       const res = await action();
       this.snack.open(res.message, 'Kapat', { duration: 3000 });
       if (res.success) this.load();
-    } catch (err: any) {
-      const msg = err?.error?.message ?? 'İşlem başarısız';
+    } catch (err: unknown) {
+      const msg =
+        (err as { error?: { message?: string } } | null)?.error?.message ?? 'İşlem başarısız';
       this.snack.open(msg, 'Kapat', { duration: 4000 });
     } finally {
       this.busy.set(false);
@@ -286,8 +376,9 @@ export class TaxonomyManagerComponent implements OnInit {
       const res = await action();
       this.snack.open(res.message, 'Kapat', { duration: 3000 });
       if (res.success) this.loadSchools();
-    } catch (err: any) {
-      const msg = err?.error?.message ?? 'İşlem başarısız';
+    } catch (err: unknown) {
+      const msg =
+        (err as { error?: { message?: string } } | null)?.error?.message ?? 'İşlem başarısız';
       this.snack.open(msg, 'Kapat', { duration: 4000 });
     } finally {
       this.busy.set(false);

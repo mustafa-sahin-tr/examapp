@@ -1,7 +1,7 @@
-import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -25,9 +25,9 @@ type Level = 'subject' | 'topic' | 'subtopic' | 'school';
   templateUrl: './taxonomy-manager.component.html',
   styleUrls: ['./taxonomy-manager.component.scss'],
   imports: [
-    CommonModule,
     FormsModule,
     MatButtonModule,
+    MatCardModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
@@ -43,6 +43,7 @@ export class TaxonomyManagerComponent implements OnInit {
   private readonly snack = inject(MatSnackBar);
 
   readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
   readonly busy = signal(false);
   readonly subjects = signal<TaxonomySubject[]>([]);
   readonly grades = signal<{ id: number; name: string }[]>([]);
@@ -84,6 +85,7 @@ export class TaxonomyManagerComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.admin.getTaxonomy().subscribe({
       next: (tree) => {
         this.subjects.set(tree.subjects);
@@ -96,6 +98,7 @@ export class TaxonomyManagerComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
+        this.error.set('Taksonomi yüklenemedi');
         this.snack.open('Taksonomi yüklenemedi', 'Kapat', { duration: 4000 });
         this.loading.set(false);
       },

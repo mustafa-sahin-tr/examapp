@@ -317,6 +317,23 @@
     &--solved {
       color: var(--ms-success-text-medium);
     }
+
+    &--login {
+      color: var(--ms-info-text-medium);
+    }
+  }
+
+  // Kart başına dönem etiketi ("Son 1 yıl" / "Son 30 gün"): kartlar farklı pencere gösterdiği için başlıkta değil burada.
+  &__period {
+    font-size: 0.7rem;
+    color: var(--ms-text-weak);
+    font-family: var(--paragraphFontFamily);
+    white-space: nowrap;
+
+    &::before {
+      content: '·';
+      margin-right: 0.4rem;
+    }
   }
 
   &__total {
@@ -349,6 +366,26 @@
 
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+// Bar chart `[view]` almaz; ngx-charts kabın ölçüsünü okur. Yükseklik heatmap'le (210px) hizalı sabitlenir,
+// genişlik karta uyar — 30 çubuk dar ekranda da sığar, yatay kaydırma gerekmez.
+.login-bar-chart {
+  width: 100%;
+  height: 210px;
+
+  // ngx-charts varsayılanı `.gridline-path { stroke: #ddd; stroke-width: 1 }` — koyu kart zemininde
+  // (--ms-surface-weak) fazla parlak/kalın durur. Sadece bu kartın ızgarası inceltilir; heatmap'ler etkilenmez.
+  ::ng-deep .gridline-path {
+    stroke: var(--ms-border);
+    stroke-width: 0.5;
+    stroke-opacity: 0.6;
+  }
+
+  &__tooltip {
+    font-family: var(--paragraphFontFamily);
+    font-size: 0.8rem;
   }
 }
 

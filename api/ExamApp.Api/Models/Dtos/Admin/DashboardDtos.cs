@@ -40,4 +40,10 @@ public class DashboardTrendsDto
     /// WorksheetInstanceQuestion (cevaplanmış satırın UpdateTime'ı) toplamı, tek seri.
     /// </summary>
     public List<DailyPointDto> QuestionSolved { get; set; } = new();
+
+    /// <summary>
+    /// Gün başına başarılı öğrenci login sayısı (Issue #89). LoginEvent üzerinden Success=true ve
+    /// Role=Student (case-insensitive) filtresiyle sayılır; diğer roller bu seriye dahil edilmez.
+    /// </summary>
+    public List<DailyPointDto> StudentLogin { get; set; } = new();
 }

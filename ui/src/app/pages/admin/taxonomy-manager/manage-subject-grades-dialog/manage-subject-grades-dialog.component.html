@@ -1,0 +1,72 @@
+<div class="grades-dialog">
+  @if (saving()) {
+    <mat-progress-bar mode="indeterminate" class="top-bar"></mat-progress-bar>
+  }
+
+  <header class="dialog-header">
+    <mat-icon class="dialog-icon">school</mat-icon>
+    <div class="header-text">
+      <h2 mat-dialog-title>Sınıfları Yönet</h2>
+      <p class="subtitle">{{ data.subjectName }}</p>
+    </div>
+  </header>
+
+  <mat-dialog-content class="dialog-content">
+    @if (data.grades.length === 0) {
+      <div class="empty-state">
+        <mat-icon>info_outline</mat-icon>
+        <p class="empty-title">Tanımlı sınıf yok</p>
+      </div>
+    } @else {
+      <ul class="grade-list" role="group" aria-label="Sınıflar">
+        @for (g of data.grades; track g.id) {
+          <li class="grade-item">
+            <mat-checkbox
+              [checked]="isChecked(g.id)"
+              [disabled]="saving()"
+              (change)="toggle(g.id, $event.checked)"
+            >
+              {{ g.name }}
+            </mat-checkbox>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (error()) {
+      <div class="state-box state-box--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ error() }}</p>
+      </div>
+    }
+
+    @if (hasChanges() && !error()) {
+      <p class="diff-hint">
+        @if (toAdd().length) {
+          <span>{{ toAdd().length }} eklenecek</span>
+        }
+        @if (toAdd().length && toRemove().length) {
+          <span> · </span>
+        }
+        @if (toRemove().length) {
+          <span>{{ toRemove().length }} kaldırılacak</span>
+        }
+      </p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-stroked-button type="button" (click)="cancel()" [disabled]="saving()">
+      İptal
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      (click)="save()"
+      [disabled]="saving() || !hasChanges()"
+    >
+      Kaydet
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -135,7 +135,7 @@ public class ClassifierCacheService : IClassifierCacheService
     /// <summary>Compact JSON tree the classifier prompt refers to. Returns (json, subtopicCount).</summary>
     private async Task<(string Payload, int SubTopicCount)> BuildTaxonomyPayloadAsync(CancellationToken ct)
     {
-        var tree = await _taxonomy.GetTreeAsync(ct);
+        var tree = await _taxonomy.GetTreeAsync(ct: ct);
 
         var model = new
         {

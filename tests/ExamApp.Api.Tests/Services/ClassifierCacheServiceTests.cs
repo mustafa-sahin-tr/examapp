@@ -42,7 +42,7 @@ public class ClassifierCacheServiceTests : IDisposable
                 },
             },
         };
-        _taxonomy.GetTreeAsync(Arg.Any<CancellationToken>()).Returns(tree);
+        _taxonomy.GetTreeAsync(Arg.Any<int?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(tree);
     }
 
     private ClassifierCacheService NewService(

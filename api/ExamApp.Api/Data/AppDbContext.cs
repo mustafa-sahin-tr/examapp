@@ -109,6 +109,10 @@ public class AppDbContext : DbContext
 
     public DbSet<School> Schools { get; set; }
 
+    // "Soru Çöz" pratik oturumu (issue #62)
+    public DbSet<PracticeSession> PracticeSessions { get; set; }
+    public DbSet<PracticeSessionQuestion> PracticeSessionQuestions { get; set; }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -347,6 +351,45 @@ public class AppDbContext : DbContext
             .HasIndex(g => new { g.WorksheetId, g.TeacherUserId })
             .IsUnique()
             .HasFilter("\"RevokedAt\" IS NULL");
+
+        // Pratik oturumu (issue #62)
+        modelBuilder.Entity<PracticeSession>()
+            .HasOne(ps => ps.Student)
+            .WithMany()
+            .HasForeignKey(ps => ps.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PracticeSession>()
+            .HasOne(ps => ps.Grade)
+            .WithMany()
+            .HasForeignKey(ps => ps.GradeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PracticeSession>()
+            .HasIndex(ps => new { ps.StudentId, ps.Status });
+
+        modelBuilder.Entity<PracticeSessionQuestion>()
+            .HasOne(pq => pq.PracticeSession)
+            .WithMany(ps => ps.Questions)
+            .HasForeignKey(pq => pq.PracticeSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PracticeSessionQuestion>()
+            .HasOne(pq => pq.Question)
+            .WithMany()
+            .HasForeignKey(pq => pq.QuestionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PracticeSessionQuestion>()
+            .HasOne(pq => pq.SelectedAnswer)
+            .WithMany()
+            .HasForeignKey(pq => pq.SelectedAnswerId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Aynı oturumda aynı soru bir kez gösterilir (no-repeat garantisi DB seviyesinde).
+        modelBuilder.Entity<PracticeSessionQuestion>()
+            .HasIndex(pq => new { pq.PracticeSessionId, pq.QuestionId })
+            .IsUnique();
 
         // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
         modelBuilder.Entity<ProgramStep>()

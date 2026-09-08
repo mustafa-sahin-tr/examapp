@@ -1,0 +1,19 @@
+// Şık kutusunun temel görünümü global styles.scss'te (.answer-lite-box / .selected-answer).
+// Burada yalnızca seçim, yanlış-cevap ve klavye odağı durumları token'larla eklenir.
+.answer-lite-box {
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+  }
+
+  &.is-selected {
+    border-color: var(--primaryColor);
+    box-shadow: inset 0 0 0 1px var(--primaryColor);
+  }
+
+  &.is-wrong {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text);
+  }
+}

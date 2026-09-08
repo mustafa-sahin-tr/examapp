@@ -80,6 +80,38 @@ services:
     networks:
       - mynetwork
 
+  # Second, independent instance of the same OutboxPublisher code, pointed at
+  # auth-api's identity DB instead of the worksheet DB (see issue #84).
+  # OutboxProcessor.cs/Program.cs are unchanged — only the connection strings
+  # below differ from exam-outbox-publisher's.
+  identity-outbox-publisher:
+    container_name: identity-outbox-publisher
+    build:
+      context: ./dockerfiles/outboxpub
+      dockerfile: Dockerfile.outboxpub
+    ports:
+      - '8008:8008'
+      - '5082:5082'
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8008
+      # Same host (exam_pg_container) as exam-outbox-publisher, but the
+      # "identity" database — matches auth-api's ConnectionStrings:DefaultConnection.
+      - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - ./Services/OutboxPublisher:/app
+      - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - mynetwork
+
   angular-app:
     container_name: angular-app
     build:

@@ -10,9 +10,13 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Requests;
 using ExamApp.Api.Models.Responses;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Controllers
@@ -24,15 +28,18 @@ namespace ExamApp.Api.Controllers
         protected readonly AppDbContext _context;
         private readonly KeycloakSettings _keycloakSettings;
         private readonly IKeycloakService _keycloakService;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory,
-             IKeycloakService keycloakService)
+             IKeycloakService keycloakService,
+             ILogger<AuthController> logger)
             : base()
         {
             _context = context;
             _keycloakSettings = options.Value;
             _keycloakService = keycloakService;
+            _logger = logger;
         }
 
         [Authorize]
@@ -151,9 +158,26 @@ namespace ExamApp.Api.Controllers
 
 
         [HttpPost("login")]
+        [EnableRateLimiting(AuthRateLimiting.AuthAttemptsPolicy)]
         public async Task<IActionResult> Login(LoginDto request)
         {
-            var tokenDto = await _keycloakService.LoginAsync(request.Email, request.Password);
+            TokenResponseDto tokenDto;
+            try
+            {
+                tokenDto = await _keycloakService.LoginAsync(request.Email, request.Password);
+            }
+            catch (KeycloakException)
+            {
+                // Login denemesi Keycloak seviyesinde reddedildi (kötü kimlik bilgisi vb.) — henüz
+                // bir sub'a erişimimiz yok, bu yüzden e-posta korelasyon anahtarı olarak kullanılır.
+                // Şifre/token event'e YAZILMAZ.
+                await TryWriteLoginAttemptedEventAsync(
+                    keycloakUserId: request.Email,
+                    role: "Unknown",
+                    success: false);
+                throw; // Mevcut hata davranışı korunur (global handler / middleware).
+            }
+
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
@@ -176,6 +200,12 @@ namespace ExamApp.Api.Controllers
                         .ToList();
                 }
             }
+
+            await TryWriteLoginAttemptedEventAsync(
+                keycloakUserId: sub,
+                role: roles.FirstOrDefault() ?? "Unknown",
+                success: true);
+
             // return Content(content, "application/json");
             var loginResponseDto = new LoginResponseDto
             {
@@ -218,9 +248,25 @@ namespace ExamApp.Api.Controllers
 
 
         [HttpPost("exchange")]
+        [EnableRateLimiting(AuthRateLimiting.AuthAttemptsPolicy)]
         public async Task<IActionResult> EchangeCode(CodeDto dto)
         {
-            var tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code);
+            TokenResponseDto tokenDto;
+            try
+            {
+                tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code);
+            }
+            catch (KeycloakException)
+            {
+                // Authorization code exchange'i başarısız oldu — henüz bir sub'a erişimimiz yok
+                // (code tek kullanımlık/kısa ömürlü, kimlik belirleyici olarak taşınmaz).
+                await TryWriteLoginAttemptedEventAsync(
+                    keycloakUserId: "unknown",
+                    role: "Unknown",
+                    success: false);
+                throw; // Mevcut hata davranışı korunur.
+            }
+
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDto.AccessToken); // token string’i buraya
             var sub = jwt.Claims.First(c => c.Type == "sub").Value;
@@ -248,6 +294,11 @@ namespace ExamApp.Api.Controllers
             // registration no longer hits /api/auth/register). Also keeps the
             // stored role in sync once the user picks one via profile completion.
             await EnsureLocalUserAsync(jwt, roles);
+
+            await TryWriteLoginAttemptedEventAsync(
+                keycloakUserId: sub,
+                role: roles.FirstOrDefault() ?? "Unknown",
+                success: true);
 
             Response.Cookies.Append("refresh_token", tokenDto.RefreshToken, new CookieOptions
             {
@@ -421,6 +472,53 @@ namespace ExamApp.Api.Controllers
                 Console.WriteLine($"❌ Error in GetRoles: {ex.Message}");
                 Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
                 return StatusCode(500, $"Failed to fetch roles: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Login denemesi (başarılı/başarısız) sonucunu outbox'a yazar (issue #84). Response'u
+        /// bloklamaz/geciktirmez: aynı DbContext/transaction içinde ekleyip <c>SaveChangesAsync</c>
+        /// çağırmak yeterli — asıl RabbitMQ publish'ini ayrı bir process olan
+        /// <c>identity-outbox-publisher</c> yapar. Şifre/token gibi hassas veri taşınmaz; sadece
+        /// sub/role/zaman/sonuç.
+        /// </summary>
+        private async Task WriteLoginAttemptedEventAsync(string keycloakUserId, string role, bool success)
+        {
+            var outboxId = Guid.NewGuid();
+            var @event = new LoginAttemptedEvent
+            {
+                EventId = outboxId,
+                KeycloakUserId = keycloakUserId,
+                Role = role,
+                OccurredAtUtc = DateTime.UtcNow,
+                Success = success
+            };
+
+            _context.OutboxMessages.Add(new OutboxMessage
+            {
+                Id = outboxId,
+                Type = OutboxEventRegistry.NameFor<LoginAttemptedEvent>(),
+                Content = JsonSerializer.Serialize(@event)
+            });
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Wraps <see cref="WriteLoginAttemptedEventAsync"/> so a transient outbox-write
+        /// failure never breaks the login response: a caller whose Keycloak authentication
+        /// already succeeded (or failed) must still get that result, not an unrelated 500
+        /// from the audit side-effect.
+        /// </summary>
+        private async Task TryWriteLoginAttemptedEventAsync(string keycloakUserId, string role, bool success)
+        {
+            try
+            {
+                await WriteLoginAttemptedEventAsync(keycloakUserId, role, success);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Login outbox event yazılamadı (sub={Sub}, success={Success}); login akışı bloklanmadı.", keycloakUserId, success);
             }
         }
 

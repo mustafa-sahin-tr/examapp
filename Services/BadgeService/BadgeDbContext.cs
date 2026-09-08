@@ -15,6 +15,7 @@ public class BadgeDbContext : DbContext
     public DbSet<StudentDailyActivity> StudentDailyActivities => Set<StudentDailyActivity>();
     public DbSet<StudentBadgeProgress> StudentBadgeProgresses => Set<StudentBadgeProgress>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<ProcessedLoginAttempt> ProcessedLoginAttempts => Set<ProcessedLoginAttempt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -65,5 +66,11 @@ public class BadgeDbContext : DbContext
             .HasIndex(x => new { x.Type, x.SourceAccessRequestId })
             .IsUnique()
             .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
+
+        modelBuilder.Entity<ProcessedLoginAttempt>().HasKey(x => x.Id);
+        // Idempotency: aynı login denemesi (event'in kendi EventId'si) en fazla bir kez exam API'ye yazılır.
+        modelBuilder.Entity<ProcessedLoginAttempt>()
+            .HasIndex(x => x.EventId)
+            .IsUnique();
     }
 }

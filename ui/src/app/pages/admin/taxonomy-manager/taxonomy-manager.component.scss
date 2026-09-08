@@ -43,7 +43,7 @@
       margin: 0;
       font-size: 15px;
       font-weight: 600;
-      color: var(--main-foreground-color, #1a1a2e);
+      color: var(--heading-on-dark, #F5F4FF);
     }
 
     .count {
@@ -123,8 +123,7 @@
 
     .meta {
       font-size: 11px;
-      color: var(--main-foreground-color, #6b7280);
-      opacity: 0.7;
+      color: var(--ms-text-medium, #A5AACF);
       white-space: nowrap;
     }
 

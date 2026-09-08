@@ -22,7 +22,7 @@
       margin: 0;
       font-size: 22px;
       font-weight: 700;
-      color: var(--main-foreground-color);
+      color: var(--heading-on-dark, #F5F4FF);
       font-family: var(--mainFontFamily);
     }
 
@@ -265,7 +265,7 @@
     margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    color: var(--main-foreground-color);
+    color: var(--heading-on-dark, #F5F4FF);
     font-family: var(--mainFontFamily);
   }
 }

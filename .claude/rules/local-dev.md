@@ -22,7 +22,8 @@ dev defaults; never reuse them outside local dev.
 | ocelot-gateway | 5678 | tüm client trafiği buraya gelir |
 | auth-api | 6079 (HTTP), 9005 (HTTPS) | Keycloak yönetim |
 | exam-badge-api | 5080 (HTTP), 8006 (HTTPS) | BadgeService / event handler |
-| exam-outbox-publisher | 5081 (HTTP), 8007 (HTTPS) | outbox → RabbitMQ |
+| exam-outbox-publisher | 5081 (HTTP), 8007 (HTTPS) | outbox → RabbitMQ (worksheet DB) |
+| identity-outbox-publisher | 5082 (HTTP), 8008 (HTTPS) | outbox → RabbitMQ (identity/auth-api DB) |
 | angular-app | 4200 | ana UI |
 | auth-ui | 4201 | Keycloak login akışı |
 | keycloak | 8081 | admin console: http://localhost:8081 |

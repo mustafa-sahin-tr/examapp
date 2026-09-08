@@ -8,6 +8,7 @@ import {
   School,
   TaxonomyTree,
 } from '../models/taxonomy';
+import { AdminDashboardSummary } from '../models/admin-dashboard.model';
 
 interface UpsertSubject {
   name: string;
@@ -78,6 +79,11 @@ export class AdminService {
   }
   deleteSchool(id: number) {
     return this.http.delete<ApiResult>(`${this.baseUrl}/schools/${id}`);
+  }
+
+  // ---- dashboard (Issue #86) ----
+  getDashboardSummary(): Observable<AdminDashboardSummary> {
+    return this.http.get<AdminDashboardSummary>(`${this.baseUrl}/dashboard/summary`);
   }
 
   // ---- classifier cache ----

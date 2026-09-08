@@ -339,6 +339,29 @@ $bp-mobile: 640px;
       color: var(--ms-info-text-medium);
     }
   }
+
+  // İncelemede henüz cevaplanmamış soru
+  &--pending {
+    background: var(--ms-surface-medium);
+    border-color: var(--ms-border);
+    color: var(--ms-text-medium);
+
+    mat-icon {
+      color: var(--ms-text-weak);
+    }
+  }
+}
+
+.feedback__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.feedback__meta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.85;
+  white-space: nowrap;
 }
 
 // ── Boş durum / özet ────────────────────────────────────────────────────────
@@ -414,8 +437,256 @@ $bp-mobile: 640px;
   }
 }
 
+// ── Geçmiş oturumlar (kurulum ekranı) ───────────────────────────────────────
+.practice__card--history {
+  max-width: 720px;
+}
+
+.history__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ms-layout-spacing-small);
+}
+
+.history__count {
+  font-size: 0.82rem;
+  color: var(--ms-text-weak);
+  font-variant-numeric: tabular-nums;
+}
+
+.history__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-xsmall);
+}
+
+.history__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--ms-layout-spacing-small);
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface-medium);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--primaryColor);
+    background: var(--practice-accent-soft);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+  }
+
+  &--active {
+    border-color: var(--ms-info-border);
+  }
+}
+
+.history__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history__date {
+  font-weight: 700;
+  color: var(--ms-text-strong);
+  white-space: nowrap;
+}
+
+.history__scope {
+  font-size: 0.85rem;
+  color: var(--ms-text-weak);
+  font-family: var(--paragraphFontFamily);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  .stat {
+    padding: 4px 9px;
+    font-size: 0.72rem;
+
+    &__value {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.history__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.history__accuracy {
+  font-weight: 800;
+  color: var(--ms-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.history__duration {
+  font-size: 0.78rem;
+  color: var(--ms-text-weak);
+  white-space: nowrap;
+}
+
+.history__badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: var(--ms-success-surface);
+  color: var(--ms-success-text);
+  border: 1px solid var(--ms-success-border);
+  white-space: nowrap;
+
+  &--active {
+    background: var(--ms-info-surface);
+    color: var(--ms-info-text);
+    border-color: var(--ms-info-border);
+  }
+}
+
+.history__chevron {
+  color: var(--ms-text-weak);
+}
+
+// ── İnceleme (geçmiş oturum detayı) ─────────────────────────────────────────
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ms-layout-spacing-medium);
+  width: min(100%, clamp(680px, 78vw, 1180px));
+  margin: 0 auto;
+}
+
+.review__toolbar {
+  display: flex;
+
+  button {
+    border-radius: 14px;
+  }
+}
+
+.review__summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ms-layout-spacing-small);
+
+  .practice__card-hint {
+    margin-top: 4px;
+  }
+}
+
+// Soru şeridi: numaralı hap düğmeler, durum rengi soru kartındaki feedback token'larıyla aynı
+.review__nav {
+  width: 100%;
+}
+
+.review__strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.review__pill {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+
+  &:hover {
+    border-color: var(--primaryColor);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+  }
+
+  &--correct {
+    background: var(--ms-success-surface);
+    border-color: var(--ms-success-border);
+    color: var(--ms-success-text);
+  }
+
+  &--wrong {
+    background: var(--ms-danger-surface);
+    border-color: var(--ms-danger-border);
+    color: var(--ms-danger-text);
+  }
+
+  &--skipped {
+    background: var(--ms-info-surface);
+    border-color: var(--ms-info-border);
+    color: var(--ms-info-text);
+  }
+
+  // Henüz cevaplanmamış (Pending): nötr tabana kıyasla kesikli kenarlıkla ayırt edilir,
+  // diğer üç durum gibi bilinçli bir renk taşımaz — sunucu bu soru için sonuç bilgisi vermiyor.
+  &--pending {
+    background: var(--ms-surface-weak);
+    border-style: dashed;
+    color: var(--ms-text-weak);
+  }
+
+  &--current {
+    box-shadow: 0 0 0 2px var(--primaryColor);
+  }
+}
+
+.review__pager {
+  justify-content: space-between;
+}
+
 // ── Mobil ───────────────────────────────────────────────────────────────────
 @media (max-width: $bp-mobile) {
+  .history__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .history__stats {
+    grid-column: 1 / -1;
+  }
+
+  .review__pager button {
+    flex: 1;
+  }
+
   .practice {
     padding: var(--ms-layout-spacing-medium) var(--ms-layout-spacing-small);
     gap: var(--ms-layout-spacing-small);

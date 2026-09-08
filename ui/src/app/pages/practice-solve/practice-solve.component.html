@@ -1,203 +1,428 @@
 <section class="practice">
-  <app-section-header
-    title="Soru Çöz"
-    iconName="bolt"
+  <app-section-header title="Soru Çöz" iconName="bolt"
     subtitle="Kapsamını seç, rastgele sorularla pratik yap; her cevaptan sonra sonucu anında gör."
-    [showBackButton]="true"
-    (onBackClick)="onHeaderBack()"
-  />
+    [showBackButton]="true" (onBackClick)="onHeaderBack()" />
 
   <!-- Oturum çağrısı hatası: her fazda aynı yerde -->
   @if (error(); as message) {
-    <div class="state-box state-box--error" role="alert">
-      <mat-icon>error_outline</mat-icon>
-      <p class="state-text">{{ message }}</p>
-      @if (phase() === 'setup') {
-        <button mat-stroked-button type="button" (click)="error.set(null)">Kapat</button>
-      } @else {
-        <button mat-stroked-button type="button" (click)="retry()">Tekrar dene</button>
-      }
-    </div>
+  <div class="state-box state-box--error" role="alert">
+    <mat-icon>error_outline</mat-icon>
+    <p class="state-text">{{ message }}</p>
+    @if (phase() === 'setup') {
+    <button mat-stroked-button type="button" (click)="error.set(null)">Kapat</button>
+    } @else {
+    <button mat-stroked-button type="button" (click)="retry()">Tekrar dene</button>
+    }
+  </div>
   }
 
   @switch (phase()) {
-    <!-- ── Kurulum ─────────────────────────────────────────────────────────── -->
-    @case ('setup') {
-      <div class="practice__card practice__card--setup" [attr.aria-busy]="setupLoading() ? 'true' : null">
-        @if (setupLoading()) {
-          <div class="practice__loading">
-            <mat-progress-spinner mode="indeterminate" diameter="40" />
-            <p>Dersler hazırlanıyor…</p>
+  <!-- ── Kurulum ─────────────────────────────────────────────────────────── -->
+  @case ('setup') {
+  <div class="practice__card practice__card--setup" [attr.aria-busy]="setupLoading() ? 'true' : null">
+    @if (setupLoading()) {
+    <div class="practice__loading">
+      <mat-progress-spinner mode="indeterminate" diameter="40" />
+      <p>Dersler hazırlanıyor…</p>
+    </div>
+    } @else if (setupError()) {
+    <div class="state-box state-box--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p class="state-text">{{ setupError() }}</p>
+      <button mat-stroked-button type="button" (click)="loadSetupData()">Tekrar dene</button>
+    </div>
+    } @else if (!gradeId()) {
+    <div class="state-box state-box--error" role="alert">
+      <mat-icon>school</mat-icon>
+      <p class="state-text">Pratik yapabilmek için sınıf bilginin tanımlı olması gerekir.</p>
+      <a mat-stroked-button routerLink="/student-profile">Profilime git</a>
+    </div>
+    } @else {
+    <h2 class="practice__card-title">Kapsam</h2>
+    <p class="practice__card-hint">
+      İstersen ders ve konu seç; hiçbir şey seçmezsen sınıfındaki tüm derslerden soru gelir.
+    </p>
+
+    <mat-form-field appearance="outline" class="practice__field">
+      <mat-label>Dersler</mat-label>
+      <mat-select multiple [value]="selectedSubjectIds()" (selectionChange)="onSubjectsChange($event)">
+        @for (subject of subjects(); track subject.id) {
+        <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (selectedSubjects().length) {
+    <mat-chip-set aria-label="Seçili dersler" class="practice__chips">
+      @for (subject of selectedSubjects(); track subject.id) {
+      <mat-chip (removed)="removeSubject(subject.id)">
+        {{ subject.name }}
+        <button matChipRemove type="button" [attr.aria-label]="subject.name + ' dersini kaldır'">
+          <mat-icon>cancel</mat-icon>
+        </button>
+      </mat-chip>
+      }
+    </mat-chip-set>
+
+    <mat-form-field appearance="outline" class="practice__field">
+      <mat-label>Konular (isteğe bağlı)</mat-label>
+      <mat-select multiple [value]="selectedTopicIds()" [disabled]="topicsLoading() || !topicGroups().length"
+        (selectionChange)="onTopicsChange($event)">
+        @for (group of topicGroups(); track group.subject.id) {
+        <mat-optgroup [label]="group.subject.name">
+          @for (topic of group.topics; track topic.id) {
+          <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
+          }
+        </mat-optgroup>
+        }
+      </mat-select>
+      @if (topicsLoading()) {
+      <mat-hint>Konular yükleniyor…</mat-hint>
+      } @else if (!topicGroups().length) {
+      <mat-hint>Seçili dersler için tanımlı konu yok.</mat-hint>
+      }
+    </mat-form-field>
+
+    @if (selectedTopics().length) {
+    <mat-chip-set aria-label="Seçili konular" class="practice__chips">
+      @for (topic of selectedTopics(); track topic.id) {
+      <mat-chip (removed)="removeTopic(topic.id)">
+        {{ topic.name }}
+        <button matChipRemove type="button" [attr.aria-label]="topic.name + ' konusunu kaldır'">
+          <mat-icon>cancel</mat-icon>
+        </button>
+      </mat-chip>
+      }
+    </mat-chip-set>
+    }
+    }
+
+    @if (!hasScope()) {
+    <div class="state-box state-box--info">
+      <mat-icon>info</mat-icon>
+      <p class="state-text">
+        Varsayılan kapsam: <strong>kendi sınıfın + tüm dersler</strong>. Daraltmak için yukarıdan ders ve konu seç.
+      </p>
+    </div>
+    } @else if (!subjects().length) {
+    <div class="state-box state-box--empty">
+      <mat-icon>inbox</mat-icon>
+      <p class="state-text">Sınıfın için tanımlı ders bulunamadı.</p>
+    </div>
+    }
+
+    <div class="practice__actions">
+      <button mat-raised-button color="primary" type="button" (click)="startSession()" [disabled]="busy()">
+        <mat-icon>play_arrow</mat-icon>
+        Başla
+      </button>
+    </div>
+    }
+  </div>
+
+  <!-- Geçmiş oturumlar: aynı ekranda, kurulum kartının altında -->
+  <section class="practice__card practice__card--history" aria-labelledby="practice-history-title">
+    <div class="history__head">
+      <h2 id="practice-history-title" class="practice__card-title">Geçmiş Oturumlar</h2>
+      @if (historyTotal() > 0) {
+      <span class="history__count">{{ historyTotal() }} oturum</span>
+      }
+    </div>
+
+    @if (historyLoading()) {
+    <div class="practice__loading" aria-busy="true">
+      <mat-progress-spinner mode="indeterminate" diameter="32" />
+      <p>Geçmiş oturumlar yükleniyor…</p>
+    </div>
+    } @else if (historyError()) {
+    <div class="state-box state-box--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p class="state-text">{{ historyError() }}</p>
+      <button mat-stroked-button type="button" (click)="loadHistory()">Tekrar dene</button>
+    </div>
+    } @else if (!historyItems().length) {
+    <div class="state-box state-box--empty">
+      <mat-icon>history</mat-icon>
+      <p class="state-text">Henüz pratik oturumun yok. Yukarıdan kapsamını seç ve ilk sorunu çözmeye başla.</p>
+      @if (gradeId() && !setupLoading()) {
+      <button mat-stroked-button color="primary" type="button" (click)="startSession()" [disabled]="busy()">
+        <mat-icon>play_arrow</mat-icon>
+        Başla
+      </button>
+      }
+    </div>
+    } @else {
+    <ul class="history__list">
+      @for (item of historyItems(); track item.id) {
+      <li>
+        <button type="button" class="history__row" [class.history__row--active]="item.status === 'Active'"
+          (click)="openHistoryItem(item)" [attr.aria-label]="
+                    (item.status === 'Active' ? 'Devam eden oturuma dön: ' : 'Oturumu incele: ') +
+                    (item.startTime | date: 'd MMM y HH:mm') + ', ' + scopeLabel(item)
+                  ">
+          <div class="history__main">
+            <span class="history__date">{{ item.startTime | date: 'd MMM y, HH:mm' }}</span>
+            <span class="history__scope">{{ scopeLabel(item) }}</span>
           </div>
-        } @else if (setupError()) {
-          <div class="state-box state-box--error" role="alert">
-            <mat-icon>error_outline</mat-icon>
-            <p class="state-text">{{ setupError() }}</p>
-            <button mat-stroked-button type="button" (click)="loadSetupData()">Tekrar dene</button>
+
+          <div class="history__stats">
+            <span class="stat">
+              <span class="stat__label">Soru</span>
+              <span class="stat__value">{{ item.answeredCount }}</span>
+            </span>
+            <span class="stat stat--correct">
+              <span class="stat__label">Doğru</span>
+              <span class="stat__value">{{ item.correctCount }}</span>
+            </span>
+            <span class="stat stat--wrong">
+              <span class="stat__label">Yanlış</span>
+              <span class="stat__value">{{ wrongCountOf(item) }}</span>
+            </span>
+            <span class="stat">
+              <span class="stat__label">Pas</span>
+              <span class="stat__value">{{ item.skippedCount }}</span>
+            </span>
           </div>
-        } @else if (!gradeId()) {
-          <div class="state-box state-box--error" role="alert">
-            <mat-icon>school</mat-icon>
-            <p class="state-text">Pratik yapabilmek için sınıf bilginin tanımlı olması gerekir.</p>
-            <a mat-stroked-button routerLink="/student-profile">Profilime git</a>
-          </div>
-        } @else {
-          <h2 class="practice__card-title">Kapsam</h2>
-          <p class="practice__card-hint">
-            İstersen ders ve konu seç; hiçbir şey seçmezsen sınıfındaki tüm derslerden soru gelir.
-          </p>
 
-          <mat-form-field appearance="outline" class="practice__field">
-            <mat-label>Dersler</mat-label>
-            <mat-select multiple [value]="selectedSubjectIds()" (selectionChange)="onSubjectsChange($event)">
-              @for (subject of subjects(); track subject.id) {
-                <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          @if (selectedSubjects().length) {
-            <mat-chip-set aria-label="Seçili dersler" class="practice__chips">
-              @for (subject of selectedSubjects(); track subject.id) {
-                <mat-chip (removed)="removeSubject(subject.id)">
-                  {{ subject.name }}
-                  <button matChipRemove type="button" [attr.aria-label]="subject.name + ' dersini kaldır'">
-                    <mat-icon>cancel</mat-icon>
-                  </button>
-                </mat-chip>
-              }
-            </mat-chip-set>
-
-            <mat-form-field appearance="outline" class="practice__field">
-              <mat-label>Konular (isteğe bağlı)</mat-label>
-              <mat-select
-                multiple
-                [value]="selectedTopicIds()"
-                [disabled]="topicsLoading() || !topicGroups().length"
-                (selectionChange)="onTopicsChange($event)"
-              >
-                @for (group of topicGroups(); track group.subject.id) {
-                  <mat-optgroup [label]="group.subject.name">
-                    @for (topic of group.topics; track topic.id) {
-                      <mat-option [value]="topic.id">{{ topic.name }}</mat-option>
-                    }
-                  </mat-optgroup>
-                }
-              </mat-select>
-              @if (topicsLoading()) {
-                <mat-hint>Konular yükleniyor…</mat-hint>
-              } @else if (!topicGroups().length) {
-                <mat-hint>Seçili dersler için tanımlı konu yok.</mat-hint>
-              }
-            </mat-form-field>
-
-            @if (selectedTopics().length) {
-              <mat-chip-set aria-label="Seçili konular" class="practice__chips">
-                @for (topic of selectedTopics(); track topic.id) {
-                  <mat-chip (removed)="removeTopic(topic.id)">
-                    {{ topic.name }}
-                    <button matChipRemove type="button" [attr.aria-label]="topic.name + ' konusunu kaldır'">
-                      <mat-icon>cancel</mat-icon>
-                    </button>
-                  </mat-chip>
-                }
-              </mat-chip-set>
+          <div class="history__meta">
+            <span class="history__accuracy">%{{ accuracyOf(item) }}</span>
+            @if (item.status === 'Active') {
+            <span class="history__badge history__badge--active">Devam ediyor</span>
+            } @else {
+            <span class="history__badge">Tamamlandı</span>
+            @if (durationLabel(item); as duration) {
+            <span class="history__duration">{{ duration }}</span>
             }
-          }
-
-          @if (!hasScope()) {
-            <div class="state-box state-box--info">
-              <mat-icon>info</mat-icon>
-              <p class="state-text">
-                Varsayılan kapsam: <strong>kendi sınıfın + tüm dersler</strong>. Daraltmak için yukarıdan ders ve konu seç.
-              </p>
-            </div>
-          } @else if (!subjects().length) {
-            <div class="state-box state-box--empty">
-              <mat-icon>inbox</mat-icon>
-              <p class="state-text">Sınıfın için tanımlı ders bulunamadı.</p>
-            </div>
-          }
-
-          <div class="practice__actions">
-            <button mat-raised-button color="primary" type="button" (click)="startSession()" [disabled]="busy()">
-              <mat-icon>play_arrow</mat-icon>
-              Başla
-            </button>
+            }
+            <mat-icon class="history__chevron" aria-hidden="true">chevron_right</mat-icon>
           </div>
-        }
-      </div>
-    }
+        </button>
+      </li>
+      }
+    </ul>
 
-    <!-- ── Soru + geri bildirim ────────────────────────────────────────────── -->
-    @case ('question') {
-      <ng-container *ngTemplateOutlet="questionStage" />
+    @if (historyTotal() > historyPageSize) {
+    <app-pagination [currentPage]="historyPage()" [itemsPerPage]="historyPageSize" [totalItems]="historyTotal()"
+      (pageChanged)="onHistoryPageChange($event)" />
     }
-    @case ('feedback') {
-      <ng-container *ngTemplateOutlet="questionStage" />
     }
+  </section>
+  }
 
-    <!-- ── Boş durum ──────────────────────────────────────────────────────── -->
-    @case ('empty') {
-      <ng-container *ngTemplateOutlet="statsBar" />
-      <div class="practice__card practice__state practice__state--empty">
-        <mat-icon>inbox</mat-icon>
-        @if (answeredCount() > 0) {
-          <h2>Bu kapsamdaki soruların hepsini çözdün</h2>
-          <p>Kapsamı genişleterek devam edebilir ya da oturumu bitirip özetini görebilirsin.</p>
+  <!-- ── Geçmiş oturum incelemesi ────────────────────────────────────────── -->
+  @case ('review') {
+  <div class="review" [attr.aria-busy]="reviewLoading() ? 'true' : null">
+    <div class="review__toolbar">
+      <button mat-stroked-button type="button" (click)="closeReview()">
+        <mat-icon>arrow_back</mat-icon>
+        Geçmiş Oturumlar
+      </button>
+    </div>
+
+    @if (reviewLoading()) {
+    <div class="practice__card practice__loading">
+      <mat-progress-spinner mode="indeterminate" diameter="40" />
+      <p>Oturum detayı yükleniyor…</p>
+    </div>
+    } @else if (reviewError()) {
+    <div class="state-box state-box--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <p class="state-text">{{ reviewError() }}</p>
+      <button mat-stroked-button type="button" (click)="loadReview()">Tekrar dene</button>
+    </div>
+    } @else {
+    @if (reviewSession(); as s) {
+    <div class="practice__card review__summary">
+      <div class="review__summary-head">
+        <div>
+          <h2 class="practice__card-title">{{ s.startTime | date: 'd MMMM y, HH:mm' }}</h2>
+          <p class="practice__card-hint">{{ scopeLabel(s) }}</p>
+        </div>
+        @if (s.status === 'Active') {
+        <span class="history__badge history__badge--active">Devam ediyor</span>
         } @else {
-          <h2>Seçtiğin kapsamda soru bulunamadı</h2>
-          <p>Başka bir ders ya da konu seçerek tekrar dene.</p>
+        <span class="history__badge">Tamamlandı</span>
         }
-        <div class="practice__actions practice__actions--center">
-          <button mat-raised-button color="primary" type="button" (click)="changeScope()" [disabled]="busy()">
-            <mat-icon>tune</mat-icon>
-            Kapsamı Değiştir
-          </button>
-          <button mat-stroked-button type="button" (click)="finishSession()" [disabled]="busy()">
-            <mat-icon>done_all</mat-icon>
-            Bitir
-          </button>
-        </div>
       </div>
-    }
 
-    <!-- ── Oturum özeti ───────────────────────────────────────────────────── -->
-    @case ('ended') {
-      <div class="practice__card practice__state practice__state--ended">
-        <mat-icon>emoji_events</mat-icon>
-        <h2>Oturum tamamlandı</h2>
-        <dl class="practice__summary">
-          <div>
-            <dt>Cevaplanan</dt>
-            <dd>{{ answeredCount() }}</dd>
-          </div>
-          <div>
-            <dt>Doğru</dt>
-            <dd class="is-correct">{{ correctCount() }}</dd>
-          </div>
-          <div>
-            <dt>Yanlış</dt>
-            <dd class="is-wrong">{{ wrongCount() }}</dd>
-          </div>
-          <div>
-            <dt>Pas</dt>
-            <dd>{{ skippedCount() }}</dd>
-          </div>
-          <div>
-            <dt>Başarı</dt>
-            <dd>%{{ accuracy() }}</dd>
-          </div>
-        </dl>
-        <div class="practice__actions practice__actions--center">
-          <button mat-raised-button color="primary" type="button" (click)="changeScope()">
-            <mat-icon>replay</mat-icon>
-            Yeni Oturum
-          </button>
-          <a mat-stroked-button routerLink="/dashboard">Panele dön</a>
+      <dl class="practice__summary">
+        <div>
+          <dt>Cevaplanan</dt>
+          <dd>{{ s.answeredCount }}</dd>
         </div>
+        <div>
+          <dt>Doğru</dt>
+          <dd class="is-correct">{{ s.correctCount }}</dd>
+        </div>
+        <div>
+          <dt>Yanlış</dt>
+          <dd class="is-wrong">{{ reviewWrongCount() }}</dd>
+        </div>
+        <div>
+          <dt>Pas</dt>
+          <dd>{{ s.skippedCount }}</dd>
+        </div>
+        <div>
+          <dt>Başarı</dt>
+          <dd>%{{ accuracyOf(s) }}</dd>
+        </div>
+        @if (durationLabel(s); as duration) {
+        <div>
+          <dt>Süre</dt>
+          <dd>{{ duration }}</dd>
+        </div>
+        }
+      </dl>
+    </div>
+
+    @if (!reviewEntries().length) {
+    <div class="state-box state-box--empty">
+      <mat-icon>inbox</mat-icon>
+      <p class="state-text">Bu oturumda henüz soru gösterilmemiş.</p>
+    </div>
+    } @else {
+    <!-- Soru şeridi: worksheet-detail'deki navigatörün pas/bekliyor ayrımı yapan sade karşılığı -->
+    <nav class="review__nav" aria-label="Oturumdaki sorular">
+      <ol class="review__strip">
+        @for (entry of reviewEntries(); track entry.row.question.id; let i = $index) {
+        <li>
+          <button type="button" class="review__pill review__pill--{{ entry.kind }}"
+            [class.review__pill--current]="i === reviewIndex()" [attr.aria-current]="i === reviewIndex() ? 'step' : null"
+            [attr.aria-label]="'Soru ' + (i + 1) + ': ' + reviewKindLabel(entry.kind)"
+            (click)="selectReviewQuestion(i)">
+            {{ i + 1 }}
+          </button>
+        </li>
+        }
+      </ol>
+    </nav>
+
+    @if (reviewEntry(); as entry) {
+    <!-- Durum bandı: canlı akıştaki feedback__banner ile aynı yüzeyler -->
+    <div class="feedback" role="status" aria-live="polite">
+      <div class="feedback__banner feedback__banner--{{ entry.kind }}">
+        @switch (entry.kind) {
+        @case ('correct') { <mat-icon>check_circle</mat-icon> }
+        @case ('wrong') { <mat-icon>cancel</mat-icon> }
+        @case ('skipped') { <mat-icon>skip_next</mat-icon> }
+        @default { <mat-icon>hourglass_empty</mat-icon> }
+        }
+        <span class="feedback__label">Soru {{ reviewIndex() + 1 }} / {{ reviewEntries().length }} · {{ reviewKindLabel(entry.kind) }}</span>
+        @if (entry.row.status !== 'Pending') {
+        <span class="feedback__meta">{{ entry.row.timeTaken }} sn</span>
+        }
       </div>
+    </div>
+
+    <!-- Soru sahnesiyle aynı kart; salt okunur olduğu için gövde inert -->
+    <article class="question-card">
+      <div class="question-card__body" inert>
+        @if (entry.region; as region) {
+        <div class="canvas-zone">
+          <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region"
+            [selectedChoice]="entry.selectedChoice" [correctChoice]="entry.correctChoice" [mode]="'result'" />
+        </div>
+        } @else {
+        <div class="text-question">
+          <app-question-lite-view [question]="entry.question" [selectedAnswerId]="entry.row.selectedAnswerId"
+            [isPracticeTest]="false" [correctAnswerVisible]="entry.kind !== 'pending'" />
+        </div>
+        }
+      </div>
+    </article>
+
+    <div class="practice__actions practice__actions--stage review__pager">
+      <button mat-stroked-button type="button" (click)="reviewPrev()" [disabled]="!reviewHasPrev()">
+        <mat-icon>arrow_back</mat-icon>
+        Önceki
+      </button>
+      <button mat-stroked-button type="button" (click)="reviewNext()" [disabled]="!reviewHasNext()">
+        Sonraki
+        <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+      </button>
+    </div>
     }
+    }
+    }
+    }
+  </div>
+  }
+
+  <!-- ── Soru + geri bildirim ────────────────────────────────────────────── -->
+  @case ('question') {
+  <ng-container *ngTemplateOutlet="questionStage" />
+  }
+  @case ('feedback') {
+  <ng-container *ngTemplateOutlet="questionStage" />
+  }
+
+  <!-- ── Boş durum ──────────────────────────────────────────────────────── -->
+  @case ('empty') {
+  <ng-container *ngTemplateOutlet="statsBar" />
+  <div class="practice__card practice__state practice__state--empty">
+    <mat-icon>inbox</mat-icon>
+    @if (answeredCount() > 0) {
+    <h2>Bu kapsamdaki soruların hepsini çözdün</h2>
+    <p>Kapsamı genişleterek devam edebilir ya da oturumu bitirip özetini görebilirsin.</p>
+    } @else {
+    <h2>Seçtiğin kapsamda soru bulunamadı</h2>
+    <p>Başka bir ders ya da konu seçerek tekrar dene.</p>
+    }
+    <div class="practice__actions practice__actions--center">
+      <button mat-raised-button color="primary" type="button" (click)="changeScope()" [disabled]="busy()">
+        <mat-icon>tune</mat-icon>
+        Kapsamı Değiştir
+      </button>
+      <button mat-stroked-button type="button" (click)="finishSession()" [disabled]="busy()">
+        <mat-icon>done_all</mat-icon>
+        Bitir
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- ── Oturum özeti ───────────────────────────────────────────────────── -->
+  @case ('ended') {
+  <div class="practice__card practice__state practice__state--ended">
+    <mat-icon>emoji_events</mat-icon>
+    <h2>Oturum tamamlandı</h2>
+    <dl class="practice__summary">
+      <div>
+        <dt>Cevaplanan</dt>
+        <dd>{{ answeredCount() }}</dd>
+      </div>
+      <div>
+        <dt>Doğru</dt>
+        <dd class="is-correct">{{ correctCount() }}</dd>
+      </div>
+      <div>
+        <dt>Yanlış</dt>
+        <dd class="is-wrong">{{ wrongCount() }}</dd>
+      </div>
+      <div>
+        <dt>Pas</dt>
+        <dd>{{ skippedCount() }}</dd>
+      </div>
+      <div>
+        <dt>Başarı</dt>
+        <dd>%{{ accuracy() }}</dd>
+      </div>
+    </dl>
+    <div class="practice__actions practice__actions--center">
+      <button mat-raised-button color="primary" type="button" (click)="changeScope()">
+        <mat-icon>replay</mat-icon>
+        Yeni Oturum
+      </button>
+      @if (session(); as s) {
+      <button mat-stroked-button type="button" (click)="openReview(s.id)">
+        <mat-icon>fact_check</mat-icon>
+        Oturumu İncele
+      </button>
+      }
+      <a mat-stroked-button routerLink="/dashboard">Panele dön</a>
+    </div>
+  </div>
+  }
   }
 </section>
 
@@ -220,14 +445,8 @@
       <span class="stat__label">Pas</span>
       <span class="stat__value">{{ skippedCount() }}</span>
     </span>
-    <button
-      mat-stroked-button
-      type="button"
-      class="practice__finish"
-      (click)="finishSession()"
-      [disabled]="busy()"
-      aria-label="Oturumu bitir"
-    >
+    <button mat-stroked-button type="button" class="practice__finish" (click)="finishSession()" [disabled]="busy()"
+      aria-label="Oturumu bitir">
       <mat-icon>done_all</mat-icon>
       <span>Bitir</span>
     </button>
@@ -239,107 +458,97 @@
   <ng-container *ngTemplateOutlet="statsBar" />
 
   @if (question(); as q) {
-    <article class="question-card" [attr.aria-busy]="busy() ? 'true' : null">
-      <!-- Geri bildirim sırasında şıklar kilitli: inert tıklamayı ve klavye odağını engeller -->
-      <div class="question-card__body" [attr.inert]="phase() === 'feedback' ? '' : null">
-        @if (q.isCanvasQuestion && region(); as region) {
-          <div class="canvas-zone">
-            @if (isPassageFirstActive()) {
-              <div class="passage-first-toolbar">
-                @if (showPassageOnly()) {
-                  <button mat-stroked-button color="primary" type="button" (click)="showQuestion()">
-                    <mat-icon>help_outline</mat-icon>
-                    Soruyu Göster
-                  </button>
-                } @else {
-                  <button mat-stroked-button type="button" (click)="showPassage()">
-                    <mat-icon>assignment</mat-icon>
-                    Pasaja Dön
-                  </button>
-                }
-              </div>
-            }
+  <article class="question-card" [attr.aria-busy]="busy() ? 'true' : null">
+    <!-- Geri bildirim sırasında şıklar kilitli: inert tıklamayı ve klavye odağını engeller -->
+    <div class="question-card__body" [attr.inert]="phase() === 'feedback' ? '' : null">
+      @if (q.isCanvasQuestion && region(); as region) {
+      <div class="canvas-zone">
+        @if (isPassageFirstActive()) {
+        <div class="passage-first-toolbar">
+          @if (showPassageOnly()) {
+          <button mat-stroked-button color="primary" type="button" (click)="showQuestion()">
+            <mat-icon>help_outline</mat-icon>
+            Soruyu Göster
+          </button>
+          } @else {
+          <button mat-stroked-button type="button" (click)="showPassage()">
+            <mat-icon>assignment</mat-icon>
+            Pasaja Dön
+          </button>
+          }
+        </div>
+        }
 
-            @if (showPassageOnly()) {
-              <div class="passage-only">
-                @if (q.passage?.text) {
-                  <div class="passage-only__text">{{ q.passage?.text }}</div>
-                }
-                @if (q.passage?.imageUrl) {
-                  <img class="passage-only__image" [src]="q.passage?.imageUrl" alt="Pasaj görseli" />
-                }
-              </div>
-            } @else {
-              <app-question-canvas-view-v5
-                class="canvas-stage"
-                [questionRegion]="region"
-                [hidePassage]="isPassageFirstActive()"
-                [selectedChoice]="selectedChoice()"
-                [mode]="canvasMode()"
-                (choiceSelected)="selectChoice($event)"
-              />
-            }
-          </div>
+        @if (showPassageOnly()) {
+        <div class="passage-only">
+          @if (q.passage?.text) {
+          <div class="passage-only__text">{{ q.passage?.text }}</div>
+          }
+          @if (q.passage?.imageUrl) {
+          <img class="passage-only__image" [src]="q.passage?.imageUrl" alt="Pasaj görseli" />
+          }
+        </div>
         } @else {
-          <div class="text-question">
-            <app-question-lite-view
-              [question]="q"
-              [selectedAnswerId]="selectedAnswerId()"
-              [isPracticeTest]="false"
-              [correctAnswerVisible]="phase() === 'feedback'"
-              (answerSelected)="selectAnswer($event)"
-            />
-          </div>
+        <app-question-canvas-view-v5 class="canvas-stage" [questionRegion]="region"
+          [hidePassage]="isPassageFirstActive()" [selectedChoice]="selectedChoice()" [mode]="canvasMode()"
+          (choiceSelected)="selectChoice($event)" />
         }
       </div>
-
-      @if (busy()) {
-        <div class="question-card__overlay">
-          <mat-progress-spinner mode="indeterminate" diameter="36" />
-        </div>
+      } @else {
+      <div class="text-question">
+        <app-question-lite-view [question]="q" [selectedAnswerId]="selectedAnswerId()" [isPracticeTest]="false"
+          [correctAnswerVisible]="phase() === 'feedback'" (answerSelected)="selectAnswer($event)" />
+      </div>
       }
-    </article>
+    </div>
+
+    @if (busy()) {
+    <div class="question-card__overlay">
+      <mat-progress-spinner mode="indeterminate" diameter="36" />
+    </div>
+    }
+  </article>
   }
 
   <!-- Canlı bölge her zaman DOM'da: ekran okuyucu içerik değişimini duyurur -->
   <div class="feedback" role="status" aria-live="polite">
     @switch (feedbackKind()) {
-      @case ('correct') {
-        <div class="feedback__banner feedback__banner--correct">
-          <mat-icon>check_circle</mat-icon>
-          <span>Doğru cevap! Harika gidiyorsun.</span>
-        </div>
-      }
-      @case ('wrong') {
-        <div class="feedback__banner feedback__banner--wrong">
-          <mat-icon>cancel</mat-icon>
-          <span>Yanlış cevap. Doğru şık işaretlendi.</span>
-        </div>
-      }
-      @case ('skipped') {
-        <div class="feedback__banner feedback__banner--skipped">
-          <mat-icon>skip_next</mat-icon>
-          <span>Soru pas geçildi. Doğru şık işaretlendi.</span>
-        </div>
-      }
+    @case ('correct') {
+    <div class="feedback__banner feedback__banner--correct">
+      <mat-icon>check_circle</mat-icon>
+      <span>Doğru cevap! Harika gidiyorsun.</span>
+    </div>
+    }
+    @case ('wrong') {
+    <div class="feedback__banner feedback__banner--wrong">
+      <mat-icon>cancel</mat-icon>
+      <span>Yanlış cevap. Doğru şık aşağıda gösteriliyor.</span>
+    </div>
+    }
+    @case ('skipped') {
+    <div class="feedback__banner feedback__banner--skipped">
+      <mat-icon>skip_next</mat-icon>
+      <span>Soru pas geçildi. Doğru şık aşağıda gösteriliyor.</span>
+    </div>
+    }
     }
   </div>
 
   <div class="practice__actions practice__actions--stage">
     @if (phase() === 'feedback') {
-      <button mat-raised-button color="primary" type="button" (click)="loadNext()" [disabled]="busy()">
-        Sonraki Soru
-        <mat-icon iconPositionEnd>arrow_forward</mat-icon>
-      </button>
+    <button mat-raised-button color="primary" type="button" (click)="loadNext()" [disabled]="busy()">
+      Sonraki Soru
+      <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+    </button>
     } @else {
-      <button mat-stroked-button type="button" (click)="skipQuestion()" [disabled]="busy()">
-        <mat-icon>skip_next</mat-icon>
-        Pas Geç
-      </button>
-      <button mat-raised-button color="primary" type="button" (click)="submitAnswer()" [disabled]="!canSubmit()">
-        <mat-icon>send</mat-icon>
-        Cevabı Gönder
-      </button>
+    <button mat-stroked-button type="button" (click)="skipQuestion()" [disabled]="busy()">
+      <mat-icon>skip_next</mat-icon>
+      Pas Geç
+    </button>
+    <button mat-raised-button color="primary" type="button" (click)="submitAnswer()" [disabled]="!canSubmit()">
+      <mat-icon>send</mat-icon>
+      Cevabı Gönder
+    </button>
     }
   </div>
 </ng-template>

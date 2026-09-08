@@ -48,6 +48,34 @@ export interface PracticeAnswerSubmitRequest {
   timeTaken: number;
 }
 
+/** Pending: gösterildi, cevaplanmadı. */
+export type PracticeReviewQuestionStatus = 'Pending' | 'Answered' | 'Skipped';
+
+/**
+ * GET /api/exam/practice/sessions/{id}/review içindeki soru satırı.
+ * `question`, canlı akıştaki (`PracticeNextQuestion.question`) ile aynı tam `QuestionDto`
+ * şeklidir; canvas geometrisi, pasaj ve şıklar dahildir. `question.correctAnswerId` ve
+ * `question.answers[].isCorrect` yalnızca cevaplanmış/pas geçilmiş satırda açıklanır —
+ * `Pending` satırda sunucu bilinçli olarak gizler (aktif oturumda doğru şık sızmasın).
+ */
+export interface PracticeSessionReviewQuestion {
+  question: Question;
+  status: PracticeReviewQuestionStatus;
+  isSkipped: boolean;
+  isCorrect: boolean;
+  selectedAnswerId: number | null;
+  /** Saniye. */
+  timeTaken: number;
+  shownAt: string;
+  answeredAt: string | null;
+}
+
+/** GET /api/exam/practice/sessions/{id}/review cevabı; `questions` `shownAt` sırasıyla. */
+export interface PracticeSessionReview {
+  session: PracticeSession;
+  questions: PracticeSessionReviewQuestion[];
+}
+
 export interface PracticeAnswerResult {
   sessionId: number;
   questionId: number;

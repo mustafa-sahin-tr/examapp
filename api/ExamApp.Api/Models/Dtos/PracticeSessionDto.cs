@@ -64,6 +64,43 @@ public class PracticeAnswerSubmitDto
     public int TimeTaken { get; set; }
 }
 
+/// <summary>
+/// GET api/practice/sessions/{id}/review cevabı. Oturum özeti + gösterilen soruların tek tek sonucu.
+/// Her satırda canvas çizimi için tam <see cref="QuestionDto"/> (geometri, şıklar, passage) bulunur;
+/// worksheet sonuç ekranındaki <c>WorksheetInstanceQuestionDto</c> ile aynı yaklaşım.
+/// Cevaplanmış (Answered/Skipped) sorularda <see cref="QuestionDto.CorrectAnswerId"/> ve
+/// <see cref="AnswerDto.IsCorrect"/> dolu gelir; Pending sorularda gizlenir.
+/// </summary>
+public class PracticeSessionReviewDto
+{
+    public PracticeSessionDto Session { get; set; } = new();
+
+    /// <summary><see cref="PracticeSessionReviewQuestionDto.ShownAt"/> sırasıyla.</summary>
+    public List<PracticeSessionReviewQuestionDto> Questions { get; set; } = new();
+}
+
+public class PracticeSessionReviewQuestionDto
+{
+    /// <summary>
+    /// Canlı akıştaki (<see cref="PracticeNextQuestionDto.Question"/>) ile aynı tam şekil.
+    /// <c>CorrectAnswerId</c> / <c>Answers[].IsCorrect</c> yalnızca <see cref="AnsweredAt"/> doluysa açıklanır.
+    /// </summary>
+    public QuestionDto Question { get; set; } = new();
+
+    /// <summary>Pending (gösterildi, cevaplanmadı) | Answered | Skipped</summary>
+    public string Status { get; set; } = string.Empty;
+
+    public bool IsSkipped { get; set; }
+    public bool IsCorrect { get; set; }
+    public int? SelectedAnswerId { get; set; }
+
+    /// <summary>Saniye.</summary>
+    public int TimeTaken { get; set; }
+
+    public DateTime ShownAt { get; set; }
+    public DateTime? AnsweredAt { get; set; }
+}
+
 public class PracticeAnswerResultDto
 {
     public int SessionId { get; set; }

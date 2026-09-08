@@ -466,5 +466,262 @@ public class PracticeSessionServiceTests : IDisposable
         again!.EndTime.ShouldBe(ended.EndTime);
     }
 
+    // ---- history: list ----
+
+    [Fact]
+    public async Task List_ReturnsOnlyOwnSessions_NewestFirst()
+    {
+        var w = await SeedWorldAsync();
+        int otherStudentId;
+        await using (var seed = _db.NewContext())
+        {
+            var other = new Student { UserId = 56, StudentNumber = "S2", SchoolName = "S", GradeId = w.GradeId };
+            seed.Students.Add(other);
+            await seed.SaveChangesAsync();
+            otherStudentId = other.Id;
+        }
+
+        var first = await StartSessionAsync(w);
+        var second = await StartSessionAsync(w);
+        var foreign = await StartSessionAsync(new World(otherStudentId, w.GradeId, w.OtherGradeId, w.SubjectId));
+
+        // StartTime deterministik olsun: ikinci oturum daha yeni.
+        await using (var fix = _db.NewContext())
+        {
+            var s1 = await fix.PracticeSessions.SingleAsync(s => s.Id == first);
+            var s2 = await fix.PracticeSessions.SingleAsync(s => s.Id == second);
+            s1.StartTime = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            s2.StartTime = new DateTime(2026, 1, 2, 10, 0, 0, DateTimeKind.Utc);
+            await fix.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var page = await NewService(ctx).ListAsync(w.StudentId, page: 1, pageSize: 20);
+
+        page.TotalCount.ShouldBe(2);
+        page.PageNumber.ShouldBe(1);
+        page.PageSize.ShouldBe(20);
+        page.Items.Select(i => i.Id).ShouldBe(new[] { second, first });
+        page.Items.ShouldAllBe(i => i.Id != foreign);
+    }
+
+    [Fact]
+    public async Task List_Paging_SkipsAndTakes_AndNormalizesBounds()
+    {
+        var w = await SeedWorldAsync();
+        var ids = new List<int>();
+        for (var i = 0; i < 5; i++)
+        {
+            var id = await StartSessionAsync(w);
+            ids.Add(id);
+            await using var fix = _db.NewContext();
+            var s = await fix.PracticeSessions.SingleAsync(x => x.Id == id);
+            s.StartTime = new DateTime(2026, 1, 1, 10, i, 0, DateTimeKind.Utc);
+            await fix.SaveChangesAsync();
+        }
+        ids.Reverse(); // newest first
+
+        await using var ctx = _db.NewContext();
+        var svc = NewService(ctx);
+
+        var p1 = await svc.ListAsync(w.StudentId, page: 1, pageSize: 2);
+        p1.TotalCount.ShouldBe(5);
+        p1.Items.Select(i => i.Id).ShouldBe(ids.Take(2));
+
+        var p3 = await svc.ListAsync(w.StudentId, page: 3, pageSize: 2);
+        p3.Items.Select(i => i.Id).ShouldBe(ids.Skip(4));
+
+        var p4 = await svc.ListAsync(w.StudentId, page: 4, pageSize: 2);
+        p4.Items.ShouldBeEmpty();
+
+        var bad = await svc.ListAsync(w.StudentId, page: 0, pageSize: 0);
+        bad.PageNumber.ShouldBe(1);
+        bad.PageSize.ShouldBe(1);
+        bad.Items.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task List_ItemCounts_ReflectAnsweredCorrectSkipped()
+    {
+        var w = await SeedWorldAsync();
+        var ws = await AddWorksheetAsync(w.GradeId, w.SubjectId);
+        var q1 = await AddQuestionAsync(w.SubjectId, topicId: null, ws);
+        var q2 = await AddQuestionAsync(w.SubjectId, topicId: null, ws);
+        var sessionId = await StartSessionAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var svc = NewService(ctx);
+        var n1 = await svc.NextQuestionAsync(sessionId, w.StudentId);
+        var shown = n1!.Question!.Id == q1.QuestionId ? q1 : q2;
+        await svc.SubmitAnswerAsync(sessionId, w.StudentId,
+            new PracticeAnswerSubmitDto { QuestionId = shown.QuestionId, SelectedAnswerId = shown.CorrectAnswerId, TimeTaken = 4 });
+        var n2 = await svc.NextQuestionAsync(sessionId, w.StudentId);
+        await svc.SubmitAnswerAsync(sessionId, w.StudentId,
+            new PracticeAnswerSubmitDto { QuestionId = n2!.Question!.Id, Skipped = true, TimeTaken = 1 });
+        await svc.EndAsync(sessionId, w.StudentId);
+
+        var page = await svc.ListAsync(w.StudentId, 1, 20);
+        var item = page.Items.Single();
+        item.Status.ShouldBe("Ended");
+        item.AnsweredCount.ShouldBe(2);
+        item.CorrectCount.ShouldBe(1);
+        item.SkippedCount.ShouldBe(1);
+    }
+
+    // ---- history: review ----
+
+    [Fact]
+    public async Task Review_ReturnsPerQuestionDetail_WithCorrectAnswerIds_OrderedByShownAt()
+    {
+        var w = await SeedWorldAsync();
+        var topic = await AddTopicAsync(w.SubjectId, w.GradeId);
+        var ws = await AddWorksheetAsync(w.GradeId, w.SubjectId);
+        var qa = await AddQuestionAsync(w.SubjectId, topic, ws);
+        var qb = await AddQuestionAsync(w.SubjectId, topic, ws);
+        var qc = await AddQuestionAsync(w.SubjectId, topic, ws);
+        var all = new[] { qa, qb, qc };
+        var sessionId = await StartSessionAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var svc = NewService(ctx);
+
+        // 1: doğru, 2: pas, 3: gösterildi ama cevaplanmadı (pending)
+        var n1 = await svc.NextQuestionAsync(sessionId, w.StudentId);
+        var s1 = all.Single(x => x.QuestionId == n1!.Question!.Id);
+        await svc.SubmitAnswerAsync(sessionId, w.StudentId,
+            new PracticeAnswerSubmitDto { QuestionId = s1.QuestionId, SelectedAnswerId = s1.WrongAnswerId, TimeTaken = 7 });
+
+        var n2 = await svc.NextQuestionAsync(sessionId, w.StudentId);
+        var s2 = all.Single(x => x.QuestionId == n2!.Question!.Id);
+        await svc.SubmitAnswerAsync(sessionId, w.StudentId,
+            new PracticeAnswerSubmitDto { QuestionId = s2.QuestionId, Skipped = true, TimeTaken = 2 });
+
+        var n3 = await svc.NextQuestionAsync(sessionId, w.StudentId);
+        var s3 = all.Single(x => x.QuestionId == n3!.Question!.Id);
+
+        // ShownAt sırası deterministik olsun.
+        await using (var fix = _db.NewContext())
+        {
+            var rows = await fix.PracticeSessionQuestions.Where(p => p.PracticeSessionId == sessionId).ToListAsync();
+            rows.Single(r => r.QuestionId == s1.QuestionId).ShownAt = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+            rows.Single(r => r.QuestionId == s2.QuestionId).ShownAt = new DateTime(2026, 1, 1, 10, 1, 0, DateTimeKind.Utc);
+            rows.Single(r => r.QuestionId == s3.QuestionId).ShownAt = new DateTime(2026, 1, 1, 10, 2, 0, DateTimeKind.Utc);
+            await fix.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var review = await NewService(read).GetReviewAsync(sessionId, w.StudentId);
+
+        review.ShouldNotBeNull();
+        review.Session.Id.ShouldBe(sessionId);
+        review.Session.AnsweredCount.ShouldBe(2);
+        review.Session.CorrectCount.ShouldBe(0);
+        review.Session.SkippedCount.ShouldBe(1);
+        review.Questions.Count.ShouldBe(3);
+        review.Questions.Select(q => q.Question.Id).ShouldBe(new[] { s1.QuestionId, s2.QuestionId, s3.QuestionId });
+
+        var r1 = review.Questions[0];
+        r1.Status.ShouldBe("Answered");
+        r1.IsSkipped.ShouldBeFalse();
+        r1.IsCorrect.ShouldBeFalse();
+        r1.SelectedAnswerId.ShouldBe(s1.WrongAnswerId);
+        r1.Question.CorrectAnswerId.ShouldBe(s1.CorrectAnswerId);
+        r1.TimeTaken.ShouldBe(7);
+        r1.AnsweredAt.ShouldNotBeNull();
+        // Tam QuestionDto: canvas çizimi için şıklar da gelir, doğru şık işaretlidir.
+        r1.Question.Text.ShouldBe("?");
+        r1.Question.SubjectId.ShouldBe(w.SubjectId);
+        r1.Question.TopicId.ShouldBe(topic);
+        r1.Question.Answers.Count.ShouldBe(2);
+        r1.Question.Answers.Select(a => a.Tag).ShouldBe(new[] { "A", "B" });
+        r1.Question.Answers.Single(a => a.IsCorrect).Id.ShouldBe(s1.CorrectAnswerId);
+        r1.Question.Answers.Single(a => a.Id == s1.WrongAnswerId).IsCorrect.ShouldBeFalse();
+
+        var r2 = review.Questions[1];
+        r2.Status.ShouldBe("Skipped");
+        r2.IsSkipped.ShouldBeTrue();
+        r2.IsCorrect.ShouldBeFalse();
+        r2.SelectedAnswerId.ShouldBeNull();
+        r2.Question.CorrectAnswerId.ShouldBe(s2.CorrectAnswerId);
+        r2.Question.Answers.Single(a => a.IsCorrect).Id.ShouldBe(s2.CorrectAnswerId);
+        r2.AnsweredAt.ShouldNotBeNull();
+
+        var r3 = review.Questions[2];
+        r3.Status.ShouldBe("Pending");
+        r3.IsSkipped.ShouldBeFalse();
+        r3.IsCorrect.ShouldBeFalse();
+        r3.SelectedAnswerId.ShouldBeNull();
+        // Pending (henüz cevaplanmamış) soruda doğru şık gizlenir — answer leakage önlemi.
+        r3.Question.CorrectAnswerId.ShouldBeNull();
+        r3.Question.Answers.Count.ShouldBe(2);
+        r3.Question.Answers.ShouldAllBe(a => !a.IsCorrect);
+        r3.AnsweredAt.ShouldBeNull();
+        r3.TimeTaken.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Review_PendingQuestion_NeverExposesCorrectAnswerId()
+    {
+        var w = await SeedWorldAsync();
+        var topic = await AddTopicAsync(w.SubjectId, w.GradeId);
+        var ws = await AddWorksheetAsync(w.GradeId, w.SubjectId);
+        await AddQuestionAsync(w.SubjectId, topic, ws);
+        var sessionId = await StartSessionAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var svc = NewService(ctx);
+
+        // Soru gösterildi ama henüz cevap/pas gönderilmedi.
+        var next = await svc.NextQuestionAsync(sessionId, w.StudentId);
+        next!.Question.ShouldNotBeNull();
+
+        // Öğrenci cevap göndermeden doğrudan /review'a bakarsa doğru şıkkı görmemeli.
+        await using var read = _db.NewContext();
+        var review = await NewService(read).GetReviewAsync(sessionId, w.StudentId);
+
+        review.ShouldNotBeNull();
+        var pending = review.Questions.Single(q => q.Question.Id == next.Question!.Id);
+        pending.Status.ShouldBe("Pending");
+        pending.Question.CorrectAnswerId.ShouldBeNull();
+        // Şık listesi üzerinden de sızmamalı.
+        pending.Question.Answers.Count.ShouldBe(2);
+        pending.Question.Answers.ShouldAllBe(a => !a.IsCorrect);
+    }
+
+    [Fact]
+    public async Task Review_SessionOfAnotherStudent_ReturnsNull()
+    {
+        var w = await SeedWorldAsync();
+        var sessionId = await StartSessionAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var review = await NewService(ctx).GetReviewAsync(sessionId, studentId: w.StudentId + 1000);
+
+        review.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Review_UnknownSession_ReturnsNull()
+    {
+        var w = await SeedWorldAsync();
+
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).GetReviewAsync(999_999, w.StudentId)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Review_EmptySession_ReturnsSummaryWithNoQuestions()
+    {
+        var w = await SeedWorldAsync();
+        var sessionId = await StartSessionAsync(w);
+
+        await using var ctx = _db.NewContext();
+        var review = await NewService(ctx).GetReviewAsync(sessionId, w.StudentId);
+
+        review.ShouldNotBeNull();
+        review.Session.Id.ShouldBe(sessionId);
+        review.Questions.ShouldBeEmpty();
+    }
+
     public void Dispose() => _db.Dispose();
 }

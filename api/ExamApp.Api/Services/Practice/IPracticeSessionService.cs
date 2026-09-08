@@ -16,6 +16,13 @@ public interface IPracticeSessionService
     /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
     Task<PracticeSessionDto?> GetAsync(int sessionId, int studentId, CancellationToken ct = default);
 
+    /// <summary>Öğrencinin kendi oturumları, en yeni önce (<c>StartTime desc</c>). Sayfa/boyut sınırları serviste normalize edilir.</summary>
+    Task<Paged<PracticeSessionDto>> ListAsync(int studentId, int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>Oturumda gösterilen soruların tek tek sonucu (doğru şık dahil). Aktif oturum için de çağrılabilir.</summary>
+    /// <returns>null: oturum yok ya da bu öğrenciye ait değil.</returns>
+    Task<PracticeSessionReviewDto?> GetReviewAsync(int sessionId, int studentId, CancellationToken ct = default);
+
     /// <summary>
     /// Bu oturumda henüz gösterilmemiş rastgele bir soru döner ve onu "gösterildi" olarak kaydeder.
     /// Cevaplanmamış bekleyen bir soru varsa yenisini seçmek yerine onu tekrar döner.

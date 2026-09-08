@@ -47,6 +47,33 @@ public class PracticeController : BaseController
         }
     }
 
+    /// <summary>Öğrencinin geçmiş pratik oturumları, en yeni önce. Sayfalı (<see cref="Paged{T}"/>).</summary>
+    [HttpGet("sessions")]
+    public async Task<IActionResult> ListSessions([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        var result = await _practice.ListAsync(student!.Id, page, pageSize, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Oturumdaki soruların tek tek sonucu (doğru şık dahil); geçmiş oturum incelemesi.</summary>
+    [HttpGet("sessions/{id:int}/review")]
+    public async Task<IActionResult> GetSessionReview(int id, CancellationToken ct)
+    {
+        var (student, error) = await ResolveStudentAsync();
+        if (error != null)
+            return error;
+
+        var result = await _practice.GetReviewAsync(id, student!.Id, ct);
+        if (result == null)
+            return NotFound(new { message = "Pratik oturumu bulunamadı" });
+
+        return Ok(result);
+    }
+
     [HttpGet("sessions/{id:int}")]
     public async Task<IActionResult> GetSession(int id, CancellationToken ct)
     {

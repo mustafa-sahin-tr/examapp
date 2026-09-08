@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,33 +12,62 @@ import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { PracticeService } from '../../services/practice.service';
 import { StudentService } from '../../services/student.service';
 import { SubjectService } from '../../services/subject.service';
 import { AnswerChoice, QuestionRegion } from '../../models/draws';
-import { PracticeAnswerResult, PracticeSession } from '../../models/practice';
+import {
+  PracticeAnswerResult,
+  PracticeSession,
+  PracticeSessionReview,
+  PracticeSessionReviewQuestion,
+} from '../../models/practice';
 import { Question } from '../../models/question';
 import { Subject } from '../../models/subject';
+import { Paged } from '../../models/test-instance';
 import { Topic } from '../../models/topic';
 
 /**
  * Sayfa fazları:
- * - setup:    kapsam seçimi (ders / konu) — hiçbiri seçilmezse varsayılan kapsam (kendi sınıfı + tüm dersler)
+ * - setup:    kapsam seçimi (ders / konu) — hiçbiri seçilmezse varsayılan kapsam (kendi sınıfı + tüm dersler);
+ *             aynı ekranda "Geçmiş Oturumlar" listesi
  * - question: bekleyen soru gösteriliyor; "Pas Geç" / "Cevabı Gönder"
  * - feedback: doğru/yanlış/pas geri bildirimi; "Sonraki Soru"
  * - empty:    kapsamda soru yok ya da havuz tükendi; "Kapsamı Değiştir"
  * - ended:    oturum özeti
+ * - review:   geçmiş bir oturumun soru soru incelemesi (salt okunur)
  */
-type PracticePhase = 'setup' | 'question' | 'feedback' | 'empty' | 'ended';
+type PracticePhase = 'setup' | 'question' | 'feedback' | 'empty' | 'ended' | 'review';
 
 interface SubjectTopics {
   subject: Subject;
   topics: Topic[];
 }
 
+type ReviewStatusKind = 'correct' | 'wrong' | 'skipped' | 'pending';
+
+/**
+ * İnceleme ekranında tek sorunun görüntülenmeye hazır hâli. `worksheet-detail`'in
+ * `regions` / `selectedChoices` / `correctChoices` üçlüsünün soru başına toplanmış karşılığı:
+ * canvas sorular `region` + seçili/doğru `AnswerChoice`, metin soruları `question` (lite view).
+ */
+interface ReviewEntry {
+  row: PracticeSessionReviewQuestion;
+  kind: ReviewStatusKind;
+  /** Lite view için; doğru şık `correctAnswer` olarak eşlenmiştir (Pending'de yok). */
+  question: Question;
+  /** Yalnız canvas sorularda dolu. */
+  region: QuestionRegion | null;
+  selectedChoice: AnswerChoice | undefined;
+  correctChoice: AnswerChoice | undefined;
+}
+
 const SESSION_QUERY_PARAM = 'session';
+const HISTORY_PAGE_SIZE = 10;
+const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNumber: 1, pageSize: HISTORY_PAGE_SIZE };
 
 /**
  * "Soru Çöz" pratik akışı (issue #63). Soru gösterimi sınav çözme ekranıyla aynı bileşenleri
@@ -50,6 +79,7 @@ const SESSION_QUERY_PARAM = 'session';
   selector: 'app-practice-solve',
   standalone: true,
   imports: [
+    DatePipe,
     NgTemplateOutlet,
     RouterLink,
     MatButtonModule,
@@ -59,6 +89,7 @@ const SESSION_QUERY_PARAM = 'session';
     MatProgressSpinnerModule,
     MatSelectModule,
     SectionHeaderComponent,
+    PaginationComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
   ],
@@ -112,6 +143,49 @@ export class PracticeSolveComponent implements OnInit {
 
   readonly hasScope = computed(() => this.selectedSubjectIds().length > 0 || this.selectedTopicIds().length > 0);
 
+  // ── Geçmiş oturumlar (kurulum ekranında) ────────────────────────────────────
+  readonly historyLoading = signal(false);
+  readonly historyError = signal<string | null>(null);
+  readonly historyPaged = signal<Paged<PracticeSession>>(EMPTY_HISTORY);
+  readonly historyPage = signal(1);
+  readonly historyPageSize = HISTORY_PAGE_SIZE;
+  readonly historyItems = computed(() => this.historyPaged().items);
+  readonly historyTotal = computed(() => this.historyPaged().totalCount);
+
+  private readonly subjectNameById = computed(() => new Map(this.subjects().map((s) => [s.id, s.name])));
+  private readonly topicNameById = computed(() => {
+    const names = new Map<number, string>();
+    for (const topics of this.topicsBySubject().values()) for (const t of topics) names.set(t.id, t.name);
+    return names;
+  });
+
+  // ── İnceleme (geçmiş oturum detayı) ─────────────────────────────────────────
+  readonly reviewLoading = signal(false);
+  readonly reviewError = signal<string | null>(null);
+  readonly review = signal<PracticeSessionReview | null>(null);
+  /** İncelemede gösterilen sorunun `reviewEntries` içindeki sırası. */
+  readonly reviewIndex = signal(0);
+  private reviewSessionId: number | null = null;
+
+  readonly reviewSession = computed(() => this.review()?.session ?? null);
+  readonly reviewQuestions = computed(() => this.review()?.questions ?? []);
+  readonly reviewWrongCount = computed(() => {
+    const s = this.reviewSession();
+    return s ? Math.max(0, s.answeredCount - s.correctCount - s.skippedCount) : 0;
+  });
+
+  /**
+   * Her inceleme satırı için canvas bölgesi + seçili/doğru şık bir kez kurulur
+   * (`worksheet-detail.loadResultsForInstance` deseni). Pending satırda sunucu doğru şıkkı
+   * gizlediğinden `correctChoice`/`correctAnswer` boş kalır; bu kasıtlıdır.
+   */
+  readonly reviewEntries = computed<ReviewEntry[]>(() =>
+    this.reviewQuestions().map((row) => this.toReviewEntry(row))
+  );
+  readonly reviewEntry = computed<ReviewEntry | null>(() => this.reviewEntries()[this.reviewIndex()] ?? null);
+  readonly reviewHasPrev = computed(() => this.reviewIndex() > 0);
+  readonly reviewHasNext = computed(() => this.reviewIndex() < this.reviewEntries().length - 1);
+
   // ── Oturum / soru ───────────────────────────────────────────────────────────
   readonly session = signal<PracticeSession | null>(null);
   readonly question = signal<Question | null>(null);
@@ -148,6 +222,7 @@ export class PracticeSolveComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSetupData();
+    this.loadHistory(1);
 
     const sessionParam = Number(this.route.snapshot.queryParamMap.get(SESSION_QUERY_PARAM));
     if (Number.isInteger(sessionParam) && sessionParam > 0) {
@@ -242,6 +317,186 @@ export class PracticeSolveComponent implements OnInit {
       });
   }
 
+  // ── Geçmiş oturumlar ────────────────────────────────────────────────────────
+
+  loadHistory(page: number = this.historyPage()): void {
+    this.historyLoading.set(true);
+    this.historyError.set(null);
+    this.historyPage.set(page);
+
+    this.practiceService
+      .listSessions(page, HISTORY_PAGE_SIZE)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (paged) => {
+          this.historyPaged.set(paged);
+          this.historyLoading.set(false);
+        },
+        error: (err: unknown) => {
+          this.historyError.set(this.messageOf(err, 'Geçmiş oturumlar yüklenemedi.'));
+          this.historyLoading.set(false);
+        },
+      });
+  }
+
+  onHistoryPageChange(page: number): void {
+    if (page !== this.historyPage()) this.loadHistory(page);
+  }
+
+  /** Liste öğesi yalnız id taşır; adlar kurulum ekranının zaten yüklediği ders/konu kaynağından çözülür. */
+  scopeLabel(session: PracticeSession): string {
+    if (session.subjectIds.length === 0 && session.topicIds.length === 0) return 'Tüm dersler';
+
+    const subjectNames = this.subjectNameById();
+    const parts: string[] = [];
+    const subjects = session.subjectIds.map((id) => subjectNames.get(id) ?? `Ders #${id}`);
+    if (subjects.length) parts.push(subjects.join(', '));
+
+    if (session.topicIds.length) {
+      const topicNames = this.topicNameById();
+      const resolved = session.topicIds.map((id) => topicNames.get(id)).filter((n): n is string => !!n);
+      parts.push(
+        resolved.length === session.topicIds.length
+          ? resolved.join(', ')
+          : `${session.topicIds.length} konu`
+      );
+    }
+    return parts.join(' · ');
+  }
+
+  /** Cevaplanan sorular içinde (pas hariç) doğru yüzdesi. */
+  accuracyOf(session: PracticeSession): number {
+    const graded = session.answeredCount - session.skippedCount;
+    return graded > 0 ? Math.round((session.correctCount / graded) * 100) : 0;
+  }
+
+  wrongCountOf(session: PracticeSession): number {
+    return Math.max(0, session.answeredCount - session.correctCount - session.skippedCount);
+  }
+
+  /** Bitmiş oturum süresi ("12 dk" / "45 sn"); aktif oturumda boş. */
+  durationLabel(session: PracticeSession): string {
+    if (!session.endTime) return '';
+    const seconds = Math.max(0, Math.round((Date.parse(session.endTime) - Date.parse(session.startTime)) / 1000));
+    return seconds < 60 ? `${seconds} sn` : `${Math.round(seconds / 60)} dk`;
+  }
+
+  /** Listeden tıklama: aktif oturum kaldığı yerden devam eder, bitmiş oturum incelemeye açılır. */
+  openHistoryItem(session: PracticeSession): void {
+    if (session.status === 'Active') {
+      this.resumeSession(session.id);
+      return;
+    }
+    this.openReview(session.id);
+  }
+
+  // ── İnceleme ────────────────────────────────────────────────────────────────
+
+  openReview(sessionId: number): void {
+    this.reviewSessionId = sessionId;
+    this.review.set(null);
+    this.reviewIndex.set(0);
+    this.error.set(null);
+    this.phase.set('review');
+    this.loadReview();
+  }
+
+  loadReview(): void {
+    const sessionId = this.reviewSessionId;
+    if (sessionId == null) return;
+
+    this.reviewLoading.set(true);
+    this.reviewError.set(null);
+
+    this.practiceService
+      .getSessionReview(sessionId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (review) => {
+          this.review.set(review);
+          this.reviewIndex.set(0);
+          this.reviewLoading.set(false);
+        },
+        error: (err: unknown) => {
+          this.reviewError.set(this.messageOf(err, 'Oturum detayı yüklenemedi.'));
+          this.reviewLoading.set(false);
+        },
+      });
+  }
+
+  /** İncelemeden kurulum + geçmiş listesine dön; liste yeniden yüklenir. */
+  closeReview(): void {
+    this.reviewSessionId = null;
+    this.review.set(null);
+    this.resetToSetup();
+  }
+
+  /** Numaralı şeritten ya da ileri/geri düğmesinden soru seçimi (`worksheet-detail.questionSelected`). */
+  selectReviewQuestion(index: number): void {
+    if (index < 0 || index >= this.reviewEntries().length) return;
+    this.reviewIndex.set(index);
+  }
+
+  reviewPrev(): void {
+    this.selectReviewQuestion(this.reviewIndex() - 1);
+  }
+
+  reviewNext(): void {
+    this.selectReviewQuestion(this.reviewIndex() + 1);
+  }
+
+  reviewStatusKind(question: PracticeSessionReviewQuestion): ReviewStatusKind {
+    if (question.status === 'Pending') return 'pending';
+    if (question.status === 'Skipped' || question.isSkipped) return 'skipped';
+    return question.isCorrect ? 'correct' : 'wrong';
+  }
+
+  reviewKindLabel(kind: ReviewStatusKind): string {
+    switch (kind) {
+      case 'correct':
+        return 'Doğru';
+      case 'wrong':
+        return 'Yanlış';
+      case 'skipped':
+        return 'Pas';
+      default:
+        return 'Cevaplanmadı';
+    }
+  }
+
+  private toReviewEntry(row: PracticeSessionReviewQuestion): ReviewEntry {
+    const source = row.question;
+    const correctAnswerId = source.correctAnswerId ?? null;
+    const correctAnswer =
+      source.correctAnswer ??
+      (correctAnswerId != null ? source.answers?.find((a) => a.id === correctAnswerId) : undefined);
+    // Lite view doğru şıkkı `question.correctAnswer` üzerinden boyar (applyResult ile aynı).
+    const question: Question = { ...source, correctAnswerId: correctAnswerId ?? undefined, correctAnswer };
+
+    if (!source.isCanvasQuestion) {
+      return {
+        row,
+        kind: this.reviewStatusKind(row),
+        question,
+        region: null,
+        selectedChoice: undefined,
+        correctChoice: undefined,
+      };
+    }
+
+    // v5 seçimi referans eşitliğiyle karşılaştırır: şıklar YENİ bölgenin nesnelerinden alınır.
+    const region = this.practiceService.toQuestionRegion(source, correctAnswerId);
+    return {
+      row,
+      kind: this.reviewStatusKind(row),
+      question,
+      region,
+      selectedChoice:
+        row.selectedAnswerId != null ? region.answers.find((a) => a.id === row.selectedAnswerId) : undefined,
+      correctChoice: correctAnswerId != null ? region.answers.find((a) => a.id === correctAnswerId) : undefined,
+    };
+  }
+
   // ── Oturum akışı ────────────────────────────────────────────────────────────
 
   startSession(): void {
@@ -263,7 +518,10 @@ export class PracticeSolveComponent implements OnInit {
     });
   }
 
-  /** Sayfa yenilemede `?session=` ile aktif oturuma geri döner; bitmişse kurulumda kalır. */
+  /**
+   * Sayfa yenilemede `?session=` ile ya da geçmiş listesinden aktif oturuma geri döner;
+   * bitmişse kurulumda kalır.
+   */
   private resumeSession(sessionId: number): void {
     this.run(this.practiceService.getSession(sessionId), () => this.resumeSession(sessionId), (session) => {
       if (session.status !== 'Active') {
@@ -274,6 +532,11 @@ export class PracticeSolveComponent implements OnInit {
       this.answeredCount.set(session.answeredCount);
       this.correctCount.set(session.correctCount);
       this.skippedCount.set(session.skippedCount);
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { [SESSION_QUERY_PARAM]: session.id },
+        replaceUrl: true,
+      });
       this.loadNext();
     });
   }
@@ -404,6 +667,10 @@ export class PracticeSolveComponent implements OnInit {
   }
 
   onHeaderBack(): void {
+    if (this.phase() === 'review') {
+      this.closeReview();
+      return;
+    }
     if (this.phase() === 'setup' || this.phase() === 'ended') {
       void this.router.navigate(['/dashboard']);
       return;
@@ -441,6 +708,8 @@ export class PracticeSolveComponent implements OnInit {
     this.retryAction = null;
     this.phase.set('setup');
     this.clearSessionParam();
+    // Yeni biten/başlayan oturum listede görünsün.
+    this.loadHistory(1);
   }
 
   private clearSessionParam(): void {

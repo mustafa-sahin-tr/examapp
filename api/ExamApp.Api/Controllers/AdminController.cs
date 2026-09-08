@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
+using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
 using Microsoft.AspNetCore.Authorization;
@@ -23,12 +24,14 @@ public class AdminController : BaseController
     private readonly ITaxonomyService _taxonomy;
     private readonly IClassifierCacheService _classifierCache;
     private readonly ISchoolService _schools;
+    private readonly IDashboardService _dashboard;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard)
     {
         _taxonomy = taxonomy;
         _classifierCache = classifierCache;
         _schools = schools;
+        _dashboard = dashboard;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -96,6 +99,12 @@ public class AdminController : BaseController
     [HttpDelete("schools/{id:int}")]
     public async Task<IActionResult> DeleteSchool(int id, CancellationToken ct)
         => Result(await _schools.DeleteAsync(id, await CurrentUserIdAsync(), ct));
+
+    // ---- Dashboard ----
+
+    [HttpGet("dashboard/summary")]
+    public async Task<ActionResult<DashboardSummaryDto>> GetDashboardSummary(CancellationToken ct)
+        => Ok(await _dashboard.GetSummaryAsync(ct));
 
     // ---- Classifier cache ----
 

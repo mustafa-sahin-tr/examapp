@@ -1,4 +1,4 @@
-<div class="qcv4-root">
+<div #qcvRoot class="qcv4-root">
   <div class="qcv4-passage" *ngIf="!hidePassage && passageImageSource() as pUrl">
     <img class="qcv4-passage__image" [src]="pUrl" alt="Paragraf görseli" />
   </div>
@@ -6,7 +6,7 @@
     <div class="qcv4-question-image-wrapper">
       <div #questionImageBox [style.marginLeft.px]="currentMarginLeft()" class="qcv4-main-image-box">
         <img #questionImage class="qcv4-question-image" [src]="questionImageSource()" alt="Soru görseli"
-          (load)="updateVisualScale()" />
+          [style.width.px]="questionImageWidth()" (load)="updateVisualScale()" />
       </div>
     </div>
     <div class="qcv4-answers-grid" [style.marginLeft.px]="answerMarginLeft()">

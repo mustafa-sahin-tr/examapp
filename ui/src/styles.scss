@@ -354,28 +354,27 @@ html {
       typography: Roboto,
       density: 0));
 
-  @include mat.theme-overrides((
-    // Sayfa zemini (body zaten --ms-surface)
-    background: var(--ms-surface),
-    surface: var(--ms-surface),
-    surface-dim: var(--main-bg-color),
-    surface-bright: var(--ms-surface-strong),
-    // Yüzey katmanları (kart, panel, dialog, datepicker, table)
-    surface-container-lowest: var(--main-bg-color),
-    surface-container-low: var(--ms-surface-weak),
-    surface-container: var(--main-foreground-color),        // select/menu/autocomplete paneli
-    surface-container-high: var(--main-foreground-color),   // dialog, datepicker takvimi
-    surface-container-highest: var(--ms-surface-strong),
-    surface-variant: var(--ms-surface-medium),
-    // Metin ve kenarlık
-    on-background: var(--ms-text),
-    on-surface-variant: var(--ms-text-weak),
-    outline: var(--ms-border-strong),
-    outline-variant: var(--ms-border),
-    // Snackbar/tooltip gibi ters yüzeyler
-    inverse-surface: var(--ms-surface-inverse),
-    inverse-on-surface: var(--ms-text-inverse),
-  ));
+  @include mat.theme-overrides(( // Sayfa zemini (body zaten --ms-surface)
+      background: var(--ms-surface),
+      surface: var(--ms-surface),
+      surface-dim: var(--main-bg-color),
+      surface-bright: var(--ms-surface-strong),
+      // Yüzey katmanları (kart, panel, dialog, datepicker, table)
+      surface-container-lowest: var(--main-bg-color),
+      surface-container-low: var(--ms-surface-weak),
+      surface-container: var(--main-foreground-color), // select/menu/autocomplete paneli
+      surface-container-high: var(--main-foreground-color), // dialog, datepicker takvimi
+      surface-container-highest: var(--ms-surface-strong),
+      surface-variant: var(--ms-surface-medium),
+      // Metin ve kenarlık
+      on-background: var(--ms-text),
+      on-surface-variant: var(--ms-text-weak),
+      outline: var(--ms-border-strong),
+      outline-variant: var(--ms-border),
+      // Snackbar/tooltip gibi ters yüzeyler
+      inverse-surface: var(--ms-surface-inverse),
+      inverse-on-surface: var(--ms-text-inverse),
+    ));
 
 }
 
@@ -447,7 +446,7 @@ body {
 }
 
 .main-content {
-  padding: 20px;
+  padding: var(--ms-layout-spacing-xsmall);
   color: white;
   min-height: 100vh;
 
@@ -4309,7 +4308,7 @@ app-root,
   margin-left: calc(-0.5 * var(--bs-gutter-x));
 }
 
-.row > * {
+.row>* {
   flex-shrink: 0;
   width: 100%;
   max-width: 100%;
@@ -4361,11 +4360,11 @@ app-root,
   border-bottom: 1px solid #e5e7eb;
 }
 
-.tab-content > .tab-pane {
+.tab-content>.tab-pane {
   display: none;
 }
 
-.tab-content > .active {
+.tab-content>.active {
   display: block;
 }
 

@@ -95,10 +95,13 @@ export class CallbackComponent implements OnInit {
 
             // No app role yet (Student/Teacher/Parent/Admin) -> profile completion screen.
             // With an intent, pre-select that role; otherwise the picker opens
-            // with nothing selected. Existing users -> dashboard.
+            // with nothing selected. Existing users -> dashboard; Admin -> admin dashboard (issue #86).
             const appRoles: string[] = res?.roles ?? [];
-            const hasAppRole = ['Student', 'Teacher', 'Parent', 'Admin'].some((r) => appRoles.includes(r));
-            const dest = hasAppRole
+            const isAdmin = appRoles.includes('Admin');
+            const hasAppRole = isAdmin || ['Student', 'Teacher', 'Parent'].some((r) => appRoles.includes(r));
+            const dest = isAdmin
+              ? '/admin/dashboard'
+              : hasAppRole
               ? '/dashboard'
               : hasIntentRole
               ? `/app/complete-profile?role=${intent}`

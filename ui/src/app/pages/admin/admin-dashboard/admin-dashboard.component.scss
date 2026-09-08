@@ -1,0 +1,287 @@
+.admin-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 24px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+// ── Başlık (admin-home ile aynı görsel dil) ─────────────────────────────────
+.admin-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--main-foreground-color);
+      font-family: var(--mainFontFamily);
+    }
+
+    mat-icon {
+      color: var(--primaryColor);
+    }
+  }
+
+  &__subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--ms-text-medium);
+    font-family: var(--paragraphFontFamily);
+  }
+}
+
+// ── Summary Grid (teacher-dashboard'daki summary-card deseni, 5 sütun) ──────
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+  position: relative;
+}
+
+.summary-card {
+  background: var(--ms-surface-weak);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--ms-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primaryColor), var(--ms-action-background));
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--main-bg-color) 40%, transparent);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  &__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .summary-label {
+    font-size: 0.72rem;
+    color: var(--ms-text-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .summary-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--ms-text-weak);
+  }
+
+  .summary-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--ms-text-strong);
+    letter-spacing: -0.02em;
+    font-family: var(--mainFontFamily);
+
+    &__total {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ms-text-medium);
+      letter-spacing: 0;
+    }
+  }
+
+  .summary-hint {
+    font-size: 0.78rem;
+    color: var(--ms-text-medium);
+    font-family: var(--paragraphFontFamily);
+  }
+
+  // AI kartı: vurgulu üst çizgi her zaman görünür, ikon birincil renkte.
+  &--ai {
+    &::before {
+      opacity: 1;
+    }
+
+    .summary-icon {
+      color: var(--primaryColor);
+    }
+  }
+}
+
+// ── AI kartı: yüzde rozeti + ilerleme çubuğu ────────────────────────────────
+.summary-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--primaryColor) 14%, transparent);
+  color: var(--primaryColor);
+  border: 1px solid color-mix(in srgb, var(--primaryColor) 35%, transparent);
+}
+
+.summary-progress {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ms-surface-medium);
+  overflow: hidden;
+
+  &__bar {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primaryColor), var(--ms-action-background));
+    transition: width 0.4s ease;
+  }
+}
+
+// ── Loading (skeleton + küçük spinner) ──────────────────────────────────────
+.summary-card--skeleton {
+  pointer-events: none;
+}
+
+.skeleton-line {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--ms-surface-medium) 25%,
+    var(--ms-surface-strong) 50%,
+    var(--ms-surface-medium) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+
+  &--label {
+    width: 45%;
+    height: 0.72rem;
+  }
+
+  &--value {
+    width: 30%;
+    height: 1.6rem;
+  }
+}
+
+.summary-spinner {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// ── Hata / boş durumları ────────────────────────────────────────────────────
+.state-box {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  .state-text {
+    margin: 0;
+    flex: 1;
+    font-size: 0.9rem;
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &--error {
+    border-color: var(--ms-danger-background);
+
+    mat-icon {
+      color: var(--ms-danger-background);
+    }
+  }
+
+  &--empty {
+    color: var(--ms-text-medium);
+
+    mat-icon {
+      color: var(--ms-text-weak);
+    }
+  }
+}
+
+// ── Responsive ──────────────────────────────────────────────────────────────
+@media (max-width: 1023px) {
+  .summary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  $mobile-bottom-nav-height: 64px;
+
+  .admin-dashboard {
+    padding: 16px 16px calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom) + 16px);
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .summary-card--ai {
+    grid-column: span 2;
+  }
+
+  .state-box {
+    flex-wrap: wrap;
+
+    button {
+      width: 100%;
+    }
+  }
+}

@@ -43,6 +43,37 @@ describe('PracticeService', () => {
     });
   });
 
+  describe('listSessions', () => {
+    it('listSessions_Called_GetsSessionsEndpointWithPageParams', () => {
+      service.listSessions(2, 10).subscribe();
+
+      const req = httpMock.expectOne((r) => r.url === '/api/exam/practice/sessions');
+      expect(req.request.method).toBe('GET');
+      expect(req.request.params.get('page')).toBe('2');
+      expect(req.request.params.get('pageSize')).toBe('10');
+      req.flush({ pageNumber: 2, pageSize: 10, totalCount: 0, items: [] });
+    });
+
+    it('listSessions_NoArgs_DefaultsToFirstPageOfTwenty', () => {
+      service.listSessions().subscribe();
+
+      const req = httpMock.expectOne((r) => r.url === '/api/exam/practice/sessions');
+      expect(req.request.params.get('page')).toBe('1');
+      expect(req.request.params.get('pageSize')).toBe('20');
+      req.flush({ pageNumber: 1, pageSize: 20, totalCount: 0, items: [] });
+    });
+  });
+
+  describe('getSessionReview', () => {
+    it('getSessionReview_Called_GetsReviewEndpointForSession', () => {
+      service.getSessionReview(12).subscribe();
+
+      const req = httpMock.expectOne('/api/exam/practice/sessions/12/review');
+      expect(req.request.method).toBe('GET');
+      req.flush({ session: {}, questions: [] });
+    });
+  });
+
   describe('getNextQuestion', () => {
     it('getNextQuestion_Called_GetsNextEndpointForSession', () => {
       service.getNextQuestion(7).subscribe();

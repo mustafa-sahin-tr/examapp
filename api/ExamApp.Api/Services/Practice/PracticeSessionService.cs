@@ -19,6 +19,8 @@ namespace ExamApp.Api.Services.Practice;
 /// </summary>
 public class PracticeSessionService : IPracticeSessionService
 {
+    private const int MaxPageSize = 100;
+
     private readonly AppDbContext _context;
 
     public PracticeSessionService(AppDbContext context)
@@ -58,6 +60,93 @@ public class PracticeSessionService : IPracticeSessionService
             .FirstOrDefaultAsync(s => s.Id == sessionId && s.StudentId == studentId, ct);
 
         return session == null ? null : MapToDto(session);
+    }
+
+    public async Task<Paged<PracticeSessionDto>> ListAsync(int studentId, int page, int pageSize, CancellationToken ct = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+
+        var query = _context.PracticeSessions
+            .AsNoTracking()
+            .Where(s => s.StudentId == studentId);
+
+        var totalCount = await query.CountAsync(ct);
+
+        // Sayaçlar SQL'de hesaplanır; soru satırları belleğe çekilmez.
+        var rows = await query
+            .OrderByDescending(s => s.StartTime)
+            .ThenByDescending(s => s.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(s => new
+            {
+                s.Id,
+                s.GradeId,
+                s.StartTime,
+                s.EndTime,
+                s.Status,
+                s.SubjectIdsJson,
+                s.TopicIdsJson,
+                AnsweredCount = s.Questions.Count(q => q.AnsweredAt != null),
+                CorrectCount = s.Questions.Count(q => q.IsCorrect),
+                SkippedCount = s.Questions.Count(q => q.IsSkipped)
+            })
+            .ToListAsync(ct);
+
+        return new Paged<PracticeSessionDto>
+        {
+            PageNumber = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            Items = rows.Select(r => new PracticeSessionDto
+            {
+                Id = r.Id,
+                GradeId = r.GradeId,
+                StartTime = r.StartTime,
+                EndTime = r.EndTime,
+                Status = r.Status.ToString(),
+                SubjectIds = ParseIds(r.SubjectIdsJson),
+                TopicIds = ParseIds(r.TopicIdsJson),
+                AnsweredCount = r.AnsweredCount,
+                CorrectCount = r.CorrectCount,
+                SkippedCount = r.SkippedCount
+            }).ToList()
+        };
+    }
+
+    public async Task<PracticeSessionReviewDto?> GetReviewAsync(int sessionId, int studentId, CancellationToken ct = default)
+    {
+        var summary = await GetAsync(sessionId, studentId, ct);
+        if (summary == null)
+            return null;
+
+        // Canvas soruları için tam QuestionDto (geometri + şıklar + passage) gerekir;
+        // worksheet sonuç ekranındaki TestSessionService.GetCanvasTestResultAsync ile aynı yaklaşım.
+        var rows = await _context.PracticeSessionQuestions
+            .AsNoTracking()
+            .Include(p => p.Question).ThenInclude(q => q.Answers)
+            .Include(p => p.Question).ThenInclude(q => q.Passage)
+            .Where(p => p.PracticeSessionId == sessionId)
+            .OrderBy(p => p.ShownAt)
+            .ThenBy(p => p.Id)
+            .ToListAsync(ct);
+
+        var questions = rows.Select(p => new PracticeSessionReviewQuestionDto
+        {
+            // Cevaplanmamış (Pending) sorularda doğru şık gizlenir; aksi halde öğrenci /review üzerinden
+            // henüz cevaplamadığı canlı bir soruyu gönderim öncesi görebilir (answer leakage).
+            Question = MapQuestion(p.Question, revealCorrectAnswer: p.AnsweredAt != null),
+            Status = p.AnsweredAt == null ? "Pending" : p.IsSkipped ? "Skipped" : "Answered",
+            IsSkipped = p.IsSkipped,
+            IsCorrect = p.IsCorrect,
+            SelectedAnswerId = p.SelectedAnswerId,
+            TimeTaken = p.TimeTaken,
+            ShownAt = p.ShownAt,
+            AnsweredAt = p.AnsweredAt
+        }).ToList();
+
+        return new PracticeSessionReviewDto { Session = summary, Questions = questions };
     }
 
     public async Task<PracticeNextQuestionDto?> NextQuestionAsync(int sessionId, int studentId, CancellationToken ct = default)
@@ -274,8 +363,18 @@ public class PracticeSessionService : IPracticeSessionService
         SkippedCount = s.Questions.Count(q => q.IsSkipped)
     };
 
-    /// <summary>Doğru cevap bilinçli olarak dahil edilmez; cevap sonrası <see cref="PracticeAnswerResultDto"/> ile döner.</summary>
-    private static QuestionDto MapQuestion(Question q) => new()
+    /// <summary>
+    /// Canlı akış (<see cref="NextQuestionAsync"/>) için: doğru cevap bilinçli olarak dahil edilmez;
+    /// cevap sonrası <see cref="PracticeAnswerResultDto"/> ile döner.
+    /// </summary>
+    private static QuestionDto MapQuestion(Question q) => MapQuestion(q, revealCorrectAnswer: false);
+
+    /// <summary>
+    /// <paramref name="revealCorrectAnswer"/> yalnızca soru zaten cevaplanmış/pas geçilmişse true olmalı
+    /// (bkz. <see cref="GetReviewAsync"/>). True ise <see cref="QuestionDto.CorrectAnswerId"/> ve eşleşen
+    /// <see cref="AnswerDto.IsCorrect"/> doldurulur; aksi halde ikisi de boş kalır.
+    /// </summary>
+    private static QuestionDto MapQuestion(Question q, bool revealCorrectAnswer) => new()
     {
         Id = q.Id,
         Text = q.Text ?? string.Empty,
@@ -297,6 +396,7 @@ public class PracticeSessionService : IPracticeSessionService
         Width = q.Width,
         Height = q.Height,
         SanitizedHeight = q.SanitizedHeight,
+        CorrectAnswerId = revealCorrectAnswer ? q.CorrectAnswerId : null,
         Passage = q.PassageId.HasValue && q.Passage != null
             ? new PassageDto
             {
@@ -323,7 +423,8 @@ public class PracticeSessionService : IPracticeSessionService
                 Width = a.Width,
                 Height = a.Height,
                 Tag = a.Tag,
-                Order = a.Order
+                Order = a.Order,
+                IsCorrect = revealCorrectAnswer && q.CorrectAnswerId.HasValue && q.CorrectAnswerId.Value == a.Id
             })
             .ToList()
     };

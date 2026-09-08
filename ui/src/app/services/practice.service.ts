@@ -1,13 +1,15 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { QuestionRegion } from '../models/draws';
 import { Question } from '../models/question';
+import { Paged } from '../models/test-instance';
 import {
   PracticeAnswerResult,
   PracticeAnswerSubmitRequest,
   PracticeNextQuestion,
   PracticeSession,
+  PracticeSessionReview,
   PracticeSessionStartRequest,
 } from '../models/practice';
 
@@ -28,6 +30,17 @@ export class PracticeService {
 
   getSession(sessionId: number): Observable<PracticeSession> {
     return this.http.get<PracticeSession>(`${this.baseUrl}/sessions/${sessionId}`);
+  }
+
+  /** Öğrencinin geçmiş oturumları, en yeni önce. `pageSize` sunucuda 100 ile sınırlanır. */
+  listSessions(page = 1, pageSize = 20): Observable<Paged<PracticeSession>> {
+    const params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    return this.http.get<Paged<PracticeSession>>(`${this.baseUrl}/sessions`, { params });
+  }
+
+  /** Oturum özeti + gösterilen soruların tek tek sonucu; sahibi değilse 404. */
+  getSessionReview(sessionId: number): Observable<PracticeSessionReview> {
+    return this.http.get<PracticeSessionReview>(`${this.baseUrl}/sessions/${sessionId}/review`);
   }
 
   /** Cevaplanmadan tekrar çağrılırsa aynı bekleyen soruyu döner (idempotent). */

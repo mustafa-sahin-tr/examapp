@@ -31,4 +31,8 @@ export class ProgramService {
   addStudyPages(programId: number, request: ProgramStudyPageScheduleRequest): Observable<UserProgram> {
     return this.http.post<UserProgram>(`${this.apiUrl}/${programId}/study-pages`, request);
   }
+
+  deleteProgram(programId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${programId}`);
+  }
 }

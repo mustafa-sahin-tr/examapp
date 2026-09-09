@@ -283,6 +283,21 @@
         font-weight: 600;
         letter-spacing: 0.3px;
     }
+
+    .mobile-toolbar-actions {
+        margin-left: auto;
+    }
+}
+
+// Masaüstü toolbar: arama kutusu ile profil menüsü arasında (issue #81)
+.toolbar-scheme-toggle {
+    margin-left: auto;
+    margin-right: var(--ms-layout-spacing-xsmall);
+
+    // Profil menüsü `margin-left: auto` ile sağa yaslanır; toggle araya girince kendi auto'sunu sıfırla
+    + .profile-menu {
+        margin-left: 0;
+    }
 }
 
 // Responsive Design

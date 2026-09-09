@@ -3,13 +3,14 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 
 import { QuestionCanvasComponent } from './question-canvas.component';
 import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
 import { BookService } from '../../services/book.service';
+import { AuthService } from '../../services/auth.service';
 import { ClassificationSource } from '../../models/draws';
 
 /**
@@ -507,6 +508,131 @@ describe('QuestionCanvasComponent', () => {
       expect(testService.get).toHaveBeenCalledWith(42);
       expect(component.questionForm.get('testId')?.value).toBe('T-1');
       expect(component.questionForm.get('testValue')?.value).toBe(99);
+    });
+  });
+
+  /**
+   * `isAdmin` is resolved once at field-initialization time from `AuthService.hasRole('Admin')`,
+   * so it can't be flipped after a component instance already exists — each scenario below spins
+   * up its own TestBed module with a stubbed AuthService instead of reusing the outer beforeEach.
+   * `saveBulk` is driven by a manually-controlled Subject so the saving() true/false transition
+   * around the async emission can be asserted, rather than only the settled end-state.
+   */
+  describe('onSave', () => {
+    async function setup(opts: { isAdmin: boolean; saveBulk$?: Subject<any> }) {
+      const saveBulk$ = opts.saveBulk$ ?? new Subject<any>();
+
+      const testServiceLocal = jasmine.createSpyObj<TestService>('TestService', ['search', 'get']);
+      testServiceLocal.search.and.returnValue(of({ items: [] }) as any);
+
+      const questionServiceLocal = jasmine.createSpyObj<QuestionService>('QuestionService', ['getAll', 'saveBulk']);
+      questionServiceLocal.saveBulk.and.returnValue(saveBulk$.asObservable() as any);
+
+      const bookServiceLocal = jasmine.createSpyObj<BookService>('BookService', ['getAll', 'getTestsByBook']);
+      bookServiceLocal.getAll.and.returnValue(of([]));
+      bookServiceLocal.getTestsByBook.and.returnValue(of([]));
+
+      const subjectServiceLocal = jasmine.createSpyObj<SubjectService>('SubjectService', ['loadCategories']);
+
+      const routerLocal = jasmine.createSpyObj<Router>('Router', ['navigate', 'getCurrentNavigation']);
+      routerLocal.getCurrentNavigation.and.returnValue(null as any);
+
+      const authServiceLocal = jasmine.createSpyObj<AuthService>('AuthService', ['hasRole']);
+      authServiceLocal.hasRole.and.returnValue(opts.isAdmin);
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [QuestionCanvasComponent],
+        providers: [
+          provideNoopAnimations(),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: TestService, useValue: testServiceLocal },
+          { provide: QuestionService, useValue: questionServiceLocal },
+          { provide: BookService, useValue: bookServiceLocal },
+          { provide: SubjectService, useValue: subjectServiceLocal },
+          { provide: Router, useValue: routerLocal },
+          { provide: AuthService, useValue: authServiceLocal },
+          { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
+        ],
+      }).compileComponents();
+
+      const localFixture = TestBed.createComponent(QuestionCanvasComponent);
+      const localComponent = localFixture.componentInstance;
+
+      const imageSelectorFake = {
+        getRegions: jasmine.createSpy('getRegions').and.callFake((payload: any) => payload),
+        sendToFix: jasmine.createSpy('sendToFix'),
+      };
+      localComponent.imageSelector = imageSelectorFake as any;
+
+      const tceFake = {
+        reloadComponent: jasmine.createSpy('reloadComponent'),
+      };
+      localComponent.testCreateEnhancedComponent = tceFake as any;
+
+      return { component: localComponent, questionServiceLocal, imageSelectorFake, tceFake, saveBulk$ };
+    }
+
+    it('onSave_SavingAlreadyTrue_DoesNotCallSaveBulkAgain', async () => {
+      const { component, questionServiceLocal } = await setup({ isAdmin: false });
+      component.saving.set(true);
+
+      component.onSave();
+
+      expect(questionServiceLocal.saveBulk).not.toHaveBeenCalled();
+    });
+
+    it('onSave_TogglesSavingTrueThenFalse_AroundSuccessfulSaveBulkEmission', async () => {
+      const { component, saveBulk$ } = await setup({ isAdmin: false });
+
+      component.onSave();
+
+      expect(component.saving()).toBeTrue();
+
+      saveBulk$.next({});
+
+      expect(component.saving()).toBeFalse();
+    });
+
+    it('onSave_SavingReturnsFalse_WhenSaveBulkErrors', async () => {
+      const { component, saveBulk$ } = await setup({ isAdmin: false });
+
+      component.onSave();
+
+      expect(component.saving()).toBeTrue();
+
+      saveBulk$.error(new Error('boom'));
+
+      expect(component.saving()).toBeFalse();
+    });
+
+    it('onSave_AdminUser_DefaultSendToFix_CallsImageSelectorSendToFix_OnSuccess', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+
+      component.onSave();
+      saveBulk$.next({});
+
+      expect(imageSelectorFake.sendToFix).toHaveBeenCalledTimes(1);
+    });
+
+    it('onSave_NonAdminUser_NeverCallsImageSelectorSendToFix_OnSuccess_RegardlessOfSendToFixArg', async () => {
+      const subjectTrue = new Subject<any>();
+      const { component, imageSelectorFake } = await setup({ isAdmin: false, saveBulk$: subjectTrue });
+
+      component.onSave(true);
+      subjectTrue.next({});
+
+      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
+    });
+
+    it('onSave_AdminUser_ExplicitSendToFixFalse_DoesNotCallImageSelectorSendToFix_OnSuccess', async () => {
+      const { component, imageSelectorFake, saveBulk$ } = await setup({ isAdmin: true });
+
+      component.onSave(false);
+      saveBulk$.next({});
+
+      expect(imageSelectorFake.sendToFix).not.toHaveBeenCalled();
     });
   });
 });

@@ -211,6 +211,12 @@
     opacity: 0.5;
     cursor: default;
   }
+
+  /* Kaydet butonu içindeki küçük yükleniyor göstergesi; buton metniyle aynı rengi alır. */
+  .qc-btn__spinner {
+    --mat-progress-spinner-active-indicator-color: currentColor;
+    flex: 0 0 auto;
+  }
 }
 
 .qc-split {

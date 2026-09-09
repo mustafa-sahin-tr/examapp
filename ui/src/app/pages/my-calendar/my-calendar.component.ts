@@ -123,7 +123,7 @@ export class MyCalendarComponent {
   onDayClick(date: Date): void {
     const iso = toLocalIso(date);
     const dayEvents = this.events()
-      .filter((ev) => toLocalIso(new Date(ev.date)) === iso)
+      .filter((ev) => this.coversDay(ev, date, iso))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     if (dayEvents.length === 0) {
@@ -138,11 +138,45 @@ export class MyCalendarComponent {
     }
 
     if (dayEvents.length === 1) {
-      void this.router.navigate(['/test', dayEvents[0].worksheetId]);
+      this.navigateToEvent(dayEvents[0]);
       return;
     }
 
     this.dialog.open(CalendarDayDialogComponent, { data, restoreFocus: true, autoFocus: 'dialog', width: '32rem' });
+  }
+
+  /** Program planı bar'ına tıklama (issue #113) — her zaman program detayına gider. */
+  onBarClick(event: CalendarEvent): void {
+    this.navigateToEvent(event);
+  }
+
+  /**
+   * Etkinlik türüne göre hedef: worksheet tabanlılar `/test/:id`, program planı
+   * `/programs/:id/detail` (öğrenci için tekil study-page rotası yok).
+   */
+  private navigateToEvent(event: CalendarEvent): void {
+    if (event.kind === 'program-study-page') {
+      if (event.programId !== null) {
+        void this.router.navigate(['/programs', event.programId, 'detail']);
+      }
+      return;
+    }
+    void this.router.navigate(['/test', event.worksheetId]);
+  }
+
+  /**
+   * Tek anlık etkinlikler o güne düşüyorsa; çok günlü program planları
+   * [başlangıç günü, bitiş günü] aralığı (bitiş dahil) o günü kapsıyorsa.
+   */
+  private coversDay(event: CalendarEvent, day: Date, iso: string): boolean {
+    if (event.kind !== 'program-study-page') {
+      return toLocalIso(new Date(event.date)) === iso;
+    }
+    const start = new Date(event.date);
+    const end = new Date(event.endDate ?? event.date);
+    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    return day >= startDay && day <= endDay;
   }
 
   retry(): void {

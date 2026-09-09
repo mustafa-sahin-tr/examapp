@@ -79,6 +79,14 @@
     background: var(--ms-success-border, var(--primaryColor));
   }
 
+  &__row--program-plan &__strip {
+    background: var(--ms-info-border, var(--primaryColor));
+  }
+
+  &__row--program-plan-done &__strip {
+    background: var(--ms-info-text-weak, var(--secondaryColor));
+  }
+
   &__row-icon {
     width: 1.25rem;
     height: 1.25rem;

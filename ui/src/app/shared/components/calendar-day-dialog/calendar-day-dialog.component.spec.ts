@@ -1,9 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { of, throwError } from 'rxjs';
 
 import { CalendarDayDialogComponent, CalendarDayDialogData } from './calendar-day-dialog.component';
 import { CalendarEvent } from '../../../models/calendar-event';
+import { ProgramService } from '../../../services/program.service';
+import { UserProgram } from '../../../models/program.interfaces';
 
 function reminder(overrides: Partial<CalendarEvent> & { worksheetId: number }): CalendarEvent {
   return {
@@ -35,22 +40,77 @@ function deadline(overrides: Partial<CalendarEvent> & { worksheetId: number }): 
   } as CalendarEvent;
 }
 
-async function setup(data: CalendarDayDialogData) {
+function program(overrides: Partial<CalendarEvent> & { programId: number }): CalendarEvent {
+  return {
+    kind: 'program-study-page',
+    date: new Date(2026, 8, 15, 8, 0).toISOString(),
+    endDate: null,
+    worksheetId: 0,
+    worksheetTitle: '',
+    subject: null,
+    imageUrl: null,
+    status: null,
+    remindBeforeMinutes: null,
+    isCompleted: false,
+    teacherName: null,
+    programName: 'Deneme Programı',
+    studyPageId: 1,
+    studyPageTitle: 'Sayfa 1',
+    ...overrides,
+  } as CalendarEvent;
+}
+
+function makeUserProgram(overrides: Partial<UserProgram> = {}): UserProgram {
+  return {
+    id: 1,
+    userId: 'u1',
+    programName: 'Deneme Programı',
+    description: '',
+    createdDate: new Date(2026, 0, 1).toISOString(),
+    isActive: true,
+    studyType: 'daily',
+    subjectsPerDay: 1,
+    restDays: '',
+    difficultSubjects: '',
+    completedPageCount: 3,
+    totalPageCount: 10,
+    progressPercentage: 30,
+    schedules: [],
+    studyPageSchedules: [],
+    ...overrides,
+  } as UserProgram;
+}
+
+async function setup(
+  data: CalendarDayDialogData,
+  options: { programServiceSpy?: jasmine.SpyObj<ProgramService> } = {},
+) {
   const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
   const dialogRef = jasmine.createSpyObj<MatDialogRef<CalendarDayDialogComponent>>('MatDialogRef', ['close']);
+  const programService =
+    options.programServiceSpy ??
+    jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
+  if (!options.programServiceSpy) {
+    programService.getProgramById.and.returnValue(of(makeUserProgram()));
+  }
 
   await TestBed.configureTestingModule({
     imports: [CalendarDayDialogComponent],
     providers: [
+      provideHttpClient(),
+      provideHttpClientTesting(),
       { provide: Router, useValue: router },
       { provide: MatDialogRef, useValue: dialogRef },
       { provide: MAT_DIALOG_DATA, useValue: data },
+      { provide: ProgramService, useValue: programService },
     ],
   }).compileComponents();
 
   const fixture = TestBed.createComponent(CalendarDayDialogComponent);
   fixture.detectChanges();
-  return { fixture, router, dialogRef };
+  await fixture.whenStable();
+  fixture.detectChanges();
+  return { fixture, router, dialogRef, programService };
 }
 
 function clickButtonByText(fixture: ComponentFixture<unknown>, text: string): void {
@@ -131,5 +191,69 @@ describe('CalendarDayDialogComponent', () => {
     const title = fixture.nativeElement.querySelector(`#${labelledBy}`);
     expect(title).toBeTruthy();
     expect((title as HTMLElement).textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it('ProgramStudyPageRow_Clicked_NavigatesToProgramDetailAndCloses', async () => {
+    const { fixture, router, dialogRef } = await setup({
+      date,
+      events: [program({ programId: 42, studyPageTitle: 'Sayfa 1' })],
+    });
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Sayfa 1');
+    expect(text).toContain('Programa git');
+
+    clickButtonByText(fixture, 'Programa git');
+
+    expect(router.navigate).toHaveBeenCalledWith(['/programs', 42, 'detail']);
+    expect(dialogRef.close).toHaveBeenCalled();
+  });
+
+  it('ProgramStudyPageRow_ProgressLoaded_ShowsCompletedOfTotalPagesInMeta', async () => {
+    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
+    programService.getProgramById.and.returnValue(
+      of(makeUserProgram({ completedPageCount: 4, totalPageCount: 12 })),
+    );
+
+    const { fixture } = await setup(
+      { date, events: [program({ programId: 7, studyPageTitle: 'Sayfa 1' })] },
+      { programServiceSpy: programService },
+    );
+
+    const meta = fixture.nativeElement.querySelector('.day-dialog__row-meta') as HTMLElement;
+    expect(meta.textContent).toContain('4/12 sayfa tamamlandı');
+  });
+
+  it('ProgramStudyPageRows_MultipleEventsSameProgram_CallsGetProgramByIdOnce', async () => {
+    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
+    programService.getProgramById.and.returnValue(of(makeUserProgram({ completedPageCount: 2, totalPageCount: 5 })));
+
+    await setup(
+      {
+        date,
+        events: [
+          program({ programId: 7, studyPageId: 1, studyPageTitle: 'Sayfa 1' }),
+          program({ programId: 7, studyPageId: 2, studyPageTitle: 'Sayfa 2' }),
+        ],
+      },
+      { programServiceSpy: programService },
+    );
+
+    expect(programService.getProgramById).toHaveBeenCalledTimes(1);
+    expect(programService.getProgramById).toHaveBeenCalledWith(7);
+  });
+
+  it('ProgramStudyPageRow_GetProgramByIdFails_RowStillRendersWithoutProgress', async () => {
+    const programService = jasmine.createSpyObj<ProgramService>('ProgramService', ['getProgramById']);
+    programService.getProgramById.and.returnValue(throwError(() => new Error('network error')));
+
+    const { fixture } = await setup(
+      { date, events: [program({ programId: 7, studyPageTitle: 'Sayfa 1' })] },
+      { programServiceSpy: programService },
+    );
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Sayfa 1');
+    expect(text).not.toContain('sayfa tamamlandı');
   });
 });

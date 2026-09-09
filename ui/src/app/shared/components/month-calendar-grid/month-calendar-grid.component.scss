@@ -107,6 +107,77 @@
     color: var(--ms-text-weak);
     font-size: var(--ms-type-font-size-xsmall);
   }
+
+  // --- Program planı bar katmanı (issue #113) ---
+  // Hafta = hücre satırı (rozet katmanı) + altındaki bar şeridi. İki katman DOM'da ayrı
+  // olduğu için rozetlerle çakışma olmaz; şerit yüksekliği stack sayısına göre TS'ten gelir.
+  &__week {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__bars {
+    --bar-height: 20px;
+    --bar-gap: 4px; // BAR_STEP_PX (24) = height + gap
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    padding: 2px 0;
+    box-sizing: content-box;
+    background: var(--ms-surface-weak);
+    border-bottom: 1px solid var(--ms-border-weak);
+  }
+
+  &__bar {
+    grid-row: 1;
+    align-self: start;
+    height: var(--bar-height);
+    margin: 0 2px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    border-radius: 4px;
+    background: var(--ms-info-border);
+    color: var(--ms-info-surface);
+    font-size: var(--ms-type-font-size-xsmall);
+    cursor: pointer;
+    outline: none;
+    transition: filter 0.15s ease;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px var(--ms-action-border-focus);
+    }
+
+    // Segment ilk/son günü içeriyorsa hap köşesi, haftaya taşıyorsa düz kenar.
+    &--starts {
+      border-top-left-radius: 999px;
+      border-bottom-left-radius: 999px;
+    }
+
+    &--ends {
+      border-top-right-radius: 999px;
+      border-bottom-right-radius: 999px;
+    }
+
+    &--completed {
+      background: var(--ms-info-surface-weak);
+      color: var(--ms-info-text-weak);
+      border: 1px solid var(--ms-info-text-weak);
+      opacity: 0.7;
+    }
+  }
+
+  &__bar-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
 }
 
 @media (max-width: 767px) {
@@ -118,5 +189,10 @@
 
   .calendar-grid__daynum {
     font-size: var(--ms-type-font-size-xsmall);
+  }
+
+  .calendar-grid__bar {
+    padding: 0 4px;
+    margin: 0 1px;
   }
 }

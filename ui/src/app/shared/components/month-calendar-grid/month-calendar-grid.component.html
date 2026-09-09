@@ -6,34 +6,64 @@
   </div>
 
   <div class="calendar-grid__body">
-    @for (week of weeks(); track $index) {
-      <div class="calendar-grid__row" role="row">
-        @for (cell of week; track cell.iso) {
-          <div
-            class="calendar-grid__cell"
-            role="gridcell"
-            [id]="'cal-day-' + cell.iso"
-            [attr.aria-label]="cellAriaLabel(cell)"
-            [class.calendar-grid__cell--outside]="!cell.inCurrentMonth"
-            [class.calendar-grid__cell--today]="cell.isToday"
-            [attr.aria-current]="cell.isToday ? 'date' : null"
-            [attr.tabindex]="isFocusTarget(cell) ? 0 : -1"
-            (click)="onDayClick(cell)"
-            (keydown)="onKeydown($event, cell)"
-          >
-            <span class="calendar-grid__daynum">{{ cell.day }}</span>
+    @for (week of weeks(); track $index; let weekIndex = $index) {
+      <div class="calendar-grid__week" role="presentation">
+        <div class="calendar-grid__row" role="row">
+          @for (cell of week; track cell.iso) {
+            <div
+              class="calendar-grid__cell"
+              role="gridcell"
+              [id]="'cal-day-' + cell.iso"
+              [attr.aria-label]="cellAriaLabel(cell)"
+              [class.calendar-grid__cell--outside]="!cell.inCurrentMonth"
+              [class.calendar-grid__cell--today]="cell.isToday"
+              [attr.aria-current]="cell.isToday ? 'date' : null"
+              [attr.tabindex]="isFocusTarget(cell) ? 0 : -1"
+              (click)="onDayClick(cell)"
+              (keydown)="onKeydown($event, cell)"
+            >
+              <span class="calendar-grid__daynum">{{ cell.day }}</span>
 
-            @if (eventsFor(cell).length) {
+              @if (eventsFor(cell).length) {
+                <div
+                  class="calendar-grid__events"
+                  [class.calendar-grid__events--compact]="compact()"
+                >
+                  @for (ev of visibleEvents(cell); track ev.kind + '-' + ev.worksheetId + '-' + ev.date) {
+                    <app-calendar-event-badge [event]="ev" [compact]="compact()" />
+                  }
+                  @if (overflowCount(cell); as more) {
+                    <span class="calendar-grid__more" aria-hidden="true">+{{ more }} daha</span>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Program planı bar katmanı (issue #113): rozetlerin altında, hafta şeridine hizalı ayrı katman. -->
+        @if (barsFor(weekIndex).length) {
+          <div
+            class="calendar-grid__bars"
+            [class.calendar-grid__bars--compact]="compact()"
+            [style.height.px]="barLayerHeight(weekIndex)"
+          >
+            @for (bar of barsFor(weekIndex); track barTrackKey(bar)) {
               <div
-                class="calendar-grid__events"
-                [class.calendar-grid__events--compact]="compact()"
+                class="calendar-grid__bar"
+                role="button"
+                tabindex="0"
+                [class.calendar-grid__bar--completed]="bar.completed"
+                [class.calendar-grid__bar--starts]="bar.startsHere"
+                [class.calendar-grid__bar--ends]="bar.endsHere"
+                [style.grid-column]="bar.startCol + ' / ' + bar.endCol"
+                [style.transform]="'translateY(' + barOffsetY(bar) + 'px)'"
+                [attr.aria-label]="bar.label + (bar.event.programName ? ', ' + bar.event.programName : '') + ', programa git'"
+                [title]="bar.label"
+                (click)="onBarClick(bar, $event)"
+                (keydown)="onBarKeydown(bar, $event)"
               >
-                @for (ev of visibleEvents(cell); track ev.kind + '-' + ev.worksheetId + '-' + ev.date) {
-                  <app-calendar-event-badge [event]="ev" [compact]="compact()" />
-                }
-                @if (overflowCount(cell); as more) {
-                  <span class="calendar-grid__more" aria-hidden="true">+{{ more }} daha</span>
-                }
+                <span class="calendar-grid__bar-title">{{ bar.label }}</span>
               </div>
             }
           </div>

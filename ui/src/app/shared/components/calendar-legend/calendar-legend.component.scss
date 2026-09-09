@@ -42,6 +42,20 @@
       border-color: var(--ms-success-border);
       color: var(--ms-success-text);
     }
+
+    // Program çalışma planı bar'ları (issue #113): mavi info tonu; tamamlanan soluk.
+    &--program-plan {
+      background: var(--ms-info-surface);
+      border-color: var(--ms-info-border);
+      color: var(--ms-info-text);
+    }
+
+    &--program-plan-done {
+      background: var(--ms-info-surface-weak);
+      border-color: var(--ms-border-weak);
+      color: var(--ms-info-text-weak);
+      opacity: 0.75;
+    }
   }
 
   &__dot {
@@ -80,6 +94,23 @@
     &--deadline-done {
       border: 1px solid var(--ms-success-border);
       color: var(--ms-success-text-medium);
+    }
+
+    // Bar = yatay hap şekli, rozetlerden (daire/kare) ayrışsın.
+    &--program-plan,
+    &--program-plan-done {
+      width: 22px;
+      border-radius: 999px;
+    }
+
+    &--program-plan {
+      background: var(--ms-info-border);
+      color: var(--ms-info-surface);
+    }
+
+    &--program-plan-done {
+      border: 1px solid var(--ms-info-text-weak);
+      color: var(--ms-info-text-weak);
     }
   }
 

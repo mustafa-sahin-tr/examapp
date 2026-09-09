@@ -13,7 +13,7 @@
   </header>
 
   <ul class="day-dialog__list">
-    @for (row of rows; track row.variant + '|' + row.time + '|' + row.title) {
+    @for (row of rows(); track row.variant + '|' + row.time + '|' + row.title) {
       <li
         class="day-dialog__row"
         [class.day-dialog__row--sunk]="row.sunk"
@@ -21,6 +21,8 @@
         [class.day-dialog__row--reminder-sent]="row.variant === 'reminder-sent'"
         [class.day-dialog__row--deadline-open]="row.variant === 'deadline-open'"
         [class.day-dialog__row--deadline-done]="row.variant === 'deadline-done'"
+        [class.day-dialog__row--program-plan]="row.variant === 'program-plan'"
+        [class.day-dialog__row--program-plan-done]="row.variant === 'program-plan-done'"
       >
         <span class="day-dialog__strip" aria-hidden="true"></span>
         <mat-icon class="day-dialog__row-icon">{{ row.icon }}</mat-icon>

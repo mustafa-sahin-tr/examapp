@@ -25,5 +25,7 @@ export class CalendarLegendComponent {
     { variant: 'reminder-sent', icon: 'notifications_off', label: 'Gönderilmiş hatırlatma' },
     { variant: 'deadline-open', icon: 'flag', label: 'Teslim tarihi' },
     { variant: 'deadline-done', icon: 'check_circle', label: 'Tamamlanan atama' },
+    { variant: 'program-plan', icon: 'menu_book', label: 'Çalışma planı' },
+    { variant: 'program-plan-done', icon: 'check_circle', label: 'Tamamlanan plan' },
   ];
 }

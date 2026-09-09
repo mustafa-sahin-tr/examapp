@@ -26,6 +26,9 @@ export interface UserProgram {
   subjectsPerDay: number;
   restDays: string;
   difficultSubjects: string;
+  completedPageCount: number;
+  totalPageCount: number;
+  progressPercentage: number;
   schedules: UserProgramSchedule[];
   studyPageSchedules: UserProgramStudyPageSchedule[];
 }

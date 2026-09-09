@@ -1,3 +1,8 @@
+// Durum renkleri — hero istatistik ikonu, badge, kart üst çizgisi ve ilerleme çubuğu aynı token'ları paylaşır
+$status-completed: linear-gradient(135deg, var(--ms-success-text-medium), var(--ms-success-border));
+$status-active: linear-gradient(135deg, var(--primaryColor), var(--ms-action-border-focus));
+$status-idle: linear-gradient(135deg, var(--ms-border), var(--ms-border-strong));
+
 .ms-programs-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -129,11 +134,11 @@
       background: rgba(255, 255, 255, 0.2);
 
       &.active {
-        background: linear-gradient(135deg, #4CAF50, #45a049);
+        background: $status-active;
       }
 
       &.completed {
-        background: linear-gradient(135deg, #2196F3, #1976D2);
+        background: $status-completed;
       }
 
       mat-icon {
@@ -162,7 +167,8 @@
 // Content Section
 .programs-section,
 .loading-state,
-.empty-state {
+.empty-state,
+.error-state {
   background: #f8fafc;
   min-height: calc(100vh - 400px);
   padding: 48px 24px;
@@ -299,6 +305,74 @@
   }
 }
 
+// Error State
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  .error-content {
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .error-icon-wrapper {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    background: color-mix(in srgb, var(--ms-danger-background) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ms-danger-border) 40%, transparent);
+
+    .error-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: var(--ms-danger-background);
+    }
+  }
+
+  .error-title {
+    font-family: var(--mainFontFamily);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--ms-text-inverse);
+    margin: 0 0 12px 0;
+  }
+
+  .error-description {
+    font-family: var(--paragraphFontFamily);
+    color: var(--paragraphColor);
+    line-height: 1.6;
+    margin: 0 0 28px 0;
+  }
+
+  .error-retry-btn {
+    border-color: var(--primaryColor);
+    color: var(--primaryColor);
+    border-radius: 12px;
+    height: 44px;
+    font-weight: 600;
+
+    mat-icon {
+      margin-right: 6px;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--primaryColor) 8%, transparent);
+    }
+  }
+}
+
 // Filter Empty State
 .filter-empty-state {
   display: flex;
@@ -425,11 +499,11 @@
   }
 
   &.active::before {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
+    background: $status-active;
   }
 
   &.completed::before {
-    background: linear-gradient(135deg, #2196F3, #1976D2);
+    background: $status-completed;
   }
 
   &:hover {
@@ -462,13 +536,13 @@
     letter-spacing: 0.5px;
 
     &.active {
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-      color: white;
+      background: $status-active;
+      color: var(--whiteColor);
     }
 
     &.completed {
-      background: linear-gradient(135deg, #2196F3, #1976D2);
-      color: white;
+      background: $status-completed;
+      color: var(--whiteColor);
     }
 
     mat-icon {
@@ -560,63 +634,50 @@
     }
   }
 
-  // Program Stats
+  // Program Stats — kompakt, tek satırlık chip'ler
   .program-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
 
-    .stat-item {
-      display: flex;
+    .stat-chip {
+      display: inline-flex;
       align-items: center;
-      gap: 12px;
+      gap: 6px;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 14px;
+      font-family: var(--paragraphFontFamily);
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+      text-transform: capitalize;
+      border: 1px solid transparent;
 
-      .stat-icon-wrapper {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        &.duration {
-          background: rgba(102, 126, 234, 0.1);
-        }
-
-        &.subjects {
-          background: rgba(76, 175, 80, 0.1);
-        }
-
-        &.type {
-          background: rgba(255, 152, 0, 0.1);
-        }
-
-        mat-icon {
-          font-size: 16px;
-          width: 16px;
-          height: 16px;
-          color: inherit;
-        }
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
 
-      .stat-text {
-        display: flex;
-        flex-direction: column;
+      &.duration {
+        color: var(--primaryColor);
+        background: color-mix(in srgb, var(--primaryColor) 10%, transparent);
+        border-color: color-mix(in srgb, var(--primaryColor) 25%, transparent);
+      }
 
-        .stat-value {
-          font-weight: 700;
-          color: #334155;
-          font-size: 0.9rem;
-          line-height: 1;
-        }
+      &.subjects {
+        color: var(--ms-success-text-medium);
+        background: color-mix(in srgb, var(--ms-success-text-medium) 10%, transparent);
+        border-color: color-mix(in srgb, var(--ms-success-text-medium) 25%, transparent);
+      }
 
-        .stat-label {
-          font-size: 0.75rem;
-          color: #64748b;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
+      &.type {
+        color: var(--secondaryColor);
+        background: color-mix(in srgb, var(--secondaryColor) 10%, transparent);
+        border-color: color-mix(in srgb, var(--secondaryColor) 25%, transparent);
       }
     }
   }
@@ -643,7 +704,15 @@
       .progress-percentage {
         font-size: 1.1rem;
         font-weight: 700;
-        color: #667eea;
+        color: var(--ms-border-strong);
+
+        &.active {
+          color: var(--primaryColor);
+        }
+
+        &.completed {
+          color: var(--ms-success-text-medium);
+        }
       }
     }
 
@@ -659,10 +728,18 @@
 
         .progress-fill {
           height: 100%;
-          background: linear-gradient(135deg, #667eea, #764ba2);
+          background: $status-idle;
           border-radius: 4px;
           transition: width 0.6s ease;
           position: relative;
+
+          &.active {
+            background: $status-active;
+          }
+
+          &.completed {
+            background: $status-completed;
+          }
 
           &::after {
             content: '';
@@ -679,18 +756,20 @@
     }
 
     .progress-details {
-      .days-info {
-        display: flex;
-        justify-content: space-between;
+      .page-progress {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--paragraphFontFamily);
         font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--paragraphColor);
 
-        .completed-days {
-          color: #4CAF50;
-          font-weight: 600;
-        }
-
-        .remaining-days {
-          color: #64748b;
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          color: var(--primaryColor);
         }
       }
     }
@@ -822,7 +901,8 @@
 
   .programs-section,
   .loading-state,
-  .empty-state {
+  .empty-state,
+  .error-state {
     padding: 32px 16px;
   }
 
@@ -831,11 +911,6 @@
 
     .card-header {
       padding-right: 80px;
-    }
-
-    .program-stats {
-      grid-template-columns: 1fr;
-      gap: 12px;
     }
   }
 }

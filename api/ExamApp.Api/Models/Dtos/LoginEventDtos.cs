@@ -31,3 +31,12 @@ public class LoginEventCreatedDto
 {
     public int Id { get; set; }
 }
+
+/// <summary>
+/// GET api/student/me/last-login cevabı (issue #125). Önceki giriş yoksa <c>LastLoginAtUtc</c> null'dır
+/// (200 OK ile döner; frontend tüketimi kolay olsun diye 204 değil).
+/// </summary>
+public class LastLoginDto
+{
+    public DateTime? LastLoginAtUtc { get; set; }
+}

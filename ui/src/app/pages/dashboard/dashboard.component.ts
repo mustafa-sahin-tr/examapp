@@ -12,8 +12,8 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
-import { WorksheetCardComponent } from '../worksheet-card/worksheet-card.component';
 import { TestService } from '../../services/test.service';
 import { AssignedWorksheet } from '../../models/assignment';
 import { Test } from '../../models/test-instance';
@@ -21,16 +21,24 @@ import { NgxChartsModule, Color, ScaleType } from '@swimlane/ngx-charts';
 import { BadgeProgressItem, BadgeService, UserActivityResponse } from '../../services/badge.service';
 import { finalize } from 'rxjs';
 import { StudentResetService } from '../../services/student-reset.service';
+import { StudentService } from '../../services/student.service';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
   test: Test;
 }
 
+/** "Sıradaki Rozetler" listesi için görünüm modeli — ilerleme yüzdesi şablonda hesaplanmasın diye burada türetilir. */
+interface UpcomingBadgeViewModel {
+  badge: BadgeProgressItem;
+  remaining: number;
+  percent: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, SectionHeaderComponent, WorksheetCardComponent, NgxChartsModule],
+  imports: [CommonModule, MatIconModule, SectionHeaderComponent, NgxChartsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
@@ -39,6 +47,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly badgeService = inject(BadgeService);
   private readonly studentResetService = inject(StudentResetService);
+  private readonly studentService = inject(StudentService);
 
   private readonly assignments = signal<AssignmentCardViewModel[]>([]);
   readonly loading = signal(true);
@@ -52,8 +61,34 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly badgeProgressLoading = signal(false);
   readonly badgeProgressError = signal(false);
   readonly earnedBadges = signal<BadgeProgressItem[]>([]);
+  /** Ham rozet ilerleme listesi (tamamlanan + tamamlanmayan); earnedBadges ve upcomingBadges buradan türer. */
+  readonly allBadgeProgress = signal<BadgeProgressItem[]>([]);
   readonly resetInProgress = signal(false);
   readonly resetMessage = signal<string | null>(null);
+
+  /** Issue #126 — önceki giriş zamanı; null ise chip hiç render edilmez. */
+  readonly lastLoginAtUtc = signal<string | null>(null);
+  readonly lastLoginLabel = computed(() => this.formatLastLogin(this.lastLoginAtUtc()));
+
+  readonly upcomingBadgesLimit = 3;
+  readonly upcomingBadges = computed<UpcomingBadgeViewModel[]>(() =>
+    this.allBadgeProgress()
+      .filter((badge) => !badge.isCompleted)
+      .map((badge) => {
+        const target = Math.max(badge.targetValue ?? 0, 0);
+        const current = Math.min(Math.max(badge.currentValue ?? 0, 0), target);
+        return {
+          badge,
+          remaining: target - current,
+          percent: target > 0 ? Math.round((current / target) * 100) : 0,
+        };
+      })
+      .sort((a, b) => a.remaining - b.remaining)
+      .slice(0, this.upcomingBadgesLimit)
+  );
+  readonly allBadgesCompleted = computed(
+    () => this.allBadgeProgress().length > 0 && this.upcomingBadges().length === 0
+  );
 
   readonly assignmentCards = computed(() => this.assignments());
   readonly canScrollLeft = signal(false);
@@ -158,6 +193,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const resolvedUserId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
     this.loadUserActivityHeatmap(resolvedUserId);
     this.loadUserBadgeProgress(resolvedUserId);
+    this.loadLastLogin();
   }
 
   onResetMyActivity(): void {
@@ -184,6 +220,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.activityDataFromApi.set([]);
     this.activityNumberCardData.set([]);
     this.earnedBadges.set([]);
+    this.allBadgeProgress.set([]);
 
     this.studentResetService
       .resetMyData()
@@ -244,6 +281,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   trackBadge(index: number, badge: BadgeProgressItem): string {
     return badge.badgeDefinitionId;
+  }
+
+  trackUpcomingBadge(index: number, item: UpcomingBadgeViewModel): string {
+    return item.badge.badgeDefinitionId;
   }
 
   onCardClick(assignment: AssignmentCardViewModel): void {
@@ -366,27 +407,71 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.badgeProgressLoading.set(true);
     this.badgeProgressError.set(false);
     this.earnedBadges.set([]);
+    this.allBadgeProgress.set([]);
 
     this.badgeService
       .getUserBadgeProgress(userId)
       .pipe(finalize(() => this.badgeProgressLoading.set(false)))
       .subscribe({
         next: (response) => {
-          const earned = (response?.badgeProgress ?? [])
+          // Tek response, iki signal: earnedBadges (kazanılan) + allBadgeProgress (upcomingBadges computed'ı buradan türer).
+          const all = response?.badgeProgress ?? [];
+          const earned = all
             .filter((badge) => badge.isCompleted && !!badge.earnedDateUtc)
             .sort((a, b) => {
               const aTime = a.earnedDateUtc ? new Date(a.earnedDateUtc).getTime() : 0;
               const bTime = b.earnedDateUtc ? new Date(b.earnedDateUtc).getTime() : 0;
               return bTime - aTime;
             });
+          this.allBadgeProgress.set(all);
           this.earnedBadges.set(earned);
         },
         error: (error) => {
           console.error('Kullanıcı rozeti bilgisi alınamadı', error);
           this.badgeProgressError.set(true);
           this.earnedBadges.set([]);
+          this.allBadgeProgress.set([]);
         },
       });
+  }
+
+  /** Hata durumunda sessizce yutulur: chip render edilmez, sadece loglanır. */
+  private loadLastLogin(): void {
+    this.studentService.getLastLogin().subscribe({
+      next: (response) => this.lastLoginAtUtc.set(response?.lastLoginAtUtc ?? null),
+      error: (error) => {
+        console.error('Son giriş bilgisi alınamadı', error);
+        this.lastLoginAtUtc.set(null);
+      },
+    });
+  }
+
+  /** "X gün önce" / "X saat önce" / "X dakika önce" — ekstra kütüphane olmadan basit fark. */
+  private formatLastLogin(isoUtc: string | null): string | null {
+    if (!isoUtc) {
+      return null;
+    }
+
+    const then = new Date(isoUtc).getTime();
+    if (!Number.isFinite(then)) {
+      return null;
+    }
+
+    const diffMs = Math.max(Date.now() - then, 0);
+    const minutes = Math.floor(diffMs / 60_000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days >= 1) {
+      return `${days} gün önce`;
+    }
+    if (hours >= 1) {
+      return `${hours} saat önce`;
+    }
+    if (minutes >= 1) {
+      return `${minutes} dakika önce`;
+    }
+    return 'az önce';
   }
 
   private scheduleScrollIndicatorUpdate(delay: number = 0): void {

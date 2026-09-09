@@ -8,9 +8,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ProgramService } from '../../services/program.service';
 import { UserProgram } from '../../models/program.interfaces';
+import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+
+type ProgramFilter = 'all' | 'active' | 'completed';
 
 @Component({
   selector: 'app-my-programs',
@@ -25,6 +30,8 @@ import { UserProgram } from '../../models/program.interfaces';
     MatChipsModule,
     MatDividerModule,
     MatMenuModule,
+    MatDialogModule,
+    MatSnackBarModule,
   ],
   templateUrl: './my-programs.component.html',
   styleUrls: ['./my-programs.component.scss'],
@@ -32,39 +39,39 @@ import { UserProgram } from '../../models/program.interfaces';
 export class MyProgramsComponent implements OnInit {
   private programService = inject(ProgramService);
   private router = inject(Router);
+  private dialog = inject(MatDialog);
+  private snackBar = inject(MatSnackBar);
 
   programs: UserProgram[] = [];
   filteredPrograms: UserProgram[] = [];
   loading = true;
-  selectedFilter: 'all' | 'active' | 'completed' = 'all';
+  loadError = false;
+  selectedFilter: ProgramFilter = 'all';
 
   ngOnInit(): void {
     this.loadMyPrograms();
   }
 
-  private async loadMyPrograms(): Promise<void> {
-    try {
-      this.loading = true;
-      this.programService.getMyPrograms().subscribe({
-        next: (programs) => {
-          this.programs = programs;
-          this.applyFilter(); // Apply current filter after loading
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Programs could not be loaded:', error);
-          this.loading = false;
-        },
-      });
-    } catch (error) {
-      console.error('Programs could not be loaded:', error);
-      // Here you might want to show a snackbar or error message
-      this.loading = false;
-    }
+  loadMyPrograms(): void {
+    this.loading = true;
+    this.loadError = false;
+    this.programService.getMyPrograms().subscribe({
+      next: (programs) => {
+        this.programs = programs;
+        this.applyFilter(); // Apply current filter after loading
+        this.loading = false;
+      },
+      error: () => {
+        this.programs = [];
+        this.filteredPrograms = [];
+        this.loadError = true;
+        this.loading = false;
+      },
+    });
   }
 
   // Filter functionality
-  setFilter(filter: 'all' | 'active' | 'completed'): void {
+  setFilter(filter: ProgramFilter): void {
     this.selectedFilter = filter;
     this.applyFilter();
   }
@@ -83,12 +90,12 @@ export class MyProgramsComponent implements OnInit {
     }
   }
 
-  isFilterSelected(filter: 'all' | 'active' | 'completed'): boolean {
+  isFilterSelected(filter: ProgramFilter): boolean {
     return this.selectedFilter === filter;
   }
 
-  getFilterLabel(filter: 'all' | 'active' | 'completed'): string {
-    const labels = {
+  getFilterLabel(filter: ProgramFilter): string {
+    const labels: Record<ProgramFilter, string> = {
       all: 'Tümü',
       active: 'Aktif',
       completed: 'Tamamlanan',
@@ -96,7 +103,7 @@ export class MyProgramsComponent implements OnInit {
     return labels[filter];
   }
 
-  getFilterCount(filter: 'all' | 'active' | 'completed'): number {
+  getFilterCount(filter: ProgramFilter): number {
     switch (filter) {
       case 'active':
         return this.getActivePrograms();
@@ -112,9 +119,7 @@ export class MyProgramsComponent implements OnInit {
   }
 
   continueProgram(program: UserProgram): void {
-    // Navigate to program execution/study page
-    // This will be implemented later when we have the study interface
-    console.log('Continue program:', program);
+    this.router.navigate(['/programs', program.id, 'detail']);
   }
 
   viewProgramDetails(program: UserProgram): void {
@@ -130,24 +135,18 @@ export class MyProgramsComponent implements OnInit {
     });
   }
 
+  /** Backend'in hesapladığı 0-100 arası ilerleme yüzdesi. */
   getProgressPercentage(program: UserProgram): number {
-    // Calculate progress percentage based on completed days
-    // This is a mock calculation - in real implementation,
-    // you'd track actual completion status
-    const completedDays = this.getCompletedDays(program);
-    const studyDuration = program.studyDuration ? parseInt(program.studyDuration, 10) : 30;
-    return Math.round((completedDays / studyDuration) * 100);
+    return Math.min(100, Math.max(0, program.progressPercentage ?? 0));
   }
 
-  getCompletedDays(program: UserProgram): number {
-    // Mock calculation - in real implementation,
-    // this would come from actual progress tracking
-    const daysSinceCreated = Math.floor((Date.now() - new Date(program.createdDate).getTime()) / (1000 * 60 * 60 * 24));
-    const studyDuration = program.studyDuration ? parseInt(program.studyDuration, 10) : 30;
-    return Math.min(daysSinceCreated, studyDuration);
+  /** "3/10 sayfa tamamlandı" biçiminde gerçek sayfa ilerlemesi. */
+  getPageProgressText(program: UserProgram): string {
+    const completed = program.completedPageCount ?? 0;
+    const total = program.totalPageCount ?? 0;
+    return `${completed}/${total} sayfa tamamlandı`;
   }
 
-  // Yeni metodlar - Enhanced UI için
   getActivePrograms(): number {
     return this.programs.filter((program) => this.isActive(program)).length;
   }
@@ -186,38 +185,46 @@ export class MyProgramsComponent implements OnInit {
   }
 
   getProgramIcon(studyType: string): string {
-    const icons: { [key: string]: string } = {
+    const icons: Record<string, string> = {
       intensive: 'flash_on',
       regular: 'schedule',
       flexible: 'tune',
       weekend: 'weekend',
       exam: 'quiz',
     };
-    return icons[studyType.toLowerCase()] || 'assignment';
+    return icons[(studyType ?? '').toLowerCase()] || 'assignment';
   }
 
-  getRemainingDays(program: UserProgram): number {
-    const studyDuration = program.studyDuration ? parseInt(program.studyDuration, 10) : 30;
-    const completedDays = this.getCompletedDays(program);
-    return Math.max(0, studyDuration - completedDays);
-  }
-
-  // Yeni aksiyon metodları
   editProgram(program: UserProgram): void {
     this.router.navigate(['/programs/edit', program.id]);
   }
 
-  duplicateProgram(program: UserProgram): void {
-    // Program kopyalama işlemi
-    console.log('Duplicating program:', program);
-    // TODO: Implement program duplication
-  }
-
   deleteProgram(program: UserProgram): void {
-    if (confirm('Bu programı silmek istediğinizden emin misiniz?')) {
-      // Program silme işlemi
-      console.log('Deleting program:', program);
-      // TODO: Implement program deletion
-    }
+    const data: ConfirmDialogData = {
+      title: 'Programı Sil',
+      message: `"${program.programName}" programını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+      confirmText: 'Evet, Sil',
+      cancelText: 'İptal',
+      icon: 'delete_forever',
+      confirmColor: 'warn',
+    };
+
+    this.dialog
+      .open(ConfirmDialogComponent, { width: '480px', maxWidth: '90vw', data })
+      .afterClosed()
+      .subscribe((confirmed: boolean) => {
+        if (!confirmed) return;
+
+        this.programService.deleteProgram(program.id).subscribe({
+          next: () => {
+            this.programs = this.programs.filter((p) => p.id !== program.id);
+            this.applyFilter();
+            this.snackBar.open('Program silindi.', 'Tamam', { duration: 3000 });
+          },
+          error: () => {
+            this.snackBar.open('Program silinemedi. Lütfen tekrar deneyin.', 'Tamam', { duration: 3000 });
+          },
+        });
+      });
   }
 }

@@ -9,8 +9,9 @@ public interface IWorksheetCalendarService
 {
     /// <summary>
     /// Öğrencinin [fromUtc, toUtc) aralığındaki takvim etkinliklerini döner (toUtc hariç / exclusive):
-    /// planlanmış hatırlatmalar + atama son teslim tarihleri.
+    /// planlanmış hatırlatmalar + atama son teslim tarihleri + aktif çalışma programı sayfa planları.
+    /// <paramref name="keycloakUserId"/> program planları için gerekir (UserProgram.UserId Keycloak sub tutar).
     /// </summary>
     Task<StudentCalendarResponseDto> GetMyCalendarAsync(
-        int studentId, int? gradeId, int? schoolId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+        int studentId, string keycloakUserId, int? gradeId, int? schoolId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 }

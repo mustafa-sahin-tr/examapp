@@ -13,13 +13,15 @@ using Microsoft.EntityFrameworkCore;
 namespace ExamApp.Api.Services.Worksheets;
 
 /// <summary>
-/// Öğrenci takvimi read-model'i: planlanmış hatırlatmalar + atama son teslim tarihleri.
+/// Öğrenci takvimi read-model'i: planlanmış hatırlatmalar + atama son teslim tarihleri
+/// + aktif çalışma programı sayfa planları (UserProgramStudyPageSchedule).
 /// Salt okuma; hiçbir yan etki yok. Aralık [fromUtc, toUtc) — üst sınır exclusive.
 /// </summary>
 public class WorksheetCalendarService : IWorksheetCalendarService
 {
     private const string KindReminder = "reminder";
     private const string KindAssignmentDeadline = "assignment-deadline";
+    private const string KindProgramStudyPage = "program-study-page";
 
     /// <summary>Sent hatırlatmalar için bu tarihten eskiler takvimde gösterilmez.</summary>
     private const int SentReminderLookbackDays = 30;
@@ -34,7 +36,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
     }
 
     public async Task<StudentCalendarResponseDto> GetMyCalendarAsync(
-        int studentId, int? gradeId, int? schoolId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+        int studentId, string keycloakUserId, int? gradeId, int? schoolId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         if (fromUtc.Kind != DateTimeKind.Utc)
             fromUtc = DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc);
@@ -44,6 +46,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
         var events = new List<CalendarEventDto>();
         events.AddRange(await BuildReminderEventsAsync(studentId, fromUtc, toUtc, ct));
         events.AddRange(await BuildAssignmentDeadlineEventsAsync(studentId, gradeId, schoolId, fromUtc, toUtc, ct));
+        events.AddRange(await BuildProgramStudyPageEventsAsync(keycloakUserId, fromUtc, toUtc, ct));
 
         return new StudentCalendarResponseDto
         {
@@ -141,6 +144,49 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             TeacherName = r.CreateUserId is > 0 && teacherNames.TryGetValue(r.CreateUserId.Value, out var name)
                 ? name
                 : null
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Öğrencinin aktif (IsActive) çalışma programlarındaki sayfa planları. Planlar çok günlü olabildiği için
+    /// tek nokta değil aralık kesişimi uygulanır: StartDate &lt; toUtc &amp;&amp; EndDate &gt;= fromUtc.
+    /// Legacy günlük UserProgramSchedule kapsam dışıdır. UserProgram.UserId Keycloak sub tuttuğu için
+    /// filtre <paramref name="keycloakUserId"/> ile yapılır — başka öğrencinin programı sızmaz.
+    /// </summary>
+    private async Task<List<CalendarEventDto>> BuildProgramStudyPageEventsAsync(
+        string keycloakUserId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            return new List<CalendarEventDto>();
+
+        var rows = await _context.UserProgramStudyPageSchedules
+            .AsNoTracking()
+            .Where(s => s.UserProgram.UserId == keycloakUserId
+                && s.UserProgram.IsActive
+                && s.StartDate < toUtc
+                && s.EndDate >= fromUtc)
+            .Select(s => new
+            {
+                ProgramId = s.UserProgramId,
+                s.UserProgram.ProgramName,
+                s.StudyPageId,
+                StudyPageTitle = s.StudyPage.Title,
+                s.StartDate,
+                s.EndDate,
+                s.IsCompleted
+            })
+            .ToListAsync(ct);
+
+        return rows.Select(r => new CalendarEventDto
+        {
+            Kind = KindProgramStudyPage,
+            Date = DateTime.SpecifyKind(r.StartDate, DateTimeKind.Utc),
+            EndDate = DateTime.SpecifyKind(r.EndDate, DateTimeKind.Utc),
+            ProgramId = r.ProgramId,
+            ProgramName = r.ProgramName,
+            StudyPageId = r.StudyPageId,
+            StudyPageTitle = r.StudyPageTitle,
+            IsCompleted = r.IsCompleted
         }).ToList();
     }
 

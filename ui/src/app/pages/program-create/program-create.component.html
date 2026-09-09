@@ -7,7 +7,13 @@
     </div>
     <div class="ms-wizard-progress">
       <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ getStepIndicators().length }}</div>
-      <div class="ms-progress-bar-bg">
+      <div
+        class="ms-progress-bar-bg"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="((stepIndex() + 1) / getStepIndicators().length) * 100"
+      >
         <div
           class="ms-progress-bar-fill"
           [style.width]="((stepIndex() + 1) / getStepIndicators().length) * 100 + '%'"
@@ -21,39 +27,59 @@
   </div>
 
   <div class="ms-wizard-cards" #cardContainer>
-    <button class="nav-btn left" (click)="previous()" [disabled]="stepIndex() === 0">❮</button>
+    <button
+      mat-icon-button
+      type="button"
+      class="ms-wizard-nav ms-wizard-nav-prev"
+      aria-label="Önceki soru"
+      (click)="previous()"
+      [disabled]="stepIndex() === 0"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
 
-    <ul class="psds-carousel__track">
-      <li class="psds-carousel__item m-5">
+    <div class="ms-wizard-track">
+      <div class="ms-option-grid">
         <button
           *ngFor="let opt of currentStep?.options"
+          type="button"
           class="ms-option-button"
           [class.ms-option-active]="opt.selected"
           (click)="selectOption(currentStep, opt)"
         >
-          <img [src]="opt.icon" alt="Timer Icon" class="ms-option-icon" />
+          <img [src]="opt.icon" alt="" class="ms-option-icon" />
           <b class="ms-option-label">{{ opt.label }}</b>
         </button>
-        <div class="course-actions">
-          <button
-            *ngFor="let act of currentStep?.actions"
-            mat-raised-button
-            color="primary"
-            type="button"
-            (click)="takeAction(act.value)"
-          >
-            <mat-icon>playlist_add</mat-icon>{{ act.label }}
-          </button>
-        </div>
-      </li>
-    </ul>
-    <button class="nav-btn right" (click)="next()">❯</button>
+      </div>
+      <div class="course-actions">
+        <button
+          *ngFor="let act of currentStep?.actions"
+          mat-raised-button
+          color="primary"
+          type="button"
+          (click)="takeAction(act.value)"
+        >
+          <mat-icon>playlist_add</mat-icon>{{ act.label }}
+        </button>
+      </div>
+    </div>
+
+    <button
+      mat-icon-button
+      type="button"
+      class="ms-wizard-nav ms-wizard-nav-next"
+      aria-label="Sonraki soru"
+      (click)="next()"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
   </div>
+
   <!-- Step indicators -->
-  <div class="d-flex justify-content-center align-items-center">
+  <div class="ms-wizard-steps">
     @for (indicator of getStepIndicators(); track $index; let i = $index) {
     <div
-      class="mx-2 ms-wizard-step-item"
+      class="ms-wizard-step-item"
       [class.ms-wizard-step-item-completed]="indicator.isCompleted"
       [class.ms-wizard-step-item-active]="indicator.isActive"
       [class.ms-wizard-step-item-upcoming]="indicator.isUpcoming"

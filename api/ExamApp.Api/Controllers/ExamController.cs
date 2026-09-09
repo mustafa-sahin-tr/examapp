@@ -111,7 +111,8 @@ public class ExamController : BaseController
     private const int MaxRangeDays = 180;
 
     /// <summary>
-    /// Öğrencinin [from, to) aralığındaki takvim etkinlikleri (planlanmış hatırlatmalar + atama son teslim tarihleri).
+    /// Öğrencinin [from, to) aralığındaki takvim etkinlikleri (planlanmış hatırlatmalar + atama son teslim tarihleri
+    /// + aktif çalışma programı sayfa planları).
     /// from/to zorunlu ve açık offset/'Z' içeren ISO-8601 tarih olmalı; <c>to</c> hariç (exclusive).
     /// Aralık en fazla <see cref="MaxRangeDays"/> gün olabilir.
     /// </summary>
@@ -140,7 +141,7 @@ public class ExamController : BaseController
             return Unauthorized("Öğrenci profili bulunamadı");
 
         var result = await _calendarService.GetMyCalendarAsync(
-            student.Id, student.GradeId, student.SchoolId, fromUtc, toUtc, ct);
+            student.Id, user.KeycloakId, student.GradeId, student.SchoolId, fromUtc, toUtc, ct);
         return Ok(result);
     }
 

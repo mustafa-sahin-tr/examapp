@@ -6,18 +6,36 @@
   box-sizing: border-box;
 }
 
+// ---------------------------------------------------------------------------
+// Issue #81 — Dark / Light renk şeması
+//
+// :root yalnızca tema-BAĞIMSIZ token'ları tutar (font, spacing, breakpoint, type-scale, motion,
+// --ms-colors-* ham paleti, katman z-index'leri). Renk/yüzey token'ları iki eşit birinci sınıf set
+// olarak `.dark-theme` (mevcut değerler) ve `.light-theme` altında tanımlanır; class `<html>`
+// elemanına index.html'deki inline script (FOUC önleme) ve ColorSchemeService tarafından yazılır.
+// Varsayılan (localStorage boşken) dark'tır.
+// ---------------------------------------------------------------------------
 :root {
-  --bodyColor: #63667D;
+  // Literal renk adları — her iki temada da aynı anlamı taşır (beyaz beyazdır).
   --darkColor: #000000;
   --whiteColor: #ffffff;
   --blackColor: #131F34;
+  --mainFontFamily: "Manrope", sans-serif;
+  --paragraphFontFamily: "Inter", sans-serif;
+  // Tema'dan bağımsız türetilen token'lar (var() ile bağlı oldukları için class'a göre otomatik çözülür)
+  --sidenav-active-bg: color-mix(in srgb, var(--primaryColor) 16%, transparent);
+  --sidenav-active-accent: var(--primaryColor);
+  --sidenav-focus-ring: var(--ms-action-border-focus);
+  --ms-focus-ring: color-mix(in srgb, var(--ms-action-border-focus) 18%, transparent);
+  --ms-scrim: color-mix(in srgb, var(--ms-surface) 60%, transparent);
+}
+
+.dark-theme {
+  --bodyColor: #63667D;
   --primaryColor: #1C43FE;
   --secondaryColor: #FE3F10;
   --paragraphColor: #4B5563;
-  --mainFontFamily: "Manrope", sans-serif;
-  --paragraphFontFamily: "Inter", sans-serif;
   --main-bg-color: #120F20;
-  --mat-sys-on-surface: rgb(165, 170, 207);
   --main-foreground-color: #242244;
   // Koyu yüzey (--main-bg-color / --ms-surface-*) üzerindeki başlık metni. --main-foreground-color
   // bir ARKA PLAN tonudur (kart/toolbar/menü); metin rengi olarak kullanma (issue #45).
@@ -31,9 +49,6 @@
   --sidenav-fg-muted: #64748b;
   --sidenav-border: rgba(255, 255, 255, 0.1);
   --sidenav-hover-bg: rgba(255, 255, 255, 0.08);
-  --sidenav-active-bg: color-mix(in srgb, var(--primaryColor) 16%, transparent);
-  --sidenav-active-accent: var(--primaryColor);
-  --sidenav-focus-ring: var(--ms-action-border-focus);
   --sidenav-scrollbar-thumb: rgba(255, 255, 255, 0.18);
   --ms-action-background: #4A33D1;
   --ms-action-background-hover: #3C28B1;
@@ -95,10 +110,99 @@
   --ms-warning-text-weak: #FFE4A1;
   --ms-warning-text-medium: #FFD262;
   /* Etkileşim / yükselti token'ları (hardcoded rgba yerine) */
-  --ms-focus-ring: color-mix(in srgb, var(--ms-action-border-focus) 18%, transparent);
   --ms-shadow-overlay: 0 18px 40px rgb(0 0 0 / 35%);
   --ms-shadow-menu: 0 14px 34px rgb(0 0 0 / 40%);
   --ms-border-on-fill: rgb(0 0 0 / 25%);
+}
+
+// Light şema — dark ile aynı hue, ters lightness. Yüzeyler beyaz/lavanta, metinler koyu mor-gri.
+// Tablo değerleri issue #81'de onaylanmıştır; ara tonlar (hover/active/weak, durum yüzeyleri) analojik türetildi.
+.light-theme {
+  --bodyColor: #5C5A78;
+  --primaryColor: #1C43FE;
+  --secondaryColor: #C13511;
+  --paragraphColor: #4B5563;
+  --main-bg-color: #F5F4FB;
+  --main-foreground-color: #FFFFFF;
+  // Light'ta "ana yüzey üzerindeki başlık" anlamını korur: koyu metin.
+  --heading-on-dark: #0E0C1C;
+  --border-input: 1px solid #B7B2DE;
+  // Sidenav (enhanced-layout) tokens
+  --sidenav-bg: linear-gradient(180deg, #FFFFFF 0%, #F5F4FB 100%);
+  --sidenav-solid-bg: #FFFFFF;
+  --sidenav-fg: #3E3B5C;
+  --sidenav-fg-strong: #0E0C1C;
+  --sidenav-fg-muted: #8A88A6;
+  --sidenav-border: rgba(14, 12, 28, 0.1);
+  --sidenav-hover-bg: rgba(14, 12, 28, 0.06);
+  --sidenav-scrollbar-thumb: rgba(14, 12, 28, 0.18);
+  --ms-action-background: #4A33D1;
+  --ms-action-background-hover: #3C28B1;
+  --ms-action-background-active: #30208D;
+  --ms-action-background-weak: #E6E1FA;
+  --ms-action-background-weak-hover: #D6CEF6;
+  --ms-action-background-weak-active: #C4B9F1;
+  --ms-action-border: #6855D9;
+  --ms-action-border-focus: #1C6DDB;
+  --ms-action-navigation: #1C6DDB;
+  --ms-action-navigation-hover: #1557B5;
+  --ms-action-navigation-visited: #7A3FA8;
+  --ms-action-text: #2A1A8F;
+  --ms-action-text-weak: #5A48C4;
+  --ms-action-text-medium: #4232AE;
+  --ms-action-text-inverse: #E1DDF7;
+  --ms-danger-background: #B9004B;
+  --ms-danger-background-hover: #8B0038;
+  --ms-danger-background-active: #5C0026;
+  --ms-danger-border: #E0005A;
+  --ms-danger-surface: #FFE4EF;
+  --ms-danger-text: #7A0031;
+  --ms-danger-text-weak: #B9004B;
+  --ms-danger-text-medium: #99003E;
+  --ms-danger-text-inverse: #FFF0F6;
+  --ms-background: #E7E5F4;
+  --ms-background-hover: #DEDBF0;
+  --ms-background-active: #D0CCE9;
+  --ms-border: #D8D5EC;
+  --ms-border-weak: #E7E5F4;
+  --ms-border-strong: #B7B2DE;
+  --ms-surface: #FFFFFF;
+  --ms-surface-weak: #F5F4FB;
+  --ms-surface-medium: #ECEAF8;
+  --ms-surface-strong: #E1DEF3;
+  --ms-surface-inverse: #211D3A;
+  --ms-text: #211D3A;
+  --ms-text-weak: #5C5A78;
+  --ms-text-medium: #3E3B5C;
+  --ms-text-strong: #0E0C1C;
+  --ms-text-inverse: #F3F3F8;
+  --ms-info-border: #0077C2;
+  --ms-info-surface: #D9F0FF;
+  --ms-info-surface-weak: #EAF6FF;
+  --ms-success-surface-weak: #E3F8EE;
+  --ms-warning-surface-weak: #FFF4D6;
+  --ms-danger-surface-weak: #FFE9F1;
+  --ms-info-text: #003655;
+  --ms-info-text-weak: #005E92;
+  --ms-info-text-medium: #0077C2;
+  --ms-success-border: #009E52;
+  --ms-success-surface: #D3F7E6;
+  --ms-success-text: #014B2D;
+  --ms-success-text-weak: #007C3A;
+  --ms-success-text-medium: #009E52;
+  --ms-warning-border: #C48A00;
+  --ms-warning-surface: #FFEDBF;
+  --ms-warning-text: #4A3400;
+  --ms-warning-text-weak: #8A6100;
+  --ms-warning-text-medium: #A87500;
+  /* Etkileşim / yükselti token'ları */
+  --ms-shadow-overlay: 0 18px 40px rgb(33 29 58 / 18%);
+  --ms-shadow-menu: 0 14px 34px rgb(33 29 58 / 20%);
+  --ms-border-on-fill: rgb(0 0 0 / 12%);
+}
+
+// Paylaşılan (tema-bağımsız) token'lar
+:root {
   --ms-breakpoints-xsmall: 640px;
   --ms-breakpoints-small: 768px;
   --ms-breakpoints-medium: 1024px;
@@ -325,8 +429,6 @@
   --contribution-default-bgColor-2: #4ac26b;
   --contribution-default-bgColor-3: #2da44e;
   --contribution-default-bgColor-4: #116329;
-  --ms-focus-ring: color-mix(in srgb, var(--ms-action-border-focus) 18%, transparent);
-  --ms-scrim: color-mix(in srgb, var(--ms-surface) 60%, transparent);
 }
 
 body,
@@ -339,43 +441,55 @@ body,
 
 html {
   font-family: "PS Commons", "Gotham SSm A", "Gotham SSm B", Arial, sans-serif;
+}
 
-  // Issue #46 — Material M3 tema:
-  // 1) theme-type: dark → türetilen tüm sistem token'ları (on-surface-variant, outline, state layer,
-  //    ripple, primary/secondary container...) dark için üretilir; light tabanda kısmi override
-  //    yapılırsa kontrast bozulur.
-  // 2) Yüzey/arka plan token'ları Material'ın jenerik dark tonlarına bırakılmaz; projenin kendi
-  //    paleti (--ms-surface / --main-bg-color / --main-foreground-color ailesi) ile eşlenir.
-  //    Böylece CDK overlay'e giden dialog, datepicker, select/menu paneli ve mat-table,
-  //    uygulamanın geri kalanıyla birebir aynı renkleri kullanır.
+// Issue #46 / #81 — Material M3 tema:
+// 1) theme-type her class için ayrı türetilir (dark → dark sistem token'ları, light → light);
+//    tek tabanda kısmi override yapılırsa kontrast bozulur.
+// 2) Yüzey/arka plan token'ları Material'ın jenerik tonlarına bırakılmaz; projenin kendi
+//    paleti (--ms-surface / --main-bg-color / --main-foreground-color ailesi) ile eşlenir.
+//    Aynı isimli custom property'ler class'a göre farklı değer taşıdığından bu harita her iki
+//    temada ortak kullanılır. Böylece CDK overlay'e giden dialog, datepicker, select/menu paneli
+//    ve mat-table uygulamanın geri kalanıyla birebir aynı renkleri kullanır.
+$ms-material-surface-overrides: ( // Sayfa zemini (body zaten --ms-surface)
+  background: var(--ms-surface),
+  surface: var(--ms-surface),
+  surface-dim: var(--main-bg-color),
+  surface-bright: var(--ms-surface-strong),
+  // Yüzey katmanları (kart, panel, dialog, datepicker, table)
+  surface-container-lowest: var(--main-bg-color),
+  surface-container-low: var(--ms-surface-weak),
+  surface-container: var(--main-foreground-color), // select/menu/autocomplete paneli
+  surface-container-high: var(--main-foreground-color), // dialog, datepicker takvimi
+  surface-container-highest: var(--ms-surface-strong),
+  surface-variant: var(--ms-surface-medium),
+  // Metin ve kenarlık (on-surface eskiden :root'ta rgb(165,170,207) = --ms-text-medium idi)
+  on-surface: var(--ms-text-medium),
+  on-background: var(--ms-text),
+  on-surface-variant: var(--ms-text-weak),
+  outline: var(--ms-border-strong),
+  outline-variant: var(--ms-border),
+  // Snackbar/tooltip gibi ters yüzeyler
+  inverse-surface: var(--ms-surface-inverse),
+  inverse-on-surface: var(--ms-text-inverse),
+);
+
+html.dark-theme {
   color-scheme: dark;
   @include mat.theme((color: (theme-type: dark,
         primary: mat.$violet-palette),
       typography: Roboto,
       density: 0));
+  @include mat.theme-overrides($ms-material-surface-overrides);
+}
 
-  @include mat.theme-overrides(( // Sayfa zemini (body zaten --ms-surface)
-      background: var(--ms-surface),
-      surface: var(--ms-surface),
-      surface-dim: var(--main-bg-color),
-      surface-bright: var(--ms-surface-strong),
-      // Yüzey katmanları (kart, panel, dialog, datepicker, table)
-      surface-container-lowest: var(--main-bg-color),
-      surface-container-low: var(--ms-surface-weak),
-      surface-container: var(--main-foreground-color), // select/menu/autocomplete paneli
-      surface-container-high: var(--main-foreground-color), // dialog, datepicker takvimi
-      surface-container-highest: var(--ms-surface-strong),
-      surface-variant: var(--ms-surface-medium),
-      // Metin ve kenarlık
-      on-background: var(--ms-text),
-      on-surface-variant: var(--ms-text-weak),
-      outline: var(--ms-border-strong),
-      outline-variant: var(--ms-border),
-      // Snackbar/tooltip gibi ters yüzeyler
-      inverse-surface: var(--ms-surface-inverse),
-      inverse-on-surface: var(--ms-text-inverse),
-    ));
-
+html.light-theme {
+  color-scheme: light;
+  @include mat.theme((color: (theme-type: light,
+        primary: mat.$violet-palette),
+      typography: Roboto,
+      density: 0));
+  @include mat.theme-overrides($ms-material-surface-overrides);
 }
 
 body {

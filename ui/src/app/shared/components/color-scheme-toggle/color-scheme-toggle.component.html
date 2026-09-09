@@ -1,0 +1,10 @@
+<div class="color-scheme-toggle" [matTooltip]="tooltip()">
+  <mat-icon class="scheme-icon" [class.active]="!isLight()" aria-hidden="true">dark_mode</mat-icon>
+  <mat-slide-toggle
+    [checked]="isLight()"
+    (change)="toggle()"
+    [aria-label]="tooltip()"
+    hideIcon>
+  </mat-slide-toggle>
+  <mat-icon class="scheme-icon" [class.active]="isLight()" aria-hidden="true">light_mode</mat-icon>
+</div>

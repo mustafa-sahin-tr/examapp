@@ -1,1 +1,329 @@
-/* Component styles moved to global styles.scss with ms- prefix */
+// Issue #111 — Program oluşturma sihirbazı görsel tutarlılığı.
+// Eskiden styles.scss'te global duran .ms-wizard-* ve .ms-option-* kuralları buraya taşındı ve
+// proje token'larıyla (--primaryColor, --ms-*) yeniden yazıldı. Sadece görsel; mantık .ts'de değişmedi.
+
+:host {
+  display: block;
+  font-family: var(--mainFontFamily);
+  color: var(--ms-text);
+}
+
+// ---------------------------------------------------------------------------
+// Sihirbaz kabuğu
+// ---------------------------------------------------------------------------
+.ms-wizard-container {
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: var(--ms-shadow-overlay);
+}
+
+.ms-wizard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ms-wizard-title {
+  font-size: 1.2rem;
+  color: var(--ms-text-strong);
+}
+
+.ms-wizard-progress {
+  text-align: right;
+  width: 180px;
+}
+
+.ms-progress-text {
+  font-size: 0.9rem;
+  color: var(--ms-text-weak);
+  margin-bottom: 6px;
+}
+
+// Material lineer progress bar görünümü (gerçek mat-progress-bar kullanılmadan)
+.ms-progress-bar-bg {
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--primaryColor) 24%, transparent);
+}
+
+.ms-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: var(--primaryColor);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ms-wizard-question {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+  margin-bottom: 1rem;
+}
+
+// ---------------------------------------------------------------------------
+// Kart alanı + gezinme okları
+// ---------------------------------------------------------------------------
+.ms-wizard-cards {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ms-wizard-nav {
+  flex: 0 0 auto;
+  color: var(--primaryColor);
+
+  &:disabled {
+    color: var(--ms-text-weak);
+    opacity: 0.5;
+  }
+}
+
+.ms-wizard-track {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.ms-option-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.course-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+
+  &:empty {
+    display: none;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Seçenek kartları — my-programs .program-card diliyle uyumlu (radius, border, hover yükselti)
+// ---------------------------------------------------------------------------
+.ms-option-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 200px;
+  padding: 1.5rem 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 16px;
+  background: var(--main-foreground-color);
+  color: var(--ms-text);
+  cursor: pointer;
+  font-family: inherit;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s ease, background-color 0.3s ease;
+
+  // Üst şerit: program-card'daki ::before şeridinin token'lı karşılığı
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--ms-border-strong);
+    transition: background 0.3s ease;
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--ms-shadow-menu);
+    border-color: var(--primaryColor);
+    background: var(--ms-background-hover);
+
+    .ms-option-icon {
+      transform: scale(1.08);
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ms-focus-ring);
+    border-color: var(--ms-action-border-focus);
+  }
+}
+
+.ms-option-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  fill: currentColor;
+  transition: transform 0.3s ease;
+}
+
+.ms-option-label {
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: inherit;
+  font-family: var(--paragraphFontFamily);
+}
+
+.ms-option-active,
+.ms-option-active:hover {
+  background: var(--ms-action-background);
+  border-color: var(--ms-action-border);
+  color: var(--ms-action-text-inverse);
+  box-shadow: 0 8px 25px color-mix(in srgb, var(--ms-action-background) 35%, transparent);
+
+  &::before {
+    background: var(--secondaryColor);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Adım göstergesi noktaları — Material stepper/progress dot dili
+// ---------------------------------------------------------------------------
+.ms-wizard-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ms-wizard-step-item {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primaryColor) 24%, transparent);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+}
+
+.ms-wizard-step-item-completed {
+  background: var(--primaryColor);
+}
+
+.ms-wizard-step-item-active {
+  width: 24px;
+  background: var(--primaryColor);
+}
+
+.ms-wizard-step-item-upcoming {
+  background: color-mix(in srgb, var(--primaryColor) 24%, transparent);
+}
+
+// ---------------------------------------------------------------------------
+// Seçim özeti
+// ---------------------------------------------------------------------------
+.ms-selection-summary {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--ms-text-strong);
+  }
+}
+
+.ms-summary-item {
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+  line-height: 1.6;
+
+  strong {
+    color: var(--ms-text-strong);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Program oluşturma formu — minimal yerleşim, görsel dil olduğu gibi (kabul kriteri 5)
+// ---------------------------------------------------------------------------
+.ms-program-creation-container {
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface);
+  padding: 2rem;
+  border-radius: 20px;
+}
+
+.ms-program-creation-header {
+  margin-bottom: 1.5rem;
+
+  h2 {
+    margin: 0 0 0.5rem;
+    color: var(--ms-text-strong);
+  }
+
+  p {
+    margin: 0;
+    color: var(--ms-text-weak);
+    font-family: var(--paragraphFontFamily);
+  }
+}
+
+.ms-full-width {
+  width: 100%;
+}
+
+.date-fields-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  .date-field {
+    flex: 1 1 200px;
+  }
+}
+
+.ms-program-creation-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+// ---------------------------------------------------------------------------
+// Responsive
+// ---------------------------------------------------------------------------
+@media (max-width: 768px) {
+  .ms-wizard-container,
+  .ms-program-creation-container {
+    padding: 1.25rem;
+    border-radius: 16px;
+  }
+
+  .ms-wizard-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-wizard-progress {
+    width: 100%;
+    text-align: left;
+  }
+
+  .ms-option-button {
+    flex-basis: calc(50% - 0.5rem);
+    max-width: none;
+    padding: 1.25rem 0.75rem;
+  }
+}

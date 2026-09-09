@@ -3251,51 +3251,6 @@ h4 {
 
 
 
-.ms-option-button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1 1 0;
-  padding: 2rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 0.5rem;
-  background-color: #fff;
-  color: #9086ca;
-  cursor: pointer;
-  transition: box-shadow 0.2s ease-in-out;
-  max-width: 200px;
-  min-width: 100px;
-}
-
-.ms-option-button:hover {
-  box-shadow: 0 0 0 2px rgba(144, 134, 202, 0.3);
-  background-color: var(--ms-colors-yellow-3) !important;
-}
-
-
-.ms-option-icon {
-  width: 2.4rem;
-  height: 2.4rem;
-  fill: currentColor;
-}
-
-.ms-option-active {
-  background-color: var(--ms-colors-yellow-10) !important;
-  color: #fff !important;
-}
-
-.ms-option-active:hover {
-  background-color: var(--ms-colors-yellow-10) !important;
-  color: #fff !important;
-}
-
-.ms-option-label {
-  margin-top: 0.75rem;
-  color: #000;
-  text-align: center;
-  font-size: large;
-}
-
 .ms-options-container {
   display: flex;
   flex-wrap: wrap;
@@ -3489,85 +3444,6 @@ h4 {
   font-weight: bold;
   text-decoration: none;
 }
-
-/* ***** PROGRAM CREATE START ****/
-.ms-wizard-container {
-  border: var(--border-input);
-  padding: 2rem;
-  border-radius: 8px;
-  font-family: Arial, sans-serif;
-}
-
-.ms-wizard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.ms-wizard-title {
-  font-size: 1.2rem;
-}
-
-.ms-wizard-progress {
-  text-align: right;
-  width: 180px;
-}
-
-.ms-progress-text {
-  font-size: 0.9rem;
-  margin-bottom: 4px;
-}
-
-.ms-progress-bar-bg {
-  background-color: #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
-  height: 5px;
-}
-
-.ms-progress-bar-fill {
-  background-color: green;
-  height: 100%;
-  width: 0%;
-}
-
-.ms-wizard-question {
-  text-align: center;
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.ms-wizard-required {
-  text-align: center;
-  color: red;
-  font-size: 0.85rem;
-  margin-bottom: 1rem;
-}
-
-.ms-wizard-cards {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.ms-wizard-step-item {
-  width: 15px;
-  height: 8px;
-  border-radius: 20px;
-  background: rgb(217, 217, 217);
-}
-
-.ms-wizard-step-item-active {
-  width: 15px;
-  height: 8px;
-  border-radius: 100%;
-  background: rgb(42, 141, 248);
-}
-
-/* ***** PROGRAM CREATE END ****/
 
 .w-100 {
   width: 100% !important;

@@ -53,6 +53,7 @@ Planı bana göster ve **onay bekle**. Onaysız kod yazma.
   `git checkout -b feature/issue-$ARGUMENTS-<slug>`
 - Zaten bu issue için açılmış bir branch varsa yenisini açma, ona geç ve bana söyle.
 - Branch adını raporda belirt.
+- Claude'nin çalıştığı session ismini de `rename` komutu ile `issue-$ARGUMENTS` yap.
 
 **2. Backend.** Onaydan sonra `dotnet-api-dev` agent'ına devret.
 Akış outbox gerektiriyorsa o parçayı `event-integration-dev` alsın.

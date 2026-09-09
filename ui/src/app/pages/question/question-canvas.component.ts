@@ -226,6 +226,14 @@ export class QuestionCanvasComponent implements OnInit {
     const topicId = evt.topicId ?? 0;
     const subtopicId = evt.subtopicId ?? 0;
 
+    // Issue #76: auto-detected, not-yet-classified question -> keep the test's
+    // existing subject/topic/subtopic selection instead of wiping it.
+    // A Human-sourced empty subject (e.g. user picked a new Grade in the
+    // classification selector) is a deliberate reset and must pass through.
+    if (this.isUnclassifiedAutoEvent(subjectId, evt.classificationSource)) {
+      return;
+    }
+
     // Keep local form in sync (used by save flow + previewMetaProvider).
     this.questionForm.patchValue(
       {
@@ -648,12 +656,33 @@ export class QuestionCanvasComponent implements OnInit {
     const subjectId = region.subjectId ?? 0;
     const topicId = region.topicId ?? 0;
     const subtopicId = region.subtopicId ?? 0;
+    // Issue #76: a freshly detected (not yet AI-classified) region has no
+    // subject/topic/subtopic. Do not reset the test's current selection or the
+    // local form in that case; keep whatever is already set. A Human-sourced
+    // empty subject is a deliberate reset and must pass through.
+    if (this.isUnclassifiedAutoEvent(subjectId, region.classificationSource)) {
+      return;
+    }
     this.questionForm.patchValue({ subjectId, topicId, subtopicId }, { emitEvent: false });
     this.testCreateEnhancedComponent?.syncClassification?.(
       subjectId || null,
       topicId || null,
       subtopicId || null
     );
+  }
+
+  /**
+   * Issue #76: true when the event carries no subject AND was not produced by a
+   * deliberate human action (i.e. undefined/AI source). Such events come from
+   * auto-detected regions that have not been classified yet and must not wipe
+   * the test's current taxonomy selection. `ClassificationSource.Human === 0`,
+   * so the comparison is intentionally strict rather than truthiness-based.
+   */
+  private isUnclassifiedAutoEvent(
+    subjectId: number,
+    classificationSource: ClassificationSource | null | undefined
+  ): boolean {
+    return !subjectId && classificationSource !== ClassificationSource.Human;
   }
 
   onSaveAndNew() {

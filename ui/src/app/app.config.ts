@@ -16,6 +16,13 @@ import { provideClientHydration } from '@angular/platform-browser';
 import { MAT_DATE_LOCALE, MatDateFormats } from '@angular/material/core';
 import { provideDateFnsAdapter } from '@angular/material-date-fns-adapter';
 import { tr } from 'date-fns/locale/tr';
+import { registerLocaleData } from '@angular/common';
+import localeTr from '@angular/common/locales/tr';
+
+// `date`/`number` pipe'larının 'tr' locale'iyle çalışabilmesi için Angular locale verisi kaydı
+// (NG0701 "Missing locale data for the locale 'tr'" hatasının kalıcı çözümü). LOCALE_ID varsayılan
+// (en-US) olarak bırakıldı; mevcut varsayılan format davranışı değişmiyor.
+registerLocaleData(localeTr);
 
 // Tüm datepicker'lar için Türkçe GG/AA/YYYY parse + display formatı.
 export const TR_DATE_FORMATS: MatDateFormats = {

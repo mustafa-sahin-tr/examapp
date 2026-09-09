@@ -33,6 +33,8 @@ CROPS_DIR = Path("data/crops")
 
 # Ensure dirs exist
 os.makedirs(IMAGES_DIR, exist_ok=True)
+os.makedirs(ANSWERS_DIR, exist_ok=True)
+CROPS_DIR.mkdir(parents=True, exist_ok=True)
 Path(QUESTIONS_JSON_PATH).parent.mkdir(parents=True, exist_ok=True)
 if not os.path.exists(QUESTIONS_JSON_PATH):
     with open(QUESTIONS_JSON_PATH, "w") as f:

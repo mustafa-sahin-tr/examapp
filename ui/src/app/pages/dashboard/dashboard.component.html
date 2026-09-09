@@ -1,3 +1,124 @@
+<!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
+<div class="dashboard-welcome">
+  <h2 class="dashboard-welcome-title">Hoş geldin</h2>
+  <span class="last-login-chip" *ngIf="lastLoginLabel() as lastLogin">Son giriş: {{ lastLogin }}</span>
+</div>
+
+<!-- 1. Aktivite (heat map) + rozet ilerleme — öncelikli bölüm -->
+<div class="dashboard-section">
+  <p class="reset-message" *ngIf="resetMessage() as msg">{{ msg }}</p>
+
+  <div class="activity-grid">
+    <div class="heatmap-container">
+      <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
+        <ng-container *ngIf="!activityApiError(); else heatmapError">
+          <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
+            <ng-container *ngIf="showActivitySummary()">
+              <div class="activity-summary">
+                <div class="number-card-container" *ngIf="activityNumberCardData().length > 0">
+                  <div class="number-card-scroll">
+                    <ngx-charts-number-card [view]="activityNumberCardView()" [scheme]="activityNumberCardScheme"
+                      [results]="activityNumberCardData()" [cardColor]="activityNumberCardColor">
+                    </ngx-charts-number-card>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+            <div class="heatmap-scroll">
+              <ngx-charts-heat-map [view]="activityHeatmapView()" [scheme]="activityColorScheme"
+                [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
+                [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
+                [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">
+              </ngx-charts-heat-map>
+            </div>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+
+      <ng-template #heatmapLoading>
+        <p class="heatmap-state">Aktivite verisi yükleniyor...</p>
+      </ng-template>
+
+      <ng-template #heatmapError>
+        <p class="heatmap-state error">Aktivite verisi alınırken bir hata oluştu.</p>
+      </ng-template>
+
+      <ng-template #heatmapEmpty>
+        <p class="heatmap-state">Son bir yıl için aktivite verisi bulunamadı.</p>
+      </ng-template>
+    </div>
+
+    <!-- Rozet kartı: kendi yükleniyor/hata/boş durumlarına sahip, heat map durumundan bağımsız -->
+    <div class="earned-badges-container">
+      <ng-container *ngIf="badgeProgressLoading(); else badgesResolved">
+        <h3 class="earned-badges-heading">Rozetler</h3>
+        <p class="badges-state">Rozetler yükleniyor...</p>
+      </ng-container>
+
+      <ng-template #badgesResolved>
+        <ng-container *ngIf="badgeProgressError(); else badgesContent">
+          <h3 class="earned-badges-heading">Rozetler</h3>
+          <p class="badges-state error">Rozetler yüklenirken bir sorun oluştu.</p>
+        </ng-container>
+      </ng-template>
+
+      <ng-template #badgesContent>
+        <!-- Kazanılan Rozetler (mevcut davranış korunuyor) -->
+        <div class="badge-group">
+          <h3 class="earned-badges-heading">Kazanılan Rozetler</h3>
+          <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
+            <div class="earned-badges-grid">
+              <div class="badge-icon" *ngFor="let badge of earnedBadges(); trackBy: trackBadge">
+                <img [src]="badge.iconUrl" [alt]="badge.name" />
+                <div class="badge-tooltip" *ngIf="badge.name || badge.description">
+                  <span class="badge-tooltip-name">{{ badge.name }}</span>
+                  <span class="badge-tooltip-desc" *ngIf="badge.description">{{ badge.description }}</span>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+          <ng-template #badgesEmpty>
+            <p class="badges-state">Henüz kazanılmış rozet bulunmuyor.</p>
+          </ng-template>
+        </div>
+
+        <!-- Sıradaki Rozetler: !isCompleted, targetValue - currentValue farkına göre artan, ilk 3 -->
+        <div class="badge-group">
+          <h3 class="earned-badges-heading">Sıradaki Rozetler</h3>
+          <ng-container *ngIf="upcomingBadges().length > 0; else upcomingEmpty">
+            <ul class="upcoming-badges">
+              <li class="upcoming-badge" *ngFor="let item of upcomingBadges(); trackBy: trackUpcomingBadge">
+                <div class="upcoming-badge-icon">
+                  <img [src]="item.badge.iconUrl" [alt]="item.badge.name" />
+                </div>
+                <div class="upcoming-badge-body">
+                  <div class="upcoming-badge-row">
+                    <span class="upcoming-badge-name">{{ item.badge.name }}</span>
+                    <span class="upcoming-badge-count">{{ item.badge.currentValue }} / {{ item.badge.targetValue }}</span>
+                  </div>
+                  <div class="upcoming-badge-track" role="progressbar" [attr.aria-valuenow]="item.badge.currentValue"
+                    [attr.aria-valuemin]="0" [attr.aria-valuemax]="item.badge.targetValue" [attr.aria-label]="item.badge.name">
+                    <div class="upcoming-badge-fill" [style.width.%]="item.percent"></div>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </ng-container>
+          <ng-template #upcomingEmpty>
+            <p class="badges-state badges-state-complete" *ngIf="allBadgesCompleted(); else upcomingNone">
+              Tebrikler, tüm rozetleri tamamladın!
+            </p>
+            <ng-template #upcomingNone>
+              <p class="badges-state">Soru çözmeye başladığında rozet ilerlemen burada görünecek.</p>
+            </ng-template>
+          </ng-template>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Atanmış testler — kompakt kartlar -->
 <div class="dashboard-section">
   <app-section-header title="Atanmış Testler" icon="/icons/18.svg"></app-section-header>
   <ng-container *ngIf="loading(); else assignmentsContent">
@@ -6,15 +127,24 @@
 
   <ng-template #assignmentsContent>
     <ng-container *ngIf="assignmentCards().length > 0; else noAssignments">
-      <div class="list-container">
+      <div class="list-container compact-tests">
         <button *ngIf="canScrollLeft()" class="nav-btn left" type="button" (click)="handleLeftNavigation()">❮</button>
         <div class="cards hidden-scrollable" #assignmentContainer (scroll)="onAssignmentScroll()">
+          <!-- Maketteki .mini-test-card: thumb + başlık + bitiş, tek satır; zengin worksheet-card kullanılmaz -->
           <ul class="psds-carousel__track">
-            <li class="psds-carousel__item" *ngFor="let vm of assignmentCards(); trackBy: trackAssignment">
-              <app-worksheet-card [test]="vm.test" [assignment]="vm.assignment" (cardClick)="onCardClick(vm)">
-              </app-worksheet-card>
-              <div class="assignment-meta">
-                <span class="due" *ngIf="getDueLabel(vm.assignment) as dueLabel">{{ dueLabel }}</span>
+            <li class="mini-test-item" *ngFor="let vm of assignmentCards(); trackBy: trackAssignment">
+              <div class="mini-test-card" role="button" tabindex="0"
+                [attr.aria-label]="vm.test.name + (getDueLabel(vm.assignment) ? ', ' + getDueLabel(vm.assignment) : '')"
+                (click)="onCardClick(vm)" (keydown.enter)="onCardClick(vm)"
+                (keydown.space)="$event.preventDefault(); onCardClick(vm)">
+                <div class="mini-test-thumb"
+                  [style.background-image]="vm.test.imageUrl ? 'url(' + vm.test.imageUrl + ')' : null">
+                  <mat-icon *ngIf="!vm.test.imageUrl">description</mat-icon>
+                </div>
+                <div class="mini-test-info">
+                  <span class="mini-test-title" [title]="vm.test.name">{{ vm.test.name }}</span>
+                  <span class="mini-test-due" *ngIf="getDueLabel(vm.assignment) as dueLabel">{{ dueLabel }}</span>
+                </div>
               </div>
             </li>
           </ul>
@@ -32,86 +162,4 @@
   <ng-container *ngIf="error() as errorMessage">
     <p class="error">{{ errorMessage }}</p>
   </ng-container>
-</div>
-
-<div class="dashboard-section">
-  <!-- <app-section-header title="Öğrenme Aktivitesi" icon="/icons/28.svg"></app-section-header> -->
-
-  <!-- <div class="activity-actions">
-    <button type="button" class="reset-btn" [disabled]="resetInProgress()" (click)="onResetMyActivity()">
-      {{ resetInProgress() ? 'Sıfırlanıyor...' : 'Aktiviteleri Sıfırla' }}
-    </button>
-  </div> -->
-
-  <p class="reset-message" *ngIf="resetMessage() as msg">{{ msg }}</p>
-
-  <div class="heatmap-container">
-    <ng-container *ngIf="!activityApiLoading(); else heatmapLoading">
-      <ng-container *ngIf="!activityApiError(); else heatmapError">
-        <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
-          <ng-container *ngIf="showActivitySummary()">
-            <div class="activity-summary">
-              <div class="number-card-container" *ngIf="activityNumberCardData().length > 0">
-                <div class="number-card-scroll">
-                  <ngx-charts-number-card [view]="activityNumberCardView()" [scheme]="activityNumberCardScheme"
-                    [results]="activityNumberCardData()" [cardColor]="activityNumberCardColor">
-                  </ngx-charts-number-card>
-                </div>
-              </div>
-            </div>
-          </ng-container>
-          <div class="heatmap-scroll">
-            <ngx-charts-heat-map [view]="activityHeatmapView()" [scheme]="activityColorScheme"
-              [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
-              [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
-              [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">
-            </ngx-charts-heat-map>
-          </div>
-          <!-- <p class="heatmap-mobile-hint" *ngIf="isMobileViewport()">Mobilde son 4 ay aktivite gösteriliyor</p> -->
-          <div class="earned-badges-container">
-            <h3 class="earned-badges-heading">Rozetler</h3>
-            <ng-container *ngIf="badgeProgressLoading(); else badgesResolved">
-              <p class="badges-state">Rozetler yükleniyor...</p>
-            </ng-container>
-
-            <ng-template #badgesResolved>
-              <ng-container *ngIf="badgeProgressError(); else badgesList">
-                <p class="badges-state error">Kazanılmış rozetler yüklenirken bir sorun oluştu.</p>
-              </ng-container>
-            </ng-template>
-
-            <ng-template #badgesList>
-              <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
-                <div class="earned-badges-grid">
-                  <div class="badge-icon" *ngFor="let badge of earnedBadges(); trackBy: trackBadge">
-                    <img [src]="badge.iconUrl" [alt]="badge.name" />
-                    <div class="badge-tooltip" *ngIf="badge.name || badge.description">
-                      <span class="badge-tooltip-name">{{ badge.name }}</span>
-                      <span class="badge-tooltip-desc" *ngIf="badge.description">{{ badge.description }}</span>
-                    </div>
-                  </div>
-                </div>
-              </ng-container>
-            </ng-template>
-
-            <ng-template #badgesEmpty>
-              <p class="badges-state">Henüz kazanılmış rozet bulunmuyor.</p>
-            </ng-template>
-          </div>
-        </ng-container>
-      </ng-container>
-    </ng-container>
-
-    <ng-template #heatmapLoading>
-      <p class="heatmap-state">Aktivite verisi yükleniyor...</p>
-    </ng-template>
-
-    <ng-template #heatmapError>
-      <p class="heatmap-state error">Aktivite verisi alınırken bir hata oluştu.</p>
-    </ng-template>
-
-    <ng-template #heatmapEmpty>
-      <p class="heatmap-state">Son bir yıl için aktivite verisi bulunamadı.</p>
-    </ng-template>
-  </div>
 </div>

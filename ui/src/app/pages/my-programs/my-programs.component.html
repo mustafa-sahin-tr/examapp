@@ -61,7 +61,24 @@
       <p class="loading-description">Çalışma programlarınız hazırlanıyor...</p>
     </div>
   </div>
-  } @if (!loading && programs.length === 0) {
+  } @if (!loading && loadError) {
+  <!-- Yükleme hatası -->
+  <div class="error-state">
+    <div class="error-content">
+      <div class="error-icon-wrapper">
+        <mat-icon class="error-icon">cloud_off</mat-icon>
+      </div>
+      <h2 class="error-title">Programlar yüklenemedi</h2>
+      <p class="error-description">
+        Çalışma programlarınız getirilirken bir sorun oluştu. Bağlantınızı kontrol edip tekrar deneyebilirsiniz.
+      </p>
+      <button mat-stroked-button (click)="loadMyPrograms()" class="error-retry-btn">
+        <mat-icon>refresh</mat-icon>
+        Tekrar Dene
+      </button>
+    </div>
+  </div>
+  } @if (!loading && !loadError && programs.length === 0) {
   <!-- Hiç program yok -->
   <div class="empty-state">
     <div class="empty-illustration">
@@ -198,10 +215,6 @@
                 <mat-icon>edit</mat-icon>
                 Düzenle
               </button>
-              <button mat-menu-item (click)="duplicateProgram(program)">
-                <mat-icon>content_copy</mat-icon>
-                Kopyala
-              </button>
               <mat-divider></mat-divider>
               <button mat-menu-item (click)="deleteProgram(program)" class="danger-item">
                 <mat-icon>delete</mat-icon>
@@ -217,57 +230,46 @@
           </div>
           }
           
-          <!-- Program Stats -->
+          <!-- Program Stats (kompakt chip'ler) -->
           <div class="program-stats">
-            <div class="stat-item">
-              <div class="stat-icon-wrapper duration">
-                <mat-icon>calendar_today</mat-icon>
-              </div>
-              <div class="stat-text">
-                <span class="stat-value">{{ program.studyDuration || 30 }}</span>
-                <span class="stat-label">Gün</span>
-              </div>
-            </div>
-            
-            <div class="stat-item">
-              <div class="stat-icon-wrapper subjects">
-                <mat-icon>assignment</mat-icon>
-              </div>
-              <div class="stat-text">
-                <span class="stat-value">{{ program.subjectsPerDay }}</span>
-                <span class="stat-label">Konu/Gün</span>
-              </div>
-            </div>
-            
-            <div class="stat-item">
-              <div class="stat-icon-wrapper type">
-                <mat-icon>timeline</mat-icon>
-              </div>
-              <div class="stat-text">
-                <span class="stat-value">{{ program.studyType }}</span>
-                <span class="stat-label">Tür</span>
-              </div>
-            </div>
+            <span class="stat-chip duration" [attr.aria-label]="'Süre: ' + (program.studyDuration || 30) + ' gün'">
+              <mat-icon>calendar_today</mat-icon>
+              {{ program.studyDuration || 30 }} gün
+            </span>
+            <span class="stat-chip subjects" [attr.aria-label]="'Günde ' + program.subjectsPerDay + ' konu'">
+              <mat-icon>assignment</mat-icon>
+              {{ program.subjectsPerDay }} konu/gün
+            </span>
+            <span class="stat-chip type" [attr.aria-label]="'Tür: ' + program.studyType">
+              <mat-icon>timeline</mat-icon>
+              {{ program.studyType }}
+            </span>
           </div>
-          
+
           <!-- Progress Section -->
           <div class="progress-section">
             <div class="progress-header">
               <span class="progress-label">İlerleme Durumu</span>
-              <span class="progress-percentage">{{ getProgressPercentage(program) }}%</span>
+              <span class="progress-percentage" [class.completed]="isCompleted(program)" [class.active]="isActive(program)">
+                {{ getProgressPercentage(program) }}%
+              </span>
             </div>
-            
+
             <div class="progress-bar-container">
-              <div class="progress-bar">
-                <div class="progress-fill" [style.width.%]="getProgressPercentage(program)"></div>
+              <div class="progress-bar" role="progressbar" [attr.aria-valuenow]="getProgressPercentage(program)" aria-valuemin="0" aria-valuemax="100">
+                <div
+                  class="progress-fill"
+                  [class.completed]="isCompleted(program)"
+                  [class.active]="isActive(program)"
+                  [style.width.%]="getProgressPercentage(program)"></div>
               </div>
             </div>
-            
+
             <div class="progress-details">
-              <div class="days-info">
-                <span class="completed-days">{{ getCompletedDays(program) }} gün tamamlandı</span>
-                <span class="remaining-days">{{ getRemainingDays(program) }} gün kaldı</span>
-              </div>
+              <span class="page-progress">
+                <mat-icon>menu_book</mat-icon>
+                {{ getPageProgressText(program) }}
+              </span>
             </div>
           </div>
           

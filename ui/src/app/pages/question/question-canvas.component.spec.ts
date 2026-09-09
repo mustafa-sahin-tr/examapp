@@ -10,6 +10,7 @@ import { QuestionService } from '../../services/question.service';
 import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
 import { BookService } from '../../services/book.service';
+import { ClassificationSource } from '../../models/draws';
 
 /**
  * These tests exercise the redesigned shell logic of QuestionCanvasComponent:
@@ -246,6 +247,242 @@ describe('QuestionCanvasComponent', () => {
       expect(component.questionForm.value.subjectId).toBe(3);
       expect(component.questionForm.value.topicId).toBe(7);
       expect(component.questionForm.value.subtopicId).toBe(9);
+    });
+  });
+
+  describe('onPreviewQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {
+    function tceSyncFake() {
+      return {
+        syncClassification: jasmine.createSpy('syncClassification'),
+      };
+    }
+
+    it('onPreviewQuestionChange_NullSubjectId_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onPreviewQuestionChange({
+        index: 0,
+        questionId: 1,
+        subjectId: null,
+        topicId: null,
+        subtopicId: null,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+
+    it('onPreviewQuestionChange_ZeroSubjectId_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onPreviewQuestionChange({
+        index: 0,
+        questionId: 1,
+        subjectId: 0 as any,
+        topicId: 0 as any,
+        subtopicId: 0 as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+
+    it('onPreviewQuestionChange_UndefinedSubjectId_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onPreviewQuestionChange({
+        index: 0,
+        questionId: 1,
+        subjectId: undefined as any,
+        topicId: undefined as any,
+        subtopicId: undefined as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+
+    it('onPreviewQuestionChange_RealSubjectId_PatchesFormAndSyncsClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+
+      component.onPreviewQuestionChange({
+        index: 0,
+        questionId: 1,
+        subjectId: 11,
+        topicId: 22,
+        subtopicId: 33,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(11);
+      expect(component.questionForm.value.topicId).toBe(22);
+      expect(component.questionForm.value.subtopicId).toBe(33);
+      expect(tce.syncClassification).toHaveBeenCalledOnceWith(11, 22, 33);
+    });
+
+    it('onPreviewQuestionChange_NullSubjectId_HumanSource_PatchesFormAndSyncsClassification', () => {
+      // User picked a new Grade in classification-selector -> subjectId is
+      // intentionally null with Human source. Guard must NOT swallow it.
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onPreviewQuestionChange({
+        index: 0,
+        questionId: 1,
+        subjectId: null,
+        topicId: null,
+        subtopicId: null,
+        classificationSource: ClassificationSource.Human,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(0);
+      expect(component.questionForm.value.topicId).toBe(0);
+      expect(component.questionForm.value.subtopicId).toBe(0);
+      expect(tce.syncClassification).toHaveBeenCalledOnceWith(null, null, null);
+    });
+
+    it('onPreviewQuestionChange_NullSubjectId_AISource_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onPreviewQuestionChange({
+        index: 0,
+        questionId: 1,
+        subjectId: null,
+        topicId: null,
+        subtopicId: null,
+        classificationSource: ClassificationSource.AI,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onInspectorQuestionChange (issue #76 — unclassified region must not wipe test selection)', () => {
+    function tceSyncFake() {
+      return {
+        syncClassification: jasmine.createSpy('syncClassification'),
+      };
+    }
+
+    it('onInspectorQuestionChange_NullRegion_DoesNothing', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onInspectorQuestionChange({ index: 0, region: null });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+
+    it('onInspectorQuestionChange_NullSubjectIdOnRegion_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onInspectorQuestionChange({
+        index: 0,
+        region: { subjectId: null, topicId: null, subtopicId: null } as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+
+    it('onInspectorQuestionChange_ZeroOrUndefinedSubjectIdOnRegion_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onInspectorQuestionChange({
+        index: 0,
+        region: { subjectId: 0, topicId: undefined, subtopicId: undefined } as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
+    });
+
+    it('onInspectorQuestionChange_RealSubjectIdOnRegion_PatchesFormAndSyncsClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+
+      component.onInspectorQuestionChange({
+        index: 0,
+        region: { subjectId: 11, topicId: 22, subtopicId: 33 } as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(11);
+      expect(component.questionForm.value.topicId).toBe(22);
+      expect(component.questionForm.value.subtopicId).toBe(33);
+      expect(tce.syncClassification).toHaveBeenCalledOnceWith(11, 22, 33);
+    });
+
+    it('onInspectorQuestionChange_NullSubjectId_HumanSource_PatchesFormAndSyncsClassification', () => {
+      // Deliberate human reset (e.g. Grade changed) -> guard must NOT apply.
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onInspectorQuestionChange({
+        index: 0,
+        region: {
+          subjectId: null,
+          topicId: null,
+          subtopicId: null,
+          classificationSource: ClassificationSource.Human,
+        } as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(0);
+      expect(component.questionForm.value.topicId).toBe(0);
+      expect(component.questionForm.value.subtopicId).toBe(0);
+      expect(tce.syncClassification).toHaveBeenCalledOnceWith(null, null, null);
+    });
+
+    it('onInspectorQuestionChange_NullSubjectId_AISource_DoesNotPatchFormOrSyncClassification', () => {
+      const tce = tceSyncFake();
+      component.testCreateEnhancedComponent = tce as any;
+      component.questionForm.patchValue({ subjectId: 3, topicId: 7, subtopicId: 9 });
+
+      component.onInspectorQuestionChange({
+        index: 0,
+        region: {
+          subjectId: null,
+          topicId: null,
+          subtopicId: null,
+          classificationSource: ClassificationSource.AI,
+        } as any,
+      });
+
+      expect(component.questionForm.value.subjectId).toBe(3);
+      expect(component.questionForm.value.topicId).toBe(7);
+      expect(component.questionForm.value.subtopicId).toBe(9);
+      expect(tce.syncClassification).not.toHaveBeenCalled();
     });
   });
 

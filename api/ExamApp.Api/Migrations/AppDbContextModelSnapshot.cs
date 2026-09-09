@@ -1921,6 +1921,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -1935,6 +1938,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");

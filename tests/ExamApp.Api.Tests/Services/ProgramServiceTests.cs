@@ -192,5 +192,397 @@ public class ProgramServiceTests : IDisposable
         (await check.UserProgramStudyPageSchedules.CountAsync()).ShouldBe(1);
     }
 
+    // ---- CompleteStudyPageAsync / UncompleteStudyPageAsync / DeleteUserProgramAsync (issue #109) ----
+
+    private async Task<(int programId, int scheduleId)> SeedProgramWithScheduleAsync(string userId, bool isCompleted = false, DateTime? completedDate = null)
+    {
+        await using var ctx = _db.NewContext();
+        var page = new StudyPage { Title = "P", Description = "d", CreatedByUserId = 1 };
+        ctx.StudyPages.Add(page);
+        await ctx.SaveChangesAsync();
+
+        var program = new UserProgram
+        {
+            UserId = userId,
+            ProgramName = "Plan",
+            Description = "d",
+            StudyType = "time",
+            StudyDuration = "25-5",
+            SubjectsPerDay = 1,
+            RestDays = "",
+            DifficultSubjects = "",
+        };
+        ctx.UserPrograms.Add(program);
+        await ctx.SaveChangesAsync();
+
+        var schedule = new UserProgramStudyPageSchedule
+        {
+            UserProgramId = program.Id,
+            StudyPageId = page.Id,
+            StartDate = new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
+            IsCompleted = isCompleted,
+            CompletedDate = completedDate,
+        };
+        ctx.UserProgramStudyPageSchedules.Add(schedule);
+        await ctx.SaveChangesAsync();
+
+        return (program.Id, schedule.Id);
+    }
+
+    [Fact]
+    public async Task CompleteStudyPageAsync_Owner_MarksCompletedAndSetsCompletedDate()
+    {
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync(User);
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).CompleteStudyPageAsync(User, programId, scheduleId);
+
+        result.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeTrue();
+        schedule.CompletedDate.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task CompleteStudyPageAsync_AlreadyCompleted_KeepsOriginalCompletedDate()
+    {
+        var originalDate = new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync(User, isCompleted: true, completedDate: originalDate);
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).CompleteStudyPageAsync(User, programId, scheduleId);
+
+        result.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeTrue();
+        schedule.CompletedDate.ShouldBe(originalDate);
+    }
+
+    [Fact]
+    public async Task UncompleteStudyPageAsync_CompletedSchedule_ClearsCompletionState()
+    {
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync(User, isCompleted: true, completedDate: DateTime.UtcNow);
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).UncompleteStudyPageAsync(User, programId, scheduleId);
+
+        result.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeFalse();
+        schedule.CompletedDate.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task UncompleteStudyPageAsync_AlreadyNotCompleted_IsIdempotentAndReturnsTrue()
+    {
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync(User, isCompleted: false, completedDate: null);
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).UncompleteStudyPageAsync(User, programId, scheduleId);
+
+        result.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeFalse();
+        schedule.CompletedDate.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CompleteStudyPageAsync_ScheduleBelongsToAnotherUsersProgram_ReturnsFalse()
+    {
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync("owner-user");
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).CompleteStudyPageAsync("attacker-user", programId, scheduleId);
+
+        result.ShouldBeFalse();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task UncompleteStudyPageAsync_ScheduleBelongsToAnotherUsersProgram_ReturnsFalse()
+    {
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync("owner-user", isCompleted: true, completedDate: DateTime.UtcNow);
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).UncompleteStudyPageAsync("attacker-user", programId, scheduleId);
+
+        result.ShouldBeFalse();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeTrue(); // unchanged
+    }
+
+    [Fact]
+    public async Task CompleteStudyPageAsync_UnknownScheduleId_ReturnsFalse()
+    {
+        var (programId, _) = await SeedProgramWithScheduleAsync(User);
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).CompleteStudyPageAsync(User, programId, 999999);
+
+        result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteUserProgramAsync_Owner_SoftDeletesProgramWithoutRemovingRow()
+    {
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            var program = new UserProgram { UserId = User, ProgramName = "Plan", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "" };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+            programId = program.Id;
+        }
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).DeleteUserProgramAsync(User, programId);
+
+        result.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var program2 = await check.UserPrograms.SingleAsync(p => p.Id == programId);
+        program2.IsActive.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteUserProgramAsync_AlreadyDeleted_IsIdempotentAndReturnsTrue()
+    {
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            var program = new UserProgram { UserId = User, ProgramName = "Plan", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "", IsActive = false };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+            programId = program.Id;
+        }
+
+        await using var ctx2 = _db.NewContext();
+        var result = await NewService(ctx2).DeleteUserProgramAsync(User, programId);
+
+        result.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteUserProgramAsync_AnotherUsersProgram_ReturnsFalseAndLeavesItActive()
+    {
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            var program = new UserProgram { UserId = "owner-user", ProgramName = "Plan", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "" };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+            programId = program.Id;
+        }
+
+        bool result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).DeleteUserProgramAsync("attacker-user", programId);
+
+        result.ShouldBeFalse();
+
+        await using var check = _db.NewContext();
+        var program2 = await check.UserPrograms.SingleAsync(p => p.Id == programId);
+        program2.IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetUserProgramsAsync_SoftDeletedProgram_IsExcludedFromList()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.UserPrograms.Add(new UserProgram { UserId = User, ProgramName = "Active", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "", IsActive = true });
+            ctx.UserPrograms.Add(new UserProgram { UserId = User, ProgramName = "Deleted", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "", IsActive = false });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var programs = await NewService(read).GetUserProgramsAsync(User);
+
+        programs.ShouldHaveSingleItem().ProgramName.ShouldBe("Active");
+    }
+
+    [Fact]
+    public async Task GetUserProgramByIdAsync_SoftDeletedProgram_ReturnsNullForOwner()
+    {
+        var (programId, _) = await SeedProgramWithScheduleAsync(User);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).DeleteUserProgramAsync(User, programId)).ShouldBeTrue();
+
+        await using var read = _db.NewContext();
+        var program = await NewService(read).GetUserProgramByIdAsync(User, programId);
+
+        program.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CompleteAndUncompleteStudyPageAsync_SoftDeletedProgram_ReturnFalseAndLeaveScheduleUntouched()
+    {
+        var (programId, scheduleId) = await SeedProgramWithScheduleAsync(User);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).DeleteUserProgramAsync(User, programId)).ShouldBeTrue();
+
+        bool completeResult, uncompleteResult;
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            completeResult = await service.CompleteStudyPageAsync(User, programId, scheduleId);
+            uncompleteResult = await service.UncompleteStudyPageAsync(User, programId, scheduleId);
+        }
+
+        completeResult.ShouldBeFalse();
+        uncompleteResult.ShouldBeFalse();
+
+        await using var check = _db.NewContext();
+        var schedule = await check.UserProgramStudyPageSchedules.SingleAsync(s => s.Id == scheduleId);
+        schedule.IsCompleted.ShouldBeFalse();
+        schedule.CompletedDate.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AddStudyPageSchedulesAsync_SoftDeletedProgram_ReturnsNullAndAddsNothing()
+    {
+        var (programId, _) = await SeedProgramWithScheduleAsync(User);
+        int pageId;
+        await using (var ctx = _db.NewContext())
+        {
+            (await NewService(ctx).DeleteUserProgramAsync(User, programId)).ShouldBeTrue();
+            pageId = await ctx.StudyPages.Select(p => p.Id).FirstAsync();
+        }
+
+        var request = new ProgramStudyPageScheduleRequestDto
+        {
+            Items = new List<ProgramStudyPageScheduleItemDto>
+            {
+                new() { StudyPageId = pageId, StartDate = new DateTime(2026, 3, 10), EndDate = new DateTime(2026, 3, 12) }
+            }
+        };
+
+        UserProgramDto? result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).AddStudyPageSchedulesAsync(User, programId, request);
+
+        result.ShouldBeNull();
+
+        await using var check = _db.NewContext();
+        (await check.UserProgramStudyPageSchedules.CountAsync(s => s.UserProgramId == programId)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task MapToUserProgramDto_ZeroStudyPages_ProgressPercentageIsZero()
+    {
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            var program = new UserProgram { UserId = User, ProgramName = "Plan", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "" };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+            programId = program.Id;
+        }
+
+        await using var read = _db.NewContext();
+        var dto = await NewService(read).GetUserProgramByIdAsync(User, programId);
+
+        dto!.TotalPageCount.ShouldBe(0);
+        dto.CompletedPageCount.ShouldBe(0);
+        dto.ProgressPercentage.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task MapToUserProgramDto_PartiallyCompletedPages_ComputesCorrectPercentage()
+    {
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            var program = new UserProgram { UserId = User, ProgramName = "Plan", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "" };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+            programId = program.Id;
+
+            var page = new StudyPage { Title = "P", Description = "d", CreatedByUserId = 1 };
+            ctx.StudyPages.Add(page);
+            await ctx.SaveChangesAsync();
+
+            for (var i = 0; i < 5; i++)
+            {
+                ctx.UserProgramStudyPageSchedules.Add(new UserProgramStudyPageSchedule
+                {
+                    UserProgramId = programId,
+                    StudyPageId = page.Id,
+                    StartDate = new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
+                    IsCompleted = i < 2, // 2 of 5 completed
+                });
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var dto = await NewService(read).GetUserProgramByIdAsync(User, programId);
+
+        dto!.TotalPageCount.ShouldBe(5);
+        dto.CompletedPageCount.ShouldBe(2);
+        dto.ProgressPercentage.ShouldBe(40);
+    }
+
+    [Fact]
+    public async Task MapToUserProgramDto_AllStudyPagesCompleted_ProgressPercentageIsHundred()
+    {
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            var program = new UserProgram { UserId = User, ProgramName = "Plan", Description = "d", StudyType = "time", StudyDuration = "25-5", SubjectsPerDay = 1, RestDays = "", DifficultSubjects = "" };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+            programId = program.Id;
+
+            var page = new StudyPage { Title = "P", Description = "d", CreatedByUserId = 1 };
+            ctx.StudyPages.Add(page);
+            await ctx.SaveChangesAsync();
+
+            for (var i = 0; i < 5; i++)
+            {
+                ctx.UserProgramStudyPageSchedules.Add(new UserProgramStudyPageSchedule
+                {
+                    UserProgramId = programId,
+                    StudyPageId = page.Id,
+                    StartDate = new DateTime(2026, 3, 2, 0, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
+                    IsCompleted = true,
+                });
+            }
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var dto = await NewService(read).GetUserProgramByIdAsync(User, programId);
+
+        dto!.TotalPageCount.ShouldBe(5);
+        dto.CompletedPageCount.ShouldBe(5);
+        dto.ProgressPercentage.ShouldBe(100);
+    }
+
     public void Dispose() => _db.Dispose();
 }

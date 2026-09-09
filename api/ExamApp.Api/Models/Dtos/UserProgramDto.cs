@@ -19,6 +19,9 @@ namespace ExamApp.Api.Models.Dtos
         public int SubjectsPerDay { get; set; }
         public string RestDays { get; set; } = string.Empty;
         public string DifficultSubjects { get; set; } = string.Empty;
+        public int CompletedPageCount { get; set; }
+        public int TotalPageCount { get; set; }
+        public int ProgressPercentage { get; set; }
         public List<UserProgramScheduleDto> Schedules { get; set; } = new List<UserProgramScheduleDto>();
         public List<UserProgramStudyPageScheduleDto> StudyPageSchedules { get; set; } = new List<UserProgramStudyPageScheduleDto>();
     }
@@ -46,5 +49,7 @@ namespace ExamApp.Api.Models.Dtos
         public string? StudyPageCoverImageUrl { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
+        public bool IsCompleted { get; set; }
+        public DateTime? CompletedDate { get; set; }
     }
 }

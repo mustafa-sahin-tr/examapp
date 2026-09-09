@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -89,6 +90,60 @@ namespace ExamApp.Api.Controllers
             }
 
             return Ok(program);
+        }
+
+        [HttpPut("{programId:int}/study-pages/{scheduleId:int}/complete")]
+        public async Task<IActionResult> CompleteStudyPage(int programId, int scheduleId, CancellationToken ct)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var found = await _programService.CompleteStudyPageAsync(userId, programId, scheduleId, ct);
+            if (!found)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{programId:int}/study-pages/{scheduleId:int}/complete")]
+        public async Task<IActionResult> UncompleteStudyPage(int programId, int scheduleId, CancellationToken ct)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var found = await _programService.UncompleteStudyPageAsync(userId, programId, scheduleId, ct);
+            if (!found)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> DeleteProgram(int id, CancellationToken ct)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token");
+            }
+
+            var found = await _programService.DeleteUserProgramAsync(userId, id, ct);
+            if (!found)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
         }
 
         // Add other actions as needed for CRUD operations

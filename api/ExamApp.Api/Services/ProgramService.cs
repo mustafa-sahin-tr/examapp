@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -102,7 +103,7 @@ namespace ExamApp.Api.Services
         public async Task<List<UserProgramDto>> GetUserProgramsAsync(string userId)
         {
             var userPrograms = await _context.UserPrograms
-                .Where(up => up.UserId == userId)
+                .Where(up => up.UserId == userId && up.IsActive)
                 .Include(up => up.Schedules)
                 .Include(up => up.StudyPageSchedules)
                 .ThenInclude(s => s.StudyPage)
@@ -115,7 +116,7 @@ namespace ExamApp.Api.Services
         public async Task<UserProgramDto?> GetUserProgramByIdAsync(string userId, int programId)
         {
             var userProgram = await _context.UserPrograms
-                .Where(up => up.UserId == userId && up.Id == programId)
+                .Where(up => up.UserId == userId && up.Id == programId && up.IsActive)
                 .Include(up => up.Schedules)
                 .Include(up => up.StudyPageSchedules)
                 .ThenInclude(s => s.StudyPage)
@@ -129,7 +130,7 @@ namespace ExamApp.Api.Services
         {
             var userProgram = await _context.UserPrograms
                 .Include(up => up.StudyPageSchedules)
-                .FirstOrDefaultAsync(up => up.UserId == userId && up.Id == programId);
+                .FirstOrDefaultAsync(up => up.UserId == userId && up.Id == programId && up.IsActive);
 
             if (userProgram == null)
             {
@@ -171,6 +172,71 @@ namespace ExamApp.Api.Services
             return await GetUserProgramByIdAsync(userId, programId);
         }
 
+        public Task<bool> CompleteStudyPageAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
+            => SetStudyPageCompletionAsync(userId, programId, scheduleId, completed: true, ct);
+
+        public Task<bool> UncompleteStudyPageAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
+            => SetStudyPageCompletionAsync(userId, programId, scheduleId, completed: false, ct);
+
+        public async Task<bool> DeleteUserProgramAsync(string userId, int programId, CancellationToken ct = default)
+        {
+            // Sahiplik kontrolü: başka kullanıcının programı bulunamamış gibi (false → 404) davranır.
+            var userProgram = await _context.UserPrograms
+                .FirstOrDefaultAsync(up => up.UserId == userId && up.Id == programId, ct);
+
+            if (userProgram == null)
+            {
+                return false;
+            }
+
+            if (userProgram.IsActive)
+            {
+                userProgram.IsActive = false;
+                await _context.SaveChangesAsync(ct);
+            }
+
+            return true;
+        }
+
+        private async Task<bool> SetStudyPageCompletionAsync(string userId, int programId, int scheduleId, bool completed, CancellationToken ct)
+        {
+            // Sahiplik kontrolü schedule → program → UserId zinciri üzerinden tek sorguda yapılır;
+            // eşleşme yoksa false (controller 404 döner, 403 değil — GetProgramById deseniyle tutarlı).
+            // Soft-delete edilmiş (IsActive=false) programın schedule'ları da "yok" sayılır.
+            var schedule = await _context.UserProgramStudyPageSchedules
+                .FirstOrDefaultAsync(s => s.Id == scheduleId
+                                       && s.UserProgramId == programId
+                                       && s.UserProgram.UserId == userId
+                                       && s.UserProgram.IsActive, ct);
+
+            if (schedule == null)
+            {
+                return false;
+            }
+
+            if (completed)
+            {
+                // İdempotent: ilk tamamlanma zamanı korunur.
+                if (!schedule.IsCompleted)
+                {
+                    schedule.IsCompleted = true;
+                    schedule.CompletedDate = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(ct);
+                }
+            }
+            else
+            {
+                if (schedule.IsCompleted || schedule.CompletedDate != null)
+                {
+                    schedule.IsCompleted = false;
+                    schedule.CompletedDate = null;
+                    await _context.SaveChangesAsync(ct);
+                }
+            }
+
+            return true;
+        }
+
         private async Task<UserProgramDto> GetUserProgramDtoAsync(int userProgramId)
         {
             var userProgram = await _context.UserPrograms
@@ -185,8 +251,14 @@ namespace ExamApp.Api.Services
 
         private UserProgramDto MapToUserProgramDto(UserProgram up)
         {
+            var totalPageCount = up.StudyPageSchedules.Count;
+            var completedPageCount = up.StudyPageSchedules.Count(s => s.IsCompleted);
+
             return new UserProgramDto
             {
+                TotalPageCount = totalPageCount,
+                CompletedPageCount = completedPageCount,
+                ProgressPercentage = totalPageCount == 0 ? 0 : completedPageCount * 100 / totalPageCount,
                 Id = up.Id,
                 UserId = up.UserId,
                 ProgramName = up.ProgramName,
@@ -224,7 +296,9 @@ namespace ExamApp.Api.Services
                         ? s.StudyPage.Images.OrderBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault()
                         : null,
                     StartDate = s.StartDate,
-                    EndDate = s.EndDate
+                    EndDate = s.EndDate,
+                    IsCompleted = s.IsCompleted,
+                    CompletedDate = s.CompletedDate
                 }).ToList()
             };
         }

@@ -19,6 +19,10 @@ namespace ExamApp.Api.Data
 
         public DateTime EndDate { get; set; }
 
+        public bool IsCompleted { get; set; } = false;
+
+        public DateTime? CompletedDate { get; set; }
+
         [ForeignKey("UserProgramId")]
         public virtual UserProgram UserProgram { get; set; }
 

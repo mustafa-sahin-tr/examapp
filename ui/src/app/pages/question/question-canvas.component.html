@@ -57,24 +57,46 @@
     </nav>
 
     <div class="qc-topbar__actions">
+      @if (isAdmin) {
       <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">Eğit</button>
+      }
 
       <div class="qc-split">
-        <button type="button" class="qc-split__main qc-btn qc-btn--primary" (click)="onSaveAndNew()">Kaydet</button>
-        <button type="button" class="qc-split__caret qc-btn qc-btn--primary" [matMenuTriggerFor]="saveMenu">
+        <button
+          type="button"
+          class="qc-split__main qc-btn qc-btn--primary"
+          [disabled]="saving()"
+          [attr.aria-busy]="saving()"
+          (click)="onSaveAndNew()"
+        >
+          @if (saving()) {
+          <mat-spinner class="qc-btn__spinner" diameter="16"></mat-spinner>
+          <span>Kaydediliyor…</span>
+          } @else {
+          Kaydet
+          }
+        </button>
+        <button
+          type="button"
+          class="qc-split__caret qc-btn qc-btn--primary"
+          [disabled]="saving()"
+          [matMenuTriggerFor]="saveMenu"
+        >
           <mat-icon>arrow_drop_down</mat-icon>
         </button>
       </div>
       <mat-menu #saveMenu="matMenu">
-        <button mat-menu-item type="button" (click)="onSaveAndFix()">
+        <button mat-menu-item type="button" [disabled]="saving()" (click)="onSaveAndFix()">
           <mat-icon>build</mat-icon><span>Kaydet ve Düzelt</span>
         </button>
-        <button mat-menu-item type="button" (click)="sendToWorkPages()">
+        <button mat-menu-item type="button" [disabled]="saving()" (click)="sendToWorkPages()">
           <mat-icon>send</mat-icon><span>Çalışma Sayfasına Gönder</span>
         </button>
+        @if (isAdmin) {
         <button mat-menu-item type="button" (click)="sendToFix()">
           <mat-icon>model_training</mat-icon><span>Sadece modeli eğit</span>
         </button>
+        }
       </mat-menu>
 
     </div>

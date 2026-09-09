@@ -24,7 +24,9 @@ import { SubTopic } from '../../models/subtopic';
 import { debounceTime, of, switchMap } from 'rxjs';
 import { SidenavService } from '../../services/sidenav.service';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { AuthService } from '../../services/auth.service';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 import { ClassificationSource, QuestionRegion } from '../../models/draws';
 @Component({
@@ -40,6 +42,7 @@ import { ClassificationSource, QuestionRegion } from '../../models/draws';
     MatMenuModule,
     MatDividerModule,
     MatIconModule,
+    MatProgressSpinnerModule,
     ImageSelectorComponent,
     TestCreateEnhancedComponent,
   ],
@@ -84,6 +87,11 @@ export class QuestionCanvasComponent implements OnInit {
   sidenavService = inject(SidenavService);
   snackBar = inject(MatSnackBar);
   private destroyRef = inject(DestroyRef);
+  private authService = inject(AuthService);
+  /** Model eğitim verisi üretme (sendToFix) yalnızca Admin'e açık. */
+  readonly isAdmin = this.authService.hasRole('Admin');
+  /** saveBulk isteği sürerken kaydet butonlarını kilitler. */
+  readonly saving = signal(false);
   questionForm: FormGroup = new FormGroup<QuestionCanvasForm>({
     subjectId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
     topicId: new FormControl(0, { nonNullable: true, validators: [Validators.required] }),
@@ -341,6 +349,9 @@ export class QuestionCanvasComponent implements OnInit {
   }
 
   sendToFix() {
+    if (!this.isAdmin) {
+      return;
+    }
     this.imageSelector.sendToFix();
   }
 
@@ -784,12 +795,19 @@ export class QuestionCanvasComponent implements OnInit {
       subjectId: formData.subjectId,
     };
 
-    var payload = this.imageSelector.getRegions(questionPayload);
+    if (this.saving()) {
+      return;
+    }
+
+    const payload = this.imageSelector.getRegions(questionPayload);
+    this.saving.set(true);
     this.questionService.saveBulk(payload).subscribe({
       next: (data) => {
+        this.saving.set(false);
         console.log('Soru Kaydedildi:', data);
         this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
-        if (sendToFix) {
+        // Eğitim verisi üretimi (Python question-detector) yan etkidir; sadece Admin için çalışır.
+        if (sendToFix && this.isAdmin) {
           this.imageSelector.sendToFix();
         }
         this.testCreateEnhancedComponent.reloadComponent(formData.testValue);
@@ -798,6 +816,7 @@ export class QuestionCanvasComponent implements OnInit {
         }, 2000);
       },
       error: (err) => {
+        this.saving.set(false);
         console.log(err);
         for (const key in err?.error?.errors) {
           if (key.startsWith('$.')) {

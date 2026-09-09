@@ -14,6 +14,17 @@
   <div class="study-page-schedule-section">
     <div class="study-page-schedule-header">
       <h3>Program Sayfalari</h3>
+      <button
+        mat-raised-button
+        color="primary"
+        type="button"
+        class="add-study-pages-btn"
+        (click)="toggleAddStudyPages()"
+        aria-label="Çalışma sayfası ekle"
+      >
+        <mat-icon>playlist_add</mat-icon>
+        Çalışma Sayfası Ekle
+      </button>
     </div>
 
     <div class="calendar-container">

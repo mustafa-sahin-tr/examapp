@@ -158,7 +158,16 @@ export class ProgramCreateComponent implements OnInit {
       if (nextStepIndex !== -1) {
         this.currentIndex.set(nextStepIndex);
         this.stepIndex.update((i) => i + 1);
+        return;
       }
+
+      // Savunma: nextStep dolu ama programSteps içinde karşılığı yok (tutarsız/yanlış seed verisi, bkz. issue #136).
+      // Sihirbazın sessizce takılı kalması yerine son adım gibi davranıp program oluşturma formuna geç.
+      console.warn(
+        `[ProgramCreate] Adım ${currentStep.id} ("${currentStep.title}") seçeneği "${selectedOption.value}" ` +
+          `geçersiz nextStep=${nextStepId} değerine işaret ediyor; program oluşturma formuna geçiliyor.`,
+      );
+      this.isCreatingProgram.set(true);
     }
   }
 

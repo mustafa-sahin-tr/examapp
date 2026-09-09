@@ -43,4 +43,9 @@ export class StudentService {
   register(student: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/register`, student);
   }
+
+  /** GET /api/exam/student/me/last-login — önceki giriş yoksa lastLoginAtUtc null döner (issue #125). */
+  getLastLogin(): Observable<{ lastLoginAtUtc: string | null }> {
+    return this.http.get<{ lastLoginAtUtc: string | null }>(`${this.baseUrl}/me/last-login`);
+  }
 }

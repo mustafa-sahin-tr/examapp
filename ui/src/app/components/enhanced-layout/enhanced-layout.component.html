@@ -60,6 +60,7 @@
           <mat-icon>menu</mat-icon>
         </button>
         <span class="mobile-toolbar-title">ExamApp</span>
+        <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
       </mat-toolbar>
 
       <!-- Enhanced Toolbar -->
@@ -96,6 +97,8 @@
             </div>
           </div>
         </div>
+
+        <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
 
         @if( isAuthenticated | async) {
 

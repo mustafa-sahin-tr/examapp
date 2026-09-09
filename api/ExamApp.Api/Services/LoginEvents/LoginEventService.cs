@@ -1,8 +1,10 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services.LoginEvents;
 
@@ -34,6 +36,20 @@ public class LoginEventService : ILoginEventService
         await _context.SaveChangesAsync(ct);
 
         return new LoginEventCreatedDto { Id = entity.Id };
+    }
+
+    public Task<LoginEvent?> GetPreviousSuccessfulLoginAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        // Skip(1): en son başarılı kayıt mevcut oturumdur; ondan bir önceki istenir.
+        // Not: login event'i BadgeService üzerinden async yazıldığından, login'in hemen ardından
+        // çağrılırsa en son kayıt henüz yazılmamış olabilir (MVP'de kabul edilen sınırlama).
+        return _context.LoginEvents
+            .AsNoTracking()
+            .Where(e => e.KeycloakUserId == keycloakUserId && e.Success)
+            .OrderByDescending(e => e.OccurredAtUtc)
+            .Skip(1)
+            .Take(1)
+            .FirstOrDefaultAsync(ct);
     }
 
     private static DateTime ToUtc(DateTime value) => value.Kind switch

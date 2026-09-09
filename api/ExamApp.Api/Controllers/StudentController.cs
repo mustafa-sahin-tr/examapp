@@ -5,6 +5,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.LoginEvents;
 using ExamApp.Api.Services.StudentReset;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
@@ -33,6 +34,7 @@ namespace ExamApp.Api.Controllers
 
         private readonly IBackgroundJobClient _backgroundJobs;
         private readonly StudentResetJob _studentResetJob;
+        private readonly ILoginEventService _loginEventService;
 
 
         public StudentController(
@@ -42,7 +44,8 @@ namespace ExamApp.Api.Controllers
             IOptions<KeycloakSettings> options,
             IKeycloakService keycloakService,
             IBackgroundJobClient backgroundJobs,
-            StudentResetJob studentResetJob)
+            StudentResetJob studentResetJob,
+            ILoginEventService loginEventService)
             : base()
         {
             _minioService = minioService;
@@ -52,6 +55,24 @@ namespace ExamApp.Api.Controllers
             _keycloakSettings = options.Value;
             _backgroundJobs = backgroundJobs;
             _studentResetJob = studentResetJob;
+            _loginEventService = loginEventService;
+        }
+
+        /// <summary>
+        /// Öğrencinin mevcut oturumu hariç bir önceki başarılı giriş zamanı (issue #125).
+        /// Önceki giriş yoksa 200 + { lastLoginAtUtc: null }.
+        /// </summary>
+        [Authorize(Roles = "Student")]
+        [HttpGet("me/last-login")]
+        public async Task<IActionResult> GetMyLastLogin(CancellationToken ct)
+        {
+            if (string.IsNullOrEmpty(KeyCloakId))
+            {
+                return Unauthorized();
+            }
+
+            var previousLogin = await _loginEventService.GetPreviousSuccessfulLoginAsync(KeyCloakId, ct);
+            return Ok(new LastLoginDto { LastLoginAtUtc = previousLogin?.OccurredAtUtc });
         }
 
         [Authorize(Roles = "Student")]

@@ -22,6 +22,7 @@ import { filter, map, takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
+import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 
 interface MenuItem {
   id: string;
@@ -50,6 +51,7 @@ interface MenuItem {
     MatTooltipModule,
     RouterOutlet,
     ReactiveFormsModule,
+    ColorSchemeToggleComponent,
   ],
   templateUrl: './enhanced-layout.component.html',
   styleUrls: ['./enhanced-layout.component.scss'],

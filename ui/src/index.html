@@ -30,6 +30,17 @@
     content="3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve online sınavlar.">
   <meta name="twitter:image" content="https://hedefokul.com/assets/images/og-image.jpg">
 
+  <!-- Issue #81: renk şemasını ilk paint'ten önce uygula (FOUC önleme). Anahtar: localStorage 'color-scheme'. -->
+  <script>
+    (function () {
+      var scheme = 'dark';
+      try {
+        var stored = localStorage.getItem('color-scheme');
+        if (stored === 'light' || stored === 'dark') { scheme = stored; }
+      } catch (e) { /* localStorage erişilemez (gizli mod vb.) → varsayılan dark */ }
+      document.documentElement.classList.add(scheme + '-theme');
+    })();
+  </script>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

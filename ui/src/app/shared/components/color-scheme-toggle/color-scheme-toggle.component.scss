@@ -1,0 +1,22 @@
+:host {
+  display: inline-flex;
+}
+
+.color-scheme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ms-layout-spacing-xxsmall);
+  padding: 0 var(--ms-layout-spacing-xsmall);
+}
+
+.scheme-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--ms-text-weak);
+  transition: color var(--ms-motion-speed-fast);
+
+  &.active {
+    color: var(--ms-text-strong);
+  }
+}

@@ -26,13 +26,13 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
         DateTime endUtc,
         bool programIsActive = true,
         bool isCompleted = false,
-        string studyPageTitle = "Sayfa 1",
+        string studyItemTitle = "Sayfa 1",
         string programName = "Planım")
     {
         await using var ctx = _db.NewContext();
 
-        var page = new StudyPage { Title = studyPageTitle, Description = "d", CreatedByUserId = 1 };
-        ctx.StudyPages.Add(page);
+        var page = new StudyItem { Title = studyItemTitle, Description = "d", CreatedByUserId = 1 };
+        ctx.StudyItems.Add(page);
         await ctx.SaveChangesAsync();
 
         var program = new UserProgram
@@ -53,7 +53,7 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
         var schedule = new UserProgramStudyPageSchedule
         {
             UserProgramId = program.Id,
-            StudyPageId = page.Id,
+            StudyItemId = page.Id,
             StartDate = DateTime.SpecifyKind(startUtc, DateTimeKind.Utc),
             EndDate = DateTime.SpecifyKind(endUtc, DateTimeKind.Utc),
             IsCompleted = isCompleted,
@@ -65,7 +65,7 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
     }
 
     [Fact]
-    public async Task GetMyCalendarAsync_ScheduleFullyInsideRange_ReturnsProgramStudyPageEvent()
+    public async Task GetMyCalendarAsync_ScheduleFullyInsideRange_ReturnsProgramStudyItemEvent()
     {
         await SeedScheduleAsync(
             KeycloakUserId,
@@ -82,7 +82,7 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
         var ev = result.Events.ShouldHaveSingleItem();
         ev.Kind.ShouldBe("program-study-page");
         ev.ProgramName.ShouldBe("Planım");
-        ev.StudyPageTitle.ShouldBe("Sayfa 1");
+        ev.StudyItemTitle.ShouldBe("Sayfa 1");
         ev.IsCompleted.ShouldBe(false);
     }
 
@@ -180,7 +180,7 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
     }
 
     [Fact]
-    public async Task GetMyCalendarAsync_InactiveProgram_ReturnsNoProgramStudyPageEvents()
+    public async Task GetMyCalendarAsync_InactiveProgram_ReturnsNoProgramStudyItemEvents()
     {
         await SeedScheduleAsync(
             KeycloakUserId,
@@ -217,7 +217,7 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
     }
 
     [Fact]
-    public async Task GetMyCalendarAsync_BlankKeycloakUserId_ReturnsNoProgramStudyPageEvents()
+    public async Task GetMyCalendarAsync_BlankKeycloakUserId_ReturnsNoProgramStudyItemEvents()
     {
         await SeedScheduleAsync(
             KeycloakUserId,

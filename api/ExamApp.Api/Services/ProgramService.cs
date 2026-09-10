@@ -105,8 +105,8 @@ namespace ExamApp.Api.Services
             var userPrograms = await _context.UserPrograms
                 .Where(up => up.UserId == userId && up.IsActive)
                 .Include(up => up.Schedules)
-                .Include(up => up.StudyPageSchedules)
-                .ThenInclude(s => s.StudyPage)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
                 .ThenInclude(p => p.Images)
                 .ToListAsync();
 
@@ -118,18 +118,18 @@ namespace ExamApp.Api.Services
             var userProgram = await _context.UserPrograms
                 .Where(up => up.UserId == userId && up.Id == programId && up.IsActive)
                 .Include(up => up.Schedules)
-                .Include(up => up.StudyPageSchedules)
-                .ThenInclude(s => s.StudyPage)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
                 .ThenInclude(p => p.Images)
                 .FirstOrDefaultAsync();
 
             return userProgram != null ? MapToUserProgramDto(userProgram) : null;
         }
 
-        public async Task<UserProgramDto?> AddStudyPageSchedulesAsync(string userId, int programId, ProgramStudyPageScheduleRequestDto request)
+        public async Task<UserProgramDto?> AddStudyItemSchedulesAsync(string userId, int programId, ProgramStudyItemScheduleRequestDto request)
         {
             var userProgram = await _context.UserPrograms
-                .Include(up => up.StudyPageSchedules)
+                .Include(up => up.StudyItemSchedules)
                 .FirstOrDefaultAsync(up => up.UserId == userId && up.Id == programId && up.IsActive);
 
             if (userProgram == null)
@@ -137,15 +137,15 @@ namespace ExamApp.Api.Services
                 return null;
             }
 
-            var studyPageIds = request.Items.Select(i => i.StudyPageId).Distinct().ToList();
-            var studyPages = await _context.StudyPages
-                .Where(p => studyPageIds.Contains(p.Id))
+            var studyItemIds = request.Items.Select(i => i.StudyItemId).Distinct().ToList();
+            var studyItems = await _context.StudyItems
+                .Where(p => studyItemIds.Contains(p.Id))
                 .ToListAsync();
 
             var schedules = new List<UserProgramStudyPageSchedule>();
             foreach (var item in request.Items)
             {
-                var pageExists = studyPages.Any(p => p.Id == item.StudyPageId);
+                var pageExists = studyItems.Any(p => p.Id == item.StudyItemId);
                 if (!pageExists)
                 {
                     continue;
@@ -157,7 +157,7 @@ namespace ExamApp.Api.Services
                 schedules.Add(new UserProgramStudyPageSchedule
                 {
                     UserProgramId = userProgram.Id,
-                    StudyPageId = item.StudyPageId,
+                    StudyItemId = item.StudyItemId,
                     StartDate = startDate,
                     EndDate = endDate
                 });
@@ -172,11 +172,11 @@ namespace ExamApp.Api.Services
             return await GetUserProgramByIdAsync(userId, programId);
         }
 
-        public Task<bool> CompleteStudyPageAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
-            => SetStudyPageCompletionAsync(userId, programId, scheduleId, completed: true, ct);
+        public Task<bool> CompleteStudyItemAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
+            => SetStudyItemCompletionAsync(userId, programId, scheduleId, completed: true, ct);
 
-        public Task<bool> UncompleteStudyPageAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
-            => SetStudyPageCompletionAsync(userId, programId, scheduleId, completed: false, ct);
+        public Task<bool> UncompleteStudyItemAsync(string userId, int programId, int scheduleId, CancellationToken ct = default)
+            => SetStudyItemCompletionAsync(userId, programId, scheduleId, completed: false, ct);
 
         public async Task<bool> DeleteUserProgramAsync(string userId, int programId, CancellationToken ct = default)
         {
@@ -198,7 +198,7 @@ namespace ExamApp.Api.Services
             return true;
         }
 
-        private async Task<bool> SetStudyPageCompletionAsync(string userId, int programId, int scheduleId, bool completed, CancellationToken ct)
+        private async Task<bool> SetStudyItemCompletionAsync(string userId, int programId, int scheduleId, bool completed, CancellationToken ct)
         {
             // Sahiplik kontrolü schedule → program → UserId zinciri üzerinden tek sorguda yapılır;
             // eşleşme yoksa false (controller 404 döner, 403 değil — GetProgramById deseniyle tutarlı).
@@ -241,8 +241,8 @@ namespace ExamApp.Api.Services
         {
             var userProgram = await _context.UserPrograms
                 .Include(up => up.Schedules)
-                .Include(up => up.StudyPageSchedules)
-                .ThenInclude(s => s.StudyPage)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
                 .ThenInclude(p => p.Images)
                 .FirstOrDefaultAsync(up => up.Id == userProgramId);
 
@@ -251,8 +251,8 @@ namespace ExamApp.Api.Services
 
         private UserProgramDto MapToUserProgramDto(UserProgram up)
         {
-            var totalPageCount = up.StudyPageSchedules.Count;
-            var completedPageCount = up.StudyPageSchedules.Count(s => s.IsCompleted);
+            var totalPageCount = up.StudyItemSchedules.Count;
+            var completedPageCount = up.StudyItemSchedules.Count(s => s.IsCompleted);
 
             return new UserProgramDto
             {
@@ -286,14 +286,14 @@ namespace ExamApp.Api.Services
                     CompletedDate = s.CompletedDate,
                     Notes = s.Notes
                 }).ToList(),
-                StudyPageSchedules = up.StudyPageSchedules.Select(s => new UserProgramStudyPageScheduleDto
+                StudyItemSchedules = up.StudyItemSchedules.Select(s => new UserProgramStudyPageScheduleDto
                 {
                     Id = s.Id,
                     UserProgramId = s.UserProgramId,
-                    StudyPageId = s.StudyPageId,
-                    StudyPageTitle = s.StudyPage != null ? s.StudyPage.Title : string.Empty,
-                    StudyPageCoverImageUrl = s.StudyPage != null
-                        ? s.StudyPage.Images.OrderBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault()
+                    StudyItemId = s.StudyItemId,
+                    StudyItemTitle = s.StudyItem != null ? s.StudyItem.Title : string.Empty,
+                    StudyItemCoverImageUrl = s.StudyItem != null
+                        ? s.StudyItem.Images.OrderBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault()
                         : null,
                     StartDate = s.StartDate,
                     EndDate = s.EndDate,

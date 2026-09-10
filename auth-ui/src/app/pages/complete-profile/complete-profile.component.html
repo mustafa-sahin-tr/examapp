@@ -97,6 +97,22 @@
       </div>
 
       <form class="profile-form" [formGroup]="teacherForm" (ngSubmit)="onSubmit()">
+        <fieldset class="form-field radio-group">
+          <legend>Çalışma Şeklin</legend>
+          <label class="radio-option" for="teacherAffiliatedSchool">
+            <input id="teacherAffiliatedSchool" type="radio" formControlName="isIndependentTutor" [value]="false" />
+            <span>Bir okula bağlıyım</span>
+          </label>
+          <label class="radio-option" for="teacherIndependentTutor">
+            <input id="teacherIndependentTutor" type="radio" formControlName="isIndependentTutor" [value]="true" />
+            <span>Bağımsız özel ders veriyorum</span>
+          </label>
+          @if (isIndependentTutor()) {
+          <span class="field-hint">Bağımsız öğretmen hesapları yönetici onayından sonra aktif olur.</span>
+          }
+        </fieldset>
+
+        @if (!isIndependentTutor()) {
         <div class="form-field">
           <label for="teacherSchoolId">Okul</label>
           @if (schoolsLoading()) {
@@ -114,6 +130,7 @@
           </select>
           }
         </div>
+        }
 
         <div class="auth-submit">
           <button type="button" class="text-btn" [disabled]="isLoading()" (click)="back()">Geri</button>

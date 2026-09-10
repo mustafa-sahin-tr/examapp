@@ -1646,13 +1646,22 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("StudentSpecialEvents");
                 });
 
-            modelBuilder.Entity("ExamApp.Api.Data.StudyPage", b =>
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItem", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BookId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("BookTestId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ContentType")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
@@ -1681,6 +1690,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int?>("EndPage")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("GradeId")
                         .HasColumnType("integer");
 
@@ -1689,6 +1701,12 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
+
+                    b.Property<int?>("Platform")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("StartPage")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("SubTopicId")
                         .HasColumnType("integer");
@@ -1709,7 +1727,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Url")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("BookId");
+
+                    b.HasIndex("BookTestId");
 
                     b.HasIndex("SubTopicId");
 
@@ -1717,10 +1742,10 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("StudyPages");
+                    b.ToTable("StudyItems");
                 });
 
-            modelBuilder.Entity("ExamApp.Api.Data.StudyPageImage", b =>
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItemImage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1753,7 +1778,7 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
-                    b.Property<int>("StudyPageId")
+                    b.Property<int>("StudyItemId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
@@ -1764,9 +1789,9 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StudyPageId");
+                    b.HasIndex("StudyItemId");
 
-                    b.ToTable("StudyPageImages");
+                    b.ToTable("StudyItemImages");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
@@ -2017,7 +2042,7 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("StudyPageId")
+                    b.Property<int>("StudyItemId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdateTime")
@@ -2031,7 +2056,7 @@ namespace ExamApp.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StudyPageId");
+                    b.HasIndex("StudyItemId");
 
                     b.HasIndex("UserProgramId");
 
@@ -3202,8 +3227,16 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("ExamApp.Api.Data.StudyPage", b =>
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItem", b =>
                 {
+                    b.HasOne("ExamApp.Api.Data.Book", "Book")
+                        .WithMany()
+                        .HasForeignKey("BookId");
+
+                    b.HasOne("ExamApp.Api.Data.BookTest", "BookTest")
+                        .WithMany()
+                        .HasForeignKey("BookTestId");
+
                     b.HasOne("SubTopic", "SubTopic")
                         .WithMany()
                         .HasForeignKey("SubTopicId");
@@ -3216,6 +3249,10 @@ namespace ExamApp.Api.Migrations
                         .WithMany()
                         .HasForeignKey("TopicId");
 
+                    b.Navigation("Book");
+
+                    b.Navigation("BookTest");
+
                     b.Navigation("SubTopic");
 
                     b.Navigation("Subject");
@@ -3223,15 +3260,15 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Topic");
                 });
 
-            modelBuilder.Entity("ExamApp.Api.Data.StudyPageImage", b =>
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItemImage", b =>
                 {
-                    b.HasOne("ExamApp.Api.Data.StudyPage", "StudyPage")
+                    b.HasOne("ExamApp.Api.Data.StudyItem", "StudyItem")
                         .WithMany("Images")
-                        .HasForeignKey("StudyPageId")
+                        .HasForeignKey("StudyItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("StudyPage");
+                    b.Navigation("StudyItem");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
@@ -3256,19 +3293,19 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramStudyPageSchedule", b =>
                 {
-                    b.HasOne("ExamApp.Api.Data.StudyPage", "StudyPage")
+                    b.HasOne("ExamApp.Api.Data.StudyItem", "StudyItem")
                         .WithMany()
-                        .HasForeignKey("StudyPageId")
+                        .HasForeignKey("StudyItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ExamApp.Api.Data.UserProgram", "UserProgram")
-                        .WithMany("StudyPageSchedules")
+                        .WithMany("StudyItemSchedules")
                         .HasForeignKey("UserProgramId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("StudyPage");
+                    b.Navigation("StudyItem");
 
                     b.Navigation("UserProgram");
                 });
@@ -3597,7 +3634,7 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("StudentPoints");
                 });
 
-            modelBuilder.Entity("ExamApp.Api.Data.StudyPage", b =>
+            modelBuilder.Entity("ExamApp.Api.Data.StudyItem", b =>
                 {
                     b.Navigation("Images");
                 });
@@ -3606,7 +3643,7 @@ namespace ExamApp.Api.Migrations
                 {
                     b.Navigation("Schedules");
 
-                    b.Navigation("StudyPageSchedules");
+                    b.Navigation("StudyItemSchedules");
                 });
 
             modelBuilder.Entity("Grade", b =>

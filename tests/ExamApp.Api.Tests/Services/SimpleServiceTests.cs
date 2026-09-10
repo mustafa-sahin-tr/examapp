@@ -1,8 +1,11 @@
+using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -226,6 +229,148 @@ public class SimpleServiceTests : IDisposable
     {
         await using var ctx = _db.NewContext();
         (await NewTeacherService(ctx).GetTeacher(999)).ShouldBeNull();
+    }
+
+    // ---------------- TeacherService: IndependentTeacherRegisteredEvent outbox ----------------
+
+    private static readonly string IndependentTeacherEventType =
+        OutboxEventRegistry.NameFor<IndependentTeacherRegisteredEvent>();
+
+    private static List<OutboxMessage> ReadIndependentTeacherEvents(AppDbContext ctx)
+        => ctx.OutboxMessages.Where(m => m.Type == IndependentTeacherEventType).ToList();
+
+    [Fact]
+    public async Task Teacher_Save_writes_outbox_event_when_new_registration_is_independent()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var response = await NewTeacherService(ctx).Save(
+                userId: 60,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            response.Success.ShouldBeTrue();
+            teacherId = response.ObjectId;
+        }
+
+        await using var check = _db.NewContext();
+        var events = ReadIndependentTeacherEvents(check);
+        events.Count.ShouldBe(1);
+
+        var payload = JsonSerializer.Deserialize<IndependentTeacherRegisteredEvent>(events[0].Content)!;
+        payload.TeacherId.ShouldBe(teacherId);
+        payload.IsNewRegistration.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Teacher_Save_does_not_write_outbox_event_when_new_registration_is_school_bound()
+    {
+        var schoolId = await SeedSchoolAsync("E Okulu");
+
+        await using (var ctx = _db.NewContext())
+        {
+            var response = await NewTeacherService(ctx).Save(
+                userId: 61,
+                new RegisterTeacherDto { SchoolId = schoolId, IsIndependentTutor = false });
+            response.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        ReadIndependentTeacherEvents(check).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Teacher_Save_writes_outbox_event_when_school_bound_teacher_switches_to_independent()
+    {
+        var schoolId = await SeedSchoolAsync("F Okulu");
+        int teacherId;
+
+        await using (var ctx = _db.NewContext())
+        {
+            var created = await NewTeacherService(ctx).Save(
+                userId: 62,
+                new RegisterTeacherDto { SchoolId = schoolId, IsIndependentTutor = false });
+            created.Success.ShouldBeTrue();
+            teacherId = created.ObjectId;
+        }
+
+        await using (var check1 = _db.NewContext())
+        {
+            // İlk (okula bağlı) kayıt event üretmemeli.
+            ReadIndependentTeacherEvents(check1).ShouldBeEmpty();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var updated = await NewTeacherService(ctx).Save(
+                userId: 62,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            updated.Success.ShouldBeTrue();
+        }
+
+        await using var check2 = _db.NewContext();
+        var events = ReadIndependentTeacherEvents(check2);
+        events.Count.ShouldBe(1);
+
+        var payload = JsonSerializer.Deserialize<IndependentTeacherRegisteredEvent>(events[0].Content)!;
+        payload.TeacherId.ShouldBe(teacherId);
+        payload.IsNewRegistration.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Teacher_Save_does_not_write_outbox_event_when_independent_teacher_switches_to_school_bound()
+    {
+        var schoolId = await SeedSchoolAsync("G Okulu");
+
+        await using (var ctx = _db.NewContext())
+        {
+            // İlk kayıt bağımsız olarak yapılır: bu adım kendi event'ini üretir (yeni-kayıt kuralı).
+            var created = await NewTeacherService(ctx).Save(
+                userId: 63,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            created.Success.ShouldBeTrue();
+        }
+
+        int eventsAfterCreation;
+        await using (var check1 = _db.NewContext())
+        {
+            eventsAfterCreation = ReadIndependentTeacherEvents(check1).Count;
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var updated = await NewTeacherService(ctx).Save(
+                userId: 63,
+                new RegisterTeacherDto { SchoolId = schoolId, IsIndependentTutor = false });
+            updated.Success.ShouldBeTrue();
+        }
+
+        await using var check2 = _db.NewContext();
+        // Bağımsız → okula bağlı geçiş yeni event eklememeli; sayı creation sonrasıyla aynı kalmalı.
+        ReadIndependentTeacherEvents(check2).Count.ShouldBe(eventsAfterCreation);
+    }
+
+    [Fact]
+    public async Task Teacher_Save_does_not_write_outbox_event_when_resubmitting_the_same_independent_flag()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var created = await NewTeacherService(ctx).Save(
+                userId: 64,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            created.Success.ShouldBeTrue();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var resubmitted = await NewTeacherService(ctx).Save(
+                userId: 64,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            resubmitted.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        // İlk kayıttan bir event zaten yazılmıştı; tekrar submit yeni event eklememeli.
+        ReadIndependentTeacherEvents(check).Count.ShouldBe(1);
     }
 
     [Fact]

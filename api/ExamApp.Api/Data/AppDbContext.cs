@@ -91,8 +91,8 @@ public class AppDbContext : DbContext
     public DbSet<UserProgram> UserPrograms { get; set; } // UserProgram tablosu
     public DbSet<UserProgramSchedule> UserProgramSchedules { get; set; } // UserProgramSchedule tablosu
     public DbSet<UserProgramStudyPageSchedule> UserProgramStudyPageSchedules { get; set; } // UserProgramStudyPageSchedule tablosu
-    public DbSet<StudyPage> StudyPages { get; set; } // StudyPage tablosu
-    public DbSet<StudyPageImage> StudyPageImages { get; set; } // StudyPageImage tablosu
+    public DbSet<StudyItem> StudyItems { get; set; } // StudyItem tablosu
+    public DbSet<StudyItemImage> StudyItemImages { get; set; } // StudyItemImage tablosu
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
     public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
 
@@ -316,22 +316,22 @@ public class AppDbContext : DbContext
             .HasIndex(m => new { m.SourceKey, m.QuestionId })
             .IsUnique();
 
-        modelBuilder.Entity<StudyPageImage>()
-            .HasOne(i => i.StudyPage)
+        modelBuilder.Entity<StudyItemImage>()
+            .HasOne(i => i.StudyItem)
             .WithMany(p => p.Images)
-            .HasForeignKey(i => i.StudyPageId)
+            .HasForeignKey(i => i.StudyItemId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<UserProgramStudyPageSchedule>()
             .HasOne(s => s.UserProgram)
-            .WithMany(p => p.StudyPageSchedules)
+            .WithMany(p => p.StudyItemSchedules)
             .HasForeignKey(s => s.UserProgramId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<UserProgramStudyPageSchedule>()
-            .HasOne(s => s.StudyPage)
+            .HasOne(s => s.StudyItem)
             .WithMany()
-            .HasForeignKey(s => s.StudyPageId)
+            .HasForeignKey(s => s.StudyItemId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<WorksheetAssignment>()

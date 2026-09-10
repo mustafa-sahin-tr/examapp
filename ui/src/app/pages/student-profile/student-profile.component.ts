@@ -13,7 +13,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { Grade } from '../../models/student';
 import { PointCardComponent } from '../../shared/components/point-card/point-card.component';
-import { BadgeBoxComponent } from '../../shared/components/badge-box/badge-box.component';
 import { LeaderboardComponent } from '../../shared/components/leaderboard/leaderboard.component';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -40,7 +39,6 @@ import { BadgeService, UserActivityResponse } from '../../services/badge.service
     MatSnackBarModule,
     MatSelectModule,
     PointCardComponent,
-    BadgeBoxComponent,
     FormsModule,
     LeaderboardComponent,
     SectionHeaderComponent,
@@ -69,14 +67,6 @@ export class StudentProfileComponent implements OnInit {
   grades: Grade[] = [];
   activeTab = 0; // Varsayılan olarak ilk sekme açık
   activeTab2 = 1;
-  badges = [
-    { title: 'Activity', level: 1, icon: 'http://localhost/minio-api/avatars/activity-badge.png' },
-    { title: 'Assignments', level: 2, icon: 'http://localhost/minio-api/avatars/activity-badge.png' },
-    { title: 'Grades', level: 4, icon: 'http://localhost/minio-api/avatars/activity-badge.png' },
-    { title: 'Attendance', level: 6, icon: 'http://localhost/minio-api/avatars/activity-badge.png' },
-    { title: 'Discipline', level: 8, icon: 'http://localhost/minio-api/avatars/activity-badge.png' },
-    { title: 'Communication', level: 7, icon: 'http://localhost/minio-api/avatars/activity-badge.png' },
-  ];
 
   classLeaderboard = [
     { name: 'Safi Abu-Rashed', score: 1024, icon: 'assets/icons/gold.png' },

@@ -8,6 +8,15 @@
       <app-badge-path [items]="path.badges" [maxPerRow]="6"> </app-badge-path>
     </article>
   </section>
+
+  <ng-container *ngIf="!isLoading() && !badgePaths().length && !standaloneBadges().length">
+    <div *ngIf="hasError(); else badgeEmptyState" class="ms-badge-empty ms-badge-error" role="alert">
+      Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.
+    </div>
+    <ng-template #badgeEmptyState>
+      <div class="ms-badge-empty">Rozet bilgisi bulunamadı.</div>
+    </ng-template>
+  </ng-container>
   <!-- <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
       <header class="ms-badge-path-header">
@@ -40,43 +49,33 @@
             ></path>
           </svg>
 
-          <div class="ms-badge-path-nodes">
-            <ng-container *ngFor="let badge of path.badges; index as i">
-              <button
-                type="button"
-                class="ms-badge-node"
-                [class.ms-badge-node-selected]="selectedBadge()?.id === badge.id"
-                [class.ms-badge-node-completed]="badge.isCompleted"
-                [class.ms-badge-node-top]="(layout.points[i]?.yPercent ?? 50) < 50"
-                [style.left.%]="layout.points[i]?.xPercent ?? 50"
-                [style.top.%]="layout.points[i]?.yPercent ?? 50"
-                (click)="selectBadge(badge)"
-              >
-                <span class="ms-badge-node-halo" aria-hidden="true"></span>
-                <span class="ms-badge-node-icon">
-                  <img [src]="badge.iconUrl" [alt]="badge.name" />
-                </span>
-                <span class="ms-badge-node-label">{{ badge.name }}</span>
-                <span class="ms-badge-node-progress">{{ badge.completedLabel }} / {{ badge.totalLabel }}</span>
-              </button>
-            </ng-container>
-          </div>
-        </div>
-      </div>
-
-      <ng-container *ngIf="selectedBadge() as selected">
-        <ng-container *ngIf="selected.pathKey === path.key">
-          <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
-        </ng-container>
-      </ng-container>
+  @if (isLoading()) {
+  <div class="ms-badge-status" role="status" aria-live="polite">
+    <mat-spinner diameter="36"></mat-spinner>
+    <span>Rozetler yükleniyor...</span>
+  </div>
+  } @else if (loadError()) {
+  <div class="ms-badge-status ms-badge-error" role="alert">
+    <span>Rozet bilgisi alınırken bir hata oluştu.</span>
+    <button mat-stroked-button type="button" (click)="reload()">Tekrar dene</button>
+  </div>
+  } @else {
+  @if (badgePaths().length) {
+  <section class="ms-badge-paths">
+    @for (path of badgePaths(); track path.key) {
+    <article class="ms-badge-path">
+      <app-badge-path [items]="path.badges" [maxPerRow]="6"></app-badge-path>
     </article>
+    }
   </section>
+  }
 
-  <section class="ms-badge-standalone" *ngIf="standaloneBadges().length">
+  @if (standaloneBadges().length) {
+  <section class="ms-badge-standalone">
     <h3 class="ms-badge-standalone-title">Tekil Rozetler</h3>
     <div class="ms-badge-list">
+      @for (badge of standaloneBadges(); track badge.id) {
       <div
-        *ngFor="let badge of standaloneBadges(); trackBy: trackByBadgeId"
         class="ms-badge-item"
         [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
         [class.ms-badge-completed]="badge.isCompleted"
@@ -87,40 +86,35 @@
         <h3 class="ms-badge-name">{{ badge.name }}</h3>
         <p class="ms-badge-time">{{ badge.completedLabel }} / {{ badge.totalLabel }}</p>
 
-        <div *ngIf="badge.id === selectedBadge()?.id" class="ms-badge-arrow"></div>
+        @if (badge.id === selectedBadge()?.id) {
+        <div class="ms-badge-arrow"></div>
+        }
       </div>
+      }
     </div>
 
-    <ng-container *ngIf="selectedBadge() as selected">
-      <ng-container *ngIf="!selected.pathKey">
-        <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
-      </ng-container>
-    </ng-container>
-  </section>
-
-  <div *ngIf="!badgePaths().length && !standaloneBadges().length && !isLoading()" class="ms-badge-empty">
-    Rozet bilgisi bulunamadı.
-  </div>
-
-  <ng-template #badgeDetail let-badge>
+    @if (selectedBadge(); as selected) {
+    @if (!selected.pathKey) {
     <div class="ms-badge-detail">
-      <div class="ms-badge-content" [class.ms-badge-content-completed]="badge?.isCompleted">
+      <div class="ms-badge-content" [class.ms-badge-content-completed]="selected.isCompleted">
         <div class="ms-badge-content-top">
-          <h1 class="ms-badge-title">{{ badge?.name }}</h1>
-
-          <div class="ms-badge-meta" *ngIf="badge?.pathName">
-            <span class="ms-badge-chip">{{ badge?.pathName }}</span>
-            <span class="ms-badge-chip" *ngIf="badge?.pathOrder as step">Adım {{ step }}</span>
-          </div>
-
-          <span class="ms-badge-description">{{ badge?.description }}</span>
-          <span class="ms-badge-progress-text">{{ badge?.completedLabel }} / {{ badge?.totalLabel }} tamamlandı</span>
+          <h1 class="ms-badge-title">{{ selected.name }}</h1>
+          <span class="ms-badge-description">{{ selected.description }}</span>
+          <span class="ms-badge-progress-text">{{ selected.completedLabel }} / {{ selected.totalLabel }} tamamlandı</span>
         </div>
 
         <div class="ms-badge-progress">
-          <div class="ms-badge-progress-bar" [style.width.%]="badge?.progressPercent"></div>
+          <div class="ms-badge-progress-bar" [style.width.%]="selected.progressPercent"></div>
         </div>
       </div>
     </div>
-  </ng-template> -->
+    }
+    }
+  </section>
+  }
+
+  @if (!badgePaths().length && !standaloneBadges().length) {
+  <div class="ms-badge-empty">Henüz kazanılmış veya takip edilen bir rozet yok.</div>
+  }
+  }
 </div>

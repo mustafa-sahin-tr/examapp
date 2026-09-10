@@ -4,6 +4,8 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Services;
@@ -54,9 +56,16 @@ public class TeacherService : ITeacherService
             // kendini Approved'a yükseltebilirdi.
             var wasIndependent = existingTeacher.IsIndependentTutor;
             existingTeacher.IsIndependentTutor = dto.IsIndependentTutor;
+            var becamePendingOnTransition = false;
             if (dto.IsIndependentTutor != wasIndependent)
             {
                 existingTeacher.ApprovalStatus = approvalStatus;
+                becamePendingOnTransition = approvalStatus == TeacherApprovalStatus.Pending;
+            }
+
+            if (becamePendingOnTransition)
+            {
+                await AddTeacherApplicationSubmittedOutboxAsync(existingTeacher.Id, userId);
             }
 
             await _context.SaveChangesAsync();
@@ -77,14 +86,83 @@ public class TeacherService : ITeacherService
             ApprovalStatus = approvalStatus
         };
 
-        _context.Teachers.Add(teacher);
-        await _context.SaveChangesAsync();
+        if (!dto.IsIndependentTutor)
+        {
+            // Okula bağlı öğretmen: Pending'e düşmüyor, outbox gerekmiyor — tek SaveChanges yeterli.
+            _context.Teachers.Add(teacher);
+            await _context.SaveChangesAsync();
+            return new ResponseBaseDto
+            {
+                Success = true,
+                Message = "Öğretmen başarıyla kaydedildi.",
+                ObjectId = teacher.Id
+            };
+        }
+
+        // Bağımsız öğretmen: Teacher.Id identity ile üretildiği için (SaveChanges'ten önce 0),
+        // event içeriği TeacherId'ye ihtiyaç duyar. WorksheetAccessRequestService ile aynı desen:
+        // teacher INSERT + outbox INSERT aynı execution-strategy transaction'ında, iki SaveChanges ile.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync();
+
+            _context.Teachers.Add(teacher);
+            await _context.SaveChangesAsync();
+
+            await AddTeacherApplicationSubmittedOutboxAsync(teacher.Id, userId);
+            await _context.SaveChangesAsync();
+
+            await tx.CommitAsync();
+        });
+
         return new ResponseBaseDto
         {
             Success = true,
             Message = "Öğretmen başarıyla kaydedildi.",
             ObjectId = teacher.Id
         };
+    }
+
+    /// <summary>
+    /// Bağımsız öğretmen onay akışı (issue #94): yeni bir Pending başvuru oluştuğunda
+    /// (yeni kayıt VEYA IsIndependentTutor=false→true geçişi ile Pending'e düşen kayıt)
+    /// <see cref="TeacherApplicationSubmittedEvent"/>'i outbox'a ekler. Çağıranın, teacherId'yi
+    /// zaten bilmesi gerekir — yeni kayıt yolunda bu yalnızca ilk SaveChangesAsync (identity insert)
+    /// tamamlandıktan sonra mümkündür, bkz. çağrı yeri.
+    /// </summary>
+    private async Task AddTeacherApplicationSubmittedOutboxAsync(int teacherId, int userId)
+    {
+        var applicantName = await ResolveApplicantNameAsync(userId);
+        _context.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = OutboxEventRegistry.NameFor<TeacherApplicationSubmittedEvent>(),
+            Content = JsonSerializer.Serialize(new TeacherApplicationSubmittedEvent
+            {
+                TeacherId = teacherId,
+                UserId = userId,
+                ApplicantName = applicantName,
+                SubmittedAt = DateTime.UtcNow
+            }),
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    /// <summary>
+    /// UserId'yi isme çevirir (WorksheetAccessRequestService ile aynı best-effort desen).
+    /// auth-api erişilemezse null döner — event yine de yazılır, consumer "Bir öğretmen" fallback'i kullanır.
+    /// </summary>
+    private async Task<string?> ResolveApplicantNameAsync(int userId)
+    {
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(new[] { userId });
+            return users.FirstOrDefault(u => u.Id == userId)?.FullName;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return null;
+        }
     }
 
     public async Task<UpdateThemeDto> UpdateTeacherTheme(int userId, string themePreset, string? themeCustomConfig)

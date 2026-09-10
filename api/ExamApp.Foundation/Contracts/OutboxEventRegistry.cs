@@ -23,6 +23,7 @@ public static class OutboxEventRegistry
         typeof(WorksheetAccessRequestApprovedEvent),
         typeof(WorksheetAccessRequestRejectedEvent),
         typeof(LoginAttemptedEvent),
+        typeof(TeacherApplicationSubmittedEvent),
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

@@ -3,11 +3,6 @@
 <!-- Avatar Component (avatar.component.html) -->
 
 <mat-tab-group [(selectedIndex)]="activeTab">
-  <mat-tab label="Info">
-    <app-badge-thropy></app-badge-thropy>
-    <app-badge-thropy></app-badge-thropy>
-  </mat-tab>
-
   <mat-tab label="What">
     <div class="learning-container">
       <div class="learning-text">
@@ -137,15 +132,7 @@
     </div>
     <app-section-header title="My Badges" icon="assets/icons/badge.png"></app-section-header>
 
-    <div class="badges-container">
-      <app-badge-box
-        *ngFor="let badge of badges"
-        [badgeTitle]="badge.title"
-        [badgeLevel]="badge.level"
-        [badgeIcon]="badge.icon"
-      >
-      </app-badge-box>
-    </div>
+    <app-badge-thropy [userId]="studentId ?? 0"></app-badge-thropy>
 
     <app-section-header title="Leaderboards" icon="assets/icons/leaderboard.png"></app-section-header>
 

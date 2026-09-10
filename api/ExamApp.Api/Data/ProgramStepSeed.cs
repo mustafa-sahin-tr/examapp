@@ -43,13 +43,7 @@ namespace ExamApp.Api.Data
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 },
-                new { Id = 4, Order = 4, Title = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin", Description = "Süreli mi yoksa soru sayısı takipli bir çalışma mı planlamak istersin", Multiple = false,
-                    Options = new[] {
-                        new { Label = "Süreli Çalışma", Value = "time", Icon = "icons/question-mark.svg", NextStep = (int?)-1 },
-                        new { Label = "Soru Sayısı Takipli Çalışma", Value = "question", Icon = "icons/question-mark.svg", NextStep = (int?)-1 }
-                    },
-                    Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
-                },
+                // Id = 4 was a dead duplicate of step 1 (no option pointed to it); removed in FixProgramStepWizardDeadEnd.
                 new { Id = 5, Order = 5, Title = "Bir günde kaç farklı ders çalışmak istersin?", Description = "Bir günde kaç farklı ders çalışmak istersin?", Multiple = false,
                     Options = new[] {
                         new { Label = "1", Value = "1", Icon = "icons/one-svgrepo-com.svg", NextStep = (int?)6 },
@@ -73,11 +67,12 @@ namespace ExamApp.Api.Data
                 },
                 new { Id = 7, Order = 7, Title = "Çalışırken zorlandığın ders / dersler hangileri?", Description = "Çalışırken zorlandığın ders / dersler hangileri?", Multiple = true,
                     Options = new[] {
-                        new { Label = "Hayat Bilgisi", Value = "1", Icon = "icons/home-svgrepo-com.svg", NextStep = (int?)8 },
-                        new { Label = "Türkçe", Value = "2", Icon = "icons/alphabet-svgrepo-com.svg", NextStep = (int?)8 },
-                        new { Label = "Matematik", Value = "3", Icon = "icons/math-svgrepo-com.svg", NextStep = (int?)8 },
-                        new { Label = "Fen Bilimleri", Value = "4", Icon = "icons/world-svgrepo-com.svg", NextStep = (int?)8 },
-                        new { Label = "Yok", Value = "5", Icon = "icons/null-svgrepo-com.svg", NextStep = (int?)8 }
+                        // Last step: NextStep = null means the wizard proceeds to the "create program" form.
+                        new { Label = "Hayat Bilgisi", Value = "1", Icon = "icons/home-svgrepo-com.svg", NextStep = (int?)null },
+                        new { Label = "Türkçe", Value = "2", Icon = "icons/alphabet-svgrepo-com.svg", NextStep = (int?)null },
+                        new { Label = "Matematik", Value = "3", Icon = "icons/math-svgrepo-com.svg", NextStep = (int?)null },
+                        new { Label = "Fen Bilimleri", Value = "4", Icon = "icons/world-svgrepo-com.svg", NextStep = (int?)null },
+                        new { Label = "Yok", Value = "5", Icon = "icons/null-svgrepo-com.svg", NextStep = (int?)null }
                     },
                     Actions = new[] { new { Label = default(string), Value = default(string) } }.Take(0).ToArray()
                 }
@@ -85,6 +80,13 @@ namespace ExamApp.Api.Data
 
             foreach (var rawStep in rawProgramSteps)
             {
+                // Option Ids 10-11 belonged to the removed step 4; skip them so the
+                // remaining option Ids stay identical to the rows already in the database.
+                if (rawStep.Id == 5 && currentOptionId == 10)
+                {
+                    currentOptionId = 12;
+                }
+
                 programStepsToSeed.Add(new ProgramStep
                 {
                     Id = rawStep.Id,

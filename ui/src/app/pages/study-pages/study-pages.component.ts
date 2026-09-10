@@ -14,7 +14,15 @@ import { Router, RouterModule } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject } from '../../models/subject';
 import { Paged } from '../../models/test-instance';
-import { StudyPage } from '../../models/study-page';
+import {
+  STUDY_PAGE_CONTENT_TYPE_ICONS,
+  STUDY_PAGE_CONTENT_TYPE_LABELS,
+  STUDY_PAGE_PLATFORM_ICONS,
+  STUDY_PAGE_PLATFORM_LABELS,
+  StudyPage,
+  StudyPageContentType,
+  StudyPageLinkPlatform,
+} from '../../models/study-page';
 import { SubjectService } from '../../services/subject.service';
 import { StudyPageService } from '../../services/study-page.service';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
@@ -161,19 +169,70 @@ export class StudyPagesComponent {
     return diffInDays <= 7; // Considered "new" if created within last 7 days
   }
 
-  getStarRating(page: any): number {
+  getStarRating(page: StudyPage): number {
     // Calculate rating based on page metrics (imageCount, isPublished status)
     let rating = 3; // Base rating
-    
+
     if (page.imageCount >= 10) rating += 1;
     if (page.imageCount >= 5) rating += 0.5;
     if (page.isPublished) rating += 0.5;
-    
+
     return Math.min(5, rating); // Cap at 5 stars
   }
 
-  getRatingScore(page: any): string {
+  getRatingScore(page: StudyPage): string {
     const rating = this.getStarRating(page);
     return rating.toFixed(1);
+  }
+
+  // ---- ContentType rozetleri ----
+  readonly ContentType = StudyPageContentType;
+
+  private contentTypeOf(page: StudyPage): StudyPageContentType {
+    // Eski kayıtlarda contentType gelmezse Image varsay
+    return page.contentType ?? StudyPageContentType.Image;
+  }
+
+  isImage(page: StudyPage): boolean {
+    return this.contentTypeOf(page) === StudyPageContentType.Image;
+  }
+
+  isLink(page: StudyPage): boolean {
+    return this.contentTypeOf(page) === StudyPageContentType.Link;
+  }
+
+  isBookPageRange(page: StudyPage): boolean {
+    return this.contentTypeOf(page) === StudyPageContentType.BookPageRange;
+  }
+
+  contentTypeIcon(page: StudyPage): string {
+    return STUDY_PAGE_CONTENT_TYPE_ICONS[this.contentTypeOf(page)];
+  }
+
+  contentTypeLabel(page: StudyPage): string {
+    return STUDY_PAGE_CONTENT_TYPE_LABELS[this.contentTypeOf(page)];
+  }
+
+  contentTypeClass(page: StudyPage): string {
+    switch (this.contentTypeOf(page)) {
+      case StudyPageContentType.Link:
+        return 'type-link';
+      case StudyPageContentType.BookPageRange:
+        return 'type-book';
+      default:
+        return 'type-image';
+    }
+  }
+
+  platformIcon(page: StudyPage): string {
+    return STUDY_PAGE_PLATFORM_ICONS[page.platform ?? StudyPageLinkPlatform.Other];
+  }
+
+  platformLabel(page: StudyPage): string {
+    return STUDY_PAGE_PLATFORM_LABELS[page.platform ?? StudyPageLinkPlatform.Other];
+  }
+
+  isKnownPlatform(page: StudyPage): boolean {
+    return page.platform === StudyPageLinkPlatform.Eba || page.platform === StudyPageLinkPlatform.YouTube;
   }
 }

@@ -36,56 +36,56 @@ public class ProgramControllerCompletionAndDeleteTests
     }
 
     [Fact]
-    public async Task CompleteStudyPage_ServiceReturnsTrue_ReturnsNoContent()
+    public async Task CompleteStudyItem_ServiceReturnsTrue_ReturnsNoContent()
     {
-        _programService.CompleteStudyPageAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(true);
+        _programService.CompleteStudyItemAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(true);
         var controller = NewController("kc-1");
 
-        var result = await controller.CompleteStudyPage(1, 2, default);
+        var result = await controller.CompleteStudyItem(1, 2, default);
 
         result.ShouldBeOfType<NoContentResult>();
     }
 
     [Fact]
-    public async Task CompleteStudyPage_ServiceReturnsFalse_ReturnsNotFound()
+    public async Task CompleteStudyItem_ServiceReturnsFalse_ReturnsNotFound()
     {
-        _programService.CompleteStudyPageAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(false);
+        _programService.CompleteStudyItemAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(false);
         var controller = NewController("kc-1");
 
-        var result = await controller.CompleteStudyPage(1, 2, default);
+        var result = await controller.CompleteStudyItem(1, 2, default);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
 
     [Fact]
-    public async Task CompleteStudyPage_NoKeycloakIdClaim_ReturnsUnauthorizedWithoutCallingService()
+    public async Task CompleteStudyItem_NoKeycloakIdClaim_ReturnsUnauthorizedWithoutCallingService()
     {
         var controller = NewController(keycloakUserId: null);
 
-        var result = await controller.CompleteStudyPage(1, 2, default);
+        var result = await controller.CompleteStudyItem(1, 2, default);
 
         result.ShouldBeOfType<UnauthorizedObjectResult>();
-        await _programService.DidNotReceive().CompleteStudyPageAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _programService.DidNotReceive().CompleteStudyItemAsync(Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task UncompleteStudyPage_ServiceReturnsTrue_ReturnsNoContent()
+    public async Task UncompleteStudyItem_ServiceReturnsTrue_ReturnsNoContent()
     {
-        _programService.UncompleteStudyPageAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(true);
+        _programService.UncompleteStudyItemAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(true);
         var controller = NewController("kc-1");
 
-        var result = await controller.UncompleteStudyPage(1, 2, default);
+        var result = await controller.UncompleteStudyItem(1, 2, default);
 
         result.ShouldBeOfType<NoContentResult>();
     }
 
     [Fact]
-    public async Task UncompleteStudyPage_ServiceReturnsFalse_ReturnsNotFound()
+    public async Task UncompleteStudyItem_ServiceReturnsFalse_ReturnsNotFound()
     {
-        _programService.UncompleteStudyPageAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(false);
+        _programService.UncompleteStudyItemAsync("kc-1", 1, 2, Arg.Any<CancellationToken>()).Returns(false);
         var controller = NewController("kc-1");
 
-        var result = await controller.UncompleteStudyPage(1, 2, default);
+        var result = await controller.UncompleteStudyItem(1, 2, default);
 
         result.ShouldBeOfType<NotFoundResult>();
     }

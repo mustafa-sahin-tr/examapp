@@ -21,7 +21,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
 {
     private const string KindReminder = "reminder";
     private const string KindAssignmentDeadline = "assignment-deadline";
-    private const string KindProgramStudyPage = "program-study-page";
+    private const string KindProgramStudyItem = "program-study-page";
 
     /// <summary>Sent hatırlatmalar için bu tarihten eskiler takvimde gösterilmez.</summary>
     private const int SentReminderLookbackDays = 30;
@@ -46,7 +46,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
         var events = new List<CalendarEventDto>();
         events.AddRange(await BuildReminderEventsAsync(studentId, fromUtc, toUtc, ct));
         events.AddRange(await BuildAssignmentDeadlineEventsAsync(studentId, gradeId, schoolId, fromUtc, toUtc, ct));
-        events.AddRange(await BuildProgramStudyPageEventsAsync(keycloakUserId, fromUtc, toUtc, ct));
+        events.AddRange(await BuildProgramStudyItemEventsAsync(keycloakUserId, fromUtc, toUtc, ct));
 
         return new StudentCalendarResponseDto
         {
@@ -153,7 +153,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
     /// Legacy günlük UserProgramSchedule kapsam dışıdır. UserProgram.UserId Keycloak sub tuttuğu için
     /// filtre <paramref name="keycloakUserId"/> ile yapılır — başka öğrencinin programı sızmaz.
     /// </summary>
-    private async Task<List<CalendarEventDto>> BuildProgramStudyPageEventsAsync(
+    private async Task<List<CalendarEventDto>> BuildProgramStudyItemEventsAsync(
         string keycloakUserId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(keycloakUserId))
@@ -169,8 +169,8 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             {
                 ProgramId = s.UserProgramId,
                 s.UserProgram.ProgramName,
-                s.StudyPageId,
-                StudyPageTitle = s.StudyPage.Title,
+                s.StudyItemId,
+                StudyItemTitle = s.StudyItem.Title,
                 s.StartDate,
                 s.EndDate,
                 s.IsCompleted
@@ -179,13 +179,13 @@ public class WorksheetCalendarService : IWorksheetCalendarService
 
         return rows.Select(r => new CalendarEventDto
         {
-            Kind = KindProgramStudyPage,
+            Kind = KindProgramStudyItem,
             Date = DateTime.SpecifyKind(r.StartDate, DateTimeKind.Utc),
             EndDate = DateTime.SpecifyKind(r.EndDate, DateTimeKind.Utc),
             ProgramId = r.ProgramId,
             ProgramName = r.ProgramName,
-            StudyPageId = r.StudyPageId,
-            StudyPageTitle = r.StudyPageTitle,
+            StudyItemId = r.StudyItemId,
+            StudyItemTitle = r.StudyItemTitle,
             IsCompleted = r.IsCompleted
         }).ToList();
     }

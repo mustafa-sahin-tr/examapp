@@ -425,11 +425,41 @@
           (keyup.enter)="addSchool()"
         />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="dense">
+      <mat-form-field appearance="outline" class="dense location-select">
+        <mat-select
+          placeholder="İl (opsiyonel)"
+          aria-label="İl"
+          [ngModel]="newSchoolProvinceId()"
+          (ngModelChange)="onNewSchoolProvinceChange($event)"
+          [disabled]="provincesLoading() || !!provincesError()"
+        >
+          <mat-option [value]="null">— İl yok —</mat-option>
+          @for (p of provinces(); track p.id) {
+            <mat-option [value]="p.id">{{ p.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense location-select">
+        <mat-select
+          placeholder="İlçe (opsiyonel)"
+          aria-label="İlçe"
+          [ngModel]="newSchoolDistrictId()"
+          (ngModelChange)="newSchoolDistrictId.set($event)"
+          [disabled]="newSchoolProvinceId() == null || newSchoolDistrictsLoading()"
+        >
+          <mat-option [value]="null">— İlçe yok —</mat-option>
+          @for (d of newSchoolDistricts(); track d.id) {
+            <mat-option [value]="d.id">{{ d.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense address-field">
         <input
           matInput
-          placeholder="Şehir (opsiyonel)"
-          [(ngModel)]="newSchoolCity"
+          placeholder="Açık adres (opsiyonel)"
+          aria-label="Açık adres"
+          maxlength="500"
+          [(ngModel)]="newSchoolAddressLine"
           (keyup.enter)="addSchool()"
         />
       </mat-form-field>
@@ -444,6 +474,21 @@
         <mat-icon>add</mat-icon>
       </button>
     </div>
+
+    @if (provincesError()) {
+      <div class="location-error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span class="state-text">{{ provincesError() }}</span>
+        <button
+          mat-button
+          type="button"
+          (click)="loadProvinces()"
+          [disabled]="provincesLoading()"
+        >
+          Tekrar dene
+        </button>
+      </div>
+    }
 
     @if (schoolsError()) {
       <div class="state-box state-box--error" role="alert">
@@ -462,7 +507,7 @@
       <div class="empty-state">
         <mat-icon>school</mat-icon>
         <p class="empty-title">Henüz okul eklenmemiş</p>
-        <p class="empty-hint">Okul adı ve isteğe bağlı şehir girip ekle</p>
+        <p class="empty-hint">Okul adı ve isteğe bağlı il / ilçe / adres girip ekle</p>
       </div>
     } @else {
       <ul class="list schools-list">
@@ -470,8 +515,8 @@
           <li class="item static">
             @if (!isEditing('school', sc.id)) {
               <span class="name">{{ sc.name }}</span>
-              @if (sc.city) {
-                <span class="meta">{{ sc.city }}</span>
+              @if (schoolLocation(sc); as loc) {
+                <span class="meta" [title]="sc.addressLine ?? ''">{{ loc }}</span>
               }
               <span class="actions">
                 <button
@@ -500,11 +545,40 @@
                   [(ngModel)]="editName"
                   (keyup.enter)="saveEdit('school', sc)"
                 />
+                <mat-form-field appearance="outline" class="dense location-select">
+                  <mat-select
+                    placeholder="İl"
+                    aria-label="İl"
+                    [ngModel]="editProvinceId()"
+                    (ngModelChange)="onEditProvinceChange($event)"
+                    [disabled]="provincesLoading() || !!provincesError()"
+                  >
+                    <mat-option [value]="null">— İl yok —</mat-option>
+                    @for (p of provinces(); track p.id) {
+                      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="dense location-select">
+                  <mat-select
+                    placeholder="İlçe"
+                    aria-label="İlçe"
+                    [ngModel]="editDistrictId()"
+                    (ngModelChange)="editDistrictId.set($event)"
+                    [disabled]="editProvinceId() == null || editDistrictsLoading()"
+                  >
+                    <mat-option [value]="null">— İlçe yok —</mat-option>
+                    @for (d of editDistricts(); track d.id) {
+                      <mat-option [value]="d.id">{{ d.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
                 <input
-                  class="inline-edit"
-                  placeholder="Şehir"
-                  aria-label="Şehir"
-                  [(ngModel)]="editCity"
+                  class="inline-edit address-field"
+                  placeholder="Açık adres"
+                  aria-label="Açık adres"
+                  maxlength="500"
+                  [(ngModel)]="editAddressLine"
                   (keyup.enter)="saveEdit('school', sc)"
                 />
                 <button

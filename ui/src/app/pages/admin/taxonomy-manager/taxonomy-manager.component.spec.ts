@@ -40,12 +40,24 @@ describe('TaxonomyManagerComponent', () => {
     grades: [{ id: 5, name: '5. Sınıf' }],
   };
 
-  const schools: School[] = [{ id: 1, name: 'Atatürk İlkokulu', city: 'Ankara' }];
+  const schools: School[] = [
+    {
+      id: 1,
+      name: 'Atatürk İlkokulu',
+      provinceId: 6,
+      provinceName: 'Ankara',
+      districtId: 601,
+      districtName: 'Çankaya',
+      addressLine: null,
+    },
+  ];
 
   function configure(): ComponentFixture<TaxonomyManagerComponent> {
     adminService = jasmine.createSpyObj<AdminService>('AdminService', [
       'getTaxonomy',
       'getSchools',
+      'getProvinces',
+      'getDistricts',
       'createSubject',
       'updateSubject',
       'deleteSubject',
@@ -63,6 +75,8 @@ describe('TaxonomyManagerComponent', () => {
     ]);
     adminService.getTaxonomy.and.returnValue(of(tree));
     adminService.getSchools.and.returnValue(of(schools));
+    adminService.getProvinces.and.returnValue(of([{ id: 6, name: 'Ankara' }, { id: 35, name: 'İzmir' }]));
+    adminService.getDistricts.and.returnValue(of([{ id: 601, name: 'Çankaya', provinceId: 6 }]));
 
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     dialog.open.and.returnValue({ afterClosed: () => of(true) } as any);
@@ -163,35 +177,82 @@ describe('TaxonomyManagerComponent', () => {
     expect(component.newSubTopicName).toBe('');
   });
 
-  it('addSchool_ValidNameAndCity_CallsCreateSchoolWithTrimmedFields', async () => {
+  it('addSchool_WithProvinceDistrictAddress_CallsCreateSchoolWithTrimmedFields', async () => {
     fixture = configure();
     component = fixture.componentInstance;
     fixture.detectChanges();
 
     adminService.createSchool.and.returnValue(of(okResult));
     component.newSchoolName = '  Cumhuriyet Ortaokulu ';
-    component.newSchoolCity = ' İzmir ';
+    component.onNewSchoolProvinceChange(6);
+    component.newSchoolDistrictId.set(601);
+    component.newSchoolAddressLine = ' Atatürk Bulvarı No:1 ';
 
     await component.addSchool();
 
+    expect(adminService.getDistricts).toHaveBeenCalledOnceWith(6);
     expect(adminService.createSchool).toHaveBeenCalledOnceWith({
       name: 'Cumhuriyet Ortaokulu',
-      city: 'İzmir',
+      provinceId: 6,
+      districtId: 601,
+      addressLine: 'Atatürk Bulvarı No:1',
     });
+    expect(component.newSchoolProvinceId()).toBeNull();
+    expect(component.newSchoolDistrictId()).toBeNull();
+    expect(component.newSchoolAddressLine).toBe('');
   });
 
-  it('addSchool_EmptyCity_SendsNullCity', async () => {
+  it('addSchool_NoLocation_SendsNulls', async () => {
     fixture = configure();
     component = fixture.componentInstance;
     fixture.detectChanges();
 
     adminService.createSchool.and.returnValue(of(okResult));
     component.newSchoolName = 'Yeni Okul';
-    component.newSchoolCity = '';
 
     await component.addSchool();
 
-    expect(adminService.createSchool).toHaveBeenCalledOnceWith({ name: 'Yeni Okul', city: null });
+    expect(adminService.createSchool).toHaveBeenCalledOnceWith({
+      name: 'Yeni Okul',
+      provinceId: null,
+      districtId: null,
+      addressLine: null,
+    });
+  });
+
+  it('onNewSchoolProvinceChange_ProvinceChanges_ResetsDistrictSelection', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.onNewSchoolProvinceChange(6);
+    component.newSchoolDistrictId.set(601);
+    component.onNewSchoolProvinceChange(35);
+
+    expect(component.newSchoolDistrictId()).toBeNull();
+    expect(adminService.getDistricts).toHaveBeenCalledWith(35);
+  });
+
+  it('addSchool_BackendRejects_KeepsFormValues', async () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    adminService.createSchool.and.returnValue(
+      throwError(() => ({ error: { message: 'İlçe seçildiğinde il de seçilmelidir.' } }))
+    );
+    component.newSchoolName = 'Yeni Okul';
+    component.newSchoolAddressLine = 'Adres';
+
+    await component.addSchool();
+
+    expect(component.newSchoolName).toBe('Yeni Okul');
+    expect(component.newSchoolAddressLine).toBe('Adres');
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'İlçe seçildiğinde il de seçilmelidir.',
+      'Kapat',
+      jasmine.anything()
+    );
   });
 
   it('remove_ConfirmDialogAccepted_CallsDeleteSubject', async () => {
@@ -306,22 +367,65 @@ describe('TaxonomyManagerComponent', () => {
     });
   });
 
-  it('saveEdit_SchoolLevel_CallsUpdateSchoolWithNameAndCity', async () => {
+  it('saveEdit_SchoolLevel_CallsUpdateSchoolWithLocationFields', async () => {
     fixture = configure();
     component = fixture.componentInstance;
     fixture.detectChanges();
     adminService.updateSchool.and.returnValue(of(okResult));
 
     component.startEdit('school', schools[0]);
+    expect(component.editProvinceId()).toBe(6);
+    expect(component.editDistrictId()).toBe(601);
+    expect(adminService.getDistricts).toHaveBeenCalledOnceWith(6);
+
     component.editName = 'Atatürk İlkokulu 2';
-    component.editCity = 'Ankara';
+    component.editAddressLine = ' Yeni adres ';
 
     await component.saveEdit('school', schools[0]);
 
     expect(adminService.updateSchool).toHaveBeenCalledOnceWith(1, {
       name: 'Atatürk İlkokulu 2',
-      city: 'Ankara',
+      provinceId: 6,
+      districtId: 601,
+      addressLine: 'Yeni adres',
     });
+    expect(component.editing()).toBeNull();
+  });
+
+  it('schoolRow_WithProvinceAndDistrict_ShowsCombinedLocation', () => {
+    fixture = configure();
+    fixture.detectChanges();
+
+    const meta: HTMLElement = fixture.nativeElement.querySelector('.schools-list .meta');
+    expect(meta.textContent?.trim()).toBe('Ankara / Çankaya');
+  });
+
+  it('schoolLocation_ProvinceAndDistrictPresent_JoinsBothWithSlash', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.schoolLocation(schools[0])).toBe('Ankara / Çankaya');
+  });
+
+  it('schoolLocation_OnlyProvincePresent_ReturnsProvinceNameOnly', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const school: School = { id: 2, name: 'İl Olan Okul', provinceId: 6, provinceName: 'Ankara', districtId: null, districtName: null, addressLine: null };
+
+    expect(component.schoolLocation(school)).toBe('Ankara');
+  });
+
+  it('schoolLocation_NoProvinceOrDistrict_ReturnsEmptyString', () => {
+    fixture = configure();
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const school: School = { id: 3, name: 'Adressiz Okul', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null };
+
+    expect(component.schoolLocation(school)).toBe('');
   });
 
   // ── Sınıf filtresi / GradeSubject (Issue #119) ────────────────────────────

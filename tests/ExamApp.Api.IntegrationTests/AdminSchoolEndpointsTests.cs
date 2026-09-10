@@ -33,11 +33,11 @@ public class AdminSchoolEndpointsTests(IntegrationApiFactory factory) : Integrat
     {
         var admin = await ClientAsAsync(2, "Admin", realmRoles: "Admin");
 
-        var create = await admin.PostAsJsonAsync("/api/admin/schools", new UpsertSchoolDto { Name = "Konya Lisesi", City = "Konya" });
+        var create = await admin.PostAsJsonAsync("/api/admin/schools", new UpsertSchoolDto { Name = "Konya Lisesi", AddressLine = "Meram Cad. No:5" });
         create.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var schools = await admin.GetFromJsonAsync<List<SchoolDto>>("/api/admin/schools", Json);
-        schools!.ShouldContain(s => s.Name == "Konya Lisesi" && s.City == "Konya");
+        schools!.ShouldContain(s => s.Name == "Konya Lisesi" && s.AddressLine == "Meram Cad. No:5");
 
         await WithDbAsync(async db =>
             (await db.Schools.AnyAsync(s => s.Name == "Konya Lisesi")).ShouldBeTrue());

@@ -7,6 +7,7 @@ using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Locations;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
+using ExamApp.Api.Services.TeacherApprovals;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,14 +28,16 @@ public class AdminController : BaseController
     private readonly ISchoolService _schools;
     private readonly IDashboardService _dashboard;
     private readonly ILocationService _locations;
+    private readonly ITeacherApprovalService _teacherApprovals;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals)
     {
         _taxonomy = taxonomy;
         _classifierCache = classifierCache;
         _schools = schools;
         _dashboard = dashboard;
         _locations = locations;
+        _teacherApprovals = teacherApprovals;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -137,6 +140,23 @@ public class AdminController : BaseController
     public async Task<ActionResult<List<DistrictDto>>> GetDistricts([FromQuery] int provinceId, CancellationToken ct)
         => Ok(await _locations.GetDistrictsAsync(provinceId, ct));
 
+    // ---- Bağımsız öğretmen başvuruları (issue #94) ----
+
+    /// <summary>GET api/admin/teacher-applications → Pending durumdaki bağımsız öğretmen başvuruları (en eski önce).</summary>
+    [HttpGet("teacher-applications")]
+    public async Task<ActionResult<List<PendingTeacherApplicationDto>>> GetTeacherApplications(CancellationToken ct)
+        => Ok(await _teacherApprovals.GetPendingApplicationsAsync(ct));
+
+    /// <summary>POST api/admin/teacher-applications/{id}/approve → ApprovalStatus=Approved. Sadece Pending + bağımsız kayıt için.</summary>
+    [HttpPost("teacher-applications/{id:int}/approve")]
+    public async Task<IActionResult> ApproveTeacherApplication(int id, CancellationToken ct)
+        => Result(await _teacherApprovals.ApproveAsync(id, await CurrentUserIdAsync(), ct));
+
+    /// <summary>POST api/admin/teacher-applications/{id}/reject → ApprovalStatus=Rejected + RejectionReason. Neden zorunlu.</summary>
+    [HttpPost("teacher-applications/{id:int}/reject")]
+    public async Task<IActionResult> RejectTeacherApplication(int id, [FromBody] TeacherRejectRequestDto dto, CancellationToken ct)
+        => Result(await _teacherApprovals.RejectAsync(id, dto.Reason, await CurrentUserIdAsync(), ct));
+
     // ---- Dashboard ----
 
     [HttpGet("dashboard/summary")]
@@ -166,5 +186,10 @@ public class AdminController : BaseController
     }
 
     private IActionResult Result(Models.Dtos.ResponseBaseDto dto)
-        => dto.Success ? Ok(dto) : BadRequest(dto);
+    {
+        if (dto.Success) return Ok(dto);
+        if (dto.NotFound) return NotFound(dto);
+        if (dto.Conflict) return Conflict(dto);
+        return BadRequest(dto);
+    }
 }

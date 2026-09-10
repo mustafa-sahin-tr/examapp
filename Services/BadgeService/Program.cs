@@ -8,8 +8,10 @@ using BadgeService.Services;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using BadgeService.Hubs;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using BadgeService.Security;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -88,6 +90,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+// Realm rollerini ClaimTypes.Role'e projekte eder — BadgeNotificationHub'ın
+// Context.User.IsInRole("Admin") kontrolü (issue #94) bunsuz çalışmaz.
+// ExamApp.Api.Helpers.KeycloakRoleTransformer ile aynı mantık, bilinçli olarak
+// BadgeService.Security altında ayrıca tutuluyor (bkz. dosyadaki yorum) —
+// Foundation'a FrameworkReference eklemeyi engellemek için.
+builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleTransformer>();
+
 var serviceClients = builder.Configuration.GetSection("Keycloak:ServiceClients").Get<string[]>();
 builder.Services.AddAuthorization(options =>
 {
@@ -107,6 +116,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<WorksheetAccessRequestedConsumer, WorksheetAccessRequestedConsumerDefinition>();
     x.AddConsumer<WorksheetAccessDecisionConsumer, WorksheetAccessDecisionConsumerDefinition>();
     x.AddConsumer<LoginAttemptedConsumer, LoginAttemptedConsumerDefinition>();
+    x.AddConsumer<TeacherApplicationSubmittedConsumer, TeacherApplicationSubmittedConsumerDefinition>();
     x.AddConsumer<IndependentTeacherRegisteredConsumer, IndependentTeacherRegisteredConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
@@ -127,6 +137,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<WorksheetAccessRequestedConsumer>(context);
             e.ConfigureConsumer<WorksheetAccessDecisionConsumer>(context);
             e.ConfigureConsumer<LoginAttemptedConsumer>(context);
+            e.ConfigureConsumer<TeacherApplicationSubmittedConsumer>(context);
             e.ConfigureConsumer<IndependentTeacherRegisteredConsumer>(context);
         });
     });

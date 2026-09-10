@@ -5,6 +5,7 @@ using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Locations;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
+using ExamApp.Api.Services.TeacherApprovals;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,8 +25,9 @@ public class AdminControllerDashboardTrendsTests
     private readonly ISchoolService _schools = Substitute.For<ISchoolService>();
     private readonly IDashboardService _dashboard = Substitute.For<IDashboardService>();
     private readonly ILocationService _locations = Substitute.For<ILocationService>();
+    private readonly ITeacherApprovalService _teacherApprovals = Substitute.For<ITeacherApprovalService>();
 
-    private AdminController NewController() => new(_taxonomy, _classifierCache, _schools, _dashboard, _locations);
+    private AdminController NewController() => new(_taxonomy, _classifierCache, _schools, _dashboard, _locations, _teacherApprovals);
 
     [Fact]
     public void AdminController_ClassLevelAuthorizeAttribute_RequiresAdminRole()

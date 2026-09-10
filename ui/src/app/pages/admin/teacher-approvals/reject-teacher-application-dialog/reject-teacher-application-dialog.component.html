@@ -1,0 +1,46 @@
+<div class="reject-dialog">
+  <header class="dialog-header">
+    <mat-icon class="dialog-icon">block</mat-icon>
+    <div class="header-text">
+      <h2 mat-dialog-title>Başvuruyu Reddet</h2>
+      <p class="subtitle">{{ data.displayName }}</p>
+    </div>
+  </header>
+
+  <mat-dialog-content class="dialog-content">
+    <p class="description">
+      Red nedeni zorunludur. Girdiğiniz metin başvuru kaydına işlenir.
+    </p>
+
+    <mat-form-field appearance="outline" class="reason-field">
+      <mat-label>Red nedeni</mat-label>
+      <textarea
+        matInput
+        [formControl]="reasonControl"
+        rows="4"
+        [maxlength]="maxLength"
+        placeholder="Başvurunun neden reddedildiğini kısaca yazın"
+        cdkFocusInitial
+      ></textarea>
+      <mat-hint align="end">{{ reasonLength() }} / {{ maxLength }}</mat-hint>
+      @if (reasonControl.hasError('required') || reasonControl.hasError('whitespace')) {
+        <mat-error>Red nedeni boş olamaz.</mat-error>
+      } @else if (reasonControl.hasError('maxlength')) {
+        <mat-error>Red nedeni en fazla {{ maxLength }} karakter olabilir.</mat-error>
+      }
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-stroked-button type="button" (click)="cancel()">İptal</button>
+    <button
+      mat-flat-button
+      type="button"
+      class="reject-button"
+      (click)="submit()"
+      [disabled]="reasonControl.invalid"
+    >
+      Reddet
+    </button>
+  </mat-dialog-actions>
+</div>

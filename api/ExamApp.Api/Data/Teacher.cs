@@ -40,6 +40,10 @@ public class Teacher : BaseEntity
     /// <summary>Okula bağlı öğretmen için varsayılan Approved; bağımsız öğretmen kayıtta Pending başlar.</summary>
     public TeacherApprovalStatus ApprovalStatus { get; set; } = TeacherApprovalStatus.Approved;
 
+    /// <summary>Admin başvuruyu reddettiğinde girdiği neden (issue #94). Sadece ApprovalStatus=Rejected iken dolu.</summary>
+    [MaxLength(500)]
+    public string? RejectionReason { get; set; }
+
     [MaxLength(20)]
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi (minimal, standard, enhanced, full)
 

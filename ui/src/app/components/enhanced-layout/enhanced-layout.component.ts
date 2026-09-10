@@ -152,6 +152,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
     { id: 'admin-dashboard', name: 'Dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
     { id: 'admin', name: 'Yönetim', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
+    { id: 'admin-teacher-approvals', name: 'Öğretmen Başvuruları', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     { id: 'divider2', name: '', icon: '', route: '', type: 'divider' },
     { id: 'help', name: 'Yardım', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' },

@@ -2,9 +2,21 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 
-namespace ExamApp.Api.Helpers;
+namespace BadgeService.Security;
 
 /// <summary>
+/// Intentionally duplicated from <c>api/ExamApp.Api/Helpers/KeycloakRoleTransformer.cs</c>.
+///
+/// This logic used to live in <c>ExamApp.Foundation</c> so both <c>ExamApp.Api</c> and
+/// <c>BadgeService</c> could share it, but that required adding a
+/// <c>FrameworkReference Include="Microsoft.AspNetCore.App"</c> to Foundation to make
+/// <see cref="IClaimsTransformation"/> compile. Foundation is also referenced by non-web
+/// projects (e.g. the OutboxPublisher worker service, Foundation's own test project), and that
+/// FrameworkReference would have transitively pulled the entire ASP.NET Core shared framework
+/// into them. BadgeService is an ASP.NET Core app (Sdk.Web — it hosts a SignalR hub and JWT
+/// bearer auth) so it compiles this natively; keeping a small duplicate here avoids polluting
+/// Foundation for the sake of one class.
+///
 /// Projects Keycloak's <c>realm_access.roles</c> array onto standard
 /// <see cref="ClaimTypes.Role"/> claims so <c>[Authorize(Roles = "...")]</c> / <c>User.IsInRole(...)</c> works.
 ///

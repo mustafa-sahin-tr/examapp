@@ -97,6 +97,21 @@ builder.Services.AddAuthentication()
         };
         options.Events = new JwtBearerEvents
         {
+            // SignalR WebSocket upgrade istekleri Authorization header taşıyamaz; istemci token'ı
+            // query string'de gönderir (BadgeService/Program.cs'teki hub auth ile aynı desen).
+            // /hub/badges route'una gateway seviyesinde AuthenticationOptions eklendiğinde (issue #94
+            // security review) bu olmadan mevcut bağlantı akışı kırılırdı.
+            OnMessageReceived = context =>
+            {
+                var isHubRequest = context.HttpContext.Request.Path.StartsWithSegments("/hub/badges");
+                var queryToken = context.Request.Query["access_token"];
+                if (isHubRequest && !string.IsNullOrEmpty(queryToken))
+                {
+                    context.Token = queryToken;
+                }
+
+                return Task.CompletedTask;
+            },
             // Log only the failure reason, at Warning. Never the token or the
             // Authorization header — this is the public edge.
             OnAuthenticationFailed = context =>

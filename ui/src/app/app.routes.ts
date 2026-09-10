@@ -127,6 +127,13 @@ export const routes: Routes = [
           import('./pages/admin/admin-dashboard/admin-dashboard.component').then((m) => m.AdminDashboardComponent),
       },
       {
+        // Issue #94: bağımsız öğretmen başvuruları onay paneli (admin-home sekmesi olarak da gömülü).
+        path: 'admin/teacher-approvals',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/teacher-approvals/teacher-approvals.component').then((m) => m.TeacherApprovalsComponent),
+      },
+      {
         // Issue #63: "Soru Çöz" pratik akışı (kapsam seç → tek tek rastgele soru → anlık geri bildirim).
         path: 'practice',
         canActivate: [authGuard, studentGuard],

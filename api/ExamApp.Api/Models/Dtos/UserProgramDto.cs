@@ -23,7 +23,7 @@ namespace ExamApp.Api.Models.Dtos
         public int TotalPageCount { get; set; }
         public int ProgressPercentage { get; set; }
         public List<UserProgramScheduleDto> Schedules { get; set; } = new List<UserProgramScheduleDto>();
-        public List<UserProgramStudyPageScheduleDto> StudyPageSchedules { get; set; } = new List<UserProgramStudyPageScheduleDto>();
+        public List<UserProgramStudyPageScheduleDto> StudyItemSchedules { get; set; } = new List<UserProgramStudyPageScheduleDto>();
     }
 
     public class UserProgramScheduleDto
@@ -44,9 +44,9 @@ namespace ExamApp.Api.Models.Dtos
     {
         public int Id { get; set; }
         public int UserProgramId { get; set; }
-        public int StudyPageId { get; set; }
-        public string StudyPageTitle { get; set; } = string.Empty;
-        public string? StudyPageCoverImageUrl { get; set; }
+        public int StudyItemId { get; set; }
+        public string StudyItemTitle { get; set; } = string.Empty;
+        public string? StudyItemCoverImageUrl { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public bool IsCompleted { get; set; }

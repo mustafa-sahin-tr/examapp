@@ -125,12 +125,12 @@ public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : In
     }
 
     [Fact]
-    public async Task AddStudyPages_is_forbidden_for_a_teacher()
+    public async Task AddStudyItems_is_forbidden_for_a_teacher()
     {
         var teacher = await ClientAsAsync(14, "Teacher", "kc-p-14", "Teacher");
 
         var response = await teacher.PostAsJsonAsync(
-            "/api/program/1/study-pages", new ProgramStudyPageScheduleRequestDto());
+            "/api/program/1/study-pages", new ProgramStudyItemScheduleRequestDto());
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
@@ -170,12 +170,12 @@ public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : In
     }
 
     [Fact]
-    public async Task AddStudyPages_passes_the_authorization_gate_for_a_student_even_when_program_not_found()
+    public async Task AddStudyItems_passes_the_authorization_gate_for_a_student_even_when_program_not_found()
     {
         var student = await ClientAsAsync(18, "Student", "kc-p-18", "Student");
 
         var response = await student.PostAsJsonAsync(
-            "/api/program/999999/study-pages", new ProgramStudyPageScheduleRequestDto());
+            "/api/program/999999/study-pages", new ProgramStudyItemScheduleRequestDto());
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }

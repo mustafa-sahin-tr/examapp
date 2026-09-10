@@ -41,7 +41,7 @@ namespace ExamApp.Api.Data
 
         // Navigation properties
         public virtual ICollection<UserProgramSchedule> Schedules { get; set; } = new List<UserProgramSchedule>();
-        public virtual ICollection<UserProgramStudyPageSchedule> StudyPageSchedules { get; set; }
+        public virtual ICollection<UserProgramStudyPageSchedule> StudyItemSchedules { get; set; }
             = new List<UserProgramStudyPageSchedule>();
     }
 }

@@ -38,10 +38,28 @@ export interface TaxonomyTree {
   grades: TaxonomyGrade[];
 }
 
+/** GET api/exam/admin/provinces — tr alfabetik sıralı. */
+export interface ProvinceDto {
+  id: number;
+  name: string;
+}
+
+/** GET api/exam/admin/districts?provinceId= — tr alfabetik; bilinmeyen il → []. */
+export interface DistrictDto {
+  id: number;
+  name: string;
+  provinceId: number;
+}
+
+/** Backend SchoolDto (Issue #91): il/ilçe/açık adres. */
 export interface School {
   id: number;
   name: string;
-  city?: string | null;
+  provinceId: number | null;
+  provinceName: string | null;
+  districtId: number | null;
+  districtName: string | null;
+  addressLine: string | null;
 }
 
 export interface ApiResult {

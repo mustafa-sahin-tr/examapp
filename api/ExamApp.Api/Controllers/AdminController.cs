@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Dashboard;
+using ExamApp.Api.Services.Locations;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
 using Microsoft.AspNetCore.Authorization;
@@ -25,13 +26,15 @@ public class AdminController : BaseController
     private readonly IClassifierCacheService _classifierCache;
     private readonly ISchoolService _schools;
     private readonly IDashboardService _dashboard;
+    private readonly ILocationService _locations;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations)
     {
         _taxonomy = taxonomy;
         _classifierCache = classifierCache;
         _schools = schools;
         _dashboard = dashboard;
+        _locations = locations;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -121,6 +124,18 @@ public class AdminController : BaseController
     [HttpDelete("schools/{id:int}")]
     public async Task<IActionResult> DeleteSchool(int id, CancellationToken ct)
         => Result(await _schools.DeleteAsync(id, await CurrentUserIdAsync(), ct));
+
+    // ---- İl / ilçe referans verisi (issue #91, okul adres formu cascading dropdown) ----
+
+    /// <summary>GET api/admin/provinces → tüm iller, alfabetik.</summary>
+    [HttpGet("provinces")]
+    public async Task<ActionResult<List<ProvinceDto>>> GetProvinces(CancellationToken ct)
+        => Ok(await _locations.GetProvincesAsync(ct));
+
+    /// <summary>GET api/admin/districts?provinceId=6 → o ilin ilçeleri, alfabetik. Bilinmeyen il → boş liste.</summary>
+    [HttpGet("districts")]
+    public async Task<ActionResult<List<DistrictDto>>> GetDistricts([FromQuery] int provinceId, CancellationToken ct)
+        => Ok(await _locations.GetDistrictsAsync(provinceId, ct));
 
     // ---- Dashboard ----
 

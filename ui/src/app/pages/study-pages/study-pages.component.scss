@@ -101,6 +101,54 @@
   }
 }
 
+// ContentType rozeti (sağ üst)
+.type-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: var(--main-bg-color);
+  color: var(--main-foreground-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  &.type-link mat-icon,
+  &.type-book mat-icon {
+    color: var(--primaryColor);
+  }
+
+  &.type-image mat-icon {
+    color: var(--secondaryColor);
+  }
+}
+
+// Görsel olmayan tiplerde kapak alanı arka planı tema rengi
+.sp-card-image {
+  &.type-link,
+  &.type-book {
+    background: linear-gradient(135deg, var(--primaryColor) 0%, var(--secondaryColor) 100%);
+  }
+}
+
+.card-meta .meta-link.known-platform {
+  mat-icon {
+    color: var(--primaryColor);
+  }
+}
+
 // Badge System
 .badge {
   position: absolute;

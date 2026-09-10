@@ -37,16 +37,33 @@
   <section class="cards-section">
     <div class="cards-grid">
       <div *ngFor="let page of pagedStudyPagesSignal().items; trackBy: trackByPage" class="course-card">
-        <div class="sp-card-image">
-          <img *ngIf="page.coverImageUrl" [src]="page.coverImageUrl" [alt]="page.title" class="cover-image">
-          <div class="image-placeholder" *ngIf="!page.coverImageUrl">
+        <div class="sp-card-image" [ngClass]="contentTypeClass(page)">
+          @if (isImage(page) && page.coverImageUrl) {
+          <img [src]="page.coverImageUrl" [alt]="page.title" class="cover-image">
+          } @else if (isLink(page)) {
+          <div class="image-placeholder">
+            <mat-icon>{{ platformIcon(page) }}</mat-icon>
+            <span>{{ platformLabel(page) }}</span>
+          </div>
+          } @else if (isBookPageRange(page)) {
+          <div class="image-placeholder">
+            <mat-icon>menu_book</mat-icon>
+            <span>{{ page.bookName || 'Kitap' }}</span>
+          </div>
+          } @else {
+          <div class="image-placeholder">
             <mat-icon>auto_stories</mat-icon>
             <span>Çalışma Sayfası</span>
           </div>
-          
+          }
+
+          <!-- Tip rozeti -->
+          <div class="type-badge" [ngClass]="contentTypeClass(page)" [title]="contentTypeLabel(page)">
+            <mat-icon>{{ contentTypeIcon(page) }}</mat-icon>
+            <span>{{ contentTypeLabel(page) }}</span>
+          </div>
+
           <!-- Badge System -->
-          <!-- <div class="badge trending" *ngIf="page.imageCount >= 10">Kapsamlı</div> -->
-          <!-- <div class="badge best-rated" *ngIf="page.isPublished && page.imageCount >= 5">Yayında</div> -->
           <div class="badge newly-launched" *ngIf="isRecentlyCreated(page.createTime)">Yeni</div>
           
           <!-- Action Menu -->
@@ -95,10 +112,22 @@
           
           <!-- Meta Information -->
           <div class="card-meta">
+            @if (isLink(page)) {
+            <div class="meta-item meta-link" [class.known-platform]="isKnownPlatform(page)">
+              <mat-icon>{{ platformIcon(page) }}</mat-icon>
+              <span>{{ platformLabel(page) }}</span>
+            </div>
+            } @else if (isBookPageRange(page)) {
+            <div class="meta-item">
+              <mat-icon>menu_book</mat-icon>
+              <span>{{ page.bookTestName || page.bookName || 'Kitap' }} · s. {{ page.startPage }}-{{ page.endPage }}</span>
+            </div>
+            } @else {
             <div class="meta-item">
               <mat-icon>photo_library</mat-icon>
               <span>{{ page.imageCount }} Sayfa</span>
             </div>
+            }
             <div class="meta-item">
               <mat-icon>person</mat-icon>
               <span>{{ page.createdByName }}</span>

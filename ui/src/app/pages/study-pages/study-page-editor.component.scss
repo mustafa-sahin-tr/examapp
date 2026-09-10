@@ -26,6 +26,167 @@
   gap: 16px;
 }
 
+// ---- Tip seçici ----
+.content-type-field {
+  display: grid;
+  gap: 6px;
+}
+
+.content-type-label {
+  font-family: var(--paragraphFontFamily);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--main-foreground-color);
+  opacity: 0.7;
+}
+
+.content-type-toggle {
+  width: 100%;
+
+  mat-button-toggle {
+    flex: 1;
+  }
+
+  mat-icon {
+    margin-right: 6px;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+  }
+}
+
+// ---- Tipe özel bölümler (Link / Kitap) ----
+.typed-section {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--primaryColor);
+  background: color-mix(in srgb, var(--primaryColor) 6%, transparent);
+}
+
+.typed-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--mainFontFamily);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primaryColor);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.typed-section-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--main-foreground-color);
+
+  &.status-error {
+    color: var(--ms-danger-background);
+  }
+}
+
+.inline-add-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: -8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primaryColor);
+  cursor: pointer;
+  text-align: left;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.page-range-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.platform-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+// Platform ikon rengi: bilinen platformlar vurgulu, diğerleri nötr
+.platform-icon {
+  color: var(--main-foreground-color);
+  opacity: 0.6;
+
+  &[data-platform='1'],
+  &[data-platform='2'] {
+    color: var(--primaryColor);
+    opacity: 1;
+  }
+}
+
+// ---- Link / Kitap sağ panel önizleme ----
+.typed-preview-card {
+  max-width: 480px;
+}
+
+.typed-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 12px;
+  text-align: center;
+
+  h3 {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    color: var(--main-foreground-color);
+  }
+}
+
+.typed-preview-icon {
+  font-size: 56px;
+  width: 56px;
+  height: 56px;
+  color: var(--primaryColor);
+  opacity: 1;
+}
+
+.typed-preview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--primaryColor);
+  word-break: break-all;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.typed-preview-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--main-foreground-color);
+  opacity: 0.7;
+}
+
 .action-row {
   display: flex;
   justify-content: flex-end;

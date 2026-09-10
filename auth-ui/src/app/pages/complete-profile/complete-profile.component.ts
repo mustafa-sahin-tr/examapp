@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -59,7 +60,14 @@ export class CompleteProfileComponent implements OnInit {
   });
 
   readonly teacherForm = this.fb.group({
+    /** false = bir okula bağlı (varsayılan), true = bağımsız özel ders öğretmeni. */
+    isIndependentTutor: [false],
     schoolId: [null as number | null],
+  });
+
+  /** Template'te okul alanını gizlemek için; form kontrolünün canlı değeri. */
+  readonly isIndependentTutor = toSignal(this.teacherForm.controls.isIndependentTutor.valueChanges, {
+    initialValue: this.teacherForm.controls.isIndependentTutor.value,
   });
 
   ngOnInit(): void {
@@ -173,8 +181,13 @@ export class CompleteProfileComponent implements OnInit {
       });
     }
     if (role === 'Teacher') {
-      const { schoolId } = this.teacherForm.getRawValue();
-      return this.authService.registerTeacherProfile({ schoolId: schoolId ?? null });
+      const { schoolId, isIndependentTutor } = this.teacherForm.getRawValue();
+      const independent = isIndependentTutor === true;
+      return this.authService.registerTeacherProfile({
+        // Bağımsız seçildiyse önceden seçilmiş okul değeri gönderilmez.
+        schoolId: independent ? null : schoolId ?? null,
+        isIndependentTutor: independent,
+      });
     }
     return this.authService.registerParentProfile();
   }

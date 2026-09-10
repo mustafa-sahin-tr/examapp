@@ -3,6 +3,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { TaxonomyManagerComponent } from '../taxonomy-manager/taxonomy-manager.component';
 import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.component';
+import { TeacherApprovalsComponent } from '../teacher-approvals/teacher-approvals.component';
 
 @Component({
   selector: 'app-admin-home',
@@ -23,6 +24,11 @@ import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.c
         <mat-tab label="Sınıflandırma Cache">
           <div class="tab-body">
             <app-classifier-cache></app-classifier-cache>
+          </div>
+        </mat-tab>
+        <mat-tab label="Öğretmen Başvuruları">
+          <div class="tab-body">
+            <app-teacher-approvals></app-teacher-approvals>
           </div>
         </mat-tab>
       </mat-tab-group>
@@ -56,6 +62,6 @@ import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.c
       }
     `,
   ],
-  imports: [MatTabsModule, MatIconModule, TaxonomyManagerComponent, ClassifierCacheComponent],
+  imports: [MatTabsModule, MatIconModule, TaxonomyManagerComponent, ClassifierCacheComponent, TeacherApprovalsComponent],
 })
 export class AdminHomeComponent {}

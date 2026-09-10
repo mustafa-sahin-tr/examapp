@@ -12,6 +12,11 @@ import {
   TaxonomyTree,
 } from '../models/taxonomy';
 import { AdminDashboardSummary, AdminDashboardTrends } from '../models/admin-dashboard.model';
+import {
+  PendingTeacherApplication,
+  TeacherApplicationActionResult,
+  TeacherRejectRequest,
+} from '../models/teacher-application.model';
 
 interface UpsertSubject {
   name: string;
@@ -121,6 +126,27 @@ export class AdminService {
     return this.http.get<AdminDashboardTrends>(`${this.baseUrl}/dashboard/trends`, {
       params: { days },
     });
+  }
+
+  // ---- bağımsız öğretmen başvuruları (Issue #94) ----
+  /** Pending durumdaki bağımsız öğretmen başvuruları, en eski önce. */
+  getPendingTeacherApplications(): Observable<PendingTeacherApplication[]> {
+    return this.http.get<PendingTeacherApplication[]>(`${this.baseUrl}/teacher-applications`);
+  }
+  /** 404 kayıt yok, 409 zaten karar verilmiş. */
+  approveTeacherApplication(teacherId: number): Observable<TeacherApplicationActionResult> {
+    return this.http.post<TeacherApplicationActionResult>(
+      `${this.baseUrl}/teacher-applications/${teacherId}/approve`,
+      {},
+    );
+  }
+  /** reason zorunlu (1..500); 400 eksik/uzun, 404 kayıt yok, 409 zaten karar verilmiş. */
+  rejectTeacherApplication(teacherId: number, reason: string): Observable<TeacherApplicationActionResult> {
+    const body: TeacherRejectRequest = { reason };
+    return this.http.post<TeacherApplicationActionResult>(
+      `${this.baseUrl}/teacher-applications/${teacherId}/reject`,
+      body,
+    );
   }
 
   // ---- classifier cache ----

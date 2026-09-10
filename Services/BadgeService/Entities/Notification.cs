@@ -40,6 +40,12 @@ public class Notification
     /// </summary>
     public int? SourceAccessRequestId { get; set; }
 
+    /// <summary>
+    /// Idempotency anahtarı: bağımsız öğretmen başvurusundan (Teacher.Id, issue #94) üretilen
+    /// Admin bildiriminin tekilliğini sağlar. Başvuru kaynaklı olmayan bildirimlerde null.
+    /// </summary>
+    public int? SourceTeacherApplicationId { get; set; }
+
     public bool IsRead { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

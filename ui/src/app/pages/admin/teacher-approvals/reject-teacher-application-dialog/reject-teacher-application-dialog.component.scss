@@ -1,0 +1,86 @@
+.reject-dialog {
+  min-width: 360px;
+  max-width: 480px;
+  padding: 20px 24px 16px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+
+  @media (max-width: 600px) {
+    min-width: 0;
+    max-width: 92vw;
+  }
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  .dialog-icon {
+    flex-shrink: 0;
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: var(--ms-danger-text-medium);
+  }
+
+  .header-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  h2 {
+    margin: 0;
+    padding: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  .subtitle {
+    margin: 2px 0 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 13px;
+    color: var(--ms-text-medium);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.dialog-content {
+  padding: 0;
+  margin: 0;
+}
+
+.description {
+  margin: 0 0 12px;
+  font-family: var(--paragraphFontFamily);
+  font-size: 13px;
+  color: var(--ms-text-medium);
+  line-height: 1.5;
+}
+
+.reason-field {
+  width: 100%;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 0 0;
+  margin: 0;
+  border-top: 1px solid var(--ms-border-weak);
+}
+
+.reject-button {
+  background: var(--ms-danger-background);
+  color: var(--ms-danger-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-danger-background-hover);
+  }
+}

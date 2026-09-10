@@ -1,0 +1,77 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.ta__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-family: var(--mainFontFamily);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--ms-text-medium);
+  }
+}
+
+.ta__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--ms-text-medium);
+
+  &--error {
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+.ta__empty-icon {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ms-text-weak);
+}
+
+.ta__table {
+  width: 100%;
+  background: var(--main-foreground-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ta__muted {
+  color: var(--ms-text-weak);
+  font-style: italic;
+}
+
+.ta__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ta__reject {
+  color: var(--ms-danger-text-medium);
+  border-color: var(--ms-danger-border);
+
+  &:disabled {
+    color: var(--ms-text-weak);
+    border-color: var(--ms-border);
+  }
+}

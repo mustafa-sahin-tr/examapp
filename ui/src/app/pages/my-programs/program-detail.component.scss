@@ -89,6 +89,15 @@
     color: #0f172a;
     letter-spacing: 0.01em;
   }
+
+  .add-study-pages-btn {
+    flex-shrink: 0;
+    font-family: var(--mainFontFamily);
+
+    mat-icon {
+      margin-right: 6px;
+    }
+  }
 }
 
 .calendar-container {

@@ -22,8 +22,16 @@
     </div>
   </div>
 
+  @if (stepsLoading()) {
+  <div class="ms-wizard-state" role="status" aria-live="polite">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Sorular yükleniyor...</p>
+  </div>
+  } @else {
+  <!-- Hata durumunda programSteps boşaltılır; currentStep undefined olur ve hata bloğu görünür. -->
+  @if (currentStep; as step) {
   <div class="ms-wizard-question">
-    {{ currentStep.description }}
+    {{ step.description }}
   </div>
 
   <div class="ms-wizard-cards" #cardContainer>
@@ -41,11 +49,11 @@
     <div class="ms-wizard-track">
       <div class="ms-option-grid">
         <button
-          *ngFor="let opt of currentStep?.options"
+          *ngFor="let opt of step.options"
           type="button"
           class="ms-option-button"
           [class.ms-option-active]="opt.selected"
-          (click)="selectOption(currentStep, opt)"
+          (click)="selectOption(step, opt)"
         >
           <img [src]="opt.icon" alt="" class="ms-option-icon" />
           <b class="ms-option-label">{{ opt.label }}</b>
@@ -53,7 +61,7 @@
       </div>
       <div class="course-actions">
         <button
-          *ngFor="let act of currentStep?.actions"
+          *ngFor="let act of step.actions"
           mat-raised-button
           color="primary"
           type="button"
@@ -74,6 +82,17 @@
       <mat-icon>chevron_right</mat-icon>
     </button>
   </div>
+  } @else {
+  <div class="ms-wizard-state ms-wizard-state-error" role="alert">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ stepsError() ?? 'Sorular yüklenemedi, lütfen tekrar deneyin.' }}</p>
+    <button mat-raised-button color="primary" type="button" (click)="loadProgramSteps()">
+      <mat-icon>refresh</mat-icon>
+      Tekrar Dene
+    </button>
+  </div>
+  }
+  }
 
   <!-- Step indicators -->
   <div class="ms-wizard-steps">

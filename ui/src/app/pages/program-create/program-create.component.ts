@@ -2,6 +2,7 @@ import { NgFor } from '@angular/common';
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -35,6 +36,7 @@ export interface UserStepSelection {
     NgFor,
     MatIconModule,
     MatButtonModule,
+    MatProgressSpinnerModule,
     MatSnackBarModule,
     MatFormFieldModule,
     MatInputModule,
@@ -48,6 +50,9 @@ export class ProgramCreateComponent implements OnInit {
   currentIndex = signal(0);
   stepIndex = signal(0);
   isCreatingProgram = signal(false);
+  // Adım listesi yükleme durumu — programSteps boşken şablonun currentStep'e erişmesini engeller (issue #136 canlı test bulgusu).
+  readonly stepsLoading = signal(true);
+  readonly stepsError = signal<string | null>(null);
   private snackBar = inject(MatSnackBar);
   private programService = inject(ProgramService);
   private router = inject(Router);
@@ -70,12 +75,34 @@ export class ProgramCreateComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.programService.getProgramSteps().subscribe((steps) => {
-      this.programSteps = steps;
+    this.loadProgramSteps();
+  }
+
+  loadProgramSteps(): void {
+    this.stepsLoading.set(true);
+    this.stepsError.set(null);
+
+    this.programService.getProgramSteps().subscribe({
+      next: (steps) => {
+        this.programSteps = steps ?? [];
+        this.stepsLoading.set(false);
+        if (this.programSteps.length === 0) {
+          this.stepsError.set('Program adımları bulunamadı.');
+        }
+      },
+      error: (error) => {
+        console.error('Program adımları yüklenemedi:', error);
+        this.programSteps = [];
+        this.stepsLoading.set(false);
+        this.stepsError.set('Sorular yüklenemedi, lütfen tekrar deneyin.');
+        this.snackBar.open('Sorular yüklenemedi, lütfen sayfayı yenileyin', 'Tamam', {
+          duration: 4000,
+        });
+      },
     });
   }
 
-  get currentStep(): ProgramStep {
+  get currentStep(): ProgramStep | undefined {
     return this.programSteps[this.currentIndex()];
   }
 
@@ -158,7 +185,16 @@ export class ProgramCreateComponent implements OnInit {
       if (nextStepIndex !== -1) {
         this.currentIndex.set(nextStepIndex);
         this.stepIndex.update((i) => i + 1);
+        return;
       }
+
+      // Savunma: nextStep dolu ama programSteps içinde karşılığı yok (tutarsız/yanlış seed verisi, bkz. issue #136).
+      // Sihirbazın sessizce takılı kalması yerine son adım gibi davranıp program oluşturma formuna geç.
+      console.warn(
+        `[ProgramCreate] Adım ${currentStep.id} ("${currentStep.title}") seçeneği "${selectedOption.value}" ` +
+          `geçersiz nextStep=${nextStepId} değerine işaret ediyor; program oluşturma formuna geçiliyor.`,
+      );
+      this.isCreatingProgram.set(true);
     }
   }
 
@@ -197,7 +233,7 @@ export class ProgramCreateComponent implements OnInit {
     this.visitedSteps.add(currentStep.id);
   }
 
-  selectOption(step: any, option: Option) {
+  selectOption(step: ProgramStep, option: Option) {
     var stepIndex = this.programSteps.findIndex((f) => f.id == step.id);
     if (stepIndex < 0) return;
     if (!this.programSteps[stepIndex].multiple) {

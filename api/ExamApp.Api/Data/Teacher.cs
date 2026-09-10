@@ -5,6 +5,17 @@ namespace ExamApp.Api.Data;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+/// <summary>
+/// Öğretmen hesabının onay durumu (issue #92). Okula bağlı öğretmenler doğrudan Approved;
+/// bağımsız öğretmenler (IsIndependentTutor) admin onayı bekler.
+/// </summary>
+public enum TeacherApprovalStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2
+}
+
 public class Teacher : BaseEntity
 {
     [Key]
@@ -22,6 +33,12 @@ public class Teacher : BaseEntity
 
     [ForeignKey("SchoolId")]
     public School? School { get; set; }
+
+    /// <summary>Okula bağlı olmayan, bağımsız çalışan öğretmen (issue #92). SchoolId null olabilir.</summary>
+    public bool IsIndependentTutor { get; set; }
+
+    /// <summary>Okula bağlı öğretmen için varsayılan Approved; bağımsız öğretmen kayıtta Pending başlar.</summary>
+    public TeacherApprovalStatus ApprovalStatus { get; set; } = TeacherApprovalStatus.Approved;
 
     [MaxLength(20)]
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi (minimal, standard, enhanced, full)

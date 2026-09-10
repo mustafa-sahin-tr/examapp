@@ -8,6 +8,15 @@
       <app-badge-path [items]="path.badges" [maxPerRow]="6"> </app-badge-path>
     </article>
   </section>
+
+  <ng-container *ngIf="!isLoading() && !badgePaths().length && !standaloneBadges().length">
+    <div *ngIf="hasError(); else badgeEmptyState" class="ms-badge-empty ms-badge-error" role="alert">
+      Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.
+    </div>
+    <ng-template #badgeEmptyState>
+      <div class="ms-badge-empty">Rozet bilgisi bulunamadı.</div>
+    </ng-template>
+  </ng-container>
   <!-- <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
       <header class="ms-badge-path-header">

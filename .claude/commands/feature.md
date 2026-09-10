@@ -43,17 +43,23 @@ Planı bana göstermeden önce `grilling` skill'ini kullanarak planı kendi içi
 
 Planı bana göster ve **onay bekle**. Onaysız kod yazma.
 
-**1.5. Branch aç.** Plan onaylandıktan sonra, kod yazılmadan önce:
+**1.5. Worktree aç.** Plan onaylandıktan sonra, kod yazılmadan önce:
 
-- `git status --short` ile çalışma alanı temiz mi bak. Kirliyse dur ve bana sor — commit mi
-  edeyim, stash mi, kendin mi halledersin.
-- Ana branch'i güncelle: `git fetch origin && git checkout master && git pull --ff-only`
-- Issue başlığından kısa bir slug türet (küçük harf, tire, Türkçe karakterler sadeleşmiş,
-  en fazla 4-5 kelime) ve branch'i aç:
-  `git checkout -b feature/issue-$ARGUMENTS-<slug>`
-- Zaten bu issue için açılmış bir branch varsa yenisini açma, ona geç ve bana söyle.
-- Branch adını raporda belirt.
+- Aynı ana klasörde başka bir issue için zaten paralel bir `/feature` çalışıyor olabilir —
+  bu yüzden ana klasörde `git checkout -b` YAPMA, her issue kendi git worktree'sinde çalışsın.
+- `EnterWorktree` tool'unu çağır, `name: "issue-$ARGUMENTS"`. Bu, `.claude/worktrees/issue-$ARGUMENTS`
+  altında **yeni bir branch üzerinde izole bir checkout** oluşturur ve session'ın çalışma dizinini
+  oraya taşır (varsayılan olarak `origin/master`'dan dallanır, ana klasördeki kirli/commitlenmemiş
+  değişikliklerden etkilenmez).
+- Worktree oluştuktan sonra branch adını `feature/issue-$ARGUMENTS-<slug>` olacak şekilde yeniden adlandır
+  (`git branch -m feature/issue-$ARGUMENTS-<slug>`) — slug: issue başlığından türetilmiş kısa,
+  küçük harf, tire ile ayrılmış, Türkçe karakterleri sadeleştirilmiş en fazla 4-5 kelime.
+- Zaten bu issue için açılmış bir worktree/branch varsa yenisini açma; `EnterWorktree`'ye
+  `path` vererek ona geç ve bana söyle.
+- Worktree yolunu ve branch adını raporda belirt.
 - Claude'nin çalıştığı session ismini de `rename` komutu ile `issue-$ARGUMENTS` yap.
+- Bundan sonraki tüm adımlar (agent devirleri, commit, push, PR) bu worktree içinde çalışır —
+  ana klasöre dönmeye gerek yok.
 
 **2. Backend.** Onaydan sonra `dotnet-api-dev` agent'ına devret.
 Akış outbox gerektiriyorsa o parçayı `event-integration-dev` alsın.
@@ -88,3 +94,8 @@ Onay verirsem:
 - PR URL'ini bana ver
 
 `Closes #$ARGUMENTS` satırını atlama — merge'de issue'yu otomatik kapatan tek şey o.
+
+**8. Worktree temizliği.** PR açıldıktan sonra worktree'yi hemen silme — PR review sürecinde
+üzerinde tekrar çalışman gerekebilir. Bana sormadan `ExitWorktree` çağırma. Ben "worktree'yi
+kapat" dersem, PR merge olduysa `action: "remove"`, olmadıysa `action: "keep"` kullan (keep,
+branch ve dizini diskte bırakır, session ana klasöre döner).

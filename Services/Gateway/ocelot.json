@@ -14,7 +14,10 @@
         "GET",
         "POST"
       ],
-      "UseWebSockets": true
+      "UseWebSockets": true,
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
     },
     {
       "DownstreamPathTemplate": "/{everything}",

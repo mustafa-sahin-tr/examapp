@@ -1,0 +1,82 @@
+<section class="ta">
+  <header class="ta__head">
+    <div>
+      <h2>Bağımsız Öğretmen Başvuruları</h2>
+      <p>Bir okula bağlı olmadan kayıt olan öğretmenlerin onay bekleyen başvuruları.</p>
+    </div>
+    <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
+      <mat-icon>sync</mat-icon> Yenile
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="ta__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>Başvurular yükleniyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="ta__state ta__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="ta__state">
+      <mat-icon class="ta__empty-icon">how_to_reg</mat-icon>
+      <span>Bekleyen başvuru yok</span>
+    </div>
+  } @else {
+    <table mat-table [dataSource]="applications()" class="ta__table" [trackBy]="trackByTeacherId">
+      <ng-container matColumnDef="fullName">
+        <th mat-header-cell *matHeaderCellDef>Ad Soyad</th>
+        <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.fullName?.trim()">
+          {{ displayName(row) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef>E-posta</th>
+        <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.email">
+          {{ row.email || '—' }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="appliedAt">
+        <th mat-header-cell *matHeaderCellDef>Başvuru Tarihi</th>
+        <td mat-cell *matCellDef="let row">{{ row.appliedAt | date: 'dd.MM.yyyy HH:mm' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>İşlem</th>
+        <td mat-cell *matCellDef="let row">
+          <div class="ta__actions">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="approve(row)"
+              [disabled]="isActing(row.teacherId)"
+            >
+              Onayla
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              class="ta__reject"
+              (click)="reject(row)"
+              [disabled]="isActing(row.teacherId)"
+            >
+              Reddet
+            </button>
+            @if (isActing(row.teacherId)) {
+              <mat-spinner diameter="18" aria-label="İşleniyor"></mat-spinner>
+            }
+          </div>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+  }
+</section>

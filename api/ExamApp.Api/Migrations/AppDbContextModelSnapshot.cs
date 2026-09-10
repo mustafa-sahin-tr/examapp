@@ -1802,6 +1802,10 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int?>("SchoolId")
                         .HasColumnType("integer");
 

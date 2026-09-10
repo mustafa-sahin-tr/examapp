@@ -6,7 +6,7 @@ namespace ExamApp.Api.Helpers;
 
 /// <summary>
 /// Projects Keycloak's <c>realm_access.roles</c> array onto standard
-/// <see cref="ClaimTypes.Role"/> claims so <c>[Authorize(Roles = "...")]</c> works.
+/// <see cref="ClaimTypes.Role"/> claims so <c>[Authorize(Roles = "...")]</c> / <c>User.IsInRole(...)</c> works.
 ///
 /// Runs on every authenticated request, so it must be total: a malformed or
 /// unexpected token shape is ignored, never thrown.

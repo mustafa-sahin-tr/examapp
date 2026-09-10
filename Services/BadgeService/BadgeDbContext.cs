@@ -66,6 +66,11 @@ public class BadgeDbContext : DbContext
             .HasIndex(x => new { x.Type, x.SourceAccessRequestId })
             .IsUnique()
             .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
+        // Idempotency: bir bağımsız öğretmen başvurusu (issue #94), tipi başına en fazla bir bildirim üretir.
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.Type, x.SourceTeacherApplicationId })
+            .IsUnique()
+            .HasFilter("\"SourceTeacherApplicationId\" IS NOT NULL");
 
         modelBuilder.Entity<ProcessedLoginAttempt>().HasKey(x => x.Id);
         // Idempotency: aynı login denemesi (event'in kendi EventId'si) en fazla bir kez exam API'ye yazılır.

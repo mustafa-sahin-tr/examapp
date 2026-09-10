@@ -1,52 +1,27 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, throwError } from 'rxjs';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { of } from 'rxjs';
 
 import { StudentProfileComponent } from './student-profile.component';
 import { StudentService } from '../../services/student.service';
 import { TestService } from '../../services/test.service';
-import { BadgeService, BadgeProgressResponse, UserActivityResponse } from '../../services/badge.service';
-import { AuthService } from '../../services/auth.service';
-import { StudentProfile } from '../../models/student-profile';
-import { Grade } from '../../models/student';
+import { BadgeService } from '../../services/badge.service';
 import { StudentStatisticsResponse } from '../../models/statistics';
+import { StudentProfile } from '../../models/student-profile';
+import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
 
-function emptyActivityResponse(): UserActivityResponse {
-  return {
-    userId: 16,
-    startDateUtc: '2026-01-01T00:00:00Z',
-    endDateUtc: '2026-01-31T00:00:00Z',
-    days: [],
-  };
-}
+describe('StudentProfileComponent', () => {
+  let component: StudentProfileComponent;
+  let fixture: ComponentFixture<StudentProfileComponent>;
+  let studentService: jasmine.SpyObj<StudentService>;
+  let testService: jasmine.SpyObj<TestService>;
+  let badgeService: jasmine.SpyObj<BadgeService>;
 
-function emptyBadgeProgressResponse(): BadgeProgressResponse {
-  return {
-    summary: {
-      userId: 1,
-      totalQuestions: 0,
-      correctQuestions: 0,
-      accuracyPercentage: 0,
-      totalPoints: 0,
-      currentCorrectStreak: 0,
-      bestCorrectStreak: 0,
-      totalTimeSeconds: 0,
-      totalActiveDays: 0,
-      currentActivityStreak: 0,
-      bestActivityStreak: 0,
-      lastAnsweredAtUtc: null,
-      lastUpdatedUtc: null,
-    },
-    badgeProgress: [],
-    subjectBreakdown: [],
-  };
-}
-
-function emptyStatistics(): StudentStatisticsResponse {
-  return {
+  const emptyStatistics: StudentStatisticsResponse = {
     total: {
       totalSolvedTests: 0,
       completedTests: 0,
@@ -56,45 +31,60 @@ function emptyStatistics(): StudentStatisticsResponse {
     },
     grouped: [],
   };
-}
-
-describe('StudentProfileComponent', () => {
-  let component: StudentProfileComponent;
-  let fixture: ComponentFixture<StudentProfileComponent>;
-  let studentServiceSpy: jasmine.SpyObj<StudentService>;
-  let testServiceSpy: jasmine.SpyObj<TestService>;
-  let badgeServiceSpy: jasmine.SpyObj<BadgeService>;
-  let authServiceSpy: jasmine.SpyObj<AuthService>;
 
   beforeEach(async () => {
-    studentServiceSpy = jasmine.createSpyObj<StudentService>('StudentService', [
+    studentService = jasmine.createSpyObj<StudentService>('StudentService', [
       'loadGrades',
       'getProfile',
       'updateGrade',
       'updateAvatar',
     ]);
-    testServiceSpy = jasmine.createSpyObj<TestService>('TestService', ['studentStatistics']);
-    badgeServiceSpy = jasmine.createSpyObj<BadgeService>('BadgeService', ['getUserActivity', 'getUserBadgeProgress']);
-    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['getUserIdFromLocalStorage']);
-    authServiceSpy.getUserIdFromLocalStorage.and.returnValue(null);
+    studentService.loadGrades.and.returnValue(of([]));
+    studentService.getProfile.and.returnValue(of({} as StudentProfile));
 
-    studentServiceSpy.loadGrades.and.returnValue(of([] as Grade[]));
-    studentServiceSpy.getProfile.and.returnValue(of({} as StudentProfile));
-    testServiceSpy.studentStatistics.and.returnValue(of(emptyStatistics()));
-    badgeServiceSpy.getUserActivity.and.returnValue(of(emptyActivityResponse()));
-    badgeServiceSpy.getUserBadgeProgress.and.returnValue(of(emptyBadgeProgressResponse()));
+    testService = jasmine.createSpyObj<TestService>('TestService', ['studentStatistics']);
+    testService.studentStatistics.and.returnValue(of(emptyStatistics));
+
+    badgeService = jasmine.createSpyObj<BadgeService>('BadgeService', ['getUserActivity', 'getUserBadgeProgress']);
+    badgeService.getUserActivity.and.returnValue(
+      of({ userId: 1, startDateUtc: '', endDateUtc: '', days: [] })
+    );
+    badgeService.getUserBadgeProgress.and.returnValue(
+      of({
+        summary: {
+          userId: 1,
+          totalQuestions: 0,
+          correctQuestions: 0,
+          accuracyPercentage: 0,
+          totalPoints: 0,
+          currentCorrectStreak: 0,
+          bestCorrectStreak: 0,
+          totalTimeSeconds: 0,
+          totalActiveDays: 0,
+          currentActivityStreak: 0,
+          bestActivityStreak: 0,
+          lastAnsweredAtUtc: null,
+          lastUpdatedUtc: null,
+        },
+        badgeProgress: [],
+        subjectBreakdown: [],
+      })
+    );
 
     await TestBed.configureTestingModule({
-      imports: [StudentProfileComponent, HttpClientTestingModule],
+      imports: [StudentProfileComponent, NoopAnimationsModule],
       providers: [
-        { provide: StudentService, useValue: studentServiceSpy },
-        { provide: TestService, useValue: testServiceSpy },
-        { provide: BadgeService, useValue: badgeServiceSpy },
-        { provide: AuthService, useValue: authServiceSpy },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map() } } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: StudentService, useValue: studentService },
+        { provide: TestService, useValue: testService },
+        { provide: BadgeService, useValue: badgeService },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
-        provideNoopAnimations(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({}), data: {} }, params: of({}), queryParams: of({}) },
+        },
       ],
     }).compileComponents();
 
@@ -107,18 +97,39 @@ describe('StudentProfileComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('ngOnInit_GetUserActivitySucceeds_ActivityApiErrorStaysFalse', () => {
+  // "Badges" is the third mat-tab (index 2); Angular Material lazily renders
+  // tab content, so it must be selected before app-badge-thropy appears in the DOM.
+  function activateBadgesTab(): void {
+    component.activeTab = 2;
     fixture.detectChanges();
+    tick(500); // mat-tab-group lazy-renders body content after the tab switch animation
+    fixture.detectChanges();
+  }
 
-    expect(component.activityApiError).toBeFalse();
-  });
+  it('activeTab_SetToBadgesTab_RendersBadgeThropyComponentInsteadOfMockBadgeBox', fakeAsync(() => {
+    activateBadgesTab();
 
-  it('ngOnInit_GetUserActivityFails_ActivityApiErrorBecomesTrueAndActivityDataIsEmpty', () => {
-    badgeServiceSpy.getUserActivity.and.returnValue(throwError(() => new Error('boom')));
+    const badgeThropyDebugElements = fixture.debugElement.nativeElement.querySelectorAll('app-badge-thropy');
+    expect(badgeThropyDebugElements.length).toBeGreaterThan(0);
+    expect(fixture.debugElement.nativeElement.querySelector('app-badge-box')).toBeNull();
+  }));
 
-    expect(() => fixture.detectChanges()).not.toThrow();
+  it('activeTab_SetToBadgesTab_RendersOnlyOneBadgeThropyInstance_NoDuplicateInInfoTab', fakeAsync(() => {
+    activateBadgesTab();
 
-    expect(component.activityApiError).toBeTrue();
-    expect(component.activityDataFromApi).toEqual([]);
-  });
+    const badgeThropyInstances = fixture.debugElement.nativeElement.querySelectorAll('app-badge-thropy');
+    expect(badgeThropyInstances.length).toBe(1);
+  }));
+
+  it('activeTab_SetToBadgesTab_PassesResolvedStudentIdToBadgeThropy', fakeAsync(() => {
+    activateBadgesTab();
+
+    const badgeThropyDebugElement = fixture.debugElement.query((debugEl) => {
+      return debugEl.componentInstance instanceof BadgeThropyComponent;
+    });
+
+    expect(badgeThropyDebugElement).toBeTruthy();
+    const badgeThropyComponent = badgeThropyDebugElement.componentInstance as BadgeThropyComponent;
+    expect(badgeThropyComponent.userId).toBe(component.studentId ?? 0);
+  }));
 });

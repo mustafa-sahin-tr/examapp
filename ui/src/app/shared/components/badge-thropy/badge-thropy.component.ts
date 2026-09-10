@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -12,6 +11,8 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { BadgeProgressItem, BadgeService } from '../../../services/badge.service';
 import { AuthService } from '../../../services/auth.service';
 import { BadgePathComponent } from '../badge-path/badge-path.component';
@@ -19,7 +20,7 @@ import { BadgeThropyItem, BadgeThropyPath, BadgePathLayout, BadgePathPoint } fro
 
 @Component({
   selector: 'app-badge-thropy',
-  imports: [CommonModule, BadgePathComponent],
+  imports: [MatProgressSpinnerModule, MatButtonModule, BadgePathComponent],
   templateUrl: './badge-thropy.component.html',
   styleUrls: ['./badge-thropy.component.scss'],
 })
@@ -40,6 +41,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   readonly standaloneBadges = signal<BadgeThropyItem[]>([]);
   readonly isLoading = signal(false);
   readonly hasError = signal(false);
+  readonly loadError = signal(false);
   readonly selectedBadge = signal<BadgeThropyItem | null>(null);
 
   ngOnInit(): void {
@@ -70,17 +72,18 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
     }
   }
 
-  trackByBadgeId(_: number, badge: BadgeThropyItem): string {
-    return badge.id;
+  reload(): void {
+    this.loadBadges(this.userId);
   }
 
   private loadBadges(userId: number): void {
     this.isLoading.set(true);
     this.hasError.set(false);
+    this.loadError.set(false);
     this.selectedBadge.set(null);
     const storedUserId = this.authService.getUserIdFromLocalStorage();
     this.badgeService
-      .getUserBadgeProgress(storedUserId || userId)
+      .getUserBadgeProgress(userId || storedUserId || 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
@@ -106,6 +109,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
           this.badges.set([]);
           this.badgePaths.set([]);
           this.standaloneBadges.set([]);
+          this.loadError.set(true);
           this.isLoading.set(false);
         },
       });

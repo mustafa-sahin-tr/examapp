@@ -268,4 +268,24 @@ describe('DashboardComponent', () => {
       expect(component.badgeProgressError()).toBeTrue();
     });
   });
+
+  describe('loadUserActivityHeatmap error handling', () => {
+    it('loadUserActivityHeatmap_ApiErrors_ActivityApiErrorBecomesTrueAndActivityDataStaysEmpty', () => {
+      badgeServiceSpy.getUserActivity.and.returnValue(throwError(() => new Error('boom')));
+      component = createComponent();
+
+      expect(() => component.ngOnInit()).not.toThrow();
+
+      expect(component.activityApiError()).toBeTrue();
+      expect(component.activityDataFromApi()).toEqual([]);
+    });
+
+    it('loadUserActivityHeatmap_ApiSucceeds_ActivityApiErrorStaysFalse', () => {
+      component = createComponent();
+
+      component.ngOnInit();
+
+      expect(component.activityApiError()).toBeFalse();
+    });
+  });
 });

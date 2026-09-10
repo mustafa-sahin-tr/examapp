@@ -419,6 +419,11 @@
   text-align: center;
 }
 
+.ms-badge-error {
+  border-color: var(--ms-danger-background);
+  color: var(--ms-danger-background);
+}
+
 @media (max-width: 1200px) {
   .ms-badge-node {
     width: 180px;

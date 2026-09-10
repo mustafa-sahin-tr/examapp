@@ -38,10 +38,27 @@ public class TeacherService : ITeacherService
             };
         }
 
+        // Bağımsız öğretmen (issue #92): admin onayı bekler; okula bağlı öğretmen doğrudan onaylı.
+        var approvalStatus = dto.IsIndependentTutor
+            ? TeacherApprovalStatus.Pending
+            : TeacherApprovalStatus.Approved;
+
         var existingTeacher = await _context.Teachers.FirstOrDefaultAsync(s => s.UserId == userId);
         if (existingTeacher != null)
         {
             existingTeacher.SchoolId = dto.SchoolId;
+
+            // ApprovalStatus yalnızca IsIndependentTutor gerçekten değişince yeniden hesaplanır.
+            // Aksi halde admin'in verdiği Approved/Rejected kararı tekrar register çağrısıyla
+            // sessizce Pending'e dönebilir ya da Pending kayıt IsIndependentTutor=false göndererek
+            // kendini Approved'a yükseltebilirdi.
+            var wasIndependent = existingTeacher.IsIndependentTutor;
+            existingTeacher.IsIndependentTutor = dto.IsIndependentTutor;
+            if (dto.IsIndependentTutor != wasIndependent)
+            {
+                existingTeacher.ApprovalStatus = approvalStatus;
+            }
+
             await _context.SaveChangesAsync();
             return new ResponseBaseDto
             {
@@ -51,11 +68,13 @@ public class TeacherService : ITeacherService
             };
         }
 
-        // 🔹 Yeni öğrenci kaydını ekle
+        // 🔹 Yeni öğretmen kaydını ekle
         var teacher = new Teacher
         {
             UserId = userId,
-            SchoolId = dto.SchoolId
+            SchoolId = dto.SchoolId,
+            IsIndependentTutor = dto.IsIndependentTutor,
+            ApprovalStatus = approvalStatus
         };
 
         _context.Teachers.Add(teacher);

@@ -164,6 +164,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Worksheet>()
             .HasIndex(w => new { w.TeacherSharing, w.StudentVisibility, w.GradeId, w.CreateUserId });
 
+        // Bağımsız öğretmen (issue #92): mevcut tüm öğretmen kayıtları okula bağlı sayılır → Approved.
+        // Kolon default'u olmazsa EF CLR default'u (0 = Pending) yazar; bu yüzden açıkça Approved.
+        // Sentinel = Approved: aksi halde EF, CLR default'u olan Pending'i "ayarlanmamış" sayıp
+        // insert'te DB default'unu (Approved) kullanır ve bağımsız öğretmen Pending başlayamaz.
+        modelBuilder.Entity<Teacher>()
+            .Property(t => t.ApprovalStatus)
+            .HasDefaultValue(TeacherApprovalStatus.Approved)
+            .HasSentinel(TeacherApprovalStatus.Approved);
+
+        modelBuilder.Entity<Teacher>()
+            .Property(t => t.IsIndependentTutor)
+            .HasDefaultValue(false);
+
         // 📌 Grade - Subject İlişkisi
         modelBuilder.Entity<GradeSubject>()
             .HasOne(gs => gs.Grade)

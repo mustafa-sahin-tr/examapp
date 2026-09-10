@@ -79,6 +79,149 @@ public class SimpleServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Teacher_Save_sets_ApprovalStatus_Pending_when_creating_an_independent_tutor()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var response = await NewTeacherService(ctx).Save(
+                userId: 40,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            response.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        var teacher = check.Teachers.Single(t => t.UserId == 40);
+        teacher.IsIndependentTutor.ShouldBeTrue();
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Pending);
+    }
+
+    [Fact]
+    public async Task Teacher_Save_sets_ApprovalStatus_Approved_when_creating_a_school_bound_teacher()
+    {
+        var schoolId = await SeedSchoolAsync("C Okulu");
+
+        await using (var ctx = _db.NewContext())
+        {
+            var response = await NewTeacherService(ctx).Save(
+                userId: 41,
+                new RegisterTeacherDto { SchoolId = schoolId, IsIndependentTutor = false });
+            response.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        var teacher = check.Teachers.Single(t => t.UserId == 41);
+        teacher.IsIndependentTutor.ShouldBeFalse();
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Approved);
+    }
+
+    [Fact]
+    public async Task Teacher_Save_updates_ApprovalStatus_when_an_existing_teacher_switches_to_independent_tutor()
+    {
+        var schoolId = await SeedSchoolAsync("D Okulu");
+
+        await using (var ctx = _db.NewContext())
+        {
+            var created = await NewTeacherService(ctx).Save(
+                userId: 42,
+                new RegisterTeacherDto { SchoolId = schoolId, IsIndependentTutor = false });
+            created.Success.ShouldBeTrue();
+        }
+
+        await using (var check1 = _db.NewContext())
+        {
+            check1.Teachers.Single(t => t.UserId == 42).ApprovalStatus.ShouldBe(TeacherApprovalStatus.Approved);
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var updated = await NewTeacherService(ctx).Save(
+                userId: 42,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            updated.Success.ShouldBeTrue();
+        }
+
+        await using var check2 = _db.NewContext();
+        var teacher = check2.Teachers.Single(t => t.UserId == 42);
+        teacher.IsIndependentTutor.ShouldBeTrue();
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Pending);
+    }
+
+    [Fact]
+    public async Task Teacher_Save_preserves_admin_Approved_status_when_IsIndependentTutor_is_unchanged()
+    {
+        // Bağımsız öğretmen Pending oluşturulur, admin onaylar (doğrudan DB), sonra öğretmen
+        // IsIndependentTutor=true kalarak tekrar register çağırır → Approved korunmalı (issue #92 review).
+        await using (var ctx = _db.NewContext())
+        {
+            var created = await NewTeacherService(ctx).Save(
+                userId: 44,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            created.Success.ShouldBeTrue();
+        }
+
+        await using (var admin = _db.NewContext())
+        {
+            var t = admin.Teachers.Single(t => t.UserId == 44);
+            t.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Pending);
+            t.ApprovalStatus = TeacherApprovalStatus.Approved;
+            await admin.SaveChangesAsync();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var updated = await NewTeacherService(ctx).Save(
+                userId: 44,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true });
+            updated.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        var teacher = check.Teachers.Single(t => t.UserId == 44);
+        teacher.IsIndependentTutor.ShouldBeTrue();
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Approved);
+    }
+
+    [Fact]
+    public async Task Teacher_Save_does_not_let_a_pending_tutor_self_approve_by_resending_the_same_flag()
+    {
+        // Pending bağımsız öğretmen, aynı IsIndependentTutor=true ile tekrar register → hâlâ Pending.
+        await using (var ctx = _db.NewContext())
+        {
+            (await NewTeacherService(ctx).Save(
+                userId: 45,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true })).Success.ShouldBeTrue();
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            (await NewTeacherService(ctx).Save(
+                userId: 45,
+                new RegisterTeacherDto { SchoolId = null, IsIndependentTutor = true })).Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        check.Teachers.Single(t => t.UserId == 45).ApprovalStatus.ShouldBe(TeacherApprovalStatus.Pending);
+    }
+
+    [Fact]
+    public async Task Teacher_default_ApprovalStatus_is_Approved_when_inserted_directly_without_the_service()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            // ApprovalStatus deliberately not set — exercises the EF default value/sentinel
+            // configured in AppDbContext (regression guard for issue #92).
+            ctx.Teachers.Add(new Teacher { UserId = 43, SchoolId = null });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var teacher = check.Teachers.Single(t => t.UserId == 43);
+        teacher.SchoolId.ShouldBeNull();
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Approved);
+        teacher.IsIndependentTutor.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task Teacher_GetTeacher_returns_null_when_absent()
     {
         await using var ctx = _db.NewContext();

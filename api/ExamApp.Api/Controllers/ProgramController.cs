@@ -75,7 +75,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpPost("{id:int}/study-pages")]
-        public async Task<ActionResult<UserProgramDto>> AddStudyPages(int id, [FromBody] ProgramStudyPageScheduleRequestDto request)
+        public async Task<ActionResult<UserProgramDto>> AddStudyItems(int id, [FromBody] ProgramStudyItemScheduleRequestDto request)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -83,7 +83,7 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized("User ID not found in token");
             }
 
-            var program = await _programService.AddStudyPageSchedulesAsync(userId, id, request);
+            var program = await _programService.AddStudyItemSchedulesAsync(userId, id, request);
             if (program == null)
             {
                 return NotFound();
@@ -93,7 +93,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpPut("{programId:int}/study-pages/{scheduleId:int}/complete")]
-        public async Task<IActionResult> CompleteStudyPage(int programId, int scheduleId, CancellationToken ct)
+        public async Task<IActionResult> CompleteStudyItem(int programId, int scheduleId, CancellationToken ct)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -101,7 +101,7 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized("User ID not found in token");
             }
 
-            var found = await _programService.CompleteStudyPageAsync(userId, programId, scheduleId, ct);
+            var found = await _programService.CompleteStudyItemAsync(userId, programId, scheduleId, ct);
             if (!found)
             {
                 return NotFound();
@@ -111,7 +111,7 @@ namespace ExamApp.Api.Controllers
         }
 
         [HttpDelete("{programId:int}/study-pages/{scheduleId:int}/complete")]
-        public async Task<IActionResult> UncompleteStudyPage(int programId, int scheduleId, CancellationToken ct)
+        public async Task<IActionResult> UncompleteStudyItem(int programId, int scheduleId, CancellationToken ct)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -119,7 +119,7 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized("User ID not found in token");
             }
 
-            var found = await _programService.UncompleteStudyPageAsync(userId, programId, scheduleId, ct);
+            var found = await _programService.UncompleteStudyItemAsync(userId, programId, scheduleId, ct);
             if (!found)
             {
                 return NotFound();

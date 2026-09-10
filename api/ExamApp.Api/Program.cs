@@ -143,7 +143,7 @@ builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
-builder.Services.AddScoped<IStudyPageService, StudyPageService>();
+builder.Services.AddScoped<IStudyItemService, StudyItemService>();
 
 // Admin: taxonomy management + question-classifier (Gemini) cache
 builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(

@@ -5,7 +5,7 @@ namespace ExamApp.Api.Models.Dtos;
 
 /// <summary>
 /// Öğrenci takvimindeki tek bir etkinlik. <see cref="Kind"/> değerine göre bazı alanlar dolu,
-/// diğerleri null olur (reminder vs. assignment-deadline vs. ProgramStudyPage).
+/// diğerleri null olur (reminder vs. assignment-deadline vs. ProgramStudyItem).
 /// Etkinlikler <c>[from, to)</c> aralığında döner — <c>to</c> hariç (exclusive).
 /// </summary>
 public class CalendarEventDto
@@ -22,7 +22,7 @@ public class CalendarEventDto
     /// <summary>Çok günlü etkinliklerde bitiş anı (UTC). Yalnızca Kind == "program-study-page" için dolu.</summary>
     public DateTime? EndDate { get; set; }
 
-    /// <summary>Worksheet tabanlı etkinliklerde dolu; ProgramStudyPage için 0.</summary>
+    /// <summary>Worksheet tabanlı etkinliklerde dolu; ProgramStudyItem için 0.</summary>
     public int WorksheetId { get; set; }
 
     public string WorksheetTitle { get; set; } = string.Empty;
@@ -38,7 +38,7 @@ public class CalendarEventDto
 
     public int? RemindBeforeMinutes { get; set; }
 
-    // --- assignment-deadline / ProgramStudyPage ortak alanı ---
+    // --- assignment-deadline / ProgramStudyItem ortak alanı ---
 
     public bool? IsCompleted { get; set; }
 
@@ -46,15 +46,15 @@ public class CalendarEventDto
 
     public string? TeacherName { get; set; }
 
-    // --- ProgramStudyPage alanları ---
+    // --- ProgramStudyItem alanları ---
 
     public int? ProgramId { get; set; }
 
     public string? ProgramName { get; set; }
 
-    public int? StudyPageId { get; set; }
+    public int? StudyItemId { get; set; }
 
-    public string? StudyPageTitle { get; set; }
+    public string? StudyItemTitle { get; set; }
 }
 
 public class StudentCalendarResponseDto

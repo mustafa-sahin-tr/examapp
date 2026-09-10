@@ -13,7 +13,7 @@ namespace ExamApp.Api.Data
         public int UserProgramId { get; set; }
 
         [Required]
-        public int StudyPageId { get; set; }
+        public int StudyItemId { get; set; }
 
         public DateTime StartDate { get; set; }
 
@@ -26,7 +26,7 @@ namespace ExamApp.Api.Data
         [ForeignKey("UserProgramId")]
         public virtual UserProgram UserProgram { get; set; }
 
-        [ForeignKey("StudyPageId")]
-        public virtual StudyPage StudyPage { get; set; }
+        [ForeignKey("StudyItemId")]
+        public virtual StudyItem StudyItem { get; set; }
     }
 }

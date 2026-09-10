@@ -3,16 +3,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ExamApp.Api.Data;
 
-public class StudyPageImage : BaseEntity
+public class StudyItemImage : BaseEntity
 {
     [Key]
     public int Id { get; set; }
 
     [Required]
-    public int StudyPageId { get; set; }
+    public int StudyItemId { get; set; }
 
-    [ForeignKey("StudyPageId")]
-    public StudyPage StudyPage { get; set; } = default!;
+    [ForeignKey("StudyItemId")]
+    public StudyItem StudyItem { get; set; } = default!;
 
     [Required]
     public string ImageUrl { get; set; } = string.Empty;

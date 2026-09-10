@@ -107,15 +107,15 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
             .ShouldContain(s => s.Id == subjectId);
     }
 
-    // ---- StudyPagesController ----
+    // ---- StudyItemsController ----
 
     [Fact]
     public async Task Study_pages_list_is_role_gated_and_students_see_only_published()
     {
         await WithDbAsync(async db =>
         {
-            db.StudyPages.Add(new StudyPage { Title = "Yayında", Description = "d", IsPublished = true, CreatedByUserId = 1 });
-            db.StudyPages.Add(new StudyPage { Title = "Taslak", Description = "d", IsPublished = false, CreatedByUserId = 1 });
+            db.StudyItems.Add(new StudyItem { Title = "Yayında", Description = "d", IsPublished = true, CreatedByUserId = 1 });
+            db.StudyItems.Add(new StudyItem { Title = "Taslak", Description = "d", IsPublished = false, CreatedByUserId = 1 });
             await db.SaveChangesAsync();
         });
 
@@ -125,7 +125,42 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
         (await parent.GetAsync("/api/study-pages")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         var student = await ClientAsAsync(3, "Student", "kc-s", "Student");
-        var page = await student.GetFromJsonAsync<Paged<StudyPageDto>>("/api/study-pages?pageNumber=1&pageSize=10", Json);
+        var page = await student.GetFromJsonAsync<Paged<StudyItemDto>>("/api/study-pages?pageNumber=1&pageSize=10", Json);
         page!.Items.Select(i => i.Title).ShouldBe(new[] { "Yayında" });
+    }
+
+    [Fact]
+    public async Task Study_pages_alias_route_also_accepts_writes_not_just_reads()
+    {
+        var teacher = await ClientAsAsync(4, "Teacher", "kc-alias-t", "Teacher");
+
+        using var createForm = new MultipartFormDataContent
+        {
+            { new StringContent("Alias ile olusturuldu"), "Title" },
+            { new StringContent("d"), "Description" },
+            { new StringContent(StudyItemContentType.Link.ToString()), "ContentType" },
+            { new StringContent("https://www.youtube.com/watch?v=x"), "Url" },
+            { new StringContent(StudyItemLinkPlatform.YouTube.ToString()), "Platform" },
+        };
+        var createResponse = await teacher.PostAsync("/api/study-pages", createForm);
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var created = await createResponse.Content.ReadFromJsonAsync<StudyItemDto>(Json);
+        created!.Title.ShouldBe("Alias ile olusturuldu");
+
+        using var updateForm = new MultipartFormDataContent
+        {
+            { new StringContent("Alias ile guncellendi"), "Title" },
+            { new StringContent("d"), "Description" },
+            { new StringContent(StudyItemContentType.Link.ToString()), "ContentType" },
+            { new StringContent("https://www.youtube.com/watch?v=y"), "Url" },
+            { new StringContent(StudyItemLinkPlatform.YouTube.ToString()), "Platform" },
+        };
+        var updateResponse = await teacher.PutAsync($"/api/study-pages/{created.Id}", updateForm);
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<StudyItemDto>(Json);
+        updated!.Title.ShouldBe("Alias ile guncellendi");
+
+        var deleteResponse = await teacher.DeleteAsync($"/api/study-pages/{created.Id}");
+        deleteResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 }

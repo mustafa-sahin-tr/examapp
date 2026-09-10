@@ -256,6 +256,30 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ClassifierCacheConfigs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.District", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ProvinceId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProvinceId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Districts");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Leaderboard", b =>
                 {
                     b.Property<int>("Id")
@@ -826,6 +850,27 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("ProgramStepOptions");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Province", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Provinces");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Question", b =>
                 {
                     b.Property<int>("Id")
@@ -1241,9 +1286,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                    b.Property<string>("AddressLine")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
@@ -1257,6 +1302,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("DistrictId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -1265,6 +1313,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int?>("ProvinceId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("UpdateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -1272,6 +1323,10 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DistrictId");
+
+                    b.HasIndex("ProvinceId");
 
                     b.ToTable("Schools");
                 });
@@ -2881,6 +2936,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Book");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.District", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Province", "Province")
+                        .WithMany("Districts")
+                        .HasForeignKey("ProvinceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Province");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Leaderboard", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Student", "Student")
@@ -3026,6 +3092,23 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Question");
 
                     b.Navigation("SubTopic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.School", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.District", "District")
+                        .WithMany()
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ExamApp.Api.Data.Province", "Province")
+                        .WithMany()
+                        .HasForeignKey("ProvinceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("District");
+
+                    b.Navigation("Province");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Student", b =>
@@ -3482,6 +3565,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Actions");
 
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.Province", b =>
+                {
+                    b.Navigation("Districts");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Question", b =>

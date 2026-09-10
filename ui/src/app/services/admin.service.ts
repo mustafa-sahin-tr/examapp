@@ -5,6 +5,8 @@ import {
   ApiResult,
   ClassifierCacheRefreshResult,
   ClassifierCacheStatus,
+  DistrictDto,
+  ProvinceDto,
   School,
   TaxonomyFilter,
   TaxonomyTree,
@@ -25,9 +27,12 @@ interface UpsertSubTopic {
   name: string;
   topicId: number;
 }
-interface UpsertSchool {
+/** Backend UpsertSchoolDto (Issue #91). İlçe verilirse il de zorunlu; addressLine ≤ 500 karakter. */
+export interface UpsertSchool {
   name: string;
-  city?: string | null;
+  provinceId?: number | null;
+  districtId?: number | null;
+  addressLine?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -94,6 +99,16 @@ export class AdminService {
   }
   deleteSchool(id: number) {
     return this.http.delete<ApiResult>(`${this.baseUrl}/schools/${id}`);
+  }
+
+  // ---- location (Issue #91) ----
+  getProvinces(): Observable<ProvinceDto[]> {
+    return this.http.get<ProvinceDto[]>(`${this.baseUrl}/provinces`);
+  }
+  getDistricts(provinceId: number): Observable<DistrictDto[]> {
+    return this.http.get<DistrictDto[]>(`${this.baseUrl}/districts`, {
+      params: { provinceId },
+    });
   }
 
   // ---- dashboard (Issue #86 / #88) ----

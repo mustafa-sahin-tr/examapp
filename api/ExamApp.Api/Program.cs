@@ -150,6 +150,7 @@ builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(
     builder.Configuration.GetSection(ExamApp.Api.Services.Classifier.GeminiCacheOptions.SectionName));
 builder.Services.AddScoped<ExamApp.Api.Services.Taxonomy.ITaxonomyService, ExamApp.Api.Services.Taxonomy.TaxonomyService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Schools.ISchoolService, ExamApp.Api.Services.Schools.SchoolService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Locations.ILocationService, ExamApp.Api.Services.Locations.LocationService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Classifier.IClassifierCacheService, ExamApp.Api.Services.Classifier.ClassifierCacheService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Dashboard.IDashboardService, ExamApp.Api.Services.Dashboard.DashboardService>();
 
@@ -212,6 +213,22 @@ using (var scope = app.Services.CreateScope())
         services.GetRequiredService<ILogger<Program>>()
             .LogCritical(ex, "Database migration failed — aborting startup.");
         throw;
+    }
+}
+
+// İl / ilçe referans verisi (issue #91). İdempotent: tablolar doluysa atlar.
+// Seed başarısızlığı uygulamayı durdurmaz — okul adres formu il listesi boş kalır, diğer akışlar çalışır.
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        ReferenceDataSeed.Initialize(services);
+    }
+    catch (Exception ex)
+    {
+        services.GetRequiredService<ILogger<Program>>()
+            .LogError(ex, "Province/District reference data seed failed.");
     }
 }
 

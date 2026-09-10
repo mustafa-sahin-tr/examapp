@@ -107,6 +107,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<WorksheetAccessRequestedConsumer, WorksheetAccessRequestedConsumerDefinition>();
     x.AddConsumer<WorksheetAccessDecisionConsumer, WorksheetAccessDecisionConsumerDefinition>();
     x.AddConsumer<LoginAttemptedConsumer, LoginAttemptedConsumerDefinition>();
+    x.AddConsumer<IndependentTeacherRegisteredConsumer, IndependentTeacherRegisteredConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -126,6 +127,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<WorksheetAccessRequestedConsumer>(context);
             e.ConfigureConsumer<WorksheetAccessDecisionConsumer>(context);
             e.ConfigureConsumer<LoginAttemptedConsumer>(context);
+            e.ConfigureConsumer<IndependentTeacherRegisteredConsumer>(context);
         });
     });
 });

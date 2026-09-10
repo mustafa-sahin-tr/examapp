@@ -23,6 +23,9 @@ export interface RegisterStudentPayload {
   gradeId: number;
 }
 
+/** POST /api/teacher/register — mirrors backend RegisterTeacherDto. */
 export interface RegisterTeacherPayload {
   schoolId: number | null;
+  /** true → bağımsız özel ders öğretmeni; hesap admin onayı bekler (Pending). */
+  isIndependentTutor: boolean;
 }

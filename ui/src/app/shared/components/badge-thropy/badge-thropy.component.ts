@@ -40,6 +40,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   readonly badgePaths = signal<BadgeThropyPath[]>([]);
   readonly standaloneBadges = signal<BadgeThropyItem[]>([]);
   readonly isLoading = signal(false);
+  readonly hasError = signal(false);
   readonly loadError = signal(false);
   readonly selectedBadge = signal<BadgeThropyItem | null>(null);
 
@@ -77,6 +78,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
 
   private loadBadges(userId: number): void {
     this.isLoading.set(true);
+    this.hasError.set(false);
     this.loadError.set(false);
     this.selectedBadge.set(null);
     const storedUserId = this.authService.getUserIdFromLocalStorage();
@@ -103,6 +105,7 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
         },
         error: (error) => {
           console.error('BadgeThropyComponent: unable to load badge progress', error);
+          this.hasError.set(true);
           this.badges.set([]);
           this.badgePaths.set([]);
           this.standaloneBadges.set([]);

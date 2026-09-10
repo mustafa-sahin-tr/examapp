@@ -90,10 +90,10 @@ describe('StudentProfileComponent', () => {
 
     fixture = TestBed.createComponent(StudentProfileComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
   });
 
   it('should create', () => {
+    fixture.detectChanges();
     expect(component).toBeTruthy();
   });
 

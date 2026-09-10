@@ -137,10 +137,10 @@ describe('CompleteProfileComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
 
-    component.teacherForm.setValue({ schoolId: 1 });
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 1 });
     component.onSubmit();
 
-    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({ schoolId: 1 });
+    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({ schoolId: 1, isIndependentTutor: false });
   });
 
   it('onSubmit_StudentWithoutSchoolSelected_SendsNullSchoolIdAndIsNotBlocked', () => {
@@ -163,10 +163,76 @@ describe('CompleteProfileComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
 
-    component.teacherForm.setValue({ schoolId: null });
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: null });
     component.onSubmit();
 
-    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({ schoolId: null });
+    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({ schoolId: null, isIndependentTutor: false });
+  });
+
+  it('onSubmit_TeacherSelectsIndependentAfterPickingSchool_SendsNullSchoolIdAndIsIndependentTutorTrue', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    // Önce okul seçilir (ör. kullanıcı fikrini değiştirmeden önce).
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('#teacherSchoolId');
+    select.value = select.options[1].value;
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(component.teacherForm.get('schoolId')?.value).toBe(1);
+
+    // Sonra "Bağımsız özel ders veriyorum" radio'su seçilir.
+    const independentRadio: HTMLInputElement = fixture.nativeElement.querySelector('#teacherIndependentTutor');
+    independentRadio.checked = true;
+    independentRadio.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(component.isIndependentTutor()).toBeTrue();
+    // Okul seçim alanı UI'dan kaldırılmalı.
+    expect(fixture.nativeElement.querySelector('#teacherSchoolId')).toBeNull();
+
+    component.onSubmit();
+
+    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({
+      schoolId: null,
+      isIndependentTutor: true,
+    });
+  });
+
+  it('onSubmit_TeacherFormValueSetProgrammaticallyToIndependentWithStaleSchoolId_StripsSchoolIdFromPayload', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    // Eski (artık sızmaması gereken) bir schoolId değeriyle birlikte bağımsız işaretlenir.
+    component.teacherForm.setValue({ isIndependentTutor: true, schoolId: 2 });
+    component.onSubmit();
+
+    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({
+      schoolId: null,
+      isIndependentTutor: true,
+    });
+  });
+
+  it('onSubmit_TeacherKeepsDefaultSchoolAffiliatedOption_SendsChosenSchoolIdAndIsIndependentTutorFalse', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+
+    // Varsayılan seçim değiştirilmeden (okula bağlı) okul seçilip submit edilir.
+    const select: HTMLSelectElement = fixture.nativeElement.querySelector('#teacherSchoolId');
+    select.value = select.options[1].value;
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(component.isIndependentTutor()).toBeFalse();
+
+    component.onSubmit();
+
+    expect(authServiceSpy.registerTeacherProfile).toHaveBeenCalledWith({
+      schoolId: 1,
+      isIndependentTutor: false,
+    });
   });
 
   it('ngOnInit_GetSchoolsFails_SetsSchoolsErrorAndHidesDropdown', () => {

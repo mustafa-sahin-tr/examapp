@@ -436,3 +436,33 @@
 .schools-list {
   max-height: 40vh;
 }
+
+// Issue #91: il / ilçe seçimleri ve açık adres
+.location-select {
+  flex: 1 1 140px;
+  min-width: 140px;
+}
+
+.address-field {
+  flex: 2 1 200px;
+  min-width: 160px;
+}
+
+.location-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ms-danger-text-medium);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .state-text {
+    flex: 1;
+  }
+}

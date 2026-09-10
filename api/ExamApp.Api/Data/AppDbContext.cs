@@ -109,6 +109,10 @@ public class AppDbContext : DbContext
 
     public DbSet<School> Schools { get; set; }
 
+    // İl / ilçe referans tabloları (issue #91) — ReferenceDataSeed ile doldurulur.
+    public DbSet<Province> Provinces { get; set; }
+    public DbSet<District> Districts { get; set; }
+
     // "Soru Çöz" pratik oturumu (issue #62)
     public DbSet<PracticeSession> PracticeSessions { get; set; }
     public DbSet<PracticeSessionQuestion> PracticeSessionQuestions { get; set; }
@@ -176,6 +180,34 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Teacher>()
             .Property(t => t.IsIndependentTutor)
             .HasDefaultValue(false);
+
+        // İl / ilçe referans tabloları + okul adresi (issue #91).
+        // Referans kayıtlar silinemez (Restrict) — okul FK'leri nullable, mevcut satırlar etkilenmez.
+        modelBuilder.Entity<Province>()
+            .HasIndex(p => p.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<District>()
+            .HasOne(d => d.Province)
+            .WithMany(p => p.Districts)
+            .HasForeignKey(d => d.ProvinceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<District>()
+            .HasIndex(d => new { d.ProvinceId, d.Name })
+            .IsUnique();
+
+        modelBuilder.Entity<School>()
+            .HasOne(s => s.Province)
+            .WithMany()
+            .HasForeignKey(s => s.ProvinceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<School>()
+            .HasOne(s => s.District)
+            .WithMany()
+            .HasForeignKey(s => s.DistrictId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // 📌 Grade - Subject İlişkisi
         modelBuilder.Entity<GradeSubject>()

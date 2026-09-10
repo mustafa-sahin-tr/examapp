@@ -13,6 +13,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import {
+  DistrictDto,
+  ProvinceDto,
   School,
   TaxonomyFilter,
   TaxonomySubject,
@@ -65,6 +67,29 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly schoolsError = signal<string | null>(null);
   readonly schools = signal<School[]>([]);
 
+  // ---- il / ilçe (Issue #91) ----
+  readonly provinces = signal<ProvinceDto[]>([]);
+  readonly provincesLoading = signal(false);
+  readonly provincesError = signal<string | null>(null);
+  /** İl id → ilçeleri. Yeni-okul formu ve satır düzenleme aynı anda açık olabildiği için il bazlı önbellek. */
+  readonly districts = signal<Record<number, DistrictDto[]>>({});
+  /** Şu an ilçeleri yüklenen il id'si; yoksa null. */
+  readonly districtsLoading = signal<number | null>(null);
+
+  readonly newSchoolProvinceId = signal<number | null>(null);
+  readonly newSchoolDistrictId = signal<number | null>(null);
+  readonly newSchoolDistricts = computed(() => this.districtsOf(this.newSchoolProvinceId()));
+  readonly newSchoolDistrictsLoading = computed(
+    () => this.newSchoolProvinceId() != null && this.districtsLoading() === this.newSchoolProvinceId()
+  );
+
+  readonly editProvinceId = signal<number | null>(null);
+  readonly editDistrictId = signal<number | null>(null);
+  readonly editDistricts = computed(() => this.districtsOf(this.editProvinceId()));
+  readonly editDistrictsLoading = computed(
+    () => this.editProvinceId() != null && this.districtsLoading() === this.editProvinceId()
+  );
+
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
 
@@ -91,17 +116,18 @@ export class TaxonomyManagerComponent implements OnInit {
   newTopicGradeId: number | null = null;
   newSubTopicName = '';
   newSchoolName = '';
-  newSchoolCity = '';
+  newSchoolAddressLine = '';
 
   // inline edit state
   editing = signal<{ level: Level; id: number } | null>(null);
   editName = '';
   editGradeId: number | null = null;
-  editCity = '';
+  editAddressLine = '';
 
   ngOnInit(): void {
     this.load();
     this.loadSchools();
+    this.loadProvinces();
   }
 
   /**
@@ -143,6 +169,62 @@ export class TaxonomyManagerComponent implements OnInit {
         this.schoolsLoading.set(false);
       },
     });
+  }
+
+  // ---- il / ilçe (Issue #91) ----
+
+  loadProvinces(): void {
+    this.provincesLoading.set(true);
+    this.provincesError.set(null);
+    this.admin.getProvinces().subscribe({
+      next: (list) => {
+        this.provinces.set(list);
+        this.provincesLoading.set(false);
+      },
+      error: () => {
+        this.provincesError.set('İller yüklenemedi');
+        this.provincesLoading.set(false);
+      },
+    });
+  }
+
+  /** İlçeleri önbellekte yoksa yükler. Aynı il için tekrar istek atılmaz. */
+  private ensureDistricts(provinceId: number | null): void {
+    if (provinceId == null || provinceId in this.districts()) return;
+    this.districtsLoading.set(provinceId);
+    this.admin.getDistricts(provinceId).subscribe({
+      next: (list) => {
+        this.districts.update((d) => ({ ...d, [provinceId]: list }));
+        if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
+      },
+      error: () => {
+        if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
+        this.snack.open('İlçeler yüklenemedi', 'Kapat', { duration: 4000 });
+      },
+    });
+  }
+
+  private districtsOf(provinceId: number | null): DistrictDto[] {
+    return provinceId == null ? [] : this.districts()[provinceId] ?? [];
+  }
+
+  /** Yeni okul formunda il değişti: ilçe seçimi sıfırlanır, yeni ilin ilçeleri yüklenir. */
+  onNewSchoolProvinceChange(provinceId: number | null): void {
+    this.newSchoolProvinceId.set(provinceId);
+    this.newSchoolDistrictId.set(null);
+    this.ensureDistricts(provinceId);
+  }
+
+  /** Düzenleme satırında il değişti: ilçe seçimi sıfırlanır, yeni ilin ilçeleri yüklenir. */
+  onEditProvinceChange(provinceId: number | null): void {
+    this.editProvinceId.set(provinceId);
+    this.editDistrictId.set(null);
+    this.ensureDistricts(provinceId);
+  }
+
+  /** Liste satırı için "İl / İlçe" metni; ikisi de yoksa boş string. */
+  schoolLocation(sc: School): string {
+    return [sc.provinceName, sc.districtName].filter((x): x is string => !!x).join(' / ');
   }
 
   selectSubject(id: number): void {
@@ -257,24 +339,45 @@ export class TaxonomyManagerComponent implements OnInit {
   async addSchool(): Promise<void> {
     const name = this.newSchoolName.trim();
     if (!name) return;
-    const city = this.newSchoolCity.trim();
-    await this.runSchools(() =>
-      firstValueFrom(this.admin.createSchool({ name, city: city || null }))
+    const addressLine = this.newSchoolAddressLine.trim();
+    const ok = await this.runSchools(() =>
+      firstValueFrom(
+        this.admin.createSchool({
+          name,
+          provinceId: this.newSchoolProvinceId(),
+          districtId: this.newSchoolDistrictId(),
+          addressLine: addressLine || null,
+        })
+      )
     );
+    // Hatalı girişte (örn. 400 "Geçersiz ilçe") form korunur; kullanıcı düzeltip tekrar dener.
+    if (!ok) return;
     this.newSchoolName = '';
-    this.newSchoolCity = '';
+    this.newSchoolAddressLine = '';
+    this.newSchoolProvinceId.set(null);
+    this.newSchoolDistrictId.set(null);
   }
 
   // ---- edit ----
 
   startEdit(
     level: Level,
-    item: { id: number; name: string; gradeId?: number; city?: string | null }
+    item: {
+      id: number;
+      name: string;
+      gradeId?: number;
+      provinceId?: number | null;
+      districtId?: number | null;
+      addressLine?: string | null;
+    }
   ): void {
     this.editing.set({ level, id: item.id });
     this.editName = item.name;
     this.editGradeId = item.gradeId ?? null;
-    this.editCity = item.city ?? '';
+    this.editProvinceId.set(item.provinceId ?? null);
+    this.editDistrictId.set(item.districtId ?? null);
+    this.editAddressLine = item.addressLine ?? '';
+    if (level === 'school') this.ensureDistricts(item.provinceId ?? null);
   }
 
   cancelEdit(): void {
@@ -311,10 +414,19 @@ export class TaxonomyManagerComponent implements OnInit {
       const topicId = this.selectedTopicId()!;
       await this.run(() => firstValueFrom(this.admin.updateSubTopic(id, { name, topicId })));
     } else {
-      const city = this.editCity.trim();
-      await this.runSchools(() =>
-        firstValueFrom(this.admin.updateSchool(id, { name, city: city || null }))
+      const addressLine = this.editAddressLine.trim();
+      const ok = await this.runSchools(() =>
+        firstValueFrom(
+          this.admin.updateSchool(id, {
+            name,
+            provinceId: this.editProvinceId(),
+            districtId: this.editDistrictId(),
+            addressLine: addressLine || null,
+          })
+        )
       );
+      // Backend doğrulama hatasında düzenleme satırı açık kalsın.
+      if (!ok) return;
     }
     this.cancelEdit();
   }
@@ -368,18 +480,21 @@ export class TaxonomyManagerComponent implements OnInit {
     }
   }
 
+  /** @returns işlem başarılıysa true; 400 vb. doğrulama hatasında false (form korunur). */
   private async runSchools(
     action: () => Promise<{ success: boolean; message: string }>
-  ): Promise<void> {
+  ): Promise<boolean> {
     this.busy.set(true);
     try {
       const res = await action();
       this.snack.open(res.message, 'Kapat', { duration: 3000 });
       if (res.success) this.loadSchools();
+      return res.success;
     } catch (err: unknown) {
       const msg =
         (err as { error?: { message?: string } } | null)?.error?.message ?? 'İşlem başarısız';
       this.snack.open(msg, 'Kapat', { duration: 4000 });
+      return false;
     } finally {
       this.busy.set(false);
     }

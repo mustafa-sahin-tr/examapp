@@ -11,6 +11,8 @@ namespace ExamApp.Api.Services.Schools;
 
 public class SchoolService : ISchoolService
 {
+    private const int AddressLineMaxLength = 500;
+
     private readonly AppDbContext _context;
 
     public SchoolService(AppDbContext context)
@@ -23,7 +25,16 @@ public class SchoolService : ISchoolService
         return await _context.Schools
             .AsNoTracking()
             .OrderBy(s => s.Name)
-            .Select(s => new SchoolDto { Id = s.Id, Name = s.Name, City = s.City })
+            .Select(s => new SchoolDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                ProvinceId = s.ProvinceId,
+                ProvinceName = s.Province != null ? s.Province.Name : null,
+                DistrictId = s.DistrictId,
+                DistrictName = s.District != null ? s.District.Name : null,
+                AddressLine = s.AddressLine
+            })
             .ToListAsync(ct);
     }
 
@@ -36,8 +47,18 @@ public class SchoolService : ISchoolService
         if (await _context.Schools.AnyAsync(s => s.Name.ToLower() == name.ToLower(), ct))
             return Fail("Bu isimde bir okul zaten var.");
 
+        var addressError = await ValidateAddressAsync(dto, ct);
+        if (addressError != null)
+            return Fail(addressError);
+
         _context.SetCurrentUser(userId);
-        var school = new School { Name = name, City = dto.City?.Trim() };
+        var school = new School
+        {
+            Name = name,
+            ProvinceId = dto.ProvinceId,
+            DistrictId = dto.DistrictId,
+            AddressLine = NormalizeAddressLine(dto.AddressLine)
+        };
         _context.Schools.Add(school);
         await _context.SaveChangesAsync(ct);
         return Ok("Okul eklendi.", school.Id);
@@ -56,9 +77,15 @@ public class SchoolService : ISchoolService
         if (await _context.Schools.AnyAsync(s => s.Id != id && s.Name.ToLower() == name.ToLower(), ct))
             return Fail("Bu isimde başka bir okul zaten var.");
 
+        var addressError = await ValidateAddressAsync(dto, ct);
+        if (addressError != null)
+            return Fail(addressError);
+
         _context.SetCurrentUser(userId);
         school.Name = name;
-        school.City = dto.City?.Trim();
+        school.ProvinceId = dto.ProvinceId;
+        school.DistrictId = dto.DistrictId;
+        school.AddressLine = NormalizeAddressLine(dto.AddressLine);
         await _context.SaveChangesAsync(ct);
         return Ok("Okul güncellendi.", school.Id);
     }
@@ -82,6 +109,35 @@ public class SchoolService : ISchoolService
         _context.Schools.Remove(school); // soft delete via AppDbContext.ApplyAuditInfo
         await _context.SaveChangesAsync(ct);
         return Ok("Okul silindi.", id);
+    }
+
+    /// <summary>
+    /// İl/ilçe FK'lerinin referans tablolarda var olduğunu ve ilçenin seçilen ile ait olduğunu doğrular.
+    /// Hata yoksa null döner. İlçe verilmişse il zorunludur (ilçe tek başına anlamsız).
+    /// </summary>
+    private async Task<string?> ValidateAddressAsync(UpsertSchoolDto dto, CancellationToken ct)
+    {
+        if (dto.AddressLine != null && dto.AddressLine.Trim().Length > AddressLineMaxLength)
+            return $"Açık adres en fazla {AddressLineMaxLength} karakter olabilir.";
+
+        if (dto.DistrictId.HasValue && !dto.ProvinceId.HasValue)
+            return "İlçe seçildiğinde il de seçilmelidir.";
+
+        if (dto.ProvinceId.HasValue &&
+            !await _context.Provinces.AnyAsync(p => p.Id == dto.ProvinceId.Value, ct))
+            return "Geçersiz il.";
+
+        if (dto.DistrictId.HasValue &&
+            !await _context.Districts.AnyAsync(d => d.Id == dto.DistrictId.Value && d.ProvinceId == dto.ProvinceId!.Value, ct))
+            return "Geçersiz ilçe veya ilçe seçilen ile ait değil.";
+
+        return null;
+    }
+
+    private static string? NormalizeAddressLine(string? addressLine)
+    {
+        var trimmed = addressLine?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
     private static ResponseBaseDto Fail(string message) => new() { Success = false, Message = message };

@@ -65,18 +65,6 @@ public class TeacherService : ITeacherService
             // Aksi halde admin'in verdiği Approved/Rejected kararı tekrar register çağrısıyla
             // sessizce Pending'e dönebilir ya da Pending kayıt IsIndependentTutor=false göndererek
             // kendini Approved'a yükseltebilirdi.
-            var wasIndependent = existingTeacher.IsIndependentTutor;
-            existingTeacher.IsIndependentTutor = dto.IsIndependentTutor;
-            var becamePendingOnTransition = false;
-            if (dto.IsIndependentTutor != wasIndependent)
-            {
-                existingTeacher.ApprovalStatus = approvalStatus;
-                becamePendingOnTransition = approvalStatus == TeacherApprovalStatus.Pending;
-            }
-
-            if (becamePendingOnTransition)
-            {
-                await AddTeacherApplicationSubmittedOutboxAsync(existingTeacher.Id, userId);
             var wasIndependent = teacher.IsIndependentTutor;
             var independenceChanged = dto.IsIndependentTutor != wasIndependent;
 
@@ -106,6 +94,10 @@ public class TeacherService : ITeacherService
             shouldPublishEvent = dto.IsIndependentTutor;
         }
 
+        // Başvuran adı auth-api'den best-effort çözülür (issue #94 admin bildirimi için).
+        // Dış HTTP çağrısı transaction/retry lambda'sının DIŞINDA tutulur ki retry'da tekrarlanmasın.
+        var applicantName = shouldPublishEvent ? await ResolveApplicantNameAsync(userId) : null;
+
         var teacherId = 0;
         var strategy = _context.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
@@ -122,54 +114,29 @@ public class TeacherService : ITeacherService
 
             if (shouldPublishEvent)
             {
-                var @event = new IndependentTeacherRegisteredEvent
-                {
-                    TeacherId = teacher.Id,
-                    UserId = userId,
-                    IsNewRegistration = !isUpdate,
-                    RegisteredAt = DateTime.UtcNow
-                };
+                // Aynı Pending başvuru için iki ayrı tüketici ucu var:
+                //  - IndependentTeacherRegisteredEvent (issue #92, bilgi amaçlı log consumer'ı)
+                //  - TeacherApplicationSubmittedEvent (issue #94, admin bildirimi + SignalR)
+                // Her ikisi de Teacher.Id identity ile üretildiği için ilk SaveChanges'ten sonra yazılır.
+                var now = DateTime.UtcNow;
                 _context.OutboxMessages.Add(new OutboxMessage
                 {
                     Type = OutboxEventRegistry.NameFor<IndependentTeacherRegisteredEvent>(),
-                    Content = JsonSerializer.Serialize(@event),
-                    CreatedAt = DateTime.UtcNow
+                    Content = JsonSerializer.Serialize(new IndependentTeacherRegisteredEvent
+                    {
+                        TeacherId = teacher.Id,
+                        UserId = userId,
+                        IsNewRegistration = !isUpdate,
+                        RegisteredAt = now
+                    }),
+                    CreatedAt = now
                 });
+                AddTeacherApplicationSubmittedOutbox(teacher.Id, userId, applicantName);
                 await _context.SaveChangesAsync();
             }
 
             await tx.CommitAsync();
             teacherId = teacher.Id;
-        });
-
-        if (!dto.IsIndependentTutor)
-        {
-            // Okula bağlı öğretmen: Pending'e düşmüyor, outbox gerekmiyor — tek SaveChanges yeterli.
-            _context.Teachers.Add(teacher);
-            await _context.SaveChangesAsync();
-            return new ResponseBaseDto
-            {
-                Success = true,
-                Message = "Öğretmen başarıyla kaydedildi.",
-                ObjectId = teacher.Id
-            };
-        }
-
-        // Bağımsız öğretmen: Teacher.Id identity ile üretildiği için (SaveChanges'ten önce 0),
-        // event içeriği TeacherId'ye ihtiyaç duyar. WorksheetAccessRequestService ile aynı desen:
-        // teacher INSERT + outbox INSERT aynı execution-strategy transaction'ında, iki SaveChanges ile.
-        var strategy = _context.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
-        {
-            await using var tx = await _context.Database.BeginTransactionAsync();
-
-            _context.Teachers.Add(teacher);
-            await _context.SaveChangesAsync();
-
-            await AddTeacherApplicationSubmittedOutboxAsync(teacher.Id, userId);
-            await _context.SaveChangesAsync();
-
-            await tx.CommitAsync();
         });
 
         return new ResponseBaseDto
@@ -185,11 +152,11 @@ public class TeacherService : ITeacherService
     /// (yeni kayıt VEYA IsIndependentTutor=false→true geçişi ile Pending'e düşen kayıt)
     /// <see cref="TeacherApplicationSubmittedEvent"/>'i outbox'a ekler. Çağıranın, teacherId'yi
     /// zaten bilmesi gerekir — yeni kayıt yolunda bu yalnızca ilk SaveChangesAsync (identity insert)
-    /// tamamlandıktan sonra mümkündür, bkz. çağrı yeri.
+    /// tamamlandıktan sonra mümkündür, bkz. çağrı yeri. applicantName çağıran tarafından
+    /// transaction dışında çözülür (<see cref="ResolveApplicantNameAsync"/>).
     /// </summary>
-    private async Task AddTeacherApplicationSubmittedOutboxAsync(int teacherId, int userId)
+    private void AddTeacherApplicationSubmittedOutbox(int teacherId, int userId, string? applicantName)
     {
-        var applicantName = await ResolveApplicantNameAsync(userId);
         _context.OutboxMessages.Add(new OutboxMessage
         {
             Type = OutboxEventRegistry.NameFor<TeacherApplicationSubmittedEvent>(),

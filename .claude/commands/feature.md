@@ -50,7 +50,7 @@ Planı bana göster ve **onay bekle**. Onaysız kod yazma.
 - `EnterWorktree` tool'unu çağır, `name: "issue-$ARGUMENTS"`. Bu, `.claude/worktrees/issue-$ARGUMENTS`
   altında **yeni bir branch üzerinde izole bir checkout** oluşturur ve session'ın çalışma dizinini
   oraya taşır (varsayılan olarak `origin/master`'dan dallanır, ana klasördeki kirli/commitlenmemiş
-  değişikliklerden etkilenmez).
+  değişikliklerden etkilenmez). Mater'ın pull edilip son haline geldiğinden emin ol sonra worktree'yi oluştur.
 - Worktree oluştuktan sonra branch adını `feature/issue-$ARGUMENTS-<slug>` olacak şekilde yeniden adlandır
   (`git branch -m feature/issue-$ARGUMENTS-<slug>`) — slug: issue başlığından türetilmiş kısa,
   küçük harf, tire ile ayrılmış, Türkçe karakterleri sadeleştirilmiş en fazla 4-5 kelime.

@@ -46,6 +46,13 @@ public class Notification
     /// </summary>
     public int? SourceTeacherApplicationId { get; set; }
 
+    /// <summary>
+    /// Idempotency anahtarı: bir randevu talebinden (Booking.Id, issue #96) üretilen bildirimin
+    /// tekilliğini sağlar. Hem talep hem karar bildirimleri aynı BookingId'yi taşır; tekillik
+    /// <see cref="Type"/> ile birlikte kontrol edilir. Booking kaynaklı olmayan bildirimlerde null.
+    /// </summary>
+    public int? SourceBookingId { get; set; }
+
     public bool IsRead { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

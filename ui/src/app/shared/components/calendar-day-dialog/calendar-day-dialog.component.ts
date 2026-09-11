@@ -8,6 +8,7 @@ import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bott
 import { CalendarEvent } from '../../../models/calendar-event';
 import { UserProgram } from '../../../models/program.interfaces';
 import { ProgramService } from '../../../services/program.service';
+import { AuthService } from '../../../services/auth.service';
 import { formatFullDate } from '../../utils/calendar-month.util';
 
 /** Girdi: bir günün tarihi + o güne düşen etkinlikler. */
@@ -22,7 +23,8 @@ type DayEventVariant =
   | 'deadline-open'
   | 'deadline-done'
   | 'program-plan'
-  | 'program-plan-done';
+  | 'program-plan-done'
+  | 'booking';
 
 interface DayEventAction {
   label: string;
@@ -54,6 +56,7 @@ const VARIANT_ICON: Record<DayEventVariant, string> = {
   'deadline-done': 'check_circle',
   'program-plan': 'menu_book',
   'program-plan-done': 'check_circle',
+  booking: 'cast_for_education',
 };
 
 const TIME_FMT = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
@@ -87,6 +90,8 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat('tr-TR', { weekday: 'long' });
 export class CalendarDayDialogComponent {
   private readonly router = inject(Router);
   private readonly programService = inject(ProgramService);
+  /** Randevu satırının hedefi role göre değişir (öğretmen gelen kutusu / öğrenci listesi). */
+  private readonly isTeacher = inject(AuthService).hasRealmRole('Teacher');
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject<MatDialogRef<CalendarDayDialogComponent>>(MatDialogRef, { optional: true });
   private readonly sheetRef = inject<MatBottomSheetRef<CalendarDayDialogComponent>>(MatBottomSheetRef, {
@@ -169,6 +174,34 @@ export class CalendarDayDialogComponent {
   private toRow(ev: CalendarEvent): DayEventRow {
     const at = new Date(ev.date);
     const time = at.getTime();
+
+    if (ev.kind === 'booking') {
+      // Onaylanmış ders randevusu (issue #96) — başlık backend'den "<Ad> ile ders" olarak gelir.
+      const end = ev.endDate ? new Date(ev.endDate) : null;
+      const range = end ? `${TIME_FMT.format(at)} – ${TIME_FMT.format(end)}` : TIME_FMT.format(at);
+      const target = this.isTeacher ? '/booking-requests' : '/my-bookings';
+      return {
+        time,
+        variant: 'booking',
+        icon: VARIANT_ICON['booking'],
+        title: ev.worksheetTitle || 'Ders randevusu',
+        meta: this.metaLine([range, 'Onaylı randevu']),
+        sunk: time < Date.now(),
+        sunkLabel: null,
+        sunkIcon: null,
+        actions: [
+          {
+            label: 'Randevularıma git',
+            icon: 'event_available',
+            run: () => {
+              this.close();
+              void this.router.navigate([target]);
+            },
+          },
+        ],
+        programId: null,
+      };
+    }
 
     if (ev.kind === 'program-study-page') {
       const done = ev.isCompleted === true;

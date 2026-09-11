@@ -8,6 +8,7 @@ import { of, throwError } from 'rxjs';
 import { CalendarDayDialogComponent, CalendarDayDialogData } from './calendar-day-dialog.component';
 import { CalendarEvent } from '../../../models/calendar-event';
 import { ProgramService } from '../../../services/program.service';
+import { AuthService } from '../../../services/auth.service';
 import { UserProgram } from '../../../models/program.interfaces';
 
 function reminder(overrides: Partial<CalendarEvent> & { worksheetId: number }): CalendarEvent {
@@ -94,6 +95,9 @@ async function setup(
     programService.getProgramById.and.returnValue(of(makeUserProgram()));
   }
 
+  const authService = jasmine.createSpyObj<AuthService>('AuthService', ['hasRealmRole']);
+  authService.hasRealmRole.and.returnValue(false);
+
   await TestBed.configureTestingModule({
     imports: [CalendarDayDialogComponent],
     providers: [
@@ -103,6 +107,7 @@ async function setup(
       { provide: MatDialogRef, useValue: dialogRef },
       { provide: MAT_DIALOG_DATA, useValue: data },
       { provide: ProgramService, useValue: programService },
+      { provide: AuthService, useValue: authService },
     ],
   }).compileComponents();
 

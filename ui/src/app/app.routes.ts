@@ -162,10 +162,36 @@ export const routes: Routes = [
           import('./pages/tutor-search/tutor-public-profile.component').then((m) => m.TutorPublicProfileComponent),
       },
       {
+        // Issue #96: takvim öğretmene de açık — onaylı ders randevuları burada görünür.
         path: 'my-calendar',
-        canActivate: [authGuard, studentGuard],
+        canActivate: [authGuard, roleGuard('Student', 'Teacher')],
         loadComponent: () =>
           import('./pages/my-calendar/my-calendar.component').then((m) => m.MyCalendarComponent),
+      },
+      {
+        // Issue #96: öğretmenin müsaitlik aralıkları.
+        path: 'availability',
+        canActivate: [authGuard, roleGuard('Teacher')],
+        loadComponent: () =>
+          import('./pages/teacher-availability/teacher-availability.component').then(
+            (m) => m.TeacherAvailabilityComponent
+          ),
+      },
+      {
+        // Issue #96: öğretmene gelen randevu talepleri.
+        path: 'booking-requests',
+        canActivate: [authGuard, roleGuard('Teacher')],
+        loadComponent: () =>
+          import('./pages/teacher-booking-requests/teacher-booking-requests.component').then(
+            (m) => m.TeacherBookingRequestsComponent
+          ),
+      },
+      {
+        // Issue #96: öğrencinin kendi randevu talepleri.
+        path: 'my-bookings',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/student-bookings/student-bookings.component').then((m) => m.StudentBookingsComponent),
       },
     ],
   },

@@ -2,13 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { MatIconModule } from '@angular/material/icon';
 import { CalendarEvent } from '../../../models/calendar-event';
 
-type BadgeVariant = 'reminder-pending' | 'reminder-sent' | 'deadline-open' | 'deadline-done';
+type BadgeVariant = 'reminder-pending' | 'reminder-sent' | 'deadline-open' | 'deadline-done' | 'booking';
 
 const VARIANT_ICON: Record<BadgeVariant, string> = {
   'reminder-pending': 'event_available',
   'reminder-sent': 'notifications_off',
   'deadline-open': 'flag',
   'deadline-done': 'check_circle',
+  booking: 'cast_for_education',
 };
 
 const VARIANT_LABEL: Record<BadgeVariant, string> = {
@@ -16,6 +17,7 @@ const VARIANT_LABEL: Record<BadgeVariant, string> = {
   'reminder-sent': 'Gönderilmiş hatırlatma',
   'deadline-open': 'Teslim tarihi',
   'deadline-done': 'Tamamlanan atama',
+  booking: 'Ders randevusu',
 };
 
 /**
@@ -38,6 +40,9 @@ export class CalendarEventBadgeComponent {
 
   readonly variant = computed<BadgeVariant>(() => {
     const e = this.event();
+    if (e.kind === 'booking') {
+      return 'booking';
+    }
     if (e.kind === 'reminder') {
       return e.status === 'Sent' ? 'reminder-sent' : 'reminder-pending';
     }

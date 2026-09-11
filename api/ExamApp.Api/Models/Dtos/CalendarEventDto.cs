@@ -10,7 +10,7 @@ namespace ExamApp.Api.Models.Dtos;
 /// </summary>
 public class CalendarEventDto
 {
-    /// <summary>"reminder" | "assignment-deadline" | "program-study-page"</summary>
+    /// <summary>"reminder" | "assignment-deadline" | "program-study-page" | "booking"</summary>
     public string Kind { get; set; } = string.Empty;
 
     /// <summary>
@@ -55,6 +55,23 @@ public class CalendarEventDto
     public int? StudyItemId { get; set; }
 
     public string? StudyItemTitle { get; set; }
+
+    // --- booking alanları (issue #96, Kind == "booking") ---
+
+    /// <summary>Onaylanmış randevunun kimliği.</summary>
+    public int? BookingId { get; set; }
+
+    /// <summary>Randevunun dayandığı müsaitlik aralığı.</summary>
+    public int? AvailabilitySlotId { get; set; }
+
+    /// <summary>Randevudaki öğretmenin Teacher.Id'si.</summary>
+    public int? TeacherId { get; set; }
+
+    /// <summary>Randevudaki öğrencinin Student.Id'si.</summary>
+    public int? StudentId { get; set; }
+
+    /// <summary>Öğrencinin adı — öğretmenin takviminde karşı tarafı göstermek için (auth-api'den, best-effort).</summary>
+    public string? StudentName { get; set; }
 }
 
 public class StudentCalendarResponseDto

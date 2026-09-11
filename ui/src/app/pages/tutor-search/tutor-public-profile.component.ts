@@ -1,15 +1,21 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { finalize } from 'rxjs';
 import { TutorPublicProfile } from '../../models/tutor.model';
 import { TeacherService } from '../../services/teacher.service';
+import {
+  BookingSlotDialogComponent,
+  BookingSlotDialogData,
+} from '../../shared/components/booking-slot-dialog/booking-slot-dialog.component';
 
 /**
  * Issue #95 — öğrencinin gördüğü tekil öğretmen profili (dersler, ders şekli, ücret, tam tanıtım).
@@ -27,6 +33,9 @@ export class TutorPublicProfileComponent implements OnInit {
   private readonly location = inject(Location);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly router = inject(Router);
 
   /** Route parametresi; uygulamada component input binding açık değil, paramMap'ten okunur. */
   private readonly teacherId = Number(this.route.snapshot.paramMap.get('id'));
@@ -83,5 +92,36 @@ export class TutorPublicProfileComponent implements OnInit {
 
   goBack(): void {
     this.location.back();
+  }
+
+  /**
+   * Issue #96 — "Randevu Al": öğretmenin boş müsaitlik aralıklarını dialog'da gösterir.
+   * Talep oluşturulursa kullanıcıyı "Ders Randevularım" listesine yönlendirme seçeneği sunar.
+   */
+  openBookingDialog(): void {
+    const profile = this.profile();
+    if (!profile) {
+      return;
+    }
+
+    const data: BookingSlotDialogData = { teacherId: this.teacherId, teacherName: profile.fullName };
+    this.dialog
+      .open<BookingSlotDialogComponent, BookingSlotDialogData, boolean>(BookingSlotDialogComponent, {
+        data,
+        width: '32rem',
+        restoreFocus: true,
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created) => {
+        if (!created) {
+          return;
+        }
+        this.snackBar
+          .open('Randevu talebin gönderildi, öğretmenin onayı bekleniyor.', 'Randevularım', { duration: 6000 })
+          .onAction()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => void this.router.navigate(['/my-bookings']));
+      });
   }
 }

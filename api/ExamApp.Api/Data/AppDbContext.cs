@@ -108,6 +108,10 @@ public class AppDbContext : DbContext
     public DbSet<WorksheetAccessRequest> WorksheetAccessRequests { get; set; }
     public DbSet<WorksheetAccessGrant> WorksheetAccessGrants { get; set; }
 
+    // Ders planlama / randevu (issue #96)
+    public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
+
     public DbSet<School> Schools { get; set; }
 
     // İl / ilçe referans tabloları (issue #91) — ReferenceDataSeed ile doldurulur.
@@ -426,6 +430,55 @@ public class AppDbContext : DbContext
             .HasIndex(g => new { g.WorksheetId, g.TeacherUserId })
             .IsUnique()
             .HasFilter("\"RevokedAt\" IS NULL");
+
+        // ---- Ders planlama / randevu (issue #96) ----
+
+        modelBuilder.Entity<TeacherAvailabilitySlot>()
+            .HasOne(s => s.Teacher)
+            .WithMany()
+            .HasForeignKey(s => s.TeacherId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Öğrencinin "şu öğretmenin gelecekteki boş slotları" sorgusu bu index'i kullanır.
+        modelBuilder.Entity<TeacherAvailabilitySlot>()
+            .HasIndex(s => new { s.TeacherId, s.Date, s.StartTime });
+
+        // Aynı öğretmen için birebir aynı aralık iki kez tanımlanamaz.
+        modelBuilder.Entity<TeacherAvailabilitySlot>()
+            .HasIndex(s => new { s.TeacherId, s.Date, s.StartTime, s.EndTime })
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
+
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.AvailabilitySlot)
+            .WithMany(s => s.Bookings)
+            .HasForeignKey(b => b.AvailabilitySlotId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.Teacher)
+            .WithMany()
+            .HasForeignKey(b => b.TeacherId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.Student)
+            .WithMany()
+            .HasForeignKey(b => b.StudentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Çakışma kontrolünün DB dayanağı: bir slotta yalnızca tek aktif (Pending=0 / Approved=1)
+        // booking olabilir. Rejected (2) ve soft-delete edilmiş satırlar index dışıdır.
+        modelBuilder.Entity<Booking>()
+            .HasIndex(b => b.AvailabilitySlotId)
+            .IsUnique()
+            .HasFilter("\"Status\" IN (0, 1) AND NOT \"IsDeleted\"");
+
+        modelBuilder.Entity<Booking>()
+            .HasIndex(b => new { b.TeacherId, b.Status });
+
+        modelBuilder.Entity<Booking>()
+            .HasIndex(b => new { b.StudentId, b.Status });
 
         // Pratik oturumu (issue #62)
         modelBuilder.Entity<PracticeSession>()

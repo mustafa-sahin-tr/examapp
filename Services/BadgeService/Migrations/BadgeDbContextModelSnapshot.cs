@@ -111,6 +111,9 @@ namespace BadgeService.Migrations
                     b.Property<int?>("SourceAccessRequestId")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("SourceBookingId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SourceReminderId")
                         .HasColumnType("integer");
 

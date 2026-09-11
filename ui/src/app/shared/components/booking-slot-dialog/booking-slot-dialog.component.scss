@@ -1,0 +1,61 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.bsd__content {
+  min-width: 18rem;
+  max-height: 60vh;
+}
+
+.bsd__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  opacity: 0.85;
+
+  &--error {
+    color: var(--ms-danger-background);
+  }
+}
+
+.bsd__empty-icon {
+  font-size: 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  opacity: 0.5;
+}
+
+.bsd__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bsd__group-day {
+  margin: 0 0 0.4rem;
+  font-family: var(--mainFontFamily);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.bsd__slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.bsd__slot {
+  min-width: 9rem;
+}
+
+.bsd__error {
+  margin: 1rem 0 0;
+  color: var(--ms-danger-background);
+  font-size: 0.875rem;
+}

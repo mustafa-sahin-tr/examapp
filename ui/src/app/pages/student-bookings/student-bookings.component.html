@@ -1,0 +1,68 @@
+<section class="sbk">
+  <header class="sbk__head">
+    <div>
+      <h1>Ders Randevularım</h1>
+      <p>Öğretmenlerden talep ettiğin özel ders randevuları ve durumları.</p>
+    </div>
+    <div class="sbk__head-actions">
+      <mat-button-toggle-group [value]="filter()" (change)="setFilter($event.value)" aria-label="Randevu filtresi">
+        <mat-button-toggle value="active">Aktif</mat-button-toggle>
+        <mat-button-toggle value="all">Tümü</mat-button-toggle>
+      </mat-button-toggle-group>
+      <a mat-stroked-button routerLink="/tutors">
+        <mat-icon>person_search</mat-icon>
+        Öğretmen Ara
+      </a>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="sbk__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <span>Randevuların yükleniyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="sbk__state sbk__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="sbk__state">
+      <mat-icon class="sbk__empty-icon">event_note</mat-icon>
+      <span>Henüz bir ders randevun yok.</span>
+      <a mat-flat-button color="primary" routerLink="/tutors">Öğretmen ara</a>
+    </div>
+  } @else {
+    <ul class="sbk__list">
+      @for (row of rows(); track row.booking.id) {
+        <li class="sbk__row">
+          <div class="sbk__row-main">
+            <span class="sbk__row-teacher">
+              <mat-icon>cast_for_education</mat-icon>
+              {{ row.booking.teacherName || 'Öğretmen' }}
+            </span>
+            <span class="sbk__row-day">{{ row.day }}</span>
+            <span class="sbk__row-range">
+              <mat-icon>schedule</mat-icon>
+              {{ row.range }}
+            </span>
+            @if (row.booking.rejectionReason) {
+              <span class="sbk__row-reason">Ret gerekçesi: {{ row.booking.rejectionReason }}</span>
+            }
+          </div>
+
+          <span class="sbk__chip" [class]="row.statusClass">{{ row.statusLabel }}</span>
+
+          <a
+            mat-stroked-button
+            [routerLink]="['/tutors', row.booking.teacherId]"
+            aria-label="Öğretmen profiline git"
+          >
+            Profili gör
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</section>

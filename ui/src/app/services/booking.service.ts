@@ -9,6 +9,7 @@ import {
   BookingResult,
   CreateAvailabilitySlotRequest,
   CreateBookingRequest,
+  VideoSessionResult,
 } from '../models/booking.model';
 
 /** Liste uçlarının varsayılan sayfa boyutu — backend skip/take bekliyor. */
@@ -76,6 +77,16 @@ export class BookingService {
     return this.http.post<BookingResult>(`${this.baseUrl}/requests/${id}/reject`, {
       rejectionReason: rejectionReason?.trim() || null,
     });
+  }
+
+  // ---------------- Video görüşme (issue #97) ----------------
+
+  /**
+   * Onaylı bir randevu için görüşme odası oturumu üretir/alır (Teacher veya Student).
+   * 409 = randevu onaylı değil ya da katılım penceresi dışında; mesaj backend'den Türkçe gelir.
+   */
+  getVideoSession(bookingId: number): Observable<VideoSessionResult> {
+    return this.http.post<VideoSessionResult>(`${this.baseUrl}/requests/${bookingId}/video-session`, null);
   }
 
   /**

@@ -4,6 +4,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Services.StudentReset;
+using ExamApp.Api.Services.Video;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -131,6 +132,8 @@ builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetCalendarSer
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderDispatcher, ExamApp.Api.Services.Worksheets.WorksheetReminderDispatcher>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAccessRequestService, ExamApp.Api.Services.Worksheets.WorksheetAccessRequestService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamApp.Api.Services.Bookings.BookingService>();
+// Video görüşme (issue #97) — "Video" bölümünü bağlar, IVideoSessionProvider'ı kaydeder.
+builder.Services.AddVideoSessions(builder.Configuration);
 builder.Services.AddScoped<ExamApp.Api.Services.Practice.IPracticeSessionService, ExamApp.Api.Services.Practice.PracticeSessionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.LoginEvents.ILoginEventService, ExamApp.Api.Services.LoginEvents.LoginEventService>();
 builder.Services.AddScoped<IStudentService, StudentService>();

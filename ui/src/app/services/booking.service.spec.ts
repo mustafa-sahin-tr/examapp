@@ -8,6 +8,7 @@ import {
   CreateBookingRequest,
   AvailabilitySlot,
   Booking,
+  VideoSession,
 } from '../models/booking.model';
 
 describe('BookingService', () => {
@@ -348,6 +349,64 @@ describe('BookingService', () => {
       const httpReq = httpMock.expectOne(`${service['baseUrl']}/requests/${bookingId}/reject`);
       expect(httpReq.request.body).toEqual({ rejectionReason: 'reason' });
       httpReq.flush({ success: true });
+    });
+  });
+
+  describe('getVideoSession', () => {
+    it('getVideoSession_ValidId_SendsPostWithNull', () => {
+      const bookingId = 12;
+
+      service.getVideoSession(bookingId).subscribe();
+
+      const httpReq = httpMock.expectOne(`${service['baseUrl']}/requests/${bookingId}/video-session`);
+      expect(httpReq.request.method).toBe('POST');
+      expect(httpReq.request.body).toBeNull();
+      httpReq.flush({ success: true });
+    });
+
+    it('getVideoSession_ApiReturnsSuccess_IncludesSessionInResult', (done) => {
+      const bookingId = 12;
+      const mockSession: VideoSession = {
+        provider: 'Jitsi',
+        roomName: 'booking-12-a1b2c3d4e5f6',
+        domain: 'localhost:8000',
+        baseUrl: 'http://localhost:8000',
+        joinUrl: 'http://localhost:8000/booking-12-a1b2c3d4e5f6?jwt=token',
+        token: 'token',
+        expiresAt: new Date().toISOString(),
+        isModerator: true,
+      };
+
+      service.getVideoSession(bookingId).subscribe((result) => {
+        expect(result.success).toBeTrue();
+        expect(result.session).toEqual(mockSession);
+        done();
+      });
+
+      httpMock
+        .expectOne(`${service['baseUrl']}/requests/${bookingId}/video-session`)
+        .flush({ success: true, objectId: bookingId, session: mockSession });
+    });
+
+    it('getVideoSession_ApiReturns409OutsideJoinWindow_ErrorCarriesMessage', (done) => {
+      const bookingId = 12;
+
+      service.getVideoSession(bookingId).subscribe({
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(409);
+          expect(service.extractError(error, 'fallback')).toContain('katılabilirsiniz');
+          done();
+        },
+      });
+
+      httpMock.expectOne(`${service['baseUrl']}/requests/${bookingId}/video-session`).flush(
+        {
+          success: false,
+          conflict: true,
+          message: 'Görüşmeye ders saatinden en erken 15 dakika önce katılabilirsiniz.',
+        },
+        { status: 409, statusText: 'Conflict' }
+      );
     });
   });
 

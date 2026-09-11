@@ -2,7 +2,7 @@
 name: test-engineer
 description: Backend (xUnit) ve frontend testleri yazar ve çalıştırır, çıktıdan sadece başarısız olanları raporlar. Test yazımı, kırık test veya regresyon araştırması gerektiğinde kullan.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: sonnet
+model: haiku
 color: cyan
 skills:
   - testcontainers

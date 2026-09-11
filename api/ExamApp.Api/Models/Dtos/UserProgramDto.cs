@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Models.Dtos
 {
@@ -51,5 +52,18 @@ namespace ExamApp.Api.Models.Dtos
         public DateTime EndDate { get; set; }
         public bool IsCompleted { get; set; }
         public DateTime? CompletedDate { get; set; }
+
+        // --- İçerik tipi (issue #141): öğrenci tarafı tipe göre render eder ---
+        public StudyItemContentType ContentType { get; set; }
+
+        // Link tipi — sadece ContentType == Link iken dolu
+        public string? Url { get; set; }
+        public StudyItemLinkPlatform? Platform { get; set; }
+
+        // BookPageRange tipi — sadece ContentType == BookPageRange iken dolu
+        public string? BookName { get; set; }
+        public string? BookTestName { get; set; }
+        public int? StartPage { get; set; }
+        public int? EndPage { get; set; }
     }
 }

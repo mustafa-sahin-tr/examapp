@@ -108,6 +108,12 @@ namespace ExamApp.Api.Services
                 .Include(up => up.StudyItemSchedules)
                 .ThenInclude(s => s.StudyItem)
                 .ThenInclude(p => p.Images)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
+                .ThenInclude(p => p.Book)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
+                .ThenInclude(p => p.BookTest)
                 .ToListAsync();
 
             return userPrograms.Select(MapToUserProgramDto).ToList();
@@ -121,6 +127,12 @@ namespace ExamApp.Api.Services
                 .Include(up => up.StudyItemSchedules)
                 .ThenInclude(s => s.StudyItem)
                 .ThenInclude(p => p.Images)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
+                .ThenInclude(p => p.Book)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
+                .ThenInclude(p => p.BookTest)
                 .FirstOrDefaultAsync();
 
             return userProgram != null ? MapToUserProgramDto(userProgram) : null;
@@ -244,6 +256,12 @@ namespace ExamApp.Api.Services
                 .Include(up => up.StudyItemSchedules)
                 .ThenInclude(s => s.StudyItem)
                 .ThenInclude(p => p.Images)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
+                .ThenInclude(p => p.Book)
+                .Include(up => up.StudyItemSchedules)
+                .ThenInclude(s => s.StudyItem)
+                .ThenInclude(p => p.BookTest)
                 .FirstOrDefaultAsync(up => up.Id == userProgramId);
 
             return userProgram != null ? MapToUserProgramDto(userProgram) : null;
@@ -298,7 +316,14 @@ namespace ExamApp.Api.Services
                     StartDate = s.StartDate,
                     EndDate = s.EndDate,
                     IsCompleted = s.IsCompleted,
-                    CompletedDate = s.CompletedDate
+                    CompletedDate = s.CompletedDate,
+                    ContentType = s.StudyItem?.ContentType ?? StudyItemContentType.Image,
+                    Url = s.StudyItem?.Url,
+                    Platform = s.StudyItem?.Platform,
+                    BookName = s.StudyItem?.Book?.Name,
+                    BookTestName = s.StudyItem?.BookTest?.Name,
+                    StartPage = s.StudyItem?.StartPage,
+                    EndPage = s.StudyItem?.EndPage
                 }).ToList()
             };
         }

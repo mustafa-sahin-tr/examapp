@@ -1,0 +1,88 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+}
+
+.tutor-card {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  padding: 1rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--main-foreground-color);
+  color: var(--ms-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    border-color: var(--ms-action-border);
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ms-action-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+.tutor-card__avatar {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text);
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+}
+
+.tutor-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.tutor-card__name {
+  font-family: var(--mainFontFamily);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.tutor-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--ms-text-medium);
+}
+
+.tutor-card__rate {
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.tutor-card__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.tutor-card__bio {
+  font-size: 0.8125rem;
+  color: var(--ms-text-weak);
+  line-height: 1.4;
+}

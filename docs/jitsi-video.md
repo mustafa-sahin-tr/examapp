@@ -193,6 +193,34 @@ karşılığı `WithContainerNetworkAlias("meet.jitsi")` — bu extension method
 13.5.0'da var ve prosody container'ına eklendi, `jitsi-web`'den `meet.jitsi` prosody'ye
 çözülüyor.
 
+### HTTP-only yerel kurulumda XMPP websocket kapalı, BOSH göreli yol kullanıyor
+
+`jitsi-web`'in `/defaults/system-config.js` şablonu şunu yapıyor:
+`$PUBLIC_URL_DOMAIN := PUBLIC_URL | trimPrefix "https://"`, sonra bu değerin başına **sabit**
+`https://` (BOSH) / `wss://` (websocket) prefixi ekliyor — `BOSH_RELATIVE` set değilse. Bizim
+yerel `PUBLIC_URL`/`JITSI_PUBLIC_URL` değerimiz `http://localhost:8000` (HTTP), yani
+`trimPrefix "https://"` hiçbir şey kırpmıyor ve üretilen config şöyle kırık oluyordu:
+
+```
+config.bosh = 'https://http://localhost:8000/' + subdir + 'http-bind';
+config.websocket = 'wss://http://localhost:8000/' + subdir + 'xmpp-websocket';
+```
+
+Bu, canlı bir Aspire ortamında (`docker ps` + `/config/config.js` içeriği) doğrulandı. Çözüm
+(hem `AppHost/AppHost.cs` hem `docker-compose.yml`'de aynı):
+
+- `BOSH_RELATIVE=1` — şablonun `config.bosh` dalında göreli bir seçenek var
+  (`config.bosh = '/' + subdir + 'http-bind'`), bu tarayıcının kendi origin'ini (`http://localhost:8000`)
+  kullanır ve HTTP'de çalışır.
+- `ENABLE_XMPP_WEBSOCKET=0` — websocket için eşdeğer bir göreli seçenek **yok**; şablon her
+  zaman `wss://` sabitliyor. HTTP-only yerelde websocket'i kapatıp XMPP trafiğini BOSH'a
+  bırakıyoruz.
+
+Gerçek bir HTTPS deployment'a (LAN/prod, `DISABLE_HTTPS=0` + gerçek sertifika) geçildiğinde bu
+kısıtlama ortadan kalkar — `PUBLIC_URL` `https://` ile başlayınca `trimPrefix` doğru çalışır ve
+`ENABLE_XMPP_WEBSOCKET=1`'e geri dönülebilir (BOSH_RELATIVE de kalabilir, göreli yol HTTPS'te de
+çalışır).
+
 ### Portlar ve host binding
 
 - `jitsi-web`: `WithHttpEndpoint(port: 8000, targetPort: 80)`. **Fark:** docker-compose
@@ -201,8 +229,14 @@ karşılığı `WithContainerNetworkAlias("meet.jitsi")` — bu extension method
   arayüzlerde (`0.0.0.0`) açılıyor. LAN'dan erişim compose'a göre daha geniş — Aspire ile
   çalışırken bunu bilerek kabul edin (yerel dev makinesinde risk düşük, ama firewall/VPN
   senaryolarında compose'dan daha geniş yüzey).
-- `jvb`: `WithEndpoint(port: 10000, targetPort: 10000, protocol: ProtocolType.Udp)` —
-  compose'un `10000:10000/udp` eşleniği.
+- `jvb`: `WithEndpoint(port: 10000, targetPort: 10000, protocol: ProtocolType.Udp, isProxied: false)` —
+  compose'un `10000:10000/udp` eşleniği. **`isProxied: false` zorunlu:** olmadan Aspire/DCP bu
+  UDP endpoint'i kendi proxy'siyle rastgele bir host portuna yönlendiriyor (`docker ps`'te
+  `127.0.0.1:49666->10000/udp` gibi görülür), ama `JVB_ADVERTISE_IPS=127.0.0.1` +
+  `JVB_PORT=10000` istemciye hep `10000`'i söylüyor — medya gerçekte hiç ulaşmayan bir porta
+  yönlendirilmiş oluyor, bağlantı sessizce başarısız oluyor. `isProxied: false` ile Docker
+  `10000/udp`'yi doğrudan yayınlıyor (`exam-dotnet-api`'nin `WithHttpEndpoint(..., isProxied: false)`
+  deseniyle aynı gerekçe, bkz. `AppHost/AppHost.cs`).
 - `JVB_ADVERTISE_IPS=127.0.0.1`, `PUBLIC_URL=http://localhost:8000` — compose ile aynı,
   tek makine testi içindir (bkz. aşağıdaki "Tek makinede iki tarayıcıyla test").
 

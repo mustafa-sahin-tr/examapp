@@ -157,7 +157,13 @@ var jvb = builder.AddContainer("jvb", "jitsi/jvb", "stable-9584")
     // Matches docker-compose.yml's '10000:10000/udp' host port mapping —
     // media traffic, fixed rather than dynamically assigned since
     // JVB_ADVERTISE_IPS below tells clients exactly this port to connect to.
-    .WithEndpoint(port: 10000, targetPort: 10000, name: "media", protocol: System.Net.Sockets.ProtocolType.Udp)
+    // isProxied: false is required here too (same reasoning as the
+    // isProxied:false HTTP endpoints below): without it, DCP fronts this
+    // UDP endpoint with its own proxy on a random host port (observed via
+    // `docker ps` as e.g. 127.0.0.1:49666->10000/udp) instead of publishing
+    // 10000/udp directly, so JVB_ADVERTISE_IPS=127.0.0.1 + JVB_PORT=10000
+    // tells clients a port media never actually arrives on.
+    .WithEndpoint(port: 10000, targetPort: 10000, name: "media", protocol: System.Net.Sockets.ProtocolType.Udp, isProxied: false)
     .WithEnvironment("XMPP_AUTH_DOMAIN", "auth.meet.jitsi")
     .WithEnvironment("XMPP_INTERNAL_MUC_DOMAIN", "internal-muc.meet.jitsi")
     .WithEnvironment("XMPP_SERVER", "prosody")
@@ -193,7 +199,19 @@ var jitsiWeb = builder.AddContainer("jitsi-web", "jitsi/web", "stable-9584")
     .WithEnvironment("TZ", "Europe/Istanbul")
     .WithEnvironment("DISABLE_HTTPS", "1")
     .WithEnvironment("ENABLE_HTTP_REDIRECT", "0")
-    .WithEnvironment("ENABLE_XMPP_WEBSOCKET", "1")
+    // ENABLE_XMPP_WEBSOCKET=0 + BOSH_RELATIVE=1: jitsi-web's
+    // /defaults/system-config.js template does
+    // `$PUBLIC_URL_DOMAIN := PUBLIC_URL | trimPrefix "https://"` and then
+    // hardcodes a `wss://` / `https://` prefix in front of it. With our
+    // HTTP-only local PUBLIC_URL (http://localhost:8000) that produces the
+    // broken `wss://http://localhost:8000/...xmpp-websocket` — websocket
+    // connections silently fail. BOSH_RELATIVE=1 makes the template emit a
+    // relative `/http-bind` path instead (browser's own origin), which works
+    // for HTTP; there's no equivalent relative option for the websocket
+    // path, so we disable it instead and let BOSH carry XMPP traffic.
+    // Revisit both once this is served over HTTPS in a real deployment.
+    .WithEnvironment("ENABLE_XMPP_WEBSOCKET", "0")
+    .WithEnvironment("BOSH_RELATIVE", "1")
     .WithEnvironment("ENABLE_RECORDING", "0")
     .WithEnvironment("ENABLE_LETSENCRYPT", "0")
     .WithEnvironment("ENABLE_AUTH", "1")

@@ -1,7 +1,8 @@
-# Jitsi self-host (docker-compose)
+# Jitsi self-host (docker-compose + Aspire)
 
-İlgili issue: #97. Kapsam: sadece `docker-compose.yml`. Aspire AppHost entegrasyonu
-kasıtlı olarak **kapsam dışı** — ayrı bir issue olacak (bkz. Aşağıdaki "Aspire'a taşıma TODO").
+İlgili issue: #97. Jitsi 4 container'ı hem `docker-compose.yml`'de hem de `AppHost/AppHost.cs`'de
+tanımlı — iki yol paralel yaşıyor, biri diğerini bozmuyor (bkz. `aspire-migration` skill'inin
+"Kural" bölümü). Aspire tarafının detayları için aşağıdaki "Aspire ile çalıştırma" bölümüne bakın.
 
 ## Ne eklendi
 
@@ -130,17 +131,126 @@ uygulanmaz (CORS sadece fetch/XHR için geçerli). Ancak Angular tarafında CSP
 direktiflerine `http://localhost:8000` eklenmesi gerekebilir — bu repoda şu an
 aktif bir CSP header tespit edilmedi, ama ileride eklenirse bu noktayı unutma.
 
-## Aspire'a taşıma TODO (ayrı issue)
+## Aspire ile çalıştırma
 
-Bu servisler şu an sadece docker-compose'da. Aspire AppHost'a taşırken:
-- `aspire-migration` skill'indeki iki bilinen tuzağı (Ocelot service discovery,
-  Keycloak issuer uyuşmazlığı) Jitsi için de kontrol et — özellikle `PUBLIC_URL`
-  ve JWT `sub`/issuer değerlerinin Aspire'ın dinamik adresleriyle çakışıp
-  çakışmadığına bak.
-- Jitsi 4 container'ı Aspire'da `AddContainer` ile eklenip `WithReference` yerine
-  açık env var mapping'i tercih edilmeli (bkz. `aspire-configuration` skill —
-  "Explicit configuration only" prensibi).
-- Bu docker-compose yolu, Aspire tarafı doğrulanana kadar **silinmemeli**.
+Jitsi'nin 4 container'ı (`prosody`, `jicofo`, `jvb`, `jitsi-web`) `AppHost/AppHost.cs`'de
+docker-compose ile birebir aynı image tag'i (`stable-9584`), env değişkenleri ve portlarla
+tanımlı. `aspire-configuration` skill'inin "Explicit configuration only" prensibine uyularak
+her değer açık `WithEnvironment(...)` çağrısıyla eşleniyor; `WithReference` kullanılmıyor
+(Jitsi container'ları Aspire'ın connection-string/service-discovery modeline uymuyor).
+
+### Parametreler — nereden geliyor
+
+AppHost'ta `builder.AddParameter(...)` ile 6 parametre tanımlı:
+
+| Parametre | Secret mi? | Kaynak |
+|---|---|---|
+| `jitsi-jwt-app-id` | Hayır | `AppHost/appsettings.json` → `Parameters` (`"examapp"`, `.env.example`'daki `JITSI_JWT_APP_ID` ile aynı) |
+| `jitsi-jwt-app-secret` | Evet | `AppHost/appsettings.json` → `Parameters` (dev-only placeholder, `.env.example`'daki `JITSI_JWT_APP_SECRET` ile aynı değer) |
+| `jitsi-room-secret` | Evet | aynı şekilde, `.env.example`'daki `JITSI_ROOM_SECRET` ile aynı değer |
+| `jicofo-auth-password` | Evet | aynı şekilde, `.env.example`'daki `JICOFO_AUTH_PASSWORD` ile aynı değer |
+| `jvb-auth-password` | Evet | aynı şekilde, `.env.example`'daki `JVB_AUTH_PASSWORD` ile aynı değer |
+| `jicofo-component-secret` | Evet | aynı şekilde, `.env.example`'daki `JICOFO_COMPONENT_SECRET` ile aynı değer |
+
+Bu proje zaten `postgres-password`, `rabbitmq-password`, `keycloak-admin-password` gibi
+`secret: true` parametreleri de **committed** `AppHost/appsettings.json`'a dev-only
+placeholder değerlerle yazma konvansiyonunu kullanıyor (production'a asla taşınmaz, sadece
+yerel Aspire dev ortamı için) — Jitsi parametreleri de aynı konvansiyona uyuyor, tutarlılık
+için ayrı bir `appsettings.Development.json`'a bölünmedi.
+
+`.claude/hooks/secret-guard.sh` (PreToolUse) bu değerlerin appsettings.json'a yazılmasını
+**bloklamadı** — hook'un placeholder muafiyet listesi (`changeme`, case-insensitive) bu
+değerlerdeki `ChangeMe`'yi tanıdı. Eğer ileride farklı bir placeholder biçimiyle (örn.
+`changeme` geçmeyen bir string) hook engellerse, alternatif:
+
+```bash
+cd AppHost
+dotnet user-secrets set "Parameters:jitsi-jwt-app-secret" "<deger>"
+dotnet user-secrets set "Parameters:jitsi-room-secret" "<deger>"
+dotnet user-secrets set "Parameters:jicofo-auth-password" "<deger>"
+dotnet user-secrets set "Parameters:jvb-auth-password" "<deger>"
+dotnet user-secrets set "Parameters:jicofo-component-secret" "<deger>"
+```
+
+(`AppHost.csproj`'da `UserSecretsId` zaten tanımlı.) user-secrets kullanılırsa
+`AppHost/appsettings.json`'a o anahtarları **eklemeyin** — Aspire, `Parameters` config
+kaynaklarını (appsettings → appsettings.Development → user-secrets → env var) sırayla
+okur, en son kazanır.
+
+### Container'lar arası adresleme
+
+Aspire, aynı container network'teki container resource'ları varsayılan olarak resource
+adıyla çözer (docker-compose'un servis adı DNS'ine denk gelir) — bu yüzden `jicofo`/`jvb`
+üzerinde `XMPP_SERVER=prosody` literal string olarak duruyor, ekstra bir şey gerekmiyor.
+
+`meet.jitsi` (XMPP virtual host, `XMPP_DOMAIN`) sabit kalıyor — bu bir DNS adı değil,
+Prosody'nin sanal domain adı. Ancak docker-compose'da prosody'ye `networks.mynetwork.aliases:
+[meet.jitsi]` network alias'ı verilmişti, çünkü `jitsi-web`'in nginx şablonu
+`/xmpp-websocket` proxy_pass hedefini `$XMPP_SERVER`'dan alıyor ve bu değişken jitsi-web
+container'ında **set edilmemiş** — image'ın kendi script'i `XMPP_SERVER` boşsa `XMPP_DOMAIN`'e
+düşüyor, yani nginx gerçekten `meet.jitsi`'yi DNS ile çözmeye çalışıyor. Aspire'da bunun
+karşılığı `WithContainerNetworkAlias("meet.jitsi")` — bu extension method mevcut Aspire.Hosting
+13.5.0'da var ve prosody container'ına eklendi, `jitsi-web`'den `meet.jitsi` prosody'ye
+çözülüyor.
+
+### Portlar ve host binding
+
+- `jitsi-web`: `WithHttpEndpoint(port: 8000, targetPort: 80)`. **Fark:** docker-compose
+  `127.0.0.1:8000:80` ile sadece loopback'e bind ediyordu; Aspire/DCP'nin container port
+  publish mekanizmasında bind-address seçeneği yok, bu yüzden Aspire tarafında `8000` tüm
+  arayüzlerde (`0.0.0.0`) açılıyor. LAN'dan erişim compose'a göre daha geniş — Aspire ile
+  çalışırken bunu bilerek kabul edin (yerel dev makinesinde risk düşük, ama firewall/VPN
+  senaryolarında compose'dan daha geniş yüzey).
+- `jvb`: `WithEndpoint(port: 10000, targetPort: 10000, protocol: ProtocolType.Udp)` —
+  compose'un `10000:10000/udp` eşleniği.
+- `JVB_ADVERTISE_IPS=127.0.0.1`, `PUBLIC_URL=http://localhost:8000` — compose ile aynı,
+  tek makine testi içindir (bkz. aşağıdaki "Tek makinede iki tarayıcıyla test").
+
+### exam-dotnet-api wiring
+
+`Video__Jitsi__PublicBaseUrl=http://localhost:8000` (literal — jitsi-web server-side
+resolve edilmiyor, sadece token'ın içine/response'a konan bir URL), `Video__Jitsi__AppId`,
+`Video__Jitsi__AppSecret`, `Video__Jitsi__RoomSecret` parametrelerden geliyor.
+
+**`WaitFor(jitsiWeb)` kasıtlı olarak yok.** `exam-dotnet-api` Jitsi'ye hiçbir zaman HTTP
+çağrısı yapmıyor — `JitsiVideoSessionProvider` sadece HS256 JWT imzalıyor (bkz.
+`api/ExamApp.Api/Services/Video/JitsiVideoSessionProvider.cs`). API, Jitsi container'ları
+henüz ayağa kalkmadan da token üretebilir; üretilen token sadece jitsi-web/prosody hazır
+olana kadar kullanılamaz. `WaitFor` eklemek gereksiz bir başlatma bağımlılığı yaratırdı.
+
+### Named volume'lar
+
+`examapp-jitsi-prosody-config`, `examapp-jitsi-prosody-plugins-custom`,
+`examapp-jitsi-jicofo`, `examapp-jitsi-jvb`, `examapp-jitsi-web` — AppHost'un
+postgres/redis/minio için kullandığı `WithVolume("examapp-...", <container-path>)`
+deseniyle aynı; docker-compose'un `./jitsi-data/...` bind mount'larının Aspire
+karşılığı (host-relative path yerine named volume, dev makineleri arasında taşınabilir).
+
+### Tek makine testi (Aspire)
+
+```bash
+cd AppHost
+dotnet run
+```
+
+Dashboard'dan `prosody`/`jicofo`/`jvb`/`jitsi-web` container'larının `Running`/healthy
+olduğunu doğrulayın, sonra `http://localhost:8000`'i iki farklı tarayıcı/pencereden açıp
+"Tek makinede iki tarayıcıyla test" bölümündeki adımları izleyin — moderatör yetkisi
+doğrulaması dahil, aynı doğrulama adımları docker-compose ve Aspire için geçerli.
+
+### Doğrulanmadı / riskler (Aspire'a özgü)
+
+- Bu AppHost değişikliği derlendi (`dotnet build AppHost`) ama **hiç çalıştırılmadı** —
+  Docker daemon bu görev sırasında kullanılamadı. İlk `dotnet run` sonrası mutlaka:
+  prosody/jicofo/jvb/jitsi-web'in hepsinin ayağa kalktığını, `WithContainerNetworkAlias`
+  ile `meet.jitsi`'nin gerçekten prosody'ye çözüldüğünü (jitsi-web loglarında XMPP
+  bağlantı hatası olmamalı) ve exam-dotnet-api'nin ürettiği token'ın jitsi-web'de kabul
+  edildiğini doğrulayın.
+- `WithContainerNetworkAlias` Aspire.Hosting 13.5.0'da mevcut (binary'de doğrulandı) ama
+  bu proje için ilk kullanımı — compose'daki `networks.aliases` davranışıyla birebir aynı
+  şekilde çalıştığı varsayımı test edilmedi.
+- docker-compose yolu bu değişiklikle **bozulmadı** — `docker-compose.yml` dokunulmadan
+  kaldı, iki yol paralel duruyor (`aspire-migration` skill kuralı).
 
 ## `.env` zorunlu değişkenler
 

@@ -1,0 +1,83 @@
+<section class="tpp">
+  <button mat-stroked-button type="button" class="tpp__back" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon> Geri
+  </button>
+
+  @if (loading()) {
+    <div class="tpp__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>Profil yükleniyor...</span>
+    </div>
+  } @else if (notFound()) {
+    <div class="tpp__state">
+      <mat-icon class="tpp__state-icon">person_off</mat-icon>
+      <span>Öğretmen bulunamadı.</span>
+    </div>
+  } @else if (error()) {
+    <div class="tpp__state tpp__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+    </div>
+  } @else {
+    <!-- `as` yalnızca primary @if bloğunda geçerli; profil null-check'i bu iç blokta yapılır. -->
+    @if (profile(); as tutor) {
+    <article class="tpp__card">
+      <header class="tpp__header">
+        @if (tutor.avatar) {
+          <img class="tpp__avatar-img" [src]="tutor.avatar" [alt]="tutor.fullName" />
+        } @else {
+          <span class="tpp__avatar" aria-hidden="true">{{ initials() }}</span>
+        }
+        <div>
+          <h2 class="tpp__name">{{ tutor.fullName }}</h2>
+          <p class="tpp__rate">
+            @if (tutor.hourlyRate !== null) {
+              {{ tutor.hourlyRate }} ₺ / saat
+            } @else {
+              Ücret belirtilmemiş
+            }
+          </p>
+        </div>
+      </header>
+
+      <section class="tpp__section">
+        <h3>Verdiği dersler</h3>
+        @if (tutor.subjects.length) {
+          <mat-chip-set aria-label="Verdiği dersler">
+            @for (subject of tutor.subjects; track subject.subjectId) {
+              <mat-chip disabled>{{ subject.name }}</mat-chip>
+            }
+          </mat-chip-set>
+        } @else {
+          <p class="tpp__muted">Ders bilgisi girilmemiş.</p>
+        }
+      </section>
+
+      <section class="tpp__section">
+        <h3>Ders şekli</h3>
+        <div class="tpp__modes">
+          @if (tutor.teachesOnline) {
+            <span class="tpp__mode"><mat-icon>videocam</mat-icon> Online</span>
+          }
+          @if (tutor.teachesInPerson) {
+            <span class="tpp__mode"><mat-icon>place</mat-icon> Yüz yüze</span>
+          }
+          @if (!tutor.teachesOnline && !tutor.teachesInPerson) {
+            <span class="tpp__muted">Belirtilmemiş.</span>
+          }
+        </div>
+      </section>
+
+      <section class="tpp__section">
+        <h3>Tanıtım</h3>
+        @if (tutor.bio) {
+          <p class="tpp__bio">{{ tutor.bio }}</p>
+        } @else {
+          <p class="tpp__muted">Öğretmen henüz bir tanıtım yazısı eklememiş.</p>
+        }
+      </section>
+    </article>
+    }
+  }
+</section>

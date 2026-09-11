@@ -1,0 +1,106 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.ts {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.ts__head {
+  margin-bottom: 1.25rem;
+
+  h2 {
+    margin: 0 0 0.25rem;
+    font-family: var(--mainFontFamily);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--ms-text-medium);
+  }
+}
+
+.ts__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--main-foreground-color);
+}
+
+.ts__filter {
+  flex: 1 1 200px;
+  min-width: 160px;
+
+  &--narrow {
+    flex: 0 1 150px;
+  }
+}
+
+.ts__hint-error {
+  color: var(--ms-danger-text-medium);
+}
+
+.ts__modes {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.75rem;
+}
+
+.ts__filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}
+
+.ts__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .ts__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ts__filter,
+  .ts__filter--narrow {
+    flex: 1 1 100%;
+  }
+}
+
+.ts__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--ms-text-medium);
+
+  &--error {
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+.ts__state-icon {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ms-text-weak);
+}

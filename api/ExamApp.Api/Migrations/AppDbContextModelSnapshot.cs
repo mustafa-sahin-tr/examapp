@@ -1807,6 +1807,10 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
 
+                    b.Property<string>("Bio")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -1818,6 +1822,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("DeleteUserId")
                         .HasColumnType("integer");
+
+                    b.Property<decimal?>("HourlyRate")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -1837,6 +1844,12 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("SchoolName")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("TeachesInPerson")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TeachesOnline")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ThemeCustomConfig")
                         .HasColumnType("text");
@@ -1858,7 +1871,33 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SchoolId");
 
+                    b.HasIndex("IsIndependentTutor", "ApprovalStatus");
+
                     b.ToTable("Teachers");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TeacherSubject", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TeacherId", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("TeacherSubjects");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
@@ -3280,6 +3319,25 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("School");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.TeacherSubject", b =>
+                {
+                    b.HasOne("Subject", "Subject")
+                        .WithMany("TeacherSubjects")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Teacher", "Teacher")
+                        .WithMany("TeacherSubjects")
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.UserProgram", "UserProgram")
@@ -3639,6 +3697,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Images");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
+                {
+                    b.Navigation("TeacherSubjects");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
                 {
                     b.Navigation("Schedules");
@@ -3661,6 +3724,8 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("GradeSubjects");
 
                     b.Navigation("Questions");
+
+                    b.Navigation("TeacherSubjects");
                 });
 
             modelBuilder.Entity("Topic", b =>

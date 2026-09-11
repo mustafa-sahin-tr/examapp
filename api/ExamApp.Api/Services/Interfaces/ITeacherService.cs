@@ -1,6 +1,7 @@
 using System;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Tutors;
 
 namespace ExamApp.Api.Services.Interfaces;
 
@@ -29,4 +30,25 @@ public interface ITeacherService
     /// süresi geçmiş) öğrenci-worksheet çiftleri. Sadece en az bir bayrağı true olan satırlar döner; boşsa [].
     /// </summary>
     Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(int teacherId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #95: authenticated kullanıcının kendi tutor profili. Teacher kaydı yoksa NotFound,
+    /// IsIndependentTutor=false ise Forbidden bayrağıyla döner.
+    /// </summary>
+    Task<TutorProfileResultDto> GetTutorProfileAsync(int userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #95: sadece IsIndependentTutor=true olan kendi kaydını günceller (onay durumu fark etmez).
+    /// En az 1 ders, en az 1 mod (online/yüz yüze) ve HourlyRate &gt; 0 zorunlu; aksi halde Success=false.
+    /// </summary>
+    Task<TutorProfileResultDto> UpdateTutorProfileAsync(int userId, UpdateTutorProfileDto dto, CancellationToken ct = default);
+
+    /// <summary>Issue #95: öğrenci için onaylı bağımsız öğretmen araması. Sadece Approved kayıtlar döner.</summary>
+    Task<List<TeacherSearchResultDto>> SearchTutorsAsync(TeacherSearchFilterDto filter, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #95: tekil öğretmen public profili. Kayıt yoksa, bağımsız değilse ya da Approved değilse
+    /// hepsi null döner (var/yok ayrımı sızdırılmaz).
+    /// </summary>
+    Task<TeacherPublicProfileDto?> GetPublicProfileAsync(int teacherId, CancellationToken ct = default);
 }

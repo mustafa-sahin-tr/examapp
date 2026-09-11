@@ -1,0 +1,132 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.tpp {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.tpp__back {
+  margin-bottom: 1rem;
+}
+
+.tpp__card {
+  border: 1px solid var(--ms-border);
+  border-radius: 12px;
+  background: var(--main-foreground-color);
+  padding: 1.25rem;
+}
+
+.tpp__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.tpp__avatar,
+.tpp__avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.tpp__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ms-action-background);
+  color: var(--ms-action-text);
+  font-family: var(--mainFontFamily);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.tpp__avatar-img {
+  object-fit: cover;
+}
+
+.tpp__name {
+  margin: 0 0 0.25rem;
+  font-family: var(--mainFontFamily);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.tpp__rate {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ms-action-text-medium);
+}
+
+.tpp__section {
+  margin-bottom: 1.25rem;
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-family: var(--mainFontFamily);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ms-text-medium);
+  }
+}
+
+.tpp__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.tpp__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  mat-icon {
+    font-size: 1.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+}
+
+.tpp__bio {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.tpp__muted {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ms-text-weak);
+}
+
+.tpp__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--ms-text-medium);
+
+  &--error {
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+.tpp__state-icon {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ms-text-weak);
+}

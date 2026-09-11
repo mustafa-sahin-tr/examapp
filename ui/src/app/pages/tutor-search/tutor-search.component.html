@@ -1,0 +1,67 @@
+<section class="ts">
+  <header class="ts__head">
+    <h2>Özel Ders Öğretmeni Ara</h2>
+    <p>Branşa, ücrete ve ders şekline göre onaylı bağımsız öğretmenleri listeleyin.</p>
+  </header>
+
+  <form class="ts__filters" [formGroup]="filterForm" (ngSubmit)="search()">
+    <mat-form-field appearance="outline" class="ts__filter">
+      <mat-label>Ders</mat-label>
+      <mat-select formControlName="subjectId">
+        <mat-option [value]="null">Tümü</mat-option>
+        @for (subject of subjects(); track subject.id) {
+          <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+        }
+      </mat-select>
+      @if (subjectsError()) {
+        <mat-hint class="ts__hint-error">{{ subjectsError() }}</mat-hint>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="ts__filter ts__filter--narrow">
+      <mat-label>Min. ücret</mat-label>
+      <input matInput type="number" min="0" formControlName="minPrice" />
+      <span matTextSuffix>₺</span>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="ts__filter ts__filter--narrow">
+      <mat-label>Maks. ücret</mat-label>
+      <input matInput type="number" min="0" formControlName="maxPrice" />
+      <span matTextSuffix>₺</span>
+    </mat-form-field>
+
+    <div class="ts__modes">
+      <mat-checkbox formControlName="online">Online</mat-checkbox>
+      <mat-checkbox formControlName="inPerson">Yüz yüze</mat-checkbox>
+    </div>
+
+    <div class="ts__filter-actions">
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Filtrele</button>
+      <button mat-stroked-button type="button" (click)="resetFilters()" [disabled]="loading()">Temizle</button>
+    </div>
+  </form>
+
+  @if (loading()) {
+    <div class="ts__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>Öğretmenler aranıyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="ts__state ts__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="search()">Tekrar dene</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="ts__state">
+      <mat-icon class="ts__state-icon">person_search</mat-icon>
+      <span>Bu filtrelere uygun öğretmen bulunamadı</span>
+    </div>
+  } @else {
+    <div class="ts__grid">
+      @for (tutor of results(); track tutor.teacherId) {
+        <app-tutor-card [tutor]="tutor" (selected)="openProfile($event)" />
+      }
+    </div>
+  }
+</section>

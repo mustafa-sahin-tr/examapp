@@ -64,6 +64,7 @@ public class AppDbContext : DbContext
     public DbSet<Grade> Grades { get; set; }
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<GradeSubject> GradeSubjects { get; set; }
+    public DbSet<TeacherSubject> TeacherSubjects { get; set; } // Bağımsız öğretmen ↔ ders (issue #95)
     public DbSet<Topic> Topics { get; set; }
     public DbSet<SubTopic> SubTopics { get; set; }
     public DbSet<ClassifierCacheConfig> ClassifierCacheConfigs { get; set; }
@@ -219,6 +220,32 @@ public class AppDbContext : DbContext
             .HasOne(gs => gs.Subject)
             .WithMany(s => s.GradeSubjects)
             .HasForeignKey(gs => gs.SubjectId);
+
+        // 📌 Teacher - Subject İlişkisi (issue #95: bağımsız öğretmenin verdiği dersler)
+        modelBuilder.Entity<TeacherSubject>()
+            .HasOne(ts => ts.Teacher)
+            .WithMany(t => t.TeacherSubjects)
+            .HasForeignKey(ts => ts.TeacherId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TeacherSubject>()
+            .HasOne(ts => ts.Subject)
+            .WithMany(s => s.TeacherSubjects)
+            .HasForeignKey(ts => ts.SubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TeacherSubject>()
+            .HasIndex(ts => new { ts.TeacherId, ts.SubjectId })
+            .IsUnique();
+
+        // TeacherSubject BaseEntity değil (hard delete); soft-delete edilmiş Teacher/Subject'e bağlı
+        // satırlar görünmesin diye uçlardaki global filtrelerle eşleşen filtre tanımlanır (EF 10622 uyarısı).
+        modelBuilder.Entity<TeacherSubject>()
+            .HasQueryFilter(ts => !ts.Teacher.IsDeleted && !ts.Subject.IsDeleted);
+
+        // Arama sorgusu (IsIndependentTutor && ApprovalStatus == Approved) için bileşik index.
+        modelBuilder.Entity<Teacher>()
+            .HasIndex(t => new { t.IsIndependentTutor, t.ApprovalStatus });
 
 
         modelBuilder.Entity<StudentPoint>()

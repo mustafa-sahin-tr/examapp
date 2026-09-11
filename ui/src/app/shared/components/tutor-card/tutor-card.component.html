@@ -1,0 +1,36 @@
+<button class="tutor-card" type="button" (click)="onSelect()">
+  <span class="tutor-card__avatar" aria-hidden="true">{{ initials() }}</span>
+
+  <span class="tutor-card__body">
+    <span class="tutor-card__name">{{ tutor().fullName }}</span>
+
+    @if (tutor().subjects.length) {
+      <mat-chip-set class="tutor-card__subjects" aria-label="Verdiği dersler">
+        @for (subject of tutor().subjects; track subject.subjectId) {
+          <mat-chip disabled>{{ subject.name }}</mat-chip>
+        }
+      </mat-chip-set>
+    }
+
+    <span class="tutor-card__meta">
+      <span class="tutor-card__rate">
+        @if (tutor().hourlyRate !== null) {
+          {{ tutor().hourlyRate }} ₺ / saat
+        } @else {
+          Ücret belirtilmemiş
+        }
+      </span>
+
+      @if (tutor().teachesOnline) {
+        <span class="tutor-card__mode"><mat-icon>videocam</mat-icon> Online</span>
+      }
+      @if (tutor().teachesInPerson) {
+        <span class="tutor-card__mode"><mat-icon>place</mat-icon> Yüz yüze</span>
+      }
+    </span>
+
+    @if (tutor().bio) {
+      <span class="tutor-card__bio">{{ tutor().bio }}</span>
+    }
+  </span>
+</button>

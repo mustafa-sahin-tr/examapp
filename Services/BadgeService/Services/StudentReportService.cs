@@ -18,7 +18,7 @@ public class StudentReportService
         _context = context;
     }
 
-    public async Task<BadgeProgressReportDto?> GetBadgeProgressAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task<BadgeProgressReportDto> GetBadgeProgressAsync(int userId, CancellationToken cancellationToken = default)
     {
         var summary = await _context.StudentQuestionAggregates
             .AsNoTracking()
@@ -26,7 +26,7 @@ public class StudentReportService
 
         if (summary == null)
         {
-            return null;
+            return await BuildEmptyReportAsync(userId, cancellationToken);
         }
 
         var badgeProgress = await _context.StudentBadgeProgresses
@@ -99,6 +99,72 @@ public class StudentReportService
             },
             BadgeProgress = badgeProgress,
             SubjectBreakdown = subjects
+        };
+    }
+
+    private async Task<BadgeProgressReportDto> BuildEmptyReportAsync(int userId, CancellationToken cancellationToken)
+    {
+        var dailyActivities = await _context.StudentDailyActivities
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var activitySummary = ActivityAnalytics.Calculate(dailyActivities);
+
+        var definitions = await _context.BadgeDefinitions
+            .AsNoTracking()
+            .OrderBy(x => x.PathKey == null)
+            .ThenBy(x => x.PathName)
+            .ThenBy(x => x.PathOrder)
+            .ThenBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+
+        var badgeProgress = new List<BadgeProgressItemDto>(definitions.Count);
+        var emptySubjects = Array.Empty<StudentSubjectAggregate>();
+
+        foreach (var definition in definitions)
+        {
+            if (!BadgeRuleEvaluator.TryEvaluateRule(definition, null, emptySubjects, activitySummary, out _, out var targetValue))
+            {
+                continue;
+            }
+
+            badgeProgress.Add(new BadgeProgressItemDto
+            {
+                BadgeDefinitionId = definition.Id,
+                Name = definition.Name,
+                Description = definition.Description,
+                IconUrl = definition.IconUrl,
+                PathKey = definition.PathKey,
+                PathName = definition.PathName,
+                PathOrder = definition.PathOrder,
+                CurrentValue = 0,
+                TargetValue = targetValue,
+                IsCompleted = false,
+                EarnedDateUtc = null
+            });
+        }
+
+        return new BadgeProgressReportDto
+        {
+            Summary = new StudentSummaryDto
+            {
+                UserId = userId,
+                TotalQuestions = 0,
+                CorrectQuestions = 0,
+                AccuracyPercentage = 0,
+                TotalPoints = 0,
+                CurrentCorrectStreak = 0,
+                BestCorrectStreak = 0,
+                TotalTimeSeconds = 0,
+                TotalActiveDays = 0,
+                CurrentActivityStreak = 0,
+                BestActivityStreak = 0,
+                LastAnsweredAtUtc = null,
+                LastUpdatedUtc = DateTime.UtcNow
+            },
+            BadgeProgress = badgeProgress,
+            SubjectBreakdown = new List<SubjectAggregateDto>()
         };
     }
 

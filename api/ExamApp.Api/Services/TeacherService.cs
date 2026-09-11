@@ -47,16 +47,14 @@ public class TeacherService : ITeacherService
             : TeacherApprovalStatus.Approved;
 
         var existingTeacher = await _context.Teachers.FirstOrDefaultAsync(s => s.UserId == userId);
+        var isUpdate = existingTeacher != null;
 
-        // Teacher satırı + (gerekiyorsa) outbox mesajı tek transaction'da; retry-on-failure ile
-        // uyumlu olması için execution strategy içinde — WorksheetAccessRequestService ile aynı desen.
-        // teacher.Id identity DB'den üretildiği için iki SaveChanges tek transaction ile atomik kılınır.
         // Karar mantığı execution strategy lambda'sının DIŞINDA: retry'da lambda yeniden çalışır ve
         // tracked entity'nin IsIndependentTutor alanı ilk denemede zaten dto değerine set edilmiş
         // olacağından "değişti mi" karşılaştırması ikinci denemede yanlış sonuç verirdi.
-        var isUpdate = existingTeacher != null;
         Teacher teacher;
-        bool shouldPublishEvent;
+        var shouldPublishIndependentTeacherEvent = false;
+        var shouldPublishApplicationSubmittedEvent = false;
 
         if (existingTeacher != null)
         {
@@ -71,18 +69,19 @@ public class TeacherService : ITeacherService
 
             teacher.SchoolId = dto.SchoolId;
             teacher.IsIndependentTutor = dto.IsIndependentTutor;
+
             if (independenceChanged)
             {
                 teacher.ApprovalStatus = approvalStatus;
             }
 
-            // Event yalnızca okula bağlı → bağımsız geçişinde (yeniden Pending'e düşüş).
-            // Aynı değerle tekrar submit (idempotent) ya da bağımsız → okula bağlı geçişte atılmaz.
-            shouldPublishEvent = independenceChanged && dto.IsIndependentTutor;
+            // Yalnızca bağımsız geçişlerde aynı transaction içinde ilgili outbox event'leri yazılır.
+            // Aynı değerle tekrar submit (idempotent) ya da bağımsız → okula bağlı geçişte event atılmaz.
+            shouldPublishIndependentTeacherEvent = dto.IsIndependentTutor && independenceChanged;
+            shouldPublishApplicationSubmittedEvent = dto.IsIndependentTutor && independenceChanged && approvalStatus == TeacherApprovalStatus.Pending;
         }
         else
         {
-            // 🔹 Yeni öğretmen kaydı
             teacher = new Teacher
             {
                 UserId = userId,
@@ -91,8 +90,9 @@ public class TeacherService : ITeacherService
                 ApprovalStatus = approvalStatus
             };
 
-            // Event yalnızca bağımsız kayıtta (Pending) — okula bağlı kayıt admin onayı gerektirmez.
-            shouldPublishEvent = dto.IsIndependentTutor;
+            // Yeni bağımsız öğretmen kaydı hem yeni bağımsız kayıt event'ini hem Pending başvuru event'ini üretir.
+            shouldPublishIndependentTeacherEvent = dto.IsIndependentTutor;
+            shouldPublishApplicationSubmittedEvent = dto.IsIndependentTutor;
         }
 
         // Başvuran adı auth-api'den best-effort çözülür (issue #94 admin bildirimi için).
@@ -113,7 +113,7 @@ public class TeacherService : ITeacherService
 
             await _context.SaveChangesAsync();
 
-            if (shouldPublishEvent)
+            if (shouldPublishIndependentTeacherEvent)
             {
                 // Aynı Pending başvuru için iki ayrı tüketici ucu var:
                 //  - IndependentTeacherRegisteredEvent (issue #92, bilgi amaçlı log consumer'ı)
@@ -136,6 +136,18 @@ public class TeacherService : ITeacherService
                 await _context.SaveChangesAsync();
             }
 
+            }
+
+            if (shouldPublishApplicationSubmittedEvent)
+            {
+                await AddTeacherApplicationSubmittedOutboxAsync(teacher.Id, userId);
+            }
+
+            if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)
+            {
+                await _context.SaveChangesAsync();
+            }
+
             await tx.CommitAsync();
             teacherId = teacher.Id;
         });
@@ -143,7 +155,7 @@ public class TeacherService : ITeacherService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = isUpdate ? "Öğretmen başarıyla güncellendi.." : "Öğretmen başarıyla kaydedildi.",
+            Message = isUpdate ? "Öğretmen başarıyla güncellendi." : "Öğretmen başarıyla kaydedildi.",
             ObjectId = teacherId
         };
     }

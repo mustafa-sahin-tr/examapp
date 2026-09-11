@@ -17,7 +17,7 @@
       <div class="ms-badge-empty">Rozet bilgisi bulunamadı.</div>
     </ng-template>
   </ng-container>
-  <!-- <section class="ms-badge-paths" *ngIf="badgePaths().length">
+  <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
       <header class="ms-badge-path-header">
         <div class="ms-badge-path-info">
@@ -38,83 +38,74 @@
               </linearGradient>
             </defs>
 
-            <path
-              class="ms-badge-path-line"
-              [attr.d]="layout.pathD"
-              fill="none"
-              [attr.stroke]="'url(#' + layout.arrowId + '-gradient)'"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path>
+            <path class="ms-badge-path-line" [attr.d]="layout.pathD" fill="none"
+              [attr.stroke]="'url(#' + layout.arrowId + '-gradient)'" stroke-width="2.5" stroke-linecap="round"
+              stroke-linejoin="round"></path>
           </svg>
 
-  @if (isLoading()) {
-  <div class="ms-badge-status" role="status" aria-live="polite">
-    <mat-spinner diameter="36"></mat-spinner>
-    <span>Rozetler yükleniyor...</span>
-  </div>
-  } @else if (loadError()) {
-  <div class="ms-badge-status ms-badge-error" role="alert">
-    <span>Rozet bilgisi alınırken bir hata oluştu.</span>
-    <button mat-stroked-button type="button" (click)="reload()">Tekrar dene</button>
-  </div>
-  } @else {
-  @if (badgePaths().length) {
-  <section class="ms-badge-paths">
-    @for (path of badgePaths(); track path.key) {
-    <article class="ms-badge-path">
-      <app-badge-path [items]="path.badges" [maxPerRow]="6"></app-badge-path>
-    </article>
-    }
-  </section>
-  }
+          @if (isLoading()) {
+          <div class="ms-badge-status" role="status" aria-live="polite">
+            <mat-spinner diameter="36"></mat-spinner>
+            <span>Rozetler yükleniyor...</span>
+          </div>
+          } @else if (loadError()) {
+          <div class="ms-badge-status ms-badge-error" role="alert">
+            <span>Rozet bilgisi alınırken bir hata oluştu.</span>
+            <button mat-stroked-button type="button" (click)="reload()">Tekrar dene</button>
+          </div>
+          } @else {
+          @if (badgePaths().length) {
+          <section class="ms-badge-paths">
+            @for (path of badgePaths(); track path.key) {
+            <article class="ms-badge-path">
+              <app-badge-path [items]="path.badges" [maxPerRow]="6"></app-badge-path>
+            </article>
+            }
+          </section>
+          }
 
-  @if (standaloneBadges().length) {
-  <section class="ms-badge-standalone">
-    <h3 class="ms-badge-standalone-title">Tekil Rozetler</h3>
-    <div class="ms-badge-list">
-      @for (badge of standaloneBadges(); track badge.id) {
-      <div
-        class="ms-badge-item"
-        [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
-        [class.ms-badge-completed]="badge.isCompleted"
-        [class.ms-badge-pending]="!badge.isCompleted"
-        (click)="selectBadge(badge)"
-      >
-        <img [src]="badge.iconUrl" [alt]="badge.name" class="ms-badge-icon" />
-        <h3 class="ms-badge-name">{{ badge.name }}</h3>
-        <p class="ms-badge-time">{{ badge.completedLabel }} / {{ badge.totalLabel }}</p>
+          @if (standaloneBadges().length) {
+          <section class="ms-badge-standalone">
+            <h3 class="ms-badge-standalone-title">Tekil Rozetler</h3>
+            <div class="ms-badge-list">
+              @for (badge of standaloneBadges(); track badge.id) {
+              <div class="ms-badge-item" [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
+                [class.ms-badge-completed]="badge.isCompleted" [class.ms-badge-pending]="!badge.isCompleted"
+                (click)="selectBadge(badge)">
+                <img [src]="badge.iconUrl" [alt]="badge.name" class="ms-badge-icon" />
+                <h3 class="ms-badge-name">{{ badge.name }}</h3>
+                <p class="ms-badge-time">{{ badge.completedLabel }} / {{ badge.totalLabel }}</p>
 
-        @if (badge.id === selectedBadge()?.id) {
-        <div class="ms-badge-arrow"></div>
-        }
-      </div>
-      }
-    </div>
+                @if (badge.id === selectedBadge()?.id) {
+                <div class="ms-badge-arrow"></div>
+                }
+              </div>
+              }
+            </div>
 
-    @if (selectedBadge(); as selected) {
-    @if (!selected.pathKey) {
-    <div class="ms-badge-detail">
-      <div class="ms-badge-content" [class.ms-badge-content-completed]="selected.isCompleted">
-        <div class="ms-badge-content-top">
-          <h1 class="ms-badge-title">{{ selected.name }}</h1>
-          <span class="ms-badge-description">{{ selected.description }}</span>
-          <span class="ms-badge-progress-text">{{ selected.completedLabel }} / {{ selected.totalLabel }} tamamlandı</span>
+            @if (selectedBadge(); as selected) {
+            @if (!selected.pathKey) {
+            <div class="ms-badge-detail">
+              <div class="ms-badge-content" [class.ms-badge-content-completed]="selected.isCompleted">
+                <div class="ms-badge-content-top">
+                  <h1 class="ms-badge-title">{{ selected.name }}</h1>
+                  <span class="ms-badge-description">{{ selected.description }}</span>
+                  <span class="ms-badge-progress-text">{{ selected.completedLabel }} / {{ selected.totalLabel }}
+                    tamamlandı</span>
+                </div>
+
+                <div class="ms-badge-progress">
+                  <div class="ms-badge-progress-bar" [style.width.%]="selected.progressPercent"></div>
+                </div>
+              </div>
+            </div>
+            }
+            }
+          </section>
+          }
+
+          @if (!badgePaths().length && !standaloneBadges().length) {
+          <div class="ms-badge-empty">Henüz kazanılmış veya takip edilen bir rozet yok.</div>
+          }
+          }
         </div>
-
-        <div class="ms-badge-progress">
-          <div class="ms-badge-progress-bar" [style.width.%]="selected.progressPercent"></div>
-        </div>
-      </div>
-    </div>
-    }
-    }
-  </section>
-  }
-
-  @if (!badgePaths().length && !standaloneBadges().length) {
-  <div class="ms-badge-empty">Henüz kazanılmış veya takip edilen bir rozet yok.</div>
-  }
-  }
-</div>

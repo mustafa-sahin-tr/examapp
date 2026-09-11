@@ -172,6 +172,66 @@ public class BookingServiceTests : IDisposable
         result.Conflict.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task CreateSlotAsync_DateBeyondMaxAdvanceWindow_Fails()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            // 90 günlük üst sınırın ötesi — 9999 gibi uçuk tarihler de aynı dalda reddedilir.
+            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(91)),
+            StartTime = new TimeOnly(14, 0),
+            EndTime = new TimeOnly(15, 0)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Message.ShouldContain("90");
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_DurationLongerThanMax_Fails()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            StartTime = new TimeOnly(0, 0),
+            EndTime = new TimeOnly(23, 59) // 4 saatlik üst sınırın çok üstünde
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Message.ShouldContain("4");
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_ExactlyAtLimits_Succeeds()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(90)), // tam sınır
+            StartTime = new TimeOnly(10, 0),
+            EndTime = new TimeOnly(14, 0) // tam 4 saat
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeTrue();
+        result.Slot.ShouldNotBeNull();
+    }
+
     // ------ Slot silme ------
 
     [Fact]

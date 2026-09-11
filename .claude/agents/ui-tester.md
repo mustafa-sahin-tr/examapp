@@ -2,7 +2,7 @@
 name: ui-tester
 description: Çalışan uygulamada tarayıcı üzerinden akış doğrular (login, form doldurma, upload). Uçtan uca UI davranışı test edilecekse kullan. Puppeteer araçları sadece bu agent'ta yüklüdür.
 disallowedTools: Edit, Write
-model: sonnet
+model: haiku
 color: pink
 mcpServers:
   - puppeteer:

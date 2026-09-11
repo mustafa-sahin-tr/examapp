@@ -53,6 +53,25 @@
 
           <span class="breq__chip" [class]="row.statusClass">{{ row.statusLabel }}</span>
 
+          @if (row.booking.status === 'Approved') {
+            <span
+              class="breq__join"
+              [matTooltip]="row.join.hint || ''"
+              [matTooltipDisabled]="!row.join.hint"
+            >
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="!row.join.canJoin"
+                (click)="joinLesson(row)"
+              >
+                <mat-icon>videocam</mat-icon>
+                Derse katıl
+              </button>
+            </span>
+          }
+
           @if (row.booking.status === 'Pending') {
             @if (rejectingId() === row.booking.id) {
               <div class="breq__reject">

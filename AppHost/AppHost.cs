@@ -72,6 +72,142 @@ var minio = builder.AddContainer("minio", "minio/minio")
 
 var minioApiEndpoint = minio.GetEndpoint("api");
 
+// ---------------------------------------------------------------------------
+// Jitsi Meet self-host (issue #97) — prosody/jicofo/jvb/jitsi-web, mirroring
+// docker-compose.yml's images/env/ports/volumes 1:1 (see docs/jitsi-video.md
+// for the full rationale — JICOFO_ENABLE_AUTO_OWNER=false + JWT affiliation
+// claims for moderator enforcement, JVB_ADVERTISE_IPS for single-machine
+// testing, etc.). The browser talks to jitsi-web directly at
+// http://localhost:8000 — it does NOT go through ocelot-gateway, so none of
+// this is wired to the gateway's env-var-override mechanism used for the
+// other containers below.
+//
+// Named volumes (examapp-jitsi-*), not docker-compose's ./jitsi-data bind
+// mounts — matches this AppHost's existing convention (WithDataVolume /
+// WithVolume("examapp-...", ...) for postgres/redis/keycloak/minio above)
+// rather than host-relative paths, which don't translate cleanly across dev
+// machines the way named volumes do.
+// ---------------------------------------------------------------------------
+
+var jitsiJwtAppId = builder.AddParameter("jitsi-jwt-app-id");
+var jitsiJwtAppSecret = builder.AddParameter("jitsi-jwt-app-secret", secret: true);
+var jitsiRoomSecret = builder.AddParameter("jitsi-room-secret", secret: true);
+var jicofoAuthPassword = builder.AddParameter("jicofo-auth-password", secret: true);
+var jvbAuthPassword = builder.AddParameter("jvb-auth-password", secret: true);
+var jicofoComponentSecret = builder.AddParameter("jicofo-component-secret", secret: true);
+
+// prosody — XMPP server. WithContainerNetworkAlias("meet.jitsi") replicates
+// docker-compose.yml's `networks: mynetwork: aliases: [meet.jitsi]`:
+// jitsi-web's nginx template resolves $XMPP_SERVER (which docker-jitsi-meet's
+// image scripts default to $XMPP_DOMAIN when XMPP_SERVER isn't set on that
+// container — jitsi-web below intentionally has no XMPP_SERVER of its own)
+// for its /xmpp-websocket proxy_pass, so "meet.jitsi" needs to be a
+// resolvable container hostname pointing at prosody, not just the XMPP
+// virtual-host name baked into XMPP_DOMAIN. jicofo/jvb don't need this alias
+// — they're given XMPP_SERVER=prosody explicitly instead, same as compose.
+var prosody = builder.AddContainer("prosody", "jitsi/prosody", "stable-9584")
+    .WithContainerNetworkAlias("meet.jitsi")
+    .WithEnvironment("XMPP_DOMAIN", "meet.jitsi")
+    .WithEnvironment("XMPP_AUTH_DOMAIN", "auth.meet.jitsi")
+    .WithEnvironment("XMPP_GUEST_DOMAIN", "guest.meet.jitsi")
+    .WithEnvironment("XMPP_MUC_DOMAIN", "muc.meet.jitsi")
+    .WithEnvironment("XMPP_INTERNAL_MUC_DOMAIN", "internal-muc.meet.jitsi")
+    .WithEnvironment("XMPP_MODULES", "")
+    .WithEnvironment("XMPP_MUC_MODULES", "")
+    .WithEnvironment("XMPP_INTERNAL_MUC_MODULES", "")
+    .WithEnvironment("XMPP_RECORDER_DOMAIN", "recorder.meet.jitsi")
+    .WithEnvironment("JICOFO_COMPONENT_SECRET", jicofoComponentSecret)
+    .WithEnvironment("JICOFO_AUTH_USER", "focus")
+    .WithEnvironment("JICOFO_AUTH_PASSWORD", jicofoAuthPassword)
+    .WithEnvironment("JVB_AUTH_USER", "jvb")
+    .WithEnvironment("JVB_AUTH_PASSWORD", jvbAuthPassword)
+    .WithEnvironment("JWT_APP_ID", jitsiJwtAppId)
+    .WithEnvironment("JWT_APP_SECRET", jitsiJwtAppSecret)
+    .WithEnvironment("JWT_ACCEPTED_ISSUERS", jitsiJwtAppId)
+    .WithEnvironment("JWT_ACCEPTED_AUDIENCES", "jitsi")
+    .WithEnvironment("ENABLE_AUTH", "1")
+    .WithEnvironment("ENABLE_GUESTS", "0")
+    .WithEnvironment("AUTH_TYPE", "jwt")
+    .WithEnvironment("TZ", "Europe/Istanbul")
+    .WithVolume("examapp-jitsi-prosody-config", "/config")
+    .WithVolume("examapp-jitsi-prosody-plugins-custom", "/prosody-plugins-custom");
+
+var jicofo = builder.AddContainer("jicofo", "jitsi/jicofo", "stable-9584")
+    .WithEnvironment("XMPP_DOMAIN", "meet.jitsi")
+    .WithEnvironment("XMPP_AUTH_DOMAIN", "auth.meet.jitsi")
+    .WithEnvironment("XMPP_INTERNAL_MUC_DOMAIN", "internal-muc.meet.jitsi")
+    // Aspire container resources resolve each other by resource name on the
+    // shared container network by default (same as compose's service-name
+    // DNS) — no alias needed here, unlike prosody's meet.jitsi case above.
+    .WithEnvironment("XMPP_SERVER", "prosody")
+    .WithEnvironment("JICOFO_COMPONENT_SECRET", jicofoComponentSecret)
+    .WithEnvironment("JICOFO_AUTH_USER", "focus")
+    .WithEnvironment("JICOFO_AUTH_PASSWORD", jicofoAuthPassword)
+    .WithEnvironment("JICOFO_RESERVATION_ENABLED", "false")
+    .WithEnvironment("JICOFO_AUTH_TYPE", "internal")
+    // First-joiner should NOT automatically become moderator — moderation is
+    // driven by the JWT's context.user.affiliation claim instead. See
+    // docs/jitsi-video.md "Moderatör yetkisi".
+    .WithEnvironment("JICOFO_ENABLE_AUTO_OWNER", "false")
+    .WithEnvironment("TZ", "Europe/Istanbul")
+    .WithVolume("examapp-jitsi-jicofo", "/config")
+    .WaitFor(prosody);
+
+var jvb = builder.AddContainer("jvb", "jitsi/jvb", "stable-9584")
+    // Matches docker-compose.yml's '10000:10000/udp' host port mapping —
+    // media traffic, fixed rather than dynamically assigned since
+    // JVB_ADVERTISE_IPS below tells clients exactly this port to connect to.
+    .WithEndpoint(port: 10000, targetPort: 10000, name: "media", protocol: System.Net.Sockets.ProtocolType.Udp)
+    .WithEnvironment("XMPP_AUTH_DOMAIN", "auth.meet.jitsi")
+    .WithEnvironment("XMPP_INTERNAL_MUC_DOMAIN", "internal-muc.meet.jitsi")
+    .WithEnvironment("XMPP_SERVER", "prosody")
+    .WithEnvironment("JVB_AUTH_USER", "jvb")
+    .WithEnvironment("JVB_AUTH_PASSWORD", jvbAuthPassword)
+    .WithEnvironment("JVB_BREWERY_MUC", "jvbbrewery")
+    .WithEnvironment("JVB_PORT", "10000")
+    .WithEnvironment("JVB_TCP_HARVESTER_DISABLED", "true")
+    // Single-machine local dev: both browsers connect from 127.0.0.1, so JVB
+    // advertises localhost as the candidate address. LAN/prod: set this to
+    // the host's real LAN/public IP — see docs/jitsi-video.md.
+    .WithEnvironment("JVB_ADVERTISE_IPS", "127.0.0.1")
+    .WithEnvironment("TZ", "Europe/Istanbul")
+    .WithVolume("examapp-jitsi-jvb", "/config")
+    .WaitFor(prosody);
+
+// jitsi-web — web UI + external_api.js, the only Jitsi container the browser
+// talks to directly.
+var jitsiWeb = builder.AddContainer("jitsi-web", "jitsi/web", "stable-9584")
+    // Unlike docker-compose.yml's '127.0.0.1:8000:80' bind, Aspire/DCP's
+    // container port publishing does not expose a bind-address option — this
+    // publishes on all interfaces (0.0.0.0:8000), not just loopback. Same
+    // local-dev-only caveats apply (see docs/jitsi-video.md), but the LAN
+    // exposure is broader here than under compose; flagged as a known gap.
+    .WithHttpEndpoint(port: 8000, targetPort: 80, name: "http")
+    .WithEnvironment("XMPP_DOMAIN", "meet.jitsi")
+    .WithEnvironment("XMPP_AUTH_DOMAIN", "auth.meet.jitsi")
+    .WithEnvironment("XMPP_GUEST_DOMAIN", "guest.meet.jitsi")
+    .WithEnvironment("XMPP_BOSH_URL_BASE", "http://prosody:5280")
+    .WithEnvironment("XMPP_MUC_DOMAIN", "muc.meet.jitsi")
+    .WithEnvironment("XMPP_RECORDER_DOMAIN", "recorder.meet.jitsi")
+    .WithEnvironment("PUBLIC_URL", "http://localhost:8000")
+    .WithEnvironment("TZ", "Europe/Istanbul")
+    .WithEnvironment("DISABLE_HTTPS", "1")
+    .WithEnvironment("ENABLE_HTTP_REDIRECT", "0")
+    .WithEnvironment("ENABLE_XMPP_WEBSOCKET", "1")
+    .WithEnvironment("ENABLE_RECORDING", "0")
+    .WithEnvironment("ENABLE_LETSENCRYPT", "0")
+    .WithEnvironment("ENABLE_AUTH", "1")
+    .WithEnvironment("ENABLE_GUESTS", "0")
+    .WithEnvironment("AUTH_TYPE", "jwt")
+    .WithEnvironment("JWT_APP_ID", jitsiJwtAppId)
+    .WithEnvironment("JWT_APP_SECRET", jitsiJwtAppSecret)
+    .WithEnvironment("JWT_ACCEPTED_ISSUERS", jitsiJwtAppId)
+    .WithEnvironment("JWT_ACCEPTED_AUDIENCES", "jitsi")
+    .WithVolume("examapp-jitsi-web", "/config")
+    .WaitFor(prosody)
+    .WaitFor(jicofo)
+    .WaitFor(jvb);
+
 // Aspire.Hosting.Keycloak is a preview-only package at 13.5.0 (no stable
 // release yet) — flagged in the migration decision log.
 // Realm (exam-realm: clients, roles, Google IdP broker config) is imported
@@ -181,6 +317,20 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
         context.EnvironmentVariables["MinioConfig__Endpoint"] = ReferenceExpression.Create(
             $"{minioApiEndpoint.Property(EndpointProperty.Host)}:{minioApiEndpoint.Property(EndpointProperty.Port)}");
     })
+    // Video__Jitsi__* — token minting only (JitsiVideoSessionProvider signs a
+    // JWT with these values), no HTTP call from ExamDotnetApi to jitsi-web at
+    // any point, so deliberately no .WaitFor(jitsiWeb) below: the API can
+    // start and mint tokens before Jitsi's containers are healthy, and a
+    // token minted while Jitsi is still starting simply can't be redeemed
+    // until jitsi-web/prosody/jicofo/jvb come up (see docs/jitsi-video.md).
+    // PublicBaseUrl is a literal, not an Aspire endpoint reference — jitsi-web
+    // is only reachable browser-side at localhost:8000 (see the port-bind
+    // caveat on the jitsi-web container above), never resolved server-side by
+    // ExamDotnetApi.
+    .WithEnvironment("Video__Jitsi__PublicBaseUrl", "http://localhost:8000")
+    .WithEnvironment("Video__Jitsi__AppId", jitsiJwtAppId)
+    .WithEnvironment("Video__Jitsi__AppSecret", jitsiJwtAppSecret)
+    .WithEnvironment("Video__Jitsi__RoomSecret", jitsiRoomSecret)
     .WaitFor(postgres)
     .WaitFor(redis)
     .WaitFor(rabbitmq)

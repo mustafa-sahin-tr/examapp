@@ -12,6 +12,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
+      # Jitsi self-host (issue #97). Browser talks to jitsi-web directly at
+      # PublicBaseUrl, not through the container network — this is only used
+      # by the API to generate the meeting URL + sign the JWT.
+      - Video__Jitsi__PublicBaseUrl=${JITSI_PUBLIC_URL}
+      - Video__Jitsi__AppId=${JITSI_JWT_APP_ID}
+      - Video__Jitsi__AppSecret=${JITSI_JWT_APP_SECRET:?JITSI_JWT_APP_SECRET .env icinde tanimli olmali}
+      - Video__Jitsi__RoomSecret=${JITSI_ROOM_SECRET:?JITSI_ROOM_SECRET .env icinde tanimli olmali}
     volumes:
       - ./api:/app
     depends_on:
@@ -333,6 +340,143 @@ services:
     ports:
       - '6379:6379'
     command: redis-server --requirepass ${REDIS_PASSWORD}
+    networks:
+      - mynetwork
+
+  # --- Jitsi Meet self-host (issue #97) ---
+  # Docker-compose only for now; Aspire AppHost integration is a separate,
+  # future issue (see docs/jitsi-video.md). Browser talks to jitsi-web
+  # directly on localhost:8000 — it does NOT go through ocelot-gateway.
+  # Moderator enforcement: JICOFO_ENABLE_AUTO_OWNER=false below disables
+  # jicofo's "first participant becomes owner" default; MUC affiliation is
+  # instead driven by mod_auth_token reading the JWT's context.user.affiliation
+  # claim (owner|member), which exam-dotnet-api already sets. See
+  # docs/jitsi-video.md "Moderatör yetkisi" for the verification steps this
+  # relies on and its limits.
+  prosody:
+    image: jitsi/prosody:stable-9584
+    container_name: prosody
+    restart: unless-stopped
+    environment:
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_MODULES=
+      - XMPP_MUC_MODULES=
+      - XMPP_INTERNAL_MUC_MODULES=
+      - XMPP_RECORDER_DOMAIN=recorder.meet.jitsi
+      - JICOFO_COMPONENT_SECRET=${JICOFO_COMPONENT_SECRET}
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD:?JICOFO_AUTH_PASSWORD .env icinde tanimli olmali}
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD:?JVB_AUTH_PASSWORD .env icinde tanimli olmali}
+      - JWT_APP_ID=${JITSI_JWT_APP_ID}
+      - JWT_APP_SECRET=${JITSI_JWT_APP_SECRET:?JITSI_JWT_APP_SECRET .env icinde tanimli olmali}
+      - JWT_ACCEPTED_ISSUERS=${JITSI_JWT_APP_ID}
+      - JWT_ACCEPTED_AUDIENCES=jitsi
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      - TZ=Europe/Istanbul
+    volumes:
+      - ./jitsi-data/prosody/config:/config
+      - ./jitsi-data/prosody/prosody-plugins-custom:/prosody-plugins-custom
+    networks:
+      mynetwork:
+        aliases:
+          - meet.jitsi
+
+  jicofo:
+    image: jitsi/jicofo:stable-9584
+    container_name: jicofo
+    restart: unless-stopped
+    environment:
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_SERVER=prosody
+      - JICOFO_COMPONENT_SECRET=${JICOFO_COMPONENT_SECRET}
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD:?JICOFO_AUTH_PASSWORD .env icinde tanimli olmali}
+      - JICOFO_RESERVATION_ENABLED=false
+      - JICOFO_AUTH_TYPE=internal
+      # First-joiner should NOT automatically become moderator — moderation
+      # is driven by the JWT's context.user.affiliation claim instead.
+      - JICOFO_ENABLE_AUTO_OWNER=false
+      - TZ=Europe/Istanbul
+    volumes:
+      - ./jitsi-data/jicofo:/config
+    depends_on:
+      - prosody
+    networks:
+      - mynetwork
+
+  jvb:
+    image: jitsi/jvb:stable-9584
+    container_name: jvb
+    restart: unless-stopped
+    ports:
+      - '10000:10000/udp'
+    environment:
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_SERVER=prosody
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD:?JVB_AUTH_PASSWORD .env icinde tanimli olmali}
+      - JVB_BREWERY_MUC=jvbbrewery
+      - JVB_PORT=10000
+      - JVB_TCP_HARVESTER_DISABLED=true
+      # Single-machine local dev: both browsers connect from 127.0.0.1, so
+      # JVB advertises localhost as the candidate address.
+      # LAN/prod: set this to the host's real LAN/public IP, e.g.
+      # JVB_ADVERTISE_IPS=192.168.1.50 (LAN) or your public IP (prod, behind NAT).
+      - JVB_ADVERTISE_IPS=127.0.0.1
+      - TZ=Europe/Istanbul
+    volumes:
+      - ./jitsi-data/jvb:/config
+    depends_on:
+      - prosody
+    networks:
+      - mynetwork
+
+  jitsi-web:
+    image: jitsi/web:stable-9584
+    container_name: jitsi-web
+    restart: unless-stopped
+    ports:
+      # 127.0.0.1-only: this is a local dev bind, not meant to be reachable
+      # from the LAN. 8443/443 dropped — DISABLE_HTTPS=1 means nothing
+      # listens on 443 inside the container.
+      - '127.0.0.1:8000:80'
+    environment:
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - XMPP_BOSH_URL_BASE=http://prosody:5280
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_RECORDER_DOMAIN=recorder.meet.jitsi
+      - PUBLIC_URL=${JITSI_PUBLIC_URL}
+      - TZ=Europe/Istanbul
+      - DISABLE_HTTPS=1
+      - ENABLE_HTTP_REDIRECT=0
+      - ENABLE_XMPP_WEBSOCKET=1
+      - ENABLE_RECORDING=0
+      - ENABLE_LETSENCRYPT=0
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - AUTH_TYPE=jwt
+      - JWT_APP_ID=${JITSI_JWT_APP_ID}
+      - JWT_APP_SECRET=${JITSI_JWT_APP_SECRET:?JITSI_JWT_APP_SECRET .env icinde tanimli olmali}
+      - JWT_ACCEPTED_ISSUERS=${JITSI_JWT_APP_ID}
+      - JWT_ACCEPTED_AUDIENCES=jitsi
+    volumes:
+      - ./jitsi-data/web:/config
+    depends_on:
+      - prosody
+      - jicofo
+      - jvb
     networks:
       - mynetwork
 

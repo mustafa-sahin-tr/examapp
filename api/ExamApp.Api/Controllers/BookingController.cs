@@ -148,6 +148,24 @@ public class BookingController : BaseController
         return result.Success ? Ok(result) : MapFailure(result);
     }
 
+    // ---------------- Görüşme odası (issue #97) ----------------
+
+    /// <summary>
+    /// Onaylı bir randevu için görüşme odası bilgisi + katılım token'ı döner. Hem öğretmen hem
+    /// öğrenci aynı ucu çağırır; token'daki moderatör yetkisini servis katmanı belirler.
+    /// </summary>
+    [HttpPost("requests/{id:int}/video-session")]
+    [Authorize(Roles = "Teacher,Student")]
+    public async Task<IActionResult> CreateVideoSession(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        var result = await _bookingService.GetVideoSessionAsync(user.Id, id, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
     /// <summary>ResponseBaseDto bayraklarını HTTP koduna çevirir (404 / 403 / 409 / 400).</summary>
     private IActionResult MapFailure(ResponseBaseDto result)
     {

@@ -5,12 +5,12 @@
  * Etkinlikler `[from, to)` aralığında döner — `to` hariç.
  */
 
-export type CalendarEventKind = 'reminder' | 'assignment-deadline' | 'program-study-page';
+export type CalendarEventKind = 'reminder' | 'assignment-deadline' | 'program-study-page' | 'booking';
 
 export type CalendarEventStatus = 'Pending' | 'Sent';
 
 export interface CalendarEvent {
-  /** "reminder" | "assignment-deadline" | "program-study-page" */
+  /** "reminder" | "assignment-deadline" | "program-study-page" | "booking" */
   kind: CalendarEventKind;
   /**
    * Etkinliğin anı/başlangıcı — UTC ISO. reminder: ScheduledFor, deadline: EndAt,
@@ -37,6 +37,17 @@ export interface CalendarEvent {
   programName: string | null;
   studyPageId: number | null;
   studyPageTitle: string | null;
+
+  // --- booking alanları (issue #96, yalnızca kind === 'booking') ---
+  /** Onaylanmış randevunun kimliği. `endDate` randevunun bitişidir (startUtc/endUtc). */
+  bookingId?: number | null;
+  availabilitySlotId?: number | null;
+  /** Randevudaki öğretmenin Teacher.Id'si (öğrenci görünümünde karşı taraf). */
+  teacherId?: number | null;
+  /** Randevudaki öğrencinin Student.Id'si (öğretmen görünümünde karşı taraf). */
+  studentId?: number | null;
+  /** Öğretmenin takviminde karşı tarafın adı. */
+  studentName?: string | null;
 }
 
 export interface StudentCalendarResponse {

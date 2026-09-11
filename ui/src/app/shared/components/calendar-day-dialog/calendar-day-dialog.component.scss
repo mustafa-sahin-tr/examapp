@@ -79,6 +79,11 @@
     background: var(--ms-success-border, var(--primaryColor));
   }
 
+  // Ders randevusu (issue #96).
+  &__row--booking &__strip {
+    background: var(--primaryColor);
+  }
+
   &__row--program-plan &__strip {
     background: var(--ms-info-border, var(--primaryColor));
   }

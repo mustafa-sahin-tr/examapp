@@ -97,7 +97,9 @@ public class TeacherService : ITeacherService
 
         // Başvuran adı auth-api'den best-effort çözülür (issue #94 admin bildirimi için).
         // Dış HTTP çağrısı transaction/retry lambda'sının DIŞINDA tutulur ki retry'da tekrarlanmasın.
-        var applicantName = shouldPublishEvent ? await ResolveApplicantNameAsync(userId) : null;
+        var applicantName = (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)
+            ? await ResolveApplicantNameAsync(userId)
+            : null;
 
         var teacherId = 0;
         var strategy = _context.Database.CreateExecutionStrategy();
@@ -133,14 +135,6 @@ public class TeacherService : ITeacherService
                     CreatedAt = now
                 });
                 AddTeacherApplicationSubmittedOutbox(teacher.Id, userId, applicantName);
-                await _context.SaveChangesAsync();
-            }
-
-            }
-
-            if (shouldPublishApplicationSubmittedEvent)
-            {
-                await AddTeacherApplicationSubmittedOutboxAsync(teacher.Id, userId);
             }
 
             if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)

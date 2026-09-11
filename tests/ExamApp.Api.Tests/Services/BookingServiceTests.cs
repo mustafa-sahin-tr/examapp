@@ -1,0 +1,482 @@
+using ExamApp.Api.Data;
+using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Services.Bookings;
+using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Tests.Support;
+using ExamApp.Foundation.Persistence;
+using Microsoft.EntityFrameworkCore;
+using NSubstitute;
+
+namespace ExamApp.Api.Tests.Services;
+
+/// <summary>
+/// Issue #96 — Ders planlama / randevu iş kuralları: müsaitlik slotları, booking oluşturma,
+/// onay/ret, çakışma kontrolü, geçmiş tarih reddi, yetkilendirme.
+/// </summary>
+public class BookingServiceTests : IDisposable
+{
+    private const int TeacherId = 10;
+    private const int TeacherUserId = 100;
+    private const int StudentId = 20;
+    private const int StudentUserId = 200;
+    private const int OtherTeacherId = 11;
+    private const int OtherTeacherUserId = 101;
+
+    private readonly TestDb _db = TestDb.Create();
+    private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
+
+    private BookingService NewService(AppDbContext ctx) =>
+        new(ctx, _authApi, new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>());
+
+    private async Task<(int id, int userId)> SeedTeacherAsync(
+        int teacherId, int userId, TeacherApprovalStatus status = TeacherApprovalStatus.Approved)
+    {
+        await using var ctx = _db.NewContext();
+        var teacher = new Teacher
+        {
+            Id = teacherId,
+            UserId = userId,
+            ApprovalStatus = status,
+            Bio = "test"
+        };
+        ctx.Teachers.Add(teacher);
+        await ctx.SaveChangesAsync();
+        return (teacherId, userId);
+    }
+
+    private async Task<int> SeedStudentAsync(int studentId, int userId)
+    {
+        await using var ctx = _db.NewContext();
+        var student = new Student { Id = studentId, UserId = userId, StudentNumber = $"STU{studentId}" };
+        ctx.Students.Add(student);
+        await ctx.SaveChangesAsync();
+        return studentId;
+    }
+
+    private async Task<int> SeedSlotAsync(
+        int teacherId, DateOnly date, TimeOnly startTime, TimeOnly endTime)
+    {
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(teacherId);
+        var slot = new TeacherAvailabilitySlot
+        {
+            TeacherId = teacherId,
+            Date = date,
+            StartTime = startTime,
+            EndTime = endTime,
+            CreatedAt = DateTime.UtcNow
+        };
+        ctx.TeacherAvailabilitySlots.Add(slot);
+        await ctx.SaveChangesAsync();
+        return slot.Id;
+    }
+
+    // ------ Slot oluşturma (öğretmen) ------
+
+    [Fact]
+    public async Task CreateSlotAsync_ValidFutureSlot_SucceedsAndReturnsSlot()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            StartTime = new TimeOnly(14, 0),
+            EndTime = new TimeOnly(15, 0)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeTrue();
+        result.Slot.ShouldNotBeNull();
+        result.Slot!.TeacherId.ShouldBe(TeacherId);
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_EndTimeBeforeStartTime_Fails()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            StartTime = new TimeOnly(15, 0),
+            EndTime = new TimeOnly(14, 0)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_PastDateTime_FailsWithoutNotFound()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+
+        await using var ctx = _db.NewContext();
+        var pastDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = pastDate,
+            StartTime = new TimeOnly(14, 0),
+            EndTime = new TimeOnly(15, 0)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_TeacherNotApproved_FailsWithForbidden()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId, TeacherApprovalStatus.Pending);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            StartTime = new TimeOnly(14, 0),
+            EndTime = new TimeOnly(15, 0)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeFalse();
+        result.Forbidden.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateSlotAsync_OverlappingSlot_FailsWithConflict()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        var futureDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5));
+        await SeedSlotAsync(TeacherId, futureDate, new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateAvailabilitySlotDto
+        {
+            Date = futureDate,
+            StartTime = new TimeOnly(14, 30),
+            EndTime = new TimeOnly(15, 30)
+        };
+
+        var result = await NewService(ctx).CreateSlotAsync(TeacherUserId, req);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+    }
+
+    // ------ Slot silme ------
+
+    [Fact]
+    public async Task DeleteSlotAsync_OtherTeachersSlot_FailsWithForbidden()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).DeleteSlotAsync(OtherTeacherUserId, slotId);
+
+        result.Success.ShouldBeFalse();
+        result.Forbidden.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteSlotAsync_SlotWithActiveBooking_FailsWithConflict()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        // Create pending booking
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var ctxDelete = _db.NewContext();
+        var result = await NewService(ctxDelete).DeleteSlotAsync(TeacherUserId, slotId);
+
+        result.Success.ShouldBeFalse();
+    }
+
+    // ------ Booking oluşturma ------
+
+    [Fact]
+    public async Task CreateBookingAsync_ValidSlot_CreatesBookingInPendingStatus()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = StudentUserId, FullName = "Ali Öğrenci", KeycloakId = "kc-student" },
+                new() { Id = TeacherUserId, FullName = "Ayşe Öğretmen", KeycloakId = "kc-teacher" }
+            }));
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateBookingDto { AvailabilitySlotId = slotId };
+        var result = await NewService(ctx).CreateBookingAsync(StudentUserId, req, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Booking.ShouldNotBeNull();
+        result.Booking!.Status.ShouldBe(nameof(BookingStatus.Pending));
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_SlotNotFound_ReturnsNotFound()
+    {
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        await using var ctx = _db.NewContext();
+        var req = new CreateBookingDto { AvailabilitySlotId = 999 };
+        var result = await NewService(ctx).CreateBookingAsync(StudentUserId, req, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateBookingAsync_SlotAlreadyBooked_FailsWithConflict()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        // First booking
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+        }
+
+        // Second booking attempt
+        await using var ctxSecond = _db.NewContext();
+        var req = new CreateBookingDto { AvailabilitySlotId = slotId };
+        var result = await NewService(ctxSecond).CreateBookingAsync(StudentUserId, req, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+    }
+
+    // ------ Booking approval ------
+
+    [Fact]
+    public async Task ApproveBookingAsync_PendingBooking_SucceedsAndChangesStatus()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = TeacherUserId, FullName = "Ayşe Öğretmen", KeycloakId = "kc-teacher" },
+                new() { Id = StudentUserId, FullName = "Ali Öğrenci", KeycloakId = "kc-student" }
+            }));
+
+        await using var ctxApprove = _db.NewContext();
+        var result = await NewService(ctxApprove).ApproveBookingAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Booking!.Status.ShouldBe(nameof(BookingStatus.Approved));
+    }
+
+    [Fact]
+    public async Task ApproveBookingAsync_OtherTeachersBooking_FailsWithForbidden()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        await using var ctxApprove = _db.NewContext();
+        var result = await NewService(ctxApprove).ApproveBookingAsync(OtherTeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Forbidden.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ApproveBookingAsync_AlreadyApprovedBooking_FailsWithStateError()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        await using var ctxApprove = _db.NewContext();
+        var result = await NewService(ctxApprove).ApproveBookingAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+    }
+
+    // ------ Booking rejection ------
+
+    [Fact]
+    public async Task RejectBookingAsync_PendingBooking_SucceedsWithReason()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = TeacherUserId, FullName = "Ayşe Öğretmen", KeycloakId = "kc-teacher" },
+                new() { Id = StudentUserId, FullName = "Ali Öğrenci", KeycloakId = "kc-student" }
+            }));
+
+        await using var ctxReject = _db.NewContext();
+        var result = await NewService(ctxReject).RejectBookingAsync(TeacherUserId, bookingId, "Çakışma var.", CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Booking!.Status.ShouldBe(nameof(BookingStatus.Rejected));
+        result.Booking.RejectionReason.ShouldBe("Çakışma var.");
+    }
+
+    [Fact]
+    public async Task RejectBookingAsync_WithoutReason_SucceedsWithoutReason()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = TeacherUserId, FullName = "Ayşe Öğretmen", KeycloakId = "kc-teacher" },
+                new() { Id = StudentUserId, FullName = "Ali Öğrenci", KeycloakId = "kc-student" }
+            }));
+
+        await using var ctxReject = _db.NewContext();
+        var result = await NewService(ctxReject).RejectBookingAsync(TeacherUserId, bookingId, null, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Booking!.RejectionReason.ShouldBeNull();
+    }
+
+    public void Dispose() => _db.Dispose();
+}

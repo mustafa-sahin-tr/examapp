@@ -84,6 +84,7 @@ finance-api/finance-api/appsettings.json
 minio-data/
 pgadmin-data/
 n8n-data/
+jitsi-data/
 rabbitmq/
 postgres/examdata/
 postgres/examdata*

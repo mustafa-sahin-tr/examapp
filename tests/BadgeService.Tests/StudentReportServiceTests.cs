@@ -11,10 +11,64 @@ public class StudentReportServiceTests : IDisposable
     private StudentReportService NewService(BadgeDbContext ctx) => new(ctx);
 
     [Fact]
-    public async Task BadgeProgress_is_null_for_a_student_with_no_activity()
+    public async Task BadgeProgress_returns_zero_progress_for_a_student_with_no_activity()
     {
-        await using var ctx = _db.NewContext();
-        (await NewService(ctx).GetBadgeProgressAsync(1)).ShouldBeNull();
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.BadgeDefinitions.Add(new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Name = "İlk Adım", Description = "d", Category = "c",
+                RuleType = "AnswerCount", RuleConfigJson = "{\"target\":10}",
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var report = await NewService(read).GetBadgeProgressAsync(1);
+
+        report.ShouldNotBeNull();
+        report.Summary.UserId.ShouldBe(1);
+        report.Summary.TotalQuestions.ShouldBe(0);
+        report.Summary.CorrectQuestions.ShouldBe(0);
+        report.Summary.TotalPoints.ShouldBe(0);
+        report.Summary.CurrentCorrectStreak.ShouldBe(0);
+        report.Summary.BestCorrectStreak.ShouldBe(0);
+        report.Summary.TotalTimeSeconds.ShouldBe(0);
+        report.Summary.TotalActiveDays.ShouldBe(0);
+        report.Summary.LastAnsweredAtUtc.ShouldBeNull();
+
+        var badge = report.BadgeProgress.ShouldHaveSingleItem();
+        badge.CurrentValue.ShouldBe(0);
+        badge.TargetValue.ShouldBe(10);
+        badge.IsCompleted.ShouldBeFalse();
+        badge.EarnedDateUtc.ShouldBeNull();
+
+        report.SubjectBreakdown.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task BadgeProgress_skips_badges_with_malformed_rule_config_for_a_student_with_no_activity()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.BadgeDefinitions.Add(new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Name = "Bozuk Kural", Description = "d", Category = "c",
+                RuleType = "AnswerCount", RuleConfigJson = "{}",
+            });
+            ctx.BadgeDefinitions.Add(new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Name = "Geçerli Kural", Description = "d", Category = "c",
+                RuleType = "AnswerCount", RuleConfigJson = "{\"target\":5}",
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var report = await NewService(read).GetBadgeProgressAsync(1);
+
+        report.ShouldNotBeNull();
+        report.BadgeProgress.ShouldHaveSingleItem().Name.ShouldBe("Geçerli Kural");
     }
 
     [Fact]

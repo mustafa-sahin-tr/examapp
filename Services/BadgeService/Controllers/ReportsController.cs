@@ -26,12 +26,6 @@ public class ReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var report = await _reportService.GetBadgeProgressAsync(userId, cancellationToken);
-
-        if (report == null)
-        {
-            return NotFound();
-        }
-
         return Ok(report);
     }
 

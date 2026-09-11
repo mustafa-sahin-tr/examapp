@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -22,6 +23,7 @@ public class WorksheetCalendarService : IWorksheetCalendarService
     private const string KindReminder = "reminder";
     private const string KindAssignmentDeadline = "assignment-deadline";
     private const string KindProgramStudyItem = "program-study-page";
+    private const string KindBooking = "booking";
 
     /// <summary>Sent hatırlatmalar için bu tarihten eskiler takvimde gösterilmez.</summary>
     private const int SentReminderLookbackDays = 30;
@@ -47,11 +49,121 @@ public class WorksheetCalendarService : IWorksheetCalendarService
         events.AddRange(await BuildReminderEventsAsync(studentId, fromUtc, toUtc, ct));
         events.AddRange(await BuildAssignmentDeadlineEventsAsync(studentId, gradeId, schoolId, fromUtc, toUtc, ct));
         events.AddRange(await BuildProgramStudyItemEventsAsync(keycloakUserId, fromUtc, toUtc, ct));
+        events.AddRange(await BuildBookingEventsAsync(b => b.StudentId == studentId, fromUtc, toUtc, isTeacherView: false, ct));
 
         return new StudentCalendarResponseDto
         {
             Events = events.OrderBy(e => e.Date).ToList()
         };
+    }
+
+    /// <summary>
+    /// Öğretmenin takvimi (issue #96). Worksheet/reminder/program etkinlikleri öğrenciye özgü olduğu için
+    /// burada yalnızca onaylanmış randevular döner.
+    /// </summary>
+    public async Task<StudentCalendarResponseDto> GetTeacherCalendarAsync(
+        int teacherUserId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        if (fromUtc.Kind != DateTimeKind.Utc)
+            fromUtc = DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc);
+        if (toUtc.Kind != DateTimeKind.Utc)
+            toUtc = DateTime.SpecifyKind(toUtc, DateTimeKind.Utc);
+
+        var teacherId = await _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.UserId == teacherUserId)
+            .Select(t => (int?)t.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (teacherId == null)
+            return new StudentCalendarResponseDto();
+
+        var events = await BuildBookingEventsAsync(b => b.TeacherId == teacherId.Value, fromUtc, toUtc, isTeacherView: true, ct);
+
+        return new StudentCalendarResponseDto
+        {
+            Events = events.OrderBy(e => e.Date).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Onaylanmış (Approved) randevular → takvim etkinliği (issue #96). Slot tarih/saatleri saat dilimsiz
+    /// duvar saati olduğu için UTC kabul edilerek [fromUtc, toUtc) aralığıyla karşılaştırılır.
+    /// Aralık filtresi bellekte uygulanır: DateOnly+TimeOnly birleşimi SQL'e çevrilemiyor, bu yüzden
+    /// önce gün bazında (Date) kabaca daraltılır.
+    /// <paramref name="isTeacherView"/> başlığın kimin adıyla kurulacağını belirler: öğretmen kendi
+    /// takviminde karşı tarafı (öğrenciyi), öğrenci ise öğretmeni görmeli.
+    /// </summary>
+    private async Task<List<CalendarEventDto>> BuildBookingEventsAsync(
+        Expression<Func<Booking, bool>> ownerPredicate, DateTime fromUtc, DateTime toUtc, bool isTeacherView, CancellationToken ct)
+    {
+        var fromDate = DateOnly.FromDateTime(fromUtc);
+        var toDate = DateOnly.FromDateTime(toUtc);
+
+        var rows = await _context.Bookings
+            .AsNoTracking()
+            .Where(ownerPredicate)
+            .Where(b => b.Status == BookingStatus.Approved
+                && b.AvailabilitySlot.Date >= fromDate
+                && b.AvailabilitySlot.Date <= toDate)
+            .Select(b => new
+            {
+                BookingId = b.Id,
+                b.TeacherId,
+                b.StudentId,
+                b.AvailabilitySlotId,
+                TeacherUserId = b.Teacher.UserId,
+                StudentUserId = b.Student.UserId,
+                Date = b.AvailabilitySlot.Date,
+                Start = b.AvailabilitySlot.StartTime,
+                End = b.AvailabilitySlot.EndTime
+            })
+            .ToListAsync(ct);
+
+        var inRange = rows
+            .Select(r => new
+            {
+                r.BookingId,
+                r.TeacherId,
+                r.StudentId,
+                r.AvailabilitySlotId,
+                r.TeacherUserId,
+                r.StudentUserId,
+                StartUtc = DateTime.SpecifyKind(r.Date.ToDateTime(r.Start), DateTimeKind.Utc),
+                EndUtc = DateTime.SpecifyKind(r.Date.ToDateTime(r.End), DateTimeKind.Utc)
+            })
+            .Where(r => r.StartUtc >= fromUtc && r.StartUtc < toUtc)
+            .ToList();
+
+        if (inRange.Count == 0)
+            return new List<CalendarEventDto>();
+
+        var names = await ResolveTeacherNamesAsync(
+            inRange.SelectMany(r => new[] { r.TeacherUserId, r.StudentUserId })
+                .Where(id => id > 0).Distinct().ToList(), ct);
+
+        return inRange.Select(r =>
+        {
+            var teacherName = names.TryGetValue(r.TeacherUserId, out var tn) ? tn : null;
+            var studentName = names.TryGetValue(r.StudentUserId, out var sn) ? sn : null;
+            var counterpartName = isTeacherView ? studentName : teacherName;
+
+            return new CalendarEventDto
+            {
+                Kind = KindBooking,
+                Date = r.StartUtc,
+                EndDate = r.EndUtc,
+                BookingId = r.BookingId,
+                AvailabilitySlotId = r.AvailabilitySlotId,
+                TeacherId = r.TeacherId,
+                StudentId = r.StudentId,
+                TeacherName = teacherName,
+                StudentName = studentName,
+                WorksheetTitle = string.IsNullOrWhiteSpace(counterpartName)
+                    ? "Ders randevusu"
+                    : $"{counterpartName} ile ders"
+            };
+        }).ToList();
     }
 
     private async Task<List<CalendarEventDto>> BuildReminderEventsAsync(

@@ -1,0 +1,103 @@
+<section class="avail">
+  <header class="avail__head">
+    <div>
+      <h1>Müsait Saatlerim</h1>
+      <p>Öğrencilerin randevu talep edebilmesi için müsait olduğun zaman aralıklarını tanımla.</p>
+    </div>
+    <a mat-stroked-button routerLink="/booking-requests">
+      <mat-icon>inbox</mat-icon>
+      Randevu Talepleri
+    </a>
+  </header>
+
+  <form class="avail__form" [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field appearance="outline">
+      <mat-label>Tarih</mat-label>
+      <input matInput [matDatepicker]="picker" formControlName="date" [min]="minDate" />
+      <mat-datepicker-toggle matIconSuffix [for]="picker" />
+      <mat-datepicker #picker />
+      @if (form.controls.date.touched && form.controls.date.invalid) {
+        <mat-error>Tarih seçilmeli.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Başlangıç</mat-label>
+      <input matInput type="time" formControlName="startTime" />
+      @if (form.controls.startTime.touched && form.controls.startTime.invalid) {
+        <mat-error>Başlangıç saati gerekli.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Bitiş</mat-label>
+      <input matInput type="time" formControlName="endTime" />
+      @if (form.controls.endTime.touched && form.controls.endTime.invalid) {
+        <mat-error>Bitiş saati gerekli.</mat-error>
+      }
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+      @if (saving()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        <mat-icon>add</mat-icon>
+      }
+      Aralık Ekle
+    </button>
+  </form>
+
+  @if (timeRangeError()) {
+    <p class="avail__form-error" role="alert">{{ timeRangeError() }}</p>
+  }
+
+  @if (loading()) {
+    <div class="avail__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <span>Müsaitlik aralıkların yükleniyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="avail__state avail__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="avail__state">
+      <mat-icon class="avail__empty-icon">event_busy</mat-icon>
+      <span>Henüz müsaitlik aralığı tanımlamadın.</span>
+    </div>
+  } @else {
+    <ul class="avail__list">
+      @for (row of rows(); track row.slot.id) {
+        <li class="avail__row" [class.avail__row--past]="row.past">
+          <div class="avail__row-main">
+            <span class="avail__row-day">{{ row.day }}</span>
+            <span class="avail__row-range">
+              <mat-icon>schedule</mat-icon>
+              {{ row.range }}
+            </span>
+          </div>
+
+          <span class="avail__chip" [class]="row.statusClass">{{ row.statusLabel }}</span>
+
+          @if (row.deletable) {
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Müsaitlik aralığını sil"
+              [disabled]="deletingId() !== null"
+              (click)="remove(row)"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          } @else {
+            <span class="avail__locked" title="Randevusu olan aralık silinemez">
+              <mat-icon>lock</mat-icon>
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

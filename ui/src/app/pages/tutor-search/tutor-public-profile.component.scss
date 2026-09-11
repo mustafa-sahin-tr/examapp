@@ -25,7 +25,13 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1.25rem;
+}
+
+// "Randevu Al" CTA (issue #96) — başlığın sağ ucuna yaslanır.
+.tpp__cta {
+  margin-left: auto;
 }
 
 .tpp__avatar,

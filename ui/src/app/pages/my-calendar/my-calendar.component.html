@@ -5,7 +5,11 @@
       <h1>Planım</h1>
     </div>
     <p class="my-calendar__hero-subtitle">
-      Planladığın sınavları, atama teslim tarihlerini ve çalışma planlarını tek takvimde gör.
+      @if (isTeacher) {
+        Onayladığın ders randevularını tek takvimde gör.
+      } @else {
+        Planladığın sınavları, atama teslim tarihlerini, çalışma planlarını ve ders randevularını tek takvimde gör.
+      }
     </p>
   </header>
 
@@ -72,8 +76,13 @@
     @if (status() === 'empty') {
       <div class="my-calendar__state my-calendar__state--empty">
         <mat-icon>event_available</mat-icon>
-        <p>Bu ay planlanmış sınav veya atama yok</p>
-        <button mat-stroked-button type="button" routerLink="/tests">Sınavlara git</button>
+        @if (isTeacher) {
+          <p>Bu ay onaylanmış ders randevun yok</p>
+          <button mat-stroked-button type="button" routerLink="/availability">Müsait saatlerimi düzenle</button>
+        } @else {
+          <p>Bu ay planlanmış sınav, atama veya randevu yok</p>
+          <button mat-stroked-button type="button" routerLink="/tests">Sınavlara git</button>
+        }
       </div>
     }
 

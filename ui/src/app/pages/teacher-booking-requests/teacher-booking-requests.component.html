@@ -1,0 +1,107 @@
+<section class="breq">
+  <header class="breq__head">
+    <div>
+      <h1>Randevu Talepleri</h1>
+      <p>Öğrencilerin müsait saatlerin için gönderdiği ders randevusu talepleri.</p>
+    </div>
+    <div class="breq__head-actions">
+      <mat-button-toggle-group [value]="filter()" (change)="setFilter($event.value)" aria-label="Talep filtresi">
+        <mat-button-toggle value="pending">Bekleyenler</mat-button-toggle>
+        <mat-button-toggle value="all">Tümü</mat-button-toggle>
+      </mat-button-toggle-group>
+      <a mat-stroked-button routerLink="/availability">
+        <mat-icon>event_available</mat-icon>
+        Müsait Saatlerim
+      </a>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="breq__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <span>Talepler yükleniyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="breq__state breq__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="breq__state">
+      <mat-icon class="breq__empty-icon">inbox</mat-icon>
+      <span>Gösterilecek randevu talebi yok.</span>
+    </div>
+  } @else {
+    <ul class="breq__list">
+      @for (row of rows(); track row.booking.id) {
+        <li class="breq__row">
+          <div class="breq__row-main">
+            <span class="breq__row-student">
+              <mat-icon>person</mat-icon>
+              {{ row.booking.studentName || 'Öğrenci' }}
+            </span>
+            <span class="breq__row-day">{{ row.day }}</span>
+            <span class="breq__row-range">
+              <mat-icon>schedule</mat-icon>
+              {{ row.range }}
+            </span>
+            @if (row.booking.rejectionReason) {
+              <span class="breq__row-reason">Ret gerekçesi: {{ row.booking.rejectionReason }}</span>
+            }
+          </div>
+
+          <span class="breq__chip" [class]="row.statusClass">{{ row.statusLabel }}</span>
+
+          @if (row.booking.status === 'Pending') {
+            @if (rejectingId() === row.booking.id) {
+              <div class="breq__reject">
+                <mat-form-field appearance="outline" class="breq__reject-field">
+                  <mat-label>Ret gerekçesi (opsiyonel)</mat-label>
+                  <textarea
+                    matInput
+                    rows="2"
+                    [maxlength]="reasonMaxLength"
+                    [(ngModel)]="rejectionReason"
+                  ></textarea>
+                </mat-form-field>
+                <div class="breq__actions">
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="breq__danger"
+                    [disabled]="actingId() !== null"
+                    (click)="confirmReject(row)"
+                  >
+                    Reddet
+                  </button>
+                  <button mat-stroked-button type="button" (click)="cancelReject()">Vazgeç</button>
+                </div>
+              </div>
+            } @else {
+              <div class="breq__actions">
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="actingId() !== null"
+                  (click)="approve(row)"
+                >
+                  Onayla
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="actingId() !== null"
+                  (click)="startReject(row)"
+                >
+                  Reddet
+                </button>
+              </div>
+            }
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

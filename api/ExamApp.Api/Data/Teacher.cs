@@ -49,6 +49,22 @@ public class Teacher : BaseEntity
 
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON format)
 
+    // ---- Bağımsız öğretmen (tutor) profil alanları (issue #95) ----
 
+    /// <summary>Saatlik ücret — sadece bilgi amaçlı, ödeme akışı yok. Profil doldurulmadıysa null.</summary>
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal? HourlyRate { get; set; }
 
+    /// <summary>Online ders veriyor mu. Profil kaydında en az biri (Online/InPerson) true olmalı.</summary>
+    public bool TeachesOnline { get; set; }
+
+    /// <summary>Yüz yüze ders veriyor mu.</summary>
+    public bool TeachesInPerson { get; set; }
+
+    /// <summary>Kısa tanıtım metni (öğrenci arama sonuçlarında ve public profilde gösterilir).</summary>
+    [MaxLength(500)]
+    public string? Bio { get; set; }
+
+    /// <summary>Verdiği dersler (curriculum Subject tablosu ile many-to-many).</summary>
+    public ICollection<TeacherSubject> TeacherSubjects { get; set; } = new List<TeacherSubject>();
 }

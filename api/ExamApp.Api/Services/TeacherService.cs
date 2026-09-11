@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
@@ -628,6 +629,262 @@ public class TeacherService : ITeacherService
             .OrderBy(dto => dto.StudentName)
             .ThenBy(dto => dto.WorksheetName)
             .ToList();
+    }
+
+    // ---------------------------------------------------------------------
+    // Issue #95: bağımsız öğretmen tutor profili + öğrenci araması
+    // ---------------------------------------------------------------------
+
+    private const int SearchMaxTake = 100;
+    private const int SearchBioPreviewLength = 160;
+
+    public async Task<TutorProfileResultDto> GetTutorProfileAsync(int userId, CancellationToken ct = default)
+    {
+        var teacher = await _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .Select(t => new
+            {
+                t.Id,
+                t.IsIndependentTutor,
+                t.ApprovalStatus,
+                t.HourlyRate,
+                t.TeachesOnline,
+                t.TeachesInPerson,
+                t.Bio,
+                Subjects = t.TeacherSubjects
+                    .OrderBy(ts => ts.Subject.Name)
+                    .Select(ts => new TutorSubjectDto { SubjectId = ts.SubjectId, Name = ts.Subject.Name })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (teacher == null)
+            return new TutorProfileResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+
+        if (!teacher.IsIndependentTutor)
+            return new TutorProfileResultDto { Success = false, Forbidden = true, Message = "Tutor profili yalnızca bağımsız öğretmenler için kullanılabilir." };
+
+        return new TutorProfileResultDto
+        {
+            Success = true,
+            ObjectId = teacher.Id,
+            Profile = new TutorProfileDto
+            {
+                TeacherId = teacher.Id,
+                ApprovalStatus = teacher.ApprovalStatus,
+                Subjects = teacher.Subjects,
+                HourlyRate = teacher.HourlyRate,
+                TeachesOnline = teacher.TeachesOnline,
+                TeachesInPerson = teacher.TeachesInPerson,
+                Bio = teacher.Bio
+            }
+        };
+    }
+
+    public async Task<TutorProfileResultDto> UpdateTutorProfileAsync(int userId, UpdateTutorProfileDto dto, CancellationToken ct = default)
+    {
+        // 1) İş kuralı validasyonu — DataAnnotation'lar yalnızca şekil kontrolü yapar.
+        var subjectIds = (dto.SubjectIds ?? new List<int>()).Distinct().ToList();
+
+        if (subjectIds.Count == 0)
+            return Fail("En az bir ders seçilmelidir.");
+
+        if (!dto.TeachesOnline && !dto.TeachesInPerson)
+            return Fail("Ders şekli olarak online veya yüz yüze seçeneklerinden en az biri seçilmelidir.");
+
+        if (dto.HourlyRate <= 0)
+            return Fail("Saatlik ücret 0'dan büyük olmalıdır.");
+
+        // 2) Sahiplik + bağımsız öğretmen kontrolü. ApprovalStatus fark etmez: onay beklerken de
+        //    doldurulabilir; aramada görünürlük ayrıca ApprovalStatus=Approved ile filtrelenir.
+        var teacher = await _context.Teachers
+            .Include(t => t.TeacherSubjects)
+            .FirstOrDefaultAsync(t => t.UserId == userId, ct);
+
+        if (teacher == null)
+            return new TutorProfileResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+
+        if (!teacher.IsIndependentTutor)
+            return new TutorProfileResultDto { Success = false, Forbidden = true, Message = "Tutor profili yalnızca bağımsız öğretmenler için güncellenebilir." };
+
+        // 3) SubjectId'ler gerçekten var mı (soft-delete edilmişler global filter ile zaten dışarıda).
+        var existingSubjectIds = await _context.Subjects
+            .AsNoTracking()
+            .Where(s => subjectIds.Contains(s.Id))
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+
+        var missing = subjectIds.Except(existingSubjectIds).ToList();
+        if (missing.Count > 0)
+            return Fail($"Geçersiz ders seçimi: {string.Join(", ", missing)}");
+
+        // 4) Alanları güncelle + ders listesini diff'le (kaldırılanları hard delete, yenileri ekle).
+        _context.SetCurrentUser(userId);
+
+        teacher.HourlyRate = dto.HourlyRate;
+        teacher.TeachesOnline = dto.TeachesOnline;
+        teacher.TeachesInPerson = dto.TeachesInPerson;
+        teacher.Bio = string.IsNullOrWhiteSpace(dto.Bio) ? null : dto.Bio.Trim();
+
+        var current = teacher.TeacherSubjects.ToList();
+        var toRemove = current.Where(ts => !subjectIds.Contains(ts.SubjectId)).ToList();
+        var currentIds = current.Select(ts => ts.SubjectId).ToHashSet();
+        var toAdd = subjectIds.Where(id => !currentIds.Contains(id)).ToList();
+
+        if (toRemove.Count > 0)
+            _context.TeacherSubjects.RemoveRange(toRemove);
+
+        foreach (var subjectId in toAdd)
+            teacher.TeacherSubjects.Add(new TeacherSubject { TeacherId = teacher.Id, SubjectId = subjectId });
+
+        await _context.SaveChangesAsync(ct);
+
+        var result = await GetTutorProfileAsync(userId, ct);
+        result.Message = "Tutor profili güncellendi.";
+        return result;
+
+        static TutorProfileResultDto Fail(string message) => new() { Success = false, Message = message };
+    }
+
+    public async Task<List<TeacherSearchResultDto>> SearchTutorsAsync(TeacherSearchFilterDto filter, CancellationToken ct = default)
+    {
+        var take = filter.Take <= 0 ? 20 : Math.Min(filter.Take, SearchMaxTake);
+        var skip = Math.Max(filter.Skip, 0);
+
+        // Sadece onaylı bağımsız öğretmenler (kabul kriteri: ApprovalStatus=Approved).
+        var query = _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.IsIndependentTutor && t.ApprovalStatus == TeacherApprovalStatus.Approved);
+
+        if (filter.SubjectId.HasValue)
+            query = query.Where(t => t.TeacherSubjects.Any(ts => ts.SubjectId == filter.SubjectId.Value));
+
+        if (filter.MinPrice.HasValue)
+            query = query.Where(t => t.HourlyRate.HasValue && t.HourlyRate.Value >= filter.MinPrice.Value);
+
+        if (filter.MaxPrice.HasValue)
+            query = query.Where(t => t.HourlyRate.HasValue && t.HourlyRate.Value <= filter.MaxPrice.Value);
+
+        if (filter.Online == true)
+            query = query.Where(t => t.TeachesOnline);
+
+        if (filter.InPerson == true)
+            query = query.Where(t => t.TeachesInPerson);
+
+        // Tek sorgu: dersler subquery projeksiyonu ile gelir (N+1 yok).
+        var rows = await query
+            .OrderBy(t => t.HourlyRate ?? decimal.MaxValue)
+            .ThenBy(t => t.Id)
+            .Skip(skip)
+            .Take(take)
+            .Select(t => new
+            {
+                t.Id,
+                t.UserId,
+                t.HourlyRate,
+                t.TeachesOnline,
+                t.TeachesInPerson,
+                t.Bio,
+                Subjects = t.TeacherSubjects
+                    .OrderBy(ts => ts.Subject.Name)
+                    .Select(ts => new TutorSubjectDto { SubjectId = ts.SubjectId, Name = ts.Subject.Name })
+                    .ToList()
+            })
+            .ToListAsync(ct);
+
+        if (rows.Count == 0)
+            return new List<TeacherSearchResultDto>();
+
+        // Ad-soyad tek batch auth-api çağrısıyla; erişilemezse fallback.
+        var users = await ResolveUsersAsync(rows.Select(r => r.UserId).Distinct().ToList(), ct);
+
+        return rows.Select(r => new TeacherSearchResultDto
+        {
+            TeacherId = r.Id,
+            FullName = users.TryGetValue(r.UserId, out var user) && !string.IsNullOrWhiteSpace(user.FullName)
+                ? user.FullName
+                : $"Öğretmen #{r.Id}",
+            Subjects = r.Subjects,
+            HourlyRate = r.HourlyRate,
+            TeachesOnline = r.TeachesOnline,
+            TeachesInPerson = r.TeachesInPerson,
+            Bio = TruncateBio(r.Bio)
+        }).ToList();
+    }
+
+    public async Task<TeacherPublicProfileDto?> GetPublicProfileAsync(int teacherId, CancellationToken ct = default)
+    {
+        // Var/yok ayrımı sızdırılmaz: bağımsız değilse veya Approved değilse de null (controller 404).
+        var row = await _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.Id == teacherId
+                        && t.IsIndependentTutor
+                        && t.ApprovalStatus == TeacherApprovalStatus.Approved)
+            .Select(t => new
+            {
+                t.Id,
+                t.UserId,
+                t.HourlyRate,
+                t.TeachesOnline,
+                t.TeachesInPerson,
+                t.Bio,
+                Subjects = t.TeacherSubjects
+                    .OrderBy(ts => ts.Subject.Name)
+                    .Select(ts => new TutorSubjectDto { SubjectId = ts.SubjectId, Name = ts.Subject.Name })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (row == null)
+            return null;
+
+        var users = await ResolveUsersAsync(new List<int> { row.UserId }, ct);
+        users.TryGetValue(row.UserId, out var user);
+
+        return new TeacherPublicProfileDto
+        {
+            TeacherId = row.Id,
+            FullName = !string.IsNullOrWhiteSpace(user?.FullName) ? user!.FullName : $"Öğretmen #{row.Id}",
+            Avatar = user?.Avatar ?? string.Empty,
+            Subjects = row.Subjects,
+            HourlyRate = row.HourlyRate,
+            TeachesOnline = row.TeachesOnline,
+            TeachesInPerson = row.TeachesInPerson,
+            Bio = row.Bio
+        };
+    }
+
+    private static string? TruncateBio(string? bio)
+    {
+        if (string.IsNullOrWhiteSpace(bio))
+            return null;
+
+        return bio.Length <= SearchBioPreviewLength
+            ? bio
+            : bio[..SearchBioPreviewLength].TrimEnd() + "…";
+    }
+
+    /// <summary>
+    /// UserId'leri tek batch çağrıyla kullanıcı bilgisine çevirir (TeacherApprovalService.ResolveUsersAsync ile aynı desen).
+    /// Auth-api erişilemezse boş sözlük döner — liste yine de dönmeli.
+    /// </summary>
+    private async Task<Dictionary<int, UserLookupResultDto>> ResolveUsersAsync(List<int> userIds, CancellationToken ct)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<int, UserLookupResultDto>();
+
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(userIds, ct);
+            return users
+                .GroupBy(u => u.Id)
+                .ToDictionary(g => g.Key, g => g.First());
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return new Dictionary<int, UserLookupResultDto>();
+        }
     }
 
     private static void AddPairWindow(

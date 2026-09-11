@@ -1,0 +1,100 @@
+<section class="tp">
+  <header class="tp__head">
+    <div>
+      <h2>Özel Ders Profilim</h2>
+      <p>Verdiğiniz dersleri, saatlik ücretinizi ve ders şeklinizi öğrencilerin görebileceği şekilde düzenleyin.</p>
+    </div>
+    @if (profile()) {
+      <span class="tp__status" [class]="'tp__status--' + statusTone()">
+        <mat-icon>verified_user</mat-icon>
+        {{ statusLabel() }}
+      </span>
+    }
+  </header>
+
+  @if (loading()) {
+    <div class="tp__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>Profiliniz yükleniyor...</span>
+    </div>
+  } @else if (unavailable()) {
+    <div class="tp__state">
+      <mat-icon class="tp__state-icon">school</mat-icon>
+      <span>{{ unavailable() }}</span>
+    </div>
+  } @else if (error()) {
+    <div class="tp__state tp__state--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+    </div>
+  } @else {
+    @if (!isApproved()) {
+      <p class="tp__notice">
+        Profiliniz onaylanana kadar öğrenci aramalarında görünmez. Bilgilerinizi şimdiden doldurabilirsiniz.
+      </p>
+    }
+
+    <form class="tp__form" [formGroup]="form" (ngSubmit)="save()">
+      <mat-form-field appearance="outline" class="tp__field">
+        <mat-label>Verdiğim dersler</mat-label>
+        <mat-select formControlName="subjectIds" multiple>
+          @for (subject of subjects(); track subject.id) {
+            <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
+          }
+        </mat-select>
+        @if (subjectsError()) {
+          <mat-hint class="tp__hint-error">{{ subjectsError() }}</mat-hint>
+        } @else {
+          <mat-hint>En az bir ders seçmelisiniz.</mat-hint>
+        }
+      </mat-form-field>
+
+      @if (selectedSubjectIds().length) {
+        <mat-chip-set class="tp__chips" aria-label="Seçili dersler">
+          @for (subjectId of selectedSubjectIds(); track subjectId) {
+            <mat-chip (removed)="removeSubject(subjectId)">
+              {{ subjectName(subjectId) }}
+              <button matChipRemove type="button" [attr.aria-label]="subjectName(subjectId) + ' dersini kaldır'">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip>
+          }
+        </mat-chip-set>
+      }
+
+      <mat-form-field appearance="outline" class="tp__field tp__field--narrow">
+        <mat-label>Saatlik ücret</mat-label>
+        <input matInput type="number" min="1" step="1" formControlName="hourlyRate" />
+        <span matTextSuffix>₺</span>
+        <mat-hint>Ödeme alınmaz; yalnızca bilgi amaçlı gösterilir.</mat-hint>
+      </mat-form-field>
+
+      <fieldset class="tp__modes">
+        <legend>Ders şekli</legend>
+        <mat-checkbox formControlName="teachesOnline">Online</mat-checkbox>
+        <mat-checkbox formControlName="teachesInPerson">Yüz yüze</mat-checkbox>
+        <p class="tp__modes-hint">En az birini seçmelisiniz; ikisi birden de seçilebilir.</p>
+      </fieldset>
+
+      <mat-form-field appearance="outline" class="tp__field">
+        <mat-label>Kısa tanıtım</mat-label>
+        <textarea
+          matInput
+          rows="4"
+          formControlName="bio"
+          [maxlength]="bioMaxLength"
+          placeholder="Deneyiminiz, ders yönteminiz hakkında kısa bir tanıtım."
+        ></textarea>
+        <mat-hint align="end">{{ bioLength() }} / {{ bioMaxLength }}</mat-hint>
+      </mat-form-field>
+
+      <div class="tp__actions">
+        <button mat-flat-button color="primary" type="submit" [disabled]="!canSave()">Kaydet</button>
+        @if (saving()) {
+          <mat-spinner diameter="20" aria-label="Kaydediliyor"></mat-spinner>
+        }
+      </div>
+    </form>
+  }
+</section>

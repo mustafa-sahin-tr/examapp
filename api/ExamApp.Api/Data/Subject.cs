@@ -15,4 +15,7 @@ public class Subject : BaseEntity
 
     public ICollection<Question> Questions { get; set; } = new List<Question>();
 
+    /// <summary>Bu dersi veren bağımsız öğretmenler (issue #95).</summary>
+    public ICollection<TeacherSubject> TeacherSubjects { get; set; } = new List<TeacherSubject>();
+
 }

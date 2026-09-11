@@ -141,6 +141,27 @@ export const routes: Routes = [
           import('./pages/practice-solve/practice-solve.component').then((m) => m.PracticeSolveComponent),
       },
       {
+        // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).
+        path: 'tutor-profile',
+        canActivate: [authGuard, roleGuard('Teacher')],
+        loadComponent: () =>
+          import('./pages/tutor-profile/tutor-profile.component').then((m) => m.TutorProfileComponent),
+      },
+      {
+        // Issue #95: öğrencinin bağımsız öğretmen araması.
+        path: 'tutors',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/tutor-search/tutor-search.component').then((m) => m.TutorSearchComponent),
+      },
+      {
+        // Issue #95: arama sonucundan açılan tekil öğretmen public profili.
+        path: 'tutors/:id',
+        canActivate: [authGuard, studentGuard],
+        loadComponent: () =>
+          import('./pages/tutor-search/tutor-public-profile.component').then((m) => m.TutorPublicProfileComponent),
+      },
+      {
         path: 'my-calendar',
         canActivate: [authGuard, studentGuard],
         loadComponent: () =>

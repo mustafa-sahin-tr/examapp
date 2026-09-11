@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  padding: 1.5rem;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.sbk__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+
+  h1 {
+    margin: 0 0 0.25rem;
+    font-family: var(--mainFontFamily);
+    font-size: 1.375rem;
+  }
+
+  p {
+    margin: 0;
+    opacity: 0.75;
+    font-size: 0.875rem;
+  }
+}
+
+.sbk__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sbk__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  opacity: 0.85;
+
+  &--error {
+    color: var(--ms-danger-background);
+  }
+}
+
+.sbk__empty-icon {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  opacity: 0.5;
+}
+
+.sbk__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sbk__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--main-foreground-color);
+}
+
+.sbk__row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 12rem;
+}
+
+.sbk__row-teacher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--mainFontFamily);
+  font-weight: 600;
+
+  mat-icon {
+    font-size: 1.1rem;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+}
+
+.sbk__row-day {
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+
+.sbk__row-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  opacity: 0.8;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.sbk__row-reason {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+  white-space: pre-wrap;
+}
+
+.sbk__chip {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &.is-pending {
+    background: color-mix(in srgb, var(--primaryColor) 15%, transparent);
+    color: var(--primaryColor);
+  }
+
+  &.is-approved {
+    background: color-mix(in srgb, var(--ms-action-background) 18%, transparent);
+    color: var(--ms-action-background);
+  }
+
+  &.is-rejected {
+    background: color-mix(in srgb, var(--ms-danger-background) 15%, transparent);
+    color: var(--ms-danger-background);
+  }
+}

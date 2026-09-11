@@ -27,5 +27,6 @@ export class CalendarLegendComponent {
     { variant: 'deadline-done', icon: 'check_circle', label: 'Tamamlanan atama' },
     { variant: 'program-plan', icon: 'menu_book', label: 'Çalışma planı' },
     { variant: 'program-plan-done', icon: 'check_circle', label: 'Tamamlanan plan' },
+    { variant: 'booking', icon: 'cast_for_education', label: 'Ders randevusu' },
   ];
 }

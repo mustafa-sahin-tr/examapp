@@ -14,4 +14,12 @@ public interface IWorksheetCalendarService
     /// </summary>
     Task<StudentCalendarResponseDto> GetMyCalendarAsync(
         int studentId, string keycloakUserId, int? gradeId, int? schoolId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+    /// <summary>
+    /// Öğretmenin [fromUtc, toUtc) aralığındaki takvim etkinlikleri (issue #96): şu an yalnızca
+    /// onaylanmış (Approved) randevular. <paramref name="teacherUserId"/> auth/exam user id'sidir;
+    /// Teacher kaydı servis içinde çözülür — öğretmen kaydı yoksa boş liste döner.
+    /// </summary>
+    Task<StudentCalendarResponseDto> GetTeacherCalendarAsync(
+        int teacherUserId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
 }

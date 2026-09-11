@@ -222,6 +222,70 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("BookTests");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Booking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AvailabilitySlotId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DecisionAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AvailabilitySlotId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" IN (0, 1) AND NOT \"IsDeleted\"");
+
+                    b.HasIndex("StudentId", "Status");
+
+                    b.HasIndex("TeacherId", "Status");
+
+                    b.ToTable("Bookings");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.ClassifierCacheConfig", b =>
                 {
                     b.Property<int>("Id")
@@ -1876,6 +1940,61 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("Teachers");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.TeacherAvailabilitySlot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId", "Date", "StartTime");
+
+                    b.HasIndex("TeacherId", "Date", "StartTime", "EndTime")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDeleted\"");
+
+                    b.ToTable("TeacherAvailabilitySlots");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.TeacherSubject", b =>
                 {
                     b.Property<int>("Id")
@@ -3004,6 +3123,33 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Book");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.Booking", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.TeacherAvailabilitySlot", "AvailabilitySlot")
+                        .WithMany("Bookings")
+                        .HasForeignKey("AvailabilitySlotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ExamApp.Api.Data.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AvailabilitySlot");
+
+                    b.Navigation("Student");
+
+                    b.Navigation("Teacher");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.District", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.Province", "Province")
@@ -3317,6 +3463,17 @@ namespace ExamApp.Api.Migrations
                         .HasForeignKey("SchoolId");
 
                     b.Navigation("School");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TeacherAvailabilitySlot", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.TeacherSubject", b =>
@@ -3700,6 +3857,11 @@ namespace ExamApp.Api.Migrations
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
                 {
                     b.Navigation("TeacherSubjects");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TeacherAvailabilitySlot", b =>
+                {
+                    b.Navigation("Bookings");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>

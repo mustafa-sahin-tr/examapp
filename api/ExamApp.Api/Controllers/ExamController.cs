@@ -111,13 +111,15 @@ public class ExamController : BaseController
     private const int MaxRangeDays = 180;
 
     /// <summary>
-    /// Öğrencinin [from, to) aralığındaki takvim etkinlikleri (planlanmış hatırlatmalar + atama son teslim tarihleri
-    /// + aktif çalışma programı sayfa planları).
+    /// Kullanıcının [from, to) aralığındaki takvim etkinlikleri.
+    /// Öğrenci için: planlanmış hatırlatmalar + atama son teslim tarihleri + aktif çalışma programı
+    /// sayfa planları + onaylanmış ders randevuları (issue #96).
+    /// Öğretmen için: onaylanmış ders randevuları.
     /// from/to zorunlu ve açık offset/'Z' içeren ISO-8601 tarih olmalı; <c>to</c> hariç (exclusive).
     /// Aralık en fazla <see cref="MaxRangeDays"/> gün olabilir.
     /// </summary>
     [HttpGet("calendar/me")]
-    [Authorize(Roles = "Student")]
+    [Authorize(Roles = "Student,Teacher")]
     public async Task<IActionResult> GetMyCalendar([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to))
@@ -135,6 +137,13 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
             return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+
+        // Öğretmen takvimi yalnızca onaylanmış randevuları içerir (issue #96); öğrenci akışı değişmedi.
+        if (User.IsInRole("Teacher") && !User.IsInRole("Student"))
+        {
+            var teacherResult = await _calendarService.GetTeacherCalendarAsync(user.Id, fromUtc, toUtc, ct);
+            return Ok(teacherResult);
+        }
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)

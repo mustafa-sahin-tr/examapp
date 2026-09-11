@@ -11,6 +11,7 @@ import { MonthCalendarGridComponent } from '../../shared/components/month-calend
 import { CalendarLegendComponent } from '../../shared/components/calendar-legend/calendar-legend.component';
 import { addMonths, buildMonthWeeks, formatMonthYear, startOfMonth, toLocalIso } from '../../shared/utils/calendar-month.util';
 import { TestService } from '../../services/test.service';
+import { AuthService } from '../../services/auth.service';
 import { CalendarEvent } from '../../models/calendar-event';
 import {
   CalendarDayDialogComponent,
@@ -52,6 +53,8 @@ export class MyCalendarComponent {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
+  /** Takvim artık öğretmene de açık (issue #96) — boş durum/aksiyon metinleri role göre değişir. */
+  protected readonly isTeacher = inject(AuthService).hasRealmRole('Teacher');
 
   readonly viewMonth = signal<Date>(startOfMonth(new Date()));
   readonly status = signal<CalendarStatus>('loading');
@@ -155,6 +158,11 @@ export class MyCalendarComponent {
    * `/programs/:id/detail` (öğrenci için tekil study-page rotası yok).
    */
   private navigateToEvent(event: CalendarEvent): void {
+    if (event.kind === 'booking') {
+      // Randevunun worksheet'i yok (issue #96) — role göre randevu listesine gidilir.
+      void this.router.navigate([this.isTeacher ? '/booking-requests' : '/my-bookings']);
+      return;
+    }
     if (event.kind === 'program-study-page') {
       if (event.programId !== null) {
         void this.router.navigate(['/programs', event.programId, 'detail']);

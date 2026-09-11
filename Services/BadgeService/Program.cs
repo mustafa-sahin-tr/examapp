@@ -118,6 +118,8 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<LoginAttemptedConsumer, LoginAttemptedConsumerDefinition>();
     x.AddConsumer<TeacherApplicationSubmittedConsumer, TeacherApplicationSubmittedConsumerDefinition>();
     x.AddConsumer<IndependentTeacherRegisteredConsumer, IndependentTeacherRegisteredConsumerDefinition>();
+    x.AddConsumer<BookingRequestCreatedConsumer, BookingRequestCreatedConsumerDefinition>();
+    x.AddConsumer<BookingDecisionConsumer, BookingDecisionConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -139,6 +141,8 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<LoginAttemptedConsumer>(context);
             e.ConfigureConsumer<TeacherApplicationSubmittedConsumer>(context);
             e.ConfigureConsumer<IndependentTeacherRegisteredConsumer>(context);
+            e.ConfigureConsumer<BookingRequestCreatedConsumer>(context);
+            e.ConfigureConsumer<BookingDecisionConsumer>(context);
         });
     });
 });

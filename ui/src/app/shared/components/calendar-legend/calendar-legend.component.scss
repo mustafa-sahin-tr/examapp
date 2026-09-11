@@ -56,6 +56,13 @@
       color: var(--ms-info-text-weak);
       opacity: 0.75;
     }
+
+    // Ders randevusu (issue #96).
+    &--booking {
+      background: color-mix(in srgb, var(--primaryColor) 16%, transparent);
+      border-color: var(--primaryColor);
+      color: var(--primaryColor);
+    }
   }
 
   &__dot {
@@ -111,6 +118,13 @@
     &--program-plan-done {
       border: 1px solid var(--ms-info-text-weak);
       color: var(--ms-info-text-weak);
+    }
+
+    &--booking {
+      width: 22px;
+      border-radius: 999px;
+      background: var(--primaryColor);
+      color: var(--main-foreground-color);
     }
   }
 

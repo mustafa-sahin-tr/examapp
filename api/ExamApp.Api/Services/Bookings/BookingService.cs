@@ -31,6 +31,18 @@ public class BookingService : IBookingService
 
     private const int DefaultTake = 50;
 
+    /// <summary>
+    /// Bir slot bugünden en fazla bu kadar gün ileriye tanımlanabilir. Takvim sorgusunun
+    /// <c>MaxRangeDays</c> (180 gün) üst sınırıyla aynı büyüklük mertebesinde tutulur; amaç
+    /// 9999 gibi uçuk tarihlerle veri hijyenini ve takvim sorgu maliyetini bozmayı engellemek.
+    /// </summary>
+    private const int MaxAdvanceDays = 90;
+
+    /// <summary>Tek bir müsaitlik aralığının azami süresi (saat).</summary>
+    private const int MaxSlotDurationHours = 4;
+
+    private static readonly TimeSpan MaxSlotDuration = TimeSpan.FromHours(MaxSlotDurationHours);
+
     private static readonly BookingStatus[] ActiveStatuses =
         { BookingStatus.Pending, BookingStatus.Approved };
 
@@ -57,6 +69,14 @@ public class BookingService : IBookingService
 
         if (ToUtc(dto.Date, dto.StartTime) <= DateTime.UtcNow)
             return SlotFail("Geçmiş bir zaman aralığı tanımlanamaz.");
+
+        // Üst sınırlar sunucu tarafında zorunlu (istemci doğrulaması güvenlik sınırı değildir).
+        var maxDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(MaxAdvanceDays);
+        if (dto.Date > maxDate)
+            return SlotFail($"Müsaitlik aralığı en fazla {MaxAdvanceDays} gün sonrası için tanımlanabilir.");
+
+        if (dto.EndTime - dto.StartTime > MaxSlotDuration)
+            return SlotFail($"Bir müsaitlik aralığı en fazla {MaxSlotDurationHours} saat sürebilir.");
 
         var teacher = await _context.Teachers
             .AsNoTracking()

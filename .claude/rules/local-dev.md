@@ -35,6 +35,9 @@ dev defaults; never reuse them outside local dev.
 | MinIO API | 9000 | S3-compat storage |
 | MinIO UI | 9001 | http://localhost:9001 |
 | question-detector | 8080 | FastAPI (YOLO servisi) |
+| jitsi-web | 8000 (HTTP, `127.0.0.1` only) | http://localhost:8000 — tarayıcı doğrudan buraya gider, gateway'den geçmez |
+| jvb (Jitsi video bridge) | 10000/udp | medya trafiği |
+| prosody / jicofo (Jitsi XMPP/focus) | dışa açık port yok | sadece `mynetwork` içinden erişilir |
 
 ## Run services locally (without Docker)
 

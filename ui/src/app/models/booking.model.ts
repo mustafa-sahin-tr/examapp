@@ -88,3 +88,34 @@ export interface BookingResult extends BookingResponseBase {
 export interface BookingListResult extends BookingResponseBase {
   items: Booking[];
 }
+
+// ---------------- Video görüşme (issue #97) ----------------
+
+/**
+ * Bir görüşme odasına katılmak için gereken her şey.
+ * Backend karşılığı: api/ExamApp.Api/Models/Dtos/Video/VideoSessionDtos.cs (`VideoSessionDto`).
+ * Sağlayıcıdan bağımsızdır; şimdilik `provider` her zaman "Jitsi".
+ */
+export interface VideoSession {
+  provider: string;
+  /** Deterministik oda adı, ör. "booking-12-a1b2c3d4e5f6". */
+  roomName: string;
+  /** Şemasız host, ör. "localhost:8000" — Jitsi IFrame API bunu ister. */
+  domain: string;
+  /** Şemalı taban adres, ör. "http://localhost:8000". */
+  baseUrl: string;
+  /** Token dahil, doğrudan tarayıcıda açılabilen tam katılım adresi. */
+  joinUrl: string;
+  /** Odaya giriş için üretilmiş kısa ömürlü JWT. */
+  token: string;
+  /** Token geçerlilik sonu (ISO, UTC). */
+  expiresAt: string;
+  /** Çağıran bu odada moderatör mü (öğretmen). */
+  isModerator: boolean;
+}
+
+/** POST /booking/requests/{id}/video-session yanıtı. */
+export interface VideoSessionResult extends BookingResponseBase {
+  objectId?: number | null;
+  session?: VideoSession | null;
+}

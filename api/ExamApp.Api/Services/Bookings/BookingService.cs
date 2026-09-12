@@ -8,11 +8,14 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Video;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services.Bookings;
 
@@ -48,12 +51,30 @@ public class BookingService : IBookingService
 
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
+    private readonly IVideoSessionProvider _videoSessionProvider;
+    private readonly IOptions<VideoOptions> _videoOptions;
+
+    /// <summary>
+    /// Şimdilik yalnızca görüşme katılım penceresi (issue #97) bu saat kaynağını kullanır;
+    /// diğer metotlardaki <c>DateTime.UtcNow</c> çağrıları issue #96'dan olduğu gibi bırakıldı.
+    /// </summary>
+    private readonly TimeProvider _timeProvider;
+
     private readonly ILogger<BookingService> _logger;
 
-    public BookingService(AppDbContext context, IAuthApiClient authApiClient, ILogger<BookingService> logger)
+    public BookingService(
+        AppDbContext context,
+        IAuthApiClient authApiClient,
+        IVideoSessionProvider videoSessionProvider,
+        IOptions<VideoOptions> videoOptions,
+        TimeProvider timeProvider,
+        ILogger<BookingService> logger)
     {
         _context = context;
         _authApiClient = authApiClient;
+        _videoSessionProvider = videoSessionProvider;
+        _videoOptions = videoOptions;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
@@ -576,6 +597,106 @@ public class BookingService : IBookingService
             Booking = result.Items.FirstOrDefault()
         };
     }
+
+    // ------------------------------------------------------------------
+    // Görüşme odası (issue #97)
+    // ------------------------------------------------------------------
+
+    public async Task<VideoSessionResultDto> GetVideoSessionAsync(
+        int callerUserId, int bookingId, CancellationToken ct = default)
+    {
+        var row = await _context.Bookings
+            .AsNoTracking()
+            .Where(b => b.Id == bookingId)
+            .Select(b => new
+            {
+                b.Id,
+                b.Status,
+                TeacherUserId = b.Teacher.UserId,
+                StudentUserId = b.Student.UserId,
+                b.AvailabilitySlot.Date,
+                b.AvailabilitySlot.StartTime,
+                b.AvailabilitySlot.EndTime
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (row == null)
+            return VideoFail(notFound: true, message: "Randevu bulunamadı.");
+
+        var isTeacher = row.TeacherUserId == callerUserId;
+        var isStudent = row.StudentUserId == callerUserId;
+
+        // Sadece randevunun iki tarafı odaya girebilir — rol attribute'u tek başına yetmez.
+        if (!isTeacher && !isStudent)
+            return VideoFail(forbidden: true, message: "Bu randevuya katılma yetkiniz yok.");
+
+        if (row.Status != BookingStatus.Approved)
+            return VideoFail(conflict: true, message: "Görüşme yalnızca onaylanmış randevular için başlatılabilir.");
+
+        var options = _videoOptions.Value;
+        var startUtc = ToUtc(row.Date, row.StartTime);
+        var endUtc = ToUtc(row.Date, row.EndTime);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        var windowOpensAt = startUtc.AddMinutes(-options.JoinWindowBeforeMinutes);
+        var windowClosesAt = endUtc.AddMinutes(options.JoinWindowAfterMinutes);
+
+        if (now < windowOpensAt)
+            return VideoFail(conflict: true, message:
+                $"Görüşmeye ders saatinden en erken {options.JoinWindowBeforeMinutes} dakika önce katılabilirsiniz.");
+
+        if (now > windowClosesAt)
+            return VideoFail(conflict: true, message:
+                $"Bu dersin görüşme penceresi kapandı (bitişten {options.JoinWindowAfterMinutes} dakika sonra kapanır).");
+
+        var participantUserId = isTeacher ? row.TeacherUserId : row.StudentUserId;
+        var names = await ResolveUserNamesAsync(new[] { participantUserId }, ct);
+        var displayName = names.TryGetValue(participantUserId, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
+            ? resolved
+            : isTeacher ? "Öğretmen" : "Öğrenci";
+
+        VideoSessionDto session;
+        try
+        {
+            session = await _videoSessionProvider.CreateOrJoinSessionAsync(
+                new VideoSessionRequest(
+                    BookingId: row.Id,
+                    ParticipantUserId: participantUserId,
+                    ParticipantDisplayName: displayName,
+                    ParticipantRole: isTeacher ? VideoParticipantRoles.Teacher : VideoParticipantRoles.Student,
+                    StartUtc: startUtc,
+                    EndUtc: endUtc,
+                    WindowClosesAtUtc: windowClosesAt),
+                ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Sağlayıcı yapılandırması eksik/hatalı (secret yok, prod'da dev secret vb.).
+            // İstemciye stack trace sızdırmak yerine anlaşılır bir çakışma mesajı döneriz.
+            _logger.LogError(ex,
+                "Video sağlayıcısı yapılandırılmamış; görüşme odası üretilemedi. BookingId={BookingId}", row.Id);
+            return VideoFail(conflict: true, message:
+                "Görüşme servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.");
+        }
+
+        return new VideoSessionResultDto
+        {
+            Success = true,
+            ObjectId = row.Id,
+            Session = session
+        };
+    }
+
+    private static VideoSessionResultDto VideoFail(
+        string message, bool notFound = false, bool forbidden = false, bool conflict = false)
+        => new()
+        {
+            Success = false,
+            NotFound = notFound,
+            Forbidden = forbidden,
+            Conflict = conflict,
+            Message = message
+        };
 
     // ------------------------------------------------------------------
     // Ortak yardımcılar

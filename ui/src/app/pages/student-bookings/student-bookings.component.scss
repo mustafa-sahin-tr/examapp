@@ -120,6 +120,15 @@
   white-space: pre-wrap;
 }
 
+// Tooltip pasif butonda da görünsün diye buton bir span'a sarılır (issue #97).
+.sbk__join {
+  display: inline-flex;
+
+  mat-icon {
+    margin-right: 0.25rem;
+  }
+}
+
 .sbk__chip {
   display: inline-block;
   padding: 0.2rem 0.6rem;

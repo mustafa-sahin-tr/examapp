@@ -2,6 +2,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Models.Dtos.Video;
 
 namespace ExamApp.Api.Services.Bookings;
 
@@ -37,4 +38,11 @@ public interface IBookingService
 
     /// <summary>Öğretmen kendi slotuna gelen talebi reddeder; gerekçe opsiyonel.</summary>
     Task<BookingResultDto> RejectBookingAsync(int teacherUserId, int bookingId, string? rejectionReason, CancellationToken ct = default);
+
+    /// <summary>
+    /// Onaylı bir randevu için görüşme odası bilgisi + katılım token'ı üretir (issue #97).
+    /// Çağıran randevunun öğretmeni veya öğrencisi olmalıdır (aksi halde Forbidden); randevu
+    /// Approved değilse ya da katılım penceresi dışındaysa Conflict döner.
+    /// </summary>
+    Task<VideoSessionResultDto> GetVideoSessionAsync(int callerUserId, int bookingId, CancellationToken ct = default);
 }

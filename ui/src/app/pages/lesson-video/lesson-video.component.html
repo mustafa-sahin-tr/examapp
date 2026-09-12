@@ -1,0 +1,49 @@
+<section class="lvid">
+  <header class="lvid__head">
+    <div class="lvid__title">
+      <h1>{{ title() }}</h1>
+      @if (session()) {
+        <span class="lvid__role">{{ roleLabel() }}</span>
+      }
+    </div>
+    <button mat-stroked-button type="button" class="lvid__leave" (click)="leave()">
+      <mat-icon>call_end</mat-icon>
+      Dersten ayrıl
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="lvid__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="40" />
+      <span>Görüşme odası hazırlanıyor...</span>
+    </div>
+  } @else if (error()) {
+    <div class="lvid__state lvid__state--error" role="alert">
+      <mat-icon>videocam_off</mat-icon>
+      <span>{{ error() }}</span>
+      <div class="lvid__state-actions">
+        @if (bookingId() !== null) {
+          <button mat-flat-button color="primary" type="button" (click)="load()">Tekrar dene</button>
+        }
+        <button mat-stroked-button type="button" (click)="leave()">Geri dön</button>
+      </div>
+    </div>
+  } @else if (session()) {
+    @if (mode() === 'iframeApi') {
+      <div #jitsiContainer class="lvid__stage"></div>
+    } @else {
+      <iframe
+        class="lvid__stage"
+        [src]="joinUrl()"
+        [title]="title() + ' görüşme odası'"
+        allow="camera; microphone; display-capture; autoplay; fullscreen"
+      ></iframe>
+    }
+  } @else {
+    <div class="lvid__state">
+      <mat-icon>videocam</mat-icon>
+      <span>Görüşme odası bulunamadı.</span>
+      <button mat-stroked-button type="button" (click)="leave()">Geri dön</button>
+    </div>
+  }
+</section>

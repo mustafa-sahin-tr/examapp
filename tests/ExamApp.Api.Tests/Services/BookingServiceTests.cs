@@ -1,11 +1,14 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
+using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Bookings;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Video;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace ExamApp.Api.Tests.Services;
@@ -26,8 +29,13 @@ public class BookingServiceTests : IDisposable
     private readonly TestDb _db = TestDb.Create();
     private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
 
-    private BookingService NewService(AppDbContext ctx) =>
-        new(ctx, _authApi, new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>());
+    private readonly IVideoSessionProvider _videoProvider = Substitute.For<IVideoSessionProvider>();
+
+    /// <summary>Issue #97'de eklenen video bağımlılıkları; TimeProvider ile deterministik "now" kontrol ederiz.</summary>
+    private BookingService NewService(AppDbContext ctx, TimeProvider? timeProvider = null) =>
+        new(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()),
+            timeProvider ?? TimeProvider.System,
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>());
 
     private async Task<(int id, int userId)> SeedTeacherAsync(
         int teacherId, int userId, TeacherApprovalStatus status = TeacherApprovalStatus.Approved)
@@ -536,6 +544,615 @@ public class BookingServiceTests : IDisposable
 
         result.Success.ShouldBeTrue();
         result.Booking!.RejectionReason.ShouldBeNull();
+    }
+
+    // ------ Video session (issue #97) ------
+
+    [Fact]
+    public async Task GetVideoSessionAsync_BookingNotFound_ReturnsNotFound()
+    {
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).GetVideoSessionAsync(TeacherUserId, 9999, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_CallerNotTeacherOrStudent_ReturnsForbidden()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedTeacherAsync(OtherTeacherId, OtherTeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = false }));
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(OtherTeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Forbidden.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_BookingNotApproved_ReturnsConflict()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+        var slotId = await SeedSlotAsync(TeacherId, DateOnly.FromDateTime(DateTime.UtcNow.AddDays(5)),
+            new TimeOnly(14, 0), new TimeOnly(15, 0));
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Pending, // Not approved
+                CreatedAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_BeforeJoinWindow_ReturnsConflict()
+    {
+        // Slot: 2026-09-15 10:30-11:30 UTC
+        // Window opens: 10:15 UTC (start - 15 min)
+        // Window closes: 12:00 UTC (end + 30 min)
+        // Test: now = 10:14 → before window opens → Conflict
+
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        var slotDate = new DateOnly(2026, 9, 15);
+        var slotStart = new TimeOnly(10, 30);
+        var slotEnd = new TimeOnly(11, 30);
+        var slotId = await SeedSlotAsync(TeacherId, slotDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        var fakeNow = new DateTime(2026, 9, 15, 10, 14, 0, DateTimeKind.Utc);
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+        result.Message.ShouldContain("15");
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_AtJoinWindowStart_Succeeds()
+    {
+        // Slot: 2026-09-15 10:30-11:30 UTC
+        // Window opens: 10:15 UTC
+        // Test: now = 10:15 → exactly at window open → Success
+
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        var slotDate = new DateOnly(2026, 9, 15);
+        var slotStart = new TimeOnly(10, 30);
+        var slotEnd = new TimeOnly(11, 30);
+        var slotId = await SeedSlotAsync(TeacherId, slotDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = true }));
+
+        var fakeNow = new DateTime(2026, 9, 15, 10, 15, 0, DateTimeKind.Utc);
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Session.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_DuringJoinWindow_Succeeds()
+    {
+        // Slot: 2026-09-15 10:30-11:30 UTC
+        // Window opens: 10:15 UTC
+        // Test: now = 10:16 → during window (before slot start) → Success
+
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        var slotDate = new DateOnly(2026, 9, 15);
+        var slotStart = new TimeOnly(10, 30);
+        var slotEnd = new TimeOnly(11, 30);
+        var slotId = await SeedSlotAsync(TeacherId, slotDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = true }));
+
+        var fakeNow = new DateTime(2026, 9, 15, 10, 16, 0, DateTimeKind.Utc);
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Session.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_AtJoinWindowEnd_Succeeds()
+    {
+        // Slot: 2026-09-15 10:30-11:30 UTC
+        // Window closes: 12:00 UTC (end + 30 min)
+        // Test: now = 12:00 → exactly at window close → Success
+
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        var slotDate = new DateOnly(2026, 9, 15);
+        var slotStart = new TimeOnly(10, 30);
+        var slotEnd = new TimeOnly(11, 30);
+        var slotId = await SeedSlotAsync(TeacherId, slotDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new VideoSessionDto { Provider = "Jitsi", RoomName = "test", Domain = "localhost", BaseUrl = "http://localhost", JoinUrl = "http://localhost/test?jwt=x", Token = "x", ExpiresAt = DateTime.UtcNow.AddMinutes(180), IsModerator = true }));
+
+        var fakeNow = new DateTime(2026, 9, 15, 12, 0, 0, DateTimeKind.Utc);
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Session.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_AfterJoinWindow_ReturnsConflict()
+    {
+        // Slot: 2026-09-15 10:30-11:30 UTC
+        // Window closes: 12:00 UTC (end + 30 min)
+        // Test: now = 12:01 → after window closes → Conflict
+
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        var slotDate = new DateOnly(2026, 9, 15);
+        var slotStart = new TimeOnly(10, 30);
+        var slotEnd = new TimeOnly(11, 30);
+        var slotId = await SeedSlotAsync(TeacherId, slotDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        var fakeNow = new DateTime(2026, 9, 15, 12, 1, 0, DateTimeKind.Utc);
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo, new FakeTimeProvider(fakeNow)).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+        result.Message.ShouldContain("30");
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_TeacherAccess_Succeeds()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        // Slot must start within 15 minutes for join window to be active
+        var now = DateTime.UtcNow;
+        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
+        var futureDate = DateOnly.FromDateTime(startTime);
+        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
+        var slotEnd = slotStart.AddHours(1);
+        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = TeacherUserId, FullName = "Teacher Name", KeycloakId = "kc-teacher" }
+            }));
+
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(x =>
+            {
+                var req = (VideoSessionRequest)x[0];
+                return Task.FromResult(new VideoSessionDto
+                {
+                    Provider = "Jitsi",
+                    RoomName = $"booking-{req.BookingId}-xxx",
+                    Domain = "localhost",
+                    BaseUrl = "http://localhost",
+                    JoinUrl = "http://localhost/test?jwt=x",
+                    Token = "x",
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    IsModerator = true
+                });
+            });
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Session.ShouldNotBeNull();
+        result.Session!.IsModerator.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_StudentAccess_Succeeds()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        // Slot must start within 15 minutes for join window to be active
+        var now = DateTime.UtcNow;
+        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
+        var futureDate = DateOnly.FromDateTime(startTime);
+        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
+        var slotEnd = slotStart.AddHours(1);
+        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = StudentUserId, FullName = "Student Name", KeycloakId = "kc-student" }
+            }));
+
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(x =>
+            {
+                var req = (VideoSessionRequest)x[0];
+                return Task.FromResult(new VideoSessionDto
+                {
+                    Provider = "Jitsi",
+                    RoomName = $"booking-{req.BookingId}-xxx",
+                    Domain = "localhost",
+                    BaseUrl = "http://localhost",
+                    JoinUrl = "http://localhost/test?jwt=x",
+                    Token = "x",
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    IsModerator = false
+                });
+            });
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(StudentUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        result.Session.ShouldNotBeNull();
+        result.Session!.IsModerator.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_PassesCorrectRoleToProvider()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        // Slot must start within 15 minutes for join window to be active
+        var now = DateTime.UtcNow;
+        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
+        var futureDate = DateOnly.FromDateTime(startTime);
+        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
+        var slotEnd = slotStart.AddHours(1);
+        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        var capturedRequest = (VideoSessionRequest?)null;
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(x =>
+            {
+                capturedRequest = (VideoSessionRequest)x[0];
+                return Task.FromResult(new VideoSessionDto
+                {
+                    Provider = "Jitsi",
+                    RoomName = "test",
+                    Domain = "localhost",
+                    BaseUrl = "http://localhost",
+                    JoinUrl = "http://localhost/test?jwt=x",
+                    Token = "x",
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    IsModerator = true
+                });
+            });
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = TeacherUserId, FullName = "Teacher Name", KeycloakId = "kc-teacher" }
+            }));
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        capturedRequest.ShouldNotBeNull();
+        capturedRequest!.BookingId.ShouldBe(bookingId);
+        capturedRequest.ParticipantRole.ShouldBe(VideoParticipantRoles.Teacher);
+        capturedRequest.ParticipantUserId.ShouldBe(TeacherUserId);
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_PassesCorrectBookingIdToProvider()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        // Slot must start within 15 minutes for join window to be active
+        var now = DateTime.UtcNow;
+        var startTime = now.AddMinutes(5); // Start in 5 minutes (within join window)
+        var futureDate = DateOnly.FromDateTime(startTime);
+        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
+        var slotEnd = slotStart.AddHours(1);
+        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        var capturedRequest = (VideoSessionRequest?)null;
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(x =>
+            {
+                capturedRequest = (VideoSessionRequest)x[0];
+                return Task.FromResult(new VideoSessionDto
+                {
+                    Provider = "Jitsi",
+                    RoomName = "test",
+                    Domain = "localhost",
+                    BaseUrl = "http://localhost",
+                    JoinUrl = "http://localhost/test?jwt=x",
+                    Token = "x",
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(180),
+                    IsModerator = false
+                });
+            });
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(x => Task.FromResult<IReadOnlyList<UserLookupResultDto>>(new List<UserLookupResultDto>
+            {
+                new() { Id = StudentUserId, FullName = "Student Name", KeycloakId = "kc-student" }
+            }));
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(StudentUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeTrue();
+        capturedRequest.ShouldNotBeNull();
+        capturedRequest!.BookingId.ShouldBe(bookingId);
+    }
+
+    [Fact]
+    public async Task GetVideoSessionAsync_ProviderThrowsException_ReturnsConflict()
+    {
+        await SeedTeacherAsync(TeacherId, TeacherUserId);
+        await SeedStudentAsync(StudentId, StudentUserId);
+
+        // Slot starting soon (within join window)
+        var now = DateTime.UtcNow;
+        var startTime = now.AddMinutes(5);
+        var futureDate = DateOnly.FromDateTime(startTime);
+        var slotStart = new TimeOnly(startTime.Hour, startTime.Minute);
+        var slotEnd = slotStart.AddHours(1);
+        var slotId = await SeedSlotAsync(TeacherId, futureDate, slotStart, slotEnd);
+
+        int bookingId;
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.SetCurrentUser(StudentUserId);
+            var booking = new Booking
+            {
+                TeacherId = TeacherId,
+                StudentId = StudentId,
+                AvailabilitySlotId = slotId,
+                Status = BookingStatus.Approved,
+                CreatedAt = DateTime.UtcNow,
+                DecisionAt = DateTime.UtcNow
+            };
+            ctx.Bookings.Add(booking);
+            await ctx.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        // Provider throws exception
+        _videoProvider.CreateOrJoinSessionAsync(Arg.Any<VideoSessionRequest>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<VideoSessionDto>(new InvalidOperationException("Provider error")));
+
+        await using var ctxVideo = _db.NewContext();
+        var result = await NewService(ctxVideo).GetVideoSessionAsync(TeacherUserId, bookingId, CancellationToken.None);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+    }
+
+    private sealed class FakeTimeProvider : TimeProvider
+    {
+        private readonly DateTime _fixedNow;
+
+        public FakeTimeProvider(DateTime fixedNow)
+        {
+            _fixedNow = fixedNow;
+        }
+
+        public override DateTimeOffset GetUtcNow() => new(_fixedNow);
     }
 
     public void Dispose() => _db.Dispose();

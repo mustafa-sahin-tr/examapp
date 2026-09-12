@@ -193,6 +193,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/student-bookings/student-bookings.component').then((m) => m.StudentBookingsComponent),
       },
+      {
+        // Issue #97: onaylı bir randevunun video görüşme odası (iki taraf da girer).
+        path: 'lessons/:bookingId/video',
+        canActivate: [authGuard, roleGuard('Student', 'Teacher')],
+        loadComponent: () =>
+          import('./pages/lesson-video/lesson-video.component').then((m) => m.LessonVideoComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'welcome' },

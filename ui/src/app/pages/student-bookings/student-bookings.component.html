@@ -54,6 +54,25 @@
 
           <span class="sbk__chip" [class]="row.statusClass">{{ row.statusLabel }}</span>
 
+          @if (row.booking.status === 'Approved') {
+            <span
+              class="sbk__join"
+              [matTooltip]="row.join.hint || ''"
+              [matTooltipDisabled]="!row.join.hint"
+            >
+              <button
+                mat-flat-button
+                color="primary"
+                type="button"
+                [disabled]="!row.join.canJoin"
+                (click)="joinLesson(row)"
+              >
+                <mat-icon>videocam</mat-icon>
+                Derse katıl
+              </button>
+            </span>
+          }
+
           <a
             mat-stroked-button
             [routerLink]="['/tutors', row.booking.teacherId]"

@@ -110,11 +110,24 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Client'a giden hata/başarı mesajlarının sözlüğü (issue #184).
+// Resources/<alan>.<dil>.json dosyalarının tümü açılışta okunup dil başına tek sözlükte
+// birleştirilir; mesajlar istek kültürüne (#181, aşağıdaki RequestLocalization) göre seçilir.
+// Kullanım: IStringLocalizer<Messages> enjekte edip localizer["questions.notFound"].
+// Detay ve anahtar kuralları: api/ExamApp.Api/Resources/README.md
+builder.Services.AddJsonLocalization(options => options.ResourcesPath = "Resources");
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-    });
+    })
+    // DataAnnotations ([Required] vb.) hata mesajları da aynı JSON sözlüğünden gelir:
+    // DTO'da ErrorMessage olarak çeviri ANAHTARI yazılır. Henüz taşınmamış DTO'larda
+    // ErrorMessage düz Türkçe metin olduğu için anahtar bulunamaz ve metin olduğu gibi
+    // döner — yani faz 2 taşıması bitene kadar davranış değişmez.
+    .AddDataAnnotationsLocalization(options =>
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Messages)));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();

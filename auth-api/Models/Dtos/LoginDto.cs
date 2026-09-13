@@ -26,7 +26,9 @@ public class CodeDto
     public string Email { get; set; }
     public string Role { get; set; }
     public string Avatar { get; set;}
-    public int ProfileId { get; set;}    
+    public int ProfileId { get; set;}
+    /// <summary>Kullanıcının dil tercihi (issue #181): "tr" | "en". Boş dönmez.</summary>
+    public string PreferredLocale { get; set; } = ExamApp.Foundation.Localization.SupportedLocales.Default;
     // public string? SchoolName { get; set; } // Student bilgisi
     // public string? Department { get; set; } // opsiyonel
 }

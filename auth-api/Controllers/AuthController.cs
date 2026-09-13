@@ -11,6 +11,7 @@ using ExamApp.Api.Models.Requests;
 using ExamApp.Api.Models.Responses;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -437,6 +438,59 @@ namespace ExamApp.Api.Controllers
             return Ok(profile);
         }
 
+        /// <summary>
+        /// Oturum sahibinin dil tercihini günceller (issue #181). Sadece çağıranın kendi
+        /// kimliği (sub claim) üzerinde çalışır — hedef kullanıcı id'si kabul edilmez.
+        /// Değer normalize edilir ("tr-TR" → "tr"); desteklenmeyen dil 400 döner.
+        /// </summary>
+        [Authorize]
+        [HttpPut("me/locale")]
+        [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdatePreferredLocale([FromBody] UpdatePreferredLocaleRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.PreferredLocale))
+            {
+                return Problem(
+                    title: "Invalid locale",
+                    detail: "preferredLocale is required.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            if (!SupportedLocales.TryNormalize(request.PreferredLocale, out var locale))
+            {
+                return Problem(
+                    title: "Unsupported locale",
+                    detail: $"preferredLocale must be one of: {string.Join(", ", SupportedLocales.All)}.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(sub))
+                return Unauthorized();
+
+            // !IsDeleted filtresi GetUserProfile ile aynı — pasifleştirilmiş bir hesap,
+            // JWT'si hâlâ geçerliyken bile profilini değiştirememeli.
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.KeycloakId == sub && !u.IsDeleted);
+            if (user == null)
+            {
+                return Problem(
+                    title: "Profile not found",
+                    detail: "No local user profile found for this account.",
+                    statusCode: StatusCodes.Status404NotFound);
+            }
+
+            if (!string.Equals(user.PreferredLocale, locale, StringComparison.Ordinal))
+            {
+                user.PreferredLocale = locale;
+                await _context.SaveChangesAsync();
+            }
+
+            var profile = await GetUserProfile(sub);
+            return Ok(profile);
+        }
+
         private static readonly string[] AllowedAppRoles = { "Student", "Teacher", "Parent" };
 
         [HttpGet("roles")]
@@ -538,7 +592,10 @@ namespace ExamApp.Api.Controllers
                 Role = user.Role.ToString(),
                 FullName = user.FullName,
                 Id = user.Id,
-                KeycloakId = sub
+                KeycloakId = sub,
+                // Eski satırlarda kolon default'u "tr"; yine de boş/bozuk değeri
+                // varsayılana indirgeyerek tüketicilere hep geçerli bir dil kodu veriyoruz.
+                PreferredLocale = SupportedLocales.Normalize(user.PreferredLocale)
             };
         }
     }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -7,6 +8,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -99,6 +101,30 @@ namespace ExamApp.Api.Controllers
 
 
 
+
+        /// <summary>
+        /// Tanı endpoint'i (issue #181): bu istek için çözümlenmiş kültürü ve onu hangi
+        /// provider'ın belirlediğini döner. #184'teki mesaj sözlüğü ve ui-tester doğrulaması
+        /// bunun üzerine kurulacak.
+        /// Kaynak (source) değerleri: NormalizedAcceptLanguageCultureProvider (Accept-Language
+        /// header'ı), UserPreferredLocaleCultureProvider (kullanıcının kayıtlı tercihi),
+        /// "default" (hiçbiri eşleşmedi → tr-TR).
+        /// </summary>
+        [Authorize]
+        [HttpGet("culture")]
+        public IActionResult GetCurrentCulture()
+        {
+            var feature = HttpContext.Features.Get<IRequestCultureFeature>();
+            var requestCulture = feature?.RequestCulture
+                ?? new RequestCulture(CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture);
+
+            return Ok(new
+            {
+                culture = requestCulture.Culture.Name,
+                uiCulture = requestCulture.UICulture.Name,
+                source = feature?.Provider?.GetType().Name ?? "default"
+            });
+        }
 
         [Authorize]
         [HttpPost("logout")]

@@ -287,9 +287,24 @@
     .mobile-toolbar-actions {
         margin-left: auto;
     }
+
+    // İkinci aksiyon (renk şeması anahtarı) dil seçicinin hemen yanında kalsın; auto boşluk
+    // yalnızca ilk aksiyonda uygulanır (issue #180).
+    .mobile-toolbar-actions + .mobile-toolbar-actions {
+        margin-left: 0;
+    }
 }
 
-// Masaüstü toolbar: arama kutusu ile profil menüsü arasında (issue #81)
+// Masaüstü toolbar: arama kutusu ile profil menüsü arasında (issue #81, #180)
+.toolbar-language-switcher {
+    margin-left: auto;
+
+    // Dil seçici araya girdiğinde sağa yaslama görevini o üstlenir
+    + .toolbar-scheme-toggle {
+        margin-left: 0;
+    }
+}
+
 .toolbar-scheme-toggle {
     margin-left: auto;
     margin-right: var(--ms-layout-spacing-xsmall);

@@ -60,6 +60,7 @@
           <mat-icon>menu</mat-icon>
         </button>
         <span class="mobile-toolbar-title">ExamApp</span>
+        <app-language-switcher class="mobile-toolbar-actions"></app-language-switcher>
         <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
       </mat-toolbar>
 
@@ -98,6 +99,7 @@
           </div>
         </div>
 
+        <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>
         <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
 
         @if( isAuthenticated | async) {

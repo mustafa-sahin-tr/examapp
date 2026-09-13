@@ -23,6 +23,7 @@ import { SidenavService } from '../../services/sidenav.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
+import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
 
 interface MenuItem {
   id: string;
@@ -52,6 +53,7 @@ interface MenuItem {
     RouterOutlet,
     ReactiveFormsModule,
     ColorSchemeToggleComponent,
+    LanguageSwitcherComponent,
   ],
   templateUrl: './enhanced-layout.component.html',
   styleUrls: ['./enhanced-layout.component.scss'],

@@ -22,6 +22,8 @@ import { BadgeProgressItem, BadgeService, UserActivityResponse } from '../../ser
 import { finalize } from 'rxjs';
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { LocaleService } from '../../services/locale.service';
 
 interface AssignmentCardViewModel {
   assignment: AssignedWorksheet;
@@ -38,7 +40,7 @@ interface UpcomingBadgeViewModel {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SectionHeaderComponent, NgxChartsModule],
+  imports: [CommonModule, MatIconModule, SectionHeaderComponent, NgxChartsModule, TranslocoPipe],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
@@ -48,6 +50,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly badgeService = inject(BadgeService);
   private readonly studentResetService = inject(StudentResetService);
   private readonly studentService = inject(StudentService);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
+
+  /** `toLocaleDateString` gibi Intl API'lerine verilecek aktif dil etiketi (örn. 'tr', 'en-US'). */
+  private get intlLocale(): string {
+    return this.localeService.localeDefinition().angularLocale;
+  }
 
   private readonly assignments = signal<AssignmentCardViewModel[]>([]);
   readonly loading = signal(true);
@@ -185,7 +194,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         this.scheduleScrollIndicatorUpdate();
       },
       error: () => {
-        this.error.set('Atanmış testler alınırken bir sorun oluştu.');
+        this.error.set(this.transloco.translate('dashboard.assignments.error'));
         this.loading.set(false);
       },
     });
@@ -203,9 +212,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const confirmed =
       typeof window !== 'undefined'
-        ? window.confirm(
-            'Tüm sınav ilerlemen, atanmış kişisel sınavların, puanların ve rozet/aktivite verilerin sıfırlanacak. Devam edilsin mi?'
-          )
+        ? window.confirm(this.transloco.translate('dashboard.reset.confirm'))
         : false;
 
     if (!confirmed) {
@@ -227,7 +234,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(finalize(() => this.resetInProgress.set(false)))
       .subscribe({
         next: (res) => {
-          this.resetMessage.set(res?.message || 'Sıfırlama işlemi kuyruğa alındı.');
+          this.resetMessage.set(res?.message || this.transloco.translate('dashboard.reset.queued'));
           // Try to refresh after a short delay.
           const userId = this.getUserIdFromLocalStorage() ?? this.demoActivityUserId;
           setTimeout(() => {
@@ -249,7 +256,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           }, 2500);
         },
         error: () => {
-          this.resetMessage.set('Sıfırlama isteği gönderilemedi. Lütfen tekrar deneyin.');
+          this.resetMessage.set(this.transloco.translate('dashboard.reset.failed'));
         },
       });
   }
@@ -318,7 +325,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       return null;
     }
     const dueDate = new Date(assignment.endAt);
-    return `Bitiş: ${dueDate.toLocaleDateString()}`;
+    return this.transloco.translate('dashboard.assignments.due', {
+      date: dueDate.toLocaleDateString(this.intlLocale),
+    });
   }
 
   activityXAxisTickFormatting = (value: string): string => {
@@ -344,12 +353,13 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const cell = tooltip.cell ?? tooltip.data ?? tooltip;
     const extra = cell?.extra ?? {};
     const date = extra.date ? new Date(extra.date) : new Date();
-    const dateLabel = extra.label ?? date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+    const dateLabel = extra.label ?? date.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
     const duration = this.formatDuration(extra.totalTimeSeconds ?? 0);
+    const labels = this.transloco.translateObject<Record<string, string>>('dashboard.tooltip');
 
-    return `${dateLabel}\nSoru: ${extra.questionCount ?? 0}\nDoğru: ${
+    return `${dateLabel}\n${labels['questions']}: ${extra.questionCount ?? 0}\n${labels['correct']}: ${
       extra.correctCount ?? 0
-    }\nSüre: ${duration}\nAktivite Skoru: ${cell?.value ?? 0}`;
+    }\n${labels['duration']}: ${duration}\n${labels['activityScore']}: ${cell?.value ?? 0}`;
   };
 
   private mapToTest(assignment: AssignedWorksheet): Test {
@@ -463,15 +473,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const days = Math.floor(hours / 24);
 
     if (days >= 1) {
-      return `${days} gün önce`;
+      return this.transloco.translate('dashboard.lastLogin.daysAgo', { count: days });
     }
     if (hours >= 1) {
-      return `${hours} saat önce`;
+      return this.transloco.translate('dashboard.lastLogin.hoursAgo', { count: hours });
     }
     if (minutes >= 1) {
-      return `${minutes} dakika önce`;
+      return this.transloco.translate('dashboard.lastLogin.minutesAgo', { count: minutes });
     }
-    return 'az önce';
+    return this.transloco.translate('dashboard.lastLogin.justNow');
   }
 
   private scheduleScrollIndicatorUpdate(delay: number = 0): void {
@@ -539,7 +549,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           value: activityScore,
           extra: {
             date: currentDate.toISOString(),
-            label: currentDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+            label: currentDate.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' }),
             questionCount: dayActivity?.questionCount ?? 0,
             correctCount: dayActivity?.correctCount ?? 0,
             totalTimeSeconds: dayActivity?.totalTimeSeconds ?? 0,
@@ -577,10 +587,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const totalMinutes = totals.timeSeconds > 0 ? Math.max(1, Math.round(totals.timeSeconds / 60)) : 0;
 
     return [
-      { name: 'Toplam Soru', value: totals.questions },
-      { name: 'Doğru Cevap', value: totals.correct },
-      { name: 'Çalışma Süresi (dk)', value: totalMinutes },
-      { name: 'Aktivite Skoru', value: totals.activityScore },
+      { name: this.transloco.translate('dashboard.activity.totalQuestions'), value: totals.questions },
+      { name: this.transloco.translate('dashboard.activity.correctAnswers'), value: totals.correct },
+      { name: this.transloco.translate('dashboard.activity.studyMinutes'), value: totalMinutes },
+      { name: this.transloco.translate('dashboard.activity.activityScore'), value: totals.activityScore },
     ];
   }
 
@@ -603,30 +613,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private formatDayLabel(date: Date): string {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString(this.intlLocale, { weekday: 'short' });
   }
 
   private formatWeekLabel(weekStart: Date): string {
-    return weekStart.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+    return weekStart.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
   }
 
   private formatDuration(totalSeconds: number): string {
     if (!totalSeconds) {
-      return '0 sn';
+      return this.transloco.translate('dashboard.duration.seconds', { seconds: 0 });
     }
 
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
 
     if (minutes && seconds) {
-      return `${minutes} dk ${seconds} sn`;
+      return this.transloco.translate('dashboard.duration.minutesSeconds', { minutes, seconds });
     }
 
     if (minutes) {
-      return `${minutes} dk`;
+      return this.transloco.translate('dashboard.duration.minutes', { minutes });
     }
 
-    return `${seconds} sn`;
+    return this.transloco.translate('dashboard.duration.seconds', { seconds });
   }
 
   private endOfWeek(date: Date): Date {

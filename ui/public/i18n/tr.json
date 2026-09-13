@@ -1,0 +1,68 @@
+{
+  "common": {
+    "loading": "Yükleniyor...",
+    "retry": "Tekrar dene",
+    "error": "Bir hata oluştu."
+  },
+  "layout": {
+    "language": {
+      "label": "Dil",
+      "switch": "Dili değiştir",
+      "select": "{{language}} diline geç"
+    }
+  },
+  "dashboard": {
+    "welcome": {
+      "title": "Hoş geldin",
+      "lastLogin": "Son giriş: {{value}}"
+    },
+    "lastLogin": {
+      "daysAgo": "{{count}} gün önce",
+      "hoursAgo": "{{count}} saat önce",
+      "minutesAgo": "{{count}} dakika önce",
+      "justNow": "az önce"
+    },
+    "activity": {
+      "loading": "Aktivite verisi yükleniyor...",
+      "error": "Aktivite verisi alınırken bir hata oluştu.",
+      "empty": "Son bir yıl için aktivite verisi bulunamadı.",
+      "totalQuestions": "Toplam Soru",
+      "correctAnswers": "Doğru Cevap",
+      "studyMinutes": "Çalışma Süresi (dk)",
+      "activityScore": "Aktivite Skoru"
+    },
+    "tooltip": {
+      "questions": "Soru",
+      "correct": "Doğru",
+      "duration": "Süre",
+      "activityScore": "Aktivite Skoru"
+    },
+    "duration": {
+      "minutes": "{{minutes}} dk",
+      "seconds": "{{seconds}} sn",
+      "minutesSeconds": "{{minutes}} dk {{seconds}} sn"
+    },
+    "badges": {
+      "title": "Rozetler",
+      "loading": "Rozetler yükleniyor...",
+      "error": "Rozetler yüklenirken bir sorun oluştu.",
+      "earnedTitle": "Kazanılan Rozetler",
+      "earnedEmpty": "Henüz kazanılmış rozet bulunmuyor.",
+      "upcomingTitle": "Sıradaki Rozetler",
+      "allCompleted": "Tebrikler, tüm rozetleri tamamladın!",
+      "upcomingEmpty": "Soru çözmeye başladığında rozet ilerlemen burada görünecek."
+    },
+    "assignments": {
+      "title": "Atanmış Testler",
+      "loading": "Atanmış testler yükleniyor...",
+      "empty": "Aktif atanmış test bulunmuyor.",
+      "error": "Atanmış testler alınırken bir sorun oluştu.",
+      "due": "Bitiş: {{date}}"
+    },
+    "reset": {
+      "confirm": "Tüm sınav ilerlemen, atanmış kişisel sınavların, puanların ve rozet/aktivite verilerin sıfırlanacak. Devam edilsin mi?",
+      "queued": "Sıfırlama işlemi kuyruğa alındı.",
+      "failed": "Sıfırlama isteği gönderilemedi. Lütfen tekrar deneyin."
+    }
+  }
+}

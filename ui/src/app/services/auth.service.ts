@@ -124,11 +124,11 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.tokenKey);
+    return readStoredValue(this.tokenKey);
   }
 
   getUserRole(): string | null {
-    return localStorage.getItem(this.roleKey);
+    return readStoredValue(this.roleKey);
   }
 
   hasRole(role: string): boolean {
@@ -156,11 +156,11 @@ export class AuthService {
   }
 
   getUserAvatar(): string | null {
-    return localStorage.getItem(this.avatarKey);
+    return readStoredValue(this.avatarKey);
   }
 
   getUser(): any {
-    const user = localStorage.getItem('user');
+    const user = readStoredValue('user');
     return user ? JSON.parse(user) : null;
   }
 
@@ -213,5 +213,22 @@ export class AuthService {
       }) // Hata durumunda null döndür
       // tap((res) => {
     );
+  }
+}
+
+/**
+ * SSR/prerender sirasinda `localStorage` yoktur; okuma tarafi bu yuzden guvenli sarmalayiciyi
+ * kullanir (issue #182: landing navbar'daki dil secici sunucuda da olusturuluyor).
+ */
+function readStoredValue(key: string): string | null {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    // Gizli mod / kota: depolama okunamiyorsa oturum yokmus gibi davranilir
+    return null;
   }
 }

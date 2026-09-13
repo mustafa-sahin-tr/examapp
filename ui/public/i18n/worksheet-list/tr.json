@@ -1,0 +1,201 @@
+{
+  "header": {
+    "titleTeacher": "Testlerim",
+    "titleStudent": "Sınav Kütüphanesi",
+    "subtitleTeacher": "Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.",
+    "subtitleStudent": "Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.",
+    "newTest": "Yeni Test",
+    "importExcel": "Excel'den içe aktar"
+  },
+  "tabs": {
+    "aria": "Bölümler",
+    "discover": "Keşfet",
+    "assigned": "Bana Atananlar",
+    "inprogress": "Devam Edenler",
+    "completed": "Tamamlananlar"
+  },
+  "resume": {
+    "title": "Kaldığın yerden devam et",
+    "questionCount": "{{count}} soru",
+    "continue": "Devam Et"
+  },
+  "filters": {
+    "title": "Filtreler",
+    "close": "Kapat",
+    "status": "Durum",
+    "subject": "Ders",
+    "grade": "Sınıf",
+    "duration": "Süre",
+    "questionCount": "Soru sayısı",
+    "type": "Tür",
+    "practiceOnly": "Sadece çalışma testi",
+    "sharing": "Paylaşım",
+    "includeShared": "Başkalarının sınavları",
+    "clearAll": "Filtreleri temizle"
+  },
+  "status": {
+    "notStarted": "Başlanmadı",
+    "inProgress": "Devam ediyor",
+    "completed": "Tamamlandı"
+  },
+  "durationBucket": {
+    "lt15": "15 dk altı",
+    "15to30": "15–30 dk",
+    "gt30": "30 dk üzeri"
+  },
+  "questionBucket": {
+    "lt10": "10 sorudan az",
+    "10to20": "10–20 soru",
+    "gt20": "20 sorudan fazla"
+  },
+  "sort": {
+    "fallback": "Sırala",
+    "newest": "En yeni",
+    "popular": "Popüler",
+    "duration": "Süre",
+    "questionCount": "Soru sayısı",
+    "alphabetical": "A–Z",
+    "recent": "Son çalıştığım"
+  },
+  "results": {
+    "filtersButton": "Filtreler",
+    "searchChip": "\"{{term}}\" araması",
+    "count": "{{count}} test",
+    "viewAria": "Görünüm",
+    "gridView": "Kart görünümü",
+    "listView": "Liste görünümü"
+  },
+  "activeFilters": {
+    "subjectFallback": "Ders {{id}}",
+    "gradeFallback": "Sınıf {{id}}",
+    "practice": "Çalışma testi",
+    "clear": "Temizle"
+  },
+  "bulk": {
+    "selected": "{{count}} seçildi",
+    "assign": "Öğrencilere Ata",
+    "delete": "Sil",
+    "clear": "Seçimi bırak"
+  },
+  "empty": {
+    "search": "'{{term}}' için sonuç bulunamadı.",
+    "inprogress": "Devam eden testin yok.",
+    "completed": "Henüz bir test tamamlamadın.",
+    "assigned": "Sana atanmış test yok.",
+    "default": "Bu kriterlere uygun test yok.",
+    "clearFilters": "Filtreleri temizle"
+  },
+  "error": {
+    "retry": "Tekrar dene",
+    "loadFailed": "Testler yüklenirken bir sorun oluştu.",
+    "assignmentsLoadFailed": "Atanmış testler yüklenirken bir sorun oluştu."
+  },
+  "discover": {
+    "assignedTitle": "Atanan sınavlar",
+    "assignedEmpty": "Sana atanmış aktif bir sınav yok.",
+    "exploreTitle": "Keşfet",
+    "exploreEmpty": "Şu an keşfedilecek yeni sınav yok."
+  },
+  "listHead": {
+    "test": "Test",
+    "subjectGrade": "Ders / Sınıf",
+    "questions": "Soru",
+    "duration": "Süre",
+    "status": "Durum"
+  },
+  "snackbar": {
+    "dismiss": "Tamam",
+    "close": "Kapat",
+    "assignSoon": "Atama ekranı yakında kullanıma açılacak.",
+    "importSoon": "Excel içe aktarma yakında kullanıma açılacak.",
+    "copySuccess": "Sınav kendi hesabına kopyalandı.",
+    "copyFailed": "Kopyalama başarısız.",
+    "deleted": "{{count}} test silindi.",
+    "deletedPartial": "{{ok}} test silindi, {{fail}} tanesi başarısız."
+  },
+  "dialog": {
+    "deleteTitle": "Testi Sil",
+    "deleteMessage": "Bu testi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+    "bulkDeleteTitle": "{{count}} test silinsin mi?",
+    "bulkDeleteMessage": "Seçili testlerin tümü kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    "confirm": "Evet, Sil",
+    "cancel": "İptal"
+  },
+  "card": {
+    "aria": "Test kartı",
+    "openAria": "{{name}} testini aç",
+    "tagPractice": "Çalışma testi",
+    "tagInProgress": "Devam ediyor",
+    "tagCompleted": "Tamamlandı",
+    "tagAssigned": "Öğretmenin atadı",
+    "menuAria": "Kart menüsü",
+    "viewDetail": "Detayı gör",
+    "copyToMyAccount": "Kendi hesabıma kopyala",
+    "addQuestion": "Soru Ekle",
+    "assign": "Ata",
+    "delete": "Sil",
+    "createdBy": "Oluşturan: {{name}}",
+    "questionCount": "{{count}} soru",
+    "durationMinutes": "{{minutes}} dk",
+    "solvedCount": "{{count}} çözdü",
+    "result": "{{correct}} doğru / {{wrong}} yanlış",
+    "edit": "Düzenle",
+    "assignToStudent": "Öğrenciye ata",
+    "detailButton": "Detayı Gör",
+    "retryAria": "Tekrar çöz",
+    "dueExpired": "Süre doldu",
+    "dueToday": "Bugün son gün",
+    "dueDaysLeft": "{{days}} gün kaldı",
+    "primaryContinue": "Devam Et",
+    "primaryViewResult": "Sonucu Gör",
+    "primaryStartPractice": "Çalışmaya Başla",
+    "primaryStart": "Başla"
+  },
+  "enhanced": {
+    "navNewest": "Yeni Testler",
+    "navHot": "Popüler",
+    "navCompleted": "Tamamlanan",
+    "navSearch": "Arama Sonuçları",
+    "newestTitle": "En Yeni Testler",
+    "newestSubtitle": "Size özel seçilmiş yeni testler",
+    "newestEmpty": "Gösterilecek yeni test yok.",
+    "hotTitle": "Popüler Testler",
+    "hotSubtitle": "En çok tercih edilen testler",
+    "hotEmpty": "Gösterilecek popüler test yok.",
+    "relevantTitle": "En İlgili Testler",
+    "relevantSubtitle": "Arama terimine göre size özel seçilmiş testler",
+    "completedTitle": "Tamamlanan Testler",
+    "completedSubtitle": "Başarılarınızı gözden geçirin",
+    "completedEmptyTitle": "Henüz test tamamlamadınız",
+    "completedEmptyText": "İlk testinizi çözmeye başlayın!",
+    "filtersTitle": "Filtreler",
+    "filtersClear": "Temizle",
+    "filtersSubjects": "Dersler",
+    "filtersGrades": "Sınıflar",
+    "filtersSort": "Sıralama",
+    "filtersDifficulty": "Zorluk",
+    "filtersDuration": "Süre",
+    "sortNewest": "En Yeni",
+    "sortPopular": "Popüler",
+    "sortDifficulty": "Zorluk",
+    "sortDuration": "Süre",
+    "difficultyAll": "Tümü",
+    "difficultyEasy": "Kolay",
+    "difficultyMedium": "Orta",
+    "difficultyHard": "Zor",
+    "durationAll": "Tümü",
+    "durationShort": "Kısa (< 30 dk)",
+    "durationMedium": "Orta (30-60 dk)",
+    "durationLong": "Uzun (> 60 dk)",
+    "resultsTitle": "{{term}} için sonuçlar",
+    "resultsFallbackTerm": "Arama",
+    "resultsCountSuffix": "test bulundu",
+    "loading": "Testler yükleniyor...",
+    "cardQuestionCount": "{{count}} Soru",
+    "cardGrade": "{{grade}}.Sınıf",
+    "cardMinutes": "{{minutes}} Dakika",
+    "cardCompleted": "Tamamlandı",
+    "emptyTitle": "Sonuç bulunamadı",
+    "emptyText": "Arama kriterlerinizi değiştirmeyi deneyin"
+  }
+}

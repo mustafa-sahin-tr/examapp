@@ -4,37 +4,37 @@
 </div>
 
 @if (isPreviewMode) {
-  <div class="qcv-actions">
-    <div class="qcv-zoom" role="group" aria-label="Yakınlaştırma">
-      <button type="button" class="qcv-zoom__btn" (click)="shrinkImage()" aria-label="Küçült (-5%)">
+  <div class="qcv-actions" *transloco="let t; prefix: 'shared.questionCanvas'">
+    <div class="qcv-zoom" role="group" [attr.aria-label]="t('zoomGroup')">
+      <button type="button" class="qcv-zoom__btn" (click)="shrinkImage()" [attr.aria-label]="t('zoomOut')">
         <mat-icon>remove</mat-icon>
       </button>
       <span class="qcv-zoom__val">%{{ zoomPercent }}</span>
-      <button type="button" class="qcv-zoom__btn" (click)="enlargeImage()" aria-label="Büyüt (+5%)">
+      <button type="button" class="qcv-zoom__btn" (click)="enlargeImage()" [attr.aria-label]="t('zoomIn')">
         <mat-icon>add</mat-icon>
       </button>
     </div>
 
     <button type="button" class="qcv-btn qcv-btn--primary" (click)="applyClassificationToQuestion()">
-      <mat-icon>check</mat-icon>Uygula
+      <mat-icon>check</mat-icon>{{ t('apply') }}
     </button>
 
     <button type="button" class="qcv-btn qcv-btn--danger" (click)="removeQuestion()">
-      <mat-icon>delete</mat-icon>Soruyu Testten Çıkar
+      <mat-icon>delete</mat-icon>{{ t('removeQuestion') }}
     </button>
   </div>
 }
 
-<div class="qcv-result">
+<div class="qcv-result" *transloco="let t; prefix: 'shared.questionCanvas'">
   @if (_questionRegion() && _questionRegion().isExample) {
     @if (correctAnswerVisible) {
       <div class="correct-answer">
-        <span class="correct-answer__label">Doğru Cevap</span>
+        <span class="correct-answer__label">{{ t('correctAnswer') }}</span>
         <div class="question-lite-text" [innerHTML]="_questionRegion().exampleAnswer"></div>
       </div>
     }
     <button type="button" class="qcv-btn qcv-btn--ghost qcv-btn--sm" (click)="showCorrectAnswer()">
-      Sonucu Gör
+      {{ t('showResult') }}
     </button>
   }
 </div>

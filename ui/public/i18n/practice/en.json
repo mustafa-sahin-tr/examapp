@@ -1,0 +1,107 @@
+{
+  "title": "Practice Questions",
+  "subtitle": "Pick your scope, practise with random questions and see the result right after each answer.",
+  "common": {
+    "close": "Close",
+    "retry": "Try again",
+    "start": "Start",
+    "finish": "Finish"
+  },
+  "setup": {
+    "loading": "Preparing subjects…",
+    "loadError": "Subjects could not be loaded.",
+    "profileError": "Profile information could not be loaded.",
+    "noGrade": "Your grade must be set before you can practise.",
+    "goToProfile": "Go to my profile",
+    "scopeTitle": "Scope",
+    "scopeHint": "Pick subjects and topics if you like; if you pick nothing, questions come from every subject in your grade.",
+    "subjects": "Subjects",
+    "selectedSubjects": "Selected subjects",
+    "removeSubject": "Remove the subject {{name}}",
+    "topics": "Topics (optional)",
+    "topicsLoading": "Loading topics…",
+    "noTopics": "No topics are defined for the selected subjects.",
+    "selectedTopics": "Selected topics",
+    "removeTopic": "Remove the topic {{name}}",
+    "defaultScopeLead": "Default scope:",
+    "defaultScopeValue": "your own grade + all subjects",
+    "defaultScopeTail": ". Pick a subject and topic above to narrow it down.",
+    "noSubjects": "No subjects are defined for your grade."
+  },
+  "history": {
+    "title": "Past Sessions",
+    "count": "{{count}} sessions",
+    "loading": "Loading past sessions…",
+    "loadError": "Past sessions could not be loaded.",
+    "empty": "You do not have a practice session yet. Choose your scope above and solve your first question.",
+    "resumeAria": "Return to the active session: {{date}}, {{scope}}",
+    "reviewAria": "Review the session: {{date}}, {{scope}}",
+    "active": "In progress",
+    "completed": "Completed"
+  },
+  "scope": {
+    "allSubjects": "All subjects",
+    "subjectFallback": "Subject #{{id}}",
+    "topicCount": "{{count}} topics"
+  },
+  "duration": {
+    "seconds": "{{count}} s",
+    "minutes": "{{count}} min"
+  },
+  "stats": {
+    "questions": "Questions",
+    "correct": "Correct",
+    "wrong": "Wrong",
+    "skipped": "Skipped",
+    "answered": "Answered",
+    "accuracy": "Accuracy",
+    "duration": "Duration",
+    "progressAria": "Session progress",
+    "finishAria": "Finish the session"
+  },
+  "review": {
+    "back": "Past Sessions",
+    "loading": "Loading session details…",
+    "loadError": "Session details could not be loaded.",
+    "noQuestions": "No questions were shown in this session yet.",
+    "navAria": "Questions in the session",
+    "questionAria": "Question {{number}}: {{status}}",
+    "banner": "Question {{current}} / {{total}} · {{status}}",
+    "timeTaken": "{{count}} s",
+    "prev": "Previous",
+    "next": "Next",
+    "status": {
+      "correct": "Correct",
+      "wrong": "Wrong",
+      "skipped": "Skipped",
+      "pending": "Unanswered"
+    }
+  },
+  "empty": {
+    "allSolvedTitle": "You have solved every question in this scope",
+    "allSolvedText": "You can widen the scope to continue, or finish the session and see your summary.",
+    "noQuestionsTitle": "No questions were found in the scope you picked",
+    "noQuestionsText": "Try again with a different subject or topic.",
+    "changeScope": "Change Scope"
+  },
+  "ended": {
+    "title": "Session completed",
+    "newSession": "New Session",
+    "reviewSession": "Review Session",
+    "backToDashboard": "Back to dashboard"
+  },
+  "stage": {
+    "showQuestion": "Show Question",
+    "backToPassage": "Back to Passage",
+    "passageAlt": "Passage image",
+    "correct": "Correct answer! You are doing great.",
+    "wrong": "Wrong answer. The correct option is shown below.",
+    "skipped": "Question skipped. The correct option is shown below.",
+    "nextQuestion": "Next Question",
+    "skip": "Skip",
+    "submit": "Submit Answer"
+  },
+  "error": {
+    "generic": "The operation could not be completed. Please try again."
+  }
+}

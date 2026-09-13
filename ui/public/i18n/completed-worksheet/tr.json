@@ -1,0 +1,7 @@
+{
+  "card": {
+    "score": "Puan: {{score}}/100",
+    "duration": "Süre: {{minutes}} dk",
+    "answerBreakdown": "Doğru: {{correct}} / Yanlış: {{wrong}} / Toplam: {{total}}"
+  }
+}

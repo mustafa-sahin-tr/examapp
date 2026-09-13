@@ -10,12 +10,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { finalize } from 'rxjs';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { finalize, take } from 'rxjs';
 import { Subject } from '../../models/subject';
 import { TutorSearchResult } from '../../models/tutor.model';
 import { SubjectService } from '../../services/subject.service';
 import { TeacherService } from '../../services/teacher.service';
 import { TutorCardComponent } from '../../shared/components/tutor-card/tutor-card.component';
+import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
 
 /**
  * Issue #95 — öğrencinin branş/ders bazlı bağımsız öğretmen araması.
@@ -34,7 +36,9 @@ import { TutorCardComponent } from '../../shared/components/tutor-card/tutor-car
     MatProgressSpinnerModule,
     MatSelectModule,
     TutorCardComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(TUTOR_SEARCH_SCOPE)],
   templateUrl: './tutor-search.component.html',
   styleUrls: ['./tutor-search.component.scss'],
 })
@@ -44,12 +48,14 @@ export class TutorSearchComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly transloco = inject(TranslocoService);
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly results = signal<TutorSearchResult[]>([]);
   readonly subjects = signal<Subject[]>([]);
-  readonly subjectsError = signal<string | null>(null);
+  /** Ders listesi çekilemedi — mesaj şablondan çevrilir. */
+  readonly subjectsFailed = signal(false);
   /** İlk arama tamamlanmadan "sonuç yok" gösterilmesin. */
   readonly searched = signal(false);
 
@@ -71,7 +77,7 @@ export class TutorSearchComponent implements OnInit {
   }
 
   loadSubjects(): void {
-    this.subjectsError.set(null);
+    this.subjectsFailed.set(false);
     this.subjectService
       .loadCategories()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -79,7 +85,7 @@ export class TutorSearchComponent implements OnInit {
         next: (list) => this.subjects.set(list),
         error: () => {
           this.subjects.set([]);
-          this.subjectsError.set('Ders listesi yüklenemedi.');
+          this.subjectsFailed.set(true);
         },
       });
   }
@@ -109,7 +115,11 @@ export class TutorSearchComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.results.set([]);
           const body = err.error as { message?: string } | null;
-          this.error.set(body?.message || 'Öğretmenler aranırken bir sorun oluştu.');
+          // Yedek mesaj sözlükten gelir; scope henüz yüklenmemiş olabileceği için `selectTranslate`.
+          this.transloco
+            .selectTranslate<string>('search.error', {}, TUTOR_SEARCH_SCOPE)
+            .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+            .subscribe((fallback) => this.error.set(body?.message || fallback));
         },
       });
   }

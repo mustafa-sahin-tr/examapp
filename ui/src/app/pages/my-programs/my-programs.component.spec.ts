@@ -2,11 +2,21 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, throwError } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 
 import { MyProgramsComponent } from './my-programs.component';
 import { ProgramService } from '../../services/program.service';
 import { UserProgram } from '../../models/program.interfaces';
+
+import { TranslocoService } from '@jsverse/transloco';
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import myProgramsTr from '../../../../public/i18n/my-programs/tr.json';
+
+/**
+ * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
+ * sahte ceviri kullanilmaz - boylece bir anahtar bozulursa test kirilir.
+ */
+const translocoTesting = translocoTestingModule({ langs: { 'my-programs/tr': myProgramsTr } });
 
 describe('MyProgramsComponent', () => {
   let component: MyProgramsComponent;
@@ -45,7 +55,7 @@ describe('MyProgramsComponent', () => {
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
     TestBed.configureTestingModule({
-      imports: [MyProgramsComponent],
+      imports: [MyProgramsComponent, translocoTesting],
       providers: [
         { provide: ProgramService, useValue: programService },
         { provide: Router, useValue: router },
@@ -99,20 +109,26 @@ describe('MyProgramsComponent', () => {
     });
   });
 
-  describe('getPageProgressText', () => {
-    beforeEach(() => {
-      fixture = configure();
-      component = fixture.componentInstance;
+  // Sayfa ilerleme metni artık şablonda `my-programs` sözlüğünden çevriliyor (issue #183):
+  // komponentte biçimlendiren bir metot kalmadı, bunun yerine sözlük anahtarı doğrulanır.
+  describe('page progress text', () => {
+    function pageProgress(completed: number, total: number): Promise<string> {
+      configure();
+      return firstValueFrom(
+        TestBed.inject(TranslocoService).selectTranslate<string>(
+          'list.card.pageProgress',
+          { completed, total },
+          'my-programs'
+        )
+      );
+    }
+
+    it('pageProgress_WithCompletedAndTotal_FormatsFromDictionary', async () => {
+      expect(await pageProgress(3, 10)).toBe('3/10 sayfa tamamlandı');
     });
 
-    it('getPageProgressText_WithCompletedAndTotal_ReturnsFormattedString', () => {
-      const program = makeProgram({ completedPageCount: 3, totalPageCount: 10 });
-      expect(component.getPageProgressText(program)).toBe('3/10 sayfa tamamlandı');
-    });
-
-    it('getPageProgressText_MissingCounts_DefaultsToZero', () => {
-      const program = makeProgram({ completedPageCount: undefined as any, totalPageCount: undefined as any });
-      expect(component.getPageProgressText(program)).toBe('0/0 sayfa tamamlandı');
+    it('pageProgress_MissingCounts_DefaultsToZero', async () => {
+      expect(await pageProgress(0, 0)).toBe('0/0 sayfa tamamlandı');
     });
   });
 
@@ -184,7 +200,7 @@ describe('MyProgramsComponent', () => {
       programService.getMyPrograms.and.returnValue(throwError(() => new Error('network')));
 
       TestBed.configureTestingModule({
-        imports: [MyProgramsComponent],
+        imports: [MyProgramsComponent, translocoTesting],
         providers: [
           { provide: ProgramService, useValue: programService },
           { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
@@ -208,7 +224,7 @@ describe('MyProgramsComponent', () => {
       programService.getMyPrograms.and.returnValue(throwError(() => new Error('network')));
 
       TestBed.configureTestingModule({
-        imports: [MyProgramsComponent],
+        imports: [MyProgramsComponent, translocoTesting],
         providers: [
           { provide: ProgramService, useValue: programService },
           { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },

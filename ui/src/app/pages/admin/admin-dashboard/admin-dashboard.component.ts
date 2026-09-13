@@ -17,7 +17,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { BarChartModule, Color, HeatMapModule, ScaleType } from '@swimlane/ngx-charts';
-import { finalize } from 'rxjs';
+import { finalize, take } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { LocaleService } from '../../../services/locale.service';
 import { AdminService } from '../../../services/admin.service';
 import {
   AdminDashboardSummary,
@@ -29,10 +31,14 @@ type SummaryCardKey = 'teachers' | 'students' | 'worksheets' | 'questions';
 
 interface SummaryCardViewModel {
   key: SummaryCardKey;
-  label: string;
+  /** Scope'a göreli çeviri anahtarı; şablonda `t()` ile çözülür. */
+  labelKey: string;
   value: number;
   icon: string;
 }
+
+/** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
+const ADMIN_SCOPE = 'admin';
 
 /** Tooltip için hücreye iliştirilen veri (ngx-charts `extra` alanı). */
 interface HeatmapCellExtra {
@@ -289,19 +295,19 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
-/** x ekseni etiketi: "10 Ağu" */
-function formatWeekLabel(weekStart: Date): string {
-  return weekStart.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+/** x ekseni etiketi: "10 Ağu" (aktif dile göre) */
+function formatWeekLabel(weekStart: Date, locale: string): string {
+  return weekStart.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-/** y ekseni etiketi: "Pzt" */
-function formatDayLabel(date: Date): string {
-  return date.toLocaleDateString('tr-TR', { weekday: 'short' });
+/** y ekseni etiketi: "Pzt" (aktif dile göre) */
+function formatDayLabel(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { weekday: 'short' });
 }
 
-/** Tooltip tarihi: "10 Ağu 2026" */
-function formatTooltipDate(date: Date): string {
-  return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+/** Tooltip tarihi: "10 Ağu 2026" (aktif dile göre) */
+function formatTooltipDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /**
@@ -329,11 +335,11 @@ function createMonthTickFormatter(firstWeekLabel: string): (label: string) => st
 }
 
 /** Bar chart x ekseni etiketi: `yyyy-MM-dd` → "10 Ağu". Tanınmayan girdi olduğu gibi döner. */
-function formatIsoDayTick(isoDate: string): string {
+function formatIsoDayTick(isoDate: string, locale: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
     return isoDate;
   }
-  return formatWeekLabel(parseIsoDate(isoDate));
+  return formatWeekLabel(parseIsoDate(isoDate), locale);
 }
 
 /**
@@ -367,10 +373,12 @@ function daysAgo(isoDate: string): number {
   return Math.max(0, Math.round((today - then) / MS_PER_DAY));
 }
 
-/** "bugün" / "dün" / "N gün önce" */
-function describeDaysAgo(isoDate: string): string {
+/** "bugün" / "dün" / "N gün önce" — çeviri anahtarı ve parametresi. */
+function describeDaysAgoKey(isoDate: string): { key: string; count: number } {
   const ago = daysAgo(isoDate);
-  return ago === 0 ? 'bugün' : ago === 1 ? 'dün' : `${ago} gün önce`;
+  if (ago === 0) return { key: 'trends.today', count: 0 };
+  if (ago === 1) return { key: 'trends.yesterday', count: 1 };
+  return { key: 'trends.daysAgo', count: ago };
 }
 
 /** Eşitlikte en güncel günü seç (tarihler artan sıralı → sondan tarama). Boş dizi için `undefined`. */
@@ -395,13 +403,30 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule, HeatMapModule, BarChartModule],
+  imports: [
+    DecimalPipe,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    HeatMapModule,
+    BarChartModule,
+    TranslocoDirective,
+    TranslocoPipe,
+  ],
+  providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss'],
 })
 export class AdminDashboardComponent implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly injector = inject(Injector);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
+
+  /** Intl çağrıları için aktif dilin locale kodu ('tr' | 'en-US'). */
+  private get intlLocale(): string {
+    return this.localeService.localeDefinition().angularLocale;
+  }
 
   /** Heatmap kaydırma kapları (kart başına bir tane); bkz. `scrollHeatmapsToLatestWeek`. */
   @ViewChildren('heatmapScroll') private readonly heatmapScrolls?: QueryList<ElementRef<HTMLElement>>;
@@ -433,10 +458,10 @@ export class AdminDashboardComponent implements OnInit {
       return [];
     }
     return [
-      { key: 'teachers', label: 'Öğretmen', value: s.teacherCount, icon: 'school' },
-      { key: 'students', label: 'Öğrenci', value: s.studentCount, icon: 'groups' },
-      { key: 'worksheets', label: 'Test', value: s.worksheetCount, icon: 'assignment' },
-      { key: 'questions', label: 'Soru', value: s.questionCount, icon: 'quiz' },
+      { key: 'teachers', labelKey: 'cards.teachers', value: s.teacherCount, icon: 'school' },
+      { key: 'students', labelKey: 'cards.students', value: s.studentCount, icon: 'groups' },
+      { key: 'worksheets', labelKey: 'cards.worksheets', value: s.worksheetCount, icon: 'assignment' },
+      { key: 'questions', labelKey: 'cards.questions', value: s.questionCount, icon: 'quiz' },
     ];
   });
 
@@ -484,8 +509,24 @@ export class AdminDashboardComponent implements OnInit {
     }
     const visibleWeeks = this.visibleWeekCount();
     return [
-      this.buildTrendCard('created', 'Soru Oluşturma', 'add_circle_outline', 'oluşturuldu', t.questionCreated, this.createdScheme, visibleWeeks),
-      this.buildTrendCard('solved', 'Soru Çözme', 'task_alt', 'çözüldü', t.questionSolved, this.solvedScheme, visibleWeeks),
+      this.buildTrendCard(
+        'created',
+        this.text('trends.createdTitle'),
+        'add_circle_outline',
+        this.text('trends.verbCreated'),
+        t.questionCreated,
+        this.createdScheme,
+        visibleWeeks,
+      ),
+      this.buildTrendCard(
+        'solved',
+        this.text('trends.solvedTitle'),
+        'task_alt',
+        this.text('trends.verbSolved'),
+        t.questionSolved,
+        this.solvedScheme,
+        visibleWeeks,
+      ),
     ];
   });
 
@@ -505,14 +546,14 @@ export class AdminDashboardComponent implements OnInit {
     const results = points.map((p) => ({
       name: p.date,
       value: p.count,
-      extra: { label: formatTooltipDate(parseIsoDate(p.date)) },
+      extra: { label: formatTooltipDate(parseIsoDate(p.date), this.intlLocale) },
     }) satisfies LoginBarPoint);
     const tickStep = this.isMobileViewport() ? LOGIN_TICK_STEP_MOBILE : LOGIN_TICK_STEP_DESKTOP;
 
     return {
-      title: 'Öğrenci Login Trendi',
+      title: this.text('trends.loginTitle'),
       icon: 'login',
-      period: `Son ${LOGIN_TREND_DAYS} gün`,
+      period: this.text('trends.periodDays', { days: LOGIN_TREND_DAYS }),
       scheme: this.loginScheme,
       results,
       xAxisTicks: pickTickNames(results, tickStep),
@@ -534,6 +575,10 @@ export class AdminDashboardComponent implements OnInit {
     }
     this.scrollHeatmapsToLatestWeek();
   });
+
+  constructor() {
+    this.preloadScope();
+  }
 
   ngOnInit(): void {
     this.updateViewportWidth();
@@ -558,7 +603,7 @@ export class AdminDashboardComponent implements OnInit {
         next: (summary) => this.summary.set(summary),
         error: () => {
           this.summary.set(null);
-          this.error.set('Özet bilgileri alınırken bir sorun oluştu.');
+          this.error.set(this.text('error'));
         },
       });
   }
@@ -574,7 +619,7 @@ export class AdminDashboardComponent implements OnInit {
         next: (trends) => this.trends.set(trends),
         error: () => {
           this.trends.set(null);
-          this.trendError.set('Trend verileri alınırken bir sorun oluştu.');
+          this.trendError.set(this.text('trends.error'));
         },
       });
   }
@@ -602,12 +647,23 @@ export class AdminDashboardComponent implements OnInit {
     if (!extra) {
       return String(payload?.data ?? '');
     }
-    return `${extra.label}: ${extra.count} soru ${extra.verb}`;
+    return this.text('trends.tooltip', { label: extra.label, count: extra.count, verb: extra.verb });
   };
 
   // Bar chart eksen formatlayıcıları; ngx-charts `this` bağlamı vermeden çağırdığı için property olarak tutulur.
-  readonly formatLoginXAxisTick = formatIsoDayTick;
+  readonly formatLoginXAxisTick = (isoDate: string): string => formatIsoDayTick(isoDate, this.intlLocale);
   readonly formatLoginYAxisTick = formatIntegerTick;
+
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${ADMIN_SCOPE}.dashboard.${key}`, params) ?? '';
+  }
+
+  /** "bugün" / "dün" / "3 gün önce" — aktif dilde. */
+  private describeDaysAgo(isoDate: string): string {
+    const { key, count } = describeDaysAgoKey(isoDate);
+    return this.text(key, { count });
+  }
 
   private updateViewportWidth(): void {
     if (typeof window === 'undefined') {
@@ -633,7 +689,7 @@ export class AdminDashboardComponent implements OnInit {
       key,
       title,
       icon,
-      period: 'Son 1 yıl',
+      period: this.text('trends.periodYear'),
       scheme,
       results,
       xAxisTickFormatting: createMonthTickFormatter(results[0]?.name ?? ''),
@@ -674,13 +730,13 @@ export class AdminDashboardComponent implements OnInit {
         const key = toIsoDateKey(currentDate);
         const count = countByDate.get(key) ?? 0;
         return {
-          name: formatDayLabel(currentDate),
+          name: formatDayLabel(currentDate, this.intlLocale),
           value: toHeatLevel(count, thresholds),
-          extra: { date: key, label: formatTooltipDate(currentDate), count, verb },
+          extra: { date: key, label: formatTooltipDate(currentDate, this.intlLocale), count, verb },
         } satisfies HeatmapDay;
       }).filter((entry): entry is HeatmapDay => entry !== null);
 
-      heatmap.push({ name: formatWeekLabel(weekStart), series: weekSeries.slice().reverse() });
+      heatmap.push({ name: formatWeekLabel(weekStart, this.intlLocale), series: weekSeries.slice().reverse() });
     }
 
     return heatmap;
@@ -692,13 +748,18 @@ export class AdminDashboardComponent implements OnInit {
    */
   private buildTrendSummary(verb: string, points: AdminDashboardTrendPoint[], total: number, isEmpty: boolean): string {
     if (isEmpty) {
-      return 'Son 1 yıl: henüz yeterli veri yok.';
+      return this.text('trends.summaryEmpty');
     }
     const peak = findPeak(points);
     if (!peak) {
-      return 'Son 1 yıl: henüz yeterli veri yok.';
+      return this.text('trends.summaryEmpty');
     }
-    return `Son 1 yıl: toplam ${total} soru ${verb}. En yüksek gün ${describeDaysAgo(peak.date)}, ${peak.count} soru.`;
+    return this.text('trends.summary', {
+      total,
+      verb,
+      peak: this.describeDaysAgo(peak.date),
+      count: peak.count,
+    });
   }
 
   /**
@@ -708,8 +769,25 @@ export class AdminDashboardComponent implements OnInit {
   private buildLoginSummary(points: AdminDashboardTrendPoint[], total: number, isEmpty: boolean): string {
     const peak = isEmpty ? undefined : findPeak(points);
     if (!peak) {
-      return `Son ${LOGIN_TREND_DAYS} gün: henüz yeterli veri yok.`;
+      return this.text('trends.loginSummaryEmpty', { days: LOGIN_TREND_DAYS });
     }
-    return `Son ${LOGIN_TREND_DAYS} gün: toplam ${total} öğrenci girişi. En yüksek gün ${describeDaysAgo(peak.date)}, ${peak.count} giriş.`;
+    return this.text('trends.loginSummary', {
+      days: LOGIN_TREND_DAYS,
+      total,
+      peak: this.describeDaysAgo(peak.date),
+      count: peak.count,
+    });
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

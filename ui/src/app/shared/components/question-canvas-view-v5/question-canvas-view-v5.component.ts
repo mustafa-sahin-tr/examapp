@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective } from '@jsverse/transloco';
 
 const EMPTY_REGION: QuestionRegion = {
   id: 0,
@@ -59,7 +60,7 @@ function clampVisualScale(value: number): number {
 @Component({
   selector: 'app-question-canvas-view-v5',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, TranslocoDirective],
   templateUrl: './question-canvas-view-v5.component.html',
   styleUrls: ['./question-canvas-view-v5.component.scss'],
 })

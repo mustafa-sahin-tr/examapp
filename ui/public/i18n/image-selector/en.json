@@ -1,0 +1,64 @@
+{
+  "common": {
+    "ok": "OK",
+    "close": "Close"
+  },
+  "labels": {
+    "answerNumbered": "Choice {{number}}"
+  },
+  "preview": {
+    "questions": "Questions",
+    "combinedView": "Combined view",
+    "splitView": "Split view — question + choices",
+    "difficulty": "Difficulty",
+    "level": "Level",
+    "classification": "Classification"
+  },
+  "warnings": {
+    "dismiss": "Dismiss warning",
+    "noDropZone": "No drop zone added",
+    "noDraggables": "Labels (draggables) have not been generated",
+    "noSolutionPlacements": "The worked example has no solution placements",
+    "answerCountMismatch": "There should be {{count}} choices",
+    "noCorrectAnswer": "No correct answer"
+  },
+  "menu": {
+    "removeQuestion": "Delete question",
+    "drawAnswer": "Draw choice (MCQ)",
+    "drawDropZone": "Draw zone (dragDropLabeling)",
+    "labelCount": "Label count",
+    "generateLabels": "Generate labels",
+    "autoSolution": "Auto solution",
+    "removeAll": "Delete all questions",
+    "alignAnswers": "Align choices",
+    "selectPassage": "Select passage",
+    "passageOption": "Passage {{id}}",
+    "removeAnswer": "Delete choice",
+    "zoneLabel": "Zone: {{id}}",
+    "correctLabel": "Correct label",
+    "emptyOption": "(empty)",
+    "removeDropZone": "Delete zone",
+    "passageLabel": "Passage: {{id}}",
+    "passageFirstOn": "Show the passage first",
+    "passageFirstOff": "Do not show the passage first",
+    "removePassage": "Delete passage",
+    "selectQuestion": "Select question",
+    "askAi": "Ask AI",
+    "selectPassageMode": "Select passage"
+  },
+  "messages": {
+    "classificationApplied": "Classification applied.",
+    "classificationError": "Something went wrong while applying it.",
+    "previewLoadError": "The preview could not be loaded.",
+    "dropZoneOutsideQuestion": "The drop zone must be inside the question area.",
+    "selectQuestionFirst": "Please select a question first, then add the choices.",
+    "analysisStarted": "Starting image analysis…",
+    "analysisCompleted": "Image analysis completed.",
+    "correctAnswerUpdated": "Correct answer updated successfully.",
+    "correctAnswerUpdateError": "Something went wrong while updating the correct answer.",
+    "removeQuestionConfirm": "Are you sure you want to remove this question from the worksheet?",
+    "questionRemoved": "The question was removed from the worksheet.",
+    "previewClosedNoQuestions": "The preview was closed because no questions are left in the worksheet.",
+    "questionRemoveError": "Something went wrong while deleting the question."
+  }
+}

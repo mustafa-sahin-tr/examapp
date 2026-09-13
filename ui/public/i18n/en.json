@@ -2,13 +2,398 @@
   "common": {
     "loading": "Loading...",
     "retry": "Try again",
-    "error": "Something went wrong."
+    "error": "Something went wrong.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "ok": "OK",
+    "clear": "Clear",
+    "errors": {
+      "bookingConflict": "This time slot is already booked.",
+      "forbidden": "You are not allowed to do this.",
+      "notFound": "Record not found.",
+      "jitsi": {
+        "browserOnly": "Jitsi can only be loaded in the browser.",
+        "invalidUrl": "Invalid Jitsi address.",
+        "otherServer": "A different Jitsi server is already loaded; please reload the page.",
+        "apiMissing": "The Jitsi script loaded but JitsiMeetExternalAPI was not found.",
+        "loadFailed": "The Jitsi script could not be loaded."
+      }
+    },
+    "notifications": {
+      "goToExam": "Go to exam",
+      "teacherApplication": "New independent teacher application: {{name}}",
+      "goToApplications": "Go to applications"
+    }
   },
   "layout": {
     "language": {
       "label": "Language",
       "switch": "Change language",
       "select": "Switch to {{language}}"
+    },
+    "sidebar": {
+      "expand": "Expand menu",
+      "collapse": "Collapse menu",
+      "close": "Close menu",
+      "open": "Open menu"
+    },
+    "menu": {
+      "dashboard": "Dashboard",
+      "exams": "Exams",
+      "practice": "Practice",
+      "study": "Study",
+      "programs": "My Programs",
+      "myCalendar": "My Plan",
+      "tutors": "Find a Tutor",
+      "myBookings": "My Lessons",
+      "students": "Students",
+      "tutorProfile": "My Tutor Profile",
+      "availability": "My Availability",
+      "bookingRequests": "Lesson Requests",
+      "accessRequests": "Assignment Permission Requests",
+      "studyPages": "Add Study Material",
+      "examAuthoring": "Create Test",
+      "questionTransfer": "Question Transfer",
+      "reports": "Reports",
+      "settings": "Settings",
+      "admin": "Administration",
+      "teacherApprovals": "Teacher Applications",
+      "help": "Help",
+      "feedback": "Feedback"
+    },
+    "bottomNav": {
+      "home": "Home",
+      "study": "Study",
+      "menu": "Menu"
+    },
+    "toolbar": {
+      "newest": "New",
+      "popular": "Popular",
+      "searchPlaceholder": "Search ..."
+    },
+    "search": {
+      "recentTitle": "Recent searches",
+      "remove": "Remove from search history",
+      "history": {
+        "math": "Maths",
+        "turkish": "Turkish",
+        "life": "Life Studies",
+        "science": "Science"
+      },
+      "suggestions": {
+        "naturalNumbers": "Natural Numbers",
+        "ourPlanet": "Our Planet",
+        "multiplication": "Multiplication",
+        "antonyms": "Antonyms"
+      }
+    },
+    "profile": {
+      "fallbackName": "User",
+      "avatarAlt": "Profile picture",
+      "info": "Profile Details",
+      "settingsSubtitle": "Settings, Account, Security",
+      "tasks": "Tasks",
+      "achievements": "Achievements",
+      "notifications": "Notifications",
+      "support": "Support",
+      "logout": "Log out"
+    }
+  },
+  "shared": {
+    "badgePath": {
+      "empty": "No badge path found.",
+      "step": "Step {{step}}",
+      "progress": "{{completed}} / {{total}} completed"
+    },
+    "badgeThropy": {
+      "title": "Achievement Badges",
+      "subtitle": "Track your badge progress based on your study habits.",
+      "loading": "Loading badges...",
+      "error": "Badge information could not be loaded.",
+      "loadFailed": "Badge information could not be loaded. Please try again later.",
+      "notFound": "No badge information found.",
+      "empty": "You have no earned or in-progress badges yet.",
+      "standaloneTitle": "Standalone Badges",
+      "pathProgress": "{{completed}} / {{total}} completed"
+    },
+    "bookingSlotDialog": {
+      "title": "{{teacher}} · Book a Lesson",
+      "loading": "Loading available times...",
+      "retry": "Try again",
+      "empty": "This teacher has no available times right now.",
+      "slotGroupAria": "Available time selection",
+      "submit": "Send Booking Request",
+      "loadError": "Available times could not be loaded.",
+      "submitError": "The booking request could not be created."
+    },
+    "calendar": {
+      "today": "today",
+      "variant": {
+        "reminderPending": "Reminder",
+        "reminderSent": "Reminder sent",
+        "deadlineOpen": "Due date",
+        "deadlineDone": "Completed assignment",
+        "programPlan": "Study plan",
+        "programPlanDone": "Completed plan",
+        "booking": "Lesson booking"
+      }
+    },
+    "calendarLegend": {
+      "aria": "Calendar legend"
+    },
+    "calendarGrid": {
+      "gridAria": "Monthly calendar",
+      "moreEvents": "+{{count}} more",
+      "cellAria": "{{date}}, {{count}} events",
+      "barAria": "{{title}}{{program}}, go to program",
+      "barCompleted": "✓ {{title}} (completed)",
+      "weekday": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      }
+    },
+    "calendarDayDialog": {
+      "completed": "Completed",
+      "sent": "Sent",
+      "bookingConfirmed": "Confirmed booking",
+      "dueAt": "Due: {{date}}",
+      "pagesCompleted": "{{completed}}/{{total}} pages completed",
+      "goToBookings": "Go to my lessons",
+      "goToProgram": "Go to program",
+      "goToDetail": "Go to details",
+      "editReminder": "Edit reminder",
+      "viewResult": "View result",
+      "startSolving": "Start solving"
+    },
+    "classificationSelector": {
+      "grade": "Grade",
+      "subject": "Subject",
+      "topic": "Topic",
+      "subtopics": "Subtopics (multiple choice)",
+      "apply": "Apply"
+    },
+    "colorSchemeToggle": {
+      "toDark": "Switch to dark theme",
+      "toLight": "Switch to light theme"
+    },
+    "countdown": {
+      "label": "Time Remaining",
+      "timeUp": "Time is up!"
+    },
+    "joinWindow": {
+      "tooEarly": "Becomes active {{minutes}} min before the lesson",
+      "closed": "The lesson has ended",
+      "unknown": "The lesson time could not be read."
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "questionNavigator": {
+      "previous": "Previous",
+      "next": "Next",
+      "pageInfo": "Page {{current}} / {{total}}"
+    },
+    "questionCanvas": {
+      "zoomGroup": "Zoom",
+      "zoomOut": "Zoom out (-5%)",
+      "zoomIn": "Zoom in (+5%)",
+      "apply": "Apply",
+      "removeQuestion": "Remove Question from Test",
+      "correctAnswer": "Correct Answer",
+      "showResult": "Show Result",
+      "passageAlt": "Passage image",
+      "questionAlt": "Question image",
+      "choiceAria": "Choice {{label}}",
+      "labels": "Labels"
+    },
+    "sharingBadge": {
+      "publicAssignable": "Public · Assignable",
+      "publicView": "Public · View only",
+      "sharedBy": "Shared by {{owner}}"
+    },
+    "spinWheel": {
+      "spin": "Spin the wheel!",
+      "prizes": {
+        "dessert": "Dessert",
+        "tenPoints": "10 Points",
+        "extraQuestion": "Extra Question",
+        "surprise": "Surprise",
+        "extraLife": "Extra Life"
+      }
+    },
+    "studentTimeChart": {
+      "legend": "Legend",
+      "xAxis": "Subject",
+      "yAxis": "Study time (min)"
+    },
+    "tutorCard": {
+      "subjectsAria": "Subjects taught",
+      "hourlyRate": "{{amount}} ₺ / hour",
+      "rateUnset": "Rate not specified",
+      "online": "Online",
+      "inPerson": "In person"
+    },
+    "visibilitySection": {
+      "teacherSharingTitle": "Sharing Between Teachers",
+      "studentVisibilityTitle": "Student Visibility",
+      "teacherSharing": {
+        "private": {
+          "label": "Private",
+          "description": "Only you and an admin can view, edit and assign it."
+        },
+        "publicView": {
+          "label": "Public (view only)",
+          "description": "All teachers can view it. Assigning requires your approval."
+        },
+        "publicAssignable": {
+          "label": "Public (assignable)",
+          "description": "All teachers can view it and assign it to their own students without approval."
+        }
+      },
+      "studentVisibility": {
+        "restricted": "Restricted: only assigned students can see and start it.",
+        "normal": "Normal: it appears in the student discover list and can be started."
+      },
+      "summary": "Currently: {{teacher}} {{student}}",
+      "summaryTeacher": {
+        "private": "Only you and an admin can view, edit or assign it.",
+        "publicView": "All teachers can view it, assigning requires your approval.",
+        "publicAssignable": "All teachers can view and assign it without approval."
+      },
+      "summaryStudent": {
+        "restricted": "Students can only see it when it is assigned to them.",
+        "normal": "Students can see it in the discover list."
+      }
+    },
+    "study": {
+      "page": {
+        "title": "Study",
+        "subtitle": "Browse topics, watch videos, review documents",
+        "searchLabel": "Search a subject, topic or content",
+        "searchPlaceholder": "Type the topic you are looking for...",
+        "progressTitle": "Progress"
+      },
+      "catalog": {
+        "title": "Subject Catalogue",
+        "description": "Pick the subject you want to study. Each subject has topics and subtopics.",
+        "loading": "Loading subjects...",
+        "empty": "No subjects found yet.",
+        "openHint": "Click to see the topics"
+      },
+      "topic": {
+        "title": "{{subject}} Topics",
+        "description": "Pick the topic you want to explore. Each topic has subtopics and study material.",
+        "loading": "Loading topics...",
+        "empty": "No topics have been added for this subject yet.",
+        "progress": "{{percent}}% completed"
+      },
+      "subtopic": {
+        "title": "{{topic}} Subtopics",
+        "description": "Pick the subtopic you are interested in. Each subtopic has videos and documents.",
+        "loading": "Loading subtopics...",
+        "empty": "No subtopics have been added for this topic yet.",
+        "videoCount": "{{count}} Videos",
+        "documentCount": "{{count}} Documents",
+        "emptyContent": "No content has been added for this subtopic yet."
+      },
+      "content": {
+        "loading": "Loading content...",
+        "notFound": "Content not found.",
+        "addFavorite": "Add to favourites",
+        "share": "Share",
+        "copyLink": "Copy link",
+        "linkCopied": "Link copied!",
+        "fallbackTitle": "Study content",
+        "completed": "Completed",
+        "markCompleted": "Mark as Completed",
+        "documentHint": "Click the link below to view the document.",
+        "openDocument": "View Document",
+        "commentsTab": "Comments",
+        "addComment": "Add a comment",
+        "commentPlaceholder": "Write a comment about this content...",
+        "send": "Send",
+        "noComments": "No comments yet. Be the first to comment!",
+        "notesTab": "My Notes",
+        "addNote": "Add a note",
+        "notePlaceholder": "Write your notes about this content...",
+        "previousNotes": "Your Previous Notes"
+      }
+    },
+    "userTheme": {
+      "title": "Personal Theme Settings",
+      "subtitle": "Your choice is saved and remembered the next time you sign in",
+      "loading": "Loading theme...",
+      "savedStateTitle": "Your Saved Theme",
+      "presetLabel": "Preset:",
+      "presetSuffix": "Preset",
+      "customSettings": "Custom Settings",
+      "customSettingsNote": "Changing these settings creates a custom theme.",
+      "editHint": "Choose \"My Current Theme\" to edit these settings.",
+      "presetSelectLabel": "Load or Pick a Theme",
+      "presetShort": {
+        "current": "My Current Theme"
+      },
+      "presets": {
+        "current": "My Current Theme",
+        "minimal": "Minimal - Coloured borders only",
+        "standard": "Standard - Border + Gradient + Icons + Progress",
+        "enhanced": "Enhanced - Standard + Ribbon + Glow + Typography",
+        "full": "Full - All effects (animations included)"
+      },
+      "settings": {
+        "borders": {
+          "label": "Coloured Borders",
+          "description": "Status-based coloured borders"
+        },
+        "gradient": {
+          "label": "Gradient Overlay",
+          "description": "Background gradient effects"
+        },
+        "iconBadges": {
+          "label": "Icon Badges",
+          "description": "Status icons in the top right corner"
+        },
+        "ribbons": {
+          "label": "Ribbon Banner",
+          "description": "Assignment type ribbon in the top left corner"
+        },
+        "glow": {
+          "label": "Glow Effects",
+          "description": "Glow and shadow effects"
+        },
+        "progressBar": {
+          "label": "Progress Bar",
+          "description": "Time progress at the bottom"
+        },
+        "transform": {
+          "label": "Transform Animations",
+          "description": "Rotate and shake animations"
+        },
+        "typography": {
+          "label": "Typography Effects",
+          "description": "Font weight and opacity changes"
+        }
+      },
+      "resetButton": "Reset to Default",
+      "previewButton": "Preview",
+      "saveButton": "Save and Apply",
+      "messages": {
+        "customSaved": "Your custom theme settings were saved and are now your current theme!",
+        "customSaveFailed": "The custom theme could not be saved.",
+        "reset": "The theme was reset to the defaults!",
+        "resetFailed": "The theme could not be reset.",
+        "preview": "Preview applied! Press Save to make it permanent.",
+        "customLoaded": "Your saved custom theme was loaded and can be edited!",
+        "presetLoaded": "Your saved preset theme was loaded and can be edited!"
+      }
     }
   },
   "dashboard": {

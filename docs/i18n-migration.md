@@ -30,6 +30,13 @@ da kullanılıyorsa, orada kendi `provideTranslocoScope`'unu vermelidir.
 Kök `public/i18n/{tr,en}.json` yalnızca gerçekten paylaşılan anahtarlar içindir: `common.*`
 (loading/retry/error), `layout.*` (kabuk, dil seçici). Sayfaya özel bir anahtarı oraya koyma.
 
+**Scope öneki klasör adıyla birebir aynıdır (kebab-case).** `public/i18n/test-solve/` sözlüğüne
+`test-solve.header.finishTest` diye erişilir — camelCase'e (`testSolve`) çevirme. Transloco'nun
+varsayılanı scope adını camelCase'e çevirmektir; bunu kapatmak için `app.config.ts`'te
+`scopes: { keepCasing: true }` verilmiştir (issue #183). Testte `TranslocoTestingModule` kendi
+config'ini kurduğu için aynı satır `translocoConfig` içine de yazılmalıdır. Önek uyuşmazlığı hata
+fırlatmaz, ekranda ham anahtar görünür — sessiz hatadır.
+
 ## 2. Anahtar adlandırma
 
 `<scope>.<bölüm>.<anahtar>` — bölüm ve anahtar **camelCase**:

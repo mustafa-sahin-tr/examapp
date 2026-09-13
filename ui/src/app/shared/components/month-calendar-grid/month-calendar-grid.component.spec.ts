@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { MonthCalendarGridComponent, ProgramBar } from './month-calendar-grid.component';
 import { CalendarEvent } from '../../../models/calendar-event';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 function programEvent(overrides: Partial<CalendarEvent> & { date: string }): CalendarEvent {
   return {
@@ -50,7 +51,7 @@ function localIso(year: number, month: number, day: number): string {
 async function setup(month: Date, events: CalendarEvent[] = []) {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
-    imports: [MonthCalendarGridComponent],
+    imports: [translocoTestingModule(), MonthCalendarGridComponent],
   }).compileComponents();
 
   const fixture: ComponentFixture<MonthCalendarGridComponent> = TestBed.createComponent(MonthCalendarGridComponent);

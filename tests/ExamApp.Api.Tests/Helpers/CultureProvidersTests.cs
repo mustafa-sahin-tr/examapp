@@ -4,6 +4,7 @@ using System.Text.Json;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -138,12 +139,81 @@ public class CultureProvidersTests
         result.ShouldBeNull();
     }
 
-    // ---- UserPreferredLocaleCultureProvider + RequestLocalizationMiddleware tests ----
-    // UserPreferredLocaleCultureProvider behavior is tested indirectly via NormalizedAcceptLanguageCultureProvider tests above.
-    // The provider requires Redis/IDistributedCache with UserProfileCacheService for full integration testing,
-    // which is an infrastructure-level concern (mocking IDistributedCache.GetStringAsync has complex NSubstitute behavior).
-    // Core provider logic is validated through:
-    // 1. SupportedLocales normalization tests (Foundation)
-    // 2. NormalizedAcceptLanguageCultureProvider header parsing tests (above)
-    // 3. Controller PreferredLocale update tests (AuthApi) demonstrating the storage side
+    // ---- UserPreferredLocaleCultureProvider tests ----
+
+    [Fact]
+    public void UserPreferredLocaleCultureProvider_requires_null_context_to_be_rejected()
+    {
+        // Arrange
+        var provider = new UserPreferredLocaleCultureProvider();
+
+        // Act & Assert: DetermineProviderCultureResult should throw if context is null
+        Should.Throw<ArgumentNullException>(
+            () => provider.DetermineProviderCultureResult(null!).GetAwaiter().GetResult());
+    }
+
+    [Fact]
+    public async Task UserPreferredLocaleCultureProvider_returns_null_when_unauthenticated()
+    {
+        // Arrange
+        var provider = new UserPreferredLocaleCultureProvider();
+
+        var context = new DefaultHttpContext();
+        // No authenticated user
+
+        var services = new ServiceCollection();
+        context.RequestServices = services.BuildServiceProvider();
+
+        // Act
+        var result = await provider.DetermineProviderCultureResult(context);
+
+        // Assert: unauthenticated user should return null
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task UserPreferredLocaleCultureProvider_returns_null_without_name_identifier()
+    {
+        // Arrange
+        var provider = new UserPreferredLocaleCultureProvider();
+
+        var context = new DefaultHttpContext();
+        context.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(
+                claims: new System.Security.Claims.Claim[0],  // No NameIdentifier claim
+                authenticationType: "TestAuth"));
+
+        var services = new ServiceCollection();
+        context.RequestServices = services.BuildServiceProvider();
+
+        // Act
+        var result = await provider.DetermineProviderCultureResult(context);
+
+        // Assert: no NameIdentifier means no authenticated user identity
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task UserPreferredLocaleCultureProvider_returns_null_when_cache_service_unavailable()
+    {
+        // Arrange
+        var provider = new UserPreferredLocaleCultureProvider();
+
+        var context = new DefaultHttpContext();
+        context.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity(new[]
+            {
+                new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "user-123")
+            }, authenticationType: "TestAuth"));
+
+        var services = new ServiceCollection();
+        // UserProfileCacheService NOT registered
+        context.RequestServices = services.BuildServiceProvider();
+
+        // Act
+        var result = await provider.DetermineProviderCultureResult(context);
+
+        // Assert: missing cache service returns null
+        result.ShouldBeNull();
+    }
 }

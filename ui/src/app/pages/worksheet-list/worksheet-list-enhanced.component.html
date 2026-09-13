@@ -1,4 +1,4 @@
-<div class="worksheet-list-enhanced">
+<div class="worksheet-list-enhanced" *transloco="let t; prefix: 'worksheet-list'">
   <!-- Header Section -->
   <!-- <div class="page-header">
     <h1 class="page-title">Test Merkezi</h1>
@@ -29,11 +29,11 @@
   <div class="section-nav">
     <button class="section-nav-btn" [class.active]="currentSection() === 'newest'" (click)="showSection('newest')">
       <mat-icon>new_releases</mat-icon>
-      Yeni Testler
+      {{ t('enhanced.navNewest') }}
     </button>
     <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
       <mat-icon>local_fire_department</mat-icon>
-      Popüler
+      {{ t('enhanced.navHot') }}
     </button>
     <button
       class="section-nav-btn"
@@ -41,7 +41,7 @@
       (click)="showSection('completed')"
     >
       <mat-icon>check_circle</mat-icon>
-      Tamamlanan
+      {{ t('enhanced.navCompleted') }}
     </button>
     <button
       class="section-nav-btn"
@@ -50,15 +50,15 @@
       *ngIf="searchForm.get('searchTerm')?.value"
     >
       <mat-icon>search</mat-icon>
-      Arama Sonuçları
+      {{ t('enhanced.navSearch') }}
     </button>
   </div>
 
   <!-- Newest Tests Section -->
   <div class="content-section" *ngIf="currentSection() === 'newest'">
     <div class="section-header">
-      <h2 class="section-title">En Yeni Testler</h2>
-      <p class="section-subtitle">Size özel seçilmiş yeni testler</p>
+      <h2 class="section-title">{{ t('enhanced.newestTitle') }}</h2>
+      <p class="section-subtitle">{{ t('enhanced.newestSubtitle') }}</p>
     </div>
 
     <div class="carousel-container">
@@ -72,7 +72,7 @@
         </div>
         <div class="empty-state" *ngIf="!newestWorksheetsSignal()?.length">
           <mat-icon class="empty-icon">quiz</mat-icon>
-          <p>Gösterilecek yeni test yok.</p>
+          <p>{{ t('enhanced.newestEmpty') }}</p>
         </div>
       </div>
 
@@ -85,8 +85,8 @@
   <!-- Hot Tests Section -->
   <div class="content-section" *ngIf="currentSection() === 'hot'">
     <div class="section-header">
-      <h2 class="section-title">Popüler Testler</h2>
-      <p class="section-subtitle">En çok tercih edilen testler</p>
+      <h2 class="section-title">{{ t('enhanced.hotTitle') }}</h2>
+      <p class="section-subtitle">{{ t('enhanced.hotSubtitle') }}</p>
     </div>
 
     <div class="carousel-container">
@@ -100,7 +100,7 @@
         </div>
         <div class="empty-state" *ngIf="!hotTestsSignal().length">
           <mat-icon class="empty-icon">quiz</mat-icon>
-          <p>Gösterilecek popüler test yok.</p>
+          <p>{{ t('enhanced.hotEmpty') }}</p>
         </div>
       </div>
 
@@ -113,8 +113,8 @@
   <!-- Relevant Tests Section -->
   <div class="content-section" *ngIf="currentSection() === 'relevant'">
     <div class="section-header">
-      <h2 class="section-title">En İlgili Testler</h2>
-      <p class="section-subtitle">Arama terimine göre size özel seçilmiş testler</p>
+      <h2 class="section-title">{{ t('enhanced.relevantTitle') }}</h2>
+      <p class="section-subtitle">{{ t('enhanced.relevantSubtitle') }}</p>
     </div>
 
     <div class="carousel-container">
@@ -138,8 +138,8 @@
   <div class="content-section" *ngIf="currentSection() === 'completed'">
     <ng-container *appIsStudent>
       <div class="section-header">
-        <h2 class="section-title">Tamamlanan Testler</h2>
-        <p class="section-subtitle">Başarılarınızı gözden geçirin</p>
+        <h2 class="section-title">{{ t('enhanced.completedTitle') }}</h2>
+        <p class="section-subtitle">{{ t('enhanced.completedSubtitle') }}</p>
       </div>
 
       <ng-container *ngIf="completedTestSignal() as tests">
@@ -154,8 +154,8 @@
         <ng-template #noCompletedTests>
           <div class="empty-state">
             <mat-icon class="empty-icon">quiz</mat-icon>
-            <h3>Henüz test tamamlamadınız</h3>
-            <p>İlk testinizi çözmeye başlayın!</p>
+            <h3>{{ t('enhanced.completedEmptyTitle') }}</h3>
+            <p>{{ t('enhanced.completedEmptyText') }}</p>
           </div>
         </ng-template>
       </ng-container>
@@ -168,16 +168,16 @@
       <!-- Filters Sidebar -->
       <div class="filters-sidebar">
         <div class="filters-header">
-          <h3>Filtreler</h3>
+          <h3>{{ t('enhanced.filtersTitle') }}</h3>
           <button class="clear-filters-btn" (click)="clearFilters()">
             <mat-icon>clear</mat-icon>
-            Temizle
+            {{ t('enhanced.filtersClear') }}
           </button>
         </div>
 
         <!-- Subject Filters -->
         <div class="filter-group">
-          <h4 class="filter-title">Dersler</h4>
+          <h4 class="filter-title">{{ t('enhanced.filtersSubjects') }}</h4>
           <div class="filter-options">
             <div class="filter-checkbox" *ngFor="let subject of subjectsSignal(); trackBy: trackSubject">
               <app-custom-checkbox
@@ -188,7 +188,7 @@
               ></app-custom-checkbox>
             </div>
           </div>
-          <h4 class="filter-title">Sınıflar</h4>
+          <h4 class="filter-title">{{ t('enhanced.filtersGrades') }}</h4>
           <div class="filter-options">
             <div class="filter-checkbox" *ngFor="let grade of gradesSignal(); trackBy: trackGrades">
               <app-custom-checkbox
@@ -203,34 +203,34 @@
 
         <!-- Sort Options -->
         <div class="filter-group">
-          <h4 class="filter-title">Sıralama</h4>
+          <h4 class="filter-title">{{ t('enhanced.filtersSort') }}</h4>
           <mat-select formControlName="sortBy" class="filter-select" (selectionChange)="onSortChange()">
-            <mat-option value="newest">En Yeni</mat-option>
-            <mat-option value="popular">Popüler</mat-option>
-            <mat-option value="difficulty">Zorluk</mat-option>
-            <mat-option value="duration">Süre</mat-option>
+            <mat-option value="newest">{{ t('enhanced.sortNewest') }}</mat-option>
+            <mat-option value="popular">{{ t('enhanced.sortPopular') }}</mat-option>
+            <mat-option value="difficulty">{{ t('enhanced.sortDifficulty') }}</mat-option>
+            <mat-option value="duration">{{ t('enhanced.sortDuration') }}</mat-option>
           </mat-select>
         </div>
 
         <!-- Difficulty Filter -->
         <div class="filter-group">
-          <h4 class="filter-title">Zorluk</h4>
+          <h4 class="filter-title">{{ t('enhanced.filtersDifficulty') }}</h4>
           <mat-select formControlName="difficulty" class="filter-select" (selectionChange)="onFilterChange()">
-            <mat-option value="all">Tümü</mat-option>
-            <mat-option value="easy">Kolay</mat-option>
-            <mat-option value="medium">Orta</mat-option>
-            <mat-option value="hard">Zor</mat-option>
+            <mat-option value="all">{{ t('enhanced.difficultyAll') }}</mat-option>
+            <mat-option value="easy">{{ t('enhanced.difficultyEasy') }}</mat-option>
+            <mat-option value="medium">{{ t('enhanced.difficultyMedium') }}</mat-option>
+            <mat-option value="hard">{{ t('enhanced.difficultyHard') }}</mat-option>
           </mat-select>
         </div>
 
         <!-- Duration Filter -->
         <div class="filter-group">
-          <h4 class="filter-title">Süre</h4>
+          <h4 class="filter-title">{{ t('enhanced.filtersDuration') }}</h4>
           <mat-select formControlName="duration" class="filter-select" (selectionChange)="onFilterChange()">
-            <mat-option value="all">Tümü</mat-option>
-            <mat-option value="short">Kısa (< 30 dk)</mat-option>
-            <mat-option value="medium">Orta (30-60 dk)</mat-option>
-            <mat-option value="long">Uzun (> 60 dk)</mat-option>
+            <mat-option value="all">{{ t('enhanced.durationAll') }}</mat-option>
+            <mat-option value="short">{{ t('enhanced.durationShort') }}</mat-option>
+            <mat-option value="medium">{{ t('enhanced.durationMedium') }}</mat-option>
+            <mat-option value="long">{{ t('enhanced.durationLong') }}</mat-option>
           </mat-select>
         </div>
       </div>
@@ -240,11 +240,16 @@
         <div class="results-header">
           <div class="results-info">
             <h2 class="results-title">
-              {{ searchForm.get('searchTerm')?.value ? '"' + searchForm.get('searchTerm')?.value + '"' : 'Arama' }}
-              için sonuçlar
+              {{
+                t('enhanced.resultsTitle', {
+                  term: searchForm.get('searchTerm')?.value
+                    ? '"' + searchForm.get('searchTerm')?.value + '"'
+                    : t('enhanced.resultsFallbackTerm')
+                })
+              }}
             </h2>
             <p class="results-count">
-              <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> test bulundu
+              <strong>{{ pagedWorksheetsSignal().totalCount }}</strong> {{ t('enhanced.resultsCountSuffix') }}
             </p>
           </div>
         </div>
@@ -252,7 +257,7 @@
         <!-- Loading State -->
         <div class="loading-state" *ngIf="isLoading()">
           <div class="loading-spinner"></div>
-          <p>Testler yükleniyor...</p>
+          <p>{{ t('enhanced.loading') }}</p>
         </div>
 
         <!-- Results Grid -->
@@ -273,19 +278,19 @@
               <div class="result-card-meta">
                 <span class="meta-item">
                   <mat-icon>quiz</mat-icon>
-                  {{ test.questionCount }} Soru
+                  {{ t('enhanced.cardQuestionCount', { count: test.questionCount }) }}
                 </span>
                 <span class="meta-item">
                   <mat-icon>school</mat-icon>
-                  {{ test.gradeId }}.Sınıf
+                  {{ t('enhanced.cardGrade', { grade: test.gradeId }) }}
                 </span>
                 <span class="meta-item">
                   <mat-icon>schedule</mat-icon>
-                  {{ test.maxDurationSeconds / 60 }} Dakika
+                  {{ t('enhanced.cardMinutes', { minutes: test.maxDurationSeconds / 60 }) }}
                 </span>
                 <span class="meta-item" *ngIf="test.instance?.status === 1">
                   <mat-icon class="completed-icon">check_circle</mat-icon>
-                  Tamamlandı
+                  {{ t('enhanced.cardCompleted') }}
                 </span>
               </div>
             </div>
@@ -295,8 +300,8 @@
         <!-- Empty State -->
         <div class="empty-state" *ngIf="!isLoading() && pagedWorksheetsSignal().items.length === 0">
           <mat-icon class="empty-icon">search_off</mat-icon>
-          <h3>Sonuç bulunamadı</h3>
-          <p>Arama kriterlerinizi değiştirmeyi deneyin</p>
+          <h3>{{ t('enhanced.emptyTitle') }}</h3>
+          <p>{{ t('enhanced.emptyText') }}</p>
         </div>
 
         <!-- Pagination -->

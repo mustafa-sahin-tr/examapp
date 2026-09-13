@@ -38,10 +38,16 @@ import {
   WorksheetStatus,
 } from '../../models/worksheet-list-filter';
 import { AuthService } from '../../services/auth.service';
+import { LocaleService } from '../../services/locale.service';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
 import { TestService } from '../../services/test.service';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
+
+/** Sayfa çevirileri kendi scope'unda: `public/i18n/worksheet-list/<lang>.json` (issue #183). */
+const WORKSHEET_LIST_SCOPE = 'worksheet-list';
 
 interface GradeOption {
   id: number;
@@ -62,20 +68,30 @@ interface GradeOption {
     MatSlideToggleModule,
     PaginationComponent,
     WorksheetListViewCardComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(WORKSHEET_LIST_SCOPE)],
 })
 export class WorksheetListComponent implements OnInit {
   private readonly testService = inject(TestService);
   private readonly subjectService = inject(SubjectService);
   private readonly gradesService = inject(GradesService);
   private readonly auth = inject(AuthService);
+  private readonly localeService = inject(LocaleService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   readonly sortOptions = WORKSHEET_SORT_OPTIONS;
+
+  /** Scope'lu anahtarı tam adıyla senkron çevirir; şablon yardımcıları `*transloco` bloğu içinde çalışır. */
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${WORKSHEET_LIST_SCOPE}.${key}`, params) ?? '';
+  }
+
   readonly durationBuckets = Object.entries(DURATION_BUCKET_RANGES) as [DurationBucket, { label: string }][];
   readonly questionBuckets = Object.entries(QUESTION_BUCKET_RANGES) as [QuestionBucket, { label: string }][];
 
@@ -103,6 +119,8 @@ export class WorksheetListComponent implements OnInit {
   private readonly fetchTrigger = new RxSubject<void>();
 
   constructor() {
+    this.warmTranslationScope();
+
     // Tüm discover fetch'leri tek akıştan geçer: switchMap eskiyen isteği iptal eder,
     // böylece yavaş kalan cevap yeniyi ezmez ve loading erken kapanmaz.
     this.fetchTrigger
@@ -112,7 +130,7 @@ export class WorksheetListComponent implements OnInit {
           this.discoverError.set(null);
           return this.testService.listWorksheets(this.buildFilter()).pipe(
             catchError(() => {
-              this.discoverError.set('Testler yüklenirken bir sorun oluştu.');
+              this.discoverError.set(this.tr('error.loadFailed'));
               return of(null);
             })
           );
@@ -125,6 +143,18 @@ export class WorksheetListComponent implements OnInit {
           this.paged.set(result);
         }
       });
+  }
+
+
+  /**
+   * Şablon dışından (snackbar, dialog, hesaplanan etiket) çağrılan senkron `translate()`
+   * çağrılarının çalışabilmesi için scope sözlüğünü render'dan bağımsız yükler.
+   */
+  private warmTranslationScope(): void {
+    this.transloco
+      .selectTranslate('snackbar.dismiss', {}, WORKSHEET_LIST_SCOPE)
+      .pipe(takeUntilDestroyed())
+      .subscribe();
   }
 
   /** Aktif sekmeye göre birleşik loading. */
@@ -214,7 +244,8 @@ export class WorksheetListComponent implements OnInit {
   /** Aktif segment sekmesine göre gösterilecek test listesi. */
   readonly visibleTests = computed<Test[]>(() => {
     const tab = this.tab();
-    const term = this.search().trim().toLocaleLowerCase('tr');
+    const localeCode = this.localeService.localeDefinition().angularLocale;
+    const term = this.search().trim().toLocaleLowerCase(localeCode);
     let source: Test[];
     switch (tab) {
       case 'discover':
@@ -228,7 +259,7 @@ export class WorksheetListComponent implements OnInit {
       default:
         source = this.assignments().map((a) => this.mapAssignmentToTest(a));
     }
-    return source.filter((t) => !term || (t.name ?? '').toLocaleLowerCase('tr').includes(term));
+    return source.filter((t) => !term || (t.name ?? '').toLocaleLowerCase(localeCode).includes(term));
   });
 
   readonly totalCount = computed(() =>
@@ -245,11 +276,9 @@ export class WorksheetListComponent implements OnInit {
       this.practiceOnly()
   );
 
-  readonly headerTitle = computed(() => (this.isTeacher ? 'Testlerim' : 'Sınav Kütüphanesi'));
+  readonly headerTitle = computed(() => this.tr(this.isTeacher ? 'header.titleTeacher' : 'header.titleStudent'));
   readonly headerSubtitle = computed(() =>
-    this.isTeacher
-      ? 'Oluşturduğun testleri yönet, düzenle ve öğrencilere ata.'
-      : 'Konu ve zorluğa göre test bul, çöz ve ilerlemeni takip et.'
+    this.tr(this.isTeacher ? 'header.subtitleTeacher' : 'header.subtitleStudent')
   );
 
   ngOnInit(): void {
@@ -346,7 +375,7 @@ export class WorksheetListComponent implements OnInit {
       )
       .subscribe({
         next: (items) => this.assignments.set(items ?? []),
-        error: () => this.assignmentsError.set('Atanmış testler yüklenirken bir sorun oluştu.'),
+        error: () => this.assignmentsError.set(this.tr('error.assignmentsLoadFailed')),
       });
   }
 
@@ -374,7 +403,7 @@ export class WorksheetListComponent implements OnInit {
           this.completedTests.set(completed.items ?? []);
         }
         if (!inProgress && !completed) {
-          this.bucketsError.set('Testler yüklenirken bir sorun oluştu.');
+          this.bucketsError.set(this.tr('error.loadFailed'));
         }
       });
   }
@@ -413,8 +442,14 @@ export class WorksheetListComponent implements OnInit {
     this.fetch();
   }
 
+  /** Sıralama etiketleri model dosyasındaki sabit listeden değil, scope sözlüğünden gelir. */
+  sortLabel(value: WorksheetSortBy): string {
+    return this.tr(`sort.${value}`);
+  }
+
   currentSortLabel(): string {
-    return this.sortOptions.find((o) => o.value === this.sortBy())?.label ?? 'Sırala';
+    const active = this.sortOptions.find((o) => o.value === this.sortBy());
+    return active ? this.sortLabel(active.value) : this.tr('sort.fallback');
   }
 
   changePage(page: number): void {
@@ -521,7 +556,8 @@ export class WorksheetListComponent implements OnInit {
   }
 
   statusLabel(status: WorksheetStatus): string {
-    return status === -1 ? 'Başlanmadı' : status === 0 ? 'Devam ediyor' : 'Tamamlandı';
+    const key = status === -1 ? 'notStarted' : status === 0 ? 'inProgress' : 'completed';
+    return this.tr(`status.${key}`);
   }
 
   subjectName(id?: number): string {
@@ -533,11 +569,11 @@ export class WorksheetListComponent implements OnInit {
   }
 
   durationBucketLabel(bucket: DurationBucket): string {
-    return DURATION_BUCKET_RANGES[bucket].label;
+    return this.tr(`durationBucket.${bucket}`);
   }
 
   questionBucketLabel(bucket: QuestionBucket): string {
-    return QUESTION_BUCKET_RANGES[bucket].label;
+    return this.tr(`questionBucket.${bucket}`);
   }
 
   // ---------- teacher / bulk actions ----------
@@ -547,11 +583,11 @@ export class WorksheetListComponent implements OnInit {
   }
 
   onAssign(): void {
-    this.snackBar.open('Atama ekranı yakında kullanıma açılacak.', 'Tamam', { duration: 3000 });
+    this.snackBar.open(this.tr('snackbar.assignSoon'), this.tr('snackbar.dismiss'), { duration: 3000 });
   }
 
   onImportExcel(): void {
-    this.snackBar.open('Excel içe aktarma yakında kullanıma açılacak.', 'Tamam', { duration: 3000 });
+    this.snackBar.open(this.tr('snackbar.importSoon'), this.tr('snackbar.dismiss'), { duration: 3000 });
   }
 
   onCreate(): void {
@@ -563,10 +599,10 @@ export class WorksheetListComponent implements OnInit {
       width: '480px',
       maxWidth: '90vw',
       data: {
-        title: 'Testi Sil',
-        message: 'Bu testi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
-        confirmText: 'Evet, Sil',
-        cancelText: 'İptal',
+        title: this.tr('dialog.deleteTitle'),
+        message: this.tr('dialog.deleteMessage'),
+        confirmText: this.tr('dialog.confirm'),
+        cancelText: this.tr('dialog.cancel'),
         icon: 'delete_forever',
         confirmColor: 'warn',
       },
@@ -602,14 +638,16 @@ export class WorksheetListComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (res?.worksheetId) {
-            this.snackBar.open('Sınav kendi hesabına kopyalandı.', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.copySuccess'), this.tr('snackbar.dismiss'), { duration: 3000 });
             this.router.navigate(['/exam', res.worksheetId]);
           } else {
-            this.snackBar.open('Kopyalama başarısız.', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.copyFailed'), this.tr('snackbar.dismiss'), { duration: 3000 });
           }
         },
         error: (error) => {
-          this.snackBar.open(error?.error?.message ?? 'Kopyalama başarısız.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(error?.error?.message ?? this.tr('snackbar.copyFailed'), this.tr('snackbar.dismiss'), {
+            duration: 3000,
+          });
         },
       });
   }
@@ -637,10 +675,10 @@ export class WorksheetListComponent implements OnInit {
       width: '480px',
       maxWidth: '90vw',
       data: {
-        title: `${ids.length} test silinsin mi?`,
-        message: 'Seçili testlerin tümü kalıcı olarak silinecek. Bu işlem geri alınamaz.',
-        confirmText: 'Evet, Sil',
-        cancelText: 'İptal',
+        title: this.tr('dialog.bulkDeleteTitle', { count: ids.length }),
+        message: this.tr('dialog.bulkDeleteMessage'),
+        confirmText: this.tr('dialog.confirm'),
+        cancelText: this.tr('dialog.cancel'),
         icon: 'delete_forever',
         confirmColor: 'warn',
       },
@@ -669,8 +707,9 @@ export class WorksheetListComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(({ ok, fail }) => {
-        const message = fail === 0 ? `${ok} test silindi.` : `${ok} test silindi, ${fail} tanesi başarısız.`;
-        this.snackBar.open(message, fail === 0 ? 'Tamam' : 'Kapat', { duration: 4000 });
+        const message =
+          fail === 0 ? this.tr('snackbar.deleted', { count: ok }) : this.tr('snackbar.deletedPartial', { ok, fail });
+        this.snackBar.open(message, this.tr(fail === 0 ? 'snackbar.dismiss' : 'snackbar.close'), { duration: 4000 });
         this.clearSelection();
         if (ok > 0 && this.paged().items.length === ok && this.pageNumber() > 1) {
           this.pageNumber.update((p) => p - 1);

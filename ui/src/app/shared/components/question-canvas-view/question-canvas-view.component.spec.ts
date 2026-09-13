@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { QuestionCanvasViewComponent } from './question-canvas-view.component';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('QuestionCanvasViewComponent', () => {
   let component: QuestionCanvasViewComponent;
@@ -8,7 +9,7 @@ describe('QuestionCanvasViewComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QuestionCanvasViewComponent]
+      imports: [translocoTestingModule(), QuestionCanvasViewComponent]
     })
     .compileComponents();
 

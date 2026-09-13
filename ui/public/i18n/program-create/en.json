@@ -1,0 +1,36 @@
+{
+  "actions": {
+    "ok": "OK"
+  },
+  "wizard": {
+    "questionNumber": "Question {{number}}",
+    "stepCounter": "{{current}} / {{total}}",
+    "loading": "Loading questions...",
+    "prevQuestion": "Previous question",
+    "nextQuestion": "Next question",
+    "loadError": "The questions could not be loaded, please try again.",
+    "stepsNotFound": "No program steps were found.",
+    "reloadHint": "The questions could not be loaded, please refresh the page",
+    "retry": "Try Again",
+    "noSelection": "You have not made a selection",
+    "summaryTitle": "Your selections:"
+  },
+  "form": {
+    "title": "Create Your Program",
+    "subtitle": "One last step! Give your program a name and add a description.",
+    "name": "Program Name",
+    "namePlaceholder": "e.g. My Maths Study Program",
+    "description": "Description (optional)",
+    "descriptionPlaceholder": "You can write a short description of your program...",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "submit": "Create Program",
+    "back": "Go Back",
+    "nameRequired": "A program name is required",
+    "startDateRequired": "A start date is required",
+    "endDateRequired": "An end date is required",
+    "endDateAfterStart": "The end date must be later than the start date",
+    "created": "The program was created successfully!",
+    "createFailed": "Something went wrong while creating the program"
+  }
+}

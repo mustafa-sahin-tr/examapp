@@ -6,10 +6,12 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { Observable, Subject, catchError, map, merge, of, switchMap, tap } from 'rxjs';
 import { MonthCalendarGridComponent } from '../../shared/components/month-calendar-grid/month-calendar-grid.component';
 import { CalendarLegendComponent } from '../../shared/components/calendar-legend/calendar-legend.component';
-import { addMonths, buildMonthWeeks, formatMonthYear, startOfMonth, toLocalIso } from '../../shared/utils/calendar-month.util';
+import { addMonths, buildMonthWeeks, startOfMonth, toLocalIso } from '../../shared/utils/calendar-month.util';
+import { LocaleService } from '../../services/locale.service';
 import { TestService } from '../../services/test.service';
 import { AuthService } from '../../services/auth.service';
 import { CalendarEvent } from '../../models/calendar-event';
@@ -17,6 +19,9 @@ import {
   CalendarDayDialogComponent,
   CalendarDayDialogData,
 } from '../../shared/components/calendar-day-dialog/calendar-day-dialog.component';
+
+/** Sayfanın Transloco scope'u: `public/i18n/my-calendar/<lang>.json` (issue #183). */
+const SCOPE = 'my-calendar';
 
 type CalendarStatus = 'loading' | 'error' | 'empty' | 'ready';
 
@@ -42,7 +47,9 @@ interface CalendarResult {
     MatProgressSpinnerModule,
     MonthCalendarGridComponent,
     CalendarLegendComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './my-calendar.component.html',
   styleUrls: ['./my-calendar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,13 +62,23 @@ export class MyCalendarComponent {
   private readonly bottomSheet = inject(MatBottomSheet);
   /** Takvim artık öğretmene de açık (issue #96) — boş durum/aksiyon metinleri role göre değişir. */
   protected readonly isTeacher = inject(AuthService).hasRealmRole('Teacher');
+  private readonly localeService = inject(LocaleService);
 
   readonly viewMonth = signal<Date>(startOfMonth(new Date()));
   readonly status = signal<CalendarStatus>('loading');
   readonly events = signal<CalendarEvent[]>([]);
   readonly isMobile = signal(false);
 
-  readonly monthLabel = computed(() => formatMonthYear(this.viewMonth()));
+  /**
+   * Ay/yıl etiketi aktif dile bağlıdır (issue #183). Ortak `formatMonthYear` yardımcısı 'tr-TR'
+   * sabitiyle çalıştığı için burada dile bağlı biçimlendirici kullanılır.
+   */
+  readonly monthLabel = computed(() =>
+    new Intl.DateTimeFormat(this.localeService.localeDefinition().angularLocale, {
+      month: 'long',
+      year: 'numeric',
+    }).format(this.viewMonth())
+  );
 
   private readonly retry$ = new Subject<void>();
 

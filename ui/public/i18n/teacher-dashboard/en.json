@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "title": "Overview",
+    "error": "Something went wrong while loading the overview.",
+    "empty": "You have not created any exams yet. Your overview will appear here once you create your first exam.",
+    "cards": {
+      "worksheets": "Total Exams",
+      "students": "Unique Students"
+    }
+  },
+  "worksheets": {
+    "title": "My Exams",
+    "loading": "Loading exams...",
+    "error": "Something went wrong while loading the exam list.",
+    "empty": "You have no exams yet. They will be listed here once you create one.",
+    "columns": {
+      "name": "Exam name",
+      "assignedStudents": "Assigned students",
+      "completion": "Completion"
+    },
+    "completionValue": "{{value}}%",
+    "studentCount": "{{count}} students",
+    "openDetail": "Go to {{name}} details"
+  },
+  "lagging": {
+    "title": "Students Falling Behind",
+    "loading": "Loading students falling behind...",
+    "error": "Something went wrong while loading the list of students falling behind.",
+    "empty": "No students are falling behind, great job!",
+    "columns": {
+      "student": "Student name",
+      "worksheet": "Exam name",
+      "flags": "Tags"
+    },
+    "flags": {
+      "lowCompletion": "Low Completion",
+      "expired": "Overdue"
+    }
+  }
+}

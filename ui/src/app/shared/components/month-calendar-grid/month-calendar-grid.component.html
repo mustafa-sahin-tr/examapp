@@ -1,7 +1,8 @@
-<div class="calendar-grid" role="grid" aria-label="Aylık takvim">
+<div class="calendar-grid" role="grid" *transloco="let t; prefix: 'shared.calendarGrid'"
+  [attr.aria-label]="t('gridAria')">
   <div class="calendar-grid__row calendar-grid__row--head" role="row">
-    @for (weekday of weekdays; track weekday) {
-      <div class="calendar-grid__weekday" role="columnheader">{{ weekday }}</div>
+    @for (weekdayKey of weekdayKeys; track weekdayKey) {
+      <div class="calendar-grid__weekday" role="columnheader">{{ t('weekday.' + weekdayKey) }}</div>
     }
   </div>
 
@@ -33,7 +34,7 @@
                     <app-calendar-event-badge [event]="ev" [compact]="compact()" />
                   }
                   @if (overflowCount(cell); as more) {
-                    <span class="calendar-grid__more" aria-hidden="true">+{{ more }} daha</span>
+                    <span class="calendar-grid__more" aria-hidden="true">{{ t('moreEvents', { count: more }) }}</span>
                   }
                 </div>
               }
@@ -58,7 +59,7 @@
                 [class.calendar-grid__bar--ends]="bar.endsHere"
                 [style.grid-column]="bar.startCol + ' / ' + bar.endCol"
                 [style.transform]="'translateY(' + barOffsetY(bar) + 'px)'"
-                [attr.aria-label]="bar.label + (bar.event.programName ? ', ' + bar.event.programName : '') + ', programa git'"
+                [attr.aria-label]="barAriaLabel(bar)"
                 [title]="bar.label"
                 (click)="onBarClick(bar, $event)"
                 (keydown)="onBarKeydown(bar, $event)"

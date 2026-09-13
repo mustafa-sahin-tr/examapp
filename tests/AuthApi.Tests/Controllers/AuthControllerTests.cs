@@ -229,6 +229,65 @@ public class AuthControllerTests : IDisposable
             controller.Login(ExampleLogin("bad@test.local", TestPassword)));
     }
 
+    // ---- UpdatePreferredLocale: outbox event writing (issue #185) ----
+
+    [Fact]
+    public async Task UpdatePreferredLocale_value_changes_writes_UserPreferredLocaleChangedEvent_to_outbox()
+    {
+        await using var context = _db.NewContext();
+        var sub = "user-sub-outbox";
+        var user = new User { KeycloakId = sub, Email = "user@test.local", FullName = "Test User", Role = "Student", PreferredLocale = "tr" };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        var keycloak = Substitute.For<IKeycloakService>();
+        var controller = NewController(keycloak, context);
+        controller.ControllerContext.HttpContext.User = new System.Security.Principal.GenericPrincipal(
+            new System.Security.Claims.ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, sub)
+            }), null);
+
+        var result = await controller.UpdatePreferredLocale(new ExamApp.Api.Models.Requests.UpdatePreferredLocaleRequest { PreferredLocale = "en" });
+
+        result.ShouldBeOfType<OkObjectResult>();
+
+        // Verify outbox message was created
+        await using var check = _db.NewContext();
+        var outboxRow = await check.OutboxMessages.SingleAsync();
+        outboxRow.Type.ShouldBe(OutboxEventRegistry.NameFor<UserPreferredLocaleChangedEvent>());
+
+        var evt = JsonSerializer.Deserialize<UserPreferredLocaleChangedEvent>(outboxRow.Content)!;
+        evt.UserId.ShouldBe(user.Id);
+        evt.KeycloakId.ShouldBe(sub);
+        evt.PreferredLocale.ShouldBe("en");
+        evt.ChangedAtUtc.ShouldNotBe(default(DateTime));
+    }
+
+    [Fact]
+    public async Task UpdatePreferredLocale_same_value_does_not_write_outbox_event()
+    {
+        await using var context = _db.NewContext();
+        var sub = "user-sub-same";
+        var user = new User { KeycloakId = sub, Email = "user@test.local", FullName = "Test User", Role = "Student", PreferredLocale = "en" };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        var keycloak = Substitute.For<IKeycloakService>();
+        var controller = NewController(keycloak, context);
+        controller.ControllerContext.HttpContext.User = new System.Security.Principal.GenericPrincipal(
+            new System.Security.Claims.ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, sub)
+            }), null);
+
+        await controller.UpdatePreferredLocale(new ExamApp.Api.Models.Requests.UpdatePreferredLocaleRequest { PreferredLocale = "en" });
+
+        // Verify no outbox message was created (no change)
+        await using var check = _db.NewContext();
+        (await check.OutboxMessages.CountAsync()).ShouldBe(0);
+    }
+
     // ---- UpdatePreferredLocale: valid requests ----
 
     [Fact]

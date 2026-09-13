@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -33,7 +34,7 @@ interface BadgePathRenderLayout {
 @Component({
   selector: 'app-badge-path',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoDirective, TranslocoPipe],
   templateUrl: './badge-path.component.html',
   styleUrls: ['./badge-path.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

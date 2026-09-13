@@ -1,9 +1,9 @@
-<section class="contact">
-  <h1>İletişim</h1>
-  <p>Her türlü soru, öneri ve destek talepleriniz için bize ulaşabilirsiniz.</p>
+<section class="contact" *transloco="let t; prefix: 'public-pages.contact'">
+  <h1>{{ t('title') }}</h1>
+  <p>{{ t('intro') }}</p>
   <ul>
-    <li>E-posta: <a href="mailto:destek-examapp.com">destek-examapp.com</a></li>
-    <li>Telefon: <a href="tel:+905551112233">+90 555 111 22 33</a></li>
-    <li>Adres: İstanbul, Türkiye</li>
+    <li>{{ t('emailLabel') }}: <a href="mailto:destek-examapp.com">destek-examapp.com</a></li>
+    <li>{{ t('phoneLabel') }}: <a href="tel:+905551112233">+90 555 111 22 33</a></li>
+    <li>{{ t('addressLabel') }}: {{ t('addressValue') }}</li>
   </ul>
 </section>

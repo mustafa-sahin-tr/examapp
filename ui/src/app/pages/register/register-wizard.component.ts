@@ -1,4 +1,6 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -9,13 +11,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { AuthService } from '../../services/auth.service';
 import { StudentService } from '../../services/student.service';
 import { TeacherService } from '../../services/teacher.service';
 import { ParentService } from '../../services/parent.service';
 import { GradesService } from '../../services/grades.service';
+import { Grade } from '../../models/student';
+import { REGISTER_SCOPE } from './register-scope';
 
 type Role = 'student' | 'teacher' | 'parent';
+
+/** Rol tamamlama uçlarının ortak yanıtı (servisler henüz `any` döndürüyor). */
+interface RegistrationResult {
+  accessToken?: string;
+  profileId?: number;
+}
 
 @Component({
   selector: 'app-register-wizard',
@@ -30,7 +41,9 @@ type Role = 'student' | 'teacher' | 'parent';
     MatInputModule,
     MatSelectModule,
     MatSnackBarModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './register-wizard.component.html',
   styleUrl: './register-wizard.component.scss',
 })
@@ -44,11 +57,13 @@ export class RegisterWizardComponent implements OnInit {
   private teacherService = inject(TeacherService);
   private parentService = inject(ParentService);
   private gradesService = inject(GradesService);
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
 
   role = signal<Role | null>(null);
   step = computed(() => (this.role() ? 2 : 1));
   isSubmitting = signal(false);
-  grades: any[] = [];
+  readonly grades = signal<Grade[]>([]);
 
   studentForm = this.fb.group({
     studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
@@ -87,8 +102,8 @@ export class RegisterWizardComponent implements OnInit {
 
   private loadGrades() {
     this.gradesService.getGrades().subscribe({
-      next: (g) => (this.grades = g),
-      error: () => (this.grades = []),
+      next: (g: Grade[]) => this.grades.set(g),
+      error: () => this.grades.set([]),
     });
   }
 
@@ -109,7 +124,7 @@ export class RegisterWizardComponent implements OnInit {
 
     this.isSubmitting.set(true);
     request$.subscribe({
-      next: (val: any) => {
+      next: (val: RegistrationResult) => {
         this.isSubmitting.set(false);
         const roleName = role.charAt(0).toUpperCase() + role.slice(1); // Student/Teacher/Parent
         if (val?.accessToken) localStorage.setItem('auth_token', val.accessToken);
@@ -125,14 +140,29 @@ export class RegisterWizardComponent implements OnInit {
             /* ignore */
           }
         }
-        this.snackBar.open('Kayıt tamamlandı!', 'Tamam', { duration: 3000 });
+        this.notify('wizard.success');
         this.router.navigate([role === 'parent' ? '/dashboard' : '/tests']);
       },
-      error: (err: any) => {
+      error: (err: unknown) => {
         this.isSubmitting.set(false);
-        this.snackBar.open('Kayıt başarısız! Lütfen tekrar deneyin.', 'Tamam', { duration: 3000 });
+        this.notify('wizard.error');
         console.error('Register wizard error:', err);
       },
     });
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, REGISTER_SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, REGISTER_SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration: 3000 });
+      });
   }
 }

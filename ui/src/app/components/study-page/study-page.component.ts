@@ -17,6 +17,7 @@ import { StudyCatalogComponent } from '../study-catalog/study-catalog.component'
 import { StudyTopicComponent } from '../study-topic/study-topic.component';
 import { StudySubtopicComponent } from '../study-subtopic/study-subtopic.component';
 import { StudyContentViewerComponent } from '../study-content-viewer/study-content-viewer.component';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 
 @Component({
@@ -40,6 +41,7 @@ import { SectionHeaderComponent } from '../../shared/components/section-header/s
     StudySubtopicComponent,
     StudyContentViewerComponent,
     SectionHeaderComponent,
+    TranslocoDirective,
   ],
   templateUrl: './study-page.component.html',
   styleUrls: ['./study-page.component.scss'],

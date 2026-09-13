@@ -9,6 +9,8 @@ import {
 } from './manage-subject-grades-dialog.component';
 import { AdminService } from '../../../../services/admin.service';
 import { ApiResult, TaxonomyGrade } from '../../../../models/taxonomy';
+import { translocoTestingModule } from '../../../../shared/testing/transloco-testing';
+import adminTr from '../../../../../../public/i18n/admin/tr.json';
 
 describe('ManageSubjectGradesDialogComponent', () => {
   let fixture: ComponentFixture<ManageSubjectGradesDialogComponent>;
@@ -46,7 +48,11 @@ describe('ManageSubjectGradesDialogComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [ManageSubjectGradesDialogComponent],
+      imports: [ManageSubjectGradesDialogComponent, translocoTestingModule({
+        langs: { 'admin/tr': adminTr },
+        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+        translocoConfig: { scopes: { keepCasing: true } },
+      })],
       providers: [
         { provide: AdminService, useValue: adminService },
         { provide: MatDialogRef, useValue: dialogRef },

@@ -1,5 +1,5 @@
 @if(question) {
-<mat-card class="question-lite-card">  
+<mat-card class="question-lite-card" *transloco="let t; prefix: 'question.common'">
     <div class="question-lite-container">
       <!-- 🟢 Soru Başlığı ve Resmi -->
       <div class="question-lite-content">
@@ -7,7 +7,7 @@
         <div class="question-lite-text" [innerHTML]="question.text | safeHtml"></div>
         }
         @if(question.imageUrl) {
-          <img [src]="question.imageUrl" class="question-lite-image" />
+          <img [src]="question.imageUrl" class="question-lite-image" alt="" />
         }
         @if(question.subText) {
           <div class="question-lite-text" [innerHTML]="question.subText | safeHtml"></div>
@@ -19,11 +19,11 @@
         <div>
           @if(question.isExample && correctAnswerVisible) {
           <div class="correct-answer">
-              Doğru Cevap: 
+              {{ t('correctAnswerPrefix') }}
               <div class="question-lite-text" [innerHTML]="question.practiceCorrectAnswer | safeHtml"></div>
             </div>
           }
-          <button mat-button (click)="showCorrectAnswer()">Sonucu Gör</button>
+          <button mat-button (click)="showCorrectAnswer()">{{ t('showResult') }}</button>
         </div>         
       } @else {
         <div class="answers-lite-container" [ngStyle]="{'grid-template-columns': 'repeat('+ question.answerColCount +', 1fr)'}">
@@ -41,7 +41,7 @@
                 <span class="answer-label">{{ getAnswerLabel(i) }}</span>
                   <span class="answer-text">{{ answer.text }}</span>
                   @if(answer.imageUrl) {
-                    <img [src]="answer.imageUrl" class="answer-image" />
+                    <img [src]="answer.imageUrl" class="answer-image" alt="" />
                   }
           </div>
           }

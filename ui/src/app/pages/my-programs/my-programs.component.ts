@@ -1,4 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,6 +16,11 @@ import { Router } from '@angular/router';
 import { ProgramService } from '../../services/program.service';
 import { UserProgram } from '../../models/program.interfaces';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
+
+/** Sözlükte karşılığı olan program türleri; bunun dışındaki değer backend'den geldiği gibi gösterilir. */
+const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question'];
 
 type ProgramFilter = 'all' | 'active' | 'completed';
 
@@ -32,7 +39,9 @@ type ProgramFilter = 'all' | 'active' | 'completed';
     MatMenuModule,
     MatDialogModule,
     MatSnackBarModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './my-programs.component.html',
   styleUrls: ['./my-programs.component.scss'],
 })
@@ -41,6 +50,8 @@ export class MyProgramsComponent implements OnInit {
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
 
   programs: UserProgram[] = [];
   filteredPrograms: UserProgram[] = [];
@@ -94,15 +105,6 @@ export class MyProgramsComponent implements OnInit {
     return this.selectedFilter === filter;
   }
 
-  getFilterLabel(filter: ProgramFilter): string {
-    const labels: Record<ProgramFilter, string> = {
-      all: 'Tümü',
-      active: 'Aktif',
-      completed: 'Tamamlanan',
-    };
-    return labels[filter];
-  }
-
   getFilterCount(filter: ProgramFilter): number {
     switch (filter) {
       case 'active':
@@ -126,25 +128,9 @@ export class MyProgramsComponent implements OnInit {
     this.router.navigate(['/programs', program.id, 'detail']);
   }
 
-  formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('tr-TR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  }
-
   /** Backend'in hesapladığı 0-100 arası ilerleme yüzdesi. */
   getProgressPercentage(program: UserProgram): number {
     return Math.min(100, Math.max(0, program.progressPercentage ?? 0));
-  }
-
-  /** "3/10 sayfa tamamlandı" biçiminde gerçek sayfa ilerlemesi. */
-  getPageProgressText(program: UserProgram): string {
-    const completed = program.completedPageCount ?? 0;
-    const total = program.totalPageCount ?? 0;
-    return `${completed}/${total} sayfa tamamlandı`;
   }
 
   getActivePrograms(): number {
@@ -174,14 +160,26 @@ export class MyProgramsComponent implements OnInit {
     }
   }
 
-  getStatusText(program: UserProgram): string {
+  /** Durum rozetinin çeviri anahtarı (`my-programs.list` önekine göreli). */
+  getStatusTextKey(program: UserProgram): string {
     if (this.isCompleted(program)) {
-      return 'Tamamlandı';
+      return 'status.completed';
     } else if (this.isActive(program)) {
-      return 'Devam Ediyor';
-    } else {
-      return 'Başlanmadı';
+      return 'status.active';
     }
+    return 'status.notStarted';
+  }
+
+  /**
+   * Program türünün okunur adı. Backend kod döndürür (`intensive`, `question`…); sözlükte
+   * karşılığı yoksa ham değer gösterilir ki yeni bir tür sessizce kaybolmasın.
+   */
+  studyTypeLabel(studyType: string): string {
+    const code = (studyType ?? '').toLowerCase();
+    if (!KNOWN_STUDY_TYPES.includes(code)) {
+      return studyType ?? '';
+    }
+    return this.transloco.translate<string>(`${MY_PROGRAMS_SCOPE}.studyType.${code}`) ?? studyType;
   }
 
   getProgramIcon(studyType: string): string {
@@ -201,10 +199,10 @@ export class MyProgramsComponent implements OnInit {
 
   deleteProgram(program: UserProgram): void {
     const data: ConfirmDialogData = {
-      title: 'Programı Sil',
-      message: `"${program.programName}" programını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
-      confirmText: 'Evet, Sil',
-      cancelText: 'İptal',
+      title: this.text('list.deleteDialog.title'),
+      message: this.text('list.deleteDialog.message', { name: program.programName }),
+      confirmText: this.text('list.deleteDialog.confirm'),
+      cancelText: this.text('list.deleteDialog.cancel'),
       icon: 'delete_forever',
       confirmColor: 'warn',
     };
@@ -219,12 +217,32 @@ export class MyProgramsComponent implements OnInit {
           next: () => {
             this.programs = this.programs.filter((p) => p.id !== program.id);
             this.applyFilter();
-            this.snackBar.open('Program silindi.', 'Tamam', { duration: 3000 });
+            this.notify('list.deleted');
           },
           error: () => {
-            this.snackBar.open('Program silinemedi. Lütfen tekrar deneyin.', 'Tamam', { duration: 3000 });
+            this.notify('list.deleteFailed');
           },
         });
+      });
+  }
+
+  /** Sözlükten senkron metin; sayfa şablonu render olduğunda scope yüklüdür. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${MY_PROGRAMS_SCOPE}.${key}`, params) ?? '';
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, MY_PROGRAMS_SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, MY_PROGRAMS_SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration: 3000 });
       });
   }
 }

@@ -10,13 +10,14 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
-import { finalize } from 'rxjs';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { finalize, map, take } from 'rxjs';
 import { VideoSession } from '../../models/booking.model';
 import { AuthService } from '../../services/auth.service';
 import { BookingService } from '../../services/booking.service';
@@ -24,6 +25,9 @@ import {
   JitsiMeetExternalApi,
   JitsiScriptLoaderService,
 } from '../../services/jitsi-script-loader.service';
+
+/** Sayfanın Transloco scope'u: `public/i18n/lesson-video/<lang>.json` (issue #183). */
+const SCOPE = 'lesson-video';
 
 /**
  * Odanın nasıl gömüldüğü:
@@ -45,7 +49,8 @@ function sameOrigin(a: string, b: string): boolean {
 @Component({
   selector: 'app-lesson-video',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './lesson-video.component.html',
   styleUrls: ['./lesson-video.component.scss'],
 })
@@ -57,6 +62,7 @@ export class LessonVideoComponent implements OnInit {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   private readonly container = viewChild<ElementRef<HTMLDivElement>>('jitsiContainer');
   private api: JitsiMeetExternalApi | null = null;
@@ -67,13 +73,28 @@ export class LessonVideoComponent implements OnInit {
   protected readonly session = signal<VideoSession | null>(null);
   protected readonly mode = signal<EmbedMode>('direct');
 
+  /**
+   * Scope sözlüğü yüklendiğinde `true` olur. Başlık şablon dışında (iframe `title` özniteliği ve
+   * `<h1>`) üretildiği için senkron `translate()` ancak bu bayraktan sonra güvenlidir.
+   */
+  private readonly scopeReady = toSignal(
+    this.transloco.selectTranslate<string>('titleFallback', {}, SCOPE).pipe(map(() => true)),
+    { initialValue: false }
+  );
+
   protected readonly title = computed(() => {
+    if (!this.scopeReady()) {
+      return '';
+    }
     const id = this.bookingId();
-    return id === null ? 'Ders' : `Ders #${id}`;
+    return id === null
+      ? (this.transloco.translate<string>(`${SCOPE}.titleFallback`) ?? '')
+      : (this.transloco.translate<string>(`${SCOPE}.title`, { id }) ?? '');
   });
 
-  protected readonly roleLabel = computed(() =>
-    this.session()?.isModerator ? 'Moderatör (öğretmen)' : 'Katılımcı'
+  /** Şablonda çevrilen rol anahtarı (scope'a göreli). */
+  protected readonly roleLabelKey = computed(() =>
+    this.session()?.isModerator ? 'role.moderator' : 'role.participant'
   );
 
   /** Düz iframe modunda kullanılan adres — yalnızca backend'den gelen `joinUrl`. */
@@ -104,7 +125,7 @@ export class LessonVideoComponent implements OnInit {
     const raw = this.route.snapshot.paramMap.get('bookingId');
     const id = Number(raw);
     if (!raw || !Number.isInteger(id) || id <= 0) {
-      this.error.set('Geçersiz ders adresi.');
+      this.setError('error.invalidRoute');
       return;
     }
     this.bookingId.set(id);
@@ -130,13 +151,13 @@ export class LessonVideoComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (!res?.success || !res.session) {
-            this.error.set(res?.message || 'Görüşme odası açılamadı.');
+            this.setError('error.roomUnavailable', res?.message);
             return;
           }
           // joinUrl yalnızca backend'in bildirdiği Jitsi sunucusuna işaret etmeli —
           // sanitizer bypass'ı öncesi tek doğrulama noktası burası.
           if (!sameOrigin(res.session.joinUrl, res.session.baseUrl)) {
-            this.error.set('Görüşme adresi doğrulanamadı.');
+            this.setError('error.addressUnverified');
             return;
           }
           // IFrame API iframe src'sini `https://<domain>` olarak kurar; http self-host'ta
@@ -144,9 +165,28 @@ export class LessonVideoComponent implements OnInit {
           this.mode.set(res.session.baseUrl.startsWith('https://') ? 'iframeApi' : 'direct');
           this.session.set(res.session);
         },
+        // Yedek mesaj sözlükten gelir; scope henüz yüklenmemiş olabileceği için `selectTranslate`.
         error: (err: HttpErrorResponse) =>
-          this.error.set(this.bookingService.extractError(err, 'Görüşme odası açılamadı.')),
+          this.transloco
+            .selectTranslate<string>('error.roomUnavailable', {}, SCOPE)
+            .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+            .subscribe((fallback) => this.error.set(this.bookingService.extractError(err, fallback))),
       });
+  }
+
+  /**
+   * Hata metnini sözlükten okur. Backend bir mesaj döndüyse o gösterilir; aksi halde çeviri.
+   * Scope henüz yüklenmemiş olabileceği için `selectTranslate` kullanılır.
+   */
+  private setError(messageKey: string, serverMessage?: string | null): void {
+    if (serverMessage) {
+      this.error.set(serverMessage);
+      return;
+    }
+    this.transloco
+      .selectTranslate<string>(messageKey, {}, SCOPE)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe((message) => this.error.set(message));
   }
 
   /** "Dersten ayrıl" — odayı kapatıp rolün randevu listesine döner. */

@@ -7,6 +7,8 @@ import { of, throwError } from 'rxjs';
 import { TaxonomyManagerComponent } from './taxonomy-manager.component';
 import { AdminService } from '../../../services/admin.service';
 import { ApiResult, School, TaxonomySubject, TaxonomyTree } from '../../../models/taxonomy';
+import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
+import adminTr from '../../../../../public/i18n/admin/tr.json';
 
 describe('TaxonomyManagerComponent', () => {
   let fixture: ComponentFixture<TaxonomyManagerComponent>;
@@ -84,7 +86,11 @@ describe('TaxonomyManagerComponent', () => {
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
     TestBed.configureTestingModule({
-      imports: [TaxonomyManagerComponent],
+      imports: [TaxonomyManagerComponent, translocoTestingModule({
+        langs: { 'admin/tr': adminTr },
+        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+        translocoConfig: { scopes: { keepCasing: true } },
+      })],
       providers: [
         { provide: AdminService, useValue: adminService },
         { provide: MatDialog, useValue: dialog },

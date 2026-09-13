@@ -1,0 +1,113 @@
+{
+  "actions": {
+    "ok": "Tamam",
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "close": "Kapat"
+  },
+  "list": {
+    "title": "Çalışma Programlarım",
+    "subtitle": "Hedeflerinize ulaşmak için özel olarak tasarlanmış çalışma programlarınızı yönetin",
+    "create": "Yeni Program Oluştur",
+    "stats": {
+      "total": "Toplam Program",
+      "active": "Aktif Program",
+      "completed": "Tamamlanan"
+    },
+    "loading": {
+      "title": "Programlarınız Yükleniyor",
+      "description": "Çalışma programlarınız hazırlanıyor..."
+    },
+    "error": {
+      "title": "Programlar yüklenemedi",
+      "description": "Çalışma programlarınız getirilirken bir sorun oluştu. Bağlantınızı kontrol edip tekrar deneyebilirsiniz.",
+      "retry": "Tekrar Dene"
+    },
+    "empty": {
+      "title": "Henüz bir çalışma programınız yok",
+      "description": "Hedeflerinize ulaşmak için kişiselleştirilmiş bir çalışma programı oluşturun. Size özel hazırlanacak program ile daha etkili çalışın.",
+      "featurePersonal": "Kişisel program",
+      "featureProgress": "İlerleme takibi",
+      "featureReminders": "Hatırlatmalar",
+      "cta": "İlk Programımı Oluştur"
+    },
+    "sectionTitle": "Programlarınız",
+    "filter": {
+      "all": "Tümü",
+      "active": "Aktif",
+      "completed": "Tamamlanan"
+    },
+    "filterEmpty": {
+      "title": "{{filter}} program bulunamadı",
+      "active": "Şu anda aktif bir programınız bulunmuyor. Yeni bir program başlatabilir veya mevcut programlarınızı görüntülemek için \"Tümü\" filtresini seçebilirsiniz.",
+      "completed": "Henüz tamamlanmış bir programınız bulunmuyor. Çalışmaya devam edin ve hedeflerinize ulaşın!",
+      "reset": "Tüm Programları Göster"
+    },
+    "status": {
+      "completed": "Tamamlandı",
+      "active": "Devam Ediyor",
+      "notStarted": "Başlanmadı"
+    },
+    "card": {
+      "durationAria": "Süre: {{count}} gün",
+      "duration": "{{count}} gün",
+      "subjectsAria": "Günde {{count}} konu",
+      "subjects": "{{count}} konu/gün",
+      "typeAria": "Tür: {{type}}",
+      "progressLabel": "İlerleme Durumu",
+      "pageProgress": "{{completed}}/{{total}} sayfa tamamlandı",
+      "edit": "Düzenle",
+      "delete": "Sil",
+      "restart": "Tekrar Başla",
+      "continue": "Devam Et",
+      "details": "Detaylar"
+    },
+    "deleteDialog": {
+      "title": "Programı Sil",
+      "message": "\"{{name}}\" programını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+      "confirm": "Evet, Sil",
+      "cancel": "İptal"
+    },
+    "deleted": "Program silindi.",
+    "deleteFailed": "Program silinemedi. Lütfen tekrar deneyin."
+  },
+  "studyType": {
+    "intensive": "Yoğun",
+    "regular": "Düzenli",
+    "flexible": "Esnek",
+    "weekend": "Hafta sonu",
+    "exam": "Sınav",
+    "question": "Soru"
+  },
+  "detail": {
+    "dailyTarget": "Günde {{questions}} soru, {{subjects}} konu",
+    "type": "Tür: {{type}}",
+    "pagesTitle": "Program Sayfaları",
+    "addPages": "Çalışma Sayfası Ekle",
+    "calendarSize": {
+      "label": "Takvim boyutu",
+      "small": "Küçük",
+      "medium": "Orta",
+      "large": "Büyük"
+    },
+    "selectAtLeastOnePage": "En az bir çalışma sayfası seçmelisiniz.",
+    "pagesAdded": "Çalışma sayfaları programa eklendi.",
+    "updateFailed": "Program güncellenemedi.",
+    "loadFailed": "Program bilgisi yüklenemedi.",
+    "studyPagesLoadFailed": "Çalışma sayfaları yüklenemedi."
+  },
+  "addStudyPages": {
+    "titleWithoutDate": "Programa Sayfa Ekle",
+    "title": "{{date}} tarihine sayfa ekle",
+    "noPages": "Henüz hiç çalışma sayfası oluşturmadınız. Önce çalışma sayfası düzenleyicisinden sayfa oluşturun.",
+    "noImage": "Resim Yok",
+    "noDescription": "Açıklama yok",
+    "pageCount": "{{count}} sayfa",
+    "startDate": "Başlangıç",
+    "endDate": "Bitiş"
+  },
+  "scheduleDetail": {
+    "studyPageId": "Çalışma sayfası No: {{id}}",
+    "cover": "Kapak:"
+  }
+}

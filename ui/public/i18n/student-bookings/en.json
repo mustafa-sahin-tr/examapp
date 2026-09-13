@@ -1,0 +1,31 @@
+{
+  "title": "My Lesson Bookings",
+  "subtitle": "The private lesson bookings you requested from teachers and their status.",
+  "filter": {
+    "label": "Booking filter",
+    "active": "Active",
+    "all": "All"
+  },
+  "findTeacher": "Find a Teacher",
+  "loading": "Loading your bookings...",
+  "loadError": "Your bookings could not be loaded.",
+  "retry": "Try again",
+  "empty": {
+    "message": "You do not have any lesson bookings yet.",
+    "cta": "Find a teacher"
+  },
+  "teacherFallback": "Teacher",
+  "rejectionReason": "Reason for rejection: {{reason}}",
+  "status": {
+    "pending": "Awaiting approval",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "join": {
+    "button": "Join lesson"
+  },
+  "profile": {
+    "link": "View profile",
+    "ariaLabel": "Go to teacher profile"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "card": {
+    "score": "Score: {{score}}/100",
+    "duration": "Duration: {{minutes}} min",
+    "answerBreakdown": "Correct: {{correct}} / Wrong: {{wrong}} / Total: {{total}}"
+  }
+}

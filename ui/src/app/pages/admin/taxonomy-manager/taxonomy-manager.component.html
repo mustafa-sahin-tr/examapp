@@ -1,4 +1,4 @@
-<div class="taxonomy">
+<div class="taxonomy" *transloco="let t; prefix: 'admin.taxonomy'">
   @if (loading() || busy() || schoolsLoading()) {
     <mat-progress-bar mode="indeterminate" class="top-bar"></mat-progress-bar>
   }
@@ -8,7 +8,7 @@
       <mat-icon>error_outline</mat-icon>
       <p class="state-text">{{ error() }}</p>
       <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
-        Tekrar dene
+        {{ 'common.retry' | transloco }}
       </button>
     </div>
   }
@@ -17,24 +17,24 @@
   <div class="grade-filter">
     <span class="grade-filter-label">
       <mat-icon>school</mat-icon>
-      Sınıf
+      {{ t('gradeFilter.label') }}
     </span>
     <mat-button-toggle-group
       class="grade-filter-group"
       name="gradeFilter"
-      aria-label="Sınıf filtresi"
+      [attr.aria-label]="t('gradeFilter.aria')"
       hideSingleSelectionIndicator
       [value]="selectedGradeFilter()"
       [disabled]="loading()"
       (change)="setGradeFilter($event.value)"
     >
-      <mat-button-toggle value="all">Tüm Sınıflar</mat-button-toggle>
+      <mat-button-toggle value="all">{{ t('gradeFilter.all') }}</mat-button-toggle>
       @for (g of grades(); track g.id) {
         <mat-button-toggle [value]="g.id">{{ g.name }}</mat-button-toggle>
       }
       <mat-button-toggle value="unassigned" class="unassigned-toggle">
         <mat-icon>warning_amber</mat-icon>
-        Sınıf atanmamış
+        {{ t('gradeFilter.unassigned') }}
       </mat-button-toggle>
     </mat-button-toggle-group>
   </div>
@@ -44,10 +44,15 @@
     <mat-card class="column" appearance="outlined">
       <header class="column-header">
         <h3>
-          Dersler
+          {{ t('subjects.title') }}
           @if (selectedGradeFilter() !== 'all') {
             <span class="crumb">
-              — {{ selectedGradeFilter() === 'unassigned' ? 'Sınıf atanmamış' : gradeName(+selectedGradeFilter()) }}
+              —
+              {{
+                selectedGradeFilter() === 'unassigned'
+                  ? t('gradeFilter.unassigned')
+                  : gradeName(+selectedGradeFilter())
+              }}
             </span>
           }
         </h3>
@@ -58,7 +63,7 @@
         <mat-form-field appearance="outline" class="dense">
           <input
             matInput
-            placeholder="Yeni ders"
+            [placeholder]="t('subjects.newPlaceholder')"
             [(ngModel)]="newSubjectName"
             (keyup.enter)="addSubject()"
           />
@@ -67,7 +72,7 @@
           mat-icon-button
           color="primary"
           type="button"
-          aria-label="Ders ekle"
+          [attr.aria-label]="t('subjects.add')"
           (click)="addSubject()"
           [disabled]="busy()"
         >
@@ -97,11 +102,11 @@
               @if (!isEditing('subject', s.id)) {
                 <span class="name-block">
                   <span class="name">{{ s.name }}</span>
-                  <span class="grade-chips" aria-label="Bağlı sınıflar">
+                  <span class="grade-chips" [attr.aria-label]="t('subjects.gradeChipsAria')">
                     @if (s.gradeIds.length === 0) {
                       <span class="grade-chip grade-chip--warn">
                         <mat-icon>warning_amber</mat-icon>
-                        Sınıf atanmamış
+                        {{ t('subjects.unassignedChip') }}
                       </span>
                     } @else {
                       @for (gn of subjectGradeNames(s); track gn) {
@@ -110,13 +115,13 @@
                     }
                   </span>
                 </span>
-                <span class="meta">{{ s.topics.length }} konu</span>
+                <span class="meta">{{ t('subjects.topicCount', { count: s.topics.length }) }}</span>
                 <span class="actions" (keydown)="$event.stopPropagation()">
                   <button
                     mat-icon-button
                     type="button"
-                    aria-label="Sınıfları yönet"
-                    title="Sınıfları yönet"
+                    [attr.aria-label]="t('subjects.manageGrades')"
+                    [title]="t('subjects.manageGrades')"
                     (click)="manageGrades(s); $event.stopPropagation()"
                   >
                     <mat-icon>school</mat-icon>
@@ -124,7 +129,7 @@
                   <button
                     mat-icon-button
                     type="button"
-                    aria-label="Dersi düzenle"
+                    [attr.aria-label]="t('subjects.edit')"
                     (click)="startEdit('subject', s); $event.stopPropagation()"
                   >
                     <mat-icon>edit</mat-icon>
@@ -133,7 +138,7 @@
                     mat-icon-button
                     type="button"
                     class="danger"
-                    aria-label="Dersi sil"
+                    [attr.aria-label]="t('subjects.delete')"
                     (click)="remove('subject', s); $event.stopPropagation()"
                   >
                     <mat-icon>delete</mat-icon>
@@ -147,7 +152,7 @@
                 >
                   <input
                     class="inline-edit"
-                    aria-label="Ders adı"
+                    [attr.aria-label]="t('subjects.nameAria')"
                     [(ngModel)]="editName"
                     (keyup.enter)="saveEdit('subject', s)"
                   />
@@ -155,12 +160,12 @@
                     mat-icon-button
                     color="primary"
                     type="button"
-                    aria-label="Kaydet"
+                    [attr.aria-label]="t('actions.save')"
                     (click)="saveEdit('subject', s)"
                   >
                     <mat-icon>check</mat-icon>
                   </button>
-                  <button mat-icon-button type="button" aria-label="Vazgeç" (click)="cancelEdit()">
+                  <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
                     <mat-icon>close</mat-icon>
                   </button>
                 </span>
@@ -175,7 +180,7 @@
     <mat-card class="column" appearance="outlined" [class.disabled]="!selectedSubject()">
       <header class="column-header">
         <h3>
-          Konular
+          {{ t('topics.title') }}
           @if (selectedSubject(); as subj) {
             <span class="crumb"> — {{ subj.name }}</span>
           }
@@ -190,13 +195,13 @@
           <mat-form-field appearance="outline" class="dense">
             <input
               matInput
-              placeholder="Yeni konu"
+              [placeholder]="t('topics.newPlaceholder')"
               [(ngModel)]="newTopicName"
               (keyup.enter)="addTopic()"
             />
           </mat-form-field>
           <mat-form-field appearance="outline" class="dense">
-            <mat-select placeholder="Sınıf" [(ngModel)]="newTopicGradeId">
+            <mat-select [placeholder]="t('topics.gradePlaceholder')" [(ngModel)]="newTopicGradeId">
               @for (g of grades(); track g.id) {
                 <mat-option [value]="g.id">{{ g.name }}</mat-option>
               }
@@ -206,7 +211,7 @@
             mat-icon-button
             color="primary"
             type="button"
-            aria-label="Konu ekle"
+            [attr.aria-label]="t('topics.add')"
             (click)="addTopic()"
             [disabled]="busy()"
           >
@@ -217,33 +222,34 @@
         @if (topics().length === 0) {
           <div class="empty-state">
             <mat-icon>topic</mat-icon>
-            <p class="empty-title">Bu derste henüz konu yok</p>
-            <p class="empty-hint">Konu adı ve sınıf seçip ekle</p>
+            <p class="empty-title">{{ t('topics.emptyTitle') }}</p>
+            <p class="empty-hint">{{ t('topics.emptyHint') }}</p>
           </div>
         } @else {
           <ul class="list">
-            @for (t of topics(); track t.id) {
+            @for (row of topics(); track row.id) {
               <li
                 class="item"
                 role="button"
                 tabindex="0"
-                [class.selected]="t.id === selectedTopicId()"
-                [attr.aria-pressed]="t.id === selectedTopicId()"
-                (click)="selectTopic(t.id)"
-                (keydown.enter)="selectTopic(t.id)"
-                (keydown.space)="selectTopic(t.id); $event.preventDefault()"
+                [class.selected]="row.id === selectedTopicId()"
+                [attr.aria-pressed]="row.id === selectedTopicId()"
+                (click)="selectTopic(row.id)"
+                (keydown.enter)="selectTopic(row.id)"
+                (keydown.space)="selectTopic(row.id); $event.preventDefault()"
               >
-                @if (!isEditing('topic', t.id)) {
-                  <span class="name">{{ t.name }}</span>
+                @if (!isEditing('topic', row.id)) {
+                  <span class="name">{{ row.name }}</span>
                   <span class="meta">
-                    {{ t.gradeName || gradeName(t.gradeId) }} · {{ t.subTopics.length }} alt
+                    {{ row.gradeName || gradeName(row.gradeId) }} ·
+                    {{ t('topics.subTopicCount', { count: row.subTopics.length }) }}
                   </span>
                   <span class="actions" (keydown)="$event.stopPropagation()">
                     <button
                       mat-icon-button
                       type="button"
-                      aria-label="Konuyu düzenle"
-                      (click)="startEdit('topic', t); $event.stopPropagation()"
+                      [attr.aria-label]="t('topics.edit')"
+                      (click)="startEdit('topic', row); $event.stopPropagation()"
                     >
                       <mat-icon>edit</mat-icon>
                     </button>
@@ -251,8 +257,8 @@
                       mat-icon-button
                       type="button"
                       class="danger"
-                      aria-label="Konuyu sil"
-                      (click)="remove('topic', t); $event.stopPropagation()"
+                      [attr.aria-label]="t('topics.delete')"
+                      (click)="remove('topic', row); $event.stopPropagation()"
                     >
                       <mat-icon>delete</mat-icon>
                     </button>
@@ -265,12 +271,12 @@
                   >
                     <input
                       class="inline-edit"
-                      aria-label="Konu adı"
+                      [attr.aria-label]="t('topics.nameAria')"
                       [(ngModel)]="editName"
-                      (keyup.enter)="saveEdit('topic', t)"
+                      (keyup.enter)="saveEdit('topic', row)"
                     />
                     <mat-form-field appearance="outline" class="dense inline-grade">
-                      <mat-select [(ngModel)]="editGradeId" aria-label="Sınıf">
+                      <mat-select [(ngModel)]="editGradeId" [attr.aria-label]="t('topics.gradePlaceholder')">
                         @for (g of grades(); track g.id) {
                           <mat-option [value]="g.id">{{ g.name }}</mat-option>
                         }
@@ -280,12 +286,12 @@
                       mat-icon-button
                       color="primary"
                       type="button"
-                      aria-label="Kaydet"
-                      (click)="saveEdit('topic', t)"
+                      [attr.aria-label]="t('actions.save')"
+                      (click)="saveEdit('topic', row)"
                     >
                       <mat-icon>check</mat-icon>
                     </button>
-                    <button mat-icon-button type="button" aria-label="Vazgeç" (click)="cancelEdit()">
+                    <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
                       <mat-icon>close</mat-icon>
                     </button>
                   </span>
@@ -297,8 +303,8 @@
       } @else {
         <div class="empty-state">
           <mat-icon>arrow_back</mat-icon>
-          <p class="empty-title">Önce bir ders seç</p>
-          <p class="empty-hint">Seçilen dersin konuları burada listelenir</p>
+          <p class="empty-title">{{ t('topics.noSubjectTitle') }}</p>
+          <p class="empty-hint">{{ t('topics.noSubjectHint') }}</p>
         </div>
       }
     </mat-card>
@@ -307,7 +313,7 @@
     <mat-card class="column" appearance="outlined" [class.disabled]="!selectedTopic()">
       <header class="column-header">
         <h3>
-          Alt Konular
+          {{ t('subTopics.title') }}
           @if (selectedTopic(); as topic) {
             <span class="crumb"> — {{ topic.name }}</span>
           }
@@ -322,7 +328,7 @@
           <mat-form-field appearance="outline" class="dense">
             <input
               matInput
-              placeholder="Yeni alt konu"
+              [placeholder]="t('subTopics.newPlaceholder')"
               [(ngModel)]="newSubTopicName"
               (keyup.enter)="addSubTopic()"
             />
@@ -331,7 +337,7 @@
             mat-icon-button
             color="primary"
             type="button"
-            aria-label="Alt konu ekle"
+            [attr.aria-label]="t('subTopics.add')"
             (click)="addSubTopic()"
             [disabled]="busy()"
           >
@@ -342,8 +348,8 @@
         @if (subTopics().length === 0) {
           <div class="empty-state">
             <mat-icon>subdirectory_arrow_right</mat-icon>
-            <p class="empty-title">Bu konuda henüz alt konu yok</p>
-            <p class="empty-hint">Yukarıdaki alandan ilk alt konuyu ekle</p>
+            <p class="empty-title">{{ t('subTopics.emptyTitle') }}</p>
+            <p class="empty-hint">{{ t('subTopics.emptyHint') }}</p>
           </div>
         } @else {
           <ul class="list">
@@ -352,13 +358,13 @@
                 @if (!isEditing('subtopic', st.id)) {
                   <span class="name">{{ st.name }}</span>
                   @if (st.questionCount) {
-                    <span class="meta">{{ st.questionCount }} soru</span>
+                    <span class="meta">{{ t('subTopics.questionCount', { count: st.questionCount }) }}</span>
                   }
                   <span class="actions">
                     <button
                       mat-icon-button
                       type="button"
-                      aria-label="Alt konuyu düzenle"
+                      [attr.aria-label]="t('subTopics.edit')"
                       (click)="startEdit('subtopic', st)"
                     >
                       <mat-icon>edit</mat-icon>
@@ -367,7 +373,7 @@
                       mat-icon-button
                       type="button"
                       class="danger"
-                      aria-label="Alt konuyu sil"
+                      [attr.aria-label]="t('subTopics.delete')"
                       (click)="remove('subtopic', st)"
                     >
                       <mat-icon>delete</mat-icon>
@@ -377,7 +383,7 @@
                   <span class="edit-row">
                     <input
                       class="inline-edit"
-                      aria-label="Alt konu adı"
+                      [attr.aria-label]="t('subTopics.nameAria')"
                       [(ngModel)]="editName"
                       (keyup.enter)="saveEdit('subtopic', st)"
                     />
@@ -385,12 +391,12 @@
                       mat-icon-button
                       color="primary"
                       type="button"
-                      aria-label="Kaydet"
+                      [attr.aria-label]="t('actions.save')"
                       (click)="saveEdit('subtopic', st)"
                     >
                       <mat-icon>check</mat-icon>
                     </button>
-                    <button mat-icon-button type="button" aria-label="Vazgeç" (click)="cancelEdit()">
+                    <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
                       <mat-icon>close</mat-icon>
                     </button>
                   </span>
@@ -402,8 +408,8 @@
       } @else {
         <div class="empty-state">
           <mat-icon>arrow_back</mat-icon>
-          <p class="empty-title">Önce bir konu seç</p>
-          <p class="empty-hint">Seçilen konunun alt konuları burada listelenir</p>
+          <p class="empty-title">{{ t('subTopics.noTopicTitle') }}</p>
+          <p class="empty-hint">{{ t('subTopics.noTopicHint') }}</p>
         </div>
       }
     </mat-card>
@@ -412,7 +418,7 @@
   <!-- Schools -->
   <mat-card class="column schools-section" appearance="outlined">
     <header class="column-header">
-      <h3>Okullar</h3>
+      <h3>{{ t('schools.title') }}</h3>
       <span class="count">{{ schools().length }}</span>
     </header>
 
@@ -420,20 +426,20 @@
       <mat-form-field appearance="outline" class="dense">
         <input
           matInput
-          placeholder="Yeni okul adı"
+          [placeholder]="t('schools.newPlaceholder')"
           [(ngModel)]="newSchoolName"
           (keyup.enter)="addSchool()"
         />
       </mat-form-field>
       <mat-form-field appearance="outline" class="dense location-select">
         <mat-select
-          placeholder="İl (opsiyonel)"
-          aria-label="İl"
+          [placeholder]="t('schools.provincePlaceholder')"
+          [attr.aria-label]="t('schools.provinceAria')"
           [ngModel]="newSchoolProvinceId()"
           (ngModelChange)="onNewSchoolProvinceChange($event)"
           [disabled]="provincesLoading() || !!provincesError()"
         >
-          <mat-option [value]="null">— İl yok —</mat-option>
+          <mat-option [value]="null">{{ t('schools.provinceNone') }}</mat-option>
           @for (p of provinces(); track p.id) {
             <mat-option [value]="p.id">{{ p.name }}</mat-option>
           }
@@ -441,13 +447,13 @@
       </mat-form-field>
       <mat-form-field appearance="outline" class="dense location-select">
         <mat-select
-          placeholder="İlçe (opsiyonel)"
-          aria-label="İlçe"
+          [placeholder]="t('schools.districtPlaceholder')"
+          [attr.aria-label]="t('schools.districtAria')"
           [ngModel]="newSchoolDistrictId()"
           (ngModelChange)="newSchoolDistrictId.set($event)"
           [disabled]="newSchoolProvinceId() == null || newSchoolDistrictsLoading()"
         >
-          <mat-option [value]="null">— İlçe yok —</mat-option>
+          <mat-option [value]="null">{{ t('schools.districtNone') }}</mat-option>
           @for (d of newSchoolDistricts(); track d.id) {
             <mat-option [value]="d.id">{{ d.name }}</mat-option>
           }
@@ -456,8 +462,8 @@
       <mat-form-field appearance="outline" class="dense address-field">
         <input
           matInput
-          placeholder="Açık adres (opsiyonel)"
-          aria-label="Açık adres"
+          [placeholder]="t('schools.addressPlaceholder')"
+          [attr.aria-label]="t('schools.addressAria')"
           maxlength="500"
           [(ngModel)]="newSchoolAddressLine"
           (keyup.enter)="addSchool()"
@@ -467,7 +473,7 @@
         mat-icon-button
         color="primary"
         type="button"
-        aria-label="Okul ekle"
+        [attr.aria-label]="t('schools.add')"
         (click)="addSchool()"
         [disabled]="busy()"
       >
@@ -485,7 +491,7 @@
           (click)="loadProvinces()"
           [disabled]="provincesLoading()"
         >
-          Tekrar dene
+          {{ 'common.retry' | transloco }}
         </button>
       </div>
     }
@@ -500,14 +506,14 @@
           (click)="loadSchools()"
           [disabled]="schoolsLoading()"
         >
-          Tekrar dene
+          {{ 'common.retry' | transloco }}
         </button>
       </div>
     } @else if (!schoolsLoading() && schools().length === 0) {
       <div class="empty-state">
         <mat-icon>school</mat-icon>
-        <p class="empty-title">Henüz okul eklenmemiş</p>
-        <p class="empty-hint">Okul adı ve isteğe bağlı il / ilçe / adres girip ekle</p>
+        <p class="empty-title">{{ t('schools.emptyTitle') }}</p>
+        <p class="empty-hint">{{ t('schools.emptyHint') }}</p>
       </div>
     } @else {
       <ul class="list schools-list">
@@ -522,7 +528,7 @@
                 <button
                   mat-icon-button
                   type="button"
-                  aria-label="Okulu düzenle"
+                  [attr.aria-label]="t('schools.edit')"
                   (click)="startEdit('school', sc)"
                 >
                   <mat-icon>edit</mat-icon>
@@ -531,7 +537,7 @@
                   mat-icon-button
                   type="button"
                   class="danger"
-                  aria-label="Okulu sil"
+                  [attr.aria-label]="t('schools.delete')"
                   (click)="remove('school', sc)"
                 >
                   <mat-icon>delete</mat-icon>
@@ -541,19 +547,19 @@
               <span class="edit-row">
                 <input
                   class="inline-edit"
-                  aria-label="Okul adı"
+                  [attr.aria-label]="t('schools.nameAria')"
                   [(ngModel)]="editName"
                   (keyup.enter)="saveEdit('school', sc)"
                 />
                 <mat-form-field appearance="outline" class="dense location-select">
                   <mat-select
-                    placeholder="İl"
-                    aria-label="İl"
+                    [placeholder]="t('schools.provinceAria')"
+                    [attr.aria-label]="t('schools.provinceAria')"
                     [ngModel]="editProvinceId()"
                     (ngModelChange)="onEditProvinceChange($event)"
                     [disabled]="provincesLoading() || !!provincesError()"
                   >
-                    <mat-option [value]="null">— İl yok —</mat-option>
+                    <mat-option [value]="null">{{ t('schools.provinceNone') }}</mat-option>
                     @for (p of provinces(); track p.id) {
                       <mat-option [value]="p.id">{{ p.name }}</mat-option>
                     }
@@ -561,13 +567,13 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="dense location-select">
                   <mat-select
-                    placeholder="İlçe"
-                    aria-label="İlçe"
+                    [placeholder]="t('schools.districtAria')"
+                    [attr.aria-label]="t('schools.districtAria')"
                     [ngModel]="editDistrictId()"
                     (ngModelChange)="editDistrictId.set($event)"
                     [disabled]="editProvinceId() == null || editDistrictsLoading()"
                   >
-                    <mat-option [value]="null">— İlçe yok —</mat-option>
+                    <mat-option [value]="null">{{ t('schools.districtNone') }}</mat-option>
                     @for (d of editDistricts(); track d.id) {
                       <mat-option [value]="d.id">{{ d.name }}</mat-option>
                     }
@@ -575,8 +581,8 @@
                 </mat-form-field>
                 <input
                   class="inline-edit address-field"
-                  placeholder="Açık adres"
-                  aria-label="Açık adres"
+                  [placeholder]="t('schools.addressEditPlaceholder')"
+                  [attr.aria-label]="t('schools.addressAria')"
                   maxlength="500"
                   [(ngModel)]="editAddressLine"
                   (keyup.enter)="saveEdit('school', sc)"
@@ -585,12 +591,12 @@
                   mat-icon-button
                   color="primary"
                   type="button"
-                  aria-label="Kaydet"
+                  [attr.aria-label]="t('actions.save')"
                   (click)="saveEdit('school', sc)"
                 >
                   <mat-icon>check</mat-icon>
                 </button>
-                <button mat-icon-button type="button" aria-label="Vazgeç" (click)="cancelEdit()">
+                <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
                   <mat-icon>close</mat-icon>
                 </button>
               </span>

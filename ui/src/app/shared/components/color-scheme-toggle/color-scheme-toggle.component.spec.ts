@@ -5,6 +5,7 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 import { ColorSchemeToggleComponent } from './color-scheme-toggle.component';
 import { ColorScheme, ColorSchemeService } from '../../../services/color-scheme.service';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('ColorSchemeToggleComponent', () => {
   let component: ColorSchemeToggleComponent;
@@ -23,7 +24,7 @@ describe('ColorSchemeToggleComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [ColorSchemeToggleComponent],
+      imports: [translocoTestingModule(), ColorSchemeToggleComponent],
       providers: [{ provide: ColorSchemeService, useValue: colorSchemeServiceSpy }],
     }).compileComponents();
 

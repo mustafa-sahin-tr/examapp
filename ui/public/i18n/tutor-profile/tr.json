@@ -1,0 +1,38 @@
+{
+  "title": "Özel Ders Profilim",
+  "subtitle": "Verdiğiniz dersleri, saatlik ücretinizi ve ders şeklinizi öğrencilerin görebileceği şekilde düzenleyin.",
+  "status": {
+    "approved": "Onaylı bağımsız öğretmen",
+    "rejected": "Başvurunuz reddedildi",
+    "pending": "Onay bekliyor"
+  },
+  "state": {
+    "loading": "Profiliniz yükleniyor...",
+    "notApprovedNotice": "Profiliniz onaylanana kadar öğrenci aramalarında görünmez. Bilgilerinizi şimdiden doldurabilirsiniz."
+  },
+  "form": {
+    "subjectsLabel": "Verdiğim dersler",
+    "subjectsHint": "En az bir ders seçmelisiniz.",
+    "selectedSubjects": "Seçili dersler",
+    "removeSubject": "{{subject}} dersini kaldır",
+    "unknownSubject": "Ders #{{id}}",
+    "hourlyRateLabel": "Saatlik ücret",
+    "hourlyRateHint": "Ödeme alınmaz; yalnızca bilgi amaçlı gösterilir.",
+    "modesLegend": "Ders şekli",
+    "online": "Online",
+    "inPerson": "Yüz yüze",
+    "modesHint": "En az birini seçmelisiniz; ikisi birden de seçilebilir.",
+    "bioLabel": "Kısa tanıtım",
+    "bioPlaceholder": "Deneyiminiz, ders yönteminiz hakkında kısa bir tanıtım.",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor"
+  },
+  "messages": {
+    "saved": "Özel ders profiliniz güncellendi.",
+    "saveFailed": "Profil güncellenemedi.",
+    "loadFailed": "Özel ders profiliniz yüklenirken bir sorun oluştu.",
+    "unavailable": "Bu özellik bağımsız (okula bağlı olmayan) öğretmenler içindir.",
+    "subjectsFailed": "Ders listesi yüklenemedi.",
+    "close": "Kapat"
+  }
+}

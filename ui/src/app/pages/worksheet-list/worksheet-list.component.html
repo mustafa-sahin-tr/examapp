@@ -1,4 +1,4 @@
-<section class="wl">
+<section class="wl" *transloco="let t; prefix: 'worksheet-list'">
   <!-- ============ HEADER ============ -->
   <header class="wl__header">
     <div class="wl__heading">
@@ -9,10 +9,10 @@
     @if (isTeacher) {
       <div class="wl__header-actions">
         <button type="button" class="wl__btn wl__btn--primary" (click)="onCreate()">
-          <mat-icon>add</mat-icon><span>Yeni Test</span>
+          <mat-icon>add</mat-icon><span>{{ t('header.newTest') }}</span>
         </button>
         <button type="button" class="wl__btn wl__btn--ghost" (click)="onImportExcel()">
-          <mat-icon>upload_file</mat-icon><span>Excel'den içe aktar</span>
+          <mat-icon>upload_file</mat-icon><span>{{ t('header.importExcel') }}</span>
         </button>
       </div>
     }
@@ -22,7 +22,7 @@
     @for (option of sortOptions; track option.value) {
       @if (!option.studentOnly || isStudent) {
         <button mat-menu-item (click)="setSort(option.value)" [class.is-active]="sortBy() === option.value">
-          <mat-icon>{{ option.icon }}</mat-icon><span>{{ option.label }}</span>
+          <mat-icon>{{ option.icon }}</mat-icon><span>{{ sortLabel(option.value) }}</span>
         </button>
       }
     }
@@ -30,30 +30,30 @@
 
   <!-- ============ SEGMENT TABS (student) ============ -->
   @if (isStudent) {
-    <nav class="wl__tabs" aria-label="Bölümler">
-      <button type="button" [class.is-active]="tab() === 'discover'" (click)="setTab('discover')">Keşfet</button>
+    <nav class="wl__tabs" [attr.aria-label]="t('tabs.aria')">
+      <button type="button" [class.is-active]="tab() === 'discover'" (click)="setTab('discover')">{{ t('tabs.discover') }}</button>
       <button type="button" [class.is-active]="tab() === 'assigned'" (click)="setTab('assigned')">
-        Bana Atananlar
+        {{ t('tabs.assigned') }}
         @if (assignedCount() > 0) { <b>{{ assignedCount() }}</b> }
       </button>
       <button type="button" [class.is-active]="tab() === 'inprogress'" (click)="setTab('inprogress')">
-        Devam Edenler
+        {{ t('tabs.inprogress') }}
         @if (inProgressCount() > 0) { <b>{{ inProgressCount() }}</b> }
       </button>
-      <button type="button" [class.is-active]="tab() === 'completed'" (click)="setTab('completed')">Tamamlananlar</button>
+      <button type="button" [class.is-active]="tab() === 'completed'" (click)="setTab('completed')">{{ t('tabs.completed') }}</button>
     </nav>
   }
 
   <!-- ============ CONTINUE STRIP (student, discover) ============ -->
   @if (isStudent && tab() === 'discover' && resumeItems().length) {
     <div class="wl__strip">
-      <h2>Kaldığın yerden devam et</h2>
+      <h2>{{ t('resume.title') }}</h2>
       <div class="wl__strip-scroll">
         @for (item of resumeItems(); track trackTest($index, item)) {
           <article class="wl__strip-card">
             <h3>{{ item.name }}</h3>
-            <p>{{ item.questionCount || 0 }} soru</p>
-            <button type="button" (click)="goToWorksheet(item.id || 0)">Devam Et</button>
+            <p>{{ t('resume.questionCount', { count: item.questionCount || 0 }) }}</p>
+            <button type="button" (click)="goToWorksheet(item.id || 0)">{{ t('resume.continue') }}</button>
           </article>
         }
       </div>
@@ -67,15 +67,15 @@
     }
     <aside class="wl__rail" [class.is-open]="showMobileFilters()">
       <div class="wl__rail-head">
-        <h2>Filtreler</h2>
-        <button type="button" class="wl__rail-close" (click)="toggleMobileFilters()" aria-label="Kapat">
+        <h2>{{ t('filters.title') }}</h2>
+        <button type="button" class="wl__rail-close" (click)="toggleMobileFilters()" [attr.aria-label]="t('filters.close')">
           <mat-icon>close</mat-icon>
         </button>
       </div>
 
       @if (isStudent) {
         <div class="wl__filter-group">
-          <span class="wl__filter-label">Durum</span>
+          <span class="wl__filter-label">{{ t('filters.status') }}</span>
           @for (status of [-1, 0, 1]; track status) {
             <label class="wl__check">
               <input type="checkbox" [checked]="isStatusSelected($any(status))" (change)="toggleStatus($any(status))" />
@@ -86,7 +86,7 @@
       }
 
       <div class="wl__filter-group">
-        <span class="wl__filter-label">Ders</span>
+        <span class="wl__filter-label">{{ t('filters.subject') }}</span>
         @for (subject of subjects(); track subject.id) {
           <label class="wl__check">
             <input type="checkbox" [checked]="isSubjectSelected(subject.id)" (change)="toggleSubject(subject.id)" />
@@ -96,7 +96,7 @@
       </div>
 
       <div class="wl__filter-group">
-        <span class="wl__filter-label">Sınıf</span>
+        <span class="wl__filter-label">{{ t('filters.grade') }}</span>
         <div class="wl__chips">
           @for (grade of grades(); track grade.id) {
             <button type="button" class="wl__chip" [class.is-active]="isGradeSelected(grade.id)" (click)="toggleGrade(grade.id)">
@@ -107,46 +107,46 @@
       </div>
 
       <div class="wl__filter-group">
-        <span class="wl__filter-label">Süre</span>
+        <span class="wl__filter-label">{{ t('filters.duration') }}</span>
         <div class="wl__chips">
           @for (bucket of durationBuckets; track bucket[0]) {
             <button type="button" class="wl__chip" [class.is-active]="durationBucket() === bucket[0]" (click)="setDurationBucket(bucket[0])">
-              {{ bucket[1].label }}
+              {{ durationBucketLabel(bucket[0]) }}
             </button>
           }
         </div>
       </div>
 
       <div class="wl__filter-group">
-        <span class="wl__filter-label">Soru sayısı</span>
+        <span class="wl__filter-label">{{ t('filters.questionCount') }}</span>
         <div class="wl__chips">
           @for (bucket of questionBuckets; track bucket[0]) {
             <button type="button" class="wl__chip" [class.is-active]="questionBucket() === bucket[0]" (click)="setQuestionBucket(bucket[0])">
-              {{ bucket[1].label }}
+              {{ questionBucketLabel(bucket[0]) }}
             </button>
           }
         </div>
       </div>
 
       <div class="wl__filter-group">
-        <span class="wl__filter-label">Tür</span>
+        <span class="wl__filter-label">{{ t('filters.type') }}</span>
         <label class="wl__check">
           <input type="checkbox" [checked]="practiceOnly()" (change)="togglePracticeOnly()" />
-          <span>Sadece çalışma testi</span>
+          <span>{{ t('filters.practiceOnly') }}</span>
         </label>
       </div>
 
       @if (isTeacher) {
         <div class="wl__filter-group">
-          <span class="wl__filter-label">Paylaşım</span>
+          <span class="wl__filter-label">{{ t('filters.sharing') }}</span>
           <mat-slide-toggle [checked]="includeShared()" (change)="toggleIncludeShared()">
-            Başkalarının sınavları
+            {{ t('filters.includeShared') }}
           </mat-slide-toggle>
         </div>
       }
 
       @if (hasActiveFilters()) {
-        <button type="button" class="wl__clear-all" (click)="clearFilters()">Filtreleri temizle</button>
+        <button type="button" class="wl__clear-all" (click)="clearFilters()">{{ t('filters.clearAll') }}</button>
       }
     </aside>
 
@@ -154,22 +154,22 @@
     <div class="wl__results">
       <div class="wl__results-bar">
         <button type="button" class="wl__mobile-filter-btn" (click)="toggleMobileFilters()">
-          <mat-icon>tune</mat-icon><span>Filtreler</span>
+          <mat-icon>tune</mat-icon><span>{{ t('results.filtersButton') }}</span>
         </button>
         @if (search()) {
           <button type="button" class="wl__search-chip" (click)="clearSearch()">
-            <span>"{{ search() }}" araması</span>
+            <span>{{ t('results.searchChip', { term: search() }) }}</span>
             <mat-icon>close</mat-icon>
           </button>
         }
-        <span class="wl__count">{{ totalCount() }} test</span>
+        <span class="wl__count">{{ t('results.count', { count: totalCount() }) }}</span>
 
         <div class="wl__results-bar-right">
-          <div class="wl__viewtoggle" role="group" aria-label="Görünüm">
-            <button type="button" [class.is-active]="viewMode() === 'grid'" (click)="setViewMode('grid')" aria-label="Kart görünümü">
+          <div class="wl__viewtoggle" role="group" [attr.aria-label]="t('results.viewAria')">
+            <button type="button" [class.is-active]="viewMode() === 'grid'" (click)="setViewMode('grid')" [attr.aria-label]="t('results.gridView')">
               <mat-icon>grid_view</mat-icon>
             </button>
-            <button type="button" [class.is-active]="viewMode() === 'list'" (click)="setViewMode('list')" aria-label="Liste görünümü">
+            <button type="button" [class.is-active]="viewMode() === 'list'" (click)="setViewMode('list')" [attr.aria-label]="t('results.listView')">
               <mat-icon>view_list</mat-icon>
             </button>
           </div>
@@ -185,12 +185,12 @@
         <div class="wl__active-filters">
           @for (id of selectedSubjectIds(); track id) {
             <button type="button" class="wl__filter-pill" (click)="toggleSubject(id)">
-              {{ subjectName(id) || ('Ders ' + id) }} <mat-icon>close</mat-icon>
+              {{ subjectName(id) || t('activeFilters.subjectFallback', { id }) }} <mat-icon>close</mat-icon>
             </button>
           }
           @for (id of selectedGradeIds(); track id) {
             <button type="button" class="wl__filter-pill" (click)="toggleGrade(id)">
-              {{ gradeName(id) || ('Sınıf ' + id) }} <mat-icon>close</mat-icon>
+              {{ gradeName(id) || t('activeFilters.gradeFallback', { id }) }} <mat-icon>close</mat-icon>
             </button>
           }
           @for (status of selectedStatuses(); track status) {
@@ -210,20 +210,20 @@
           }
           @if (practiceOnly()) {
             <button type="button" class="wl__filter-pill" (click)="togglePracticeOnly()">
-              Çalışma testi <mat-icon>close</mat-icon>
+              {{ t('activeFilters.practice') }} <mat-icon>close</mat-icon>
             </button>
           }
-          <button type="button" class="wl__filter-pill wl__filter-pill--clear" (click)="clearFilters()">Temizle</button>
+          <button type="button" class="wl__filter-pill wl__filter-pill--clear" (click)="clearFilters()">{{ t('activeFilters.clear') }}</button>
         </div>
       }
 
       <!-- bulk bar (teacher, list) -->
       @if (isTeacher && viewMode() === 'list' && selectedIds().size > 0) {
         <div class="wl__bulkbar">
-          <span>{{ selectedIds().size }} seçildi</span>
-          <button type="button" (click)="onAssign()">Öğrencilere Ata</button>
-          <button type="button" class="wl__bulk-danger" (click)="bulkDelete()">Sil</button>
-          <button type="button" class="wl__bulk-clear" (click)="clearSelection()">Seçimi bırak</button>
+          <span>{{ t('bulk.selected', { count: selectedIds().size }) }}</span>
+          <button type="button" (click)="onAssign()">{{ t('bulk.assign') }}</button>
+          <button type="button" class="wl__bulk-danger" (click)="bulkDelete()">{{ t('bulk.delete') }}</button>
+          <button type="button" class="wl__bulk-clear" (click)="clearSelection()">{{ t('bulk.clear') }}</button>
         </div>
       }
 
@@ -238,33 +238,33 @@
         <div class="wl__empty">
           <mat-icon>error_outline</mat-icon>
           <p>{{ error() }}</p>
-          <button type="button" class="wl__btn wl__btn--primary" (click)="retry()">Tekrar dene</button>
+          <button type="button" class="wl__btn wl__btn--primary" (click)="retry()">{{ t('error.retry') }}</button>
         </div>
       } @else if (visibleTests().length === 0) {
         <div class="wl__empty">
           <mat-icon>search_off</mat-icon>
           @if (search()) {
-            <p>'{{ search() }}' için sonuç bulunamadı.</p>
+            <p>{{ t('empty.search', { term: search() }) }}</p>
           } @else if (tab() === 'inprogress') {
-            <p>Devam eden testin yok.</p>
+            <p>{{ t('empty.inprogress') }}</p>
           } @else if (tab() === 'completed') {
-            <p>Henüz bir test tamamlamadın.</p>
+            <p>{{ t('empty.completed') }}</p>
           } @else if (tab() === 'assigned') {
-            <p>Sana atanmış test yok.</p>
+            <p>{{ t('empty.assigned') }}</p>
           } @else {
-            <p>Bu kriterlere uygun test yok.</p>
+            <p>{{ t('empty.default') }}</p>
           }
           @if (hasActiveFilters() || search()) {
-            <button type="button" class="wl__btn wl__btn--ghost" (click)="resetAll()">Filtreleri temizle</button>
+            <button type="button" class="wl__btn wl__btn--ghost" (click)="resetAll()">{{ t('empty.clearFilters') }}</button>
           }
         </div>
       } @else if (tab() === 'discover' && isStudent) {
         <!-- ============ DISCOVER (student): "Atanan sınavlar" + "Keşfet" (issue #14) ============ -->
         <div class="wl__section">
-          <h3 class="wl__section-title">Atanan sınavlar</h3>
+          <h3 class="wl__section-title">{{ t('discover.assignedTitle') }}</h3>
           @if (discoverAssignedTests().length === 0) {
             <div class="wl__empty wl__empty--section">
-              <p>Sana atanmış aktif bir sınav yok.</p>
+              <p>{{ t('discover.assignedEmpty') }}</p>
             </div>
           } @else {
             <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
@@ -289,10 +289,10 @@
         </div>
 
         <div class="wl__section">
-          <h3 class="wl__section-title">Keşfet</h3>
+          <h3 class="wl__section-title">{{ t('discover.exploreTitle') }}</h3>
           @if (discoverExploreTests().length === 0) {
             <div class="wl__empty wl__empty--section">
-              <p>Şu an keşfedilecek yeni sınav yok.</p>
+              <p>{{ t('discover.exploreEmpty') }}</p>
             </div>
           } @else {
             <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
@@ -327,11 +327,11 @@
         @if (viewMode() === 'list') {
           <div class="wl__listhead">
             @if (isTeacher) { <span class="wl__listhead-check"></span> }
-            <button type="button" (click)="setSort('alphabetical')">Test</button>
-            <span>Ders / Sınıf</span>
-            <button type="button" (click)="setSort('questionCount')">Soru</button>
-            <button type="button" (click)="setSort('duration')">Süre</button>
-            <span>Durum</span>
+            <button type="button" (click)="setSort('alphabetical')">{{ t('listHead.test') }}</button>
+            <span>{{ t('listHead.subjectGrade') }}</span>
+            <button type="button" (click)="setSort('questionCount')">{{ t('listHead.questions') }}</button>
+            <button type="button" (click)="setSort('duration')">{{ t('listHead.duration') }}</button>
+            <span>{{ t('listHead.status') }}</span>
             <span></span>
           </div>
         }

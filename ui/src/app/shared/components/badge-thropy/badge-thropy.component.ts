@@ -13,20 +13,24 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { BadgeProgressItem, BadgeService } from '../../../services/badge.service';
+import { LocaleService } from '../../../services/locale.service';
 import { AuthService } from '../../../services/auth.service';
 import { BadgePathComponent } from '../badge-path/badge-path.component';
 import { BadgeThropyItem, BadgeThropyPath, BadgePathLayout, BadgePathPoint } from './badge-thropy.types';
 
 @Component({
   selector: 'app-badge-thropy',
-  imports: [MatProgressSpinnerModule, MatButtonModule, BadgePathComponent],
+  imports: [MatProgressSpinnerModule, MatButtonModule, BadgePathComponent, TranslocoPipe],
   templateUrl: './badge-thropy.component.html',
   styleUrls: ['./badge-thropy.component.scss'],
 })
 export class BadgeThropyComponent implements OnInit, OnChanges {
-  @Input() title: string = 'Başarı Rozetleri';
-  @Input() subtitle: string = 'Çalışma alışkanlıklarınıza göre rozetlerin durumunu takip edin.';
+  /** Boş bırakılırsa sözlükten (`shared.badgeThropy.title`) gelir. */
+  @Input() title = '';
+  /** Boş bırakılırsa sözlükten (`shared.badgeThropy.subtitle`) gelir. */
+  @Input() subtitle = '';
   @Input() userId: number = 0;
 
   @Output() badgeSelected = new EventEmitter<string>();
@@ -34,7 +38,21 @@ export class BadgeThropyComponent implements OnInit, OnChanges {
   private readonly badgeService = inject(BadgeService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly authService = inject(AuthService);
-  private readonly numberFormatter = new Intl.NumberFormat('tr-TR');
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
+  /** Sayı biçimi aktif dile bağlıdır (dil değişince sayfa yeniden yüklenir). */
+  private readonly numberFormatter = new Intl.NumberFormat(
+    this.localeService.localeDefinition().angularLocale
+  );
+
+  /** Dışarıdan başlık verilmediyse çeviriye düşer. */
+  get headingTitle(): string {
+    return this.title || this.transloco.translate<string>('shared.badgeThropy.title') || '';
+  }
+
+  get headingSubtitle(): string {
+    return this.subtitle || this.transloco.translate<string>('shared.badgeThropy.subtitle') || '';
+  }
 
   readonly badges = signal<BadgeThropyItem[]>([]);
   readonly badgePaths = signal<BadgeThropyPath[]>([]);

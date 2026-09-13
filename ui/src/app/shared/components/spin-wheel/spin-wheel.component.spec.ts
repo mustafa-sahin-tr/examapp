@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { SpinWheelComponent } from './spin-wheel.component';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('SpinWheelComponent', () => {
   let component: SpinWheelComponent;
@@ -8,7 +9,7 @@ describe('SpinWheelComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SpinWheelComponent]
+      imports: [translocoTestingModule(), SpinWheelComponent]
     })
     .compileComponents();
 

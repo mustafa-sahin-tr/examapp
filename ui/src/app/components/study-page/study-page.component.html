@@ -1,8 +1,8 @@
-<section class="ms-study-page">
+<section class="ms-study-page" *transloco="let t; prefix: 'shared.study.page'">
   <!-- Page Header -->
   <app-section-header
-    title="Ders Çalışma"
-    subtitle="Konulara göz at, videolar izle, dökümanları incele"
+    [title]="t('title')"
+    [subtitle]="t('subtitle')"
     [showBackButton]="currentView() !== 'catalog'"
     (onBackClick)="
       currentView() === 'content'
@@ -19,10 +19,10 @@
   <!-- Search Bar -->
   <div class="ms-search-container">
     <mat-form-field appearance="outline" class="ms-search-field">
-      <mat-label>Ders, konu veya içerik ara</mat-label>
+      <mat-label>{{ t('searchLabel') }}</mat-label>
       <input
         matInput
-        placeholder="Aramak istediğiniz konuyu yazın..."
+        [placeholder]="t('searchPlaceholder')"
         [ngModel]="searchQuery()"
         (ngModelChange)="onSearch($event)"
       />
@@ -33,7 +33,7 @@
   <!-- Progress Bar -->
   <div class="ms-progress-container">
     <div class="ms-progress-header">
-      <h3>İlerleme Durumu</h3>
+      <h3>{{ t('progressTitle') }}</h3>
       <span>{{ overallProgress() }}%</span>
     </div>
     <mat-progress-bar mode="determinate" [value]="overallProgress()" color="primary"></mat-progress-bar>

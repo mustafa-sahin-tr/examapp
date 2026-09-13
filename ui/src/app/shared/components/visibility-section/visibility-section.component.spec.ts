@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { VisibilitySectionComponent } from './visibility-section.component';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('VisibilitySectionComponent', () => {
   let component: VisibilitySectionComponent;
@@ -8,7 +9,7 @@ describe('VisibilitySectionComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VisibilitySectionComponent],
+      imports: [translocoTestingModule(), VisibilitySectionComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VisibilitySectionComponent);

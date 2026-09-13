@@ -1,0 +1,31 @@
+{
+  "title": "Ders Randevularım",
+  "subtitle": "Öğretmenlerden talep ettiğin özel ders randevuları ve durumları.",
+  "filter": {
+    "label": "Randevu filtresi",
+    "active": "Aktif",
+    "all": "Tümü"
+  },
+  "findTeacher": "Öğretmen Ara",
+  "loading": "Randevuların yükleniyor...",
+  "loadError": "Randevuların yüklenemedi.",
+  "retry": "Tekrar dene",
+  "empty": {
+    "message": "Henüz bir ders randevun yok.",
+    "cta": "Öğretmen ara"
+  },
+  "teacherFallback": "Öğretmen",
+  "rejectionReason": "Ret gerekçesi: {{reason}}",
+  "status": {
+    "pending": "Onay bekliyor",
+    "approved": "Onaylandı",
+    "rejected": "Reddedildi"
+  },
+  "join": {
+    "button": "Derse katıl"
+  },
+  "profile": {
+    "link": "Profili gör",
+    "ariaLabel": "Öğretmen profiline git"
+  }
+}

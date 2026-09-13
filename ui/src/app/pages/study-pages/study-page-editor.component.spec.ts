@@ -16,6 +16,14 @@ import {
   StudyPageContentType,
   StudyPageLinkPlatform,
 } from '../../models/study-page';
+import { TranslocoService } from '@jsverse/transloco';
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+
+/** Komponent scope'a göreli anahtar döner; sözlükteki karşılığı gerçek `tr.json`'dan okunur. */
+function translate(relativeKey: string): string {
+  return TestBed.inject(TranslocoService).translate<string>(`study-pages.${relativeKey}`) ?? '';
+}
+import studyPagesTr from '../../../../public/i18n/study-pages/tr.json';
 
 /**
  * Servisleri konfigure edip TestBed modulunu hazirlar; fixture'i HENUZ olusturmaz.
@@ -53,7 +61,11 @@ function configureModule(paramMapId: string | null = 'new') {
   const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
 
   TestBed.configureTestingModule({
-    imports: [StudyPageEditorComponent],
+    imports: [StudyPageEditorComponent, translocoTestingModule({
+        langs: { 'study-pages/tr': studyPagesTr },
+        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+        translocoConfig: { scopes: { keepCasing: true } },
+      })],
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
@@ -141,18 +153,18 @@ describe('StudyPageEditorComponent', () => {
       const other = component.platformOptions.find((o) => o.value === StudyPageLinkPlatform.Other);
 
       expect(eba?.icon).toBe('school');
-      expect(eba?.label).toBe('EBA');
+      expect(translate(eba?.labelKey ?? '')).toBe('EBA');
       expect(youtube?.icon).toBe('smart_display');
-      expect(youtube?.label).toBe('YouTube');
+      expect(translate(youtube?.labelKey ?? '')).toBe('YouTube');
       expect(other?.icon).toBe('link');
-      expect(other?.label).toBe('Diğer');
+      expect(translate(other?.labelKey ?? '')).toBe('Diğer');
     });
 
     it('platformChangedToYouTube_SelectedPlatformIconAndLabelSignalsUpdate', () => {
       const { component } = setupComponent();
       component.form.controls.platform.setValue(StudyPageLinkPlatform.YouTube);
       expect(component.selectedPlatformIcon()).toBe('smart_display');
-      expect(component.selectedPlatformLabel()).toBe('YouTube');
+      expect(translate(component.selectedPlatformLabelKey())).toBe('YouTube');
     });
 
     it('onSave_LinkTypeWithoutUrl_ShowsValidationSnackBarAndDoesNotCallService', () => {
@@ -163,7 +175,7 @@ describe('StudyPageEditorComponent', () => {
 
       component.onSave();
 
-      expect(snackBar.open).toHaveBeenCalledWith('Link tipi icin URL zorunludur.', 'Tamam', jasmine.any(Object));
+      expect(snackBar.open).toHaveBeenCalledWith('Link tipi için URL zorunludur.', 'Tamam', jasmine.any(Object));
       expect(studyPageService.create).not.toHaveBeenCalled();
     });
 
@@ -176,7 +188,7 @@ describe('StudyPageEditorComponent', () => {
       component.onSave();
 
       expect(snackBar.open).toHaveBeenCalledWith(
-        'Gecerli bir http/https URL giriniz.',
+        'Geçerli bir http/https URL giriniz.',
         'Tamam',
         jasmine.any(Object)
       );
@@ -210,7 +222,7 @@ describe('StudyPageEditorComponent', () => {
 
       component.onSave();
 
-      expect(snackBar.open).toHaveBeenCalledWith('Kitap secin veya yeni kitap adi girin.', 'Tamam', jasmine.any(Object));
+      expect(snackBar.open).toHaveBeenCalledWith('Kitap seçin veya yeni kitap adı girin.', 'Tamam', jasmine.any(Object));
       expect(studyPageService.create).not.toHaveBeenCalled();
     });
 
@@ -223,7 +235,7 @@ describe('StudyPageEditorComponent', () => {
       component.onSave();
 
       expect(snackBar.open).toHaveBeenCalledWith(
-        'Kitap testi secin veya yeni test adi girin.',
+        'Kitap testi seçin veya yeni test adı girin.',
         'Tamam',
         jasmine.any(Object)
       );
@@ -238,7 +250,7 @@ describe('StudyPageEditorComponent', () => {
       component.onSave();
 
       expect(snackBar.open).toHaveBeenCalledWith(
-        'Bitis sayfasi baslangictan kucuk olamaz.',
+        'Bitiş sayfası başlangıçtan küçük olamaz.',
         'Tamam',
         jasmine.any(Object)
       );
@@ -253,7 +265,7 @@ describe('StudyPageEditorComponent', () => {
       component.onSave();
 
       expect(snackBar.open).toHaveBeenCalledWith(
-        'Baslangic ve bitis sayfasi zorunludur.',
+        'Başlangıç ve bitiş sayfası zorunludur.',
         'Tamam',
         jasmine.any(Object)
       );
@@ -362,7 +374,7 @@ describe('StudyPageEditorComponent', () => {
       component.onSave();
 
       expect(services.snackBar.open).toHaveBeenCalledWith(
-        'Bu sayfada en az bir resim kalmali.',
+        'Bu sayfada en az bir resim kalmalı.',
         'Tamam',
         jasmine.any(Object)
       );
@@ -376,7 +388,7 @@ describe('StudyPageEditorComponent', () => {
 
       component.onSave();
 
-      expect(snackBar.open).toHaveBeenCalledWith('En az bir resim secmelisiniz.', 'Tamam', jasmine.any(Object));
+      expect(snackBar.open).toHaveBeenCalledWith('En az bir resim seçmelisiniz.', 'Tamam', jasmine.any(Object));
       expect(studyPageService.create).not.toHaveBeenCalled();
     });
   });
@@ -389,7 +401,7 @@ describe('StudyPageEditorComponent', () => {
       TestBed.createComponent(StudyPageEditorComponent);
 
       expect(services.snackBar.open).toHaveBeenCalledWith(
-        'Calisma etkinligi bulunamadi.',
+        'Çalışma etkinliği bulunamadı.',
         'Tamam',
         jasmine.any(Object)
       );

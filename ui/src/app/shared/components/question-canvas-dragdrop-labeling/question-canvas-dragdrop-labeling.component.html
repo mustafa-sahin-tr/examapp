@@ -1,12 +1,12 @@
-<div class="dd-root">
+<div class="dd-root" *transloco="let t; prefix: 'shared.questionCanvas'">
   <div class="dd-canvas">
     <div class="dd-passage" *ngIf="!hidePassage && passageImageUrl() as pUrl">
       <div class="dd-passage__title" *ngIf="passageTitle() as title">{{ title }}</div>
-      <img class="dd-passage__image" [src]="pUrl" alt="Paragraf görseli" />
+      <img class="dd-passage__image" [src]="pUrl" [alt]="t('passageAlt')" />
     </div>
 
     <div class="dd-image-wrap" *ngIf="imageUrl() as url">
-      <img class="dd-image" [src]="url" alt="Soru görseli" />
+      <img class="dd-image" [src]="url" [alt]="t('questionAlt')" />
 
       <div class="dd-overlay" *ngIf="plan() as p">
         <ng-container *ngFor="let z of zones()">
@@ -33,10 +33,10 @@
 
   <div class="dd-pool">
     <div class="dd-pool__header">
-      <div class="dd-pool__title">Etiketler</div>
+      <div class="dd-pool__title">{{ t('labels') }}</div>
       <button mat-stroked-button type="button" (click)="clearAll()">
         <mat-icon>restart_alt</mat-icon>
-        Temizle
+        {{ 'common.clear' | transloco }}
       </button>
     </div>
 

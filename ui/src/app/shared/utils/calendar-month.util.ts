@@ -9,6 +9,8 @@
  * Monday-based index is `(getDay() + 6) % 7` -> 0=Monday .. 6=Sunday.
  */
 
+import { activeIntlLocale } from './active-locale.util';
+
 export interface CalendarCell {
   /** Local midnight of the day this cell represents. */
   date: Date;
@@ -20,7 +22,11 @@ export interface CalendarCell {
   isToday: boolean;
   /** Local calendar date as `yyyy-mm-dd` (not UTC). */
   iso: string;
-  /** Accessible full-date label, e.g. "15 Eylül 2026" or "15 Eylül 2026, bugün". */
+  /**
+   * Accessible full-date label, e.g. "15 Eylül 2026". Bugüne denk gelen hücrede,
+   * çağıran `todayLabel` verdiyse ", bugün" son eki de eklenir (metin çağırandan gelir
+   * ki util saf ve dilden bağımsız kalsın — issue #183).
+   */
   label: string;
 }
 
@@ -48,9 +54,13 @@ export function mondayIndex(d: Date): number {
   return (d.getDay() + 6) % 7;
 }
 
-/** e.g. "15 Eylül 2026" (tr-TR). */
+/** e.g. "15 Eylül 2026" — aktif dile göre biçimlenir (issue #183). */
 export function formatFullDate(d: Date): string {
-  return new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+  return new Intl.DateTimeFormat(activeIntlLocale(), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(d);
 }
 
 /** Local `yyyy-mm-dd` for `d`. */
@@ -67,7 +77,7 @@ export function toLocalIso(d: Date): string {
  * next month so every row is a full Monday-Sunday week. The grid spans only
  * the weeks the month actually touches (5 or 6 rows), always a multiple of 7.
  */
-export function buildMonthGrid(month: Date): CalendarCell[] {
+export function buildMonthGrid(month: Date, todayLabel?: string): CalendarCell[] {
   const first = startOfMonth(month);
   const lead = mondayIndex(first);
   const gridStart = new Date(first.getFullYear(), first.getMonth(), 1 - lead);
@@ -88,7 +98,7 @@ export function buildMonthGrid(month: Date): CalendarCell[] {
       inCurrentMonth: date.getMonth() === month.getMonth() && date.getFullYear() === month.getFullYear(),
       isToday,
       iso: toLocalIso(date),
-      label: isToday ? `${formatFullDate(date)}, bugün` : formatFullDate(date),
+      label: isToday && todayLabel ? `${formatFullDate(date)}, ${todayLabel}` : formatFullDate(date),
     });
   }
 
@@ -99,8 +109,8 @@ export function buildMonthGrid(month: Date): CalendarCell[] {
  * Same cells as `buildMonthGrid`, sliced into full Monday-Sunday weeks
  * (7 cells each). Used to wrap each week in a `role="row"` container.
  */
-export function buildMonthWeeks(month: Date): CalendarCell[][] {
-  const cells = buildMonthGrid(month);
+export function buildMonthWeeks(month: Date, todayLabel?: string): CalendarCell[][] {
+  const cells = buildMonthGrid(month, todayLabel);
   const weeks: CalendarCell[][] = [];
   for (let i = 0; i < cells.length; i += 7) {
     weeks.push(cells.slice(i, i + 7));
@@ -108,7 +118,7 @@ export function buildMonthWeeks(month: Date): CalendarCell[][] {
   return weeks;
 }
 
-/** e.g. "Eylül 2026" (tr-TR). */
+/** e.g. "Eylül 2026" — aktif dile göre biçimlenir (issue #183). */
 export function formatMonthYear(month: Date): string {
-  return new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' }).format(month);
+  return new Intl.DateTimeFormat(activeIntlLocale(), { month: 'long', year: 'numeric' }).format(month);
 }

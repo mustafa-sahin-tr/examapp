@@ -11,7 +11,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { finalize } from 'rxjs';
+import {
+  TranslocoDirective,
+  TranslocoPipe,
+  TranslocoService,
+  provideTranslocoScope,
+} from '@jsverse/transloco';
+import { finalize, take } from 'rxjs';
 import { Subject } from '../../models/subject';
 import { TeacherApprovalStatus, TutorProfile } from '../../models/tutor.model';
 import { SubjectService } from '../../services/subject.service';
@@ -23,7 +29,11 @@ import { TeacherService } from '../../services/teacher.service';
  *
  * Backend tutor-profile'ı bağımsız olmayan öğretmene 400, hiç Teacher kaydı olmayana 404 ile kapatır;
  * ikisi de sayfayı kırmaz, "bu özellik bağımsız öğretmenler içindir" boş durumuna düşer.
+ *
+ * Çeviriler kendi Transloco scope'unda: `public/i18n/tutor-profile/<lang>.json` (issue #183).
  */
+const TUTOR_PROFILE_SCOPE = 'tutor-profile';
+
 @Component({
   selector: 'app-tutor-profile',
   standalone: true,
@@ -37,7 +47,10 @@ import { TeacherService } from '../../services/teacher.service';
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(TUTOR_PROFILE_SCOPE)],
   templateUrl: './tutor-profile.component.html',
   styleUrls: ['./tutor-profile.component.scss'],
 })
@@ -47,6 +60,7 @@ export class TutorProfileComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly transloco = inject(TranslocoService);
 
   readonly bioMaxLength = 500;
 
@@ -83,14 +97,15 @@ export class TutorProfileComponent implements OnInit {
     return hasSubject && hasMode && validRate && validBio && !this.saving();
   });
 
-  readonly statusLabel = computed(() => {
+  /** Durum rozetinin çeviri anahtarı (scope'a göreli; şablonda `t()` ile çözülür). */
+  readonly statusLabelKey = computed(() => {
     switch (this.profile()?.approvalStatus) {
       case TeacherApprovalStatus.Approved:
-        return 'Onaylı bağımsız öğretmen';
+        return 'status.approved';
       case TeacherApprovalStatus.Rejected:
-        return 'Başvurunuz reddedildi';
+        return 'status.rejected';
       case TeacherApprovalStatus.Pending:
-        return 'Onay bekliyor';
+        return 'status.pending';
       default:
         return '';
     }
@@ -109,6 +124,10 @@ export class TutorProfileComponent implements OnInit {
   });
 
   readonly isApproved = computed(() => this.profile()?.approvalStatus === TeacherApprovalStatus.Approved);
+
+  constructor() {
+    this.preloadScope();
+  }
 
   ngOnInit(): void {
     this.loadSubjects();
@@ -131,12 +150,10 @@ export class TutorProfileComponent implements OnInit {
         error: (err: HttpErrorResponse) => {
           this.profile.set(null);
           if (err.status === 404 || err.status === 400) {
-            this.unavailable.set(
-              this.extractMessage(err, 'Bu özellik bağımsız (okula bağlı olmayan) öğretmenler içindir.'),
-            );
+            this.unavailable.set(this.extractMessage(err, this.text('messages.unavailable')));
             return;
           }
-          this.error.set(this.extractMessage(err, 'Özel ders profiliniz yüklenirken bir sorun oluştu.'));
+          this.error.set(this.extractMessage(err, this.text('messages.loadFailed')));
         },
       });
   }
@@ -150,7 +167,7 @@ export class TutorProfileComponent implements OnInit {
         next: (list) => this.subjects.set(list),
         error: () => {
           this.subjects.set([]);
-          this.subjectsError.set('Ders listesi yüklenemedi.');
+          this.subjectsError.set(this.text('messages.subjectsFailed'));
         },
       });
   }
@@ -162,7 +179,10 @@ export class TutorProfileComponent implements OnInit {
   }
 
   subjectName(subjectId: number): string {
-    return this.subjects().find((s) => s.id === subjectId)?.name ?? `Ders #${subjectId}`;
+    return (
+      this.subjects().find((s) => s.id === subjectId)?.name ??
+      this.text('form.unknownSubject', { id: subjectId })
+    );
   }
 
   save(): void {
@@ -187,10 +207,12 @@ export class TutorProfileComponent implements OnInit {
       .subscribe({
         next: (profile) => {
           this.applyProfile(profile);
-          this.snackBar.open('Özel ders profiliniz güncellendi.', 'Kapat', { duration: 3000 });
+          this.snackBar.open(this.text('messages.saved'), this.text('messages.close'), { duration: 3000 });
         },
         error: (err: HttpErrorResponse) => {
-          this.snackBar.open(this.extractMessage(err, 'Profil güncellenemedi.'), 'Kapat', { duration: 5000 });
+          this.snackBar.open(this.extractMessage(err, this.text('messages.saveFailed')), this.text('messages.close'), {
+            duration: 5000,
+          });
         },
       });
   }
@@ -206,8 +228,25 @@ export class TutorProfileComponent implements OnInit {
     });
   }
 
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${TUTOR_PROFILE_SCOPE}.${key}`, params) ?? '';
+  }
+
   private extractMessage(err: HttpErrorResponse, fallback: string): string {
     const body = err.error as { message?: string } | null;
     return body?.message || fallback;
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${TUTOR_PROFILE_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { DatePipe, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -12,10 +12,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
-import { finalize, interval } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { finalize, interval, take } from 'rxjs';
 import { Booking } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
-import { formatSlotDay, formatSlotRange } from '../../shared/utils/booking-format.util';
 import {
   JOIN_WINDOW_TICK_MS,
   JoinWindowInfo,
@@ -26,11 +26,10 @@ type RequestFilter = 'pending' | 'all';
 
 interface BookingRow {
   booking: Booking;
-  day: string;
-  range: string;
-  statusLabel: string;
+  /** Scope'a göreli çeviri anahtarı; şablonda `t()` ile çözülür. */
+  statusKey: string;
   statusClass: 'is-pending' | 'is-approved' | 'is-rejected';
-  /** Issue #97: "Derse katıl" butonunun durumu. */
+  /** Issue #97: "Derse katıl" butonunun durumu (ipucu metni kök `shared.joinWindow.*` sözlüğünden). */
   join: JoinWindowInfo;
 }
 
@@ -41,11 +40,18 @@ const REJECTION_REASON_MAX = 500;
  * Öğretmenin randevu talepleri gelen kutusu (issue #96). Bekleyen talepler onaylanır
  * veya (opsiyonel gerekçeyle) reddedilir; karar sonrası liste tazelenir.
  * Filtreleme client-side — backend tüm talepleri tek uçtan döner.
+ *
+ * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-bookings/<lang>.json` (issue #183).
+ * Katılım penceresi ipucu paylaşılan yardımcıya verilen çevirmenden (kök `shared.joinWindow.*`)
+ * gelir; tarih/saat `date` pipe'ı ile aktif dilde biçimlenir.
  */
+const TEACHER_BOOKINGS_SCOPE = 'teacher-bookings';
+
 @Component({
   selector: 'app-teacher-booking-requests',
   standalone: true,
   imports: [
+    DatePipe,
     FormsModule,
     RouterLink,
     MatButtonModule,
@@ -55,7 +61,10 @@ const REJECTION_REASON_MAX = 500;
     MatInputModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(TEACHER_BOOKINGS_SCOPE)],
   templateUrl: './teacher-booking-requests.component.html',
   styleUrls: ['./teacher-booking-requests.component.scss'],
 })
@@ -64,6 +73,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly reasonMaxLength = REJECTION_REASON_MAX;
 
@@ -92,6 +102,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
   protected readonly isEmpty = computed(() => !this.loading() && !this.error() && this.rows().length === 0);
 
   constructor() {
+    this.preloadScope();
     // Sunucuda periyodik timer uygulamayı "stable" olmaktan alıkoyar — yalnızca tarayıcıda.
     if (isPlatformBrowser(inject(PLATFORM_ID))) {
       interval(JOIN_WINDOW_TICK_MS)
@@ -120,12 +131,12 @@ export class TeacherBookingRequestsComponent implements OnInit {
       .subscribe({
         next: (res) => this.bookings.set(res.items ?? []),
         error: (err: HttpErrorResponse) =>
-          this.error.set(this.bookingService.extractError(err, 'Randevu talepleri yüklenemedi.')),
+          this.error.set(this.bookingService.extractError(err, this.text('messages.loadFailed'))),
       });
   }
 
   protected approve(row: BookingRow): void {
-    this.act(this.bookingService.approveBooking(row.booking.id), row.booking.id, 'Randevu onaylandı.');
+    this.act(this.bookingService.approveBooking(row.booking.id), row.booking.id, this.text('messages.approved'));
   }
 
   protected startReject(row: BookingRow): void {
@@ -142,7 +153,7 @@ export class TeacherBookingRequestsComponent implements OnInit {
     this.act(
       this.bookingService.rejectBooking(row.booking.id, this.rejectionReason),
       row.booking.id,
-      'Randevu reddedildi.'
+      this.text('messages.rejected')
     );
   }
 
@@ -164,33 +175,55 @@ export class TeacherBookingRequestsComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (res?.success === false) {
-            this.snackBar.open(res.message || 'İşlem tamamlanamadı.', 'Tamam', { duration: 4000 });
+            this.snackBar.open(res.message || this.text('messages.actionFailed'), this.text('messages.ok'), {
+              duration: 4000,
+            });
             return;
           }
-          this.snackBar.open(successMsg, 'Tamam', { duration: 3000 });
+          this.snackBar.open(successMsg, this.text('messages.ok'), { duration: 3000 });
           this.cancelReject();
           this.load();
         },
         error: (err: HttpErrorResponse) => {
-          this.snackBar.open(this.bookingService.extractError(err, 'İşlem tamamlanamadı.'), 'Tamam', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.bookingService.extractError(err, this.text('messages.actionFailed')),
+            this.text('messages.ok'),
+            { duration: 4000 }
+          );
         },
       });
   }
 
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string): string {
+    return this.transloco.translate<string>(`${TEACHER_BOOKINGS_SCOPE}.${key}`) ?? '';
+  }
+
   private toRow(booking: Booking, now: number): BookingRow {
     const map = {
-      Approved: { statusLabel: 'Onaylandı', statusClass: 'is-approved' as const },
-      Rejected: { statusLabel: 'Reddedildi', statusClass: 'is-rejected' as const },
-      Pending: { statusLabel: 'Bekliyor', statusClass: 'is-pending' as const },
+      Approved: { statusKey: 'status.approved', statusClass: 'is-approved' as const },
+      Rejected: { statusKey: 'status.rejected', statusClass: 'is-rejected' as const },
+      Pending: { statusKey: 'status.pending', statusClass: 'is-pending' as const },
     };
+    const join = getJoinWindow(booking.startUtc, booking.endUtc, now, (key, params) =>
+      this.transloco.translate<string>(key, params) ?? ''
+    );
     return {
       booking,
-      day: formatSlotDay(booking.startUtc),
-      range: formatSlotRange(booking.startUtc, booking.endUtc),
-      join: getJoinWindow(booking.startUtc, booking.endUtc, now),
+      join,
       ...map[booking.status],
     };
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${TEACHER_BOOKINGS_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

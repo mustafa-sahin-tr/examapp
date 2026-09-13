@@ -1,0 +1,20 @@
+{
+  "exam": {
+    "unauthenticated": "Kullanıcı kimlik doğrulaması başarısız oldu",
+    "studentProfileNotFound": "Öğrenci profili bulunamadı",
+    "testNotFound": "Test bulunamadı!",
+    "testSessionNotFound": "Test oturumu bulunamadı.",
+    "unexpectedError": "Bir hata oluştu: {0}",
+
+    "calendar": {
+      "rangeRequired": "from ve to parametreleri zorunludur",
+      "invalidIsoDate": "from ve to açık saat dilimi ('Z' veya ±hh:mm) içeren ISO-8601 tarih olmalıdır",
+      "toBeforeFrom": "to, from tarihinden sonra olmalıdır",
+      "rangeTooLarge": "Tarih aralığı en fazla {0} gün olabilir"
+    },
+
+    "bulkImport": {
+      "failed": "Toplu içe aktarma işlenemedi."
+    }
+  }
+}

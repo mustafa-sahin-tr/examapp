@@ -54,14 +54,14 @@ public class AvailabilitySlotDto
 /// <summary>POST /api/booking/requests — öğrenci bir slot için randevu talebi oluşturur.</summary>
 public class CreateBookingDto
 {
-    [Range(1, int.MaxValue, ErrorMessage = "Geçerli bir müsaitlik aralığı seçilmelidir.")]
+    [Range(1, int.MaxValue, ErrorMessage = "booking.request.slotIdRequired")]
     public int AvailabilitySlotId { get; set; }
 }
 
 /// <summary>POST /api/booking/requests/{id}/reject gövdesi. Gerekçe opsiyoneldir.</summary>
 public class RejectBookingDto
 {
-    [MaxLength(500, ErrorMessage = "Ret gerekçesi en fazla 500 karakter olabilir.")]
+    [MaxLength(500, ErrorMessage = "booking.request.rejectionReasonTooLong")]
     public string? RejectionReason { get; set; }
 }
 

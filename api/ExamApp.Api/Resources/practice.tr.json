@@ -1,0 +1,12 @@
+{
+  "practice": {
+    "sessionNotFound": "Pratik oturumu bulunamadı",
+    "gradeRequired": "Pratik yapabilmek için sınıf bilginizin tanımlı olması gerekir",
+    "questionNotShown": "Bu soru bu oturumda gösterilmedi",
+    "questionAlreadyAnswered": "Bu soru zaten cevaplandı",
+    "questionNotFound": "Soru bulunamadı",
+    "answerOrSkipRequired": "Bir şık seçilmeli ya da soru pas geçilmeli",
+    "answerNotBelongToQuestion": "Seçilen şık bu soruya ait değil",
+    "sessionAlreadyEnded": "Bu pratik oturumu sonlandırılmış"
+  }
+}

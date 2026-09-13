@@ -4,7 +4,9 @@ using ExamApp.Api.Models;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Worksheets;
 
@@ -18,8 +20,13 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
     private readonly ImageHelper _imageHelper;
     private readonly IMinIoService _minioService;
 
-    public WorksheetAuthoringService(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService)
+    // Client'a donen mesajlar (ResponseBaseDto.Message) buradan gelir (issue #184). Log mesajlari
+    // cevrilmez. DI her zaman gercek localizer'i verir; parametre yalnizca DI'siz (birim test) icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public WorksheetAuthoringService(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService, IStringLocalizer<Messages>? localizer = null)
     {
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _context = context;
         _imageHelper = imageHelper;
         _minioService = minioService;
@@ -42,7 +49,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
-                Message = "Yüklemek için geçerli bir görsel seçin."
+                Message = _localizer["worksheets.authoring.background.imageRequired"]
             };
         }
 
@@ -51,7 +58,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
-                Message = "Görsel boyutu en fazla 2 MB olabilir."
+                Message = _localizer["worksheets.authoring.background.tooLarge"]
             };
         }
 
@@ -64,7 +71,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
-                Message = "Sadece PNG, JPEG veya WEBP görselleri yüklenebilir."
+                Message = _localizer["worksheets.authoring.background.unsupportedType"]
             };
         }
 
@@ -79,7 +86,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             {
                 Success = false,
                 NotFound = true,
-                Message = "Worksheet bulunamadı."
+                Message = _localizer["worksheets.authoring.background.worksheetNotFound"]
             };
         }
 
@@ -89,7 +96,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             {
                 Success = false,
                 Forbidden = true,
-                Message = "Bu worksheet'i düzenleme yetkiniz yok."
+                Message = _localizer["worksheets.authoring.background.editForbidden"]
             };
         }
 
@@ -100,7 +107,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return new UpdateWorksheetBackgroundImageDto
             {
                 Success = false,
-                Message = "Dosya içeriği geçerli bir PNG, JPEG veya WEBP görseli değil."
+                Message = _localizer["worksheets.authoring.background.invalidContent"]
             };
         }
         if (stream.CanSeek) stream.Position = 0;
@@ -122,7 +129,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         return new UpdateWorksheetBackgroundImageDto
         {
             Success = true,
-            Message = "Arka plan görseli güncellendi.",
+            Message = _localizer["worksheets.authoring.background.updated"],
             ObjectId = worksheetId,
             ImageUrl = uploadedPath
         };
@@ -137,7 +144,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return new ExamSavedDto
             {
                 Success = false,
-                Message = "Sınav bilgileri eksik!"
+                Message = _localizer["worksheets.authoring.examInfoMissing"]
             };
         }
 
@@ -171,7 +178,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 return new ExamSavedDto
                 {
                     Success = false,
-                    Message = "Kitap seçilmedi!"
+                    Message = _localizer["worksheets.authoring.bookNotSelected"]
                 };
             }
 
@@ -181,7 +188,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 return new ExamSavedDto
                 {
                     Success = false,
-                    Message = "Kipta Test seçilmedi!"
+                    Message = _localizer["worksheets.authoring.bookTestNotSelected"]
                 };
             }
 
@@ -193,7 +200,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     return new ExamSavedDto
                     {
                         Success = false,
-                        Message = "Kitap seçilmedi!"
+                        Message = _localizer["worksheets.authoring.bookNotSelected"]
                     };
                 }
 
@@ -202,7 +209,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     return new ExamSavedDto
                     {
                         Success = false,
-                        Message = "Kipta Test seçilmedi!"
+                        Message = _localizer["worksheets.authoring.bookTestNotSelected"]
                     };
                 }
 
@@ -242,7 +249,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     return new ExamSavedDto
                     {
                         Success = false,
-                        Message = "Kitap bulunamadı!"
+                        Message = _localizer["worksheets.authoring.bookNotFound"]
                     };
 
                 }
@@ -256,7 +263,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                         return new ExamSavedDto
                         {
                             Success = false,
-                            Message = "Kipta Test seçilmedi!"
+                            Message = _localizer["worksheets.authoring.bookTestNotSelected"]
                         };
                     }
                     else
@@ -286,7 +293,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     {
                         Success = false,
                         NotFound = true,
-                        Message = "Test bulunamadı!"
+                        Message = _localizer["worksheets.authoring.testNotFound"]
                     };
                 }
 
@@ -299,7 +306,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     {
                         Success = false,
                         NotFound = true,
-                        Message = "Test bulunamadı!"
+                        Message = _localizer["worksheets.authoring.testNotFound"]
                     };
                 }
 
@@ -309,7 +316,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     {
                         Success = false,
                         Forbidden = true,
-                        Message = "Bu testi düzenleme yetkiniz yok."
+                        Message = _localizer["worksheets.authoring.editForbidden"]
                     };
                 }
 
@@ -363,7 +370,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                         {
                             Success = false,
                             NotFound = true,
-                            Message = "Test bulunamadı!"
+                            Message = _localizer["worksheets.authoring.testNotFound"]
                         };
                     }
 
@@ -373,7 +380,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                         {
                             Success = false,
                             Forbidden = true,
-                            Message = "Bu testi düzenleme yetkiniz yok."
+                            Message = _localizer["worksheets.authoring.editForbidden"]
                         };
                     }
 
@@ -427,7 +434,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             {
                 Success = true,
                 Message = examDto.Id > 0 ?
-                            "Test başarıyla güncellendi!" : "Test başarıyla kaydedildi!",
+                            _localizer["worksheets.authoring.updated"] : _localizer["worksheets.authoring.created"],
                 ExamId = examination.Id,
                 BookId = book?.Id,
                 BookTestId = examination.BookTestId
@@ -449,7 +456,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         var result = new BulkExamResultDto
         {
             Success = true,
-            Message = "Bulk exam creation completed"
+            Message = _localizer["worksheets.authoring.bulkCompleted"]
         };
 
         var successfulExams = new List<ExamSavedDto>();
@@ -539,7 +546,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         {
             response.Success = false;
             response.NotFound = true;
-            response.Message = "Worksheet bulunamadı.";
+            response.Message = _localizer["worksheets.authoring.worksheetNotFound"];
             return response;
         }
 
@@ -547,7 +554,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         {
             response.Success = false;
             response.Forbidden = true;
-            response.Message = "Bu worksheet'i silme yetkiniz yok.";
+            response.Message = _localizer["worksheets.authoring.deleteForbidden"];
             return response;
         }
 
@@ -558,7 +565,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         await _context.SaveChangesAsync();
 
         response.Success = true;
-        response.Message = "Worksheet başarıyla silindi.";
+        response.Message = _localizer["worksheets.authoring.deleted"];
 
         return response;
     }
@@ -574,7 +581,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         {
             response.Success = false;
             response.NotFound = true;
-            response.Message = "Worksheet bulunamadı.";
+            response.Message = _localizer["worksheets.authoring.worksheetNotFound"];
             return response;
         }
 
@@ -584,7 +591,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         {
             response.Success = false;
             response.Forbidden = true;
-            response.Message = "Bu worksheet'in görünürlüğünü değiştirme yetkiniz yok.";
+            response.Message = _localizer["worksheets.authoring.visibilityForbidden"];
             return response;
         }
 
@@ -623,7 +630,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
 
         response.Success = true;
         response.ObjectId = worksheetId;
-        response.Message = "Worksheet görünürlüğü güncellendi.";
+        response.Message = _localizer["worksheets.authoring.visibilityUpdated"];
         return response;
     }
 
@@ -642,7 +649,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         {
             result.Success = false;
             result.NotFound = true;
-            result.Message = "Worksheet bulunamadı.";
+            result.Message = _localizer["worksheets.authoring.worksheetNotFound"];
             return result;
         }
 
@@ -681,7 +688,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         await _context.SaveChangesAsync(ct);
 
         result.Success = true;
-        result.Message = "Sınav kopyalandı.";
+        result.Message = _localizer["worksheets.authoring.copied"];
         result.ObjectId = newWorksheet.Id;
         result.WorksheetId = newWorksheet.Id;
         return result;

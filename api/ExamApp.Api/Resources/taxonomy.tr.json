@@ -1,0 +1,44 @@
+{
+  "taxonomy": {
+    "subject": {
+      "nameRequired": "Ders adı boş olamaz.",
+      "nameAlreadyExists": "Bu isimde bir ders zaten var.",
+      "otherNameAlreadyExists": "Bu isimde başka bir ders zaten var.",
+      "notFound": "Ders bulunamadı.",
+      "invalid": "Geçersiz ders.",
+      "created": "Ders eklendi.",
+      "updated": "Ders güncellendi.",
+      "deleted": "Ders silindi.",
+      "hasTopics": "Bu derse bağlı konular var. Önce konuları silin veya taşıyın.",
+      "hasQuestions": "Bu derse bağlı sorular var, silinemez."
+    },
+    "grade": {
+      "invalid": "Geçersiz sınıf.",
+      "notFound": "Sınıf bulunamadı."
+    },
+    "gradeSubject": {
+      "alreadyLinked": "Ders zaten bu sınıfa bağlı.",
+      "linked": "Ders sınıfa bağlandı.",
+      "alreadyUnlinked": "Ders zaten bu sınıfa bağlı değil.",
+      "unlinked": "Ders–sınıf bağlantısı kaldırıldı."
+    },
+    "topic": {
+      "nameRequired": "Konu adı boş olamaz.",
+      "notFound": "Konu bulunamadı.",
+      "invalid": "Geçersiz konu.",
+      "created": "Konu eklendi.",
+      "updated": "Konu güncellendi.",
+      "deleted": "Konu silindi.",
+      "hasSubTopics": "Bu konuya bağlı alt konular var. Önce onları silin veya taşıyın.",
+      "hasQuestions": "Bu konuya bağlı sorular var, silinemez."
+    },
+    "subTopic": {
+      "nameRequired": "Alt konu adı boş olamaz.",
+      "notFound": "Alt konu bulunamadı.",
+      "created": "Alt konu eklendi.",
+      "updated": "Alt konu güncellendi.",
+      "deleted": "Alt konu silindi.",
+      "hasQuestions": "Bu alt konuya atanmış sorular var, silinemez."
+    }
+  }
+}

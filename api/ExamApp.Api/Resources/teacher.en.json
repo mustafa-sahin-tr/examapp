@@ -1,0 +1,31 @@
+{
+  "teacher": {
+    "registerFailed": "Teacher registration failed.",
+    "refreshTokenMissing": "No refresh token provided.",
+    "userNotFound": "User not found.",
+    "notFound": "Teacher not found.",
+    "recordNotFound": "Teacher record not found.",
+    "schoolNotFound": "The selected school was not found.",
+    "saved": "Teacher saved successfully.",
+    "updated": "Teacher updated successfully.",
+    "themeUpdated": "Theme preference updated.",
+    "themeUpdateFailed": "An error occurred while updating the theme.",
+    "fallbackStudentName": "Student #{0}",
+    "fallbackTeacherName": "Teacher #{0}",
+
+    "search": {
+      "priceRangeInvalid": "minPrice cannot be greater than maxPrice."
+    },
+
+    "tutorProfile": {
+      "independentOnly": "The tutor profile is only available to independent teachers.",
+      "independentOnlyUpdate": "The tutor profile can only be updated by independent teachers.",
+      "subjectsRequired": "At least one subject must be selected.",
+      "teachingModeRequired": "At least one teaching mode must be selected: online or in person.",
+      "hourlyRateInvalid": "The hourly rate must be greater than 0.",
+      "invalidSubjects": "Invalid subject selection: {0}",
+      "bioTooLong": "The bio can be at most 500 characters.",
+      "updated": "Tutor profile updated."
+    }
+  }
+}

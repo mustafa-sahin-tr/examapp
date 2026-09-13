@@ -3,8 +3,10 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Services.Bookings;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
 
@@ -18,9 +20,13 @@ public class BookingController : BaseController
 {
     private readonly IBookingService _bookingService;
 
-    public BookingController(IBookingService bookingService) : base()
+    // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public BookingController(IBookingService bookingService, IStringLocalizer<Messages> localizer) : base()
     {
         _bookingService = bookingService;
+        _localizer = localizer;
     }
 
     // ---------------- Müsaitlik slotları (öğretmen) ----------------
@@ -32,7 +38,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.CreateSlotAsync(user.Id, request, ct);
         if (!result.Success)
@@ -48,7 +54,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetMySlotsAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -61,7 +67,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.DeleteSlotAsync(user.Id, id, ct);
         return result.Success ? NoContent() : MapFailure(result);
@@ -87,7 +93,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.CreateBookingAsync(user.Id, request, ct);
         if (!result.Success)
@@ -103,7 +109,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetTeacherBookingsAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -116,7 +122,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetStudentBookingsAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -129,7 +135,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.ApproveBookingAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -142,7 +148,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.RejectBookingAsync(user.Id, id, request?.RejectionReason, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -160,7 +166,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetVideoSessionAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);

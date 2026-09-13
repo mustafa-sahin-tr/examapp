@@ -1,0 +1,7 @@
+{
+  "loginEvents": {
+    "keycloakUserIdRequired": "keycloakUserId is required.",
+    "roleRequired": "role is required.",
+    "occurredAtUtcRequired": "occurredAtUtc is required."
+  }
+}

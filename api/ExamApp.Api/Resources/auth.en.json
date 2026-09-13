@@ -1,0 +1,7 @@
+{
+  "auth": {
+    "noRefreshToken": "No refresh token provided.",
+    "userNotResolved": "User could not be resolved.",
+    "authenticationFailed": "User authentication failed"
+  }
+}

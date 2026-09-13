@@ -1,0 +1,8 @@
+{
+  "program": {
+    "userIdNotFoundInToken": "User ID not found in token."
+  },
+  "questionTransfer": {
+    "fileRequired": "File is required."
+  }
+}

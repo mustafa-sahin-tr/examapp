@@ -1,0 +1,20 @@
+{
+  "student": {
+    "notFound": "Öğrenci bulunamadı.",
+    "profileNotFound": "Öğrenci profili bulunamadı",
+    "userNotFound": "Kullanıcı bulunamadı.",
+    "registrationFailed": "Öğrenci kaydı başarısız.",
+    "registered": "Öğrenci başarıyla kaydedildi.",
+    "schoolNotFound": "Seçilen okul bulunamadı.",
+    "gradeUpdated": "Öğrenci sınıfı başarıyla güncellendi.",
+    "invalidFile": "Geçersiz dosya.",
+    "reset": {
+      "queued": "Sıfırlama işlemi kuyruğa alındı.",
+      "usePost": "Bu endpoint POST ile çalışır: POST /api/exam/student/me/reset"
+    },
+    "theme": {
+      "updated": "Theme tercihi güncellendi.",
+      "updateFailed": "Theme güncellenirken hata oluştu."
+    }
+  }
+}

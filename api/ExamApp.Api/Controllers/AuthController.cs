@@ -7,10 +7,12 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Controllers
@@ -26,11 +28,18 @@ namespace ExamApp.Api.Controllers
 
         private readonly IKeycloakService _keycloakService;
 
+        // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+        private readonly IStringLocalizer<Messages> _localizer;
+
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService,
-             IKeycloakService keycloakService)
+             IKeycloakService keycloakService,
+             IStringLocalizer<Messages>? localizer = null)
             : base()
         {
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
             _context = context;
             _keycloakSettings = options.Value;
             _userProfileCacheService = userProfileCacheService;
@@ -150,7 +159,7 @@ namespace ExamApp.Api.Controllers
             // 1. Refresh token'ı cookie'den al
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("No refresh token provided.");
+                return Unauthorized(_localizer["auth.noRefreshToken"].Value);
 
             // 2. Keycloak token endpoint'ine isteği hazırla
             var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);

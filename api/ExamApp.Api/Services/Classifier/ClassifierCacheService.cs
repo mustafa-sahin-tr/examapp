@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Taxonomy;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services.Classifier;
@@ -22,6 +24,10 @@ public class ClassifierCacheService : IClassifierCacheService
     private readonly GeminiCacheOptions _options;
     private readonly ILogger<ClassifierCacheService> _logger;
 
+    // Client'a ulaşan sonuç metinleri buradan gelir (issue #184). DI her zaman gerçek localizer'ı
+    // verir; parametre yalnızca DI'sız (birim test) senaryolar için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
     private const string SystemInstruction =
         "Bu önbellek, soru sınıflandırması için ders → konu → alt konu taksonomisini içerir. " +
         "Her öğenin kendi 'id' değeri vardır. Sınıflandırma yaparken YALNIZCA bu listedeki id'leri kullan.";
@@ -31,8 +37,10 @@ public class ClassifierCacheService : IClassifierCacheService
         ITaxonomyService taxonomy,
         IHttpClientFactory httpClientFactory,
         IOptions<GeminiCacheOptions> options,
-        ILogger<ClassifierCacheService> logger)
+        ILogger<ClassifierCacheService> logger,
+        IStringLocalizer<Messages>? localizer = null)
     {
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _context = context;
         _taxonomy = taxonomy;
         _httpClientFactory = httpClientFactory;
@@ -66,11 +74,11 @@ public class ClassifierCacheService : IClassifierCacheService
     public async Task<ClassifierCacheRefreshResultDto> RefreshAsync(int userId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
-            return Fail("Gemini API anahtarı yapılandırılmamış (Gemini:ApiKey).");
+            return Fail(_localizer["classifier.cache.apiKeyMissing"]);
 
         var (payload, subTopicCount) = await BuildTaxonomyPayloadAsync(ct);
         if (subTopicCount == 0)
-            return Fail("Taksonomi boş — cache oluşturulamadı.");
+            return Fail(_localizer["classifier.cache.taxonomyEmpty"]);
 
         string cachedContentName;
         try
@@ -80,7 +88,7 @@ public class ClassifierCacheService : IClassifierCacheService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Gemini cached content oluşturulamadı");
-            return Fail($"Gemini cache oluşturulamadı: {ex.Message}");
+            return Fail(_localizer["classifier.cache.createFailed", ex.Message]);
         }
 
         var now = DateTime.UtcNow;
@@ -106,7 +114,7 @@ public class ClassifierCacheService : IClassifierCacheService
         return new ClassifierCacheRefreshResultDto
         {
             Success = true,
-            Message = "Sınıflandırma cache'i güncellendi.",
+            Message = _localizer["classifier.cache.refreshed"],
             CachedContentName = cachedContentName,
             SubTopicCount = subTopicCount,
             RefreshedAt = now,

@@ -1,0 +1,44 @@
+{
+  "taxonomy": {
+    "subject": {
+      "nameRequired": "Subject name cannot be empty.",
+      "nameAlreadyExists": "A subject with this name already exists.",
+      "otherNameAlreadyExists": "Another subject with this name already exists.",
+      "notFound": "Subject not found.",
+      "invalid": "Invalid subject.",
+      "created": "Subject created.",
+      "updated": "Subject updated.",
+      "deleted": "Subject deleted.",
+      "hasTopics": "This subject still has topics. Delete or move the topics first.",
+      "hasQuestions": "This subject has questions linked to it and cannot be deleted."
+    },
+    "grade": {
+      "invalid": "Invalid grade.",
+      "notFound": "Grade not found."
+    },
+    "gradeSubject": {
+      "alreadyLinked": "The subject is already linked to this grade.",
+      "linked": "The subject has been linked to the grade.",
+      "alreadyUnlinked": "The subject is already not linked to this grade.",
+      "unlinked": "The subject–grade link has been removed."
+    },
+    "topic": {
+      "nameRequired": "Topic name cannot be empty.",
+      "notFound": "Topic not found.",
+      "invalid": "Invalid topic.",
+      "created": "Topic created.",
+      "updated": "Topic updated.",
+      "deleted": "Topic deleted.",
+      "hasSubTopics": "This topic still has subtopics. Delete or move them first.",
+      "hasQuestions": "This topic has questions linked to it and cannot be deleted."
+    },
+    "subTopic": {
+      "nameRequired": "Subtopic name cannot be empty.",
+      "notFound": "Subtopic not found.",
+      "created": "Subtopic created.",
+      "updated": "Subtopic updated.",
+      "deleted": "Subtopic deleted.",
+      "hasQuestions": "This subtopic has questions assigned to it and cannot be deleted."
+    }
+  }
+}

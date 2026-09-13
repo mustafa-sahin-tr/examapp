@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BadgeService.Entities;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
@@ -30,15 +31,21 @@ public class WorksheetAccessDecisionConsumer :
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly IUserLocaleResolver _localeResolver;
+    private readonly INotificationTextFactory _texts;
     private readonly ILogger<WorksheetAccessDecisionConsumer> _logger;
 
     public WorksheetAccessDecisionConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
+        IUserLocaleResolver localeResolver,
+        INotificationTextFactory texts,
         ILogger<WorksheetAccessDecisionConsumer> logger)
     {
         _db = db;
         _hub = hub;
+        _localeResolver = localeResolver;
+        _texts = texts;
         _logger = logger;
     }
 
@@ -79,17 +86,19 @@ public class WorksheetAccessDecisionConsumer :
             return;
         }
 
-        var name = string.IsNullOrWhiteSpace(worksheetName) ? "bir sınav" : worksheetName;
+        var culture = await _localeResolver.ResolveAsync(requesterUserId, targetSub, ct);
+        var name = string.IsNullOrWhiteSpace(worksheetName)
+            ? _texts.Resolve("notifications.common.unnamedWorksheet", culture)
+            : worksheetName;
+        var text = _texts.Build(type, culture, name);
 
         var notification = new Notification
         {
             UserId = requesterUserId,
             UserKeycloakId = string.IsNullOrWhiteSpace(targetSub) ? null : targetSub,
             Type = type,
-            Title = approved ? "Atama izniniz onaylandı" : "Atama izni talebiniz reddedildi",
-            Body = approved
-                ? $"\"{name}\" sınavı için atama izni talebiniz onaylandı."
-                : $"\"{name}\" sınavı için atama izni talebiniz reddedildi.",
+            Title = text.Title,
+            Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 requestId,

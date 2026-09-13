@@ -58,7 +58,17 @@ import { inject } from '@angular/core';
 import { defer, from, of, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
+/** Kimlik gerektirmeyen, statik i18n sözlükleri (issue #180). */
+const I18N_URL_PREFIX = '/i18n/';
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  // Sözlük dosyaları anonim ve statiktir: oturumsuz ziyaretçide `logout()` tetiklememeli,
+  // Bearer token da eklenmemelidir. Diğer excludedUrls'ten farklı olarak `withCredentials`
+  // da açılmaz — statik dosyaya çerez göndermenin anlamı yok.
+  if (req.url.includes(I18N_URL_PREFIX)) {
+    return next(req);
+  }
+
   const excludedUrls = [
     '/about',
     '/welcome',

@@ -13,11 +13,16 @@ import {
 export const LOCALE_STORAGE_KEY = 'app-locale';
 
 /**
- * Aktif dil tercihini yöneten servis (issue #180). `ColorSchemeService` ile aynı deseni izler:
- * signal tabanlı durum + localStorage kalıcılığı + `<html>` üzerinde tek bir DOM etkisi.
+ * Aktif dil tercihini yöneten servis (issue #180, #181). `ColorSchemeService` ile aynı deseni
+ * izler: signal tabanlı durum + localStorage kalıcılığı + `<html>` üzerinde tek bir DOM etkisi.
  *
- * SSR/prerender sırasında (isPlatformBrowser false) DOM ve localStorage'a dokunulmaz,
- * her zaman {@link DEFAULT_LOCALE} kullanılır.
+ * Tercih sırası: localStorage'daki açık seçim → tarayıcı dili (`navigator.languages`) →
+ * {@link DEFAULT_LOCALE}. Tarayıcı dilinden gelen sonuç localStorage'a **yazılmaz**; kullanıcı
+ * menüden açıkça bir dil seçene kadar tarayıcı dili değişimlerini takip etmeye devam ederiz.
+ *
+ * SSR/prerender sırasında (isPlatformBrowser false) DOM, localStorage ve navigator'a dokunulmaz,
+ * her zaman {@link DEFAULT_LOCALE} kullanılır. Bunun görünür sonucu: prerender edilen HTML her
+ * zaman Türkçedir; `en` tercihi olan kullanıcı hydration tamamlanana kadar kısa süre TR görür.
  *
  * Dil değişince sayfa yeniden yüklenir: Angular `LOCALE_ID` bootstrap sırasında çözüldüğü için
  * `date`/`number` pipe'ları ve Material datepicker ancak yeni bir bootstrap ile yeni dili görür.
@@ -61,9 +66,24 @@ export class LocaleService {
 
     // Transloco lazy alınır: TRANSLOCO_CONFIG başlangıç dilini bu servisten okuduğu için
     // constructor'da enjekte edilseydi döngüsel bağımlılık oluşurdu.
+    // Reload zaten geliyor, yani üretimde bu satırın görünür etkisi yok; reload'un çalışmadığı
+    // ortamlarda (test, reload'u ezen alt sınıf) Transloco'nun aktif dilini tutarlı bırakır.
     this.injector.get(TranslocoService, null, { optional: true })?.setActiveLang(locale);
 
     this.reloadPage();
+  }
+
+  /**
+   * Sunucudan gelen kullanıcı profilindeki dil tercihini uygular (issue #181).
+   * Değer desteklenmiyorsa veya aktif dille aynıysa hiçbir şey yapmaz — bu sayede reload
+   * sonrasında profil aynı değeri taşıdığı için ikinci kez tetiklenmez.
+   */
+  syncFromProfile(preferredLocale: string | null | undefined): void {
+    if (!isAppLocale(preferredLocale) || preferredLocale === this.localeState()) {
+      return;
+    }
+
+    this.setLocale(preferredLocale);
   }
 
   /** Testlerde spy'lanabilmesi için ayrı metot. */
@@ -80,18 +100,54 @@ export class LocaleService {
 }
 
 /**
- * localStorage'daki dil tercihini okur. Servis örneği olmadan da (örn. `TRANSLOCO_CONFIG`
- * başlangıç dili) çağrılabilmesi için modül seviyesinde bir fonksiyondur.
+ * Kullanıcının açık dil tercihini (localStorage) okur; yoksa tarayıcı diline düşer.
+ * Servis örneği olmadan da (örn. `TRANSLOCO_CONFIG` başlangıç dili) çağrılabilmesi için
+ * modül seviyesinde bir fonksiyondur.
  */
-export function readStoredLocale(isBrowser: boolean = typeof localStorage !== 'undefined'): AppLocale {
+export function readStoredLocale(
+  isBrowser: boolean = typeof localStorage !== 'undefined',
+  languages: readonly string[] = readNavigatorLanguages()
+): AppLocale {
   if (!isBrowser) {
     return DEFAULT_LOCALE;
   }
 
   try {
     const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-    return isAppLocale(stored) ? stored : DEFAULT_LOCALE;
+    if (isAppLocale(stored)) {
+      return stored;
+    }
   } catch {
-    return DEFAULT_LOCALE;
+    // localStorage okunamıyorsa tarayıcı diline düşeriz
   }
+
+  return detectBrowserLocale(languages);
+}
+
+/**
+ * `navigator.languages` / `navigator.language` değerlerini desteklenen dillerle eşler
+ * (`en-GB` → `en`, `tr-TR` → `tr`). Eşleşme yoksa {@link DEFAULT_LOCALE} döner.
+ */
+export function detectBrowserLocale(languages: readonly string[] = readNavigatorLanguages()): AppLocale {
+  for (const tag of languages) {
+    const base = tag?.split('-')[0]?.toLowerCase();
+    if (isAppLocale(base)) {
+      return base;
+    }
+  }
+
+  return DEFAULT_LOCALE;
+}
+
+/** SSR'da `navigator` yoktur → boş liste (çağıran DEFAULT_LOCALE'e düşer). */
+function readNavigatorLanguages(): readonly string[] {
+  if (typeof navigator === 'undefined') {
+    return [];
+  }
+
+  if (navigator.languages?.length) {
+    return navigator.languages;
+  }
+
+  return navigator.language ? [navigator.language] : [];
 }

@@ -1,3 +1,4 @@
+import type { Translation } from '@jsverse/transloco';
 import localeEn from '@angular/common/locales/en';
 import localeTr from '@angular/common/locales/tr';
 import type { Locale as DateFnsLocale } from 'date-fns';
@@ -9,7 +10,7 @@ import { tr } from 'date-fns/locale/tr';
  *
  * Yeni bir dil eklemek için:
  *  1. `public/i18n/<code>.json` dosyasını mevcut sözlüklerle aynı anahtar setiyle oluştur,
- *  2. Aşağıdaki `SUPPORTED_LOCALES` dizisine bir satır ekle.
+ *  2. Aşağıdaki `SUPPORTED_LOCALES` dizisine bir satır ekle (`serverDictionary` dahil).
  *
  * Başka hiçbir yerde dil listesi tutulmaz; Transloco `availableLangs`, `registerLocaleData`,
  * `LOCALE_ID`, `MAT_DATE_LOCALE` ve dil değiştirme menüsü hep bu listeden türer.
@@ -25,6 +26,11 @@ export interface LocaleDefinition {
   readonly angularLocaleData: unknown[];
   /** Material date-fns adapter'ının (`MAT_DATE_LOCALE`) beklediği date-fns locale nesnesi. */
   readonly dateFnsLocale: DateFnsLocale;
+  /**
+   * SSR/prerender sırasında kullanılan, build'e gömülü sözlük. Sunucuda `/i18n/<code>.json`
+   * çekecek bir HTTP sunucusu olmadığı için `TranslocoHttpLoader` bu lazy `import()`'u okur.
+   */
+  readonly serverDictionary: () => Promise<{ default: Translation }>;
 }
 
 export const SUPPORTED_LOCALES = [
@@ -34,6 +40,7 @@ export const SUPPORTED_LOCALES = [
     angularLocale: 'tr',
     angularLocaleData: localeTr,
     dateFnsLocale: tr,
+    serverDictionary: () => import('../../../public/i18n/tr.json'),
   },
   {
     code: 'en',
@@ -41,6 +48,7 @@ export const SUPPORTED_LOCALES = [
     angularLocale: 'en-US',
     angularLocaleData: localeEn,
     dateFnsLocale: enUS,
+    serverDictionary: () => import('../../../public/i18n/en.json'),
   },
 ] as const satisfies readonly LocaleDefinition[];
 

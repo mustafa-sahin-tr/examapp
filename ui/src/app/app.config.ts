@@ -19,6 +19,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
+import { localeInterceptor } from './shared/interceptors/locale.interceptor';
 import { CoreModule } from './core/core.module';
 import { provideClientHydration } from '@angular/platform-browser';
 import { MAT_DATE_LOCALE, MatDateFormats } from '@angular/material/core';
@@ -50,7 +51,9 @@ export const TR_DATE_FORMATS: MatDateFormats = {
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withInterceptors([cacheInterceptor, authInterceptor, authErrorInterceptor])),
+    provideHttpClient(
+      withInterceptors([cacheInterceptor, localeInterceptor, authInterceptor, authErrorInterceptor])
+    ),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),
     provideAnimationsAsync(),
@@ -74,7 +77,10 @@ export const appConfig: ApplicationConfig = {
     // yine de açılır (eksik anahtarlar Transloco'nun missing handler'ına düşer).
     provideAppInitializer(() => {
       const transloco = inject(TranslocoService);
-      return firstValueFrom(transloco.load(transloco.getActiveLang())).catch(() => undefined);
+      return firstValueFrom(transloco.load(transloco.getActiveLang())).catch((error: unknown) => {
+        console.warn('i18n sözlüğü yüklenemedi', error);
+        return undefined;
+      });
     }),
     provideDateFnsAdapter(TR_DATE_FORMATS),
     // LOCALE_ID ve MAT_DATE_LOCALE tek kaynaktan (LocaleService → SUPPORTED_LOCALES) türer.

@@ -1,0 +1,45 @@
+{
+  "notifications": {
+    "common": {
+      "defaultTeacher": "Your teacher",
+      "defaultStudent": "A student",
+      "defaultApplicant": "A teacher",
+      "defaultRequester": "A teacher",
+      "unnamedWorksheet": "a worksheet",
+      "worksheetFallback": "The worksheet",
+      "rejectionReasonSuffix": " Reason: {0}"
+    },
+    "BookingRequestCreated": {
+      "title": "New lesson request",
+      "body": "{0} requested a lesson for {1}."
+    },
+    "BookingApproved": {
+      "title": "Your lesson request was approved",
+      "body": "{0} approved your lesson request for {1}."
+    },
+    "BookingRejected": {
+      "title": "Your lesson request was rejected",
+      "body": "{0} rejected your lesson request for {1}.{2}"
+    },
+    "TeacherApplicationSubmitted": {
+      "title": "New independent teacher application",
+      "body": "{0} applied to become an independent teacher and is awaiting approval."
+    },
+    "WorksheetAccessRequested": {
+      "title": "New assignment access request",
+      "body": "{0} is requesting assignment access for \"{1}\"."
+    },
+    "WorksheetAccessApproved": {
+      "title": "Your assignment access was approved",
+      "body": "Your assignment access request for \"{0}\" was approved."
+    },
+    "WorksheetAccessRejected": {
+      "title": "Your assignment access request was rejected",
+      "body": "Your assignment access request for \"{0}\" was rejected."
+    },
+    "WorksheetReminderDue": {
+      "title": "Your worksheet is starting soon",
+      "body": "{0} starts in {1} minutes."
+    }
+  }
+}

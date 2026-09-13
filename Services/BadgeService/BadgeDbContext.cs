@@ -16,6 +16,7 @@ public class BadgeDbContext : DbContext
     public DbSet<StudentBadgeProgress> StudentBadgeProgresses => Set<StudentBadgeProgress>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProcessedLoginAttempt> ProcessedLoginAttempts => Set<ProcessedLoginAttempt>();
+    public DbSet<UserLocalePreference> UserLocalePreferences => Set<UserLocalePreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -77,5 +78,16 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<ProcessedLoginAttempt>()
             .HasIndex(x => x.EventId)
             .IsUnique();
+
+        // UserId doğal PK: upsert "var mı" kontrolüne gerek bırakmadan tek satır garantiler.
+        // ValueGeneratedNever ŞART — UserId auth-api'den (dış kaynak) geliyor, EF'in kendi
+        // identity sequence'ı ile üretilmemeli (aksi halde consumer'ın atadığı değer sessizce
+        // görmezden gelinir).
+        modelBuilder.Entity<UserLocalePreference>().HasKey(x => x.UserId);
+        modelBuilder.Entity<UserLocalePreference>()
+            .Property(x => x.UserId)
+            .ValueGeneratedNever();
+        modelBuilder.Entity<UserLocalePreference>()
+            .HasIndex(x => x.KeycloakId);
     }
 }

@@ -88,8 +88,34 @@ namespace ExamApp.Api.Controllers
                     KeycloakId = keycloakUserId
                 };
 
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                // Issue #185: BadgeService yeni kullanıcının dil tercihini (henüz hiç
+                // değiştirilmemiş, varsayılan) event üzerinden öğrenir — senkron çağrı yok.
+                // user.Id identity DB'den üretildiği için outbox satırı, User satırıyla aynı
+                // transaction içinde ama İKİNCİ SaveChanges'te yazılır (WorksheetAccessRequestService
+                // ile aynı desen); tek transaction olduğu için yine atomik.
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _context.Database.BeginTransactionAsync();
+
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+
+                    _context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = OutboxEventRegistry.NameFor<UserPreferredLocaleChangedEvent>(),
+                        Content = JsonSerializer.Serialize(new UserPreferredLocaleChangedEvent
+                        {
+                            UserId = user.Id,
+                            KeycloakId = keycloakUserId,
+                            PreferredLocale = user.PreferredLocale,
+                            ChangedAtUtc = DateTime.UtcNow
+                        })
+                    });
+                    await _context.SaveChangesAsync();
+
+                    await tx.CommitAsync();
+                });
 
                 return Ok(user);
             }
@@ -484,6 +510,22 @@ namespace ExamApp.Api.Controllers
             if (!string.Equals(user.PreferredLocale, locale, StringComparison.Ordinal))
             {
                 user.PreferredLocale = locale;
+
+                // Issue #185: BadgeService'e senkron çağrı yapılmaz — hedef kullanıcının yeni
+                // dili outbox üzerinden taşınır. Değer gerçekten değiştiğinde YAZILIR (no-op'ta
+                // gürültü event'i olmasın diye). Aynı SaveChanges ile user satırıyla atomik.
+                _context.OutboxMessages.Add(new OutboxMessage
+                {
+                    Type = OutboxEventRegistry.NameFor<UserPreferredLocaleChangedEvent>(),
+                    Content = JsonSerializer.Serialize(new UserPreferredLocaleChangedEvent
+                    {
+                        UserId = user.Id,
+                        KeycloakId = user.KeycloakId,
+                        PreferredLocale = locale,
+                        ChangedAtUtc = DateTime.UtcNow
+                    })
+                });
+
                 await _context.SaveChangesAsync();
             }
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BadgeService.Entities;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
@@ -24,16 +25,27 @@ public class BookingRequestCreatedConsumer : IConsumer<BookingRequestCreatedEven
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly IUserLocaleResolver _localeResolver;
+    private readonly INotificationTextFactory _texts;
     private readonly ILogger<BookingRequestCreatedConsumer> _logger;
 
+    /// <summary>
+    /// <paramref name="localeResolver"/>/<paramref name="texts"/> opsiyonel: DI dışında oluşturan
+    /// birim testler (<c>new BookingRequestCreatedConsumer(db, hub, logger)</c>) derlenmeye devam
+    /// etsin diye. Üretimde <c>Program.cs</c> ikisini de DI ile kayıtlı gerçek implementasyonla verir.
+    /// </summary>
     public BookingRequestCreatedConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
-        ILogger<BookingRequestCreatedConsumer> logger)
+        ILogger<BookingRequestCreatedConsumer> logger,
+        IUserLocaleResolver? localeResolver = null,
+        INotificationTextFactory? texts = null)
     {
         _db = db;
         _hub = hub;
         _logger = logger;
+        _localeResolver = localeResolver ?? FallbackUserLocaleResolver.Instance;
+        _texts = texts ?? FallbackNotificationTextFactory.Instance;
     }
 
     public async Task Consume(ConsumeContext<BookingRequestCreatedEvent> context)
@@ -51,16 +63,20 @@ public class BookingRequestCreatedConsumer : IConsumer<BookingRequestCreatedEven
             return;
         }
 
-        var studentName = string.IsNullOrWhiteSpace(e.StudentName) ? "Bir öğrenci" : e.StudentName;
+        var culture = await _localeResolver.ResolveAsync(e.TeacherUserId, e.TargetKeycloakId, ct);
+        var studentName = string.IsNullOrWhiteSpace(e.StudentName)
+            ? _texts.Resolve("notifications.common.defaultStudent", culture)
+            : e.StudentName;
         var whenText = $"{e.Date:dd.MM.yyyy} {e.StartTime:HH:mm}-{e.EndTime:HH:mm}";
+        var text = _texts.Build(NotificationType, culture, studentName, whenText);
 
         var notification = new Notification
         {
             UserId = e.TeacherUserId,
             UserKeycloakId = string.IsNullOrWhiteSpace(e.TargetKeycloakId) ? null : e.TargetKeycloakId,
             Type = NotificationType,
-            Title = "Yeni ders talebi",
-            Body = $"{studentName}, {whenText} için ders talebinde bulundu.",
+            Title = text.Title,
+            Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 bookingId = e.BookingId,

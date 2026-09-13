@@ -1,7 +1,9 @@
 <!-- Karşılama alanı: son giriş bilgisi (issue #126). İlk girişte lastLoginLabel null → chip hiç render edilmez. -->
 <div class="dashboard-welcome">
-  <h2 class="dashboard-welcome-title">Hoş geldin</h2>
-  <span class="last-login-chip" *ngIf="lastLoginLabel() as lastLogin">Son giriş: {{ lastLogin }}</span>
+  <h2 class="dashboard-welcome-title">{{ 'dashboard.welcome.title' | transloco }}</h2>
+  <span class="last-login-chip" *ngIf="lastLoginLabel() as lastLogin">{{
+    'dashboard.welcome.lastLogin' | transloco: { value: lastLogin }
+  }}</span>
 </div>
 
 <!-- 1. Aktivite (heat map) + rozet ilerleme — öncelikli bölüm -->
@@ -36,36 +38,36 @@
       </ng-container>
 
       <ng-template #heatmapLoading>
-        <p class="heatmap-state">Aktivite verisi yükleniyor...</p>
+        <p class="heatmap-state">{{ 'dashboard.activity.loading' | transloco }}</p>
       </ng-template>
 
       <ng-template #heatmapError>
-        <p class="heatmap-state error">Aktivite verisi alınırken bir hata oluştu.</p>
+        <p class="heatmap-state error">{{ 'dashboard.activity.error' | transloco }}</p>
       </ng-template>
 
       <ng-template #heatmapEmpty>
-        <p class="heatmap-state">Son bir yıl için aktivite verisi bulunamadı.</p>
+        <p class="heatmap-state">{{ 'dashboard.activity.empty' | transloco }}</p>
       </ng-template>
     </div>
 
     <!-- Rozet kartı: kendi yükleniyor/hata/boş durumlarına sahip, heat map durumundan bağımsız -->
     <div class="earned-badges-container">
       <ng-container *ngIf="badgeProgressLoading(); else badgesResolved">
-        <h3 class="earned-badges-heading">Rozetler</h3>
-        <p class="badges-state">Rozetler yükleniyor...</p>
+        <h3 class="earned-badges-heading">{{ 'dashboard.badges.title' | transloco }}</h3>
+        <p class="badges-state">{{ 'dashboard.badges.loading' | transloco }}</p>
       </ng-container>
 
       <ng-template #badgesResolved>
         <ng-container *ngIf="badgeProgressError(); else badgesContent">
-          <h3 class="earned-badges-heading">Rozetler</h3>
-          <p class="badges-state error">Rozetler yüklenirken bir sorun oluştu.</p>
+          <h3 class="earned-badges-heading">{{ 'dashboard.badges.title' | transloco }}</h3>
+          <p class="badges-state error">{{ 'dashboard.badges.error' | transloco }}</p>
         </ng-container>
       </ng-template>
 
       <ng-template #badgesContent>
         <!-- Kazanılan Rozetler (mevcut davranış korunuyor) -->
         <div class="badge-group">
-          <h3 class="earned-badges-heading">Kazanılan Rozetler</h3>
+          <h3 class="earned-badges-heading">{{ 'dashboard.badges.earnedTitle' | transloco }}</h3>
           <ng-container *ngIf="earnedBadges().length > 0; else badgesEmpty">
             <div class="earned-badges-grid">
               <div class="badge-icon" *ngFor="let badge of earnedBadges(); trackBy: trackBadge">
@@ -78,13 +80,13 @@
             </div>
           </ng-container>
           <ng-template #badgesEmpty>
-            <p class="badges-state">Henüz kazanılmış rozet bulunmuyor.</p>
+            <p class="badges-state">{{ 'dashboard.badges.earnedEmpty' | transloco }}</p>
           </ng-template>
         </div>
 
         <!-- Sıradaki Rozetler: !isCompleted, targetValue - currentValue farkına göre artan, ilk 3 -->
         <div class="badge-group">
-          <h3 class="earned-badges-heading">Sıradaki Rozetler</h3>
+          <h3 class="earned-badges-heading">{{ 'dashboard.badges.upcomingTitle' | transloco }}</h3>
           <ng-container *ngIf="upcomingBadges().length > 0; else upcomingEmpty">
             <ul class="upcoming-badges">
               <li class="upcoming-badge" *ngFor="let item of upcomingBadges(); trackBy: trackUpcomingBadge">
@@ -106,10 +108,10 @@
           </ng-container>
           <ng-template #upcomingEmpty>
             <p class="badges-state badges-state-complete" *ngIf="allBadgesCompleted(); else upcomingNone">
-              Tebrikler, tüm rozetleri tamamladın!
+              {{ 'dashboard.badges.allCompleted' | transloco }}
             </p>
             <ng-template #upcomingNone>
-              <p class="badges-state">Soru çözmeye başladığında rozet ilerlemen burada görünecek.</p>
+              <p class="badges-state">{{ 'dashboard.badges.upcomingEmpty' | transloco }}</p>
             </ng-template>
           </ng-template>
         </div>
@@ -120,9 +122,9 @@
 
 <!-- 2. Atanmış testler — kompakt kartlar -->
 <div class="dashboard-section">
-  <app-section-header title="Atanmış Testler" icon="/icons/18.svg"></app-section-header>
+  <app-section-header [title]="'dashboard.assignments.title' | transloco" icon="/icons/18.svg"></app-section-header>
   <ng-container *ngIf="loading(); else assignmentsContent">
-    <p class="info">Atanmış testler yükleniyor...</p>
+    <p class="info">{{ 'dashboard.assignments.loading' | transloco }}</p>
   </ng-container>
 
   <ng-template #assignmentsContent>
@@ -155,7 +157,7 @@
       </div>
     </ng-container>
     <ng-template #noAssignments>
-      <p class="info">Aktif atanmış test bulunmuyor.</p>
+      <p class="info">{{ 'dashboard.assignments.empty' | transloco }}</p>
     </ng-template>
   </ng-template>
 

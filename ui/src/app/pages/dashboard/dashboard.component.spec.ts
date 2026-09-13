@@ -7,6 +7,22 @@ import { TestService } from '../../services/test.service';
 import { BadgeService, BadgeProgressItem, BadgeProgressResponse } from '../../services/badge.service';
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import trTranslations from '../../../../public/i18n/tr.json';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
+
+/**
+ * Testler Turkce metinleri dogrudan assert ettigi icin gercek `public/i18n/tr.json` sozlugu yuklenir
+ * (issue #180) — sozlukteki bir anahtar bozulursa test kirilir, sahte ceviri kullanilmaz.
+ */
+const translocoTesting = TranslocoTestingModule.forRoot({
+  langs: { tr: trTranslations },
+  translocoConfig: {
+    availableLangs: [...SUPPORTED_LOCALE_CODES],
+    defaultLang: DEFAULT_LOCALE,
+  },
+  preloadLangs: true,
+});
 
 /** Fixed "now" so relative last-login labels are deterministic. */
 const NOW_ISO = '2026-09-09T12:00:00Z';
@@ -77,7 +93,7 @@ describe('DashboardComponent', () => {
     studentServiceSpy.getLastLogin.and.returnValue(of({ lastLoginAtUtc: null }));
 
     TestBed.configureTestingModule({
-      imports: [DashboardComponent],
+      imports: [DashboardComponent, translocoTesting],
       providers: [
         { provide: TestService, useValue: testServiceSpy },
         { provide: BadgeService, useValue: badgeServiceSpy },

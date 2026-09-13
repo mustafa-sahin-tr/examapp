@@ -1,0 +1,68 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "retry": "Try again",
+    "error": "Something went wrong."
+  },
+  "layout": {
+    "language": {
+      "label": "Language",
+      "switch": "Change language",
+      "select": "Switch to {{language}}"
+    }
+  },
+  "dashboard": {
+    "welcome": {
+      "title": "Welcome",
+      "lastLogin": "Last login: {{value}}"
+    },
+    "lastLogin": {
+      "daysAgo": "{{count}} days ago",
+      "hoursAgo": "{{count}} hours ago",
+      "minutesAgo": "{{count}} minutes ago",
+      "justNow": "just now"
+    },
+    "activity": {
+      "loading": "Loading activity data...",
+      "error": "Activity data could not be loaded.",
+      "empty": "No activity data found for the last year.",
+      "totalQuestions": "Total Questions",
+      "correctAnswers": "Correct Answers",
+      "studyMinutes": "Study Time (min)",
+      "activityScore": "Activity Score"
+    },
+    "tooltip": {
+      "questions": "Questions",
+      "correct": "Correct",
+      "duration": "Time",
+      "activityScore": "Activity Score"
+    },
+    "duration": {
+      "minutes": "{{minutes}} min",
+      "seconds": "{{seconds}} sec",
+      "minutesSeconds": "{{minutes}} min {{seconds}} sec"
+    },
+    "badges": {
+      "title": "Badges",
+      "loading": "Loading badges...",
+      "error": "Badges could not be loaded.",
+      "earnedTitle": "Earned Badges",
+      "earnedEmpty": "No badges earned yet.",
+      "upcomingTitle": "Upcoming Badges",
+      "allCompleted": "Congratulations, you have earned every badge!",
+      "upcomingEmpty": "Your badge progress will appear here once you start answering questions."
+    },
+    "assignments": {
+      "title": "Assigned Tests",
+      "loading": "Loading assigned tests...",
+      "empty": "No active assigned tests.",
+      "error": "Assigned tests could not be loaded.",
+      "due": "Due: {{date}}"
+    },
+    "reset": {
+      "confirm": "All of your exam progress, assigned personal exams, points and badge/activity data will be reset. Do you want to continue?",
+      "queued": "The reset has been queued.",
+      "failed": "The reset request could not be sent. Please try again."
+    }
+  }
+}

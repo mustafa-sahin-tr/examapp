@@ -7,8 +7,10 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services;
 
@@ -20,11 +22,21 @@ public class QuestionService : IQuestionService
     private readonly ImageHelper _imageHelper;
     private readonly IMinIoService _minioService;
 
-    public QuestionService(AppDbContext context, ImageHelper imageHelper, IMinIoService minioService)
+    // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
+    // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
+    // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public QuestionService(
+        AppDbContext context,
+        ImageHelper imageHelper,
+        IMinIoService minioService,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _imageHelper = imageHelper;
         _context = context;
         _minioService = minioService;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto)
@@ -38,14 +50,14 @@ public class QuestionService : IQuestionService
             {
                 question = await _context.Questions
                         .Include(q => q.Answers)
-                        .FirstOrDefaultAsync(q => q.Id == questionDto.Id) ?? throw new InvalidOperationException("Soru bulunamadı!");
+                        .FirstOrDefaultAsync(q => q.Id == questionDto.Id) ?? throw new InvalidOperationException(_localizer["questions.notFound"]);
 
                 if (question == null)
                 {
                     return new QuestionSavedDto
                     {
                         Success = false,
-                        Message = "Soru bulunamadı!"
+                        Message = _localizer["questions.notFound"]
                     };
                     // return NotFound(new { error = "Soru bulunamadı!" });
                 }
@@ -120,7 +132,7 @@ public class QuestionService : IQuestionService
                     if (questionDto.Passage.Id > 0)
                     {
                         var passage = await _context.Passage
-                        .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException("Kapsam bulunamadı!");
+                        .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException(_localizer["questions.passageNotFound"]);
                     }
                     else
                     {
@@ -251,7 +263,7 @@ public class QuestionService : IQuestionService
                     if (questionDto.Passage.Id > 0)
                     {
                         var passage = await _context.Passage
-                        .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException("Kapsam bulunamadı!");
+                        .FirstOrDefaultAsync(p => p.Id == questionDto.Passage.Id) ?? throw new InvalidOperationException(_localizer["questions.passageNotFound"]);
 
                         question.PassageId = passage.Id;
                         _context.Questions.Update(question);
@@ -322,7 +334,7 @@ public class QuestionService : IQuestionService
             {
                 Success = questionDto.Id > 0,
                 QuestionId = question.Id,
-                Message = questionDto.Id > 0 ? "Soru başarıyla güncellendi!" : "Soru başarıyla kaydedildi!"
+                Message = questionDto.Id > 0 ? _localizer["questions.updated"] : _localizer["questions.created"]
             };
         }
         catch (Exception ex)
@@ -344,7 +356,7 @@ public class QuestionService : IQuestionService
                 return new StudyPageAttachImageResponseDto
                 {
                     Success = false,
-                    Message = "ImageData zorunludur."
+                    Message = _localizer["questions.studyPage.imageDataRequired"]
                 };
             }
 
@@ -353,7 +365,7 @@ public class QuestionService : IQuestionService
                 return new StudyPageAttachImageResponseDto
                 {
                     Success = false,
-                    Message = "Geçersiz imageData formatı."
+                    Message = _localizer["questions.studyPage.invalidImageDataFormat"]
                 };
             }
 
@@ -371,7 +383,7 @@ public class QuestionService : IQuestionService
                 return new StudyPageAttachImageResponseDto
                 {
                     Success = false,
-                    Message = "ImageData decode edilemedi."
+                    Message = _localizer["questions.studyPage.imageDataDecodeFailed"]
                 };
             }
 
@@ -382,7 +394,7 @@ public class QuestionService : IQuestionService
             return new StudyPageAttachImageResponseDto
             {
                 Success = true,
-                Message = "Gorsel study page books altina yuklendi.",
+                Message = _localizer["questions.studyPage.uploaded"],
                 ImageUrl = imageUrl
             };
         }
@@ -391,7 +403,7 @@ public class QuestionService : IQuestionService
             return new StudyPageAttachImageResponseDto
             {
                 Success = false,
-                Message = $"Resim yuklenirken hata olustu: {ex.Message}"
+                Message = _localizer["questions.studyPage.uploadError", ex.Message]
             };
         }
     }
@@ -455,7 +467,7 @@ public class QuestionService : IQuestionService
 
                     if (headerTopic == null)
                     {
-                        throw new InvalidOperationException($"Geçersiz TopicId: {soruDto.Header.TopicId.Value}");
+                        throw new InvalidOperationException(_localizer["questions.bulk.invalidTopicId", soruDto.Header.TopicId.Value]);
                     }
 
                     if (soruDto.Header.SubjectId.HasValue && soruDto.Header.SubjectId.Value > 0)
@@ -463,12 +475,13 @@ public class QuestionService : IQuestionService
                         var questionSubjectId = soruDto.Header.SubjectId.Value;
                         if (headerTopic.SubjectId != questionSubjectId)
                         {
-                            var headerSubjectName = headerSubject?.Name ?? "(bulunamadı)";
-                            var topicSubjectName = headerTopic.Subject?.Name ?? "(bulunamadı)";
-                            throw new InvalidOperationException(
-                                "Topic.SubjectId ile Question.SubjectId uyumsuz. " +
-                                $"Question.SubjectId={questionSubjectId} ('{headerSubjectName}'), " +
-                                $"Topic(Id={headerTopic.Id}, Name='{headerTopic.Name}') SubjectId={headerTopic.SubjectId} ('{topicSubjectName}').");
+                            var unknownName = _localizer["questions.unknownName"].Value;
+                            var headerSubjectName = headerSubject?.Name ?? unknownName;
+                            var topicSubjectName = headerTopic.Subject?.Name ?? unknownName;
+                            throw new InvalidOperationException(_localizer[
+                                "questions.bulk.subjectTopicMismatch",
+                                questionSubjectId, headerSubjectName, headerTopic.Id, headerTopic.Name,
+                                headerTopic.SubjectId, topicSubjectName]);
                         }
                     }
                 }
@@ -490,8 +503,8 @@ public class QuestionService : IQuestionService
                         var missingSubtopics = normalizedSubtopicIds.Except(subtopics.Select(st => st.Id)).ToList();
                         if (missingSubtopics.Count > 0)
                         {
-                            throw new InvalidOperationException(
-                                "Geçersiz SubTopicId(ler): " + string.Join(", ", missingSubtopics));
+                            throw new InvalidOperationException(_localizer[
+                                "questions.bulk.invalidSubTopicIds", string.Join(", ", missingSubtopics)]);
                         }
 
                         var distinctTopicIds = subtopics
@@ -504,10 +517,8 @@ public class QuestionService : IQuestionService
                             var details = string.Join(", ", subtopics.Select(st =>
                                 $"SubTopic(Id={st.Id}, Name='{st.Name}') -> TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
 
-                            throw new InvalidOperationException(
-                                "Aynı question için birden fazla TopicId'ye ait SubTopic gönderildi. " +
-                                "Tüm subtopic'lerin TopicId değeri aynı olmalı. " +
-                                details);
+                            throw new InvalidOperationException(_localizer[
+                                "questions.bulk.subTopicsFromMultipleTopics", details]);
                         }
 
                         var subtopicsTopicId = distinctTopicIds[0];
@@ -518,22 +529,22 @@ public class QuestionService : IQuestionService
                             var details = string.Join(", ", subtopics.Select(st =>
                                 $"SubTopic(Id={st.Id}, Name='{st.Name}') TopicId={st.TopicId} ('{st.Topic?.Name ?? "?"}')"));
 
-                            throw new InvalidOperationException(
-                                "Header.TopicId belirtilmemiş/0 ancak SubTopic listesi var. " +
-                                $"SubTopic'lerin TopicId değeri {subtopicsTopicId}. Detay: {details}");
+                            throw new InvalidOperationException(_localizer[
+                                "questions.bulk.topicIdMissingWithSubTopics", subtopicsTopicId, details]);
                         }
 
                         var questionTopicId = soruDto.Header.TopicId.Value;
                         if (subtopicsTopicId != questionTopicId)
                         {
-                            var questionTopicName = headerTopic?.Name ?? "(bulunamadı)";
+                            var unknownName = _localizer["questions.unknownName"].Value;
+                            var questionTopicName = headerTopic?.Name ?? unknownName;
                             var subTopicExample = subtopics.First();
-                            var subTopicTopicName = subTopicExample.Topic?.Name ?? "(bulunamadı)";
+                            var subTopicTopicName = subTopicExample.Topic?.Name ?? unknownName;
 
-                            throw new InvalidOperationException(
-                                "SubTopic'nin topic'i, question üzerinde setlenen TopicId'den farklı. " +
-                                $"Question.TopicId={questionTopicId} ('{questionTopicName}'), " +
-                                $"SubTopic(Id={subTopicExample.Id}, Name='{subTopicExample.Name}') TopicId={subTopicExample.TopicId} ('{subTopicTopicName}').");
+                            throw new InvalidOperationException(_localizer[
+                                "questions.bulk.subTopicTopicMismatch",
+                                questionTopicId, questionTopicName, subTopicExample.Id,
+                                subTopicExample.Name, subTopicExample.TopicId, subTopicTopicName]);
                         }
                     }
                 }
@@ -744,7 +755,7 @@ public class QuestionService : IQuestionService
 
                         if (!isLabeling && correctLabel == null)
                         {
-                            throw new InvalidOperationException("Doğru cevap belirtilmemiş." + questionDto.Name);
+                            throw new InvalidOperationException(_localizer["questions.bulk.correctAnswerMissing", questionDto.Name]);
                         }
 
                         _context.Answers.AddRange(answers);
@@ -821,7 +832,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = true,
-                    Message = "Sorular başarıyla kaydedildi!"
+                    Message = _localizer["questions.bulk.saved"]
                 };
                 // return Ok(new { message = "Sorular başarıyla kaydedildi!" });
             }
@@ -831,7 +842,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = $"Veri kaydedilirken hata oluştu: {ex.Message}"
+                    Message = _localizer["questions.bulk.saveError", ex.Message]
                 };
             }
         }
@@ -851,7 +862,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Soru bulunamadı!"
+                    Message = _localizer["questions.notFound"]
                 };
             }
             if (string.IsNullOrEmpty(question.ImageUrl))
@@ -859,7 +870,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Soru resmi bulunamadı!"
+                    Message = _localizer["questions.image.notFound"]
                 };
             }
             // Resmi MinIO'dan indir
@@ -869,7 +880,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Soru resmi indirilemedi!"
+                    Message = _localizer["questions.image.downloadFailed"]
                 };
             }
 
@@ -880,7 +891,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Resim boyutlandırılamadı!"
+                    Message = _localizer["questions.image.resizeFailed"]
                 };
             }
 
@@ -891,7 +902,7 @@ public class QuestionService : IQuestionService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Boyutlandırılmış resim yüklenemedi!"
+                    Message = _localizer["questions.image.uploadFailed"]
                 };
             }
 
@@ -924,7 +935,7 @@ public class QuestionService : IQuestionService
             return new ResponseBaseDto
             {
                 Success = true,
-                Message = "Soru resmi başarıyla boyutlandırıldı!"
+                Message = _localizer["questions.image.resized"]
             };
         }
         catch (Exception ex)
@@ -932,7 +943,7 @@ public class QuestionService : IQuestionService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = $"Soru resmi boyutlandırılırken hata oluştu: {ex.Message}"
+                Message = _localizer["questions.image.resizeError", ex.Message]
             };
         }
     }

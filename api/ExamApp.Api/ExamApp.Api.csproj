@@ -34,6 +34,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Mesaj sözlüğü (issue #184): JSON çeviri dosyaları çıktı klasörüne kopyalanır ki
+         uygulama ContentRoot üzerinden okuyabilsin. Yeni dil = yeni <alan>.<dil>.json dosyası. -->
+    <!-- Web SDK zaten **/*.json dosyalarını Content olarak ekliyor; burada sadece kopyalama
+         davranışını güncelliyoruz (Include kullanılsaydı "duplicate item" hatası olurdu). -->
+    <Content Update="Resources\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../ExamApp.Foundation/ExamApp.Foundation.csproj" />
     <ProjectReference Include="..\..\ServiceDefaults\ExamApp.ServiceDefaults.csproj" />
   </ItemGroup>

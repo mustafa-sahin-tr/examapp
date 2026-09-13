@@ -34,6 +34,18 @@ services:
     environment:
       KC_LOG_LEVEL: DEBUG
       KEYCLOAK_SSL_REQUIRED: none
+      # start-dev caches themes/templates by default; without disabling this,
+      # edits under deploy/keycloak/keycloak-themes/my-theme (ftl/properties)
+      # require a container restart to show up instead of a page refresh.
+      KC_SPI_THEME_CACHE_THEMES: "false"
+      KC_SPI_THEME_CACHE_TEMPLATES: "false"
+      KC_SPI_THEME_STATIC_MAX_AGE: "-1"
     volumes:
-      - ./keycloak-themes/my-theme:/opt/keycloak/themes/my-theme
-      - ./keycloak-themes/import:/opt/keycloak/data/import
+      # NOTE: previously mounted the stale root-level ./keycloak-themes/my-theme
+      # (no login.ftl/template.ftl overrides, different parent theme) — that
+      # directory is a leftover/orphaned experiment and does NOT match what
+      # deploy/docker-compose.prod.yml and AppHost.cs mount. Point dev at the
+      # same source of truth as prod so login/consent/error screens are
+      # identical across environments (see local-dev.md / issue #186).
+      - ./deploy/keycloak/keycloak-themes/my-theme:/opt/keycloak/themes/my-theme
+      - ./deploy/keycloak/import:/opt/keycloak/data/import

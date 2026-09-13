@@ -4,19 +4,19 @@
 
   <div class="login-container">
     <div class="login-card">
-      <h2>Şifre Sıfırlama</h2>
+      <h2>${msg("emailForgotTitle")}</h2>
 
       <form action="${url.loginAction}" method="post">
         <div class="form-field">
-          <label for="username">E-posta adresiniz</label>
+          <label for="username">${msg("email")}</label>
           <input id="username" name="username" type="text" autofocus required />
         </div>
 
-        <button class="login-button" type="submit">Sıfırlama Bağlantısı Gönder</button>
+        <button class="login-button" type="submit">${msg("doSubmit")}</button>
       </form>
 
       <div class="actions">
-        <a href="${url.loginUrl}">Giriş Sayfasına Dön</a>
+        <a href="${url.loginUrl}">${msg("backToLogin")}</a>
       </div>
     </div>
   </div>

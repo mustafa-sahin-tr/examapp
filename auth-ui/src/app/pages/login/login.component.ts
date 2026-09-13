@@ -53,7 +53,7 @@ export class LoginComponent implements OnInit {
     if (token && this.isTokenValid(token)) {
       this.redirect('/dashboard'); // veya /dashboard gibi temiz bir path
     } else {
-      // kc_locale, Keycloak login ekranının dilini belirler (issue #186).
+      // ui_locales (standart OIDC parametresi), Keycloak login ekranının dilini belirler (issue #186).
       this.redirect(this.withLoginLocale('/oidc-login'));
     }
 
@@ -81,14 +81,17 @@ export class LoginComponent implements OnInit {
   }
 
   /**
-   * Keycloak'a giden URL'e çözümlenen dili `kc_locale` olarak ekler; mevcut query
-   * parametreleri korunur. Gateway `/oidc-login` rotasını query'lerle birlikte
-   * Keycloak auth endpoint'ine iletir (`AddQueriesToRequest: true`).
+   * Keycloak'a giden URL'e çözümlenen dili standart OIDC `ui_locales` parametresi olarak
+   * ekler; mevcut query parametreleri korunur. Gateway `/oidc-login` rotasını query'lerle
+   * birlikte Keycloak auth endpoint'ine iletir (`AddQueriesToRequest: true`).
+   *
+   * Not: Keycloak'a özel `kc_locale` bilinçli olarak kullanılmıyor — session'sız ilk
+   * `/auth` isteğinde yok sayılıyor, `ui_locales` ise ilk istekte doğru çalışıyor.
    */
   protected withLoginLocale(url: string): string {
     const [path, existingQuery = ''] = url.split('?');
     const params = new URLSearchParams(existingQuery);
-    params.set('kc_locale', this.localeHint.resolveLoginLocale());
+    params.set('ui_locales', this.localeHint.resolveLoginLocale());
     return `${path}?${params.toString()}`;
   }
 

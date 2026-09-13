@@ -81,7 +81,7 @@ export class AuthService {
         localStorage.setItem(this.avatarKey, res.profile.avatar);
         localStorage.setItem('user', JSON.stringify(res.profile));
         // Profildeki dil tercihini ana uygulamanın okuduğu anahtara yansıt, böylece bir
-        // sonraki /oidc-login doğru kc_locale ile açılır (issue #186).
+        // sonraki /oidc-login doğru ui_locales ile açılır (issue #186).
         this.localeHint.rememberPreferredLocale(res.profile.preferredLocale);
         this.isAuthenticatedSubject.next(true);
       })

@@ -40,7 +40,7 @@ describe('LoginComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('token yokken /oidc-login adresine kc_locale ile yönlendirir', () => {
+  it('token yokken /oidc-login adresine ui_locales ile yönlendirir', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'en');
 
     fixture.detectChanges();
@@ -48,10 +48,10 @@ describe('LoginComponent', () => {
     expect(redirectSpy).toHaveBeenCalledTimes(1);
     const url = new URL(redirectSpy.calls.mostRecent().args[0], 'http://localhost');
     expect(url.pathname).toBe('/oidc-login');
-    expect(url.searchParams.get('kc_locale')).toBe('en');
+    expect(url.searchParams.get('ui_locales')).toBe('en');
   });
 
-  it('mevcut query parametrelerini koruyarak kc_locale ekler', () => {
+  it('mevcut query parametrelerini koruyarak ui_locales ekler', () => {
     localStorage.setItem(LOCALE_STORAGE_KEY, 'tr');
 
     const url = new URL(
@@ -62,6 +62,6 @@ describe('LoginComponent', () => {
     );
 
     expect(url.searchParams.get('redirect_uri')).toBe('/dashboard');
-    expect(url.searchParams.get('kc_locale')).toBe('tr');
+    expect(url.searchParams.get('ui_locales')).toBe('tr');
   });
 });

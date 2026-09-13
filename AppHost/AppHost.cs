@@ -261,10 +261,16 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8081, adminUsername: keyclo
     // ("ConnectionToDownstreamServiceError: response ended prematurely").
     .WithHttpEndpoint(port: 8082, targetPort: 8080, name: "http-plain")
     // Custom login theme — docker-compose.override.yml bind-mounts the same
-    // ./keycloak-themes/my-theme directory to this exact container path.
-    // (keycloak-themes/import, also mounted there, is empty — no realm
-    // content is missed by not wiring it too.)
-    .WithBindMount("../keycloak-themes/my-theme", "/opt/keycloak/themes/my-theme")
+    // deploy/keycloak/keycloak-themes/my-theme directory to this exact
+    // container path (the root-level ./keycloak-themes/my-theme is a stale,
+    // unrelated leftover — do not point back at it, see issue #186). Theme
+    // caching is disabled the same way start-dev's KC_SPI_THEME_CACHE_*
+    // env vars do in docker-compose.override.yml, so ftl/properties edits
+    // show up on refresh without restarting the resource.
+    .WithBindMount("../deploy/keycloak/keycloak-themes/my-theme", "/opt/keycloak/themes/my-theme")
+    .WithEnvironment("KC_SPI_THEME_CACHE_THEMES", "false")
+    .WithEnvironment("KC_SPI_THEME_CACHE_TEMPLATES", "false")
+    .WithEnvironment("KC_SPI_THEME_STATIC_MAX_AGE", "-1")
     .WithDataVolume("examapp-keycloak-data")
     .WithRealmImport("../deploy/keycloak/import")
     // Own storage in the "keycloak" database on the same Postgres instance —

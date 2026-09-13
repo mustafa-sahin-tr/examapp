@@ -31,7 +31,23 @@ public class UserProfileCacheService
         };
 
         await _cache.SetStringAsync(keycloakId, json, options);
-    }    
+    }
+
+    /// <summary>
+    /// Önbellekteki profili düşürür — kullanıcı profili auth-api tarafında değiştiğinde
+    /// (örn. dil tercihi güncellemesi, issue #181) bir sonraki isteğin taze veri çekmesi için.
+    /// Kayıt yoksa no-op.
+    /// </summary>
+    public async Task RemoveAsync(string keycloakId)
+    {
+        if (string.IsNullOrEmpty(keycloakId))
+        {
+            return;
+        }
+
+        await _cache.RemoveAsync(keycloakId);
+    }
+
 
     public async Task<UserProfileDto> GetOrSetAsync(string keycloakId, Func<Task<UserProfileDto>> loader, TimeSpan? expiration = null)
     {

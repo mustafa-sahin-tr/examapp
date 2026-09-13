@@ -1,15 +1,15 @@
-<div class="education-works-area pb-140">
+<div class="education-works-area pb-140" *transloco="let t; prefix: 'landing'">
     <div class="container">
         <div class="row justify-content-center align-items-center g-4">
             <div class="col-lg-6 col-md-12">
-                <div class="education-works-image"><img src="assets/images/works/works.png" alt="image">
-                    <div class="shape"><img src="assets/images/works/shape.png" alt="image"></div>
+                <div class="education-works-image"><img src="assets/images/works/works.png" alt="">
+                    <div class="shape"><img src="assets/images/works/shape.png" alt=""></div>
                     <div class="blur-wrap"></div>
                 </div>
             </div>
             <div class="col-lg-6 col-md-12">
-                <div class="education-works-content"><span class="sub">Nasıl Çalışır?</span>
-                    <h2>Hedef Okul Nasıl Çalışır? <img src="assets/images/banner/line.png" alt="image"></h2>
+                <div class="education-works-content"><span class="sub">{{ t('howItWorks.sub') }}</span>
+                    <h2>{{ t('howItWorks.title') }} <img src="assets/images/banner/line.png" alt=""></h2>
                     <div class="items">
                         <div class="item">
                             <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -24,7 +24,7 @@
                                         stroke="white" stroke-width="1.5"></path>
                                 </svg></div>
                             <div class="lc-content">
-                                <h3>Kayıt Ol</h3><span>Öğrenci, öğretmen veya ebeveyn olarak</span>
+                                <h3>{{ t('howItWorks.register.title') }}</h3><span>{{ t('howItWorks.register.description') }}</span>
                             </div>
                         </div>
                         <div class="item wrap2">
@@ -38,7 +38,7 @@
                                         stroke="white" stroke-width="1.5" stroke-linecap="round"></path>
                                 </svg></div>
                             <div class="lc-content">
-                                <h3>Sınavı Seç veya Oluştur</h3><span>Çalışma yaprağına katıl veya kendin oluştur</span>
+                                <h3>{{ t('howItWorks.choose.title') }}</h3><span>{{ t('howItWorks.choose.description') }}</span>
                             </div>
                         </div>
                         <div class="item wrap3">
@@ -53,8 +53,7 @@
                                         stroke-linejoin="round"></path>
                                 </svg></div>
                             <div class="lc-content">
-                                <h3>Takip Et &amp; Rozet Kazan</h3><span>Gelişimini izle ve başarılarını rozetlerle
-                                    ödüllendir</span>
+                                <h3>{{ t('howItWorks.track.title') }}</h3><span>{{ t('howItWorks.track.description') }}</span>
                             </div>
                         </div>
                     </div>

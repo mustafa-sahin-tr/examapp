@@ -1,11 +1,12 @@
-<section class="services__area pb-40">
+<section class="services__area pb-40" *transloco="let t; prefix: 'landing'">
     <div class="container">
         <div class="row">
             <div class="col-xxl-6 offset-xxl-3 col-xl-6 offset-xl-3">
                 <div class="section__title-wrapper section-padding mb-60 text-center">
-                    <h2 class="section__title">Neden <span class="yellow-bg">Hedef Okul <img
-                                src="assets/images/service/yellow-bg-2.png" alt=""></span> ile öğrenmelisiniz?</h2>
-                    <p>Öğrenci, öğretmen ve ebeveynler için tasarlanmış, her ihtiyaca cevap veren bir platform.</p>
+                    <h2 class="section__title">{{ t('services.titleLead') }} <span class="yellow-bg">{{
+                            t('services.titleHighlight') }} <img src="assets/images/service/yellow-bg-2.png"
+                                alt=""></span> {{ t('services.titleTrail') }}</h2>
+                    <p>{{ t('services.description') }}</p>
                 </div>
             </div>
         </div>
@@ -35,9 +36,9 @@
                             </path>
                         </svg></div>
                     <div class="services__content">
-                        <h3 class="services__title"><a href="/about">10.000+
-                                <br> Çalışma Yaprağı</a></h3>
-                        <p>3. sınıftan 8. sınıfa kadar tüm dersler için müfredata uygun içerikler.</p><a class="link-btn-2" href="/about"><i
+                        <h3 class="services__title"><a href="/about">{{ t('services.worksheets.titleTop') }}
+                                <br> {{ t('services.worksheets.titleBottom') }}</a></h3>
+                        <p>{{ t('services.worksheets.description') }}</p><a class="link-btn-2" href="/about"><i
                                 class="far fa-arrow-right"></i><i class="far fa-arrow-right"></i></a>
                     </div>
                 </div>
@@ -62,8 +63,9 @@
                                 class="st0"></path>
                         </svg></div>
                     <div class="services__content">
-                        <h3 class="services__title"><a href="/about">Rozet &amp;<br> Ödül Sistemi</a></h3>
-                        <p>Öğrenciler tamamladıkları sınavlarda rozet kazanarak motivasyonlarını canlı tutar.</p><a class="link-btn-2" href="/about"><i
+                        <h3 class="services__title"><a href="/about">{{ t('services.badges.titleTop') }}<br> {{
+                                t('services.badges.titleBottom') }}</a></h3>
+                        <p>{{ t('services.badges.description') }}</p><a class="link-btn-2" href="/about"><i
                                 class="far fa-arrow-right"></i><i class="far fa-arrow-right"></i></a>
                     </div>
                 </div>
@@ -103,8 +105,9 @@
                             </g>
                         </svg></div>
                     <div class="services__content">
-                        <h3 class="services__title"><a href="/about">Öğretmen &amp;<br> Ebeveyn Paneli</a></h3>
-                        <p>Öğretmenler sınav oluşturur, ebeveynler çocuklarının ilerlemesini anlık takip eder.</p><a class="link-btn-2" href="/about"><i
+                        <h3 class="services__title"><a href="/about">{{ t('services.panels.titleTop') }}<br> {{
+                                t('services.panels.titleBottom') }}</a></h3>
+                        <p>{{ t('services.panels.description') }}</p><a class="link-btn-2" href="/about"><i
                                 class="far fa-arrow-right"></i><i class="far fa-arrow-right"></i></a>
                     </div>
                 </div>
@@ -120,8 +123,9 @@
                                 class="st0"></path>
                         </svg></div>
                     <div class="services__content">
-                        <h3 class="services__title"><a href="/about">YZ Destekli<br> Soru Tespiti</a></h3>
-                        <p>YOLOv8 tabanlı yapay zekâ ile fotoğraftan soru algılama ve otomatik sınav oluşturma.</p><a class="link-btn-2" href="/about"><i
+                        <h3 class="services__title"><a href="/about">{{ t('services.ai.titleTop') }}<br> {{
+                                t('services.ai.titleBottom') }}</a></h3>
+                        <p>{{ t('services.ai.description') }}</p><a class="link-btn-2" href="/about"><i
                                 class="far fa-arrow-right"></i><i class="far fa-arrow-right"></i></a>
                     </div>
                 </div>

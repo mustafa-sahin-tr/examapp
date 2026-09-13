@@ -12,6 +12,8 @@ using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace ExamApp.Api.Services.Worksheets;
@@ -27,14 +29,21 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
     private readonly IAuthApiClient _authApiClient;
     private readonly ILogger<WorksheetAccessRequestService> _logger;
 
+    // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
+    // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
+    // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
     public WorksheetAccessRequestService(
         AppDbContext context,
         IAuthApiClient authApiClient,
-        ILogger<WorksheetAccessRequestService> logger)
+        ILogger<WorksheetAccessRequestService> logger,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _authApiClient = authApiClient;
         _logger = logger;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<ResponseBaseDto> CreateRequestAsync(int worksheetId, string? note, int userId, string? userKeycloakId, bool isAdmin, CancellationToken ct = default)
@@ -47,12 +56,12 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
         if (worksheet == null ||
             !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
         {
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Worksheet bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.worksheetNotFound"] };
         }
 
         if (worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value == userId)
         {
-            return new ResponseBaseDto { Success = false, Message = "Kendi sınavınız için izin talebi oluşturamazsınız." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.ownWorksheet"] };
         }
 
         var hasGrant = await _context.WorksheetAccessGrants
@@ -60,13 +69,13 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
 
         if (WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant))
         {
-            return new ResponseBaseDto { Success = false, Message = "Bu sınavı zaten atayabilirsiniz." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.alreadyAssignable"] };
         }
 
         // Buraya kadar geldiyse PublicAssignable değil; yalnız PublicView için talep açılabilir.
         if (worksheet.TeacherSharing == WorksheetTeacherSharing.Private)
         {
-            return new ResponseBaseDto { Success = false, Message = "Bu sınav paylaşıma kapalı." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.sharingClosed"] };
         }
 
         var pendingExists = await _context.WorksheetAccessRequests
@@ -76,7 +85,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
 
         if (pendingExists)
         {
-            return new ResponseBaseDto { Success = false, Conflict = true, Message = "Bu sınav için zaten bekleyen bir talebiniz var." };
+            return new ResponseBaseDto { Success = false, Conflict = true, Message = _localizer["worksheets.accessRequest.pendingExists"] };
         }
 
         var ownerUserId = worksheet.CreateUserId ?? 0;
@@ -149,7 +158,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
             "WorksheetAccessRequest oluşturuldu. RequestId={RequestId}, WorksheetId={WorksheetId}, RequesterUserId={RequesterUserId}",
             newRequestId, worksheet.Id, userId);
 
-        return new ResponseBaseDto { Success = true, ObjectId = newRequestId, Message = "Atama izni talebiniz sahibine iletildi." };
+        return new ResponseBaseDto { Success = true, ObjectId = newRequestId, Message = _localizer["worksheets.accessRequest.created"] };
     }
 
     public async Task<List<WorksheetAccessRequestDto>> GetIncomingAsync(int ownerUserId, bool includeDecided, CancellationToken ct = default)
@@ -216,12 +225,12 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
         // Varlığı sızdırma (issue #10 deseni): kayıt yok VEYA çağıran sahibi/admin değil → aynı 404.
         if (request == null || !WorksheetAccess.CanModify(request.Worksheet?.CreateUserId, ownerUserId, isAdmin))
         {
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Talep bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.notFound"] };
         }
 
         if (request.Status != WorksheetAccessRequestStatus.Pending)
         {
-            return new ResponseBaseDto { Success = false, Message = "Bu talep zaten yanıtlanmış." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.alreadyAnswered"] };
         }
 
         var now = DateTime.UtcNow;
@@ -252,7 +261,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
         // Tek SaveChanges — status + grant + outbox aynı transaction'da.
         await _context.SaveChangesAsync(ct);
 
-        return new ResponseBaseDto { Success = true, ObjectId = request.Id, Message = "Atama izni verildi." };
+        return new ResponseBaseDto { Success = true, ObjectId = request.Id, Message = _localizer["worksheets.accessRequest.granted"] };
     }
 
     public async Task<ResponseBaseDto> RejectAsync(int requestId, int ownerUserId, bool isAdmin, CancellationToken ct = default)
@@ -263,12 +272,12 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
 
         if (request == null || !WorksheetAccess.CanModify(request.Worksheet?.CreateUserId, ownerUserId, isAdmin))
         {
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Talep bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.notFound"] };
         }
 
         if (request.Status != WorksheetAccessRequestStatus.Pending)
         {
-            return new ResponseBaseDto { Success = false, Message = "Bu talep zaten yanıtlanmış." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.alreadyAnswered"] };
         }
 
         var now = DateTime.UtcNow;
@@ -282,7 +291,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
 
         await _context.SaveChangesAsync(ct);
 
-        return new ResponseBaseDto { Success = true, ObjectId = request.Id, Message = "Talep reddedildi." };
+        return new ResponseBaseDto { Success = true, ObjectId = request.Id, Message = _localizer["worksheets.accessRequest.rejected"] };
     }
 
     public async Task<ResponseBaseDto> RevokeGrantAsync(int worksheetId, int teacherUserId, int ownerUserId, bool isAdmin, CancellationToken ct = default)
@@ -294,7 +303,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
         // Varlığı sızdırma (issue #10 deseni): worksheet yok VEYA çağıran sahibi/admin değil → aynı 404.
         if (worksheet == null || !WorksheetAccess.CanModify(worksheet.CreateUserId, ownerUserId, isAdmin))
         {
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Worksheet bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.worksheetNotFound"] };
         }
 
         var grant = await _context.WorksheetAccessGrants
@@ -304,7 +313,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
 
         if (grant == null)
         {
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Aktif bir atama izni bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.grantNotFound"] };
         }
 
         _context.SetCurrentUser(ownerUserId);
@@ -312,7 +321,7 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
 
         await _context.SaveChangesAsync(ct);
 
-        return new ResponseBaseDto { Success = true, ObjectId = grant.Id, Message = "Atama izni geri alındı." };
+        return new ResponseBaseDto { Success = true, ObjectId = grant.Id, Message = _localizer["worksheets.accessRequest.grantRevoked"] };
     }
 
     /// <summary>

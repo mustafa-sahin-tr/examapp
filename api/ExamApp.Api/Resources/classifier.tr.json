@@ -1,0 +1,10 @@
+{
+  "classifier": {
+    "cache": {
+      "apiKeyMissing": "Gemini API anahtarı yapılandırılmamış (Gemini:ApiKey).",
+      "taxonomyEmpty": "Taksonomi boş — cache oluşturulamadı.",
+      "createFailed": "Gemini cache oluşturulamadı: {0}",
+      "refreshed": "Sınıflandırma cache'i güncellendi."
+    }
+  }
+}

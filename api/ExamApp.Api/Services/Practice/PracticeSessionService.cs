@@ -6,7 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Practice;
 
@@ -23,15 +25,20 @@ public class PracticeSessionService : IPracticeSessionService
 
     private readonly AppDbContext _context;
 
-    public PracticeSessionService(AppDbContext context)
+    // Client'a ulaşan hata metinleri buradan gelir (issue #184). DI her zaman gerçek localizer'ı
+    // verir; parametre yalnızca DI'sız kurulan (birim test) senaryolar için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public PracticeSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<PracticeSessionDto> StartAsync(StudentProfileDto student, PracticeSessionStartDto request, CancellationToken ct = default)
     {
         if (!student.GradeId.HasValue)
-            throw new InvalidOperationException("Pratik yapabilmek için sınıf bilginizin tanımlı olması gerekir");
+            throw new InvalidOperationException(_localizer["practice.gradeRequired"]);
 
         var subjectIds = Normalize(request.SubjectIds);
         var topicIds = Normalize(request.TopicIds);
@@ -227,10 +234,10 @@ public class PracticeSessionService : IPracticeSessionService
 
         var psq = session.Questions.FirstOrDefault(q => q.QuestionId == dto.QuestionId);
         if (psq == null)
-            throw new InvalidOperationException("Bu soru bu oturumda gösterilmedi");
+            throw new InvalidOperationException(_localizer["practice.questionNotShown"]);
 
         if (psq.AnsweredAt != null)
-            throw new InvalidOperationException("Bu soru zaten cevaplandı");
+            throw new InvalidOperationException(_localizer["practice.questionAlreadyAnswered"]);
 
         var question = await _context.Questions
             .AsNoTracking()
@@ -239,7 +246,7 @@ public class PracticeSessionService : IPracticeSessionService
             .FirstOrDefaultAsync(ct);
 
         if (question == null)
-            throw new InvalidOperationException("Soru bulunamadı");
+            throw new InvalidOperationException(_localizer["practice.questionNotFound"]);
 
         var skipped = dto.Skipped;
         int? selectedAnswerId = null;
@@ -248,10 +255,10 @@ public class PracticeSessionService : IPracticeSessionService
         if (!skipped)
         {
             if (!dto.SelectedAnswerId.HasValue)
-                throw new InvalidOperationException("Bir şık seçilmeli ya da soru pas geçilmeli");
+                throw new InvalidOperationException(_localizer["practice.answerOrSkipRequired"]);
 
             if (!question.AnswerIds.Contains(dto.SelectedAnswerId.Value))
-                throw new InvalidOperationException("Seçilen şık bu soruya ait değil");
+                throw new InvalidOperationException(_localizer["practice.answerNotBelongToQuestion"]);
 
             selectedAnswerId = dto.SelectedAnswerId;
             isCorrect = question.CorrectAnswerId.HasValue && question.CorrectAnswerId.Value == selectedAnswerId.Value;
@@ -325,10 +332,10 @@ public class PracticeSessionService : IPracticeSessionService
             .Include(s => s.Questions)
             .FirstOrDefaultAsync(s => s.Id == sessionId && s.StudentId == studentId, ct);
 
-    private static void EnsureActive(PracticeSession session)
+    private void EnsureActive(PracticeSession session)
     {
         if (session.Status != PracticeSessionStatus.Active)
-            throw new InvalidOperationException("Bu pratik oturumu sonlandırılmış");
+            throw new InvalidOperationException(_localizer["practice.sessionAlreadyEnded"]);
     }
 
     private static List<int> Normalize(IEnumerable<int>? ids) =>

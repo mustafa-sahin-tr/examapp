@@ -38,6 +38,11 @@ Resources/<alan>.<dil>.json      →  questions.tr.json, questions.en.json, comm
 
 ## Controller'da kullanım
 
+> **Not:** Mevcut testler bazı controller ve servisleri `new XController(...)` ile doğrudan kurduğu
+> için localizer ctor parametresi **opsiyonel** tutulur:
+> `IStringLocalizer<Messages>? localizer = null` → `_localizer = localizer ?? FallbackMessageLocalizer.Instance`.
+> Fallback varsayılan dile (tr) kilitlidir; DI üzerinden gelen gerçek localizer istek kültürünü kullanır.
+
 ```csharp
 using ExamApp.Foundation.Localization;
 using Microsoft.Extensions.Localization;

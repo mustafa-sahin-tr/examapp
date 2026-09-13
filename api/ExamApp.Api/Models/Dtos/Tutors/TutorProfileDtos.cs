@@ -30,17 +30,17 @@ public class TutorProfileDto
 /// <summary>PUT /api/Teacher/tutor-profile isteği. İş kuralı validasyonu serviste (en az 1 ders, en az 1 mod, ücret &gt; 0).</summary>
 public class UpdateTutorProfileDto
 {
-    [Required(ErrorMessage = "En az bir ders seçilmelidir.")]
+    [Required(ErrorMessage = "teacher.tutorProfile.subjectsRequired")]
     public List<int> SubjectIds { get; set; } = new();
 
-    [Range(0.01, 1_000_000, ErrorMessage = "Saatlik ücret 0'dan büyük olmalıdır.")]
+    [Range(0.01, 1_000_000, ErrorMessage = "teacher.tutorProfile.hourlyRateInvalid")]
     public decimal HourlyRate { get; set; }
 
     public bool TeachesOnline { get; set; }
 
     public bool TeachesInPerson { get; set; }
 
-    [MaxLength(500, ErrorMessage = "Tanıtım metni en fazla 500 karakter olabilir.")]
+    [MaxLength(500, ErrorMessage = "teacher.tutorProfile.bioTooLong")]
     public string? Bio { get; set; }
 }
 

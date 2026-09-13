@@ -1,0 +1,88 @@
+{
+  "worksheets": {
+    "session": {
+      "accessDenied": "You do not have permission to access this test.",
+      "instanceQuestionNotFound": "Test instance question not found.",
+      "questionDataNotFound": "Question data not found for the worksheet.",
+      "answerSaved": "Answer saved successfully.",
+      "instanceNotFound": "Test instance not found.",
+      "ended": "Test ended successfully.",
+      "alreadyCompleted": "This test has already been completed."
+    },
+
+    "accessRequest": {
+      "worksheetNotFound": "Worksheet not found.",
+      "ownWorksheet": "You cannot request access to your own test.",
+      "alreadyAssignable": "You can already assign this test.",
+      "sharingClosed": "This test is not shared.",
+      "pendingExists": "You already have a pending request for this test.",
+      "notFound": "Request not found.",
+      "alreadyAnswered": "This request has already been answered.",
+      "grantNotFound": "No active assignment permission was found.",
+      "created": "Your assignment permission request has been sent to the owner.",
+      "granted": "Assignment permission granted.",
+      "rejected": "The request was rejected.",
+      "grantRevoked": "The assignment permission has been revoked."
+    },
+
+    "assignment": {
+      "targetRequired": "At least one target (student or class) must be selected.",
+      "studentAndGradeTogether": "A student and a class cannot be selected in the same assignment.",
+      "endBeforeStart": "The end time must be later than the start time.",
+      "worksheetNotFound": "Worksheet not found.",
+      "grantRequired": "To assign this test you need to request permission from its owner.",
+      "assignForbidden": "You do not have permission to assign this test.",
+      "onlyOwnStudents": "You can only assign this test to your own students.",
+      "studentNotFound": "Student not found.",
+      "gradeNotFound": "Class not found.",
+      "overlappingAssignment": "There is already an assignment in the selected range.",
+      "assigned": "The test was assigned successfully.",
+      "studentWithNumber": "Student #{0}",
+      "studentWithId": "Student {0}",
+      "unnamedGrade": "Assigned Class"
+    },
+
+    "authoring": {
+      "examInfoMissing": "Test information is missing!",
+      "bookNotSelected": "No book selected!",
+      "bookTestNotSelected": "No book test selected!",
+      "bookNotFound": "Book not found!",
+      "testNotFound": "Test not found!",
+      "editForbidden": "You do not have permission to edit this test.",
+      "updated": "The test was updated successfully!",
+      "created": "The test was saved successfully!",
+      "worksheetNotFound": "Worksheet not found.",
+      "deleted": "The worksheet was deleted successfully.",
+      "visibilityForbidden": "You do not have permission to change this worksheet's visibility.",
+      "visibilityUpdated": "Worksheet visibility updated.",
+      "deleteForbidden": "You do not have permission to delete this worksheet.",
+      "bulkCompleted": "Bulk exam creation completed",
+      "copied": "The test was copied.",
+
+      "background": {
+        "imageRequired": "Select a valid image to upload.",
+        "tooLarge": "The image size can be at most 2 MB.",
+        "unsupportedType": "Only PNG, JPEG or WEBP images can be uploaded.",
+        "worksheetNotFound": "Worksheet not found.",
+        "editForbidden": "You do not have permission to edit this worksheet.",
+        "invalidContent": "The file content is not a valid PNG, JPEG or WEBP image.",
+        "updated": "The background image has been updated."
+      }
+    },
+
+    "detail": {
+      "unclassifiedTopic": "Unclassified",
+      "sessionNotYours": "This test session does not belong to you.",
+      "sessionNotCompleted": "The test is not completed.",
+      "noWrongQuestions": "There are no incorrect answers."
+    },
+
+    "reminder": {
+      "pastDate": "A past date cannot be selected",
+      "invalidRemindBefore": "The reminder lead time must be between 0 and {0} minutes",
+      "saveFailed": "The reminder could not be saved, please try again",
+      "worksheetNotFound": "Worksheet not found",
+      "notAssigned": "This worksheet is not assigned to you"
+    }
+  }
+}

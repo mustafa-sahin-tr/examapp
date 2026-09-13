@@ -64,5 +64,10 @@
       "queued": "The reset has been queued.",
       "failed": "The reset request could not be sent. Please try again."
     }
+  },
+  "myPrograms": {
+    "addStudyPages": {
+      "title": "Add Pages for {{date}}"
+    }
   }
 }

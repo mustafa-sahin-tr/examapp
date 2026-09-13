@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoService, TranslocoTestingModule } from '@jsverse/transloco';
 
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../models/locale';
-import { LOCALE_STORAGE_KEY, LocaleService, readStoredLocale } from './locale.service';
+import { LOCALE_STORAGE_KEY, LocaleService, detectBrowserLocale, readStoredLocale } from './locale.service';
 
 /** `reloadPage` protected olduğu için test alt sınıfı üzerinden spy'lanır. */
 @Injectable()
@@ -41,8 +41,17 @@ describe('LocaleService', () => {
     return TestBed.inject(TestableLocaleService);
   }
 
+  /**
+   * Karma tarayicisinin gercek dili (genelde en-US) testleri etkilemesin diye
+   * navigator.languages sabitlenir; tarayici dili senaryolari bunu kendi icinde degistirir.
+   */
+  function stubNavigatorLanguages(languages: readonly string[]): void {
+    Object.defineProperty(window.navigator, 'languages', { value: languages, configurable: true });
+  }
+
   beforeEach(() => {
     localStorage.removeItem(LOCALE_STORAGE_KEY);
+    stubNavigatorLanguages(['tr-TR', 'tr']);
   });
 
   afterEach(() => {
@@ -141,6 +150,81 @@ describe('LocaleService', () => {
     expect(service.locale()).toBe('en');
     expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull();
     expect(service.reloadCallCount).toBe(0);
+  });
+
+  it('locale_NoStoredPreferenceButBrowserSpeaksEnglish_UsesBrowserLanguage', () => {
+    stubNavigatorLanguages(['en-GB', 'de-DE']);
+    configure();
+
+    const service = createService();
+
+    expect(service.locale()).toBe('en');
+    // Otomatik tespit kalici degildir: kullanici acikca secene kadar tarayici dilini takip eder.
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull();
+  });
+
+  it('locale_StoredPreferenceWinsOverBrowserLanguage', () => {
+    localStorage.setItem(LOCALE_STORAGE_KEY, 'tr');
+    stubNavigatorLanguages(['en-US']);
+    configure();
+
+    expect(createService().locale()).toBe('tr');
+  });
+
+  it('detectBrowserLocale_NoSupportedLanguage_ReturnsDefaultLocale', () => {
+    expect(detectBrowserLocale(['de-DE', 'fr'])).toBe(DEFAULT_LOCALE);
+  });
+
+  it('detectBrowserLocale_RegionalTag_MapsToBaseLanguage', () => {
+    expect(detectBrowserLocale(['en-GB'])).toBe('en');
+    expect(detectBrowserLocale(['tr-TR'])).toBe('tr');
+  });
+
+  it('detectBrowserLocale_NoLanguages_ReturnsDefaultLocale', () => {
+    expect(detectBrowserLocale([])).toBe(DEFAULT_LOCALE);
+  });
+
+  it('syncFromProfile_ProfileLocaleDiffersFromActive_AppliesIt', () => {
+    configure();
+    const service = createService();
+
+    service.syncFromProfile('en');
+
+    expect(service.locale()).toBe('en');
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en');
+    expect(service.reloadCallCount).toBe(1);
+  });
+
+  it('syncFromProfile_ProfileLocaleMatchesActive_DoesNothing', () => {
+    configure();
+    const service = createService();
+
+    service.syncFromProfile(DEFAULT_LOCALE);
+
+    expect(service.reloadCallCount).toBe(0);
+    expect(localStorage.getItem(LOCALE_STORAGE_KEY)).toBeNull();
+  });
+
+  it('syncFromProfile_ProfileLocaleIsUnknownOrEmpty_DoesNothing', () => {
+    configure();
+    const service = createService();
+
+    service.syncFromProfile('klingon');
+    service.syncFromProfile(null);
+    service.syncFromProfile(undefined);
+
+    expect(service.locale()).toBe(DEFAULT_LOCALE);
+    expect(service.reloadCallCount).toBe(0);
+  });
+
+  it('syncFromProfile_CalledTwiceWithSameValue_ReloadsOnlyOnce', () => {
+    configure();
+    const service = createService();
+
+    service.syncFromProfile('en');
+    service.syncFromProfile('en');
+
+    expect(service.reloadCallCount).toBe(1);
   });
 
   it('readStoredLocale_NotBrowser_ReturnsDefaultLocaleWithoutReadingStorage', () => {

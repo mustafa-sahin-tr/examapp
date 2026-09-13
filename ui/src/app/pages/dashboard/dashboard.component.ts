@@ -355,11 +355,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const date = extra.date ? new Date(extra.date) : new Date();
     const dateLabel = extra.label ?? date.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
     const duration = this.formatDuration(extra.totalTimeSeconds ?? 0);
-    const labels = this.transloco.translateObject<Record<string, string>>('dashboard.tooltip');
+    const questionsLabel = this.transloco.translate('dashboard.tooltip.questions');
+    const correctLabel = this.transloco.translate('dashboard.tooltip.correct');
+    const durationLabel = this.transloco.translate('dashboard.tooltip.duration');
+    const activityScoreLabel = this.transloco.translate('dashboard.tooltip.activityScore');
 
-    return `${dateLabel}\n${labels['questions']}: ${extra.questionCount ?? 0}\n${labels['correct']}: ${
+    return `${dateLabel}\n${questionsLabel}: ${extra.questionCount ?? 0}\n${correctLabel}: ${
       extra.correctCount ?? 0
-    }\n${labels['duration']}: ${duration}\n${labels['activityScore']}: ${cell?.value ?? 0}`;
+    }\n${durationLabel}: ${duration}\n${activityScoreLabel}: ${cell?.value ?? 0}`;
   };
 
   private mapToTest(assignment: AssignedWorksheet): Test {

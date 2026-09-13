@@ -64,5 +64,10 @@
       "queued": "Sıfırlama işlemi kuyruğa alındı.",
       "failed": "Sıfırlama isteği gönderilemedi. Lütfen tekrar deneyin."
     }
+  },
+  "myPrograms": {
+    "addStudyPages": {
+      "title": "{{date}} için Sayfa Ekle"
+    }
   }
 }

@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { FormsModule } from '@angular/forms';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { StudyPage } from '../../models/study-page';
 
 export interface AddStudyPagesDialogData {
@@ -34,6 +35,7 @@ export interface AddStudyPagesDialogResult {
     MatInputModule,
     MatDatepickerModule,
     FormsModule,
+    TranslocoPipe,
   ],
   templateUrl: './add-study-pages-dialog.component.html',
   styleUrls: ['./add-study-pages-dialog.component.scss'],

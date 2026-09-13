@@ -1,9 +1,11 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 
 import { AppLocale, DEFAULT_LOCALE, SUPPORTED_LOCALES, SUPPORTED_LOCALE_CODES } from '../../../models/locale';
 import { LocaleService } from '../../../services/locale.service';
+import { LocalePreferenceService } from '../../../services/locale-preference.service';
 import { LanguageSwitcherComponent } from './language-switcher.component';
 import trTranslations from '../../../../../public/i18n/tr.json';
 
@@ -20,11 +22,16 @@ describe('LanguageSwitcherComponent', () => {
   let component: LanguageSwitcherComponent;
   let fixture: ComponentFixture<LanguageSwitcherComponent>;
   let localeServiceSpy: jasmine.SpyObj<LocaleService>;
+  let localePreferenceSpy: jasmine.SpyObj<LocalePreferenceService>;
   let localeSignal: ReturnType<typeof signal<AppLocale>>;
 
   beforeEach(async () => {
     localeSignal = signal<AppLocale>('tr');
     localeServiceSpy = jasmine.createSpyObj<LocaleService>('LocaleService', ['setLocale']);
+    localePreferenceSpy = jasmine.createSpyObj<LocalePreferenceService>('LocalePreferenceService', [
+      'persistPreference',
+    ]);
+    localePreferenceSpy.persistPreference.and.returnValue(of(undefined));
     Object.defineProperty(localeServiceSpy, 'locale', { value: localeSignal.asReadonly() });
     Object.defineProperty(localeServiceSpy, 'localeDefinition', {
       value: signal(SUPPORTED_LOCALES[0]).asReadonly(),
@@ -32,7 +39,10 @@ describe('LanguageSwitcherComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [LanguageSwitcherComponent, translocoTesting],
-      providers: [{ provide: LocaleService, useValue: localeServiceSpy }],
+      providers: [
+        { provide: LocaleService, useValue: localeServiceSpy },
+        { provide: LocalePreferenceService, useValue: localePreferenceSpy },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LanguageSwitcherComponent);
@@ -57,10 +67,12 @@ describe('LanguageSwitcherComponent', () => {
     expect(component.isActive('en')).toBeFalse();
   });
 
-  it('selectLocale_Called_DelegatesToLocaleService', () => {
+  it('selectLocale_Called_PersistsPreferenceToProfile', () => {
     component.selectLocale('en');
 
-    expect(localeServiceSpy.setLocale).toHaveBeenCalledOnceWith('en');
+    expect(localePreferenceSpy.persistPreference).toHaveBeenCalledOnceWith('en');
+    // Dili uygulamak LocalePreferenceService'in isi; komponent dogrudan setLocale cagirmaz.
+    expect(localeServiceSpy.setLocale).not.toHaveBeenCalled();
   });
 
   it('trigger_Rendered_UsesTranslatedTooltipAndAriaLabel', () => {
@@ -93,6 +105,6 @@ describe('LanguageSwitcherComponent', () => {
     );
     items[1].click();
 
-    expect(localeServiceSpy.setLocale).toHaveBeenCalledOnceWith('en');
+    expect(localePreferenceSpy.persistPreference).toHaveBeenCalledOnceWith('en');
   });
 });

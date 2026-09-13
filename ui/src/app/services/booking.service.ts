@@ -1,5 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
 import { Observable } from 'rxjs';
 import {
   AvailabilitySlotListResult,
@@ -23,6 +24,7 @@ const DEFAULT_TAKE = 100;
 @Injectable({ providedIn: 'root' })
 export class BookingService {
   private readonly http = inject(HttpClient);
+  private readonly transloco = inject(TranslocoService);
   private readonly baseUrl = '/api/exam/booking';
 
   // ---------------- Müsaitlik slotları (öğretmen) ----------------
@@ -99,15 +101,19 @@ export class BookingService {
       return body.message;
     }
     if (err.status === 409) {
-      return 'Bu zaman aralığı için zaten bir randevu var.';
+      return this.t('common.errors.bookingConflict');
     }
     if (err.status === 403) {
-      return 'Bu işlem için yetkiniz yok.';
+      return this.t('common.errors.forbidden');
     }
     if (err.status === 404) {
-      return 'Kayıt bulunamadı.';
+      return this.t('common.errors.notFound');
     }
     return fallback;
+  }
+
+  private t(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
   }
 
   private page(skip: number, take: number): HttpParams {

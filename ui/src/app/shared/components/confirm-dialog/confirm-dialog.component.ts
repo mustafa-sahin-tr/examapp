@@ -3,6 +3,7 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 export interface ConfirmDialogData {
   title: string;
@@ -34,10 +35,10 @@ export interface ConfirmDialogData {
 
       <mat-dialog-actions class="dialog-actions">
         <button mat-stroked-button (click)="onCancel()" class="cancel-btn">
-          {{ data.cancelText || 'İptal' }}
+          {{ data.cancelText || ('common.cancel' | transloco) }}
         </button>
         <button mat-raised-button [color]="data.confirmColor || 'warn'" (click)="onConfirm()" class="confirm-btn">
-          {{ data.confirmText || 'Onayla' }}
+          {{ data.confirmText || ('common.confirm' | transloco) }}
         </button>
       </mat-dialog-actions>
     </div>
@@ -262,7 +263,7 @@ export interface ConfirmDialogData {
     `,
   ],
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, TranslocoPipe],
 })
 export class ConfirmDialogComponent {
   constructor(

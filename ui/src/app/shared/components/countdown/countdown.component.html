@@ -48,7 +48,7 @@
       <span class="timer-value">{{ formattedSeconds }}</span>
     </div>
     <div *ngIf="showLabel" class="timer-status">
-        {{ timerStatusPosition === 'left' ? '' : '&nbsp;' }} {{ isTimeUp ? timeUpMessage : label }} {{ timerStatusPosition === 'right' ? '&nbsp;' : '' }}
+        {{ timerStatusPosition === 'left' ? '' : '&nbsp;' }} {{ statusText }} {{ timerStatusPosition === 'right' ? '&nbsp;' : '' }}
     </div>
   </div>
   

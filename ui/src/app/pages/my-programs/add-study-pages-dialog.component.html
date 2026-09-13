@@ -1,63 +1,76 @@
-<h2 mat-dialog-title>
-  <span *ngIf="!selectedDate">Programa Sayfa Ekle</span>
-  <span *ngIf="selectedDate">{{
-    'myPrograms.addStudyPages.title' | transloco: { date: selectedDate | date: 'd MMMM y' }
-  }}</span>
-</h2>
+<ng-container *transloco="let t; prefix: 'my-programs'">
+  <h2 mat-dialog-title>
+    @if (selectedDate) {
+      {{ t('addStudyPages.title', { date: selectedDate | date: 'd MMMM y' }) }}
+    } @else {
+      {{ t('addStudyPages.titleWithoutDate') }}
+    }
+  </h2>
 
-<mat-dialog-content>
-  <div *ngIf="studyPages.length === 0" class="no-pages-message">
-    <mat-icon>info</mat-icon>
-    <p>Henüz hiç study-page oluşturmadınız. Önce study-page editor'dan sayfa oluşturun.</p>
-  </div>
-
-  <div class="study-pages-grid" *ngIf="studyPages.length > 0">
-    <mat-card
-      *ngFor="let page of studyPages; trackBy: trackByPageId"
-      class="study-page-card"
-      [class.selected]="page.selected"
-      (click)="togglePageSelection(page)"
-    >
-      <div class="card-checkbox">
-        <mat-checkbox
-          [(ngModel)]="page.selected"
-          (ngModelChange)="onCheckboxChange(page)"
-          (click)="$event.stopPropagation()"
-        ></mat-checkbox>
+  <mat-dialog-content>
+    @if (studyPages.length === 0) {
+      <div class="no-pages-message">
+        <mat-icon>info</mat-icon>
+        <p>{{ t('addStudyPages.noPages') }}</p>
       </div>
-      <div class="card-media" [style.background-image]="page.coverImageUrl ? 'url(' + page.coverImageUrl + ')' : ''">
-        <div class="media-overlay" *ngIf="!page.coverImageUrl">
-          <mat-icon>image</mat-icon>
-          <span>Resim Yok</span>
-        </div>
-      </div>
-      <mat-card-content>
-        <h3 class="card-title">{{ page.title }}</h3>
-        <p class="card-description">{{ page.description || 'Aciklama yok' }}</p>
-        <div class="card-meta">
-          <span><mat-icon>photo_library</mat-icon>{{ page.imageCount }} sayfa</span>
-        </div>
-      </mat-card-content>
+    } @else {
+      <div class="study-pages-grid">
+        @for (page of studyPages; track page.id) {
+          <mat-card class="study-page-card" [class.selected]="page.selected" (click)="togglePageSelection(page)">
+            <div class="card-checkbox">
+              <mat-checkbox
+                [(ngModel)]="page.selected"
+                (ngModelChange)="onCheckboxChange(page)"
+                (click)="$event.stopPropagation()"
+              ></mat-checkbox>
+            </div>
+            <div
+              class="card-media"
+              [style.background-image]="page.coverImageUrl ? 'url(' + page.coverImageUrl + ')' : ''"
+            >
+              @if (!page.coverImageUrl) {
+                <div class="media-overlay">
+                  <mat-icon>image</mat-icon>
+                  <span>{{ t('addStudyPages.noImage') }}</span>
+                </div>
+              }
+            </div>
+            <mat-card-content>
+              <h3 class="card-title">{{ page.title }}</h3>
+              <p class="card-description">{{ page.description || t('addStudyPages.noDescription') }}</p>
+              <div class="card-meta">
+                <span
+                  ><mat-icon>photo_library</mat-icon>{{ t('addStudyPages.pageCount', { count: page.imageCount }) }}</span
+                >
+              </div>
+            </mat-card-content>
 
-      <div class="study-page-date-fields" *ngIf="page.selected" (click)="$event.stopPropagation()">
-        <mat-form-field appearance="outline" class="date-field">
-          <mat-label>Baslangic</mat-label>
-          <input matInput [matDatepicker]="picker1" [(ngModel)]="page.startDate" />
-          <mat-datepicker-toggle matIconSuffix [for]="picker1"></mat-datepicker-toggle>
-          <mat-datepicker #picker1></mat-datepicker>
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="date-field">
-          <mat-label>Bitis</mat-label>
-          <input matInput [matDatepicker]="picker2" [(ngModel)]="page.endDate" />
-          <mat-datepicker-toggle matIconSuffix [for]="picker2"></mat-datepicker-toggle>
-          <mat-datepicker #picker2></mat-datepicker>
-        </mat-form-field>
+            @if (page.selected) {
+              <div class="study-page-date-fields" (click)="$event.stopPropagation()">
+                <mat-form-field appearance="outline" class="date-field">
+                  <mat-label>{{ t('addStudyPages.startDate') }}</mat-label>
+                  <input matInput [matDatepicker]="picker1" [(ngModel)]="page.startDate" />
+                  <mat-datepicker-toggle matIconSuffix [for]="picker1"></mat-datepicker-toggle>
+                  <mat-datepicker #picker1></mat-datepicker>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="date-field">
+                  <mat-label>{{ t('addStudyPages.endDate') }}</mat-label>
+                  <input matInput [matDatepicker]="picker2" [(ngModel)]="page.endDate" />
+                  <mat-datepicker-toggle matIconSuffix [for]="picker2"></mat-datepicker-toggle>
+                  <mat-datepicker #picker2></mat-datepicker>
+                </mat-form-field>
+              </div>
+            }
+          </mat-card>
+        }
       </div>
-    </mat-card>
-  </div>
-</mat-dialog-content>
+    }
+  </mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button mat-button (click)="onCancel()">Vazgeç</button>
-  <button mat-flat-button color="primary" (click)="onSave()" [disabled]="!hasValidSelections">Kaydet</button>
-</mat-dialog-actions>
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()">{{ t('actions.cancel') }}</button>
+    <button mat-flat-button color="primary" (click)="onSave()" [disabled]="!hasValidSelections">
+      {{ t('actions.save') }}
+    </button>
+  </mat-dialog-actions>
+</ng-container>

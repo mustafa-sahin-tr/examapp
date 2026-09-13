@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,25 +11,20 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { finalize, take } from 'rxjs';
 import { AvailabilitySlot } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
-import {
-  formatSlotDay,
-  formatSlotRange,
-  isPastSlot,
-  parseMinutes,
-  toDateOnly,
-  toTimeOnly,
-} from '../../shared/utils/booking-format.util';
+import { isPastSlot, parseMinutes, toDateOnly, toTimeOnly } from '../../shared/utils/booking-format.util';
 
 /** Listede tek satır — slotun türetilmiş gösterim alanlarıyla. */
 interface SlotRow {
   slot: AvailabilitySlot;
-  day: string;
-  range: string;
   past: boolean;
-  statusLabel: string;
+  /** Scope'a göreli çeviri anahtarı; şablonda `t()` ile çözülür. */
+  statusKey: string;
+  /** " · Ayşe" gibi dile bağlı olmayan öğrenci eki; boşsa gösterilmez. */
+  studentSuffix: string;
   statusClass: 'is-free' | 'is-pending' | 'is-approved';
   /** Aktif randevusu olan slot silinemez (backend de engeller). */
   deletable: boolean;
@@ -38,11 +34,17 @@ interface SlotRow {
  * Öğretmenin müsaitlik takvimi (issue #96): yeni aralık tanımlama + mevcut aralıkların
  * randevu durumuyla listesi. Silme yalnızca aktif randevusu olmayan aralıklarda açıktır.
  * Gelen randevu talepleri ayrı sayfada (`/booking-requests`).
+ *
+ * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-availability/<lang>.json` (issue #183).
+ * Tarih/saat gösterimi `date` pipe'ı üzerinden aktif `LOCALE_ID`'ye bağlıdır.
  */
+const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
+
 @Component({
   selector: 'app-teacher-availability',
   standalone: true,
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
@@ -51,7 +53,10 @@ interface SlotRow {
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(TEACHER_AVAILABILITY_SCOPE)],
   templateUrl: './teacher-availability.component.html',
   styleUrls: ['./teacher-availability.component.scss'],
 })
@@ -60,6 +65,7 @@ export class TeacherAvailabilityComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -87,6 +93,10 @@ export class TeacherAvailabilityComponent implements OnInit {
 
   protected readonly isEmpty = computed(() => !this.loading() && !this.error() && this.slots().length === 0);
 
+  constructor() {
+    this.preloadScope();
+  }
+
   ngOnInit(): void {
     this.load();
   }
@@ -103,7 +113,7 @@ export class TeacherAvailabilityComponent implements OnInit {
       .subscribe({
         next: (res) => this.slots.set(res.items ?? []),
         error: (err: HttpErrorResponse) =>
-          this.error.set(this.bookingService.extractError(err, 'Müsaitlik aralıkları yüklenemedi.')),
+          this.error.set(this.bookingService.extractError(err, this.text('messages.loadFailed'))),
       });
   }
 
@@ -118,11 +128,11 @@ export class TeacherAvailabilityComponent implements OnInit {
     const start = parseMinutes(startTime);
     const end = parseMinutes(endTime);
     if (start === null || end === null) {
-      this.timeRangeError.set('Saatleri SS:DD biçiminde girin.');
+      this.timeRangeError.set(this.text('form.invalidTimeFormat'));
       return;
     }
     if (end <= start) {
-      this.timeRangeError.set('Bitiş saati başlangıçtan sonra olmalı.');
+      this.timeRangeError.set(this.text('form.endBeforeStart'));
       return;
     }
     if (!date) {
@@ -139,17 +149,21 @@ export class TeacherAvailabilityComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (res?.success === false) {
-            this.snackBar.open(res.message || 'Aralık eklenemedi.', 'Tamam', { duration: 4000 });
+            this.snackBar.open(res.message || this.text('messages.addFailed'), this.text('messages.ok'), {
+              duration: 4000,
+            });
             return;
           }
-          this.snackBar.open('Müsaitlik aralığı eklendi.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.text('messages.added'), this.text('messages.ok'), { duration: 3000 });
           this.form.reset({ date: null, startTime: '', endTime: '' });
           this.load();
         },
         error: (err: HttpErrorResponse) => {
-          this.snackBar.open(this.bookingService.extractError(err, 'Aralık eklenemedi.'), 'Tamam', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.bookingService.extractError(err, this.text('messages.addFailed')),
+            this.text('messages.ok'),
+            { duration: 4000 },
+          );
         },
       });
   }
@@ -167,40 +181,58 @@ export class TeacherAvailabilityComponent implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.snackBar.open('Müsaitlik aralığı silindi.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.text('messages.deleted'), this.text('messages.ok'), { duration: 3000 });
           this.slots.update((items) => items.filter((s) => s.id !== row.slot.id));
         },
         error: (err: HttpErrorResponse) => {
-          this.snackBar.open(this.bookingService.extractError(err, 'Aralık silinemedi.'), 'Tamam', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.bookingService.extractError(err, this.text('messages.deleteFailed')),
+            this.text('messages.ok'),
+            { duration: 4000 },
+          );
         },
       });
   }
 
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string): string {
+    return this.transloco.translate<string>(`${TEACHER_AVAILABILITY_SCOPE}.${key}`) ?? '';
+  }
+
   private toRow(slot: AvailabilitySlot): SlotRow {
-    const student = slot.studentName ? ` · ${slot.studentName}` : '';
-    let statusLabel = 'Boş';
+    const studentSuffix = slot.studentName ? ` · ${slot.studentName}` : '';
+    let statusKey = 'status.free';
     let statusClass: SlotRow['statusClass'] = 'is-free';
 
     if (slot.isBooked) {
       if (slot.bookingStatus === 'Approved') {
-        statusLabel = `Onaylı randevu${student}`;
+        statusKey = 'status.approved';
         statusClass = 'is-approved';
       } else {
-        statusLabel = `Bekleyen talep${student}`;
+        statusKey = 'status.pending';
         statusClass = 'is-pending';
       }
     }
 
     return {
       slot,
-      day: formatSlotDay(slot.startUtc),
-      range: formatSlotRange(slot.startUtc, slot.endUtc),
       past: isPastSlot(slot.startUtc),
-      statusLabel,
+      statusKey,
+      studentSuffix: slot.isBooked ? studentSuffix : '',
       statusClass,
       deletable: !slot.isBooked,
     };
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${TEACHER_AVAILABILITY_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

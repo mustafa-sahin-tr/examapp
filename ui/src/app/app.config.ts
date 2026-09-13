@@ -69,6 +69,10 @@ export const appConfig: ApplicationConfig = {
         fallbackLang: SUPPORTED_LOCALE_CODES[0],
         reRenderOnLangChange: true,
         prodMode: !isDevMode(),
+        // Scope öneki klasör adıyla birebir aynı kalsın (issue #183). Varsayılan davranışta Transloco
+        // scope adını camelCase'e çevirir (`test-solve` → `testSolve`); önek uyuşmazlığı hata
+        // fırlatmadığı için ekranda ham anahtar görünür — sessiz hata.
+        scopes: { keepCasing: true },
       },
       loader: TranslocoHttpLoader,
     }),

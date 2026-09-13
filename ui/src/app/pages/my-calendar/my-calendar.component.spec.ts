@@ -9,6 +9,15 @@ import { TestService } from '../../services/test.service';
 import { CalendarDayDialogComponent } from '../../shared/components/calendar-day-dialog/calendar-day-dialog.component';
 import { CalendarEvent } from '../../models/calendar-event';
 
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import myCalendarTr from '../../../../public/i18n/my-calendar/tr.json';
+
+/**
+ * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
+ * sahte ceviri kullanilmaz - boylece bir anahtar bozulursa test kirilir.
+ */
+const translocoTesting = translocoTestingModule({ langs: { 'my-calendar/tr': myCalendarTr } });
+
 function makeEvent(overrides: Partial<CalendarEvent> & { date: string; worksheetId: number }): CalendarEvent {
   return {
     kind: 'assignment-deadline',
@@ -38,7 +47,7 @@ describe('MyCalendarComponent', () => {
     bottomSheet = jasmine.createSpyObj<MatBottomSheet>('MatBottomSheet', ['open']);
 
     TestBed.configureTestingModule({
-      imports: [MyCalendarComponent],
+      imports: [MyCalendarComponent, translocoTesting],
       providers: [
         { provide: TestService, useValue: testService },
         { provide: Router, useValue: router },

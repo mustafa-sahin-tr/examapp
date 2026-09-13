@@ -26,13 +26,29 @@ function region(name: string, answers: any[] = []) {
   };
 }
 
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
+import imageSelectorTr from '../../../../public/i18n/image-selector/tr.json';
+
+/** Gercek sozluk yuklenir; anahtar bozulursa test kirilir (issue #183). */
+const translocoTesting = TranslocoTestingModule.forRoot({
+  langs: { 'image-selector/tr': imageSelectorTr },
+  translocoConfig: {
+    availableLangs: [...SUPPORTED_LOCALE_CODES],
+    defaultLang: DEFAULT_LOCALE,
+    // Uygulama config'i ile ayni: scope oneki klasor adiyla birebir ayni kalsin (issue #183).
+    scopes: { keepCasing: true },
+  },
+  preloadLangs: true,
+});
+
 describe('ImageSelectorComponent', () => {
   let component: ImageSelectorComponent;
   let fixture: ComponentFixture<ImageSelectorComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ImageSelectorComponent],
+      imports: [ImageSelectorComponent, translocoTesting],
       providers: [provideHttpClient(), provideHttpClientTesting()],
     })
     .compileComponents();

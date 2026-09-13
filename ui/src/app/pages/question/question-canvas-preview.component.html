@@ -1,18 +1,24 @@
-<div class="preview-page">
+<div class="preview-page" *transloco="let t; prefix: 'question'">
   <header class="preview-topbar">
     <button type="button" class="pv-btn pv-btn--ghost" (click)="closePreview()">
-      <mat-icon>arrow_back</mat-icon>Tuvale dön
+      <mat-icon>arrow_back</mat-icon>{{ t('common.backToCanvas') }}
     </button>
 
     <div class="preview-topbar__title">
-      <span class="pv-heading">Ön İzleme@if (testName()) { — {{ testName() }} }</span>
+      <span class="pv-heading">
+        @if (testName()) {
+        {{ t('preview.headingWithTest', { testName: testName() }) }}
+        } @else {
+        {{ t('common.previewTitle') }}
+        }
+      </span>
       <span class="pv-meta">
-        {{ questionCount }} soru · {{ exampleCount }} örnek · {{ passageCount }} pasaj
+        {{ t('preview.summary', { questions: questionCount, examples: exampleCount, passages: passageCount }) }}
       </span>
     </div>
 
     <button type="button" class="pv-btn pv-btn--primary" (click)="exitPreview()">
-      <mat-icon>close</mat-icon>Önizlemeden Çık
+      <mat-icon>close</mat-icon>{{ t('preview.exit') }}
     </button>
   </header>
 

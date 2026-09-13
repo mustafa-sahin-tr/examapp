@@ -9,6 +9,8 @@ import { CalendarEvent } from '../../../models/calendar-event';
 import { UserProgram } from '../../../models/program.interfaces';
 import { ProgramService } from '../../../services/program.service';
 import { AuthService } from '../../../services/auth.service';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { activeIntlLocale } from '../../utils/active-locale.util';
 import { formatFullDate } from '../../utils/calendar-month.util';
 
 /** Girdi: bir günün tarihi + o güne düşen etkinlikler. */
@@ -27,6 +29,7 @@ type DayEventVariant =
   | 'booking';
 
 interface DayEventAction {
+  /** Çevrilmiş buton metni. */
   label: string;
   icon: string;
   /** Gezinme yapar; önce dialog/bottom-sheet kapatılır. */
@@ -59,15 +62,17 @@ const VARIANT_ICON: Record<DayEventVariant, string> = {
   booking: 'cast_for_education',
 };
 
-const TIME_FMT = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
-const DEADLINE_FMT = new Intl.DateTimeFormat('tr-TR', {
+/** Biçimlendiriciler aktif dile bağlıdır (issue #183); dil değişince sayfa yeniden yüklenir. */
+const INTL_LOCALE = activeIntlLocale();
+const TIME_FMT = new Intl.DateTimeFormat(INTL_LOCALE, { hour: '2-digit', minute: '2-digit' });
+const DEADLINE_FMT = new Intl.DateTimeFormat(INTL_LOCALE, {
   day: 'numeric',
   month: 'long',
   hour: '2-digit',
   minute: '2-digit',
 });
-const RANGE_FMT = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short' });
-const WEEKDAY_FMT = new Intl.DateTimeFormat('tr-TR', { weekday: 'long' });
+const RANGE_FMT = new Intl.DateTimeFormat(INTL_LOCALE, { day: 'numeric', month: 'short' });
+const WEEKDAY_FMT = new Intl.DateTimeFormat(INTL_LOCALE, { weekday: 'long' });
 
 /**
  * Bir günün etkinliklerini özet gösteren görünüm (issue #39). Hem `MatDialog`
@@ -82,7 +87,7 @@ const WEEKDAY_FMT = new Intl.DateTimeFormat('tr-TR', { weekday: 'long' });
 @Component({
   selector: 'app-calendar-day-dialog',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, TranslocoDirective],
   templateUrl: './calendar-day-dialog.component.html',
   styleUrls: ['./calendar-day-dialog.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -93,6 +98,7 @@ export class CalendarDayDialogComponent {
   /** Randevu satırının hedefi role göre değişir (öğretmen gelen kutusu / öğrenci listesi). */
   private readonly isTeacher = inject(AuthService).hasRealmRole('Teacher');
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
   private readonly dialogRef = inject<MatDialogRef<CalendarDayDialogComponent>>(MatDialogRef, { optional: true });
   private readonly sheetRef = inject<MatBottomSheetRef<CalendarDayDialogComponent>>(MatBottomSheetRef, {
     optional: true,
@@ -163,7 +169,7 @@ export class CalendarDayDialogComponent {
   private applyProgress(programId: number, program: UserProgram): void {
     const completed = program.completedPageCount ?? 0;
     const total = program.totalPageCount ?? 0;
-    const progress = `${completed}/${total} sayfa tamamlandı`;
+    const progress = this.t('shared.calendarDayDialog.pagesCompleted', { completed, total });
     this.rows.update((rows) =>
       rows.map((row) =>
         row.programId === programId ? { ...row, meta: this.metaLine([row.meta, progress]) } : row,
@@ -184,14 +190,14 @@ export class CalendarDayDialogComponent {
         time,
         variant: 'booking',
         icon: VARIANT_ICON['booking'],
-        title: ev.worksheetTitle || 'Ders randevusu',
-        meta: this.metaLine([range, 'Onaylı randevu']),
+        title: ev.worksheetTitle || this.t('shared.calendar.variant.booking'),
+        meta: this.metaLine([range, this.t('shared.calendarDayDialog.bookingConfirmed')]),
         sunk: time < Date.now(),
         sunkLabel: null,
         sunkIcon: null,
         actions: [
           {
-            label: 'Randevularıma git',
+            label: this.t('shared.calendarDayDialog.goToBookings'),
             icon: 'event_available',
             run: () => {
               this.close();
@@ -213,14 +219,20 @@ export class CalendarDayDialogComponent {
         time,
         variant,
         icon: VARIANT_ICON[variant],
-        title: ev.studyPageTitle || 'Çalışma planı',
+        title: ev.studyPageTitle || this.t('shared.calendar.variant.programPlan'),
         meta: this.metaLine([ev.programName, range]),
         sunk: done,
-        sunkLabel: done ? 'Tamamlandı' : null,
+        sunkLabel: done ? this.t('shared.calendarDayDialog.completed') : null,
         sunkIcon: done ? 'check_circle' : null,
         actions:
           programId !== null
-            ? [{ label: 'Programa git', icon: 'menu_book', run: () => this.navigateToProgram(programId) }]
+            ? [
+                {
+                  label: this.t('shared.calendarDayDialog.goToProgram'),
+                  icon: 'menu_book',
+                  run: () => this.navigateToProgram(programId),
+                },
+              ]
             : [],
         programId,
       };
@@ -236,12 +248,16 @@ export class CalendarDayDialogComponent {
         title: ev.worksheetTitle,
         meta: this.metaLine([ev.subject, TIME_FMT.format(at), ev.teacherName]),
         sunk: sent,
-        sunkLabel: sent ? 'Gönderildi' : null,
+        sunkLabel: sent ? this.t('shared.calendarDayDialog.sent') : null,
         sunkIcon: sent ? 'notifications_off' : null,
         actions: [
-          { label: 'Detaya git', icon: 'open_in_new', run: () => this.navigate(ev.worksheetId) },
           {
-            label: 'Hatırlatıcıyı düzenle',
+            label: this.t('shared.calendarDayDialog.goToDetail'),
+            icon: 'open_in_new',
+            run: () => this.navigate(ev.worksheetId),
+          },
+          {
+            label: this.t('shared.calendarDayDialog.editReminder'),
             icon: 'edit',
             run: () => this.navigate(ev.worksheetId, { reminder: 'edit' }),
           },
@@ -257,14 +273,26 @@ export class CalendarDayDialogComponent {
       variant,
       icon: VARIANT_ICON[variant],
       title: ev.worksheetTitle,
-      meta: this.metaLine([ev.subject, `Son tarih: ${DEADLINE_FMT.format(at)}`, ev.teacherName]),
+      meta: this.metaLine([
+        ev.subject,
+        this.t('shared.calendarDayDialog.dueAt', { date: DEADLINE_FMT.format(at) }),
+        ev.teacherName,
+      ]),
       sunk: done,
-      sunkLabel: done ? 'Tamamlandı' : null,
+      sunkLabel: done ? this.t('shared.calendarDayDialog.completed') : null,
       sunkIcon: done ? 'check_circle' : null,
       actions: [
         done
-          ? { label: 'Sonucu gör', icon: 'grading', run: () => this.navigate(ev.worksheetId) }
-          : { label: 'Çözmeye başla', icon: 'play_arrow', run: () => this.navigate(ev.worksheetId) },
+          ? {
+              label: this.t('shared.calendarDayDialog.viewResult'),
+              icon: 'grading',
+              run: () => this.navigate(ev.worksheetId),
+            }
+          : {
+              label: this.t('shared.calendarDayDialog.startSolving'),
+              icon: 'play_arrow',
+              run: () => this.navigate(ev.worksheetId),
+            },
       ],
       programId: null,
     };
@@ -272,5 +300,9 @@ export class CalendarDayDialogComponent {
 
   private metaLine(parts: (string | null)[]): string {
     return parts.filter((p): p is string => !!p).join(' · ');
+  }
+
+  private t(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(key, params) ?? '';
   }
 }

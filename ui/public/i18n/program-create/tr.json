@@ -1,0 +1,36 @@
+{
+  "actions": {
+    "ok": "Tamam"
+  },
+  "wizard": {
+    "questionNumber": "Soru {{number}}",
+    "stepCounter": "{{current}} / {{total}}",
+    "loading": "Sorular yükleniyor...",
+    "prevQuestion": "Önceki soru",
+    "nextQuestion": "Sonraki soru",
+    "loadError": "Sorular yüklenemedi, lütfen tekrar deneyin.",
+    "stepsNotFound": "Program adımları bulunamadı.",
+    "reloadHint": "Sorular yüklenemedi, lütfen sayfayı yenileyin",
+    "retry": "Tekrar Dene",
+    "noSelection": "Bir seçim yapmadınız",
+    "summaryTitle": "Seçimleriniz:"
+  },
+  "form": {
+    "title": "Programınızı Oluşturun",
+    "subtitle": "Son bir adım! Programınıza bir isim verin ve açıklama ekleyin.",
+    "name": "Program Adı",
+    "namePlaceholder": "Örn: Matematik Çalışma Programım",
+    "description": "Açıklama (İsteğe bağlı)",
+    "descriptionPlaceholder": "Programınız hakkında kısa bir açıklama yazabilirsiniz...",
+    "startDate": "Başlangıç Tarihi",
+    "endDate": "Bitiş Tarihi",
+    "submit": "Programı Oluştur",
+    "back": "Geri Dön",
+    "nameRequired": "Program adı gereklidir",
+    "startDateRequired": "Başlangıç tarihi gereklidir",
+    "endDateRequired": "Bitiş tarihi gereklidir",
+    "endDateAfterStart": "Bitiş tarihi, başlangıç tarihinden sonra olmalıdır",
+    "created": "Program başarıyla oluşturuldu!",
+    "createFailed": "Program oluşturulurken bir hata oluştu"
+  }
+}

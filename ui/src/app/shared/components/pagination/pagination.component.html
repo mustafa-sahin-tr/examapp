@@ -1,7 +1,7 @@
-<div class="pagination-container">
+<div class="pagination-container" *transloco="let t; prefix: 'shared.pagination'">
   <!-- Prev -->
   <button class="pagination-button prev" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">
-    Prev
+    {{ t('previous') }}
   </button>
 
   <!-- Sayfa Numaraları -->
@@ -22,6 +22,6 @@
 
   <!-- Next -->
   <button class="pagination-button next" [disabled]="currentPage >= totalPages" (click)="changePage(currentPage + 1)">
-    Next
+    {{ t('next') }}
   </button>
 </div>

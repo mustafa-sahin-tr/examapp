@@ -1,17 +1,18 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { QuestionService } from '../../services/question.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { Question } from '../../models/question';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-question-view',
   standalone: true,
   templateUrl: './question-view.component.html',
   styleUrls: ['./question-view.component.scss'],
-  imports: [ MatCardModule, MatButtonModule, CommonModule]
+  imports: [MatCardModule, MatButtonModule, CommonModule, TranslocoDirective],
+  providers: [provideTranslocoScope('question')],
 })
 export class QuestionViewComponent implements OnInit {
   @Input() isPracticeTest: boolean = false; // 🆕 Practice test mi yoksa gerçek sınav mı olduğunu belirlemek için

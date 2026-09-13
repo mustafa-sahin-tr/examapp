@@ -22,12 +22,14 @@ import { filter, map, takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ColorSchemeToggleComponent } from '../../shared/components/color-scheme-toggle/color-scheme-toggle.component';
 import { LanguageSwitcherComponent } from '../../shared/components/language-switcher/language-switcher.component';
 
 interface MenuItem {
   id: string;
-  name: string;
+  /** Kök sözlükteki `layout.menu.*` anahtarı (issue #183). Ayırıcılarda boş. */
+  labelKey: string;
   icon: string;
   route: string;
   type: 'menu' | 'divider';
@@ -54,6 +56,7 @@ interface MenuItem {
     ReactiveFormsModule,
     ColorSchemeToggleComponent,
     LanguageSwitcherComponent,
+    TranslocoDirective,
   ],
   templateUrl: './enhanced-layout.component.html',
   styleUrls: ['./enhanced-layout.component.scss'],
@@ -116,19 +119,35 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   themeConfigService = inject(ThemeConfigService);
   // Search functionality
   searchControl = new FormControl('');
-  searchSuggestions = signal<string[]>(['Dashboard', 'Sınavlar', 'Sorular', 'Öğrenciler', 'Raporlar']);
   globalSearchControl = new FormControl('');
   // User info
-  userName = signal('Mustafa Sahin');
-  userEmail = signal('mustafa@examapp.com');
+  userName = signal('');
+  userEmail = signal('');
   userAvatarUrl = signal('');
   userThemePreset = signal<string>('standard');
   userThemeCustomConfig = signal<string | null>(null);
   isInputFocused: boolean = false;
-  searchHistory: string[] = ['Matematik', 'Türkçe', 'Hayat Bilgisi', 'Fen Bilimler'];
+  /**
+   * Örnek arama geçmişi/önerileri sözlükten gelir (issue #183): anahtarlar sabit, metinler aktif
+   * dile göre `layout.search.*` altından çözülür. Kullanıcının yazdığı aramalar da aynı listeye
+   * eklendiği için dizi anahtar değil, çevrilmiş metin tutar.
+   */
+  private static readonly SEARCH_HISTORY_KEYS = [
+    'layout.search.history.math',
+    'layout.search.history.turkish',
+    'layout.search.history.life',
+    'layout.search.history.science',
+  ];
+  private static readonly SEARCH_SUGGESTION_KEYS = [
+    'layout.search.suggestions.naturalNumbers',
+    'layout.search.suggestions.ourPlanet',
+    'layout.search.suggestions.multiplication',
+    'layout.search.suggestions.antonyms',
+  ];
+  private readonly transloco = inject(TranslocoService);
+  searchHistory: string[] = [];
   isAuthenticated = this.authService.isAuthenticated();
-  // Örnek öneri listesi (tüm öneriler)
-  allSuggestions: string[] = ['Doğal Sayılar', 'Gezegenimiz', 'Çarpma', 'Zıt Anlamlı'];
+  allSuggestions: string[] = [];
   currentSection = signal<'newest' | 'hot'>('newest');
 
   // Realm roles the current user holds (used to filter the menu).
@@ -137,39 +156,40 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   );
 
   // Menu items — single source of truth. `roles` omitted = visible to every role.
+  // `labelKey` kök sözlükteki `layout.*` anahtarıdır; metin şablonda çevrilir (issue #183).
   menuItems: MenuItem[] = [
-    { id: 'dashboard', name: 'Dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
-    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
-    { id: 'practice', name: 'Soru Çöz', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
-    { id: 'study', name: 'Ders Çalışma', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
-    { id: 'programsm', name: 'Programlarım', icon: 'assignment_ind', route: '/programs', type: 'menu', roles: ['Student'] },
-    { id: 'my-calendar', name: 'Planım', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
-    { id: 'tutors', name: 'Özel Ders Öğretmeni Ara', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
-    { id: 'my-bookings', name: 'Ders Randevularım', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
-    { id: 'students', name: 'Öğrenciler', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
-    { id: 'tutor-profile', name: 'Özel Ders Profilim', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'] },
-    { id: 'availability', name: 'Müsait Saatlerim', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
-    { id: 'booking-requests', name: 'Randevu Talepleri', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
-    { id: 'access-requests', name: 'Atama İzin Talepleri', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
-    { id: 'divider1', name: '', icon: '', route: '', type: 'divider' },
-    { id: 'study-pages', name: 'Çalışma Ekleme', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
-    { id: 'exam', name: 'Test Ekleme', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
-    { id: 'questiontransfer', name: 'Soru Transferi', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Teacher'] },
-    { id: 'reports', name: 'Raporlar', icon: 'analytics', route: '/certificates', type: 'menu' },
-    { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
-    { id: 'admin-dashboard', name: 'Dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
-    { id: 'admin', name: 'Yönetim', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
-    { id: 'admin-teacher-approvals', name: 'Öğretmen Başvuruları', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
-    { id: 'divider2', name: '', icon: '', route: '', type: 'divider' },
-    { id: 'help', name: 'Yardım', icon: 'support', route: '/help', type: 'menu' },
-    { id: 'feedback', name: 'Geri Bildirim', icon: 'feedback', route: '/feedback', type: 'menu' },
+    { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
+    { id: 'study', labelKey: 'menu.study', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
+    { id: 'programsm', labelKey: 'menu.programs', icon: 'assignment_ind', route: '/programs', type: 'menu', roles: ['Student'] },
+    { id: 'my-calendar', labelKey: 'menu.myCalendar', icon: 'event_note', route: '/my-calendar', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
+    { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
+    { id: 'students', labelKey: 'menu.students', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
+    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'] },
+    { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
+    { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
+    { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
+    { id: 'divider1', labelKey: '', icon: '', route: '', type: 'divider' },
+    { id: 'study-pages', labelKey: 'menu.studyPages', icon: 'library_add', route: '/study-pages', type: 'menu', roles: ['Teacher'] },
+    { id: 'exam', labelKey: 'menu.examAuthoring', icon: 'app_registration', route: '/exam', type: 'menu', roles: ['Teacher'] },
+    { id: 'questiontransfer', labelKey: 'menu.questionTransfer', icon: 'swap_horiz', route: '/question-transfer', type: 'menu', roles: ['Teacher'] },
+    { id: 'reports', labelKey: 'menu.reports', icon: 'analytics', route: '/certificates', type: 'menu' },
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu' },
+    { id: 'admin-dashboard', labelKey: 'menu.dashboard', icon: 'insights', route: '/admin/dashboard', type: 'menu', roles: ['Admin'] },
+    { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
+    { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
+    { id: 'divider2', labelKey: '', icon: '', route: '', type: 'divider' },
+    { id: 'help', labelKey: 'menu.help', icon: 'support', route: '/help', type: 'menu' },
+    { id: 'feedback', labelKey: 'menu.feedback', icon: 'feedback', route: '/feedback', type: 'menu' },
   ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [
-    { id: 'dashboard', name: 'Ana Sayfa', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
-    { id: 'exams', name: 'Sınavlar', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
-    { id: 'study', name: 'Çalışma', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
-    { id: 'settings', name: 'Ayarlar', icon: 'settings', route: '/student-profile', type: 'menu' },
+    { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
+    { id: 'study', labelKey: 'bottomNav.study', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
+    { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu' },
   ];
 
   private isItemAllowed(item: MenuItem): boolean {
@@ -206,6 +226,13 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.signalR.startConnection();
+
+    // Sözlük yüklendiğinde (ve dil değiştiğinde) örnek arama metinlerini tazele.
+    this.transloco.langChanges$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.searchHistory = this.translateAll(EnhancedLayoutComponent.SEARCH_HISTORY_KEYS);
+      this.allSuggestions = this.translateAll(EnhancedLayoutComponent.SEARCH_SUGGESTION_KEYS);
+      this.filteredSuggestions = [...this.searchHistory];
+    });
 
     if (this.isTeacher) {
       this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
@@ -287,11 +314,15 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     });
   }
 
+  private translateAll(keys: readonly string[]): string[] {
+    return keys.map((key) => this.transloco.translate<string>(key) ?? '');
+  }
+
   public setUserInfo() {
     var user = localStorage.getItem('user');
     if (user) {
       const userObj = JSON.parse(user);
-      this.userName.set(userObj.fullName || 'Kullanıcı');
+      this.userName.set(userObj.fullName || this.transloco.translate<string>('layout.profile.fallbackName') || '');
       this.userEmail.set(userObj.email || '');
       this.userAvatarUrl.set(userObj.avatar || '');
 

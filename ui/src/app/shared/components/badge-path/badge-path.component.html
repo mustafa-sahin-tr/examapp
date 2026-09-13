@@ -64,22 +64,22 @@
   <ng-container *ngTemplateOutlet="badgeDetail; context: { $implicit: selected }"></ng-container>
 </ng-container>
 <div class="ms-single-path-empty" *ngIf="!layout()">
-  <span>Rozet yolu bulunamadı.</span>
+  <span>{{ 'shared.badgePath.empty' | transloco }}</span>
 </div>
 
 <ng-template #badgeDetail let-badge>
-  <div class="ms-badge-detail">
+  <div class="ms-badge-detail" *transloco="let t; prefix: 'shared.badgePath'">
     <div class="ms-badge-content" [class.ms-badge-content-completed]="badge?.isCompleted">
       <div class="ms-badge-content-top">
         <h1 class="ms-badge-title">{{ badge?.name }}</h1>
 
         <div class="ms-badge-meta" *ngIf="badge?.pathName">
           <span class="ms-badge-chip">{{ badge?.pathName }}</span>
-          <span class="ms-badge-chip" *ngIf="badge?.pathOrder as step">Adım {{ step }}</span>
+          <span class="ms-badge-chip" *ngIf="badge?.pathOrder as step">{{ t('step', { step: step }) }}</span>
         </div>
 
         <span class="ms-badge-description">{{ badge?.description }}</span>
-        <span class="ms-badge-progress-text">{{ badge?.completedLabel }} / {{ badge?.totalLabel }} tamamlandı</span>
+        <span class="ms-badge-progress-text">{{ t('progress', { completed: badge?.completedLabel, total: badge?.totalLabel }) }}</span>
       </div>
 
       <div class="ms-badge-progress">

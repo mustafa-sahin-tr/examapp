@@ -1,0 +1,71 @@
+{
+  "actions": {
+    "ok": "Tamam",
+    "close": "Kapat",
+    "back": "Geri",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor…",
+    "complete": "Kaydı Tamamla"
+  },
+  "roles": {
+    "student": "Öğrenci",
+    "teacher": "Öğretmen",
+    "parent": "Veli"
+  },
+  "fields": {
+    "studentNumber": "Öğrenci Numarası",
+    "schoolName": "Okul Adı",
+    "grade": "Sınıf",
+    "gradePlaceholder": "Seçiniz"
+  },
+  "account": {
+    "title": "Kayıt Ol",
+    "firstName": "Ad",
+    "firstNameRequired": "Ad zorunludur.",
+    "lastName": "Soyad",
+    "lastNameRequired": "Soyad zorunludur.",
+    "email": "E-posta",
+    "emailRequired": "E-posta zorunludur.",
+    "emailInvalid": "Geçerli bir e-posta giriniz.",
+    "role": "Rol Seçiniz",
+    "roleRequired": "Rol seçimi zorunludur.",
+    "passwordLabel": "Şifre",
+    "passwordRequired": "Şifre zorunludur.",
+    "confirmPasswordLabel": "Şifreyi Tekrar Gir",
+    "confirmPasswordRequired": "Şifre zorunludur.",
+    "togglePassword": "Şifreyi göster veya gizle",
+    "toggleConfirmPassword": "Şifre tekrarını göster veya gizle",
+    "submit": "Kayıt Ol",
+    "haveAccount": "Zaten hesabınız var mı? Giriş Yap",
+    "success": "Kayıt başarılı! Giriş yapabilirsiniz.",
+    "error": "Kayıt başarısız! Lütfen bilgilerinizi kontrol edin."
+  },
+  "wizard": {
+    "stepRole": "1 · Rol Seçimi",
+    "stepDetails": "2 · Bilgiler",
+    "roleQuestion": "Nasıl devam etmek istersiniz?",
+    "roleHint": "Hesabınızın rolünü seçin.",
+    "studentTitle": "Öğrenci Bilgileri",
+    "teacherTitle": "Öğretmen Bilgileri",
+    "parentTitle": "Veli Kaydı",
+    "parentHint": "Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.",
+    "success": "Kayıt tamamlandı!",
+    "error": "Kayıt başarısız! Lütfen tekrar deneyin."
+  },
+  "student": {
+    "title": "Öğrenci Kaydı",
+    "success": "Öğrenci kaydı başarılı!",
+    "error": "Öğrenci kaydı başarısız! Tekrar deneyin."
+  },
+  "teacher": {
+    "title": "Öğretmen Kaydı",
+    "success": "Öğretmen kaydı başarılı!",
+    "error": "Öğretmen kaydı başarısız! Tekrar deneyin."
+  },
+  "parent": {
+    "title": "Veli Kaydı",
+    "hint": "Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.",
+    "success": "Veli kaydı başarılı!",
+    "error": "Veli kaydı başarısız! Tekrar deneyin."
+  }
+}

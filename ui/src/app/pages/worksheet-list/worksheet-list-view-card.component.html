@@ -1,22 +1,22 @@
-<article class="wcard" [class.wcard--list]="viewMode === 'list'" aria-label="Test kartı">
+<article *transloco="let t; prefix: 'worksheet-list'" class="wcard" [class.wcard--list]="viewMode === 'list'" [attr.aria-label]="t('card.aria')">
   <a
     class="wcard__cover"
     [routerLink]="['/test', course.id]"
-    [attr.aria-label]="course.name + ' testini aç'"
+    [attr.aria-label]="t('card.openAria', { name: course.name })"
     [style.backgroundImage]="'url(' + coverUrl + ')'"
   >
     @if (course.isPracticeTest) {
-      <span class="wcard__tag wcard__tag--info">Çalışma testi</span>
+      <span class="wcard__tag wcard__tag--info">{{ t('card.tagPractice') }}</span>
     } @else if (course.badgeText) {
       <span class="wcard__tag">{{ course.badgeText }}</span>
     }
 
     @if (!isTeacher && status === 'inprogress') {
-      <span class="wcard__tag wcard__tag--warn">Devam ediyor</span>
+      <span class="wcard__tag wcard__tag--warn">{{ t('card.tagInProgress') }}</span>
     } @else if (!isTeacher && status === 'completed') {
-      <span class="wcard__tag wcard__tag--success">Tamamlandı</span>
+      <span class="wcard__tag wcard__tag--success">{{ t('card.tagCompleted') }}</span>
     } @else if (!isTeacher && hasActiveAssignmentInput) {
-      <span class="wcard__tag wcard__tag--assigned">Öğretmenin atadı</span>
+      <span class="wcard__tag wcard__tag--assigned">{{ t('card.tagAssigned') }}</span>
     }
   </a>
 
@@ -31,33 +31,33 @@
         class="wcard__kebab"
         [matMenuTriggerFor]="kebab"
         (click)="$event.stopPropagation()"
-        aria-label="Kart menüsü"
+        [attr.aria-label]="t('card.menuAria')"
       >
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #kebab="matMenu">
         <button mat-menu-item (click)="openDetail()">
-          <mat-icon>visibility</mat-icon><span>Detayı gör</span>
+          <mat-icon>visibility</mat-icon><span>{{ t('card.viewDetail') }}</span>
         </button>
         @if (canCopy) {
           <button mat-menu-item [disabled]="copying" (click)="emitCopy($event)">
-            <mat-icon>content_copy</mat-icon><span>Kendi hesabıma kopyala</span>
+            <mat-icon>content_copy</mat-icon><span>{{ t('card.copyToMyAccount') }}</span>
           </button>
         }
         @if (isTeacher) {
           @if (canEdit) {
             <button mat-menu-item (click)="openQuestionCanvas()">
-              <mat-icon>add_photo_alternate</mat-icon><span>Soru Ekle</span>
+              <mat-icon>add_photo_alternate</mat-icon><span>{{ t('card.addQuestion') }}</span>
             </button>
           }
           @if (canAssign) {
             <button mat-menu-item (click)="emitAssign()">
-              <mat-icon>assignment_ind</mat-icon><span>Ata</span>
+              <mat-icon>assignment_ind</mat-icon><span>{{ t('card.assign') }}</span>
             </button>
           }
           @if (canEdit) {
             <button mat-menu-item (click)="emitDelete()">
-              <mat-icon>delete</mat-icon><span>Sil</span>
+              <mat-icon>delete</mat-icon><span>{{ t('card.delete') }}</span>
             </button>
           }
         }
@@ -74,16 +74,16 @@
 
     @if (createdByName) {
       <p class="wcard__creator">
-        <mat-icon>person</mat-icon>Oluşturan: {{ createdByName }}
+        <mat-icon>person</mat-icon>{{ t('card.createdBy', { name: createdByName }) }}
       </p>
     }
 
     <p class="wcard__meta">
-      <span>{{ course.questionCount || 0 }} soru</span>
+      <span>{{ t('card.questionCount', { count: course.questionCount || 0 }) }}</span>
       <span aria-hidden="true">·</span>
-      <span>{{ durationMinutes }} dk</span>
+      <span>{{ t('card.durationMinutes', { minutes: durationMinutes }) }}</span>
       <span aria-hidden="true">·</span>
-      <span>{{ course.instanceCount || 0 }} çözdü</span>
+      <span>{{ t('card.solvedCount', { count: course.instanceCount || 0 }) }}</span>
     </p>
 
     @if (!isTeacher && status === 'inprogress' && progressPercent > 0) {
@@ -96,7 +96,7 @@
       <div class="wcard__result">
         <span class="wcard__ring" [style.--v]="scorePercent">{{ scorePercent }}</span>
         <span class="wcard__resulttext">
-          {{ instance.correctAnswers }} doğru / {{ instance.wrongAnswers }} yanlış
+          {{ t('card.result', { correct: instance.correctAnswers, wrong: instance.wrongAnswers }) }}
         </span>
       </div>
     }
@@ -108,15 +108,15 @@
     <div class="wcard__actions">
       @if (isTeacher) {
         @if (canEdit) {
-          <button type="button" class="wcard__btn wcard__btn--primary" (click)="openPrimary($event)">Düzenle</button>
+          <button type="button" class="wcard__btn wcard__btn--primary" (click)="openPrimary($event)">{{ t('card.edit') }}</button>
           @if (canAssign) {
-            <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">Ata</button>
+            <button type="button" class="wcard__btn wcard__btn--ghost" (click)="emitAssign()">{{ t('card.assign') }}</button>
           }
         } @else if (canAssign) {
-          <button type="button" class="wcard__btn wcard__btn--primary" (click)="emitAssign()">Öğrenciye ata</button>
-          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">Detayı Gör</button>
+          <button type="button" class="wcard__btn wcard__btn--primary" (click)="emitAssign()">{{ t('card.assignToStudent') }}</button>
+          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">{{ t('card.detailButton') }}</button>
         } @else {
-          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">Detayı Gör</button>
+          <button type="button" class="wcard__btn wcard__btn--ghost" (click)="openDetail()">{{ t('card.detailButton') }}</button>
         }
       } @else {
         <button
@@ -130,7 +130,7 @@
           {{ primaryLabel }}
         </button>
         @if (status === 'completed') {
-          <button type="button" class="wcard__icon" (click)="openPrimary($event)" aria-label="Tekrar çöz">
+          <button type="button" class="wcard__icon" (click)="openPrimary($event)" [attr.aria-label]="t('card.retryAria')">
             <mat-icon>replay</mat-icon>
           </button>
         }

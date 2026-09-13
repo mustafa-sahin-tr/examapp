@@ -1,0 +1,21 @@
+{
+  "title": "Planım",
+  "subtitle": {
+    "teacher": "Onayladığın ders randevularını tek takvimde gör.",
+    "student": "Planladığın sınavları, atama teslim tarihlerini, çalışma planlarını ve ders randevularını tek takvimde gör."
+  },
+  "prevMonth": "Önceki ay",
+  "nextMonth": "Sonraki ay",
+  "today": "Bugün",
+  "error": {
+    "message": "Takvim yüklenemedi",
+    "retry": "Tekrar dene"
+  },
+  "loading": "Takvimin hazırlanıyor…",
+  "empty": {
+    "teacher": "Bu ay onaylanmış ders randevun yok",
+    "teacherCta": "Müsait saatlerimi düzenle",
+    "student": "Bu ay planlanmış sınav, atama veya randevu yok",
+    "studentCta": "Sınavlara git"
+  }
+}

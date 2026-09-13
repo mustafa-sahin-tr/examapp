@@ -10,6 +10,7 @@ import {
   Booking,
   VideoSession,
 } from '../models/booking.model';
+import { translocoTestingModule } from '../shared/testing/transloco-testing';
 
 describe('BookingService', () => {
   let service: BookingService;
@@ -17,7 +18,7 @@ describe('BookingService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [translocoTestingModule(), HttpClientTestingModule],
       providers: [BookingService],
     });
 

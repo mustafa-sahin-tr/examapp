@@ -1,6 +1,9 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective } from '@jsverse/transloco';
+
+import { LocaleService } from '../../../services/locale.service';
 import { TutorSearchResult } from '../../../models/tutor.model';
 
 /**
@@ -10,11 +13,12 @@ import { TutorSearchResult } from '../../../models/tutor.model';
 @Component({
   selector: 'app-tutor-card',
   standalone: true,
-  imports: [MatChipsModule, MatIconModule],
+  imports: [MatChipsModule, MatIconModule, TranslocoDirective],
   templateUrl: './tutor-card.component.html',
   styleUrls: ['./tutor-card.component.scss'],
 })
 export class TutorCardComponent {
+  private readonly localeService = inject(LocaleService);
   readonly tutor = input.required<TutorSearchResult>();
   readonly selected = output<number>();
 
@@ -26,7 +30,7 @@ export class TutorCardComponent {
     }
     return parts
       .slice(0, 2)
-      .map((p) => p.charAt(0).toLocaleUpperCase('tr-TR'))
+      .map((p) => p.charAt(0).toLocaleUpperCase(this.localeService.localeDefinition().angularLocale))
       .join('');
   });
 

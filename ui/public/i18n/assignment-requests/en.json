@@ -1,0 +1,37 @@
+{
+  "title": "Assignment Permission Requests",
+  "subtitle": "Permission requests other teachers sent to assign your exams to their students.",
+  "filter": {
+    "label": "Request filter",
+    "pending": "Pending",
+    "all": "All"
+  },
+  "state": {
+    "loading": "Loading requests...",
+    "empty": "There are no pending assignment permission requests"
+  },
+  "columns": {
+    "requester": "Requested by",
+    "worksheet": "Exam",
+    "date": "Date",
+    "note": "Note",
+    "status": "Status",
+    "actions": "Action"
+  },
+  "status": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "messages": {
+    "loadFailed": "Requests could not be loaded.",
+    "approved": "The request has been approved.",
+    "rejected": "The request has been rejected.",
+    "actionFailed": "The action could not be completed.",
+    "ok": "OK"
+  }
+}

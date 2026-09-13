@@ -1,15 +1,11 @@
-<section class="my-calendar">
+<section class="my-calendar" *transloco="let t; prefix: 'my-calendar'">
   <header class="my-calendar__hero">
     <div class="my-calendar__hero-title">
       <mat-icon>event_note</mat-icon>
-      <h1>Planım</h1>
+      <h1>{{ t('title') }}</h1>
     </div>
     <p class="my-calendar__hero-subtitle">
-      @if (isTeacher) {
-        Onayladığın ders randevularını tek takvimde gör.
-      } @else {
-        Planladığın sınavları, atama teslim tarihlerini, çalışma planlarını ve ders randevularını tek takvimde gör.
-      }
+      {{ isTeacher ? t('subtitle.teacher') : t('subtitle.student') }}
     </p>
   </header>
 
@@ -17,33 +13,18 @@
 
   <div class="my-calendar__card">
     <div class="my-calendar__toolbar">
-      <button
-        mat-icon-button
-        type="button"
-        (click)="prevMonth()"
-        aria-label="Önceki ay"
-      >
+      <button mat-icon-button type="button" (click)="prevMonth()" [attr.aria-label]="t('prevMonth')">
         <mat-icon>chevron_left</mat-icon>
       </button>
 
       <h2 class="my-calendar__month-label">{{ monthLabel() }}</h2>
 
-      <button
-        mat-icon-button
-        type="button"
-        (click)="nextMonth()"
-        aria-label="Sonraki ay"
-      >
+      <button mat-icon-button type="button" (click)="nextMonth()" [attr.aria-label]="t('nextMonth')">
         <mat-icon>chevron_right</mat-icon>
       </button>
 
-      <button
-        mat-stroked-button
-        type="button"
-        class="my-calendar__today-btn"
-        (click)="goToday()"
-      >
-        Bugün
+      <button mat-stroked-button type="button" class="my-calendar__today-btn" (click)="goToday()">
+        {{ t('today') }}
       </button>
     </div>
 
@@ -51,8 +32,8 @@
       @if (status() === 'error') {
         <div class="my-calendar__state my-calendar__state--error" role="alert">
           <mat-icon>error_outline</mat-icon>
-          <p>Takvim yüklenemedi</p>
-          <button mat-flat-button type="button" (click)="retry()">Tekrar dene</button>
+          <p>{{ t('error.message') }}</p>
+          <button mat-flat-button type="button" (click)="retry()">{{ t('error.retry') }}</button>
         </div>
       } @else {
         <app-month-calendar-grid
@@ -67,7 +48,7 @@
         @if (status() === 'loading') {
           <div class="my-calendar__overlay">
             <mat-progress-spinner mode="indeterminate" diameter="40" />
-            <p>Takvimin hazırlanıyor…</p>
+            <p>{{ t('loading') }}</p>
           </div>
         }
       }
@@ -77,11 +58,11 @@
       <div class="my-calendar__state my-calendar__state--empty">
         <mat-icon>event_available</mat-icon>
         @if (isTeacher) {
-          <p>Bu ay onaylanmış ders randevun yok</p>
-          <button mat-stroked-button type="button" routerLink="/availability">Müsait saatlerimi düzenle</button>
+          <p>{{ t('empty.teacher') }}</p>
+          <button mat-stroked-button type="button" routerLink="/availability">{{ t('empty.teacherCta') }}</button>
         } @else {
-          <p>Bu ay planlanmış sınav, atama veya randevu yok</p>
-          <button mat-stroked-button type="button" routerLink="/tests">Sınavlara git</button>
+          <p>{{ t('empty.student') }}</p>
+          <button mat-stroked-button type="button" routerLink="/tests">{{ t('empty.studentCta') }}</button>
         }
       </div>
     }

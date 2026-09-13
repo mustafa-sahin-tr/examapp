@@ -1,0 +1,39 @@
+{
+  "title": "Randevu Talepleri",
+  "subtitle": "Öğrencilerin müsait saatlerin için gönderdiği ders randevusu talepleri.",
+  "filter": {
+    "label": "Talep filtresi",
+    "pending": "Bekleyenler",
+    "all": "Tümü"
+  },
+  "availability": "Müsait Saatlerim",
+  "state": {
+    "loading": "Talepler yükleniyor...",
+    "empty": "Gösterilecek randevu talebi yok."
+  },
+  "row": {
+    "studentFallback": "Öğrenci",
+    "rejectionReason": "Ret gerekçesi: {{reason}}"
+  },
+  "status": {
+    "pending": "Bekliyor",
+    "approved": "Onaylandı",
+    "rejected": "Reddedildi"
+  },
+  "join": {
+    "button": "Derse katıl"
+  },
+  "actions": {
+    "approve": "Onayla",
+    "reject": "Reddet",
+    "cancel": "Vazgeç",
+    "reasonLabel": "Ret gerekçesi (opsiyonel)"
+  },
+  "messages": {
+    "loadFailed": "Randevu talepleri yüklenemedi.",
+    "approved": "Randevu onaylandı.",
+    "rejected": "Randevu reddedildi.",
+    "actionFailed": "İşlem tamamlanamadı.",
+    "ok": "Tamam"
+  }
+}

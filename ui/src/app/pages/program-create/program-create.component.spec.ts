@@ -10,6 +10,15 @@ import { ProgramCreateComponent } from './program-create.component';
 import { ProgramService } from '../../services/program.service';
 import { ProgramStep } from '../../models/programstep';
 
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import programCreateTr from '../../../../public/i18n/program-create/tr.json';
+
+/**
+ * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
+ * sahte ceviri kullanilmaz - boylece bir anahtar bozulursa test kirilir.
+ */
+const translocoTesting = translocoTestingModule({ langs: { 'program-create/tr': programCreateTr } });
+
 describe('ProgramCreateComponent', () => {
   let component: ProgramCreateComponent;
   let fixture: ComponentFixture<ProgramCreateComponent>;
@@ -37,7 +46,7 @@ describe('ProgramCreateComponent', () => {
     programService.getProgramSteps.and.returnValue(of(mockProgramSteps));
 
     await TestBed.configureTestingModule({
-      imports: [ProgramCreateComponent],
+      imports: [ProgramCreateComponent, translocoTesting],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -78,7 +87,7 @@ describe('ProgramCreateComponent - next() NextStep fallback (issue #136)', () =>
     programService.getProgramSteps.and.returnValue(of(steps));
 
     await TestBed.configureTestingModule({
-      imports: [ProgramCreateComponent],
+      imports: [ProgramCreateComponent, translocoTesting],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -183,7 +192,7 @@ describe('ProgramCreateComponent - loadProgramSteps() loading/error states (issu
     ]);
 
     await TestBed.configureTestingModule({
-      imports: [ProgramCreateComponent],
+      imports: [ProgramCreateComponent, translocoTesting],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),

@@ -1,0 +1,136 @@
+{
+  "list": {
+    "title": "Study Pages",
+    "searchLabel": "Search by title or description",
+    "subjectFilterLabel": "Filter by subject",
+    "allSubjects": "All Subjects",
+    "new": "Add New",
+    "coverFallback": "Study Page",
+    "bookFallback": "Book",
+    "newBadge": "New",
+    "pageCount": "{{count}} Pages",
+    "bookRange": "{{book}} · p. {{start}}-{{end}}",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteDialog": {
+      "title": "Delete Study Page",
+      "message": "Are you sure you want to delete this study page? This action cannot be undone.",
+      "confirm": "Yes, Delete",
+      "cancel": "Cancel"
+    },
+    "deleted": "The study page has been deleted.",
+    "deleteFailed": "An error occurred while deleting."
+  },
+  "contentType": {
+    "image": "Image",
+    "link": "Link",
+    "bookPageRange": "Book Page"
+  },
+  "platform": {
+    "other": "Other",
+    "eba": "EBA",
+    "youtube": "YouTube"
+  },
+  "editor": {
+    "titleEdit": "Edit Study Activity",
+    "titleNew": "New Study Activity",
+    "contentTypeLabel": "Activity Type",
+    "titleField": "Title",
+    "descriptionField": "Description",
+    "link": {
+      "sectionTitle": "Link Details",
+      "urlLabel": "URL",
+      "urlHint": "Full address starting with http/https",
+      "platformLabel": "Platform"
+    },
+    "book": {
+      "sectionTitle": "Book / Test",
+      "loading": "Loading books...",
+      "selectBook": "Select Book",
+      "noBooks": "No saved books",
+      "addBook": "Add New Book",
+      "newBookName": "New Book Name",
+      "newBookHint": "If you leave it empty, the list comes back",
+      "selectBookTest": "Book Test",
+      "loadingTests": "Loading...",
+      "noBookTests": "This book has no tests",
+      "addBookTest": "Add New Book Test",
+      "newBookTestName": "New Book Test Name",
+      "startPage": "Start Page",
+      "endPage": "End Page"
+    },
+    "taxonomy": {
+      "grade": "Grade",
+      "subject": "Subject",
+      "topic": "Topic",
+      "subTopic": "Subtopic",
+      "select": "Select"
+    },
+    "publish": "Publish",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "images": {
+      "title": "Images",
+      "downloadZip": "Download ZIP",
+      "downloadingZip": "Downloading...",
+      "uploadJson": "Upload JSON",
+      "readingJson": "Reading...",
+      "pickFolder": "Select Folder - Auto Filter",
+      "pickImages": "Select Images",
+      "add": "Add",
+      "remove": "Remove",
+      "imageFallback": "Image",
+      "new": "New",
+      "existing": "Existing",
+      "selected": "Selected",
+      "notSelected": "Not Selected",
+      "excluded": "Excluded",
+      "empty": "No images added yet",
+      "selectedTitle": "Images To Be Added",
+      "viewLarge": "View Larger"
+    },
+    "guidance": {
+      "title": "File Guide",
+      "found": "{{found}}/{{total}} Found",
+      "missing": "{{count}} Missing",
+      "clear": "Clear the JSON guide",
+      "help": "From JSON: {{fileName}} - Find and upload the files below from your folders.",
+      "fileLabel": "{{book}} - Page {{page}}",
+      "fileFound": "Found",
+      "fileMissing": "Missing"
+    },
+    "preview": {
+      "linkTitleFallback": "Link activity",
+      "linkHint": "It will be previewed here once you enter a URL.",
+      "bookTitleFallback": "Book page range",
+      "pageRange": "Pages {{start}} - {{end}}",
+      "bookHint": "Select the book, the test and the page range."
+    },
+    "messages": {
+      "booksLoadFailed": "The book list could not be loaded.",
+      "bookTestsLoadFailed": "Book tests could not be loaded.",
+      "jsonPickFile": "Please select a JSON file.",
+      "jsonLoaded": "JSON loaded: {{count}} images found on MinIO.",
+      "jsonReadFailed": "The JSON file could not be read. Format: [{\"book\":\"book_name\",\"pages\":[87,88,89]}]",
+      "filesAdded": "{{count}} files added.",
+      "zipFailed": "An error occurred while downloading the ZIP.",
+      "urlRequired": "A URL is required for the link type.",
+      "urlInvalid": "Enter a valid http/https URL.",
+      "bookRequired": "Select a book or enter a new book name.",
+      "bookTestRequired": "Select a book test or enter a new test name.",
+      "pagesRequired": "Start and end pages are required.",
+      "pagesPositive": "Page numbers must be positive.",
+      "endBeforeStart": "The end page cannot be smaller than the start page.",
+      "imageRequired": "You must select at least one image.",
+      "imageMinOne": "At least one image must remain on this page.",
+      "fillRequired": "Please fill in the required fields.",
+      "updated": "The study activity has been updated.",
+      "updateFailed": "An error occurred while updating.",
+      "created": "The study activity has been saved.",
+      "createFailed": "An error occurred while saving.",
+      "notFound": "The study activity was not found.",
+      "ok": "OK"
+    }
+  }
+}

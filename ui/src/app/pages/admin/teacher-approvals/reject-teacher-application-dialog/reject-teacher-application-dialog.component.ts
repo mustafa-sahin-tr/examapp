@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 export interface RejectTeacherApplicationDialogData {
   /** Listede gösterilen ad (fallback uygulanmış hâli). */
@@ -18,11 +19,24 @@ export const REJECT_REASON_MAX_LENGTH = 500;
  * Issue #94 — red nedeni giriş dialog'u. HTTP çağrısı YAPMAZ; yalnızca doğrulanmış nedeni döner
  * (`string`), iptalde `undefined`. Böylece per-row yükleniyor durumu ve hata/snackbar akışı
  * onayla ile aynı yerde (liste bileşeninde) kalır.
+ *
+ * Dialog komponentleri element injector'dan scope devralmadığı için admin scope'u burada da verilir.
  */
+const ADMIN_SCOPE = 'admin';
+
 @Component({
   selector: 'app-reject-teacher-application-dialog',
   standalone: true,
-  imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
+  imports: [
+    ReactiveFormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    TranslocoDirective,
+  ],
+  providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './reject-teacher-application-dialog.component.html',
   styleUrls: ['./reject-teacher-application-dialog.component.scss'],
 })

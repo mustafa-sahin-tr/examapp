@@ -4,12 +4,33 @@ import { By } from '@angular/platform-browser';
 
 import { TestFormComponent } from './test-form.component';
 
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
+import rootTr from '../../../../public/i18n/tr.json';
+import testCreateTr from '../../../../public/i18n/test-create/tr.json';
+
+/** Gercek scope sozlugu yuklenir; anahtar bozulursa test kirilir (issue #183). */
+const translocoTesting = TranslocoTestingModule.forRoot({
+  // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
+  // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
+  langs: { tr: { ...rootTr, 'test-create': testCreateTr }, 'test-create/tr': testCreateTr },
+  translocoConfig: {
+    availableLangs: [...SUPPORTED_LOCALE_CODES],
+    defaultLang: DEFAULT_LOCALE,
+    // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
+    scopes: { keepCasing: true },
+  },
+  preloadLangs: true,
+});
+
 describe('TestFormComponent', () => {
   let fixture: ComponentFixture<TestFormComponent>;
   let component: TestFormComponent;
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [TestFormComponent] }).compileComponents();
+    await TestBed.configureTestingModule({
+      imports: [TestFormComponent, translocoTesting],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(TestFormComponent);
     component = fixture.componentInstance;

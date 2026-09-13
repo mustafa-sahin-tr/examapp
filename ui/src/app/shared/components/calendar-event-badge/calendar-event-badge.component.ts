@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoService } from '@jsverse/transloco';
 import { CalendarEvent } from '../../../models/calendar-event';
 
 type BadgeVariant = 'reminder-pending' | 'reminder-sent' | 'deadline-open' | 'deadline-done' | 'booking';
@@ -12,12 +13,13 @@ const VARIANT_ICON: Record<BadgeVariant, string> = {
   booking: 'cast_for_education',
 };
 
-const VARIANT_LABEL: Record<BadgeVariant, string> = {
-  'reminder-pending': 'Hatırlatma',
-  'reminder-sent': 'Gönderilmiş hatırlatma',
-  'deadline-open': 'Teslim tarihi',
-  'deadline-done': 'Tamamlanan atama',
-  booking: 'Ders randevusu',
+/** Kök sözlükteki `shared.calendar.variant.*` anahtarları (takvim rozeti/göstergesi ortak kullanır). */
+const VARIANT_LABEL_KEY: Record<BadgeVariant, string> = {
+  'reminder-pending': 'shared.calendar.variant.reminderPending',
+  'reminder-sent': 'shared.calendar.variant.reminderSent',
+  'deadline-open': 'shared.calendar.variant.deadlineOpen',
+  'deadline-done': 'shared.calendar.variant.deadlineDone',
+  booking: 'shared.calendar.variant.booking',
 };
 
 /**
@@ -35,6 +37,7 @@ const VARIANT_LABEL: Record<BadgeVariant, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarEventBadgeComponent {
+  private readonly transloco = inject(TranslocoService);
   readonly event = input.required<CalendarEvent>();
   readonly compact = input(false);
 
@@ -51,5 +54,10 @@ export class CalendarEventBadgeComponent {
 
   readonly icon = computed(() => VARIANT_ICON[this.variant()]);
 
-  readonly ariaLabel = computed(() => `${VARIANT_LABEL[this.variant()]}: ${this.event().worksheetTitle}`);
+  readonly ariaLabel = computed(
+    () =>
+      `${this.transloco.translate<string>(VARIANT_LABEL_KEY[this.variant()]) ?? ''}: ${
+        this.event().worksheetTitle
+      }`
+  );
 }

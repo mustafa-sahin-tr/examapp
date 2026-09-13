@@ -11,14 +11,14 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Router, RouterModule } from '@angular/router';
+import { take } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject } from '../../models/subject';
 import { Paged } from '../../models/test-instance';
 import {
   STUDY_PAGE_CONTENT_TYPE_ICONS,
-  STUDY_PAGE_CONTENT_TYPE_LABELS,
   STUDY_PAGE_PLATFORM_ICONS,
-  STUDY_PAGE_PLATFORM_LABELS,
   StudyPage,
   StudyPageContentType,
   StudyPageLinkPlatform,
@@ -28,6 +28,25 @@ import { StudyPageService } from '../../services/study-page.service';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+
+/**
+ * Çeviriler kendi Transloco scope'unda: `public/i18n/study-pages/<lang>.json` (issue #183).
+ * İçerik tipi / platform etiketleri model dosyasındaki sabit Türkçe listeler yerine
+ * buradaki anahtar eşlemesinden okunur.
+ */
+const STUDY_PAGES_SCOPE = 'study-pages';
+
+const CONTENT_TYPE_LABEL_KEYS: Record<StudyPageContentType, string> = {
+  [StudyPageContentType.Image]: 'contentType.image',
+  [StudyPageContentType.Link]: 'contentType.link',
+  [StudyPageContentType.BookPageRange]: 'contentType.bookPageRange',
+};
+
+const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
+  [StudyPageLinkPlatform.Other]: 'platform.other',
+  [StudyPageLinkPlatform.Eba]: 'platform.eba',
+  [StudyPageLinkPlatform.YouTube]: 'platform.youtube',
+};
 
 @Component({
   selector: 'app-study-pages',
@@ -50,7 +69,10 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
     MatSnackBarModule,
     SectionHeaderComponent,
     PaginationComponent,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
 })
 export class StudyPagesComponent {
   private studyPageService = inject(StudyPageService);
@@ -58,6 +80,7 @@ export class StudyPagesComponent {
   private router = inject(Router);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private transloco = inject(TranslocoService);
 
   searchControl = new FormControl('');
   subjectsSignal = toSignal(this.subjectService.loadCategories(), { initialValue: [] as Subject[] });
@@ -73,6 +96,10 @@ export class StudyPagesComponent {
   pageSize = 10;
   selectedSubjectId = signal<number | null>(null);
   deletingId = signal<number | null>(null);
+
+  constructor() {
+    this.preloadScope();
+  }
 
   ngOnInit() {
     this.loadPages(1);
@@ -121,10 +148,10 @@ export class StudyPagesComponent {
       enterAnimationDuration: '300ms',
       exitAnimationDuration: '200ms',
       data: {
-        title: 'Calisma Sayfasini Sil',
-        message: 'Bu calisma sayfasini silmek istediginizden emin misiniz? Bu islem geri alinmaz.',
-        confirmText: 'Evet, Sil',
-        cancelText: 'Iptal',
+        title: this.text('list.deleteDialog.title'),
+        message: this.text('list.deleteDialog.message'),
+        confirmText: this.text('list.deleteDialog.confirm'),
+        cancelText: this.text('list.deleteDialog.cancel'),
         icon: 'delete_forever',
         confirmColor: 'warn',
       },
@@ -136,11 +163,11 @@ export class StudyPagesComponent {
       this.deletingId.set(page.id);
       this.studyPageService.delete(page.id).subscribe({
         next: () => {
-          this.snackBar.open('Calisma sayfasi silindi.', 'Tamam', { duration: 2000 });
+          this.snackBar.open(this.text('list.deleted'), this.text('editor.messages.ok'), { duration: 2000 });
           this.loadPages(this.pageNumber);
         },
         error: () => {
-          this.snackBar.open('Silme isleminde hata olustu.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.text('list.deleteFailed'), this.text('editor.messages.ok'), { duration: 3000 });
           this.deletingId.set(null);
         },
       });
@@ -209,8 +236,9 @@ export class StudyPagesComponent {
     return STUDY_PAGE_CONTENT_TYPE_ICONS[this.contentTypeOf(page)];
   }
 
-  contentTypeLabel(page: StudyPage): string {
-    return STUDY_PAGE_CONTENT_TYPE_LABELS[this.contentTypeOf(page)];
+  /** İçerik tipi rozetinin çeviri anahtarı (scope'a göreli; şablonda `t()` ile çözülür). */
+  contentTypeLabelKey(page: StudyPage): string {
+    return CONTENT_TYPE_LABEL_KEYS[this.contentTypeOf(page)];
   }
 
   contentTypeClass(page: StudyPage): string {
@@ -228,11 +256,29 @@ export class StudyPagesComponent {
     return STUDY_PAGE_PLATFORM_ICONS[page.platform ?? StudyPageLinkPlatform.Other];
   }
 
-  platformLabel(page: StudyPage): string {
-    return STUDY_PAGE_PLATFORM_LABELS[page.platform ?? StudyPageLinkPlatform.Other];
+  /** Platform etiketinin çeviri anahtarı (scope'a göreli; şablonda `t()` ile çözülür). */
+  platformLabelKey(page: StudyPage): string {
+    return PLATFORM_LABEL_KEYS[page.platform ?? StudyPageLinkPlatform.Other];
+  }
+
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string): string {
+    return this.transloco.translate<string>(`${STUDY_PAGES_SCOPE}.${key}`) ?? '';
   }
 
   isKnownPlatform(page: StudyPage): boolean {
     return page.platform === StudyPageLinkPlatform.Eba || page.platform === StudyPageLinkPlatform.YouTube;
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${STUDY_PAGES_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

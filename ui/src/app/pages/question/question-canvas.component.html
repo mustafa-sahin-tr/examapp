@@ -1,9 +1,9 @@
-<div class="qc" [class.qc--fullscreen]="fullScreen()">
+<div class="qc" [class.qc--fullscreen]="fullScreen()" *transloco="let t; prefix: 'question'">
   <!-- 1. ÜST BAĞLAM ÇUBUĞU -->
   <header class="qc-topbar">
     <div class="qc-brand">
       <span class="qc-brand__chip"><mat-icon>note_add</mat-icon></span>
-      <span class="qc-brand__title">Soru Ekle</span>
+      <span class="qc-brand__title">{{ t('canvas.title') }}</span>
     </div>
 
     <nav class="qc-breadcrumb" [formGroup]="questionForm">
@@ -40,10 +40,10 @@
       <mat-menu #testMenu="matMenu" class="qc-test-menu">
         <div class="qc-test-search" (click)="$event.stopPropagation()">
           <mat-icon>search</mat-icon>
-          <input formControlName="testId" placeholder="Test ara…" (keydown)="$event.stopPropagation()" />
+          <input formControlName="testId" [placeholder]="t('canvas.searchTestPlaceholder')" (keydown)="$event.stopPropagation()" />
         </div>
         <button mat-menu-item type="button" (click)="openQuickCreate()">
-          <mat-icon>add</mat-icon><span>Yeni test oluştur</span>
+          <mat-icon>add</mat-icon><span>{{ t('canvas.createTest') }}</span>
         </button>
         <mat-divider></mat-divider>
         @for (worksheet of filteredTestListSignal(); track worksheet.id) {
@@ -51,14 +51,14 @@
           {{ worksheet.name }} — {{ worksheet.subtitle }}
         </button>
         } @empty {
-        <div class="qc-menu-empty">Sonuç yok</div>
+        <div class="qc-menu-empty">{{ t('canvas.noResults') }}</div>
         }
       </mat-menu>
     </nav>
 
     <div class="qc-topbar__actions">
       @if (isAdmin) {
-      <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">Eğit</button>
+      <button type="button" class="qc-btn qc-btn--ghost" (click)="sendToFix()">{{ t('canvas.train') }}</button>
       }
 
       <div class="qc-split">
@@ -71,9 +71,9 @@
         >
           @if (saving()) {
           <mat-spinner class="qc-btn__spinner" diameter="16"></mat-spinner>
-          <span>Kaydediliyor…</span>
+          <span>{{ t('canvas.saving') }}</span>
           } @else {
-          Kaydet
+          {{ t('canvas.save') }}
           }
         </button>
         <button
@@ -87,14 +87,14 @@
       </div>
       <mat-menu #saveMenu="matMenu">
         <button mat-menu-item type="button" [disabled]="saving()" (click)="onSaveAndFix()">
-          <mat-icon>build</mat-icon><span>Kaydet ve Düzelt</span>
+          <mat-icon>build</mat-icon><span>{{ t('canvas.saveAndFix') }}</span>
         </button>
         <button mat-menu-item type="button" [disabled]="saving()" (click)="sendToWorkPages()">
-          <mat-icon>send</mat-icon><span>Çalışma Sayfasına Gönder</span>
+          <mat-icon>send</mat-icon><span>{{ t('canvas.sendToStudyPage') }}</span>
         </button>
         @if (isAdmin) {
         <button mat-menu-item type="button" (click)="sendToFix()">
-          <mat-icon>model_training</mat-icon><span>Sadece modeli eğit</span>
+          <mat-icon>model_training</mat-icon><span>{{ t('canvas.trainModelOnly') }}</span>
         </button>
         }
       </mat-menu>
@@ -105,31 +105,31 @@
   @if (previewOn) {
   <div class="qc-preview-bar">
     <button type="button" class="qc-btn qc-btn--ghost" (click)="exitPreview()">
-      <mat-icon>arrow_back</mat-icon>Tuvale dön
+      <mat-icon>arrow_back</mat-icon>{{ t('common.backToCanvas') }}
     </button>
-    <span class="qc-preview-bar__title">Ön İzleme</span>
+    <span class="qc-preview-bar__title">{{ t('common.previewTitle') }}</span>
   </div>
   }
 
   <div class="qc-body" [class.qc-body--preview]="previewOn">
     <!-- 2. SOL RAY -->
     <aside class="qc-rail">
-      <div class="qc-rail__head"><span class="qc-dot"></span>Sayfalar</div>
+      <div class="qc-rail__head"><span class="qc-dot"></span>{{ t('canvas.pages') }}</div>
 
       <div class="qc-rail__actions">
         <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="fileInput.click()">
-          <mat-icon>file_upload</mat-icon>İçe Aktar
+          <mat-icon>file_upload</mat-icon>{{ t('canvas.import') }}
         </button>
         <input #fileInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" hidden />
         <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="folderInput.click()">
-          <mat-icon>folder_open</mat-icon>Klasör Yükle
+          <mat-icon>folder_open</mat-icon>{{ t('common.uploadFolder') }}
         </button>
         <input #folderInput type="file" (change)="handleFilesInput2($event)" multiple accept="image/*" webkitdirectory hidden />
         <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerPredict()">
-          <mat-icon>smart_toy</mat-icon>Otomatik Algıla
+          <mat-icon>smart_toy</mat-icon>{{ t('canvas.autoDetect') }}
         </button>
         <button type="button" class="qc-btn qc-btn--ghost qc-btn--block" (click)="triggerAlign()">
-          <mat-icon>format_align_center</mat-icon>Hizala
+          <mat-icon>format_align_center</mat-icon>{{ t('common.align') }}
         </button>
       </div>
 
@@ -141,7 +141,7 @@
           <span class="qc-thumb__label">{{ $index + 1 }}. {{ page.name }}</span>
         </button>
         } @empty {
-        <p class="qc-rail__empty">Henüz sayfa yok.</p>
+        <p class="qc-rail__empty">{{ t('canvas.noPages') }}</p>
         }
       </div>
     </aside>
@@ -151,12 +151,12 @@
       @if (pageFiles.length === 0) {
       <div class="qc-dropzone" (click)="fileInput.click()">
         <mat-icon>cloud_upload</mat-icon>
-        <div class="qc-dropzone__title">Taranmış sayfaları buraya sürükle</div>
+        <div class="qc-dropzone__title">{{ t('canvas.dropzoneTitle') }}</div>
         <div class="qc-dropzone__actions">
-          <button type="button" class="qc-btn qc-btn--primary" (click)="fileInput.click(); $event.stopPropagation()">Dosya Seç</button>
-          <button type="button" class="qc-btn qc-btn--ghost" (click)="folderInput.click(); $event.stopPropagation()">Klasör Yükle</button>
+          <button type="button" class="qc-btn qc-btn--primary" (click)="fileInput.click(); $event.stopPropagation()">{{ t('canvas.chooseFile') }}</button>
+          <button type="button" class="qc-btn qc-btn--ghost" (click)="folderInput.click(); $event.stopPropagation()">{{ t('common.uploadFolder') }}</button>
         </div>
-        <div class="qc-dropzone__note">Klasör adından kitap adı otomatik doldurulur.</div>
+        <div class="qc-dropzone__note">{{ t('canvas.dropzoneNote') }}</div>
       </div>
       }
 
@@ -164,16 +164,16 @@
         [class.qc-canvas__toolbar--slim]="pageFiles.length === 0">
         @if (pageFiles.length > 0) {
         <div class="qc-segmented">
-          <button type="button" [class.is-active]="selectionMode === 'question'" (click)="setSelectionMode('question')">Soru</button>
-          <button type="button" [class.is-active]="selectionMode === 'answer'" (click)="setSelectionMode('answer')">Şık</button>
-          <button type="button" [class.is-active]="selectionMode === 'passage'" (click)="setSelectionMode('passage')">Pasaj</button>
-          <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">Sürükle-Bırak</button>
+          <button type="button" [class.is-active]="selectionMode === 'question'" (click)="setSelectionMode('question')">{{ t('canvas.modeQuestion') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'answer'" (click)="setSelectionMode('answer')">{{ t('canvas.modeAnswer') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'passage'" (click)="setSelectionMode('passage')">{{ t('canvas.modePassage') }}</button>
+          <button type="button" [class.is-active]="selectionMode === 'dropzone'" (click)="setSelectionMode('dropzone')">{{ t('canvas.modeDropZone') }}</button>
         </div>
         }
         <div class="qc-canvas__toolbar-right">
           @if (pageFiles.length > 0) {
-          <span class="qc-count" role="group" aria-label="Şık sayısı">
-            <span class="qc-count__label">Şık</span>
+          <span class="qc-count" role="group" [attr.aria-label]="t('canvas.answerCountGroup')">
+            <span class="qc-count__label">{{ t('canvas.answerCountLabel') }}</span>
             <span class="qc-count__seg">
               <button type="button" [class.is-active]="answerCount === 3" (click)="setAnswerCount(3)">3</button>
               <button type="button" [class.is-active]="answerCount === 4" (click)="setAnswerCount(4)">4</button>
@@ -184,22 +184,22 @@
           <span class="qc-tool-sep"></span>
 
           <button type="button" class="qc-icon-btn" [class.is-active]="autoModeOn"
-            (click)="setAutoMode(!autoModeOn)" title="Otomatik ilerle (kaydettikçe)" aria-label="Otomatik ilerle">
+            (click)="setAutoMode(!autoModeOn)" [title]="t('canvas.autoAdvanceTitle')" [attr.aria-label]="t('canvas.autoAdvance')">
             <mat-icon>skip_next</mat-icon>
           </button>
           <button type="button" class="qc-icon-btn" [class.is-active]="autoAlignOn"
-            (click)="setAutoAlign(!autoAlignOn)" title="Otomatik hizalama" aria-label="Otomatik hizalama">
+            (click)="setAutoAlign(!autoAlignOn)" [title]="t('canvas.autoAlign')" [attr.aria-label]="t('canvas.autoAlign')">
             <mat-icon>format_align_center</mat-icon>
           </button>
           }
           <button type="button" class="qc-icon-btn" [class.is-active]="showSidePanel()"
-            (click)="toggleInspector()" [title]="showSidePanel() ? 'Müfettişi gizle' : 'Müfettişi göster'"
-            aria-label="Müfettişi gizle/göster">
+            (click)="toggleInspector()" [title]="showSidePanel() ? t('canvas.hideInspector') : t('canvas.showInspector')"
+            [attr.aria-label]="t('canvas.toggleInspector')">
             <mat-icon>view_sidebar</mat-icon>
           </button>
           @if (pageFiles.length > 0) {
           <button type="button" class="qc-icon-btn" (click)="downloadRegionsLite()"
-            title="Bölgeleri indir (JSON)" aria-label="Bölgeleri indir">
+            [title]="t('canvas.downloadRegionsTitle')" [attr.aria-label]="t('canvas.downloadRegions')">
             <mat-icon>file_download</mat-icon>
           </button>
           }
@@ -207,11 +207,11 @@
           <span class="qc-tool-sep"></span>
 
           <button type="button" class="qc-icon-btn" (click)="togglePreviewMode()" [disabled]="!canPreview"
-            title="Ön izleme" aria-label="Ön izleme">
+            [title]="t('common.previewTitle')" [attr.aria-label]="t('common.previewTitle')">
             <mat-icon>visibility</mat-icon>
           </button>
           <button type="button" class="qc-icon-btn" (click)="setFullScreen(!fullScreen())"
-            [title]="fullScreen() ? 'Tam ekrandan çık' : 'Tam ekran'" aria-label="Tam ekran">
+            [title]="fullScreen() ? t('canvas.exitFullscreen') : t('canvas.fullscreen')" [attr.aria-label]="t('canvas.fullscreen')">
             <mat-icon>{{ fullScreen() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
           </button>
         </div>
@@ -225,13 +225,13 @@
 
       @if (pageFiles.length > 1 && !previewOn) {
       <div class="qc-pagejump">
-        <button type="button" class="qc-icon-btn" (click)="previousImage()" aria-label="Önceki sayfa">
+        <button type="button" class="qc-icon-btn" (click)="previousImage()" [attr.aria-label]="t('canvas.previousPage')">
           <mat-icon>chevron_left</mat-icon>
         </button>
         <input #pageJump type="number" min="1" [max]="pageFiles.length"
           [value]="currentPageIndex + 1" (keydown.enter)="goToPage(pageJump.value)" />
         <span>/ {{ pageFiles.length }}</span>
-        <button type="button" class="qc-icon-btn" (click)="nextImage()" aria-label="Sonraki sayfa">
+        <button type="button" class="qc-icon-btn" (click)="nextImage()" [attr.aria-label]="t('canvas.nextPage')">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
@@ -247,18 +247,18 @@
           } @else {
           <span class="qc-dot"></span>
           }
-          {{ showQuickCreate() ? 'Yeni Test Oluştur' : 'Soru Müfettişi' }}
+          {{ showQuickCreate() ? t('inspector.quickCreateTitle') : t('inspector.title') }}
         </span>
         <span class="qc-inspector__nav">
           @if (showQuickCreate()) {
-          <button type="button" class="qc-icon-btn" (click)="showQuickCreate.set(false)" aria-label="Kapat">
+          <button type="button" class="qc-icon-btn" (click)="showQuickCreate.set(false)" [attr.aria-label]="t('inspector.close')">
             <mat-icon>close</mat-icon>
           </button>
           } @else {
-          <button type="button" class="qc-icon-btn" (click)="insSelectPrevious()" aria-label="Önceki soru">
+          <button type="button" class="qc-icon-btn" (click)="insSelectPrevious()" [attr.aria-label]="t('inspector.previousQuestion')">
             <mat-icon>chevron_left</mat-icon>
           </button>
-          <button type="button" class="qc-icon-btn" (click)="insSelectNext()" aria-label="Sonraki soru">
+          <button type="button" class="qc-icon-btn" (click)="insSelectNext()" [attr.aria-label]="t('inspector.nextQuestion')">
             <mat-icon>chevron_right</mat-icon>
           </button>
           }
@@ -276,19 +276,19 @@
 
           <!-- Etkileşim Tipi -->
           <section class="qc-insp-sec">
-            <div class="qc-lbl">Etkileşim Tipi</div>
-            <div class="qc-segmented qc-segmented--full" role="group" aria-label="Etkileşim tipi">
+            <div class="qc-lbl">{{ t('inspector.interactionType') }}</div>
+            <div class="qc-segmented qc-segmented--full" role="group" [attr.aria-label]="t('inspector.interactionType')">
               <button type="button" [class.is-active]="d.interactionType === 'mcq'"
-                [attr.aria-pressed]="d.interactionType === 'mcq'" (click)="insSetInteractionType('mcq')">Çoktan Seçmeli</button>
+                [attr.aria-pressed]="d.interactionType === 'mcq'" (click)="insSetInteractionType('mcq')">{{ t('inspector.mcq') }}</button>
               <button type="button" [class.is-active]="d.interactionType === 'dragDropLabeling'"
-                [attr.aria-pressed]="d.interactionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">Sürükle-Bırak</button>
+                [attr.aria-pressed]="d.interactionType === 'dragDropLabeling'" (click)="insSetInteractionType('dragDropLabeling')">{{ t('inspector.dragDrop') }}</button>
             </div>
           </section>
 
           <!-- Şıklar -->
           @if (d.interactionType === 'mcq') {
           <section class="qc-insp-sec">
-            <div class="qc-lbl">Şıklar</div>
+            <div class="qc-lbl">{{ t('inspector.answers') }}</div>
             <div class="qc-choices">
               @for (answer of d.answers; track answer.id; let j = $index) {
               <span class="qc-choice" [class.is-correct]="answer.isCorrect">
@@ -298,27 +298,27 @@
                   @if (answer.isCorrect) { <mat-icon>check</mat-icon> }
                 </button>
                 <button type="button" class="qc-choice__del" (click)="insRemoveAnswer(j)"
-                  [attr.aria-label]="answer.label + ' şıkkını sil'">
+                  [attr.aria-label]="t('inspector.removeAnswerAria', { label: answer.label })">
                   <mat-icon>close</mat-icon>
                 </button>
               </span>
               } @empty {
-              <span class="qc-hint-sm">Henüz şık yok.</span>
+              <span class="qc-hint-sm">{{ t('inspector.noAnswers') }}</span>
               }
             </div>
             <div class="qc-btn-row">
               @if (autoAlignOn) {
               <span class="qc-btn qc-btn--ghost qc-btn--sm is-auto" aria-disabled="true">
-                <mat-icon>format_align_center</mat-icon>Hizala
-                <span class="qc-auto-badge">otomatik</span>
+                <mat-icon>format_align_center</mat-icon>{{ t('common.align') }}
+                <span class="qc-auto-badge">{{ t('inspector.autoBadge') }}</span>
               </span>
               } @else {
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="d.answers.length < 2" (click)="insAlignAnswers()">
-                <mat-icon>format_align_center</mat-icon>Hizala
+                <mat-icon>format_align_center</mat-icon>{{ t('common.align') }}
               </button>
               }
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDrawAnswerMode()">
-                <mat-icon>crop_square</mat-icon>Şık çiz
+                <mat-icon>crop_square</mat-icon>{{ t('inspector.drawAnswer') }}
               </button>
             </div>
           </section>
@@ -327,30 +327,30 @@
           <!-- Sürükle-Bırak -->
           @if (d.interactionType === 'dragDropLabeling') {
           <section class="qc-insp-sec">
-            <div class="qc-lbl">Sürükle-Bırak</div>
+            <div class="qc-lbl">{{ t('inspector.dragDrop') }}</div>
             <div class="qc-btn-row">
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDropZoneMode()">
-                <mat-icon>select_all</mat-icon>Zone çiz
+                <mat-icon>select_all</mat-icon>{{ t('inspector.drawZone') }}
               </button>
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insGenerateDraggables()">
-                <mat-icon>format_list_numbered</mat-icon>Etiketleri oluştur
+                <mat-icon>format_list_numbered</mat-icon>{{ t('inspector.generateLabels') }}
               </button>
             </div>
             <div class="qc-btn-row">
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!d.dropZones.length" (click)="insRemoveLastZone()">
-                <mat-icon>undo</mat-icon>Son zone
+                <mat-icon>undo</mat-icon>{{ t('inspector.lastZone') }}
               </button>
               <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" [disabled]="!d.dropZones.length" (click)="insClearZones()">
-                <mat-icon>delete_sweep</mat-icon>Zone temizle
+                <mat-icon>delete_sweep</mat-icon>{{ t('inspector.clearZones') }}
               </button>
             </div>
             <div class="qc-row">
-              <span class="qc-lbl">Etiket sayısı</span>
+              <span class="qc-lbl">{{ t('inspector.labelCount') }}</span>
               <input class="qc-input-sm" type="number" min="1" max="30" [value]="d.labelCount"
                 (change)="insSetLabelCount($event)" />
             </div>
             <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="insAutoSolution()">
-              <mat-icon>auto_fix_high</mat-icon>Auto çözüm
+              <mat-icon>auto_fix_high</mat-icon>{{ t('inspector.autoSolution') }}
             </button>
             <div class="qc-solution">
               @for (z of d.dropZones; track z.id) {
@@ -358,7 +358,7 @@
                 <span class="qc-zone-id">{{ z.id }}</span>
                 <select class="qc-inline-select" [value]="d.zoneAssignments[z.id]"
                   (change)="insSetZoneSolution(z.id, $event)">
-                  <option value="0">(boş)</option>
+                  <option value="0">{{ t('inspector.emptyOption') }}</option>
                   @for (dr of d.draggables; track dr.id) {
                   <option [value]="dr.id">{{ dr.label }}</option>
                   }
@@ -371,40 +371,40 @@
 
           <!-- Sınıflandırma -->
           <section class="qc-insp-sec">
-            <div class="qc-lbl">Sınıflandırma</div>
+            <div class="qc-lbl">{{ t('inspector.classification') }}</div>
 
             <div class="qc-field">
-              <span class="qc-lbl">Ders</span>
+              <span class="qc-lbl">{{ t('common.subject') }}</span>
               <select class="qc-inline-select qc-inline-select--block" [ngModel]="insSubjectId"
                 (ngModelChange)="insSubjectId = $event" name="insSubjectId">
-                <option [ngValue]="null">Seçiniz</option>
+                <option [ngValue]="null">{{ t('common.select') }}</option>
                 @for (s of insSubjects; track s.id) { <option [ngValue]="s.id">{{ s.name }}</option> }
               </select>
             </div>
 
             <div class="qc-field">
-              <span class="qc-lbl">Konu</span>
+              <span class="qc-lbl">{{ t('common.topic') }}</span>
               <select class="qc-inline-select qc-inline-select--block" [ngModel]="insTopicId"
                 (ngModelChange)="insTopicId = $event" name="insTopicId" [disabled]="!insSubjectId">
-                <option [ngValue]="null">Seçiniz</option>
+                <option [ngValue]="null">{{ t('common.select') }}</option>
                 @for (t of insTopics; track t.id) { <option [ngValue]="t.id">{{ t.name }}</option> }
               </select>
             </div>
 
             <div class="qc-field">
-              <span class="qc-lbl">Alt Konu</span>
+              <span class="qc-lbl">{{ t('common.subTopic') }}</span>
               <select class="qc-inline-select qc-inline-select--block" [ngModel]="insSubtopicId"
                 (ngModelChange)="insSubtopicId = $event" name="insSubtopicId" [disabled]="!insTopicId">
-                <option [ngValue]="null">Seçiniz</option>
+                <option [ngValue]="null">{{ t('common.select') }}</option>
                 @for (st of insSubtopics; track st.id) { <option [ngValue]="st.id">{{ st.name }}</option> }
               </select>
             </div>
 
             <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm qc-btn--block" (click)="askAi()">
-              <mat-icon>smart_toy</mat-icon>Yapay Zekâ
+              <mat-icon>smart_toy</mat-icon>{{ t('inspector.askAi') }}
             </button>
             @if (d.difficulty !== null) {
-            <div class="qc-row"><span class="qc-lbl">Zorluk</span><b>{{ d.difficulty }}/10</b></div>
+            <div class="qc-row"><span class="qc-lbl">{{ t('inspector.difficulty') }}</span><b>{{ d.difficulty }}/10</b></div>
             }
           </section>
 
@@ -412,11 +412,11 @@
           <section class="qc-insp-sec">
             <div class="qc-row">
               <button type="button" class="qc-switch" [class.off]="!d.isExample"
-                [attr.aria-pressed]="d.isExample" aria-label="Örnek / çözümlü soru" (click)="insToggleExample()"></button>
-              <span>Örnek / çözümlü soru</span>
+                [attr.aria-pressed]="d.isExample" [attr.aria-label]="t('inspector.exampleQuestion')" (click)="insToggleExample()"></button>
+              <span>{{ t('inspector.exampleQuestion') }}</span>
             </div>
             @if (d.isExample) {
-            <input class="control qc-input" type="text" placeholder="Doğru cevap / açıklama"
+            <input class="control qc-input" type="text" [placeholder]="t('inspector.exampleAnswerPlaceholder')"
               [ngModel]="insExampleAnswer" (ngModelChange)="insExampleAnswer = $event" name="insExampleAnswer" />
             }
           </section>
@@ -424,18 +424,18 @@
           <!-- Pasaj -->
           @if (d.passages.length) {
           <section class="qc-insp-sec">
-            <div class="qc-lbl">Pasaj</div>
+            <div class="qc-lbl">{{ t('common.passage') }}</div>
             <select class="qc-inline-select qc-inline-select--block" [value]="d.selectedPassageId" (change)="insChangePassage($event)">
-              <option value="0">Pasaj seçiniz</option>
+              <option value="0">{{ t('inspector.selectPassage') }}</option>
               @for (passage of d.passages; track passage.id) {
-              <option [value]="passage.id">Passage {{ passage.id }}</option>
+              <option [value]="passage.id">{{ t('inspector.passageOption', { id: passage.id }) }}</option>
               }
             </select>
             @if (d.selectedPassageId !== '0') {
             <div class="qc-row">
               <button type="button" class="qc-switch" [class.off]="!d.passageFirst"
-                [attr.aria-pressed]="d.passageFirst" aria-label="Pasaj önce gösterilsin" (click)="insTogglePassageFirst()"></button>
-              <span>Pasaj önce gösterilsin</span>
+                [attr.aria-pressed]="d.passageFirst" [attr.aria-label]="t('inspector.passageFirst')" (click)="insTogglePassageFirst()"></button>
+              <span>{{ t('inspector.passageFirst') }}</span>
             </div>
             }
           </section>
@@ -444,24 +444,24 @@
           <!-- Uyarılar -->
           @if (d.warnings.length) {
           <section class="qc-insp-sec qc-insp-sec--warn">
-            <div class="qc-lbl">Uyarılar</div>
+            <div class="qc-lbl">{{ t('inspector.warnings') }}</div>
             <ul class="qc-warns">
               @for (w of d.warnings; track w) { <li>{{ w }}</li> }
             </ul>
-            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDismissWarning($event)">Yoksay</button>
+            <button type="button" class="qc-btn qc-btn--ghost qc-btn--sm" (click)="insDismissWarning($event)">{{ t('inspector.dismissWarning') }}</button>
           </section>
           }
 
           <!-- Footer -->
           <section class="qc-insp-sec">
             <button type="button" class="qc-btn qc-btn--danger qc-btn--block" (click)="insRemoveQuestion()">
-              <mat-icon>delete</mat-icon>Soruyu Sil
+              <mat-icon>delete</mat-icon>{{ t('inspector.deleteQuestion') }}
             </button>
           </section>
 
           } @else {
           <p class="qc-inspector__hint">
-            Tuval üzerinde bir soru seçin; şıklar, sınıflandırma ve uyarılar burada görünür.
+            {{ t('inspector.emptyHint') }}
           </p>
           }
         }

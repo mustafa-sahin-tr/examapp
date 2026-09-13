@@ -1,5 +1,5 @@
-<div class="wheel-container">
+<div class="wheel-container" *transloco="let t; prefix: 'shared.spinWheel'">
     <div class="arrow"></div> <!-- Sabit Ok -->
     <canvas class="canvas-spin-wheel" id="wheelCanvas" width="300" height="300"></canvas>
-    <button (click)="spinWheel()">🎡 Çarkı Çevir!</button>
+    <button (click)="spinWheel()">🎡 {{ t('spin') }}</button>
   </div>

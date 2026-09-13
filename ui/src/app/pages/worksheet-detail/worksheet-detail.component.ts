@@ -39,6 +39,8 @@ import {
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
 import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { LocaleService } from '../../services/locale.service';
 
 interface AssignmentPanelState {
   loading: boolean;
@@ -49,6 +51,9 @@ interface AssignmentPanelState {
 }
 
 type WorksheetView = 'teacher' | 'completed' | 'start';
+
+/** Sayfa çevirileri kendi scope'unda: `public/i18n/worksheet-detail/<lang>.json` (issue #183). */
+const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
 
 @Component({
   selector: 'app-worksheet-detail',
@@ -68,7 +73,9 @@ type WorksheetView = 'teacher' | 'completed' | 'start';
     MatInputModule,
     MatSelectModule,
     MatDatepickerModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(WORKSHEET_DETAIL_SCOPE)],
   templateUrl: './worksheet-detail.component-dlms.html',
   styleUrls: ['./worksheet-detail.component-dlms.scss'],
 })
@@ -79,6 +86,33 @@ export class WorksheetDetailComponent implements OnInit {
   private studentService = inject(StudentService);
   private destroyRef = inject(DestroyRef);
   private injector = inject(Injector);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
+
+  /** Scope'lu anahtarı tam adıyla senkron çevirir; şablon yardımcıları `*transloco` bloğu içinde çalışır. */
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${WORKSHEET_DETAIL_SCOPE}.${key}`, params) ?? '';
+  }
+
+  constructor() {
+    this.warmTranslationScope();
+  }
+
+  /**
+   * Şablon dışından (snackbar, dialog, hesaplanan etiket) çağrılan senkron `translate()`
+   * çağrılarının çalışabilmesi için scope sözlüğünü render'dan bağımsız yükler.
+   */
+  private warmTranslationScope(): void {
+    this.transloco
+      .selectTranslate('snackbar.dismiss', {}, WORKSHEET_DETAIL_SCOPE)
+      .pipe(takeUntilDestroyed())
+      .subscribe();
+  }
+
+  /** Intl çağrılarında kullanılacak aktif dil kodu ('tr' | 'en-US'). */
+  private get intlLocale(): string {
+    return this.localeService.localeDefinition().angularLocale;
+  }
 
   /** queryParam `reminder=edit` ile gelindiğinde detay yüklenince hatırlatıcı formunu aç + karta odaklan. */
   private pendingReminderEdit = false;
@@ -252,8 +286,8 @@ export class WorksheetDetailComponent implements OnInit {
         },
         error: (error) => {
           this.fromMistakesLoading.set(false);
-          const message = error?.error?.message ?? 'Test oluşturulamadı.';
-          this.snackBar.open(message, 'Tamam', { duration: 3000 });
+          const message = error?.error?.message ?? this.tr('snackbar.createFailed');
+          this.snackBar.open(message, this.tr('snackbar.dismiss'), { duration: 3000 });
         },
       });
   }
@@ -275,14 +309,16 @@ export class WorksheetDetailComponent implements OnInit {
       .subscribe({
         next: (result) => {
           if (result?.worksheetId) {
-            this.snackBar.open('Sınav kendi hesabına kopyalandı', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.copySuccess'), this.tr('snackbar.dismiss'), { duration: 3000 });
             this.router.navigate(['/exam', result.worksheetId]);
           } else {
-            this.snackBar.open('Kopyalama başarısız', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.copyFailed'), this.tr('snackbar.dismiss'), { duration: 3000 });
           }
         },
         error: (error) => {
-          this.snackBar.open(error?.error?.message ?? 'Kopyalama başarısız', 'Tamam', { duration: 3000 });
+          this.snackBar.open(error?.error?.message ?? this.tr('snackbar.copyFailed'), this.tr('snackbar.dismiss'), {
+            duration: 3000,
+          });
         },
       });
   }
@@ -312,7 +348,7 @@ export class WorksheetDetailComponent implements OnInit {
         }
         this.accessRequestPending.set(true);
         if (result.submitted) {
-          this.snackBar.open('Atama izni talebiniz gönderildi.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.tr('snackbar.permissionRequested'), this.tr('snackbar.dismiss'), { duration: 3000 });
         }
       });
   }
@@ -356,11 +392,11 @@ export class WorksheetDetailComponent implements OnInit {
     const worksheetId = this.testId;
     const scheduled = this.buildScheduledDate();
     if (!worksheetId || !scheduled) {
-      this.snackBar.open('Lütfen tarih ve saat seçin.', 'Tamam', { duration: 3000 });
+      this.snackBar.open(this.tr('snackbar.pickDateTime'), this.tr('snackbar.dismiss'), { duration: 3000 });
       return;
     }
     if (scheduled.getTime() <= Date.now()) {
-      this.snackBar.open('Geçmiş bir tarih seçemezsin.', 'Tamam', { duration: 3000 });
+      this.snackBar.open(this.tr('snackbar.pastDate'), this.tr('snackbar.dismiss'), { duration: 3000 });
       return;
     }
 
@@ -376,11 +412,15 @@ export class WorksheetDetailComponent implements OnInit {
           this.reminderSaving.set(false);
           this.reminder.set(reminder);
           this.reminderEditing.set(false);
-          this.snackBar.open('Hatırlatıcı kuruldu.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.tr('snackbar.reminderSaved'), this.tr('snackbar.dismiss'), { duration: 3000 });
         },
         error: (error) => {
           this.reminderSaving.set(false);
-          this.snackBar.open(error?.error?.message ?? 'Hatırlatıcı kaydedilemedi.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(
+            error?.error?.message ?? this.tr('snackbar.reminderSaveFailed'),
+            this.tr('snackbar.dismiss'),
+            { duration: 3000 }
+          );
           if (error?.status === 409) {
             this.loadDetail();
           }
@@ -401,11 +441,15 @@ export class WorksheetDetailComponent implements OnInit {
           this.reminderSaving.set(false);
           this.reminder.set(null);
           this.reminderEditing.set(false);
-          this.snackBar.open('Hatırlatıcı iptal edildi.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.tr('snackbar.reminderCancelled'), this.tr('snackbar.dismiss'), { duration: 3000 });
         },
         error: (error) => {
           this.reminderSaving.set(false);
-          this.snackBar.open(error?.error?.message ?? 'Hatırlatıcı iptal edilemedi.', 'Tamam', { duration: 3000 });
+          this.snackBar.open(
+            error?.error?.message ?? this.tr('snackbar.reminderCancelFailed'),
+            this.tr('snackbar.dismiss'),
+            { duration: 3000 }
+          );
         },
       });
   }
@@ -415,7 +459,7 @@ export class WorksheetDetailComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return '—';
     }
-    return date.toLocaleString('tr-TR', {
+    return date.toLocaleString(this.intlLocale, {
       weekday: 'short',
       day: 'numeric',
       month: 'short',
@@ -426,9 +470,9 @@ export class WorksheetDetailComponent implements OnInit {
 
   protected remindBeforeLabel(minutes: number): string {
     if (minutes % 60 === 0) {
-      return `${minutes / 60} saat önce`;
+      return this.tr('reminder.beforeHours', { hours: minutes / 60 });
     }
-    return `${minutes} dakika önce`;
+    return this.tr('reminder.beforeMinutes', { minutes });
   }
 
   protected refreshAssignments(): void {
@@ -437,7 +481,7 @@ export class WorksheetDetailComponent implements OnInit {
 
   formatDuration(totalSeconds: number): string {
     if (!totalSeconds || totalSeconds <= 0) {
-      return '0 dakika';
+      return this.tr('duration.zero');
     }
 
     const totalMinutes = Math.floor(totalSeconds / 60);
@@ -445,19 +489,19 @@ export class WorksheetDetailComponent implements OnInit {
     const minutes = totalMinutes % 60;
 
     if (hours > 0 && minutes > 0) {
-      return `${hours} saat ${minutes} dakika`;
+      return this.tr('duration.hoursMinutes', { hours, minutes });
     }
 
     if (hours > 0) {
-      return `${hours} saat`;
+      return this.tr('duration.hours', { hours });
     }
 
-    return `${totalMinutes} dakika`;
+    return this.tr('duration.minutes', { minutes: totalMinutes });
   }
 
   protected formatMinutes(totalSeconds: number): string {
     const minutes = Math.round((totalSeconds ?? 0) / 60);
-    return `${minutes} dk`;
+    return this.tr('duration.shortMinutes', { minutes });
   }
 
   protected formatDurationDetailed(totalSeconds: number): string {
@@ -465,12 +509,12 @@ export class WorksheetDetailComponent implements OnInit {
     const minutes = Math.floor(safe / 60);
     const seconds = safe % 60;
     if (minutes > 0 && seconds > 0) {
-      return `${minutes} dk ${seconds} sn`;
+      return this.tr('duration.shortMinutesSeconds', { minutes, seconds });
     }
     if (minutes > 0) {
-      return `${minutes} dk`;
+      return this.tr('duration.shortMinutes', { minutes });
     }
-    return `${seconds} sn`;
+    return this.tr('duration.shortSeconds', { seconds });
   }
 
   protected formatShortDate(value: string | null): string {
@@ -481,11 +525,11 @@ export class WorksheetDetailComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return '—';
     }
-    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+    return date.toLocaleDateString(this.intlLocale, { day: 'numeric', month: 'long' });
   }
 
   protected percentLabel(value: number | null | undefined): string {
-    return value === null || value === undefined ? '—' : `%${value}`;
+    return value === null || value === undefined ? '—' : this.tr('format.percent', { value });
   }
 
   /** Donut halkası için stroke-dashoffset (r = 64, çevre ≈ 402). */
@@ -552,8 +596,9 @@ export class WorksheetDetailComponent implements OnInit {
         .subscribe({
         next: (response) => {
           const success = response?.success ?? false;
-          const message = response?.message ?? (success ? 'Atama oluşturuldu.' : 'Atama oluşturulamadı.');
-          this.snackBar.open(message, 'Tamam', { duration: 3000 });
+          const message =
+            response?.message ?? this.tr(success ? 'snackbar.assignmentCreated' : 'snackbar.assignmentFailed');
+          this.snackBar.open(message, this.tr('snackbar.dismiss'), { duration: 3000 });
           if (success) {
             this.loadAssignments();
           } else {
@@ -564,8 +609,8 @@ export class WorksheetDetailComponent implements OnInit {
           }
         },
         error: (error) => {
-          const message = error?.error?.message ?? 'Atama oluşturulurken bir hata oluştu.';
-          this.snackBar.open(message, 'Kapat', { duration: 4000 });
+          const message = error?.error?.message ?? this.tr('snackbar.assignmentError');
+          this.snackBar.open(message, this.tr('snackbar.close'), { duration: 4000 });
           this.assignmentPanelState.update((state) => ({
             ...state,
             loading: false,
@@ -579,15 +624,15 @@ export class WorksheetDetailComponent implements OnInit {
   protected statusLabel(status: AssignmentStudentStatus): string {
     switch (status) {
       case 'Completed':
-        return 'Tamamladı';
+        return this.tr('status.completed');
       case 'InProgress':
-        return 'Devam ediyor';
+        return this.tr('status.inProgress');
       case 'Scheduled':
-        return 'Planlandı';
+        return this.tr('status.scheduled');
       case 'Expired':
-        return 'Süresi doldu';
+        return this.tr('status.expired');
       default:
-        return 'Başlamadı';
+        return this.tr('status.notStarted');
     }
   }
 
@@ -679,7 +724,7 @@ export class WorksheetDetailComponent implements OnInit {
       return '—';
     }
 
-    return date.toLocaleString('tr-TR', {
+    return date.toLocaleString(this.intlLocale, {
       dateStyle: 'short',
       timeStyle: 'short',
     });
@@ -789,11 +834,11 @@ export class WorksheetDetailComponent implements OnInit {
         error: (error) => {
           this.detailLoading.set(false);
           if (error?.status === 404) {
-            this.snackBar.open('Bu teste erişiminiz yok veya test bulunamadı.', 'Tamam', { duration: 4000 });
+            this.snackBar.open(this.tr('snackbar.noAccess'), this.tr('snackbar.dismiss'), { duration: 4000 });
             this.router.navigate(['/tests']);
             return;
           }
-          this.detailError.set(error?.error?.message ?? 'Sınav detayları getirilemedi.');
+          this.detailError.set(error?.error?.message ?? this.tr('snackbar.detailFailed'));
         },
       });
   }

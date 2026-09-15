@@ -36,6 +36,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+
+// Rapor uçlarındaki IDOR koruması (issue #165): Keycloak sub -> auth-api sayısal user id çözümü.
+// Singleton: durumu yok, IHttpClientFactory + IMemoryCache zaten singleton-safe;
+// HttpContext metoda parametre olarak geldiği için accessor'a gerek yok.
+builder.Services.AddHttpClient(
+    AuthApiCallerIdentityResolver.HttpClientName,
+    c => c.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<ICallerIdentityResolver, AuthApiCallerIdentityResolver>();
 
 // Badge services
 builder.Services.AddScoped<AnswerSubmissionAggregationService>();

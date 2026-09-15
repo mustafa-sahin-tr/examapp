@@ -375,6 +375,14 @@ spec:
                 configMapKeyRef:
                   name: examapp-config
                   key: EXAM_API_BASE_URL
+            # Issue #165: caller user id lookup via GET /api/auth/user-profile
+            # on auth-api. Reuses the same configmap key exam-dotnet-api's
+            # AuthApiBaseUrl already reads (AUTH_API_BASE_URL, above).
+            - name: AuthApi__BaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: AUTH_API_BASE_URL
             - name: QuestionAnalyzer__AIActive
               valueFrom:
                 configMapKeyRef:

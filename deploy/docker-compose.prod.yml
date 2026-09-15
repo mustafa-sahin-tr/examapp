@@ -232,6 +232,9 @@ services:
       MinioConfig__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinioConfig__BaseUrl: ${PUBLIC_BASE_URL}/img
       ExamApi__BaseUrl: http://exam-dotnet-api:5079
+      # Issue #165: caller user id lookup via GET /api/auth/user-profile on
+      # auth-api. Same value as exam-dotnet-api's AuthApiBaseUrl above.
+      AuthApi__BaseUrl: http://auth-api:5079
       QuestionAnalyzer__AIActive: ${BADGE_AI_ACTIVE:-true}
       Gemini__Model: ${GEMINI_MODEL:-models/gemini-3.5-flash-lite}
       Gemini__CachedContent: ${GEMINI_CACHED_CONTENT}
@@ -240,6 +243,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_started
+      auth-api:
         condition: service_started
     networks:
       - exam-net

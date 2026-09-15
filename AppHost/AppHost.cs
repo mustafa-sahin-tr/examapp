@@ -571,7 +571,13 @@ badgeService = badgeService
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
-    .WaitFor(keycloak);
+    // Issue #165: BadgeService now resolves the caller's numeric user id via
+    // GET /api/auth/user-profile on auth-api (same client call ExamDotnetApi
+    // already makes — see AuthApiBaseUrl above). Same authApiHttp expression,
+    // same docker-compose-hostname-Aspire-can't-resolve reasoning.
+    .WithEnvironment("AuthApi__BaseUrl", authApiHttp)
+    .WaitFor(keycloak)
+    .WaitFor(authApi);
 
 authApi = authApi
     .WithReference(keycloak)

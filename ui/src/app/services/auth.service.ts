@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 import { CheckkTeacherResponse } from '../models/check-teacher-response';
@@ -93,22 +93,42 @@ export class AuthService {
     }
   }
 
-  clearLocalStorage(): void {
+  /** Oturum anahtarlarını siler ve authenticated akışını kapatır; yönlendirme yapmaz. */
+  private clearSession(): void {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.roleKey);
     localStorage.removeItem(this.avatarKey);
     localStorage.removeItem('user');
     localStorage.removeItem('student');
     this.isAuthenticatedSubject.next(false);
+  }
+
+  clearLocalStorage(): void {
+    this.clearSession();
     this.goLogin();
   }
 
   logout(): void {
-    // logout işlemi için gerekli olan API çağrısını yapıyoruz
-    this.http.post('/api/exam/auth/logout', {}).subscribe(() => {
-      console.log('Logout successful');
-      this.clearLocalStorage();
-    });
+    // Token temizlikten ÖNCE alınır: istek interceptor'dan muaf olduğu için Authorization
+    // başlığını elle taşımak zorundayız, aksi halde backend 401 döner ve Keycloak oturumu kapanmaz.
+    const token = this.getToken();
+    // Yerel oturum ÖNCE senkron temizlenir; sunucu logout'u best-effort denenir.
+    // İstek başarısız olsa da yeniden girişte eski kullanıcı bilgisi kalmaz.
+    this.clearSession();
+    this.http
+      .post(
+        '/api/exam/auth/logout',
+        {},
+        {
+          withCredentials: true,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      )
+      .pipe(
+        timeout(2000),
+        catchError(() => of(null))
+      )
+      .subscribe(() => this.goLogin());
   }
 
   isAuthenticated(): Observable<boolean> {
@@ -154,6 +174,39 @@ export class AuthService {
   getUser(): any {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+  }
+
+  /**
+   * Önbellekteki `user` kaydının, elimizdeki access token ile aynı kullanıcıya ait olup
+   * olmadığını söyler. Token'ın `sub` claim'i ile kayıttaki `keycloakId` karşılaştırılır.
+   * Token yoksa, kayıt yoksa, JSON bozuksa veya kimlikler farklıysa `false` döner.
+   */
+  isCachedUserCurrent(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+
+    const stored = localStorage.getItem('user');
+    if (!stored) {
+      return false;
+    }
+
+    try {
+      const decoded: { sub?: string } = jwtDecode(token);
+      const sub = decoded?.sub;
+      const cachedKeycloakId = JSON.parse(stored)?.keycloakId;
+      return !!sub && !!cachedKeycloakId && sub === cachedKeycloakId;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Sadece kullanıcıya ait önbellek anahtarlarını siler; token'a dokunmaz, yönlendirme yapmaz. */
+  clearCachedUser(): void {
+    localStorage.removeItem('user');
+    localStorage.removeItem(this.avatarKey);
+    localStorage.removeItem('student');
   }
 
   hasToken(): boolean {

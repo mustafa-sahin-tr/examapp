@@ -1,4 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
@@ -54,16 +55,15 @@ export class LogoutComponent implements OnInit {
       this.updateStep(3);
       await this.delay(200);
 
-      // Perform actual logout
-      this.authService.logout();
+      // Yerel oturum senkron temizlenir; sunucu logout'u best-effort beklenir ki
+      // Keycloak oturumu kapanmadan /oidc-login'e gidilmesin.
+      await firstValueFrom(this.authService.logout());
 
-      // Navigate to login after a short delay
       await this.delay(200);
       this.router.navigate(['/login']);
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if there's an error, complete the logout
-      this.authService.logout();
+      // logout() hata firlatmaz (catchError ile yutulur); burada sadece yonlendirme kalir.
       this.router.navigate(['/login']);
     }
   }

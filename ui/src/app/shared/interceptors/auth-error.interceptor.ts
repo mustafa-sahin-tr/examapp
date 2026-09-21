@@ -25,6 +25,7 @@ export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {
           '/app/exchange',
           '/app/refresh-token',
           '/api/auth/refresh-token',
+          '/api/exam/auth/logout',
         ];
 
         if (excludedUrls.some((url) => req.url.includes(url))) {

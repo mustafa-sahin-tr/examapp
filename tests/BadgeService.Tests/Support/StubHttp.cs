@@ -36,7 +36,23 @@ public sealed class StubHttp : IHttpClientFactory
         return this;
     }
 
-    public HttpClient CreateClient(string name) => new(new Handler(this));
+    /// <summary>
+    /// Register a handler that throws an exception for matching requests.
+    /// </summary>
+    public StubHttp OnThrow(string urlContains, Exception exception)
+    {
+        _routes.Add((urlContains, _ => throw exception));
+        return this;
+    }
+
+    public HttpClient CreateClient(string name)
+    {
+        RequestedClientNames.Add(name);
+        return new(new Handler(this));
+    }
+
+    /// <summary>Tracks all requested client names (for verifying named client usage).</summary>
+    public List<string> RequestedClientNames { get; } = new();
 
     private HttpResponseMessage Dispatch(HttpRequestMessage request)
     {

@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, catchError, map, Observable, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
 import {
@@ -121,19 +121,36 @@ export class AuthService {
     return this.http.post<RegisterProfileResponse>('/api/exam/parent/register', {});
   }
 
-  logout(): void {
-    console.log('Logging out...');
-    // logout işlemi için gerekli olan API çağrısını yapıyoruz
-    this.http.post('/api/exam/auth/logout', {}).subscribe(() => {
-      console.log('Logout successful');
-      localStorage.removeItem(this.tokenKey);
-      localStorage.removeItem(this.roleKey);
-      localStorage.removeItem(this.avatarKey);
-      localStorage.removeItem('user');
-      localStorage.removeItem('student');
-      this.isAuthenticatedSubject.next(false);
-      this.router.navigate(['/login']);
-    });
+  /**
+   * Yerel oturumu HEMEN (senkron) temizler, ardından sunucu tarafı logout'u best-effort dener.
+   * İstek başarısız olsa bile localStorage temizlenmiş olur; böylece yeniden girişte eski
+   * kullanıcı bilgisi görünmez. Yönlendirmeyi çağıran taraf yapar.
+   */
+  logout(): Observable<void> {
+    // Token temizlikten ÖNCE alınır: istek interceptor'dan muaf olduğu için Authorization
+    // başlığını elle taşımak zorundayız, aksi halde backend 401 döner ve Keycloak oturumu kapanmaz.
+    const token = this.getToken();
+    localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.roleKey);
+    localStorage.removeItem(this.avatarKey);
+    localStorage.removeItem('user');
+    localStorage.removeItem('student');
+    this.isAuthenticatedSubject.next(false);
+
+    return this.http
+      .post(
+        '/api/exam/auth/logout',
+        {},
+        {
+          withCredentials: true,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        }
+      )
+      .pipe(
+        timeout(2000),
+        catchError(() => of(null)),
+        map(() => void 0)
+      );
   }
 
   isAuthenticated(): Observable<boolean> {
@@ -178,6 +195,38 @@ export class AuthService {
     return user ? JSON.parse(user) : null;
   }
 
+  /**
+   * Onbellekteki `user` kaydinin elimizdeki access token ile ayni kullaniciya ait olup
+   * olmadigini soyler. Token'in `sub` claim'i ile kayittaki `keycloakId` karsilastirilir.
+   */
+  isCachedUserCurrent(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+
+    const stored = localStorage.getItem('user');
+    if (!stored) {
+      return false;
+    }
+
+    try {
+      const decoded: { sub?: string } = jwtDecode(token);
+      const sub = decoded?.sub;
+      const cachedKeycloakId = JSON.parse(stored)?.keycloakId;
+      return !!sub && !!cachedKeycloakId && sub === cachedKeycloakId;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Sadece kullaniciya ait onbellek anahtarlarini siler; token'a dokunmaz. */
+  clearCachedUser(): void {
+    localStorage.removeItem('user');
+    localStorage.removeItem(this.avatarKey);
+    localStorage.removeItem('student');
+  }
+
   hasToken(): boolean {
     return !!this.getToken();
   }
@@ -185,10 +234,10 @@ export class AuthService {
   exchangeCodeForToken(code: string) {
     return this.http.post<TokenResponse>(`/api/auth/exchange`, { code: code }).pipe(
       tap((res) => {
+        // Yeni oturum yazılmadan önce önceki kullanıcıya ait önbellek kalıntılarını at.
+        this.clearCachedUser();
         localStorage.setItem(this.tokenKey, res.token);
         localStorage.setItem(this.roleKey, res.roles[0]);
-        // localStorage.setItem(this.avatarKey, res.profile.avatar);
-        // localStorage.setItem('user', JSON.stringify(res.profile));
         this.isAuthenticatedSubject.next(true);
       })
     );

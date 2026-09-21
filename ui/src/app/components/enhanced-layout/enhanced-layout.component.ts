@@ -274,9 +274,20 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
 
     var profile = localStorage.getItem('user_role');
     var user = localStorage.getItem('user');
-    this.setUserInfo();
+    // Önbellekteki profil başka bir kullanıcıya aitse (A çıkıp B girdiğinde) hiç gösterme,
+    // refresh cevabı gelene kadar başlık boş kalsın.
+    const cachedUserIsCurrent = this.authService.isCachedUserCurrent();
+    if (!cachedUserIsCurrent) {
+      this.authService.clearCachedUser();
+      this.userName.set('');
+      this.userEmail.set('');
+      this.userAvatarUrl.set('');
+    } else {
+      this.setUserInfo();
+    }
 
     var refresh =
+      !cachedUserIsCurrent ||
       !user ||
       (profile == 'Student' && !JSON.parse(user).student) ||
       (profile == 'Teacher' && !JSON.parse(user).teacher);

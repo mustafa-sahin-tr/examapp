@@ -197,15 +197,17 @@ namespace ExamApp.Api.Controllers
                 _logger.LogWarning(ex, "Keycloak school_id attribute update failed for {KeycloakId}", user.KeycloakId);
             }
 
-            // 2. Keycloak token endpoint'ine isteği hazırla
-            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
-
             // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
             // (Role boş, SchoolId eski) haliyle Redis'e cache'lemiş olabilir. Tek seferde güncel
             // Role + SchoolId ile cache'le ki 1 saat boyunca diğer endpoint'ler eski değeri görmesin.
+            // RefreshTokenAsync'ten ÖNCE: refresh token geçersizse fırlatır, ama DB zaten güncellendiği
+            // için cache eski Role/SchoolId ile kalmamalı.
             user.Role = UserRole.Student.ToString();
             user.SchoolId = request.SchoolId;
             await _userProfileCacheService.SetAsync(user.KeycloakId, user);
+
+            // 2. Keycloak token endpoint'ine isteği hazırla
+            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
 
             if (!string.IsNullOrEmpty(tokenData.RefreshToken))
             {

@@ -82,6 +82,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     '/app/exchange',
     '/app/refresh-token',
     '/api/auth/refresh-token',
+    '/api/exam/auth/logout',
   ];
 
   console.log('Intercepting request to:', req.url);

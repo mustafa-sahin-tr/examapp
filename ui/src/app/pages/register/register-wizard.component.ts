@@ -129,6 +129,10 @@ export class RegisterWizardComponent implements OnInit {
         const roleName = role.charAt(0).toUpperCase() + role.slice(1); // Student/Teacher/Parent
         if (val?.accessToken) localStorage.setItem('auth_token', val.accessToken);
         localStorage.setItem('user_role', roleName);
+        if (!this.authService.isCachedUserCurrent()) {
+          // Onbellekteki kayit baska bir kullaniciya ait; merge etmek yerine at.
+          this.authService.clearCachedUser();
+        }
         const raw = localStorage.getItem('user');
         if (raw) {
           try {

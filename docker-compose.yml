@@ -58,12 +58,21 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8006
+      # Issue #165: BadgeService resolves the caller's numeric user id via
+      # GET /api/auth/user-profile on auth-api. Same docker-compose hostname
+      # exam-dotnet-api's AuthApiBaseUrl already uses (appsettings.json,
+      # "http://auth-api:5079"). BadgeService's appsettings(.Development).json
+      # carries the same default; kept explicit here so the compose topology is
+      # self-describing and overridable — same pattern as ExamApi__BaseUrl.
+      - AuthApi__BaseUrl=http://auth-api:5079
     volumes:
       - ./Services/BadgeService:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
     depends_on:
       exam-pg-container:
         condition: service_healthy
+      auth-api:
+        condition: service_started
     networks:
       - mynetwork
 

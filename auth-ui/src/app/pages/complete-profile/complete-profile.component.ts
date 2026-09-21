@@ -198,6 +198,12 @@ export class CompleteProfileComponent implements OnInit {
     }
     localStorage.setItem('user_role', role);
 
+    // Onbellekteki kayit baska bir kullaniciya aitse merge etme, at.
+    if (!this.authService.isCachedUserCurrent()) {
+      this.authService.clearCachedUser();
+      return;
+    }
+
     const raw = localStorage.getItem('user');
     if (raw) {
       try {

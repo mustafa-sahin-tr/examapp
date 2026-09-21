@@ -66,6 +66,13 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
 
+                    b.Property<string>("PreferredLocale")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasDefaultValue("tr");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");

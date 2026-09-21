@@ -1,6 +1,8 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 
+import { TranslocoService } from '@jsverse/transloco';
+
 /** `new JitsiMeetExternalAPI(domain, options)` seçenekleri — sadece kullandığımız alanlar. */
 export interface JitsiMeetExternalApiOptions {
   roomName: string;
@@ -42,6 +44,7 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class JitsiScriptLoaderService {
   private readonly document = inject(DOCUMENT);
+  private readonly transloco = inject(TranslocoService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   /**
@@ -54,19 +57,19 @@ export class JitsiScriptLoaderService {
   /** `baseUrl` ör. "https://meet.example.com" — betik `<baseUrl>/external_api.js` adresinden yüklenir. */
   load(baseUrl: string): Promise<JitsiMeetExternalApiConstructor> {
     if (!this.isBrowser) {
-      return Promise.reject(new Error('Jitsi yalnızca tarayıcıda yüklenebilir.'));
+      return Promise.reject(new Error(this.t('common.errors.jitsi.browserOnly')));
     }
 
     let origin: string;
     try {
       origin = new URL(baseUrl).origin;
     } catch {
-      return Promise.reject(new Error('Geçersiz Jitsi adresi.'));
+      return Promise.reject(new Error(this.t('common.errors.jitsi.invalidUrl')));
     }
 
     if (this.loadedOrigin && this.loadedOrigin !== origin) {
       return Promise.reject(
-        new Error('Farklı bir Jitsi sunucusu zaten yüklü; sayfanın yenilenmesi gerekiyor.')
+        new Error(this.t('common.errors.jitsi.otherServer'))
       );
     }
 
@@ -87,19 +90,23 @@ export class JitsiScriptLoaderService {
           resolve(ctor);
         } else {
           this.pending = null;
-          reject(new Error('Jitsi betiği yüklendi ancak JitsiMeetExternalAPI bulunamadı.'));
+          reject(new Error(this.t('common.errors.jitsi.apiMissing')));
         }
       };
       script.onerror = () => {
         // Başarısız yükleme cache'te kalmasın; kullanıcı "tekrar dene" diyebilmeli.
         this.pending = null;
         script.remove();
-        reject(new Error('Jitsi betiği yüklenemedi.'));
+        reject(new Error(this.t('common.errors.jitsi.loadFailed')));
       };
       this.document.body.appendChild(script);
     });
 
     this.pending = pending;
     return pending;
+  }
+
+  private t(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
   }
 }

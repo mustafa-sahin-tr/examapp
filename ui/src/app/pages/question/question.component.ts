@@ -26,7 +26,10 @@ import { Book, BookTest } from '../../models/book';
 import { BookService } from '../../services/book.service';
 import { Passage } from '../../models/question';
 import { PassageCardComponent } from '../../shared/components/passage-card/passage-card.component';
-import { ImageSelectorComponent } from '../image-selector/image-selector.component';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
+const QUESTION_SCOPE = 'question';
 @Component({
   selector: 'app-question',
   standalone: true,
@@ -48,7 +51,9 @@ import { ImageSelectorComponent } from '../image-selector/image-selector.compone
     QuestionListComponent,
     QuillModule,
     PassageCardComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
 export class QuestionComponent implements OnInit {
   testList: Test[] = [];
@@ -83,6 +88,7 @@ export class QuestionComponent implements OnInit {
   testService = inject(TestService);
   subjectService = inject(SubjectService);
   snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
   questionForm!: FormGroup;
   bookService = inject(BookService);
 
@@ -277,8 +283,18 @@ export class QuestionComponent implements OnInit {
     }
   }
 
-  getAnswerLabel(index: number): string {
-    return `Şık ${String.fromCharCode(65 + index)}`; // 65 = 'A', 66 = 'B' ...
+  /** Sadece harf döner; "Şık A" gibi görünen metin şablonda `question.form.answerLabel` ile kurulur. */
+  getAnswerLetter(index: number): string {
+    return String.fromCharCode(65 + index); // 65 = 'A', 66 = 'B' ...
+  }
+
+  /** Scope'a göreli anahtarı senkron çevirir (sözlük scope provider'ı ile yüklenmiş olur). */
+  private tr(key: string): string {
+    return this.transloco.translate<string>(`${QUESTION_SCOPE}.${key}`) ?? '';
+  }
+
+  private notify(key: string): void {
+    this.snackBar.open(this.tr(key), this.tr('common.snackbarAction'), { duration: 3000 });
   }
 
   onSaveAndNew() {
@@ -294,30 +310,30 @@ export class QuestionComponent implements OnInit {
 
     if (formData.hasPassage && formData.passageId <= 0) {
       if (!formData.passageText && !formData.passageImage) {
-        this.snackBar.open('Lütfen metin veya resim içeren bir pasaj ekleyin!', 'Tamam', { duration: 3000 });
+        this.notify('form.passageRequired');
         return;
       }
     }
 
     if (!formData.text && !formData.image) {
-      this.snackBar.open('Lütfen soruya metin veya resim ekleyin!', 'Tamam', { duration: 3000 });
+      this.notify('form.questionContentRequired');
       return;
     }
 
     if (formData.isExample) {
       if (!formData.practiceCorrectAnswer) {
-        this.snackBar.open('Lütfen örnek soru için doğru cevabı seçin!', 'Tamam', { duration: 3000 });
+        this.notify('common.exampleAnswerRequired');
         return;
       }
     } else {
       const validAnswers = formData.answers.filter((ans: any) => ans.text || ans.image);
       if (validAnswers.length < 3) {
-        this.snackBar.open('Lütfen en az 3 cevap şıkkını doldurun!', 'Tamam', { duration: 3000 });
+        this.notify('form.minAnswersRequired');
         return;
       }
 
       if (formData.correctAnswer === null) {
-        this.snackBar.open('Lütfen doğru cevabı seçin!', 'Tamam', { duration: 3000 });
+        this.notify('form.correctAnswerRequired');
         return;
       }
     }
@@ -357,7 +373,7 @@ export class QuestionComponent implements OnInit {
     this.questionService.saveQuestion(questionPayload).subscribe({
       next: (response) => {
         console.log('Soru Kaydedildi:', response);
-        alert('Soru başarıyla kaydedildi!');
+        alert(this.tr('form.saveSuccess'));
         if (!this.testInstance.testInstanceQuestions.find((q) => q.id === response.questionId)) {
           this.testInstance.testInstanceQuestions.push({
             id: response.questionId,
@@ -398,10 +414,10 @@ export class QuestionComponent implements OnInit {
       },
       error: (err) => {
         console.error('Hata oluştu:', err);
-        alert('Soru kaydedilirken hata oluştu!');
+        alert(this.tr('common.saveError'));
       },
     });
 
-    this.snackBar.open('Soru başarıyla kaydedildi!', 'Tamam', { duration: 3000 });
+    this.notify('form.saveSuccess');
   }
 }

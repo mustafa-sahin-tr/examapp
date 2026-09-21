@@ -1,18 +1,28 @@
-<div class="qt-root">
+<div class="qt-root" *transloco="let t; prefix: 'question-transfer'">
   <div class="qt-top">
     <div>
-      <div class="qt-title">Soru Transferi</div>
+      <div class="qt-title">{{ t('title') }}</div>
       <div class="qt-subtitle"></div>
     </div>
 
     <div class="qt-actions">
-      <button mat-stroked-button (click)="refreshBundles()" [disabled]="isBusy()" matTooltip="Bundle listesini yeniler">
+      <button
+        mat-stroked-button
+        (click)="refreshBundles()"
+        [disabled]="isBusy()"
+        [matTooltip]="t('actions.bundlesTooltip')"
+      >
         <mat-icon>refresh</mat-icon>
-        Bundle’lar
+        {{ t('actions.bundles') }}
       </button>
-      <button mat-stroked-button (click)="openHangfire()" [disabled]="isBusy()" matTooltip="Hangfire dashboard aç">
+      <button
+        mat-stroked-button
+        (click)="openHangfire()"
+        [disabled]="isBusy()"
+        [matTooltip]="t('actions.hangfireTooltip')"
+      >
         <mat-icon>launch</mat-icon>
-        Hangfire
+        {{ t('actions.hangfire') }}
       </button>
     </div>
   </div>
@@ -20,14 +30,13 @@
   <div class="qt-grid2">
     <mat-card class="qt-card">
       <mat-card-header>
-        <mat-card-title>Soruları Dışa Aktar</mat-card-title>
-        <!-- <mat-card-subtitle>Kaynağa göre export + bundle rotation</mat-card-subtitle> -->
+        <mat-card-title>{{ t('export.title') }}</mat-card-title>
       </mat-card-header>
 
       <mat-card-content>
         <div class="qt-row">
           <mat-form-field appearance="outline" class="qt-field">
-            <mat-label>Paket Kodu</mat-label>
+            <mat-label>{{ t('export.sourceKeyLabel') }}</mat-label>
             <input matInput [formControl]="exportSourceKey" [matAutocomplete]="sourceKeyAuto" autocomplete="off" />
             <mat-icon matSuffix>arrow_drop_down</mat-icon>
           </mat-form-field>
@@ -41,15 +50,17 @@
 
         <div class="qt-row">
           <mat-form-field appearance="outline" class="qt-field">
-            <mat-label>Soru Numaraları</mat-label>
+            <mat-label>{{ t('export.questionIdsLabel') }}</mat-label>
             <textarea
               matInput
               rows="4"
               [formControl]="exportQuestionIds"
-              placeholder="örn: 12, 15, 99, 100-200"
+              [placeholder]="t('export.questionIdsPlaceholder')"
             ></textarea>
-            <mat-hint align="start">Boş bırakırsan tüm sorular export edilir</mat-hint>
-            <mat-hint align="end">{{ exportAllSelected() ? 'Tümü' : exportIdCount() + ' id' }}</mat-hint>
+            <mat-hint align="start">{{ t('export.questionIdsHint') }}</mat-hint>
+            <mat-hint align="end">
+              {{ exportAllSelected() ? t('export.allSelected') : t('export.idCount', { count: exportIdCount() }) }}
+            </mat-hint>
           </mat-form-field>
         </div>
       </mat-card-content>
@@ -59,29 +70,34 @@
       <mat-card-actions class="qt-actions" align="end">
         <button mat-raised-button color="primary" (click)="startExport()" [disabled]="isBusy()">
           <mat-icon>upload</mat-icon>
-          Export Başlat
+          {{ t('export.start') }}
         </button>
       </mat-card-actions>
     </mat-card>
 
     <mat-card class="qt-card">
       <mat-card-header>
-        <mat-card-title>Soruları İçe Aktar</mat-card-title>
-        <!-- <mat-card-subtitle>manifest.json içinden sourceKey okunur</mat-card-subtitle> -->
+        <mat-card-title>{{ t('import.title') }}</mat-card-title>
       </mat-card-header>
 
       <mat-card-content>
         <div class="qt-file-row">
           <input class="qt-file" type="file" accept=".zip" (change)="onFileSelected($event)" />
-          <div class="qt-muted">{{ importFile()?.name ?? 'Zip seçilmedi' }}</div>
+          <div class="qt-muted">{{ importFile()?.name ?? t('import.noFile') }}</div>
         </div>
 
         @if (importPreview()) {
           <div class="qt-preview">
             <mat-chip-set>
-              <mat-chip selected color="primary">Source: {{ importPreview()!.sourceKey }}</mat-chip>
-              <mat-chip selected color="accent">Soru: {{ importPreview()!.questionCount }}</mat-chip>
-              <mat-chip selected>Zaten: {{ importPreview()!.alreadyImportedCount }}</mat-chip>
+              <mat-chip selected color="primary">
+                {{ t('import.sourceChip', { sourceKey: importPreview()!.sourceKey }) }}
+              </mat-chip>
+              <mat-chip selected color="accent">
+                {{ t('import.questionChip', { count: importPreview()!.questionCount }) }}
+              </mat-chip>
+              <mat-chip selected>
+                {{ t('import.alreadyChip', { count: importPreview()!.alreadyImportedCount }) }}
+              </mat-chip>
             </mat-chip-set>
           </div>
         }
@@ -92,7 +108,7 @@
       <mat-card-actions class="qt-actions" align="end">
         <button mat-raised-button color="accent" (click)="startImport()" [disabled]="isBusy() || !importFile()">
           <mat-icon>download</mat-icon>
-          Import Başlat
+          {{ t('import.start') }}
         </button>
       </mat-card-actions>
     </mat-card>
@@ -100,43 +116,43 @@
 
   <mat-card class="qt-card">
     <mat-card-header>
-      <mat-card-title>Export Bundles</mat-card-title>
-      <mat-card-subtitle>{{ exportSourceKey.value }} için paketler</mat-card-subtitle>
+      <mat-card-title>{{ t('bundles.title') }}</mat-card-title>
+      <mat-card-subtitle>{{ t('bundles.subtitle', { sourceKey: exportSourceKey.value }) }}</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
       <div class="qt-actions qt-bundles-actions">
         <button mat-stroked-button (click)="downloadIndex()" [disabled]="isBusy()">
           <mat-icon>description</mat-icon>
-          Index (json)
+          {{ t('bundles.index') }}
         </button>
 
         <button mat-raised-button color="primary" (click)="downloadSourcePackage()" [disabled]="isBusy()">
           <mat-icon>archive</mat-icon>
-          Tek ZIP (package)
+          {{ t('bundles.singleZip') }}
         </button>
       </div>
 
       @if (bundles().length === 0) {
-        <div class="qt-empty">Bu source için henüz bundle yok.</div>
+        <div class="qt-empty">{{ t('bundles.empty') }}</div>
       }
 
       <div class="qt-bundles">
         @for (b of bundles(); track b.bundleNo) {
           <div class="qt-bundle">
             <div>
-              <div class="qt-bundle-title">Bundle {{ b.bundleNo }}</div>
-              <div class="qt-muted">{{ b.questionCount }} soru</div>
+              <div class="qt-bundle-title">{{ t('bundles.bundleTitle', { no: b.bundleNo }) }}</div>
+              <div class="qt-muted">{{ t('bundles.questionCount', { count: b.questionCount }) }}</div>
             </div>
 
             <div class="qt-actions">
               <button mat-stroked-button (click)="downloadBundle(b)" [disabled]="isBusy()">
                 <mat-icon>download</mat-icon>
-                ZIP
+                {{ t('bundles.zip') }}
               </button>
               <button mat-stroked-button (click)="downloadBundleMap(b)" [disabled]="isBusy()">
                 <mat-icon>map</mat-icon>
-                Map
+                {{ t('bundles.map') }}
               </button>
             </div>
           </div>
@@ -147,30 +163,30 @@
 
   <mat-card class="qt-card">
     <mat-card-header>
-      <mat-card-title>Jobs</mat-card-title>
-      <mat-card-subtitle>Son 10 job (otomatik yenilenir)</mat-card-subtitle>
+      <mat-card-title>{{ t('jobs.title') }}</mat-card-title>
+      <mat-card-subtitle>{{ t('jobs.subtitle') }}</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
       <div class="qt-actions qt-bundles-actions">
         <button mat-stroked-button (click)="refreshJobsNow()" [disabled]="isBusy()">
           <mat-icon>refresh</mat-icon>
-          Şimdi yenile
+          {{ t('jobs.refreshNow') }}
         </button>
       </div>
 
       @if (jobs().length === 0) {
-        <div class="qt-empty">Henüz job yok.</div>
+        <div class="qt-empty">{{ t('jobs.empty') }}</div>
       } @else {
         <div class="qt-jobs-grid">
           <div class="qt-jobs-col">
             <div class="qt-jobs-col-title">
               <mat-icon>upload</mat-icon>
-              Export
+              {{ t('jobs.exportColumn') }}
             </div>
 
             @if (exportJobs().length === 0) {
-              <div class="qt-empty">Export job yok.</div>
+              <div class="qt-empty">{{ t('jobs.exportEmpty') }}</div>
             }
 
             @for (job of exportJobs(); track job.id) {
@@ -190,7 +206,7 @@
                     @if (canDownloadJob(job)) {
                       <button mat-stroked-button (click)="download(job)" [disabled]="isBusy()">
                         <mat-icon>download</mat-icon>
-                        {{ jobDownloadLabel(job) }}
+                        {{ t(jobDownloadLabelKey(job)) }}
                       </button>
                     }
                   </div>
@@ -204,11 +220,11 @@
           <div class="qt-jobs-col">
             <div class="qt-jobs-col-title">
               <mat-icon>download</mat-icon>
-              Import
+              {{ t('jobs.importColumn') }}
             </div>
 
             @if (importJobs().length === 0) {
-              <div class="qt-empty">Import job yok.</div>
+              <div class="qt-empty">{{ t('jobs.importEmpty') }}</div>
             }
 
             @for (job of importJobs(); track job.id) {
@@ -228,7 +244,7 @@
                     @if (canDownloadJob(job)) {
                       <button mat-stroked-button (click)="download(job)" [disabled]="isBusy()">
                         <mat-icon>download</mat-icon>
-                        {{ jobDownloadLabel(job) }}
+                        {{ t(jobDownloadLabelKey(job)) }}
                       </button>
                     }
                   </div>

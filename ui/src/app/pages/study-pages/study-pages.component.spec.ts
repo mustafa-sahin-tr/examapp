@@ -10,6 +10,9 @@ import { StudyPagesComponent } from './study-pages.component';
 import { StudyPageService } from '../../services/study-page.service';
 import { SubjectService } from '../../services/subject.service';
 import { StudyPage, StudyPageContentType, StudyPageLinkPlatform } from '../../models/study-page';
+import { TranslocoService } from '@jsverse/transloco';
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import studyPagesTr from '../../../../public/i18n/study-pages/tr.json';
 
 function makePage(overrides: Partial<StudyPage> = {}): StudyPage {
   return {
@@ -45,7 +48,11 @@ describe('StudyPagesComponent', () => {
     subjectService.loadCategories.and.returnValue(of([]));
 
     TestBed.configureTestingModule({
-      imports: [StudyPagesComponent],
+      imports: [StudyPagesComponent, translocoTestingModule({
+        langs: { 'study-pages/tr': studyPagesTr },
+        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+        translocoConfig: { scopes: { keepCasing: true } },
+      })],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -60,6 +67,11 @@ describe('StudyPagesComponent', () => {
     component = TestBed.createComponent(StudyPagesComponent).componentInstance;
   });
 
+  /** Komponent scope'a göreli anahtar döner; sözlükteki karşılığı gerçek `tr.json`'dan okunur. */
+  function translate(relativeKey: string): string {
+    return TestBed.inject(TranslocoService).translate<string>(`study-pages.${relativeKey}`) ?? '';
+  }
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });
@@ -69,7 +81,7 @@ describe('StudyPagesComponent', () => {
     it('contentTypeIcon_ImagePage_ReturnsImageIcon', () => {
       const page = makePage({ contentType: StudyPageContentType.Image });
       expect(component.contentTypeIcon(page)).toBe('image');
-      expect(component.contentTypeLabel(page)).toBe('Görsel');
+      expect(translate(component.contentTypeLabelKey(page))).toBe('Görsel');
       expect(component.isImage(page)).toBeTrue();
       expect(component.isLink(page)).toBeFalse();
       expect(component.isBookPageRange(page)).toBeFalse();
@@ -78,14 +90,14 @@ describe('StudyPagesComponent', () => {
     it('contentTypeIcon_LinkPage_ReturnsLinkIcon', () => {
       const page = makePage({ contentType: StudyPageContentType.Link });
       expect(component.contentTypeIcon(page)).toBe('link');
-      expect(component.contentTypeLabel(page)).toBe('Link');
+      expect(translate(component.contentTypeLabelKey(page))).toBe('Link');
       expect(component.isLink(page)).toBeTrue();
     });
 
     it('contentTypeIcon_BookPageRangePage_ReturnsMenuBookIcon', () => {
       const page = makePage({ contentType: StudyPageContentType.BookPageRange });
       expect(component.contentTypeIcon(page)).toBe('menu_book');
-      expect(component.contentTypeLabel(page)).toBe('Kitap Sayfası');
+      expect(translate(component.contentTypeLabelKey(page))).toBe('Kitap Sayfası');
       expect(component.isBookPageRange(page)).toBeTrue();
     });
 
@@ -106,7 +118,7 @@ describe('StudyPagesComponent', () => {
     it('platformIcon_EbaPlatform_ReturnsSchoolIconAndIsKnownPlatformTrue', () => {
       const page = makePage({ contentType: StudyPageContentType.Link, platform: StudyPageLinkPlatform.Eba });
       expect(component.platformIcon(page)).toBe('school');
-      expect(component.platformLabel(page)).toBe('EBA');
+      expect(translate(component.platformLabelKey(page))).toBe('EBA');
       expect(component.isKnownPlatform(page)).toBeTrue();
     });
 

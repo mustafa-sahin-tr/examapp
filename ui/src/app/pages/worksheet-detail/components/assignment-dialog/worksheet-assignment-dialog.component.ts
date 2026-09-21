@@ -14,6 +14,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WorksheetAssignmentRequest } from '../../../../models/assignment';
 import { Grade, StudentLookup } from '../../../../models/student';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 export interface WorksheetAssignmentDialogData {
   worksheetId: number;
@@ -41,7 +42,10 @@ export interface WorksheetAssignmentDialogResult {
     MatRadioModule,
     MatChipsModule,
     MatCheckboxModule,
+    TranslocoDirective,
   ],
+  // MatDialog ile açılan komponent element injector'dan scope devralmaz; kendi provider'ını verir.
+  providers: [provideTranslocoScope('worksheet-detail')],
   templateUrl: './worksheet-assignment-dialog.component.html',
   styleUrl: './worksheet-assignment-dialog.component.scss',
 })
@@ -154,7 +158,7 @@ export class WorksheetAssignmentDialogComponent {
 
   private combineDateAndTime(date: Date | null, time: string): Date {
     if (!date || !time) {
-      throw new Error('Geçersiz tarih veya saat');
+      throw new Error('Invalid date or time');
     }
 
     const [hours, minutes] = time.split(':').map(Number);

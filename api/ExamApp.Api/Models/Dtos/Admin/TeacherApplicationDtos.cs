@@ -21,7 +21,7 @@ public class PendingTeacherApplicationDto
 
 public class TeacherRejectRequestDto
 {
-    [Required(AllowEmptyStrings = false, ErrorMessage = "Red nedeni boş olamaz.")]
-    [MaxLength(500, ErrorMessage = "Red nedeni en fazla 500 karakter olabilir.")]
+    [Required(AllowEmptyStrings = false, ErrorMessage = "admin.teacherApplication.rejectReasonRequired")]
+    [MaxLength(500, ErrorMessage = "admin.teacherApplication.rejectReasonMaxLength")]
     public string Reason { get; set; } = string.Empty;
 }

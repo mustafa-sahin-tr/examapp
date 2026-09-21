@@ -105,6 +105,19 @@
   }
 }
 
+/* Dil seçici (issue #182): landing navbar EnhancedLayout dışında olduğu için toolbar'daki
+   switcher buraya ayrıca yerleştirilir. Diğer menü öğeleriyle aynı hizada durur. */
+.nav-item-language {
+  display: flex;
+  align-items: center;
+
+  app-language-switcher {
+    display: inline-flex;
+    color: var(--main-foreground-color);
+    font-family: var(--mainFontFamily);
+  }
+}
+
 @media (max-width: 1199px) {
   .education-navbar-area {
     .navbar {

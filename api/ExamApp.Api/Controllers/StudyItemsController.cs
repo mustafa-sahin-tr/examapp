@@ -2,9 +2,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
 
@@ -18,10 +20,16 @@ public class StudyItemsController : BaseController
 {
     private readonly IStudyItemService _studyItemService;
 
-    public StudyItemsController(IStudyItemService studyItemService)
+    // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public StudyItemsController(IStudyItemService studyItemService, IStringLocalizer<Messages>? localizer = null)
         : base()
     {
         _studyItemService = studyItemService;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     [Authorize(Roles = "Teacher,Student")]
@@ -52,7 +60,7 @@ public class StudyItemsController : BaseController
     {
         if (string.IsNullOrWhiteSpace(request.Title))
         {
-            return BadRequest(new { message = "Baslik zorunludur." });
+            return BadRequest(new { message = _localizer["study.titleRequired"].Value });
         }
 
         var user = await GetAuthenticatedUserAsync();
@@ -70,7 +78,7 @@ public class StudyItemsController : BaseController
     {
         if (string.IsNullOrWhiteSpace(request.Title))
         {
-            return BadRequest(new { message = "Baslik zorunludur." });
+            return BadRequest(new { message = _localizer["study.titleRequired"].Value });
         }
 
         var user = await GetAuthenticatedUserAsync();
@@ -92,12 +100,12 @@ public class StudyItemsController : BaseController
     {
         if (string.IsNullOrWhiteSpace(request.ImageUrl))
         {
-            return BadRequest(new { message = "imageUrl zorunludur." });
+            return BadRequest(new { message = _localizer["study.image.urlRequired"].Value });
         }
 
         if (request.SubTopicIds == null || request.SubTopicIds.Count == 0)
         {
-            return BadRequest(new { message = "subTopicIds en az bir eleman icermelidir." });
+            return BadRequest(new { message = _localizer["study.image.subTopicIdsRequired"].Value });
         }
 
         var user = await GetAuthenticatedUserAsync();

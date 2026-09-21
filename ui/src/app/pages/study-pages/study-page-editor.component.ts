@@ -12,6 +12,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
+import { take } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { GradesService } from '../../services/grades.service';
 import { SubjectService } from '../../services/subject.service';
 import { StudyPageService } from '../../services/study-page.service';
@@ -23,9 +25,7 @@ import { Grade } from '../../models/student';
 import { Book, BookTest } from '../../models/book';
 import {
   STUDY_PAGE_CONTENT_TYPE_ICONS,
-  STUDY_PAGE_CONTENT_TYPE_LABELS,
   STUDY_PAGE_PLATFORM_ICONS,
-  STUDY_PAGE_PLATFORM_LABELS,
   StudyPage,
   StudyPageContentType,
   StudyPageImage,
@@ -71,15 +71,36 @@ interface PreviewItem {
 
 interface ContentTypeOption {
   value: StudyPageContentType;
-  label: string;
+  /** Scope'a göreli çeviri anahtarı. */
+  labelKey: string;
   icon: string;
 }
 
 interface PlatformOption {
   value: StudyPageLinkPlatform;
-  label: string;
+  /** Scope'a göreli çeviri anahtarı. */
+  labelKey: string;
   icon: string;
 }
+
+/**
+ * Çeviriler kendi Transloco scope'unda: `public/i18n/study-pages/<lang>.json` (issue #183).
+ * İçerik tipi / platform etiketleri model dosyasındaki sabit Türkçe listeler yerine
+ * buradaki anahtar eşlemesinden okunur.
+ */
+const STUDY_PAGES_SCOPE = 'study-pages';
+
+const CONTENT_TYPE_LABEL_KEYS: Record<StudyPageContentType, string> = {
+  [StudyPageContentType.Image]: 'contentType.image',
+  [StudyPageContentType.Link]: 'contentType.link',
+  [StudyPageContentType.BookPageRange]: 'contentType.bookPageRange',
+};
+
+const PLATFORM_LABEL_KEYS: Record<StudyPageLinkPlatform, string> = {
+  [StudyPageLinkPlatform.Other]: 'platform.other',
+  [StudyPageLinkPlatform.Eba]: 'platform.eba',
+  [StudyPageLinkPlatform.YouTube]: 'platform.youtube',
+};
 
 @Component({
   selector: 'app-study-page-editor',
@@ -101,7 +122,10 @@ interface PlatformOption {
     MatSnackBarModule,
     SectionHeaderComponent,
     AutofocusDirective,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(STUDY_PAGES_SCOPE)],
 })
 export class StudyPageEditorComponent implements OnDestroy {
   private route = inject(ActivatedRoute);
@@ -111,6 +135,7 @@ export class StudyPageEditorComponent implements OnDestroy {
   private studyPageService = inject(StudyPageService);
   private bookService = inject(BookService);
   private snackBar = inject(MatSnackBar);
+  private transloco = inject(TranslocoService);
 
   readonly ContentType = StudyPageContentType;
 
@@ -120,7 +145,7 @@ export class StudyPageEditorComponent implements OnDestroy {
     StudyPageContentType.BookPageRange,
   ].map((value) => ({
     value,
-    label: STUDY_PAGE_CONTENT_TYPE_LABELS[value],
+    labelKey: CONTENT_TYPE_LABEL_KEYS[value],
     icon: STUDY_PAGE_CONTENT_TYPE_ICONS[value],
   }));
 
@@ -130,7 +155,7 @@ export class StudyPageEditorComponent implements OnDestroy {
     StudyPageLinkPlatform.Other,
   ].map((value) => ({
     value,
-    label: STUDY_PAGE_PLATFORM_LABELS[value],
+    labelKey: PLATFORM_LABEL_KEYS[value],
     icon: STUDY_PAGE_PLATFORM_ICONS[value],
   }));
 
@@ -179,7 +204,7 @@ export class StudyPageEditorComponent implements OnDestroy {
     initialValue: this.form.controls.platform.value,
   });
   selectedPlatformIcon = computed(() => STUDY_PAGE_PLATFORM_ICONS[this.selectedPlatform()]);
-  selectedPlatformLabel = computed(() => STUDY_PAGE_PLATFORM_LABELS[this.selectedPlatform()]);
+  selectedPlatformLabelKey = computed(() => PLATFORM_LABEL_KEYS[this.selectedPlatform()]);
 
   // BookPageRange — test-create ile aynı UX: dropdown + inline "yeni ekle"
   books = signal<Book[]>([]);
@@ -204,6 +229,7 @@ export class StudyPageEditorComponent implements OnDestroy {
   jsonFileName = signal<string | null>(null);
 
   constructor() {
+    this.preloadScope();
     this.loadGrades();
 
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -290,7 +316,7 @@ export class StudyPageEditorComponent implements OnDestroy {
       error: () => {
         this.booksLoading.set(false);
         this.pendingAfterBooksLoad = [];
-        this.booksError.set('Kitap listesi yuklenemedi.');
+        this.booksError.set(this.text('editor.messages.booksLoadFailed'));
       },
     });
   }
@@ -318,7 +344,7 @@ export class StudyPageEditorComponent implements OnDestroy {
       error: () => {
         this.bookTests.set([]);
         this.bookTestsLoading.set(false);
-        this.snackBar.open('Kitap testleri yuklenemedi.', 'Tamam', { duration: 3000 });
+        this.snackBar.open(this.text('editor.messages.bookTestsLoadFailed'), this.ok, { duration: 3000 });
       },
     });
   }
@@ -452,7 +478,7 @@ export class StudyPageEditorComponent implements OnDestroy {
     const file = input.files[0];
 
     if (!file.name.toLowerCase().endsWith('.json')) {
-      this.snackBar.open('Lütfen JSON dosyası seçin.', 'Tamam', { duration: 3000 });
+      this.snackBar.open(this.text('editor.messages.jsonPickFile'), this.ok, { duration: 3000 });
       input.value = '';
       return;
     }
@@ -476,16 +502,14 @@ export class StudyPageEditorComponent implements OnDestroy {
       await this.createMinIOImages();
 
       this.snackBar.open(
-        `JSON yüklendi: MinIO'dan ${this.newImages().filter((img) => img.isFromMinio).length} resim bulundu.`,
-        'Tamam',
+        this.text('editor.messages.jsonLoaded', {
+          count: this.newImages().filter((img) => img.isFromMinio).length,
+        }),
+        this.ok,
         { duration: 3000 }
       );
     } catch {
-      this.snackBar.open(
-        'JSON dosyası okunamadı. Format: [{"book":"kitap_adi","pages":[87,88,89]}]',
-        'Tamam',
-        { duration: 5000 }
-      );
+      this.snackBar.open(this.text('editor.messages.jsonReadFailed'), this.ok, { duration: 5000 });
       this.jsonFileName.set(null);
     } finally {
       this.jsonProcessing.set(false);
@@ -647,7 +671,9 @@ export class StudyPageEditorComponent implements OnDestroy {
     this.newImages.set([...this.newImages(), ...newItems]);
     this.previewIndex.set(existingCount);
 
-    this.snackBar.open(`${files.length} adet dosya eklendi.`, 'Tamam', { duration: 3000 });
+    this.snackBar.open(this.text('editor.messages.filesAdded', { count: files.length }), this.ok, {
+      duration: 3000,
+    });
     input.value = '';
   }
 
@@ -782,7 +808,7 @@ export class StudyPageEditorComponent implements OnDestroy {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      this.snackBar.open('ZIP indirme sirasinda hata olustu.', 'Tamam', { duration: 3000 });
+      this.snackBar.open(this.text('editor.messages.zipFailed'), this.ok, { duration: 3000 });
     } finally {
       this.downloadingZip.set(false);
     }
@@ -794,6 +820,16 @@ export class StudyPageEditorComponent implements OnDestroy {
     this.router.navigate(['/study-pages']);
   }
 
+  /** Snackbar kapatma butonunun metni. */
+  private get ok(): string {
+    return this.text('editor.messages.ok');
+  }
+
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${STUDY_PAGES_SCOPE}.${key}`, params) ?? '';
+  }
+
   /** Tipe özel istemci doğrulaması; backend ValidateContent ile aynı kurallar. Hata mesajı döner, null ise geçerli. */
   private validateTypedContent(): string | null {
     const v = this.form.getRawValue();
@@ -801,14 +837,14 @@ export class StudyPageEditorComponent implements OnDestroy {
     switch (v.contentType) {
       case StudyPageContentType.Link: {
         const url = v.url.trim();
-        if (!url) return 'Link tipi icin URL zorunludur.';
+        if (!url) return this.text('editor.messages.urlRequired');
         try {
           const parsed = new URL(url);
           if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-            return 'Gecerli bir http/https URL giriniz.';
+            return this.text('editor.messages.urlInvalid');
           }
         } catch {
-          return 'Gecerli bir http/https URL giriniz.';
+          return this.text('editor.messages.urlInvalid');
         }
         return null;
       }
@@ -816,11 +852,11 @@ export class StudyPageEditorComponent implements OnDestroy {
       case StudyPageContentType.BookPageRange: {
         const hasBook = !!v.bookId || !!v.newBookName.trim();
         const hasTest = !!v.bookTestId || !!v.newBookTestName.trim();
-        if (!hasBook) return 'Kitap secin veya yeni kitap adi girin.';
-        if (!hasTest) return 'Kitap testi secin veya yeni test adi girin.';
-        if (v.startPage === null || v.endPage === null) return 'Baslangic ve bitis sayfasi zorunludur.';
-        if (v.startPage <= 0 || v.endPage <= 0) return 'Sayfa numaralari pozitif olmalidir.';
-        if (v.endPage < v.startPage) return 'Bitis sayfasi baslangictan kucuk olamaz.';
+        if (!hasBook) return this.text('editor.messages.bookRequired');
+        if (!hasTest) return this.text('editor.messages.bookTestRequired');
+        if (v.startPage === null || v.endPage === null) return this.text('editor.messages.pagesRequired');
+        if (v.startPage <= 0 || v.endPage <= 0) return this.text('editor.messages.pagesPositive');
+        if (v.endPage < v.startPage) return this.text('editor.messages.endBeforeStart');
         return null;
       }
 
@@ -828,9 +864,9 @@ export class StudyPageEditorComponent implements OnDestroy {
       default: {
         const selectedNewItems = this.newImages().filter((img) => img.selected);
         const remainingExisting = this.existingImages().filter((img) => !this.removedImageIds.has(img.id));
-        if (!this.isEditMode() && selectedNewItems.length === 0) return 'En az bir resim secmelisiniz.';
+        if (!this.isEditMode() && selectedNewItems.length === 0) return this.text('editor.messages.imageRequired');
         if (this.isEditMode() && selectedNewItems.length === 0 && remainingExisting.length === 0) {
-          return 'Bu sayfada en az bir resim kalmali.';
+          return this.text('editor.messages.imageMinOne');
         }
         return null;
       }
@@ -839,13 +875,13 @@ export class StudyPageEditorComponent implements OnDestroy {
 
   onSave() {
     if (this.form.invalid) {
-      this.snackBar.open('Lutfen gerekli alanlari doldurun.', 'Tamam', { duration: 2000 });
+      this.snackBar.open(this.text('editor.messages.fillRequired'), this.ok, { duration: 2000 });
       return;
     }
 
     const typedError = this.validateTypedContent();
     if (typedError) {
-      this.snackBar.open(typedError, 'Tamam', { duration: 3000 });
+      this.snackBar.open(typedError, this.ok, { duration: 3000 });
       return;
     }
 
@@ -900,11 +936,13 @@ export class StudyPageEditorComponent implements OnDestroy {
         )
         .subscribe({
           next: () => {
-            this.snackBar.open('Calisma etkinligi guncellendi.', 'Tamam', { duration: 2000 });
+            this.snackBar.open(this.text('editor.messages.updated'), this.ok, { duration: 2000 });
             this.router.navigate(['/study-pages']);
           },
           error: (err: { error?: { message?: string } }) => {
-            this.snackBar.open(err?.error?.message || 'Guncelleme sirasinda hata olustu.', 'Tamam', { duration: 3000 });
+            this.snackBar.open(err?.error?.message || this.text('editor.messages.updateFailed'), this.ok, {
+              duration: 3000,
+            });
             this.loading.set(false);
           },
         });
@@ -913,11 +951,13 @@ export class StudyPageEditorComponent implements OnDestroy {
 
     this.studyPageService.create(payload, selectedNewFiles).subscribe({
       next: () => {
-        this.snackBar.open('Calisma etkinligi kaydedildi.', 'Tamam', { duration: 2000 });
+        this.snackBar.open(this.text('editor.messages.created'), this.ok, { duration: 2000 });
         this.router.navigate(['/study-pages']);
       },
       error: (err: { error?: { message?: string } }) => {
-        this.snackBar.open(err?.error?.message || 'Kayit sirasinda hata olustu.', 'Tamam', { duration: 3000 });
+        this.snackBar.open(err?.error?.message || this.text('editor.messages.createFailed'), this.ok, {
+          duration: 3000,
+        });
         this.loading.set(false);
       },
     });
@@ -1000,9 +1040,21 @@ export class StudyPageEditorComponent implements OnDestroy {
         this.loading.set(false);
       },
       error: () => {
-        this.snackBar.open('Calisma etkinligi bulunamadi.', 'Tamam', { duration: 3000 });
+        this.snackBar.open(this.text('editor.messages.notFound'), this.ok, { duration: 3000 });
         this.router.navigate(['/study-pages']);
       },
     });
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${STUDY_PAGES_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

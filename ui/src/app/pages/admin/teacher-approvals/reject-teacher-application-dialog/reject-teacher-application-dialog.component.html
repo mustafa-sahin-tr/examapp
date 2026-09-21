@@ -1,38 +1,36 @@
-<div class="reject-dialog">
+<div class="reject-dialog" *transloco="let t; prefix: 'admin.approvals.rejectDialog'">
   <header class="dialog-header">
     <mat-icon class="dialog-icon">block</mat-icon>
     <div class="header-text">
-      <h2 mat-dialog-title>Başvuruyu Reddet</h2>
+      <h2 mat-dialog-title>{{ t('title') }}</h2>
       <p class="subtitle">{{ data.displayName }}</p>
     </div>
   </header>
 
   <mat-dialog-content class="dialog-content">
-    <p class="description">
-      Red nedeni zorunludur. Girdiğiniz metin başvuru kaydına işlenir.
-    </p>
+    <p class="description">{{ t('description') }}</p>
 
     <mat-form-field appearance="outline" class="reason-field">
-      <mat-label>Red nedeni</mat-label>
+      <mat-label>{{ t('reasonLabel') }}</mat-label>
       <textarea
         matInput
         [formControl]="reasonControl"
         rows="4"
         [maxlength]="maxLength"
-        placeholder="Başvurunun neden reddedildiğini kısaca yazın"
+        [placeholder]="t('reasonPlaceholder')"
         cdkFocusInitial
       ></textarea>
       <mat-hint align="end">{{ reasonLength() }} / {{ maxLength }}</mat-hint>
       @if (reasonControl.hasError('required') || reasonControl.hasError('whitespace')) {
-        <mat-error>Red nedeni boş olamaz.</mat-error>
+        <mat-error>{{ t('required') }}</mat-error>
       } @else if (reasonControl.hasError('maxlength')) {
-        <mat-error>Red nedeni en fazla {{ maxLength }} karakter olabilir.</mat-error>
+        <mat-error>{{ t('maxLength', { max: maxLength }) }}</mat-error>
       }
     </mat-form-field>
   </mat-dialog-content>
 
   <mat-dialog-actions class="dialog-actions">
-    <button mat-stroked-button type="button" (click)="cancel()">İptal</button>
+    <button mat-stroked-button type="button" (click)="cancel()">{{ t('cancel') }}</button>
     <button
       mat-flat-button
       type="button"
@@ -40,7 +38,7 @@
       (click)="submit()"
       [disabled]="reasonControl.invalid"
     >
-      Reddet
+      {{ t('submit') }}
     </button>
   </mat-dialog-actions>
 </div>

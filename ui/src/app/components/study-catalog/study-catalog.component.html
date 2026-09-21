@@ -1,18 +1,18 @@
-<div class="ms-study-catalog">
-  <h2>Ders Kataloğu</h2>
+<div class="ms-study-catalog" *transloco="let t; prefix: 'shared.study.catalog'">
+  <h2>{{ t('title') }}</h2>
 
   <div class="ms-catalog-description">
-    <p>Çalışmak istediğiniz dersi seçin. Her ders, konular ve alt konular içerir.</p>
+    <p>{{ t('description') }}</p>
   </div>
 
   <div *ngIf="isLoading" class="ms-loading-placeholder">
     <mat-icon>autorenew</mat-icon>
-    <span>Dersler yükleniyor...</span>
+    <span>{{ t('loading') }}</span>
   </div>
 
   <div *ngIf="!isLoading && subjects.length === 0" class="ms-empty-state">
     <mat-icon>school</mat-icon>
-    <p>Henüz hiç ders bulunamadı.</p>
+    <p>{{ t('empty') }}</p>
   </div>
 
   <div *ngIf="!isLoading && subjects.length > 0" class="ms-subject-grid">
@@ -35,7 +35,7 @@
 
         <div class="ms-subject-info">
           <h3>{{ subject.name }}</h3>
-          <p>Konuları görüntülemek için tıklayın</p>
+          <p>{{ t('openHint') }}</p>
         </div>
 
         <div class="ms-subject-action">

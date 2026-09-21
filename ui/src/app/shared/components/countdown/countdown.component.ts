@@ -1,5 +1,6 @@
-import { CommonModule, NgClass } from '@angular/common';
-import { Component, Input, signal, WritableSignal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, Input, inject, signal } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-countdown',
@@ -9,6 +10,7 @@ import { Component, Input, signal, WritableSignal } from '@angular/core';
   imports: [CommonModule]
 })
 export class CountdownComponent {
+  private readonly transloco = inject(TranslocoService);
   private _duration = signal(0);
 
   @Input()
@@ -22,8 +24,22 @@ export class CountdownComponent {
   @Input() showLabel: boolean = true; // Üst component'ten gelen saniye değeri
   @Input() size: 'small' | 'medium' | 'large' = 'medium'; // Kullanıcıdan gelen boyut
   @Input() color: 'primary' | 'accent' | 'warn' = 'primary'; // Kullanıcıdan gelen renk
-  @Input() label: string = 'Time Remaining'; // Kullanıcıdan gelen etiket
-  @Input() timeUpMessage: string = 'Süre Doldu!'; // Kullanıcıdan gelen süre doldu mesajı
+  /** Boş bırakılırsa sözlükten (`shared.countdown.label`) gelir. */
+  @Input() label = '';
+  /** Boş bırakılırsa sözlükten (`shared.countdown.timeUp`) gelir. */
+  @Input() timeUpMessage = '';
+
+  /** Şablonda gösterilen etiket: dışarıdan verilen metin öncelikli, yoksa çeviri. */
+  get statusText(): string {
+    if (this.isTimeUp) {
+      return this.timeUpMessage || this.translate('shared.countdown.timeUp');
+    }
+    return this.label || this.translate('shared.countdown.label');
+  }
+
+  private translate(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
+  }
   @Input() timerStatusPosition: 'top' | 'bottom' | 'left' | 'right' = 'right';
   @Input() totalDurationInSeconds: number = 10; // Kullanıcıdan gelen toplam süre
   @Input() showProgressBar: boolean = false; // Kullanıcıdan gelen ilerleme çubuğu durumu

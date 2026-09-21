@@ -9,6 +9,8 @@ import {
   TeacherLaggingStudent,
   TeacherWorksheetOverview,
 } from '../../models/teacher-dashboard.model';
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import teacherDashboardTr from '../../../../public/i18n/teacher-dashboard/tr.json';
 
 describe('TeacherDashboardComponent', () => {
   let fixture: ComponentFixture<TeacherDashboardComponent>;
@@ -55,7 +57,11 @@ describe('TeacherDashboardComponent', () => {
     teacherService.getLaggingStudents.and.returnValue(of(laggingRows));
 
     TestBed.configureTestingModule({
-      imports: [TeacherDashboardComponent],
+      imports: [TeacherDashboardComponent, translocoTestingModule({
+        langs: { 'teacher-dashboard/tr': teacherDashboardTr },
+        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+        translocoConfig: { scopes: { keepCasing: true } },
+      })],
       providers: [{ provide: TeacherService, useValue: teacherService }, provideRouter([])],
     });
 

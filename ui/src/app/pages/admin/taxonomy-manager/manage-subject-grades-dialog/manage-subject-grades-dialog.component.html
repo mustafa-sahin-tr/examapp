@@ -1,4 +1,4 @@
-<div class="grades-dialog">
+<div class="grades-dialog" *transloco="let t; prefix: 'admin.subjectGrades'">
   @if (saving()) {
     <mat-progress-bar mode="indeterminate" class="top-bar"></mat-progress-bar>
   }
@@ -6,7 +6,7 @@
   <header class="dialog-header">
     <mat-icon class="dialog-icon">school</mat-icon>
     <div class="header-text">
-      <h2 mat-dialog-title>Sınıfları Yönet</h2>
+      <h2 mat-dialog-title>{{ t('title') }}</h2>
       <p class="subtitle">{{ data.subjectName }}</p>
     </div>
   </header>
@@ -15,10 +15,10 @@
     @if (data.grades.length === 0) {
       <div class="empty-state">
         <mat-icon>info_outline</mat-icon>
-        <p class="empty-title">Tanımlı sınıf yok</p>
+        <p class="empty-title">{{ t('empty') }}</p>
       </div>
     } @else {
-      <ul class="grade-list" role="group" aria-label="Sınıflar">
+      <ul class="grade-list" role="group" [attr.aria-label]="t('listAria')">
         @for (g of data.grades; track g.id) {
           <li class="grade-item">
             <mat-checkbox
@@ -43,13 +43,13 @@
     @if (hasChanges() && !error()) {
       <p class="diff-hint">
         @if (toAdd().length) {
-          <span>{{ toAdd().length }} eklenecek</span>
+          <span>{{ t('toAdd', { count: toAdd().length }) }}</span>
         }
         @if (toAdd().length && toRemove().length) {
           <span> · </span>
         }
         @if (toRemove().length) {
-          <span>{{ toRemove().length }} kaldırılacak</span>
+          <span>{{ t('toRemove', { count: toRemove().length }) }}</span>
         }
       </p>
     }
@@ -57,7 +57,7 @@
 
   <mat-dialog-actions class="dialog-actions">
     <button mat-stroked-button type="button" (click)="cancel()" [disabled]="saving()">
-      İptal
+      {{ t('cancel') }}
     </button>
     <button
       mat-raised-button
@@ -66,7 +66,7 @@
       (click)="save()"
       [disabled]="saving() || !hasChanges()"
     >
-      Kaydet
+      {{ t('save') }}
     </button>
   </mat-dialog-actions>
 </div>

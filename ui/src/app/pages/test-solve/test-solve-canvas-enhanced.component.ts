@@ -34,6 +34,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
 import { Answer } from '../../models/answer';
 import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-canvas-view-v5/question-canvas-view-v5.component';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/**
+ * Sınav çözme ekranının metinleri kendi Transloco scope'unda: `public/i18n/test-solve/<lang>.json`
+ * (issue #183). v3 bu sınıftan türer ama @Component metadata'sı miras alınmadığı için scope
+ * provider'ını orada da vermek gerekir.
+ */
+export const TEST_SOLVE_SCOPE = 'test-solve';
 
 @Component({
   selector: 'app-test-solve-v2',
@@ -51,9 +59,13 @@ import { QuestionCanvasViewComponentv5 } from '../../shared/components/question-
     MatIconModule,
     CountdownComponent,
     QuestionCanvasViewComponentv5,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })
 export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDestroy {
+  protected readonly transloco = inject(TranslocoService);
+
   @ViewChild(SpinWheelComponent) spinWheelComp!: SpinWheelComponent;
   @ViewChild('spinWheelDialog') spinWheelDialog!: TemplateRef<any>; // 📌 Modal Şablonunu Yakala
   @ViewChild('testContent') testContentRef?: ElementRef<HTMLElement>;
@@ -857,6 +869,11 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     });
   }
 
+  /** Scope'a göreli anahtarı senkron çevirir. */
+  protected tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${TEST_SOLVE_SCOPE}.${key}`, params) ?? '';
+  }
+
   // Cevap kaydet
   selectAnswer(selectedIndex: any) {
     this.testInstance.testInstanceQuestions[this.currentIndex()].selectedAnswerId = selectedIndex;
@@ -872,16 +889,6 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
         void this.nextQuestion();
       }, 300); // Kısa bir gecikme ile otomatik geçiş
     }
-  }
-
-  createDialogTemplate() {
-    return {
-      template: `
-        <h2>🎡 Ödül Çarkı! Çevirmek İçin Butona Bas!</h2>
-        <app-spin-wheel></app-spin-wheel>
-        <button mat-button (click)="closeDialog()">Kapat</button>
-      `,
-    };
   }
 
   closeDialog() {
@@ -1278,7 +1285,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
     }
 
     this.focusMode.set(nextState);
-    this.showToastMessage(nextState ? 'Odaklanma modu açıldı' : 'Normal mod açıldı', 'info');
+    this.showToastMessage(nextState ? this.tr('toast.focusModeOn') : this.tr('toast.focusModeOff'), 'info');
   }
 
   toggleBookmark() {
@@ -1287,10 +1294,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     if (bookmarks.has(currentIdx)) {
       bookmarks.delete(currentIdx);
-      this.showToastMessage('İşaret kaldırıldı', 'info');
+      this.showToastMessage(this.tr('toast.bookmarkRemoved'), 'info');
     } else {
       bookmarks.add(currentIdx);
-      this.showToastMessage('Soru işaretlendi', 'success');
+      this.showToastMessage(this.tr('toast.bookmarkAdded'), 'success');
     }
 
     this.bookmarkedQuestions.set(bookmarks);
@@ -1335,7 +1342,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }
     }
 
-    this.showToastMessage('Tüm sorular cevaplanmış', 'info');
+    this.showToastMessage(this.tr('toast.allAnswered'), 'info');
   }
 
   clearAnswer() {
@@ -1347,7 +1354,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // Cevaplanan soru sayısını güncelle
       this.updateAnsweredCount();
 
-      this.showToastMessage('Cevap temizlendi', 'info');
+      this.showToastMessage(this.tr('toast.answerCleared'), 'info');
       // Save to backend
       this.saveAnswer(null);
     }
@@ -1362,10 +1369,10 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
     // Bu kısım gerçek hint sistemine bağlanmalı
     const hints = [
-      'Bu tür sorularda önce şıkları elemeyi deneyin.',
-      'Soruyu tekrar okuyup anahtar kelimeleri bulun.',
-      'Verilen bilgileri organize edin.',
-      'Benzer problemleri hatırlamaya çalışın.',
+      this.tr('hints.eliminate'),
+      this.tr('hints.reread'),
+      this.tr('hints.organize'),
+      this.tr('hints.recall'),
     ];
 
     const randomHint = hints[Math.floor(Math.random() * hints.length)];
@@ -1383,7 +1390,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
 
   reportQuestion() {
     // Backend'e soru bildirimi gönder
-    this.showToastMessage('Soru bildirildi', 'success');
+    this.showToastMessage(this.tr('toast.questionReported'), 'success');
   }
 
   // Otomatik sonraki soruya geçiş özelliği
@@ -1392,7 +1399,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   toggleAutoNextQuestion() {
     this.autoNextQuestion.set(!this.autoNextQuestion());
     this.showToastMessage(
-      this.autoNextQuestion() ? 'Cevaplayınca otomatik sonraki soruya geçiş aktif' : 'Otomatik geçiş kapalı',
+      this.autoNextQuestion() ? this.tr('toast.autoNextOn') : this.tr('toast.autoNextOff'),
       'info'
     );
   }
@@ -1412,7 +1419,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       // Cevaplanan soru sayısını güncelle
       this.updateAnsweredCount();
 
-      this.showToastMessage('Canvas cevabı temizlendi', 'success');
+      this.showToastMessage(this.tr('toast.canvasAnswerCleared'), 'success');
 
       // Save to backend
       this.saveAnswer(null);
@@ -1454,17 +1461,17 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
   toggleHighContrast() {
     this.highContrast.set(!this.highContrast());
     document.body.classList.toggle('high-contrast', this.highContrast());
-    this.showToastMessage(this.highContrast() ? 'Yüksek kontrast açıldı' : 'Normal renk modu', 'info');
+    this.showToastMessage(this.highContrast() ? this.tr('toast.highContrastOn') : this.tr('toast.highContrastOff'), 'info');
   }
 
   showHelp() {
     // Yardım modalı aç
-    this.showToastMessage('Yardım: Ctrl+← ← grup, Ctrl+→ → grup, Ctrl+B işaretle, Ctrl+1/2/4 görünüm değiştir', 'info');
+    this.showToastMessage(this.tr('toast.help'), 'info');
   }
 
   openSettings() {
     // Ayarlar modalı aç
-    this.showToastMessage('Ayarlar geliştiriliyor...', 'info');
+    this.showToastMessage(this.tr('toast.settingsComingSoon'), 'info');
   }
 
   // YENİ: Görünüm modunu değiştir
@@ -1502,7 +1509,7 @@ export class TestSolveCanvasComponentv2 implements OnInit, AfterViewInit, OnDest
       }
     }, 0);
 
-    this.showToastMessage(`${count} soru görünümü aktifleştirildi`, 'info');
+    this.showToastMessage(this.tr('toast.viewChanged', { count }), 'info');
   }
 
   // YENİ: Belirli bir soruya odaklan (çoklu görünümde)

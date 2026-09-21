@@ -20,6 +20,22 @@ import { ClassificationSource } from '../../models/draws';
  * so no canvas / HTTP work happens — fixture.detectChanges() is intentionally
  * NOT called.
  */
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
+import questionTr from '../../../../public/i18n/question/tr.json';
+
+/** Gercek sozluk yuklenir; anahtar bozulursa test kirilir (issue #183). */
+const translocoTesting = TranslocoTestingModule.forRoot({
+  langs: { 'question/tr': questionTr },
+  translocoConfig: {
+    availableLangs: [...SUPPORTED_LOCALE_CODES],
+    defaultLang: DEFAULT_LOCALE,
+    // Uygulama config'i ile ayni: scope oneki klasor adiyla birebir ayni kalsin (issue #183).
+    scopes: { keepCasing: true },
+  },
+  preloadLangs: true,
+});
+
 describe('QuestionCanvasComponent', () => {
   let fixture: ComponentFixture<QuestionCanvasComponent>;
   let component: QuestionCanvasComponent;
@@ -58,7 +74,7 @@ describe('QuestionCanvasComponent', () => {
     router.getCurrentNavigation.and.returnValue(null as any);
 
     await TestBed.configureTestingModule({
-      imports: [QuestionCanvasComponent],
+      imports: [QuestionCanvasComponent, translocoTesting],
       providers: [
         provideNoopAnimations(),
         provideHttpClient(),
@@ -542,7 +558,7 @@ describe('QuestionCanvasComponent', () => {
 
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
-        imports: [QuestionCanvasComponent],
+        imports: [QuestionCanvasComponent, translocoTesting],
         providers: [
           provideNoopAnimations(),
           provideHttpClient(),

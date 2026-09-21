@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BadgeService.Entities;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
@@ -25,16 +26,22 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly IUserLocaleResolver _localeResolver;
+    private readonly INotificationTextFactory _texts;
     private readonly ILogger<BookingDecisionConsumer> _logger;
 
     public BookingDecisionConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
-        ILogger<BookingDecisionConsumer> logger)
+        ILogger<BookingDecisionConsumer> logger,
+        IUserLocaleResolver localeResolver,
+        INotificationTextFactory texts)
     {
         _db = db;
         _hub = hub;
         _logger = logger;
+        _localeResolver = localeResolver ?? throw new ArgumentNullException(nameof(localeResolver));
+        _texts = texts ?? throw new ArgumentNullException(nameof(texts));
     }
 
     public async Task Consume(ConsumeContext<BookingDecisionEvent> context)
@@ -54,21 +61,23 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
             return;
         }
 
-        var teacherName = string.IsNullOrWhiteSpace(e.TeacherName) ? "Öğretmeniniz" : e.TeacherName;
+        var culture = await _localeResolver.ResolveAsync(e.StudentUserId, e.TargetKeycloakId, ct);
+        var teacherName = string.IsNullOrWhiteSpace(e.TeacherName)
+            ? _texts.Resolve("notifications.common.defaultTeacher", culture)
+            : e.TeacherName;
         var whenText = $"{e.Date:dd.MM.yyyy} {e.StartTime:HH:mm}-{e.EndTime:HH:mm}";
-
-        var body = e.Approved
-            ? $"{teacherName}, {whenText} için ders talebinizi onayladı."
-            : $"{teacherName}, {whenText} için ders talebinizi reddetti."
-                + (string.IsNullOrWhiteSpace(e.RejectionReason) ? string.Empty : $" Gerekçe: {e.RejectionReason}");
+        var reasonSuffix = string.IsNullOrWhiteSpace(e.RejectionReason)
+            ? string.Empty
+            : _texts.Resolve("notifications.common.rejectionReasonSuffix", culture, e.RejectionReason);
+        var text = _texts.Build(type, culture, teacherName, whenText, reasonSuffix);
 
         var notification = new Notification
         {
             UserId = e.StudentUserId,
             UserKeycloakId = string.IsNullOrWhiteSpace(e.TargetKeycloakId) ? null : e.TargetKeycloakId,
             Type = type,
-            Title = e.Approved ? "Ders talebiniz onaylandı" : "Ders talebiniz reddedildi",
-            Body = body,
+            Title = text.Title,
+            Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 bookingId = e.BookingId,

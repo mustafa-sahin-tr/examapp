@@ -11,10 +11,11 @@ import {
   SimpleChanges,
   OnInit,
 } from '@angular/core';
+import { TranslocoDirective } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-question-navigator',
-  imports: [CommonModule],
+  imports: [CommonModule, TranslocoDirective],
   standalone: true,
   templateUrl: './question-navigator.component.html',
   styleUrl: './question-navigator.component.scss',

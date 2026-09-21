@@ -1,0 +1,367 @@
+{
+  "meta": {
+    "title": "Hedef Okul | Online Exam and Worksheet Platform",
+    "description": "Hedef Okul is the learning platform offering curriculum-aligned worksheets, online exams and AI-powered question detection for students in grades 3-8.",
+    "ogTitle": "Hedef Okul | Online Exam and Worksheet Platform",
+    "ogDescription": "We make learning easier for students in grades 3-8 with curriculum-aligned worksheets and exams."
+  },
+  "common": {
+    "backToTop": "Back to top"
+  },
+  "nav": {
+    "toggleMenu": "Toggle menu",
+    "home": "Home",
+    "features": "Features",
+    "courses": "Subjects",
+    "howItWorks": "How It Works",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "blog": "Blog",
+    "register": "Sign Up",
+    "registerStudent": "Student",
+    "registerTeacher": "Teacher",
+    "registerParent": "Parent",
+    "login": "Log In"
+  },
+  "hero": {
+    "titleLead": "Success in Every Exam — One",
+    "titleHighlight": "Powerful Platform.",
+    "description": "Hedef Okul is a complete online exam and worksheet platform built for students, teachers and parents. Reach your goals with a smart question bank, real-time exams and progress tracking.",
+    "cta": "Explore Worksheets",
+    "reviewsLabel": "Student Reviews",
+    "activeStudents": "10,000+ Active Students"
+  },
+  "discover": {
+    "title": "Discover the Best Worksheets for Your Grade Level",
+    "description": "10,000+ teacher-made worksheets and exams — covering every subject from grade 3 to grade 8.",
+    "cta": "Start Learning",
+    "ratingHighlight": "50,000+ students rated our worksheets 5 stars"
+  },
+  "news": {
+    "title": "News from Hedef Okul",
+    "morePrompt": "Want to read more?",
+    "allNews": "All news",
+    "featureRelease": {
+      "tag": "New Feature",
+      "title": "AI-Powered Question Detection Is Now Live",
+      "excerpt": "Thanks to our YOLOv8-based image processing engine, uploaded question sheets are recognised automatically and turned into digital content.",
+      "author": "Engineering Team",
+      "date": "2 days ago"
+    },
+    "parentGuide": {
+      "tag": "Parent Guide",
+      "title": "5 Ways to Follow Your Child's Exam Journey",
+      "excerpt": "With the parent dashboard on Hedef Okul you can see exactly where your child struggles and focus on the topics that need work.",
+      "author": "Editorial Team",
+      "date": "5 hours ago"
+    },
+    "successStory": {
+      "tag": "Success Story",
+      "title": "\"I Prepared for the Maths Exam and Scored 95\"",
+      "excerpt": "Ali, a fourth grader, solved worksheets for ten minutes every day and finished the term at the top of his class.",
+      "date": "1 week ago"
+    },
+    "teacherTips": {
+      "tag": "Teacher Tips",
+      "title": "How to Build an Effective Worksheet",
+      "excerpt": "Create worksheets that keep students motivated by mixing question types, visual support and balanced difficulty.",
+      "date": "21 March 2026"
+    }
+  },
+  "funfacts": {
+    "students": {
+      "value": "50,000+",
+      "label": "Active Students"
+    },
+    "teachers": {
+      "value": "2,000+",
+      "label": "Registered Teachers"
+    },
+    "questions": {
+      "value": "500,000+",
+      "label": "Questions Solved"
+    },
+    "worksheets": {
+      "value": "10,000+",
+      "label": "Worksheets"
+    }
+  },
+  "categories": {
+    "title": "Subject Categories",
+    "description": "Curriculum-aligned worksheets and exams for every grade level.",
+    "viewAll": "View All",
+    "turkish": "Turkish",
+    "math": "Mathematics",
+    "science": "Science",
+    "social": "Social Studies",
+    "english": "English",
+    "life": "Life Studies",
+    "religion": "Religious Culture",
+    "history": "History of Revolution",
+    "physicalEducation": "Physical Education"
+  },
+  "courses": {
+    "sub": "Featured Worksheets",
+    "title": "Start Your Learning Journey",
+    "description": "Reach your goals with curriculum-aligned worksheets and exams prepared by expert teachers.",
+    "tabs": {
+      "turkish": "Turkish",
+      "math": "Mathematics",
+      "science": "Science",
+      "social": "Social Studies",
+      "english": "English",
+      "life": "Life Studies"
+    },
+    "topics": {
+      "phonetics": { "name": "Phonetics", "students": "1,200+ Students" },
+      "semantics": { "name": "Semantics", "students": "3,500+ Students" },
+      "reading": { "name": "Reading Comprehension", "students": "5,100+ Students" },
+      "spelling": { "name": "Spelling Rules", "students": "2,800+ Students" },
+      "punctuation": { "name": "Punctuation", "students": "1,900+ Students" },
+      "paragraph": { "name": "Paragraphs", "students": "4,300+ Students" },
+      "wordTypes": { "name": "Word Classes", "students": "2,100+ Students" }
+    },
+    "price": "Free",
+    "cta": "Start Learning",
+    "reading4": {
+      "badge": "Most Loved",
+      "title": "Grade 4 Turkish Reading Comprehension",
+      "description": "Build reading comprehension skills with exercises on understanding texts, finding the main idea and sequencing events.",
+      "rating": "4.9",
+      "reviews": "(1,240 Reviews)",
+      "questions": "20 Questions",
+      "questionsExtended": "25 Questions",
+      "students": "7,820 Students"
+    },
+    "math3": {
+      "badge": "Trending",
+      "title": "Grade 3 Maths Operations",
+      "description": "Strengthens core maths skills with the four operations, place value and number patterns.",
+      "rating": "4.0",
+      "reviews": "(980 Reviews)",
+      "questions": "18 Questions",
+      "students": "5,645 Students"
+    },
+    "geometry5": {
+      "badge": "Student Favourite",
+      "title": "Grade 5 Maths Geometry",
+      "description": "Develops problem solving skills through surface area, perimeter and geometric shapes.",
+      "rating": "4.5",
+      "reviews": "(1,560 Reviews)",
+      "questions": "22 Questions",
+      "students": "5,985 Students"
+    },
+    "science4": {
+      "badge": "Newly Added",
+      "title": "Grade 4 Science: Matter",
+      "description": "Reinforces science fundamentals with properties of matter, changes of state and mixtures.",
+      "rating": "4.7",
+      "reviews": "(2,180 Reviews)",
+      "questions": "28 Questions",
+      "students": "8,735 Students"
+    },
+    "bottomText": "Keep going with curriculum-aligned content written by expert teachers across every subject.",
+    "bottomCta": "See All Worksheets"
+  },
+  "howItWorks": {
+    "sub": "How It Works",
+    "title": "How Does Hedef Okul Work?",
+    "register": {
+      "title": "Sign Up",
+      "description": "As a student, teacher or parent"
+    },
+    "choose": {
+      "title": "Pick or Create an Exam",
+      "description": "Join a worksheet or build your own"
+    },
+    "track": {
+      "title": "Track & Earn Badges",
+      "description": "Follow your progress and turn achievements into badges"
+    }
+  },
+  "overview": {
+    "students": { "value": "50,000+", "label": "ACTIVE STUDENTS" },
+    "worksheets": { "value": "10,000+", "label": "WORKSHEETS" },
+    "subjects": { "value": "10+", "label": "SUBJECT AREAS" },
+    "rating": { "value": "4.8", "label": "AVERAGE RATING" },
+    "titleLead": "Start Your Exam Journey and",
+    "titleHighlight": "Reach the Success",
+    "titleTrail": "You Aim For",
+    "description": "Study faster and smarter with worksheets prepared by expert teachers.",
+    "cta": "Get Started",
+    "communityTitle": "Reach Your Students in Every Subject",
+    "communityDescription": "Track your students' progress, manage worksheets and see their achievements instantly.",
+    "communityCta": "Join Our Community"
+  },
+  "blog": {
+    "sub": "Our Blog",
+    "titleLead": "Insight, Tips",
+    "titleHighlight": "and Inspiration",
+    "titleTrail": "from Hedef Okul",
+    "description": "Stay one step ahead with study tips, success stories and education guides written for students, teachers and parents.",
+    "cta": "See All Posts",
+    "motivation": {
+      "tag": "Learning Tips",
+      "title": "How to Stay Motivated While Preparing for Exams",
+      "date": "10 March 2026",
+      "readTime": "4 min read",
+      "excerpt": "Don't lose focus while preparing for exams! These simple methods help you build a steady, motivated study habit."
+    },
+    "success": {
+      "tag": "Success Stories",
+      "title": "Students Who Reached Exam Success with Hedef Okul",
+      "date": "5 March 2026",
+      "readTime": "7 min read",
+      "excerpt": "Discover real stories of how our students turned worksheets into exam success."
+    }
+  },
+  "about": {
+    "sub": "About Hedef Okul",
+    "titleLead": "One Platform. Unlimited",
+    "titleHighlight": "Success",
+    "titleTrail": "Opportunities.",
+    "description": "At Hedef Okul we believe quality education should be accessible, enjoyable and empowering for every student.",
+    "students": { "value": "50,000+", "label": "Active Students" },
+    "teachers": { "value": "2,000+", "label": "Expert Teachers" },
+    "anywhere": {
+      "title": "Learn Anywhere",
+      "description": "At home, at school or on the move — study on any device, at any time."
+    },
+    "teach": {
+      "title": "Teach with Confidence",
+      "description": "Every tool you need to create, track and manage exams is at your fingertips."
+    },
+    "badges": {
+      "title": "Earn Badges",
+      "description": "Complete exams and collect digital badges that showcase your achievements."
+    },
+    "cta": "Learn More About Us"
+  },
+  "faq": {
+    "sub": "Frequently Asked Questions",
+    "titleLead": "What You Ask",
+    "titleHighlight": "About Hedef Okul",
+    "membership": {
+      "question": "How do I sign up for Hedef Okul?",
+      "answer": "Click the \"Sign Up\" button on the site and create a free account with your email address and a password in seconds. Right after signing up you get instant access to every worksheet and exam."
+    },
+    "pricing": {
+      "question": "Are the worksheets paid?",
+      "answer": "The vast majority of worksheets on the platform are free. Every student can preview content before signing up, and use it in full afterwards."
+    },
+    "teacher": {
+      "question": "Can I create my own exams as a teacher?",
+      "answer": "Yes! Sign in with a teacher account to build exams and worksheets tailored to subject, topic and grade level, then assign them to your students. AI-powered question detection helps you along the way."
+    },
+    "parent": {
+      "question": "Can I follow my child's progress as a parent?",
+      "answer": "Yes. With a parent account you can follow the exams your child completes, the scores they get and the badges they earn in real time — so you can be there at every step of their learning."
+    }
+  },
+  "pricing": {
+    "title": "Choose Your Plan",
+    "description": "Affordable plans for students, teachers and schools with an unlimited learning experience.",
+    "monthly": "Monthly",
+    "yearly": "Yearly (15% Off)",
+    "perMonth": "/month",
+    "free": {
+      "name": "Free",
+      "price": "₺0",
+      "cta": "Start for Free",
+      "worksheetLimit": "Access to 10 worksheets",
+      "basicProgress": "Basic progress tracking",
+      "limitedExams": "Limited exam creation",
+      "emailNotifications": "Email notifications",
+      "freeArchive": "Free content archive",
+      "community": "Access to community forums",
+      "mobile": "Mobile-friendly experience"
+    },
+    "teacher": {
+      "name": "Teacher",
+      "price": "₺99",
+      "cta": "Get the Teacher Plan",
+      "unlimitedWorksheets": "Unlimited worksheet access",
+      "customExams": "Custom exam and worksheet creation",
+      "aiDetection": "AI-powered question detection",
+      "progressReports": "Student progress reports",
+      "badges": "Badge and reward system",
+      "downloads": "Material downloads",
+      "prioritySupport": "Priority support",
+      "parentNotifications": "Parent notification system",
+      "classAnalytics": "Class-level analytics"
+    },
+    "school": {
+      "name": "School",
+      "price": "₺499",
+      "cta": "Request a Quote",
+      "multiTeacher": "Multi-teacher management",
+      "classReports": "Class and section level reports",
+      "customContent": "Customised content library",
+      "advancedAnalytics": "Advanced analytics and reporting",
+      "bulkEnrollment": "Bulk student enrolment",
+      "branding": "Custom school branding",
+      "api": "API integration",
+      "rbac": "Role-based access control",
+      "sla": "SLA & priority technical support"
+    }
+  },
+  "services": {
+    "titleLead": "Why learn with",
+    "titleHighlight": "Hedef Okul",
+    "titleTrail": "?",
+    "description": "A platform designed for students, teachers and parents that answers every need.",
+    "worksheets": {
+      "titleTop": "10,000+",
+      "titleBottom": "Worksheets",
+      "description": "Curriculum-aligned content for every subject from grade 3 to grade 8."
+    },
+    "badges": {
+      "titleTop": "Badge &",
+      "titleBottom": "Reward System",
+      "description": "Students earn badges for the exams they complete and stay motivated."
+    },
+    "panels": {
+      "titleTop": "Teacher &",
+      "titleBottom": "Parent Dashboard",
+      "description": "Teachers create exams while parents follow their children's progress in real time."
+    },
+    "ai": {
+      "titleTop": "AI-Powered",
+      "titleBottom": "Question Detection",
+      "description": "Detect questions from a photo with YOLOv8-based AI and build exams automatically."
+    }
+  },
+  "footer": {
+    "about": "We make learning possible anywhere, anytime with curriculum-aligned worksheets and exams for students, teachers and parents.",
+    "followUs": "Follow Us",
+    "newsletterTitle": "Subscribe to Our Newsletter",
+    "newsletterDescription": "Get the newest worksheets, tips and success stories straight to your inbox.",
+    "emailPlaceholder": "Your email address",
+    "subscribe": "Subscribe",
+    "quickLinksTitle": "Quick Links",
+    "quickLinks": {
+      "about": "About Us",
+      "worksheets": "All Worksheets",
+      "becomeTeacher": "Become a Teacher",
+      "blog": "Blog",
+      "contact": "Contact",
+      "help": "Help Centre"
+    },
+    "categoriesTitle": "Subject Categories",
+    "legalTitle": "Legal",
+    "legal": {
+      "terms": "Terms of Use",
+      "privacy": "Privacy Policy",
+      "teachers": "Teachers",
+      "successStories": "Success Stories"
+    },
+    "contactTitle": "Contact",
+    "contact": {
+      "emailLabel": "Email:",
+      "phoneLabel": "Phone:",
+      "addressLabel": "Address:",
+      "address": "Ankara, Türkiye"
+    },
+    "copyright": "All rights reserved."
+  }
+}

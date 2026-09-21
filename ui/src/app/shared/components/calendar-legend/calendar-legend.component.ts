@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective } from '@jsverse/transloco';
 
 interface LegendItem {
   variant: string;
   icon: string;
-  label: string;
+  /** `shared.calendar.variant.*` altındaki çeviri anahtarı (issue #183). */
+  labelKey: string;
 }
 
 /**
@@ -14,19 +16,19 @@ interface LegendItem {
 @Component({
   selector: 'app-calendar-legend',
   standalone: true,
-  imports: [MatIconModule],
+  imports: [MatIconModule, TranslocoDirective],
   templateUrl: './calendar-legend.component.html',
   styleUrls: ['./calendar-legend.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarLegendComponent {
   readonly items: readonly LegendItem[] = [
-    { variant: 'reminder-pending', icon: 'event_available', label: 'Hatırlatma' },
-    { variant: 'reminder-sent', icon: 'notifications_off', label: 'Gönderilmiş hatırlatma' },
-    { variant: 'deadline-open', icon: 'flag', label: 'Teslim tarihi' },
-    { variant: 'deadline-done', icon: 'check_circle', label: 'Tamamlanan atama' },
-    { variant: 'program-plan', icon: 'menu_book', label: 'Çalışma planı' },
-    { variant: 'program-plan-done', icon: 'check_circle', label: 'Tamamlanan plan' },
-    { variant: 'booking', icon: 'cast_for_education', label: 'Ders randevusu' },
+    { variant: 'reminder-pending', icon: 'event_available', labelKey: 'reminderPending' },
+    { variant: 'reminder-sent', icon: 'notifications_off', labelKey: 'reminderSent' },
+    { variant: 'deadline-open', icon: 'flag', labelKey: 'deadlineOpen' },
+    { variant: 'deadline-done', icon: 'check_circle', labelKey: 'deadlineDone' },
+    { variant: 'program-plan', icon: 'menu_book', labelKey: 'programPlan' },
+    { variant: 'program-plan-done', icon: 'check_circle', labelKey: 'programPlanDone' },
+    { variant: 'booking', icon: 'cast_for_education', labelKey: 'booking' },
   ];
 }

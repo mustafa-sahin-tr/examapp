@@ -1,7 +1,7 @@
-<div class="classification-selector">
+<div class="classification-selector" *transloco="let t; prefix: 'shared.classificationSelector'">
   <!-- Grade Selection -->
   <div class="classification-level">
-    <h4 class="level-title">Sınıf</h4>
+    <h4 class="level-title">{{ t('grade') }}</h4>
     <div class="chips-container">
       <mat-chip-listbox [value]="selectedGrade()">
         @for (grade of grades(); track grade.id) {
@@ -19,7 +19,7 @@
   <!-- Subject Selection -->
   @if (selectedGrade() && subjects().length > 0) {
   <div class="classification-level">
-    <h4 class="level-title">Ders</h4>
+    <h4 class="level-title">{{ t('subject') }}</h4>
     <div class="chips-container">
       <mat-chip-listbox [value]="selectedSubject()">
         @for (subject of subjects(); track subject.id) {
@@ -38,7 +38,7 @@
   <!-- Topic Selection -->
   @if (selectedSubject() && topics().length > 0) {
   <div class="classification-level">
-    <h4 class="level-title">Konu</h4>
+    <h4 class="level-title">{{ t('topic') }}</h4>
     <div class="chips-container">
       <mat-chip-listbox [value]="selectedTopic()">
         @for (topic of topics(); track topic.id) {
@@ -57,7 +57,7 @@
   <!-- Subtopic Selection (Multiple) -->
   @if (selectedTopic() && subtopics().length > 0) {
   <div class="classification-level">
-    <h4 class="level-title">Alt Konular (Çoklu Seçim)</h4>
+    <h4 class="level-title">{{ t('subtopics') }}</h4>
     <div class="chips-container">
       <mat-chip-listbox multiple>
         @for (subtopic of subtopics(); track subtopic.id) {
@@ -78,7 +78,7 @@
   <div class="apply-actions">
     <button mat-raised-button color="primary" [disabled]="!canApply()" (click)="onApply()">
       <mat-icon>check</mat-icon>
-      Uygula
+      {{ t('apply') }}
     </button>
   </div>
   }

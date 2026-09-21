@@ -9,13 +9,16 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { finalize } from 'rxjs';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { finalize, take } from 'rxjs';
 import { TutorPublicProfile } from '../../models/tutor.model';
 import { TeacherService } from '../../services/teacher.service';
 import {
   BookingSlotDialogComponent,
   BookingSlotDialogData,
 } from '../../shared/components/booking-slot-dialog/booking-slot-dialog.component';
+import { LocaleService } from '../../services/locale.service';
+import { TUTOR_SEARCH_SCOPE } from './tutor-search-scope';
 
 /**
  * Issue #95 — öğrencinin gördüğü tekil öğretmen profili (dersler, ders şekli, ücret, tam tanıtım).
@@ -24,7 +27,8 @@ import {
 @Component({
   selector: 'app-tutor-public-profile',
   standalone: true,
-  imports: [MatButtonModule, MatChipsModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatChipsModule, MatIconModule, MatProgressSpinnerModule, TranslocoDirective],
+  providers: [provideTranslocoScope(TUTOR_SEARCH_SCOPE)],
   templateUrl: './tutor-public-profile.component.html',
   styleUrls: ['./tutor-public-profile.component.scss'],
 })
@@ -36,6 +40,8 @@ export class TutorPublicProfileComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
 
   /** Route parametresi; uygulamada component input binding açık değil, paramMap'ten okunur. */
   private readonly teacherId = Number(this.route.snapshot.paramMap.get('id'));
@@ -52,7 +58,7 @@ export class TutorPublicProfileComponent implements OnInit {
     }
     return parts
       .slice(0, 2)
-      .map((p) => p.charAt(0).toLocaleUpperCase('tr-TR'))
+      .map((p) => p.charAt(0).toLocaleUpperCase(this.localeService.localeDefinition().angularLocale))
       .join('');
   });
 
@@ -85,7 +91,11 @@ export class TutorPublicProfileComponent implements OnInit {
             return;
           }
           const body = err.error as { message?: string } | null;
-          this.error.set(body?.message || 'Öğretmen profili yüklenirken bir sorun oluştu.');
+          // Yedek mesaj sözlükten gelir; scope henüz yüklenmemiş olabileceği için `selectTranslate`.
+          this.transloco
+            .selectTranslate<string>('profile.error', {}, TUTOR_SEARCH_SCOPE)
+            .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+            .subscribe((fallback) => this.error.set(body?.message || fallback));
         },
       });
   }
@@ -118,7 +128,11 @@ export class TutorPublicProfileComponent implements OnInit {
           return;
         }
         this.snackBar
-          .open('Randevu talebin gönderildi, öğretmenin onayı bekleniyor.', 'Randevularım', { duration: 6000 })
+          .open(
+            this.transloco.translate<string>(`${TUTOR_SEARCH_SCOPE}.profile.bookingCreated`) ?? '',
+            this.transloco.translate<string>(`${TUTOR_SEARCH_SCOPE}.profile.bookingCreatedAction`) ?? '',
+            { duration: 6000 }
+          )
           .onAction()
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe(() => void this.router.navigate(['/my-bookings']));

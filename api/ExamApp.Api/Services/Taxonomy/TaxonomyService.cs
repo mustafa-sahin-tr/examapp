@@ -7,8 +7,10 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Classifier;
+using ExamApp.Foundation.Localization;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Taxonomy;
 
@@ -21,10 +23,15 @@ public class TaxonomyService : ITaxonomyService
     private readonly AppDbContext _context;
     private readonly IBackgroundJobClient _jobs;
 
-    public TaxonomyService(AppDbContext context, IBackgroundJobClient jobs)
+    // Client'a ulaşan ResponseBaseDto.Message metinleri buradan gelir (issue #184). DI her zaman
+    // gerçek localizer'ı verir; parametre yalnızca DI'sız (birim test) senaryolar için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public TaxonomyService(AppDbContext context, IBackgroundJobClient jobs, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _jobs = jobs;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<TaxonomyTreeDto> GetTreeAsync(int? gradeId = null, bool unassignedOnly = false, CancellationToken ct = default)
@@ -109,14 +116,14 @@ public class TaxonomyService : ITaxonomyService
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Ders adı boş olamaz.");
+            return Fail(_localizer["taxonomy.subject.nameRequired"]);
 
         if (await _context.Subjects.AnyAsync(s => s.Name.ToLower() == name.ToLower(), ct))
-            return Fail("Bu isimde bir ders zaten var.");
+            return Fail(_localizer["taxonomy.subject.nameAlreadyExists"]);
 
         var gradeIds = NormalizeGradeIds(dto.GradeIds);
         if (gradeIds != null && !await AllGradesExistAsync(gradeIds, ct))
-            return Fail("Geçersiz sınıf.");
+            return Fail(_localizer["taxonomy.grade.invalid"]);
 
         _context.SetCurrentUser(userId);
         // A brand-new subject has no existing links, so no sync is needed: attach the
@@ -132,32 +139,32 @@ public class TaxonomyService : ITaxonomyService
         _context.Subjects.Add(subject);
         await _context.SaveChangesAsync(ct);
 
-        return Ok("Ders eklendi.", subject.Id, userId);
+        return Ok(_localizer["taxonomy.subject.created"], subject.Id, userId);
     }
 
     public async Task<ResponseBaseDto> UpdateSubjectAsync(int id, UpsertSubjectDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Ders adı boş olamaz.");
+            return Fail(_localizer["taxonomy.subject.nameRequired"]);
 
         var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (subject == null)
-            return Fail("Ders bulunamadı.");
+            return Fail(_localizer["taxonomy.subject.notFound"]);
 
         if (await _context.Subjects.AnyAsync(s => s.Id != id && s.Name.ToLower() == name.ToLower(), ct))
-            return Fail("Bu isimde başka bir ders zaten var.");
+            return Fail(_localizer["taxonomy.subject.otherNameAlreadyExists"]);
 
         var gradeIds = NormalizeGradeIds(dto.GradeIds);
         if (gradeIds != null && !await AllGradesExistAsync(gradeIds, ct))
-            return Fail("Geçersiz sınıf.");
+            return Fail(_localizer["taxonomy.grade.invalid"]);
 
         _context.SetCurrentUser(userId);
         subject.Name = name;
         if (gradeIds != null)
             await SyncSubjectGradesAsync(subject.Id, gradeIds, ct);
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders güncellendi.", subject.Id, userId);
+        return Ok(_localizer["taxonomy.subject.updated"], subject.Id, userId);
     }
 
     // ---- Subject <-> Grade (GradeSubject) ----
@@ -165,37 +172,37 @@ public class TaxonomyService : ITaxonomyService
     public async Task<ResponseBaseDto> AddSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default)
     {
         if (!await _context.Subjects.AnyAsync(s => s.Id == subjectId, ct))
-            return Fail("Ders bulunamadı.");
+            return Fail(_localizer["taxonomy.subject.notFound"]);
         if (!await _context.Grades.AnyAsync(g => g.Id == gradeId, ct))
-            return Fail("Sınıf bulunamadı.");
+            return Fail(_localizer["taxonomy.grade.notFound"]);
 
         if (await _context.GradeSubjects.AnyAsync(gs => gs.SubjectId == subjectId && gs.GradeId == gradeId, ct))
-            return Ok("Ders zaten bu sınıfa bağlı.", subjectId, userId);
+            return Ok(_localizer["taxonomy.gradeSubject.alreadyLinked"], subjectId, userId);
 
         _context.SetCurrentUser(userId);
         _context.GradeSubjects.Add(new GradeSubject { SubjectId = subjectId, GradeId = gradeId });
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders sınıfa bağlandı.", subjectId, userId);
+        return Ok(_localizer["taxonomy.gradeSubject.linked"], subjectId, userId);
     }
 
     public async Task<ResponseBaseDto> RemoveSubjectGradeAsync(int subjectId, int gradeId, int userId, CancellationToken ct = default)
     {
         if (!await _context.Subjects.AnyAsync(s => s.Id == subjectId, ct))
-            return Fail("Ders bulunamadı.");
+            return Fail(_localizer["taxonomy.subject.notFound"]);
         if (!await _context.Grades.AnyAsync(g => g.Id == gradeId, ct))
-            return Fail("Sınıf bulunamadı.");
+            return Fail(_localizer["taxonomy.grade.notFound"]);
 
         var links = await _context.GradeSubjects
             .Where(gs => gs.SubjectId == subjectId && gs.GradeId == gradeId)
             .ToListAsync(ct);
         if (links.Count == 0)
-            return Ok("Ders zaten bu sınıfa bağlı değil.", subjectId, userId);
+            return Ok(_localizer["taxonomy.gradeSubject.alreadyUnlinked"], subjectId, userId);
 
         // Only the link row goes (soft delete via ApplyAuditInfo); topics/subtopics/questions stay.
         _context.SetCurrentUser(userId);
         _context.GradeSubjects.RemoveRange(links);
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders–sınıf bağlantısı kaldırıldı.", subjectId, userId);
+        return Ok(_localizer["taxonomy.gradeSubject.unlinked"], subjectId, userId);
     }
 
     /// <summary>Null when the caller did not send grade ids (or sent an empty list) — meaning "leave links alone".</summary>
@@ -236,18 +243,18 @@ public class TaxonomyService : ITaxonomyService
     {
         var subject = await _context.Subjects.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (subject == null)
-            return Fail("Ders bulunamadı.");
+            return Fail(_localizer["taxonomy.subject.notFound"]);
 
         if (await _context.Topics.AnyAsync(t => t.SubjectId == id, ct))
-            return Fail("Bu derse bağlı konular var. Önce konuları silin veya taşıyın.");
+            return Fail(_localizer["taxonomy.subject.hasTopics"]);
 
         if (await _context.Questions.AnyAsync(q => q.SubjectId == id, ct))
-            return Fail("Bu derse bağlı sorular var, silinemez.");
+            return Fail(_localizer["taxonomy.subject.hasQuestions"]);
 
         _context.SetCurrentUser(userId);
         _context.Subjects.Remove(subject); // soft delete via AppDbContext.ApplyAuditInfo
         await _context.SaveChangesAsync(ct);
-        return Ok("Ders silindi.", id, userId);
+        return Ok(_localizer["taxonomy.subject.deleted"], id, userId);
     }
 
     // ---- Topic ----
@@ -256,56 +263,56 @@ public class TaxonomyService : ITaxonomyService
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Konu adı boş olamaz.");
+            return Fail(_localizer["taxonomy.topic.nameRequired"]);
         if (!await _context.Subjects.AnyAsync(s => s.Id == dto.SubjectId, ct))
-            return Fail("Geçersiz ders.");
+            return Fail(_localizer["taxonomy.subject.invalid"]);
         if (!await _context.Grades.AnyAsync(g => g.Id == dto.GradeId, ct))
-            return Fail("Geçersiz sınıf.");
+            return Fail(_localizer["taxonomy.grade.invalid"]);
 
         _context.SetCurrentUser(userId);
         var topic = new Topic { Name = name, SubjectId = dto.SubjectId, GradeId = dto.GradeId };
         _context.Topics.Add(topic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Konu eklendi.", topic.Id, userId);
+        return Ok(_localizer["taxonomy.topic.created"], topic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> UpdateTopicAsync(int id, UpsertTopicDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Konu adı boş olamaz.");
+            return Fail(_localizer["taxonomy.topic.nameRequired"]);
 
         var topic = await _context.Topics.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (topic == null)
-            return Fail("Konu bulunamadı.");
+            return Fail(_localizer["taxonomy.topic.notFound"]);
         if (!await _context.Subjects.AnyAsync(s => s.Id == dto.SubjectId, ct))
-            return Fail("Geçersiz ders.");
+            return Fail(_localizer["taxonomy.subject.invalid"]);
         if (!await _context.Grades.AnyAsync(g => g.Id == dto.GradeId, ct))
-            return Fail("Geçersiz sınıf.");
+            return Fail(_localizer["taxonomy.grade.invalid"]);
 
         _context.SetCurrentUser(userId);
         topic.Name = name;
         topic.SubjectId = dto.SubjectId;
         topic.GradeId = dto.GradeId;
         await _context.SaveChangesAsync(ct);
-        return Ok("Konu güncellendi.", topic.Id, userId);
+        return Ok(_localizer["taxonomy.topic.updated"], topic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> DeleteTopicAsync(int id, int userId, CancellationToken ct = default)
     {
         var topic = await _context.Topics.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (topic == null)
-            return Fail("Konu bulunamadı.");
+            return Fail(_localizer["taxonomy.topic.notFound"]);
 
         if (await _context.SubTopics.AnyAsync(st => st.TopicId == id, ct))
-            return Fail("Bu konuya bağlı alt konular var. Önce onları silin veya taşıyın.");
+            return Fail(_localizer["taxonomy.topic.hasSubTopics"]);
         if (await _context.Questions.AnyAsync(q => q.TopicId == id, ct))
-            return Fail("Bu konuya bağlı sorular var, silinemez.");
+            return Fail(_localizer["taxonomy.topic.hasQuestions"]);
 
         _context.SetCurrentUser(userId);
         _context.Topics.Remove(topic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Konu silindi.", id, userId);
+        return Ok(_localizer["taxonomy.topic.deleted"], id, userId);
     }
 
     // ---- SubTopic ----
@@ -314,49 +321,49 @@ public class TaxonomyService : ITaxonomyService
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Alt konu adı boş olamaz.");
+            return Fail(_localizer["taxonomy.subTopic.nameRequired"]);
         if (!await _context.Topics.AnyAsync(t => t.Id == dto.TopicId, ct))
-            return Fail("Geçersiz konu.");
+            return Fail(_localizer["taxonomy.topic.invalid"]);
 
         _context.SetCurrentUser(userId);
         var subTopic = new SubTopic { Name = name, TopicId = dto.TopicId };
         _context.SubTopics.Add(subTopic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Alt konu eklendi.", subTopic.Id, userId);
+        return Ok(_localizer["taxonomy.subTopic.created"], subTopic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> UpdateSubTopicAsync(int id, UpsertSubTopicDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Alt konu adı boş olamaz.");
+            return Fail(_localizer["taxonomy.subTopic.nameRequired"]);
 
         var subTopic = await _context.SubTopics.FirstOrDefaultAsync(st => st.Id == id, ct);
         if (subTopic == null)
-            return Fail("Alt konu bulunamadı.");
+            return Fail(_localizer["taxonomy.subTopic.notFound"]);
         if (!await _context.Topics.AnyAsync(t => t.Id == dto.TopicId, ct))
-            return Fail("Geçersiz konu.");
+            return Fail(_localizer["taxonomy.topic.invalid"]);
 
         _context.SetCurrentUser(userId);
         subTopic.Name = name;
         subTopic.TopicId = dto.TopicId;
         await _context.SaveChangesAsync(ct);
-        return Ok("Alt konu güncellendi.", subTopic.Id, userId);
+        return Ok(_localizer["taxonomy.subTopic.updated"], subTopic.Id, userId);
     }
 
     public async Task<ResponseBaseDto> DeleteSubTopicAsync(int id, int userId, CancellationToken ct = default)
     {
         var subTopic = await _context.SubTopics.FirstOrDefaultAsync(st => st.Id == id, ct);
         if (subTopic == null)
-            return Fail("Alt konu bulunamadı.");
+            return Fail(_localizer["taxonomy.subTopic.notFound"]);
 
         if (await _context.QuestionSubTopics.AnyAsync(qst => qst.SubTopicId == id, ct))
-            return Fail("Bu alt konuya atanmış sorular var, silinemez.");
+            return Fail(_localizer["taxonomy.subTopic.hasQuestions"]);
 
         _context.SetCurrentUser(userId);
         _context.SubTopics.Remove(subTopic);
         await _context.SaveChangesAsync(ct);
-        return Ok("Alt konu silindi.", id, userId);
+        return Ok(_localizer["taxonomy.subTopic.deleted"], id, userId);
     }
 
     private static ResponseBaseDto Fail(string message) => new() { Success = false, Message = message };

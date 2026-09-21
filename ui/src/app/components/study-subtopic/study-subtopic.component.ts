@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 import { MatTabsModule } from '@angular/material/tabs';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { StudyService } from '../../services/study.service';
@@ -16,6 +17,7 @@ import { StudyContent } from '../../models/study-content';
   selector: 'app-study-subtopic',
   standalone: true,
   imports: [
+    TranslocoDirective,
     CommonModule,
     MatCardModule,
     MatButtonModule,

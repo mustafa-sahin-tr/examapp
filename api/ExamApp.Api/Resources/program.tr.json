@@ -1,0 +1,8 @@
+{
+  "program": {
+    "userIdNotFoundInToken": "Jetonda kullanıcı kimliği bulunamadı."
+  },
+  "questionTransfer": {
+    "fileRequired": "Dosya zorunludur."
+  }
+}

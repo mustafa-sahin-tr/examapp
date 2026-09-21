@@ -35,6 +35,15 @@ import {
   ClassificationSelectorComponent,
   ClassificationSelection,
 } from '../../shared/components/classification-selector/classification-selector.component';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/**
+ * Soru kırpma/yükleme akışının metinleri kendi scope'unda: `public/i18n/image-selector/<lang>.json`
+ * (issue #183). Komponent hem `question-canvas` hem `question-canvas-preview` içinden kullanıldığı
+ * için scope'u kendisi sağlar; Transloco scope provider'ları çoklu olduğundan ebeveynin scope'u
+ * (question) da erişilebilir kalır.
+ */
+const IMAGE_SELECTOR_SCOPE = 'image-selector';
 
 interface WarningMarker {
   id: number;
@@ -98,7 +107,9 @@ export interface ActiveInspector {
     QuestionCanvasViewComponent,
     QuestionCanvasViewComponentv5,
     ClassificationSelectorComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(IMAGE_SELECTOR_SCOPE)],
   templateUrl: './image-selector.component.html',
   styleUrls: ['./image-selector.component.scss'],
 })
@@ -146,6 +157,12 @@ export class ImageSelectorComponent {
   testService = inject(TestService);
   private subjectService = inject(SubjectService);
   private snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+
+  /** Scope'a göreli anahtarı senkron çevirir (sözlük scope provider'ı ile yüklenir). */
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${IMAGE_SELECTOR_SCOPE}.${key}`, params) ?? '';
+  }
   private dialog = inject(MatDialog);
   private destroyRef = inject(DestroyRef);
 
@@ -384,10 +401,10 @@ export class ImageSelectorComponent {
       .updateClassification(evt.questionId, evt.subjectId, evt.topicId, null, normalizedSubtopicIds)
       .subscribe({
         next: () => {
-          this.snackBar.open('Sınıflandırma uygulandı.', 'Kapat', { duration: 2000 });
+          this.snackBar.open(this.tr('messages.classificationApplied'), this.tr('common.close'), { duration: 2000 });
         },
         error: () => {
-          this.snackBar.open('Uygulama sırasında hata oluştu.', 'Kapat', { duration: 3000 });
+          this.snackBar.open(this.tr('messages.classificationError'), this.tr('common.close'), { duration: 3000 });
         },
       });
   }
@@ -429,7 +446,7 @@ export class ImageSelectorComponent {
           },
           error: (err) => {
             console.error('Önizleme yüklenemedi:', err);
-            this.snackBar.open('Önizleme yüklenemedi.', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('messages.previewLoadError'), this.tr('common.ok'), { duration: 3000 });
             this.previewMode.set(false);
             this.currentTestId.set(null);
             this.loadCurrentImage();
@@ -1014,23 +1031,23 @@ export class ImageSelectorComponent {
     if (interactionType === 'dragDropLabeling') {
       const plan = this.buildInteractionPlan(region.name);
       if (!plan || plan.dropZones.length === 0) {
-        messages.push('Drop zone eklenmemiş');
+        messages.push(this.tr('warnings.noDropZone'));
       }
       if (!plan || plan.draggables.length === 0) {
-        messages.push('Etiketler (draggables) oluşturulmamış');
+        messages.push(this.tr('warnings.noDraggables'));
       }
       if (region.isExample) {
         const placements = plan?.solution?.placements ?? [];
         if (placements.length === 0) {
-          messages.push('Örnek soru için solution placements yok');
+          messages.push(this.tr('warnings.noSolutionPlacements'));
         }
       }
     } else {
       if (region.answers.length != this.answerCount()) {
-        messages.push(`Şık sayısı ${this.answerCount()} olmalı`);
+        messages.push(this.tr('warnings.answerCountMismatch', { count: this.answerCount() }));
       }
       if (!region.answers.find((a) => a.isCorrect)) {
-        messages.push(`Doğru cevap yok`);
+        messages.push(this.tr('warnings.noCorrectAnswer'));
       }
     }
 
@@ -1424,7 +1441,7 @@ export class ImageSelectorComponent {
         absX1 >= region.x && absY1 >= region.y && absX2 <= region.x + region.width && absY2 <= region.y + region.height;
 
       if (!within) {
-        this.snackBar.open('Drop zone soru alanının içinde olmalı.', 'Tamam', { duration: 2000 });
+        this.snackBar.open(this.tr('messages.dropZoneOutsideQuestion'), this.tr('common.ok'), { duration: 2000 });
       } else {
         const relX = absX1 - region.x;
         const relY = absY1 - region.y;
@@ -1447,7 +1464,7 @@ export class ImageSelectorComponent {
     this.selectionMode.set(mode); // TODO: Seçim modunu ayarla
 
     if (mode === 'answer' && this.selectedQuestionIndex < 0) {
-      alert('Lütfen önce bir soru seçin ve ardından şıkları ekleyin.');
+      alert(this.tr('messages.selectQuestionFirst'));
     }
   }
 
@@ -1823,7 +1840,7 @@ export class ImageSelectorComponent {
   }
 
   public predict() {
-    this.snackBar.open('Resim analizi başlatılıyor...', 'Tamam', { duration: 2000 });
+    this.snackBar.open(this.tr('messages.analysisStarted'), this.tr('common.ok'), { duration: 2000 });
     this.inProgress.set(true);
     const imageData = { image_base64: this.imageData() };
     if (!imageData) return;
@@ -1860,7 +1877,7 @@ export class ImageSelectorComponent {
             answers: q.subpredictions
               .filter((a: any) => a.class_id === 0)
               .map((a: any, index: number) => ({
-                label: `Şık ${index + 1}`,
+                label: this.tr('labels.answerNumbered', { number: index + 1 }),
                 ...a,
                 isCorrect: false,
                 id: index,
@@ -1900,7 +1917,7 @@ export class ImageSelectorComponent {
         console.log(`Condition: false`);
       }
 
-      this.snackBar.open('Resim analizi tamamlandı.', 'Tamam', { duration: 2000 });
+      this.snackBar.open(this.tr('messages.analysisCompleted'), this.tr('common.ok'), { duration: 2000 });
       if (!this.autoMode()) {
         // resmi çiz ve dur
         this.drawImage();
@@ -2050,14 +2067,14 @@ export class ImageSelectorComponent {
         this.questionService.updateCorrectAnswer(questionId, correctAnswerId, scale).subscribe({
           next: (response) => {
             if (response.success) {
-              this.snackBar.open('Doğru cevap başarıyla güncellendi!', 'Tamam', { duration: 3000 });
+              this.snackBar.open(this.tr('messages.correctAnswerUpdated'), this.tr('common.ok'), { duration: 3000 });
             } else {
               this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
             }
           },
           error: (error) => {
             console.error('Error updating correct answer:', error);
-            this.snackBar.open('Doğru cevap güncellenirken hata oluştu!', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('messages.correctAnswerUpdateError'), this.tr('common.ok'), { duration: 3000 });
           },
         });
       }
@@ -2081,13 +2098,13 @@ export class ImageSelectorComponent {
     if (!this.previewMode()) return;
 
     // Confirmation dialog kullanarak kullanıcıdan onay al
-    const confirmRemoval = confirm('Bu soruyu testten çıkarmak istediğinizden emin misiniz?');
+    const confirmRemoval = confirm(this.tr('messages.removeQuestionConfirm'));
 
     if (confirmRemoval && this.currentTestId()) {
       this.questionService.removeQuestionFromTest(this.currentTestId()!, questionId).subscribe({
         next: (response) => {
           if (response.success) {
-            this.snackBar.open('Soru başarıyla testten çıkarıldı!', 'Tamam', { duration: 3000 });
+            this.snackBar.open(this.tr('messages.questionRemoved'), this.tr('common.ok'), { duration: 3000 });
 
             // Local regions array'den de soruyu çıkar
             const currentRegions = this.regions();
@@ -2102,7 +2119,7 @@ export class ImageSelectorComponent {
             // Eğer hiç soru kalmadıysa preview mode'dan çık
             if (updatedRegions.length === 0) {
               this.togglePreviewMode(0); // Dummy testId, zaten false duruma geçiyor
-              this.snackBar.open('Testte soru kalmadığı için önizleme kapatıldı.', 'Tamam', { duration: 3000 });
+              this.snackBar.open(this.tr('messages.previewClosedNoQuestions'), this.tr('common.ok'), { duration: 3000 });
             }
           } else {
             this.snackBar.open('Hata: ' + response.message, 'Tamam', { duration: 3000 });
@@ -2110,7 +2127,7 @@ export class ImageSelectorComponent {
         },
         error: (error) => {
           console.error('Error removing question from test:', error);
-          this.snackBar.open('Soru silinirken hata oluştu!', 'Tamam', { duration: 3000 });
+          this.snackBar.open(this.tr('messages.questionRemoveError'), this.tr('common.ok'), { duration: 3000 });
         },
       });
     }

@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, Output, computed, signal } from '@angul
 import { DragDropModule, CdkDragDrop, transferArrayItem } from '@angular/cdk/drag-drop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { TranslocoDirective, TranslocoPipe } from '@jsverse/transloco';
 import { QuestionRegion } from '../../../models/draws';
 
 export interface DragDropLabelingPlanV1 {
@@ -23,7 +24,7 @@ export interface DragDropLabelingPlacement {
 @Component({
   selector: 'app-question-canvas-dragdrop-labeling',
   standalone: true,
-  imports: [CommonModule, DragDropModule, MatIconModule, MatButtonModule],
+  imports: [CommonModule, DragDropModule, MatIconModule, MatButtonModule, TranslocoDirective, TranslocoPipe],
   templateUrl: './question-canvas-dragdrop-labeling.component.html',
   styleUrls: ['./question-canvas-dragdrop-labeling.component.scss'],
 })

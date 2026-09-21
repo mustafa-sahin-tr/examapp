@@ -1,0 +1,104 @@
+{
+  "about": {
+    "meta": {
+      "title": "About | ExamApp",
+      "description": "Learn more about ExamApp and our vision."
+    },
+    "title": "About ExamApp",
+    "intro": "ExamApp is a modern and secure online exam platform. It offers a flexible, fast and user-friendly experience for students, teachers and institutions.",
+    "vision": "Our vision is to make digital transformation in education easier and to provide exam solutions that are accessible to everyone."
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact | ExamApp",
+      "description": "ExamApp contact and support channels."
+    },
+    "title": "Contact",
+    "intro": "Reach out to us with any questions, suggestions or support requests.",
+    "emailLabel": "Email",
+    "phoneLabel": "Phone",
+    "addressLabel": "Address",
+    "addressValue": "Istanbul, Türkiye"
+  },
+  "faq": {
+    "meta": {
+      "title": "Frequently Asked Questions | ExamApp",
+      "description": "Frequently asked questions about ExamApp and their answers."
+    },
+    "title": "Frequently Asked Questions",
+    "whatIs": {
+      "question": "What is ExamApp?",
+      "answer": "It is an online exam and assessment platform."
+    },
+    "whoCanUse": {
+      "question": "Who can use it?",
+      "answer": "Students, teachers, institutions and parents."
+    },
+    "isPaid": {
+      "question": "Is it paid?",
+      "answer": "The basic plan is free; advanced features are available in paid plans."
+    },
+    "dataSafety": {
+      "question": "Is my data safe?",
+      "answer": "Yes, all of your data is stored on secure servers."
+    }
+  },
+  "features": {
+    "meta": {
+      "title": "Features | ExamApp",
+      "description": "Highlighted features of the ExamApp platform."
+    },
+    "title": "Highlighted Features",
+    "authoring": "Easy exam creation and management",
+    "security": "Strong security and authentication",
+    "analytics": "Real-time results and analytics",
+    "responsive": "Mobile-friendly and accessible interface",
+    "roles": "Multi-user and role support",
+    "richContent": "File and image attachments, rich question types"
+  },
+  "pricing": {
+    "meta": {
+      "title": "Pricing | ExamApp",
+      "description": "ExamApp pricing options and plans."
+    },
+    "title": "Pricing",
+    "planColumn": "Plan",
+    "featuresColumn": "Features",
+    "priceColumn": "Price",
+    "basic": {
+      "name": "Basic",
+      "features": "10 exams/month, basic analytics",
+      "price": "Free"
+    },
+    "pro": {
+      "name": "Pro",
+      "features": "Unlimited exams, advanced analytics, file upload",
+      "price": "99 TRY/month"
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "features": "Multiple users, dedicated support, API access",
+      "price": "Contact Us"
+    }
+  },
+  "privacyPolicy": {
+    "meta": {
+      "title": "Privacy Policy | ExamApp",
+      "description": "ExamApp privacy policy and data protection commitment."
+    },
+    "title": "Privacy Policy",
+    "intro": "At ExamApp we take our users' privacy very seriously. Your personal data is protected in line with applicable regulations and is never shared with third parties.",
+    "contact": "Please contact us if you would like more information."
+  },
+  "terms": {
+    "meta": {
+      "title": "Terms of Use | ExamApp",
+      "description": "ExamApp terms of use: the rules and conditions that apply to our services."
+    },
+    "title": "Terms of Use",
+    "intro": "By using ExamApp services you agree to the terms below. Please read all of the rules carefully.",
+    "purpose": "ExamApp is designed to improve the exam experience of its users.",
+    "misuse": "Misuse of our services is prohibited.",
+    "updates": "Check this page regularly for updated terms and conditions."
+  }
+}

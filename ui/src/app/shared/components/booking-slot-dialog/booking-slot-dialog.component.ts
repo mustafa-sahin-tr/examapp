@@ -7,6 +7,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
+import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { finalize } from 'rxjs';
 import { AvailabilitySlot } from '../../../models/booking.model';
 import { BookingService } from '../../../services/booking.service';
@@ -40,6 +41,8 @@ interface SlotGroup {
     MatIconModule,
     MatProgressSpinnerModule,
     MatRadioModule,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
   templateUrl: './booking-slot-dialog.component.html',
   styleUrls: ['./booking-slot-dialog.component.scss'],
@@ -48,6 +51,7 @@ export class BookingSlotDialogComponent {
   private readonly bookingService = inject(BookingService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject<MatDialogRef<BookingSlotDialogComponent, boolean>>(MatDialogRef);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly data = inject<BookingSlotDialogData>(MAT_DIALOG_DATA);
 
@@ -96,7 +100,7 @@ export class BookingSlotDialogComponent {
           }
         },
         error: (err: HttpErrorResponse) =>
-          this.error.set(this.bookingService.extractError(err, 'Müsait saatler yüklenemedi.')),
+          this.error.set(this.bookingService.extractError(err, this.t('shared.bookingSlotDialog.loadError'))),
       });
   }
 
@@ -115,13 +119,15 @@ export class BookingSlotDialogComponent {
       .subscribe({
         next: (res) => {
           if (res?.success === false) {
-            this.submitError.set(res.message || 'Randevu talebi oluşturulamadı.');
+            this.submitError.set(res.message || this.t('shared.bookingSlotDialog.submitError'));
             return;
           }
           this.dialogRef.close(true);
         },
         error: (err: HttpErrorResponse) => {
-          this.submitError.set(this.bookingService.extractError(err, 'Randevu talebi oluşturulamadı.'));
+          this.submitError.set(
+            this.bookingService.extractError(err, this.t('shared.bookingSlotDialog.submitError'))
+          );
           if (err.status === 409 || err.status === 404) {
             // Aralık bu arada dolmuş/silinmiş olabilir — listeyi tazele.
             this.load();
@@ -132,5 +138,9 @@ export class BookingSlotDialogComponent {
 
   protected close(): void {
     this.dialogRef.close(false);
+  }
+
+  private t(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
   }
 }

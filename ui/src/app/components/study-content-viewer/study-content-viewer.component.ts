@@ -4,12 +4,14 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { FormsModule, ReactiveFormsModule, FormControl } from '@angular/forms';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { StudyService } from '../../services/study.service';
 import { StudyContent } from '../../models/study-content';
@@ -20,6 +22,8 @@ import { Note } from '../../models/note';
   selector: 'app-study-content-viewer',
   standalone: true,
   imports: [
+    TranslocoDirective,
+    TranslocoPipe,
     CommonModule,
     MatCardModule,
     MatButtonModule,
@@ -32,6 +36,7 @@ import { Note } from '../../models/note';
     ReactiveFormsModule,
     MatExpansionModule,
     MatMenuModule,
+    MatTooltipModule,
   ],
   templateUrl: './study-content-viewer.component.html',
   styleUrls: ['./study-content-viewer.component.scss'],
@@ -39,6 +44,11 @@ import { Note } from '../../models/note';
 export class StudyContentViewerComponent implements OnInit, OnChanges {
   studyService = inject(StudyService);
   sanitizer = inject(DomSanitizer);
+  private readonly transloco = inject(TranslocoService);
+
+  private t(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
+  }
 
   @Input() contentId!: number;
   @Input() isCompleted = false;
@@ -194,7 +204,7 @@ export class StudyContentViewerComponent implements OnInit, OnChanges {
 
   shareContent(platform: string) {
     let shareUrl = window.location.href;
-    let text = `${this.content?.title || 'Ders içeriği'} - ExamApp`;
+    const text = `${this.content?.title || this.t('shared.study.content.fallbackTitle')} - ExamApp`;
 
     switch (platform) {
       case 'twitter':
@@ -211,7 +221,7 @@ export class StudyContentViewerComponent implements OnInit, OnChanges {
         break;
       case 'copy':
         navigator.clipboard.writeText(shareUrl).then(() => {
-          alert('Link kopyalandı!');
+          alert(this.t('shared.study.content.linkCopied'));
         });
         break;
     }

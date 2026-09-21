@@ -1,13 +1,13 @@
 @if(testInstance) {
 <!-- Ana Test Konteyner -->
-<div class="test-solve-container" [class.focus-mode]="focusMode()">
+<div class="test-solve-container" [class.focus-mode]="focusMode()" *transloco="let t; prefix: 'test-solve'">
   <!-- Üst Header - Sabit -->
   <header class="test-header">
     <div class="header-content">
       <!-- Sol: Timer -->
       <div class="timer-section">
         <app-countdown [durationInSeconds]="testDuration" [totalDurationInSeconds]="testInstance.maxDurationSeconds"
-          [showProgressBar]="true" [size]="'medium'" [label]="'Kalan Süre'">
+          [showProgressBar]="true" [size]="'medium'" [label]="t('header.remainingTime')">
         </app-countdown>
       </div>
 
@@ -16,7 +16,7 @@
         <!-- Önceki Soru/Grup -->
         <button mat-icon-button color="primary" (click)="prevQuestion()" [disabled]="!canGoPrev()"
           class="header-nav-btn prev-btn"
-          [attr.aria-label]="questionsPerView() === 1 ? 'Önceki soru' : 'Önceki soru grubu'">
+          [attr.aria-label]="questionsPerView() === 1 ? t('question.previous') : t('question.previousGroup')">
           <mat-icon>chevron_left</mat-icon>
         </button>
 
@@ -31,10 +31,14 @@
             <span class="question-counter">{{ currentIndex() + 1 }}/{{ testInstance.testInstanceQuestions.length
               }}</span>
             } @else {
-            <span class="question-counter">Görünüm {{ currentViewNumber() }}/{{ totalViews() }} ({{ viewStartIndex() + 1
-              }}-{{
-              endQuestionIndex()
-              }})</span>
+            <span class="question-counter">{{
+              t('classic.viewCounter', {
+                current: currentViewNumber(),
+                total: totalViews(),
+                start: viewStartIndex() + 1,
+                end: endQuestionIndex()
+              })
+            }}</span>
             }
             <div class="progress-container">
               <div class="progress-bar">
@@ -48,7 +52,7 @@
         <!-- Sonraki Soru/Grup -->
         <button mat-icon-button color="accent" (click)="nextQuestion()" [disabled]="!canGoNext()"
           class="header-nav-btn next-btn"
-          [attr.aria-label]="questionsPerView() === 1 ? 'Sonraki soru' : 'Sonraki soru grubu'">
+          [attr.aria-label]="questionsPerView() === 1 ? t('question.next') : t('question.nextGroup')">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
@@ -56,13 +60,13 @@
       <!-- Sağ: Test Bitir -->
       <div class="action-buttons">
         @if(showStopButton) {
-        <button mat-icon-button color="warn" (click)="pauseTest()" class="pause-btn">
+        <button mat-icon-button color="warn" (click)="pauseTest()" class="pause-btn" [attr.aria-label]="t('header.pauseTest')">
           <mat-icon>pause</mat-icon>
         </button>
         }
         <button mat-raised-button color="primary" (click)="completeTest()" class="complete-btn">
           <mat-icon>done_all</mat-icon>
-          Sınavı Bitir
+          {{ t('header.finishTest') }}
         </button>
       </div>
     </div>
@@ -116,12 +120,14 @@
             <div class="canvas-overlay-actions top-left">
               <button mat-mini-fab [class.active]="isQuestionBookmarked(questionData.index)"
                 (click)="toggleBookmark(); focusOnQuestion(questionData.index)" class="overlay-bookmark-btn"
-                [attr.aria-label]="isQuestionBookmarked(questionData.index) ? 'İşareti kaldır' : 'İşaretle'">
+                [attr.aria-label]="
+                  isQuestionBookmarked(questionData.index) ? t('question.removeBookmark') : t('classic.bookmark')
+                ">
                 <mat-icon>{{ isQuestionBookmarked(questionData.index) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
               </button>
 
               <button mat-mini-fab (click)="reportQuestion()" class="overlay-report-btn"
-                [attr.aria-label]="'Soruyu bildir'">
+                [attr.aria-label]="t('question.report')">
                 <mat-icon>flag</mat-icon>
               </button>
               {{ currentScale() }}
@@ -130,17 +136,17 @@
             @if(questionsPerView() === 1) {
             <div class="canvas-overlay-actions top-right">
               <button mat-mini-fab (click)="enlargeImage()" class="overlay-bookmark-btn"
-                [attr.aria-label]="'Büyüt (+5%)'">
+                [attr.aria-label]="t('classic.zoomIn')">
                 <mat-icon>zoom_in</mat-icon>
               </button>
 
               <button mat-mini-fab (click)="retsetImageScale()" class="overlay-report-btn"
-                [attr.aria-label]="'Orjinal'">
+                [attr.aria-label]="t('classic.resetZoom')">
                 <mat-icon>refresh</mat-icon>
               </button>
 
               <button mat-mini-fab (click)="shrinkImage()" class="overlay-report-btn"
-                [attr.aria-label]="'Küçült (-5%)'">
+                [attr.aria-label]="t('classic.zoomOut')">
                 <mat-icon>zoom_out</mat-icon>
               </button>
             </div>
@@ -150,7 +156,7 @@
             <div class="canvas-overlay-actions bottom-right">
               <button mat-mini-fab (click)="clearCanvasAnswer(); focusOnQuestion(questionData.index)"
                 [disabled]="!questionData.question.selectedAnswerId" class="overlay-clear-btn"
-                [attr.aria-label]="'Cevabı temizle'">
+                [attr.aria-label]="t('dock.clearAnswer')">
                 <mat-icon>check_box_outline_blank</mat-icon>
               </button>
             </div>
@@ -211,19 +217,19 @@
       <div class="question-actions">
         <button mat-button [class.active]="isQuestionBookmarked()" (click)="toggleBookmark()" class="bookmark-btn">
           <mat-icon>{{ isQuestionBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-          İşaretle
+          {{ t('classic.bookmark') }}
         </button>
 
         @if(testInstance.isPracticeTest) {
         <button mat-button (click)="showHint()" class="hint-btn" [disabled]="!hasHint()">
           <mat-icon>lightbulb</mat-icon>
-          İpucu
+          {{ t('classic.hint') }}
         </button>
         }
 
         <button mat-button (click)="reportQuestion()" class="report-btn">
           <mat-icon>flag</mat-icon>
-          Bildir
+          {{ t('classic.report') }}
         </button>
       </div>
       }
@@ -238,7 +244,7 @@
           <div class="map-header">
             <h3 class="map-title">
               <mat-icon>map</mat-icon>
-              Soru Haritası
+              {{ t('insight.mapTitle') }}
             </h3>
           </div>
 
@@ -248,7 +254,7 @@
               <button mat-mini-fab [class.current]="i === currentIndex()"
                 [class.visible]="i >= viewStartIndex() && i < viewStartIndex() + questionsPerView()"
                 [class.answered]="question.selectedAnswerId" [class.bookmarked]="isQuestionBookmarked(i)"
-                (click)="focusOnQuestion(i)" [attr.aria-label]="'Soru ' + (i + 1)">
+                (click)="focusOnQuestion(i)" [attr.aria-label]="t('question.numberAria', { number: i + 1 })">
                 {{ i + 1 }}
               </button>
               }
@@ -259,7 +265,7 @@
           <div class="legend">
             <div class="legend-item">
               <div class="legend-color answered"></div>
-              <span>Cevaplanmış</span>
+              <span>{{ t('classic.legendAnswered') }}</span>
             </div>
             <!-- <div class="legend-item">
               <div class="legend-color current"></div>
@@ -267,7 +273,7 @@
             </div> -->
             <div class="legend-item">
               <div class="legend-color bookmarked"></div>
-              <span>İşaretlenmiş</span>
+              <span>{{ t('classic.legendBookmarked') }}</span>
             </div>
           </div>
         </div>
@@ -277,25 +283,25 @@
       <div class="stats-panel">
         <h3 class="stats-title">
           <mat-icon>analytics</mat-icon>
-          İstatistikler
+          {{ t('classic.statsTitle') }}
         </h3>
 
         <div class="stats-grid">
           <div class="stat-item">
             <div class="stat-value">{{ answeredCount() }}</div>
-            <div class="stat-label">Cevaplanmış</div>
+            <div class="stat-label">{{ t('classic.statAnswered') }}</div>
           </div>
           <div class="stat-item">
             <div class="stat-value">{{ remainingCount() }}</div>
-            <div class="stat-label">Kalan</div>
+            <div class="stat-label">{{ t('classic.statRemaining') }}</div>
           </div>
           <div class="stat-item">
             <div class="stat-value">{{ bookmarkedCount() }}</div>
-            <div class="stat-label">İşaretli</div>
+            <div class="stat-label">{{ t('classic.statBookmarked') }}</div>
           </div>
           <div class="stat-item">
             <div class="stat-value">{{ averageTimePerQuestion() }}s</div>
-            <div class="stat-label">Ort. Süre</div>
+            <div class="stat-label">{{ t('classic.statAverageTime') }}</div>
           </div>
         </div>
       </div>
@@ -304,40 +310,40 @@
       <div class="tools-section">
         <h3 class="tools-title">
           <mat-icon>build</mat-icon>
-          Araçlar
+          {{ t('classic.toolsTitle') }}
         </h3>
 
         <div class="tool-buttons">
           <!-- Görünüm Seçenekleri -->
           <div class="view-options">
-            <span class="tool-label">Görünüm:</span>
+            <span class="tool-label">{{ t('classic.viewLabel') }}</span>
             <button mat-icon-button [class.active]="questionsPerView() === 1" (click)="setQuestionsPerView(1)"
-              [attr.aria-label]="'Tek soru'">
+              [attr.aria-label]="t('classic.viewOne')">
               <mat-icon>crop_16_9</mat-icon>
             </button>
             <button mat-icon-button [class.active]="questionsPerView() === 2" (click)="setQuestionsPerView(2)"
-              [attr.aria-label]="'İki soru'">
+              [attr.aria-label]="t('classic.viewTwo')">
               <mat-icon>view_column</mat-icon>
             </button>
             <button mat-icon-button [class.active]="questionsPerView() === 4" (click)="setQuestionsPerView(4)"
-              [attr.aria-label]="'Dört soru'">
+              [attr.aria-label]="t('classic.viewFour')">
               <mat-icon>grid_view</mat-icon>
             </button>
           </div>
 
           <button mat-stroked-button (click)="toggleFocusMode()" class="tool-btn">
             <mat-icon>{{ focusMode() ? 'visibility' : 'visibility_off' }}</mat-icon>
-            {{ focusMode() ? 'Normal Mod' : 'Odaklanma Modu' }}
+            {{ focusMode() ? t('classic.normalMode') : t('classic.focusMode') }}
           </button>
 
           <button mat-stroked-button (click)="toggleAutoNextQuestion()" class="tool-btn">
             <mat-icon>{{ autoNextQuestion() ? 'play_arrow' : 'pause' }}</mat-icon>
-            {{ autoNextQuestion() ? 'Otomatik Geçiş Açık' : 'Otomatik Geçiş Kapalı' }}
+            {{ autoNextQuestion() ? t('classic.autoNextOn') : t('classic.autoNextOff') }}
           </button>
 
           <button mat-stroked-button (click)="toggleHighContrast()" class="tool-btn">
             <mat-icon>contrast</mat-icon>
-            Yüksek Kontrast
+            {{ t('classic.highContrast') }}
           </button>
         </div>
       </div>
@@ -350,7 +356,7 @@
     <div class="nav-content">
       <!-- Sol: Önceki Soru/Grup -->
       <button mat-icon-button (click)="prevQuestion()" [disabled]="!canGoPrev()" class="nav-btn prev-btn"
-        [attr.aria-label]="questionsPerView() === 1 ? 'Önceki soru' : 'Önceki soru grubu'">
+        [attr.aria-label]="questionsPerView() === 1 ? t('question.previous') : t('question.previousGroup')">
         <mat-icon>chevron_left</mat-icon>
       </button>
 
@@ -361,7 +367,7 @@
         !currentQuestions()[0].question.question.isCanvasQuestion) {
         <button mat-stroked-button (click)="clearAnswer()" [disabled]="!hasAnswer()" class="quick-action-btn">
           <mat-icon>radio_button_unchecked</mat-icon>
-          Temizle
+          {{ t('classic.clear') }}
         </button>
         }
 
@@ -369,20 +375,20 @@
         <button mat-stroked-button (click)="goToNextBookmarked()" [disabled]="bookmarkedCount() === 0"
           class="quick-action-btn">
           <mat-icon>bookmark</mat-icon>
-          İşaretlilere Git
+          {{ t('classic.goToBookmarked') }}
         </button>
 
         <!-- Boş Sorulara Git -->
         <button mat-stroked-button (click)="goToNextUnanswered()" [disabled]="remainingCount() === 0"
           class="quick-action-btn">
           <mat-icon>help_outline</mat-icon>
-          Boşlara Git
+          {{ t('classic.goToUnanswered') }}
         </button>
       </div>
 
       <!-- Sağ: Sonraki Soru/Grup -->
       <button mat-icon-button (click)="nextQuestion()" [disabled]="!canGoNext()" class="nav-btn next-btn"
-        [attr.aria-label]="questionsPerView() === 1 ? 'Sonraki soru' : 'Sonraki soru grubu'">
+        [attr.aria-label]="questionsPerView() === 1 ? t('question.next') : t('question.nextGroup')">
         <mat-icon>chevron_right</mat-icon>
       </button>
     </div>
@@ -392,17 +398,17 @@
   <div class="floating-actions">
     <!-- Odaklanma Modu Toggle -->
     <button mat-mini-fab color="primary" (click)="toggleFocusMode()" class="floating-btn focus-toggle"
-      [attr.aria-label]="focusMode() ? 'Normal moda geç' : 'Odaklanma moduna geç'">
+      [attr.aria-label]="focusMode() ? t('classic.switchToNormalMode') : t('classic.switchToFocusMode')">
       <mat-icon>{{ focusMode() ? 'fullscreen_exit' : 'fullscreen' }}</mat-icon>
     </button>
 
     <!-- Yardım -->
-    <button mat-mini-fab color="accent" (click)="showHelp()" class="floating-btn help-btn" [attr.aria-label]="'Yardım'">
+    <button mat-mini-fab color="accent" (click)="showHelp()" class="floating-btn help-btn" [attr.aria-label]="t('classic.help')">
       <mat-icon>help</mat-icon>
     </button>
 
     <!-- Ayarlar -->
-    <button mat-mini-fab (click)="openSettings()" class="floating-btn settings-btn" [attr.aria-label]="'Ayarlar'">
+    <button mat-mini-fab (click)="openSettings()" class="floating-btn settings-btn" [attr.aria-label]="t('classic.settings')">
       <mat-icon>settings</mat-icon>
     </button>
   </div>
@@ -413,8 +419,8 @@
     <div class="hint-modal" (click)="$event.stopPropagation()">
       <div class="hint-header">
         <mat-icon>lightbulb</mat-icon>
-        <h3>İpucu</h3>
-        <button mat-icon-button (click)="closeHint()">
+        <h3>{{ t('hints.title') }}</h3>
+        <button mat-icon-button (click)="closeHint()" [attr.aria-label]="t('common.close')">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -431,7 +437,7 @@
     <div class="toast" [class]="toastType()">
       <mat-icon>{{ toastIcon() }}</mat-icon>
       <span>{{ toastMessage() }}</span>
-      <button mat-icon-button (click)="hideToast()">
+      <button mat-icon-button (click)="hideToast()" [attr.aria-label]="t('toast.close')">
         <mat-icon>close</mat-icon>
       </button>
     </div>
@@ -444,6 +450,8 @@
 
 <!-- Modal İçin Şablon -->
 <ng-template #spinWheelDialog>
-  <app-spin-wheel></app-spin-wheel>
-  <button mat-button (click)="closeDialog()">Kapat</button>
+  <ng-container *transloco="let t; prefix: 'test-solve'">
+    <app-spin-wheel></app-spin-wheel>
+    <button mat-button (click)="closeDialog()">{{ t('common.close') }}</button>
+  </ng-container>
 </ng-template>

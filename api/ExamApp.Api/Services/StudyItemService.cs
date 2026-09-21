@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -20,11 +22,20 @@ public class StudyItemService : IStudyItemService
     private readonly IMinIoService _minioService;
     private readonly ILogger<StudyItemService> _logger;
 
-    public StudyItemService(AppDbContext context, IMinIoService minioService, ILogger<StudyItemService>? logger = null)
+    // Client'a ulaşan hata/başarı metinleri buradan gelir (issue #184). DI her zaman gerçek
+    // localizer'ı verir; parametre yalnızca DI'sız (birim test) senaryolar için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public StudyItemService(
+        AppDbContext context,
+        IMinIoService minioService,
+        ILogger<StudyItemService>? logger = null,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _minioService = minioService;
         _logger = logger ?? NullLogger<StudyItemService>.Instance;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<Paged<StudyItemDto>> GetPagedAsync(StudyItemFilterDto filter, UserProfileDto user)
@@ -230,7 +241,7 @@ public class StudyItemService : IStudyItemService
         if (string.IsNullOrWhiteSpace(imageUrl))
         {
             result.Success = false;
-            result.Message = "imageUrl zorunludur.";
+            result.Message = _localizer["study.image.urlRequired"];
             return result;
         }
 
@@ -242,7 +253,7 @@ public class StudyItemService : IStudyItemService
         if (subTopicIds.Count == 0)
         {
             result.Success = false;
-            result.Message = "Gecerli subTopicIds bulunamadi.";
+            result.Message = _localizer["study.image.noValidSubTopicIds"];
             return result;
         }
 
@@ -256,7 +267,7 @@ public class StudyItemService : IStudyItemService
         if (missingSubTopicIds.Count > 0)
         {
             result.Success = false;
-            result.Message = "Bazi subTopic kayitlari bulunamadi.";
+            result.Message = _localizer["study.image.someSubTopicsMissing"];
             result.MissingSubTopicIds = missingSubTopicIds;
             return result;
         }
@@ -325,7 +336,7 @@ public class StudyItemService : IStudyItemService
             .Select(g => MapToDto(g.First()))
             .ToList();
         result.Success = true;
-        result.Message = "Image basariyla eklendi.";
+        result.Message = _localizer["study.image.attached"];
 
         return result;
     }
@@ -338,12 +349,12 @@ public class StudyItemService : IStudyItemService
 
         if (item == null)
         {
-            return new ResponseBaseDto { Success = false, Message = "Calisma etkinligi bulunamadi." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["study.notFound"] };
         }
 
         if (item.CreatedByUserId != user.Id && user.Role != "Service")
         {
-            return new ResponseBaseDto { Success = false, Message = "Bu etkinligi silme yetkiniz yok." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["study.deleteForbidden"] };
         }
 
         _context.StudyItems.Remove(item);
@@ -357,7 +368,7 @@ public class StudyItemService : IStudyItemService
     /// <summary>
     /// ContentType'a göre alan doğrulaması. Hata mesajı döner; null ise geçerli.
     /// </summary>
-    private static string? ValidateContent(
+    private string? ValidateContent(
         StudyItemContentType contentType, string? url,
         int? bookId, string? newBookName, int? bookTestId, string? newBookTestName,
         int? startPage, int? endPage, bool hasAnyImage)
@@ -365,45 +376,45 @@ public class StudyItemService : IStudyItemService
         switch (contentType)
         {
             case StudyItemContentType.Image:
-                return hasAnyImage ? null : "En az bir resim eklemelisiniz.";
+                return hasAnyImage ? null : _localizer["study.content.imageRequired"].Value;
 
             case StudyItemContentType.Link:
                 if (string.IsNullOrWhiteSpace(url))
                 {
-                    return "Link tipi icin url zorunludur.";
+                    return _localizer["study.content.urlRequired"];
                 }
                 if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
                     || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
                 {
-                    return "Gecerli bir http/https URL giriniz.";
+                    return _localizer["study.content.invalidUrl"];
                 }
                 return null;
 
             case StudyItemContentType.BookPageRange:
                 if ((bookId is null || bookId <= 0) && string.IsNullOrWhiteSpace(newBookName))
                 {
-                    return "Kitap secilmedi (bookId veya newBookName zorunlu).";
+                    return _localizer["study.content.bookRequired"];
                 }
                 if ((bookTestId is null || bookTestId <= 0) && string.IsNullOrWhiteSpace(newBookTestName))
                 {
-                    return "Kitap testi secilmedi (bookTestId veya newBookTestName zorunlu).";
+                    return _localizer["study.content.bookTestRequired"];
                 }
                 if (startPage is null || endPage is null)
                 {
-                    return "startPage ve endPage zorunludur.";
+                    return _localizer["study.content.pageRangeRequired"];
                 }
                 if (startPage <= 0 || endPage <= 0)
                 {
-                    return "Sayfa numaralari pozitif olmalidir.";
+                    return _localizer["study.content.pagesMustBePositive"];
                 }
                 if (endPage < startPage)
                 {
-                    return "endPage, startPage degerinden kucuk olamaz.";
+                    return _localizer["study.content.endPageBeforeStartPage"];
                 }
                 return null;
 
             default:
-                return "Gecersiz contentType.";
+                return _localizer["study.content.invalidContentType"];
         }
     }
 

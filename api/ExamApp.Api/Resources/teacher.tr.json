@@ -1,0 +1,31 @@
+{
+  "teacher": {
+    "registerFailed": "Öğretmen kaydı başarısız.",
+    "refreshTokenMissing": "Yenileme jetonu (refresh token) bulunamadı.",
+    "userNotFound": "Kullanıcı bulunamadı.",
+    "notFound": "Öğretmen bulunamadı.",
+    "recordNotFound": "Öğretmen kaydı bulunamadı.",
+    "schoolNotFound": "Seçilen okul bulunamadı.",
+    "saved": "Öğretmen başarıyla kaydedildi.",
+    "updated": "Öğretmen başarıyla güncellendi.",
+    "themeUpdated": "Theme tercihi güncellendi.",
+    "themeUpdateFailed": "Theme güncellenirken hata oluştu.",
+    "fallbackStudentName": "Öğrenci #{0}",
+    "fallbackTeacherName": "Öğretmen #{0}",
+
+    "search": {
+      "priceRangeInvalid": "minPrice, maxPrice değerinden büyük olamaz."
+    },
+
+    "tutorProfile": {
+      "independentOnly": "Tutor profili yalnızca bağımsız öğretmenler için kullanılabilir.",
+      "independentOnlyUpdate": "Tutor profili yalnızca bağımsız öğretmenler için güncellenebilir.",
+      "subjectsRequired": "En az bir ders seçilmelidir.",
+      "teachingModeRequired": "Ders şekli olarak online veya yüz yüze seçeneklerinden en az biri seçilmelidir.",
+      "hourlyRateInvalid": "Saatlik ücret 0'dan büyük olmalıdır.",
+      "invalidSubjects": "Geçersiz ders seçimi: {0}",
+      "bioTooLong": "Tanıtım metni en fazla 500 karakter olabilir.",
+      "updated": "Tutor profili güncellendi."
+    }
+  }
+}

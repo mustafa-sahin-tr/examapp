@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
@@ -11,12 +13,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { NavigationExtras } from '@angular/router';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+import { REGISTER_SCOPE } from './register-scope';
+
+/** Rol seçeneği: `value` backend enum'ı, `labelKey` `register` scope'undaki çeviri anahtarı. */
+interface RoleOption {
+  readonly value: number;
+  readonly labelKey: string;
+}
 
 @Component({
   selector: 'app-register',
   standalone: true,
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss'],
+  providers: [provideTranslocoScope(REGISTER_SCOPE)],
   imports: [
     ReactiveFormsModule,
     MatFormFieldModule,
@@ -27,17 +39,21 @@ import { NavigationExtras } from '@angular/router';
     MatIconModule,
     MatSelectModule,
     CommonModule,
+    TranslocoDirective,
   ],
 })
 export class RegisterComponent {
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
+
   registerForm: FormGroup;
   isLoading = false;
   hidePassword = true;
   hideConfirmPassword = true;
-  roles = [
-    { value: 0, viewValue: 'Öğrenci' },
-    { value: 1, viewValue: 'Öğretmen' },
-    { value: 2, viewValue: 'Veli' },
+  readonly roles: readonly RoleOption[] = [
+    { value: 0, labelKey: 'roles.student' },
+    { value: 1, labelKey: 'roles.teacher' },
+    { value: 2, labelKey: 'roles.parent' },
   ];
 
   constructor(
@@ -59,6 +75,16 @@ export class RegisterComponent {
     );
   }
 
+  toggleHidePassword() {
+    const next = !this.hidePassword;
+    this.hidePassword = next;
+  }
+
+  toggleHideConfirmPassword() {
+    const next = !this.hideConfirmPassword;
+    this.hideConfirmPassword = next;
+  }
+
   passwordMatchValidator(group: FormGroup) {
     const password = group.get('password')?.value;
     const confirmPassword = group.get('confirmPassword')?.value;
@@ -69,7 +95,6 @@ export class RegisterComponent {
     if (this.registerForm.valid) {
       this.isLoading = true;
 
-      const fullName = `${this.registerForm.value.firstName} ${this.registerForm.value.lastName}`.trim();
       const registerPayload = {
         firstName: this.registerForm.value.firstName,
         lastName: this.registerForm.value.lastName,
@@ -80,9 +105,8 @@ export class RegisterComponent {
 
       this.authService.register(registerPayload).subscribe({
         next: (res) => {
-          console.log('Başarılı Yanıt:', res);
           if (res.id) {
-            this.snackBar.open('Kayıt başarılı! Giriş yapabilirsiniz.', 'Tamam', { duration: 3000 });
+            this.notify('account.success', 'actions.ok');
             const navigationExtras: NavigationExtras = {
               state: {
                 email: registerPayload.email,
@@ -93,13 +117,13 @@ export class RegisterComponent {
               this.router.navigate(['/login'], navigationExtras);
             }, 1000);
           } else {
-            console.error('Başarılı ama beklenmeyen yanıt kodu:', res.id);
+            console.error('Register response is missing an id:', res);
           }
         },
         error: (err) => {
-          console.error('Hata Yanıtı:', err);
+          console.error('Register error:', err);
           this.isLoading = false;
-          this.snackBar.open('Kayıt başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });
+          this.notify('account.error', 'actions.close');
         },
       });
     }
@@ -107,5 +131,20 @@ export class RegisterComponent {
 
   navigateToLogin() {
     this.router.navigate(['/login']);
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string, actionKey: string): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, REGISTER_SCOPE),
+      this.transloco.selectTranslate<string>(actionKey, {}, REGISTER_SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration: 3000 });
+      });
   }
 }

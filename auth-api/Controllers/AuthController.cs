@@ -11,6 +11,7 @@ using ExamApp.Api.Models.Requests;
 using ExamApp.Api.Models.Responses;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -87,8 +88,34 @@ namespace ExamApp.Api.Controllers
                     KeycloakId = keycloakUserId
                 };
 
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                // Issue #185: BadgeService yeni kullanıcının dil tercihini (henüz hiç
+                // değiştirilmemiş, varsayılan) event üzerinden öğrenir — senkron çağrı yok.
+                // user.Id identity DB'den üretildiği için outbox satırı, User satırıyla aynı
+                // transaction içinde ama İKİNCİ SaveChanges'te yazılır (WorksheetAccessRequestService
+                // ile aynı desen); tek transaction olduğu için yine atomik.
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _context.Database.BeginTransactionAsync();
+
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+
+                    _context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = OutboxEventRegistry.NameFor<UserPreferredLocaleChangedEvent>(),
+                        Content = JsonSerializer.Serialize(new UserPreferredLocaleChangedEvent
+                        {
+                            UserId = user.Id,
+                            KeycloakId = keycloakUserId,
+                            PreferredLocale = user.PreferredLocale,
+                            ChangedAtUtc = DateTime.UtcNow
+                        })
+                    });
+                    await _context.SaveChangesAsync();
+
+                    await tx.CommitAsync();
+                });
 
                 return Ok(user);
             }
@@ -437,6 +464,75 @@ namespace ExamApp.Api.Controllers
             return Ok(profile);
         }
 
+        /// <summary>
+        /// Oturum sahibinin dil tercihini günceller (issue #181). Sadece çağıranın kendi
+        /// kimliği (sub claim) üzerinde çalışır — hedef kullanıcı id'si kabul edilmez.
+        /// Değer normalize edilir ("tr-TR" → "tr"); desteklenmeyen dil 400 döner.
+        /// </summary>
+        [Authorize]
+        [HttpPut("me/locale")]
+        [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdatePreferredLocale([FromBody] UpdatePreferredLocaleRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.PreferredLocale))
+            {
+                return Problem(
+                    title: "Invalid locale",
+                    detail: "preferredLocale is required.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            if (!SupportedLocales.TryNormalize(request.PreferredLocale, out var locale))
+            {
+                return Problem(
+                    title: "Unsupported locale",
+                    detail: $"preferredLocale must be one of: {string.Join(", ", SupportedLocales.All)}.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(sub))
+                return Unauthorized();
+
+            // !IsDeleted filtresi GetUserProfile ile aynı — pasifleştirilmiş bir hesap,
+            // JWT'si hâlâ geçerliyken bile profilini değiştirememeli.
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.KeycloakId == sub && !u.IsDeleted);
+            if (user == null)
+            {
+                return Problem(
+                    title: "Profile not found",
+                    detail: "No local user profile found for this account.",
+                    statusCode: StatusCodes.Status404NotFound);
+            }
+
+            if (!string.Equals(user.PreferredLocale, locale, StringComparison.Ordinal))
+            {
+                user.PreferredLocale = locale;
+
+                // Issue #185: BadgeService'e senkron çağrı yapılmaz — hedef kullanıcının yeni
+                // dili outbox üzerinden taşınır. Değer gerçekten değiştiğinde YAZILIR (no-op'ta
+                // gürültü event'i olmasın diye). Aynı SaveChanges ile user satırıyla atomik.
+                _context.OutboxMessages.Add(new OutboxMessage
+                {
+                    Type = OutboxEventRegistry.NameFor<UserPreferredLocaleChangedEvent>(),
+                    Content = JsonSerializer.Serialize(new UserPreferredLocaleChangedEvent
+                    {
+                        UserId = user.Id,
+                        KeycloakId = user.KeycloakId,
+                        PreferredLocale = locale,
+                        ChangedAtUtc = DateTime.UtcNow
+                    })
+                });
+
+                await _context.SaveChangesAsync();
+            }
+
+            var profile = await GetUserProfile(sub);
+            return Ok(profile);
+        }
+
         private static readonly string[] AllowedAppRoles = { "Student", "Teacher", "Parent" };
 
         [HttpGet("roles")]
@@ -538,7 +634,10 @@ namespace ExamApp.Api.Controllers
                 Role = user.Role.ToString(),
                 FullName = user.FullName,
                 Id = user.Id,
-                KeycloakId = sub
+                KeycloakId = sub,
+                // Eski satırlarda kolon default'u "tr"; yine de boş/bozuk değeri
+                // varsayılana indirgeyerek tüketicilere hep geçerli bir dil kodu veriyoruz.
+                PreferredLocale = SupportedLocales.Normalize(user.PreferredLocale)
             };
         }
     }

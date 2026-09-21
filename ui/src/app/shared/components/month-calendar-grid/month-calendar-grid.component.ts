@@ -9,6 +9,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import {
   addMonths,
   buildMonthWeeks,
@@ -65,7 +66,7 @@ const BAR_STEP_PX = 24;
 @Component({
   selector: 'app-month-calendar-grid',
   standalone: true,
-  imports: [CalendarEventBadgeComponent],
+  imports: [CalendarEventBadgeComponent, TranslocoDirective],
   templateUrl: './month-calendar-grid.component.html',
   styleUrls: ['./month-calendar-grid.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -85,11 +86,15 @@ export class MonthCalendarGridComponent {
   /** Program planı bar'ına tıklanınca (kind === 'program-study-page'). */
   readonly barClick = output<CalendarEvent>();
 
-  readonly weekdays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-
+  private readonly transloco = inject(TranslocoService);
   private readonly injector = inject(Injector);
 
-  readonly weeks = computed<CalendarCell[][]>(() => buildMonthWeeks(this.month()));
+  /** Pazartesi başlangıçlı kısa gün adları — `shared.calendarGrid.weekday.*` anahtarları. */
+  readonly weekdayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+  readonly weeks = computed<CalendarCell[][]>(() =>
+    buildMonthWeeks(this.month(), this.t('shared.calendar.today'))
+  );
   readonly cells = computed<CalendarCell[]>(() => this.weeks().flat());
 
   /** Rozet katmanı: reminder + assignment-deadline. */
@@ -153,7 +158,7 @@ export class MonthCalendarGridComponent {
       const startRow = Math.floor(startIndex / 7);
       const endRow = Math.floor(endIndex / 7);
       const completed = ev.isCompleted === true;
-      const title = ev.studyPageTitle || ev.programName || 'Çalışma planı';
+      const title = ev.studyPageTitle || ev.programName || this.t('shared.calendar.variant.programPlan');
 
       for (let row = startRow; row <= endRow; row++) {
         const rowStart = row * 7;
@@ -166,7 +171,7 @@ export class MonthCalendarGridComponent {
           endCol: segmentEnd - rowStart + 2,
           stack: 0,
           completed,
-          label: completed ? `✓ ${title} (tamamlandı)` : title,
+          label: completed ? this.t('shared.calendarGrid.barCompleted', { title }) : title,
           startsHere: segmentStart === startIndex,
           endsHere: segmentEnd === endIndex,
         });
@@ -245,7 +250,21 @@ export class MonthCalendarGridComponent {
   /** Hücrenin erişilebilir etiketi — tarih + varsa etkinlik sayısı (rozetler + plan bar'ları). */
   cellAriaLabel(cell: CalendarCell): string {
     const count = this.eventsFor(cell).length + this.programCountFor(cell);
-    return count ? `${cell.label}, ${count} etkinlik` : cell.label;
+    return count
+      ? this.t('shared.calendarGrid.cellAria', { date: cell.label, count })
+      : cell.label;
+  }
+
+  /** Bar'ın erişilebilir etiketi: başlık (+ program adı) + "programa git". */
+  barAriaLabel(bar: ProgramBar): string {
+    return this.t('shared.calendarGrid.barAria', {
+      title: bar.label,
+      program: bar.event.programName ? `, ${bar.event.programName}` : '',
+    });
+  }
+
+  private t(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(key, params) ?? '';
   }
 
   onBarClick(bar: ProgramBar, event: Event): void {

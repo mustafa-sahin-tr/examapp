@@ -11,6 +11,9 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Localization;
+using ExamApp.Foundation.Localization;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
@@ -107,11 +110,24 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Client'a giden hata/başarı mesajlarının sözlüğü (issue #184).
+// Resources/<alan>.<dil>.json dosyalarının tümü açılışta okunup dil başına tek sözlükte
+// birleştirilir; mesajlar istek kültürüne (#181, aşağıdaki RequestLocalization) göre seçilir.
+// Kullanım: IStringLocalizer<Messages> enjekte edip localizer["questions.notFound"].
+// Detay ve anahtar kuralları: api/ExamApp.Api/Resources/README.md
+builder.Services.AddJsonLocalization(options => options.ResourcesPath = "Resources");
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-    });
+    })
+    // DataAnnotations ([Required] vb.) hata mesajları da aynı JSON sözlüğünden gelir:
+    // DTO'da ErrorMessage olarak çeviri ANAHTARI yazılır. Henüz taşınmamış DTO'larda
+    // ErrorMessage düz Türkçe metin olduğu için anahtar bulunamaz ve metin olduğu gibi
+    // döner — yani faz 2 taşıması bitene kadar davranış değişmez.
+    .AddDataAnnotationsLocalization(options =>
+        options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(Messages)));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
@@ -199,6 +215,31 @@ builder.Services.AddHangfireServer(options =>
 builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
 builder.Services.AddScoped<QuestionTransferJobRunner>();
 
+// İstek kültürü çözümlemesi (issue #181). Desteklenen diller tek kaynaktan gelir:
+// ExamApp.Foundation.Localization.SupportedLocales (tr → tr-TR, en → en-US).
+// Provider sırası bilinçli:
+//   1) Accept-Language — UI aktif dili her istekte gönderir; kullanıcının ANLIK seçimi,
+//      profilinde kayıtlı tercihten daha günceldir.
+//   2) PreferredLocale — header yoksa/desteklenmeyen dil istiyorsa kullanıcının kayıtlı tercihi.
+//   3) DefaultRequestCulture (tr-TR).
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = SupportedLocales.AllCultureNames
+        .Select(name => new CultureInfo(name))
+        .ToList();
+
+    options.DefaultRequestCulture = new RequestCulture(SupportedLocales.DefaultCultureName);
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+    options.ApplyCurrentCultureToResponseHeaders = true;
+
+    // Varsayılan provider'lar (query string / cookie / ham Accept-Language) temizlenir;
+    // yerine normalize eden kendi ikilimiz konur.
+    options.RequestCultureProviders.Clear();
+    options.RequestCultureProviders.Add(new NormalizedAcceptLanguageCultureProvider());
+    options.RequestCultureProviders.Add(new UserPreferredLocaleCultureProvider());
+});
+
 
 
 var app = builder.Build();
@@ -268,6 +309,15 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// DİKKAT: RequestLocalization normalde pipeline'ın başında (auth'tan önce) yer alır.
+// Burada bilinçli olarak UseAuthentication/UseAuthorization'dan SONRA çağrılıyor: providers
+// arasındaki UserPreferredLocaleCultureProvider, kullanıcının kayıtlı dil tercihini okumak
+// için HttpContext.User claim'lerine ihtiyaç duyuyor; auth'tan önce çalışsaydı her istekte
+// kullanıcı anonim görünür ve tercih hiç uygulanmazdı. Bu noktadan sonrasında (controller'lar,
+// endpoint'ler) CurrentCulture/CurrentUICulture doğru şekilde ayarlı olur — auth öncesindeki
+// middleware'ler (exception handler, HTTPS redirect) kültüre bağımlı çıktı üretmiyor.
+app.UseRequestLocalization(); // Ayarlar yukarıdaki Configure<RequestLocalizationOptions>'tan gelir.
 
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {

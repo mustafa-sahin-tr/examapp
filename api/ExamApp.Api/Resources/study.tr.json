@@ -1,0 +1,25 @@
+{
+  "study": {
+    "titleRequired": "Başlık zorunludur.",
+    "notFound": "Çalışma etkinliği bulunamadı.",
+    "deleteForbidden": "Bu etkinliği silme yetkiniz yok.",
+    "image": {
+      "urlRequired": "imageUrl zorunludur.",
+      "subTopicIdsRequired": "subTopicIds en az bir eleman içermelidir.",
+      "noValidSubTopicIds": "Geçerli subTopicIds bulunamadı.",
+      "someSubTopicsMissing": "Bazı subTopic kayıtları bulunamadı.",
+      "attached": "Resim başarıyla eklendi."
+    },
+    "content": {
+      "imageRequired": "En az bir resim eklemelisiniz.",
+      "urlRequired": "Link tipi için url zorunludur.",
+      "invalidUrl": "Geçerli bir http/https URL giriniz.",
+      "bookRequired": "Kitap seçilmedi (bookId veya newBookName zorunlu).",
+      "bookTestRequired": "Kitap testi seçilmedi (bookTestId veya newBookTestName zorunlu).",
+      "pageRangeRequired": "startPage ve endPage zorunludur.",
+      "pagesMustBePositive": "Sayfa numaraları pozitif olmalıdır.",
+      "endPageBeforeStartPage": "endPage, startPage değerinden küçük olamaz.",
+      "invalidContentType": "Geçersiz contentType."
+    }
+  }
+}

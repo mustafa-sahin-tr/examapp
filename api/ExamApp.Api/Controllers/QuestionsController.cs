@@ -6,7 +6,9 @@ using ExamApp.Api.Services;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -27,15 +29,21 @@ public class QuestionsController : BaseController
     private readonly IQuestionClassificationService _questionClassification;
     private readonly IClassifierCacheService _classifierCache;
 
+    // Client'a dönen tüm metinler bu sözlükten gelir (issue #184). Aktif dil, istek kültürünü
+    // ayarlayan RequestLocalization middleware'inden (#181) okunur.
+    private readonly IStringLocalizer<Messages> _localizer;
+
     public QuestionsController(
         IMinIoService minioService,
         ImageHelper imageHelper,
         IQuestionService questionService,
         IQuestionQueryService questionQuery,
         IQuestionClassificationService questionClassification,
-        IClassifierCacheService classifierCache)
+        IClassifierCacheService classifierCache,
+        IStringLocalizer<Messages> localizer)
         : base()
     {
+        _localizer = localizer;
         _minioService = minioService;
         _imageHelper = imageHelper;
         _questionService = questionService;
@@ -61,7 +69,7 @@ public class QuestionsController : BaseController
         var response = await _questionQuery.GetQuestionById(id);
         if (response == null)
         {
-            return NotFound(new { message = "Soru bulunamadı!" });
+            return NotFound(new { message = _localizer["questions.notFound"].Value });
         }
         return Ok(response);
     }
@@ -88,7 +96,7 @@ public class QuestionsController : BaseController
         var response = await _questionService.CreateOrUpdateQuestion(questionDto);
         if (response == null)
         {
-            return BadRequest(new { message = "Soru kaydedilemedi!" });
+            return BadRequest(new { message = _localizer["questions.saveFailed"].Value });
         }
         return Ok(response);
     }
@@ -98,13 +106,13 @@ public class QuestionsController : BaseController
     {
         if (soruDto == null)
         {
-            return BadRequest("Geçersiz veri.");
+            return BadRequest(_localizer["common.invalidData"].Value);
         }
 
         var reponse = await _questionService.SaveBulkQuestion(soruDto);
         if (reponse == null || !reponse.Success)
         {
-            return BadRequest("Soru seti kaydedilemedi.");
+            return BadRequest(_localizer["questions.bulk.saveFailed"].Value);
         }
         return Ok(reponse);
     }
@@ -127,7 +135,7 @@ public class QuestionsController : BaseController
     {
         if (request == null || request.CorrectAnswerId <= 0)
         {
-            return BadRequest(new { message = "Geçersiz doğru cevap ID'si." });
+            return BadRequest(new { message = _localizer["questions.classification.invalidCorrectAnswerId"].Value });
         }
 
         var response = await _questionClassification.UpdateCorrectAnswer(
@@ -153,7 +161,7 @@ public class QuestionsController : BaseController
     {
         if (request == null)
         {
-            return BadRequest(new { message = "Geçersiz sınıflandırma verisi." });
+            return BadRequest(new { message = _localizer["questions.classification.invalidData"].Value });
         }
 
         var response = await _questionClassification.UpdateQuestionClassification(
@@ -183,7 +191,7 @@ public class QuestionsController : BaseController
         var question = await _questionQuery.GetQuestionById(id);
         if (question == null || string.IsNullOrWhiteSpace(question.ImageUrl))
         {
-            return NotFound(new { message = "Soru veya soru görseli bulunamadı." });
+            return NotFound(new { message = _localizer["questions.imageNotFound"].Value });
         }
 
         var imageUrl = question.ImageUrl;
@@ -195,7 +203,7 @@ public class QuestionsController : BaseController
         var stream = await _minioService.GetFileStreamAsync(imageUrl);
         if (stream == null)
         {
-            return NotFound(new { message = "Soru görseli depoda bulunamadı." });
+            return NotFound(new { message = _localizer["questions.imageNotFoundInStorage"].Value });
         }
 
         return File(stream, "image/jpeg");

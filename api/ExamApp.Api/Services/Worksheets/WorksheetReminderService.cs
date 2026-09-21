@@ -7,6 +7,8 @@ using Hangfire;
 using Hangfire.States;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Worksheets;
 
@@ -21,10 +23,16 @@ public class WorksheetReminderService : IWorksheetReminderService
     private readonly AppDbContext _context;
     private readonly IBackgroundJobClient _jobs;
 
-    public WorksheetReminderService(AppDbContext context, IBackgroundJobClient jobs)
+    // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
+    // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
+    // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public WorksheetReminderService(AppDbContext context, IBackgroundJobClient jobs, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _jobs = jobs;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<WorksheetReminderDto?> GetAsync(int worksheetId, int studentId, CancellationToken ct)
@@ -44,10 +52,10 @@ public class WorksheetReminderService : IWorksheetReminderService
             scheduledForUtc = DateTime.SpecifyKind(scheduledForUtc, DateTimeKind.Utc);
 
         if (scheduledForUtc <= DateTime.UtcNow)
-            throw new InvalidOperationException("Geçmiş bir tarih seçilemez");
+            throw new InvalidOperationException(_localizer["worksheets.reminder.pastDate"]);
 
         if (remindBeforeMinutes < 0 || remindBeforeMinutes > MaxRemindBeforeMinutes)
-            throw new InvalidOperationException($"Hatırlatma süresi 0 ile {MaxRemindBeforeMinutes} dakika arasında olmalıdır");
+            throw new InvalidOperationException(_localizer["worksheets.reminder.invalidRemindBefore", MaxRemindBeforeMinutes]);
 
         await EnsureStudentCanAccessWorksheetAsync(worksheetId, studentId, ct);
 
@@ -155,7 +163,7 @@ public class WorksheetReminderService : IWorksheetReminderService
             }
         }
 
-        throw new InvalidOperationException("Hatırlatma kaydedilemedi, lütfen tekrar deneyin");
+        throw new InvalidOperationException(_localizer["worksheets.reminder.saveFailed"]);
     }
 
     private static bool IsUniqueViolation(DbUpdateException ex)
@@ -177,7 +185,7 @@ public class WorksheetReminderService : IWorksheetReminderService
     {
         var worksheetExists = await _context.Worksheets.AnyAsync(w => w.Id == worksheetId, ct);
         if (!worksheetExists)
-            throw new InvalidOperationException("Worksheet bulunamadı");
+            throw new InvalidOperationException(_localizer["worksheets.reminder.worksheetNotFound"]);
 
         var studentScope = await _context.Students.AsNoTracking()
             .Where(s => s.Id == studentId)
@@ -196,6 +204,6 @@ public class WorksheetReminderService : IWorksheetReminderService
             .AnyAsync(ti => ti.WorksheetId == worksheetId && ti.StudentId == studentId, ct);
 
         if (!hasInstance)
-            throw new InvalidOperationException("Bu worksheet size atanmamış");
+            throw new InvalidOperationException(_localizer["worksheets.reminder.notAssigned"]);
     }
 }

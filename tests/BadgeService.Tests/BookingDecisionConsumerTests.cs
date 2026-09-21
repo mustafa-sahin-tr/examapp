@@ -1,7 +1,10 @@
+using BadgeService;
 using BadgeService.Consumers;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using BadgeService.Tests.Support;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -33,8 +36,16 @@ public class BookingDecisionConsumerTests : IDisposable
         return hub;
     }
 
-    private BookingDecisionConsumer NewConsumer(IHubContext<BadgeNotificationHub> hub)
-        => new(_db.NewContext(), hub, NullLogger<BookingDecisionConsumer>.Instance);
+    private BookingDecisionConsumer NewConsumer(
+        IHubContext<BadgeNotificationHub> hub,
+        IUserLocaleResolver? localeResolver = null,
+        INotificationTextFactory? texts = null)
+        => new(
+            _db.NewContext(),
+            hub,
+            NullLogger<BookingDecisionConsumer>.Instance,
+            localeResolver ?? FallbackUserLocaleResolver.Instance,
+            texts ?? FallbackNotificationTextFactory.Instance);
 
     private static BookingDecisionEvent Evt(
         int bookingId = 1,
@@ -227,6 +238,114 @@ public class BookingDecisionConsumerTests : IDisposable
         await using var check = _db.NewContext();
         var n = await check.Notifications.SingleAsync();
         n.Data.ShouldContain("\"approved\":false");
+    }
+
+    // ---- Issue #185: Locale-aware notification generation ----
+
+    private IUserLocaleResolver CreateLocaleResolver()
+        => new UserLocaleResolver(_db.NewContext());
+
+    private INotificationTextFactory CreateNotificationTextFactory()
+    {
+        var projectRoot = GetProjectRoot();
+        var resourcesPath = Path.Combine(projectRoot, "Services", "BadgeService", "Resources");
+        using var fileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(resourcesPath);
+        var store = ExamApp.Foundation.Localization.JsonResourceStore.Load(
+            fileProvider, "", throwOnDuplicateKeys: false, Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance);
+        return new NotificationTextFactory(store, Microsoft.Extensions.Logging.Abstractions.NullLogger<NotificationTextFactory>.Instance);
+    }
+
+    private static string GetProjectRoot()
+    {
+        var currentDir = new DirectoryInfo(AppContext.BaseDirectory);
+
+        // Walk up from bin/Debug/net10.0 to find the repository root
+        while (currentDir != null)
+        {
+            // Look for ExamApp.slnx or Services directory
+            if (File.Exists(Path.Combine(currentDir.FullName, "ExamApp.slnx")) ||
+                Directory.Exists(Path.Combine(currentDir.FullName, "Services")))
+            {
+                return currentDir.FullName;
+            }
+            currentDir = currentDir.Parent;
+        }
+
+        throw new InvalidOperationException("Could not find repository root from " + AppContext.BaseDirectory);
+    }
+
+    [Fact]
+    public async Task Consume_StudentWithEnglishLocale_CreatesEnglishNotification()
+    {
+        // Student has English locale preference
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.UserLocalePreferences.Add(new BadgeService.Entities.UserLocalePreference
+            {
+                UserId = 200,
+                KeycloakId = "kc-student-en",
+                Locale = "en",
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var hub = NewHub();
+        var localeResolver = CreateLocaleResolver();
+        var textFactory = CreateNotificationTextFactory();
+        var e = Evt(studentUserId: 200, keycloakId: "kc-student-en", approved: true);
+
+        await NewConsumer(hub, localeResolver, textFactory).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Title.ShouldContain("approved");
+        n.Body.ShouldContain("approved");
+    }
+
+    [Fact]
+    public async Task Consume_StudentWithTurkishLocale_CreatesTurkishNotification()
+    {
+        // Student has Turkish locale preference
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.UserLocalePreferences.Add(new BadgeService.Entities.UserLocalePreference
+            {
+                UserId = 201,
+                KeycloakId = "kc-student-tr",
+                Locale = "tr",
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        var hub = NewHub();
+        var localeResolver = CreateLocaleResolver();
+        var textFactory = CreateNotificationTextFactory();
+        var e = Evt(studentUserId: 201, keycloakId: "kc-student-tr", approved: true);
+
+        await NewConsumer(hub, localeResolver, textFactory).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        n.Title.ShouldContain("onaylandı");
+        n.Body.ShouldContain("onayladı");
+    }
+
+    [Fact]
+    public async Task Consume_NoLocalePreference_DefaultsToTurkish()
+    {
+        var hub = NewHub();
+        var localeResolver = CreateLocaleResolver();
+        var textFactory = CreateNotificationTextFactory();
+        var e = Evt(studentUserId: 999, keycloakId: "kc-no-pref");
+
+        await NewConsumer(hub, localeResolver, textFactory).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var n = await check.Notifications.SingleAsync();
+        // Should be in Turkish when no preference exists
+        n.Title.ShouldContain("onaylandı");
     }
 
     public void Dispose() => _db.Dispose();

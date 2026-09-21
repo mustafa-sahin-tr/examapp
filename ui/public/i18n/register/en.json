@@ -1,0 +1,71 @@
+{
+  "actions": {
+    "ok": "OK",
+    "close": "Close",
+    "back": "Back",
+    "save": "Save",
+    "saving": "Saving…",
+    "complete": "Complete Registration"
+  },
+  "roles": {
+    "student": "Student",
+    "teacher": "Teacher",
+    "parent": "Parent"
+  },
+  "fields": {
+    "studentNumber": "Student Number",
+    "schoolName": "School Name",
+    "grade": "Grade",
+    "gradePlaceholder": "Select"
+  },
+  "account": {
+    "title": "Sign Up",
+    "firstName": "First Name",
+    "firstNameRequired": "First name is required.",
+    "lastName": "Last Name",
+    "lastNameRequired": "Last name is required.",
+    "email": "Email",
+    "emailRequired": "Email is required.",
+    "emailInvalid": "Enter a valid email address.",
+    "role": "Select a Role",
+    "roleRequired": "Selecting a role is required.",
+    "passwordLabel": "Password",
+    "passwordRequired": "Password is required.",
+    "confirmPasswordLabel": "Confirm Password",
+    "confirmPasswordRequired": "Password is required.",
+    "togglePassword": "Show or hide password",
+    "toggleConfirmPassword": "Show or hide password confirmation",
+    "submit": "Sign Up",
+    "haveAccount": "Already have an account? Sign in",
+    "success": "Registration successful! You can sign in now.",
+    "error": "Registration failed. Please check your details."
+  },
+  "wizard": {
+    "stepRole": "1 · Role",
+    "stepDetails": "2 · Details",
+    "roleQuestion": "How would you like to continue?",
+    "roleHint": "Choose the role for your account.",
+    "studentTitle": "Student Details",
+    "teacherTitle": "Teacher Details",
+    "parentTitle": "Parent Registration",
+    "parentHint": "You are about to complete your account as a parent. You can add your children later from your profile.",
+    "success": "Registration completed!",
+    "error": "Registration failed. Please try again."
+  },
+  "student": {
+    "title": "Student Registration",
+    "success": "Student registration successful!",
+    "error": "Student registration failed. Please try again."
+  },
+  "teacher": {
+    "title": "Teacher Registration",
+    "success": "Teacher registration successful!",
+    "error": "Teacher registration failed. Please try again."
+  },
+  "parent": {
+    "title": "Parent Registration",
+    "hint": "You are about to complete your account as a parent. You can add your children later from your profile.",
+    "success": "Parent registration successful!",
+    "error": "Parent registration failed. Please try again."
+  }
+}

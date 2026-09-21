@@ -1,0 +1,38 @@
+{
+  "title": "My Tutoring Profile",
+  "subtitle": "Set up the subjects you teach, your hourly rate and your lesson format so students can see them.",
+  "status": {
+    "approved": "Approved independent teacher",
+    "rejected": "Your application was rejected",
+    "pending": "Awaiting approval"
+  },
+  "state": {
+    "loading": "Loading your profile...",
+    "notApprovedNotice": "Your profile stays hidden from student searches until it is approved. You can fill in your details now."
+  },
+  "form": {
+    "subjectsLabel": "Subjects I teach",
+    "subjectsHint": "Select at least one subject.",
+    "selectedSubjects": "Selected subjects",
+    "removeSubject": "Remove {{subject}}",
+    "unknownSubject": "Subject #{{id}}",
+    "hourlyRateLabel": "Hourly rate",
+    "hourlyRateHint": "No payment is collected; this is shown for information only.",
+    "modesLegend": "Lesson format",
+    "online": "Online",
+    "inPerson": "In person",
+    "modesHint": "Select at least one; you can select both.",
+    "bioLabel": "Short introduction",
+    "bioPlaceholder": "A short introduction about your experience and teaching approach.",
+    "save": "Save",
+    "saving": "Saving"
+  },
+  "messages": {
+    "saved": "Your tutoring profile has been updated.",
+    "saveFailed": "The profile could not be updated.",
+    "loadFailed": "Something went wrong while loading your tutoring profile.",
+    "unavailable": "This feature is for independent teachers who are not affiliated with a school.",
+    "subjectsFailed": "The subject list could not be loaded.",
+    "close": "Close"
+  }
+}

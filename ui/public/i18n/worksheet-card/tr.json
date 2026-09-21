@@ -1,0 +1,35 @@
+{
+  "shorts": {
+    "openAria": "{{name}} testini aç",
+    "questionCount": "{{count}} soru",
+    "defaultDescription": "Yeni test",
+    "studentCount": "{{count}} öğrenci",
+    "moreActions": "Daha fazla işlem"
+  },
+  "background": {
+    "uploading": "Yükleniyor...",
+    "edit": "Görsel düzenle"
+  },
+  "badge": {
+    "questionCount": "{{count}} Soru",
+    "grade": "{{grade}}. Sınıf",
+    "ribbonGrade": "SINIF",
+    "ribbonPersonal": "KİŞİSEL"
+  },
+  "duration": {
+    "minutes": "{{minutes}}dk",
+    "hours": "{{hours}}sa",
+    "hoursMinutes": "{{hours}}sa {{minutes}}dk"
+  },
+  "actions": {
+    "start": "Başlat",
+    "edit": "Düzenle",
+    "dismiss": "Tamam"
+  },
+  "snackbar": {
+    "selectImageFile": "Lütfen bir görsel dosyası seçin.",
+    "backgroundUpdated": "Arka plan görseli güncellendi.",
+    "uploadFailed": "Görsel yüklenirken bir hata oluştu.",
+    "processFailed": "Görsel işlenirken bir hata oluştu."
+  }
+}

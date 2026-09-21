@@ -1,6 +1,8 @@
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Helpers;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -22,10 +24,16 @@ public class QuestionTransferController : ControllerBase
     private readonly IQuestionTransferService _service;
     private readonly IMinIoService _minio;
 
-    public QuestionTransferController(IQuestionTransferService service, IMinIoService minio)
+    // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public QuestionTransferController(IQuestionTransferService service, IMinIoService minio, IStringLocalizer<Messages>? localizer = null)
     {
         _service = service;
         _minio = minio;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     [HttpPost("exports")]
@@ -42,7 +50,7 @@ public class QuestionTransferController : ControllerBase
     {
         if (request?.File == null || request.File.Length == 0)
         {
-            return BadRequest(new { message = "File is required." });
+            return BadRequest(new { message = _localizer["questionTransfer.fileRequired"].Value });
         }
 
         // If sourceKey not provided, infer from manifest.json inside the zip.
@@ -67,7 +75,7 @@ public class QuestionTransferController : ControllerBase
     {
         if (request?.File == null || request.File.Length == 0)
         {
-            return BadRequest(new { message = "File is required." });
+            return BadRequest(new { message = _localizer["questionTransfer.fileRequired"].Value });
         }
 
         var preview = await _service.PreviewImportAsync(request.File, request.SourceKey, ct);

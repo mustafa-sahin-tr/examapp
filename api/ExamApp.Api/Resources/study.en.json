@@ -1,0 +1,25 @@
+{
+  "study": {
+    "titleRequired": "Title is required.",
+    "notFound": "Study activity not found.",
+    "deleteForbidden": "You are not allowed to delete this activity.",
+    "image": {
+      "urlRequired": "imageUrl is required.",
+      "subTopicIdsRequired": "subTopicIds must contain at least one item.",
+      "noValidSubTopicIds": "No valid subTopicIds were found.",
+      "someSubTopicsMissing": "Some subTopic records could not be found.",
+      "attached": "Image attached successfully."
+    },
+    "content": {
+      "imageRequired": "You must add at least one image.",
+      "urlRequired": "url is required for the Link type.",
+      "invalidUrl": "Enter a valid http/https URL.",
+      "bookRequired": "No book selected (bookId or newBookName is required).",
+      "bookTestRequired": "No book test selected (bookTestId or newBookTestName is required).",
+      "pageRangeRequired": "startPage and endPage are required.",
+      "pagesMustBePositive": "Page numbers must be positive.",
+      "endPageBeforeStartPage": "endPage cannot be smaller than startPage.",
+      "invalidContentType": "Invalid contentType."
+    }
+  }
+}

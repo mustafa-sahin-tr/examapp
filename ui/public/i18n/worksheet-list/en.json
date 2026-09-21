@@ -1,0 +1,201 @@
+{
+  "header": {
+    "titleTeacher": "My Tests",
+    "titleStudent": "Test Library",
+    "subtitleTeacher": "Manage, edit and assign the tests you have created.",
+    "subtitleStudent": "Find tests by topic and difficulty, take them and track your progress.",
+    "newTest": "New Test",
+    "importExcel": "Import from Excel"
+  },
+  "tabs": {
+    "aria": "Sections",
+    "discover": "Discover",
+    "assigned": "Assigned to Me",
+    "inprogress": "In Progress",
+    "completed": "Completed"
+  },
+  "resume": {
+    "title": "Pick up where you left off",
+    "questionCount": "{{count}} questions",
+    "continue": "Continue"
+  },
+  "filters": {
+    "title": "Filters",
+    "close": "Close",
+    "status": "Status",
+    "subject": "Subject",
+    "grade": "Grade",
+    "duration": "Duration",
+    "questionCount": "Question count",
+    "type": "Type",
+    "practiceOnly": "Practice tests only",
+    "sharing": "Sharing",
+    "includeShared": "Other teachers' tests",
+    "clearAll": "Clear filters"
+  },
+  "status": {
+    "notStarted": "Not started",
+    "inProgress": "In progress",
+    "completed": "Completed"
+  },
+  "durationBucket": {
+    "lt15": "Under 15 min",
+    "15to30": "15–30 min",
+    "gt30": "Over 30 min"
+  },
+  "questionBucket": {
+    "lt10": "Fewer than 10 questions",
+    "10to20": "10–20 questions",
+    "gt20": "More than 20 questions"
+  },
+  "sort": {
+    "fallback": "Sort",
+    "newest": "Newest",
+    "popular": "Popular",
+    "duration": "Duration",
+    "questionCount": "Question count",
+    "alphabetical": "A–Z",
+    "recent": "Recently studied"
+  },
+  "results": {
+    "filtersButton": "Filters",
+    "searchChip": "Search for \"{{term}}\"",
+    "count": "{{count}} tests",
+    "viewAria": "View",
+    "gridView": "Card view",
+    "listView": "List view"
+  },
+  "activeFilters": {
+    "subjectFallback": "Subject {{id}}",
+    "gradeFallback": "Grade {{id}}",
+    "practice": "Practice test",
+    "clear": "Clear"
+  },
+  "bulk": {
+    "selected": "{{count}} selected",
+    "assign": "Assign to Students",
+    "delete": "Delete",
+    "clear": "Clear selection"
+  },
+  "empty": {
+    "search": "No results found for '{{term}}'.",
+    "inprogress": "You have no tests in progress.",
+    "completed": "You have not completed any tests yet.",
+    "assigned": "No tests have been assigned to you.",
+    "default": "No tests match these criteria.",
+    "clearFilters": "Clear filters"
+  },
+  "error": {
+    "retry": "Try again",
+    "loadFailed": "Something went wrong while loading the tests.",
+    "assignmentsLoadFailed": "Something went wrong while loading the assigned tests."
+  },
+  "discover": {
+    "assignedTitle": "Assigned tests",
+    "assignedEmpty": "You have no active assigned tests.",
+    "exploreTitle": "Discover",
+    "exploreEmpty": "There are no new tests to discover right now."
+  },
+  "listHead": {
+    "test": "Test",
+    "subjectGrade": "Subject / Grade",
+    "questions": "Questions",
+    "duration": "Duration",
+    "status": "Status"
+  },
+  "snackbar": {
+    "dismiss": "OK",
+    "close": "Close",
+    "assignSoon": "The assignment screen will be available soon.",
+    "importSoon": "Excel import will be available soon.",
+    "copySuccess": "The test was copied to your account.",
+    "copyFailed": "Copy failed.",
+    "deleted": "{{count}} test(s) deleted.",
+    "deletedPartial": "{{ok}} test(s) deleted, {{fail}} failed."
+  },
+  "dialog": {
+    "deleteTitle": "Delete Test",
+    "deleteMessage": "Are you sure you want to delete this test? This action cannot be undone.",
+    "bulkDeleteTitle": "Delete {{count}} test(s)?",
+    "bulkDeleteMessage": "All selected tests will be permanently deleted. This action cannot be undone.",
+    "confirm": "Yes, Delete",
+    "cancel": "Cancel"
+  },
+  "card": {
+    "aria": "Test card",
+    "openAria": "Open the test {{name}}",
+    "tagPractice": "Practice test",
+    "tagInProgress": "In progress",
+    "tagCompleted": "Completed",
+    "tagAssigned": "Assigned by your teacher",
+    "menuAria": "Card menu",
+    "viewDetail": "View details",
+    "copyToMyAccount": "Copy to my account",
+    "addQuestion": "Add Question",
+    "assign": "Assign",
+    "delete": "Delete",
+    "createdBy": "Created by: {{name}}",
+    "questionCount": "{{count}} questions",
+    "durationMinutes": "{{minutes}} min",
+    "solvedCount": "{{count}} took it",
+    "result": "{{correct}} correct / {{wrong}} wrong",
+    "edit": "Edit",
+    "assignToStudent": "Assign to student",
+    "detailButton": "View Details",
+    "retryAria": "Take it again",
+    "dueExpired": "Time is up",
+    "dueToday": "Due today",
+    "dueDaysLeft": "{{days}} days left",
+    "primaryContinue": "Continue",
+    "primaryViewResult": "View Result",
+    "primaryStartPractice": "Start Practicing",
+    "primaryStart": "Start"
+  },
+  "enhanced": {
+    "navNewest": "New Tests",
+    "navHot": "Popular",
+    "navCompleted": "Completed",
+    "navSearch": "Search Results",
+    "newestTitle": "Newest Tests",
+    "newestSubtitle": "New tests picked for you",
+    "newestEmpty": "There are no new tests to show.",
+    "hotTitle": "Popular Tests",
+    "hotSubtitle": "The most preferred tests",
+    "hotEmpty": "There are no popular tests to show.",
+    "relevantTitle": "Most Relevant Tests",
+    "relevantSubtitle": "Tests picked for you based on your search term",
+    "completedTitle": "Completed Tests",
+    "completedSubtitle": "Review your achievements",
+    "completedEmptyTitle": "You have not completed any tests yet",
+    "completedEmptyText": "Start with your first test!",
+    "filtersTitle": "Filters",
+    "filtersClear": "Clear",
+    "filtersSubjects": "Subjects",
+    "filtersGrades": "Grades",
+    "filtersSort": "Sorting",
+    "filtersDifficulty": "Difficulty",
+    "filtersDuration": "Duration",
+    "sortNewest": "Newest",
+    "sortPopular": "Popular",
+    "sortDifficulty": "Difficulty",
+    "sortDuration": "Duration",
+    "difficultyAll": "All",
+    "difficultyEasy": "Easy",
+    "difficultyMedium": "Medium",
+    "difficultyHard": "Hard",
+    "durationAll": "All",
+    "durationShort": "Short (< 30 min)",
+    "durationMedium": "Medium (30-60 min)",
+    "durationLong": "Long (> 60 min)",
+    "resultsTitle": "Results for {{term}}",
+    "resultsFallbackTerm": "Search",
+    "resultsCountSuffix": "tests found",
+    "loading": "Loading tests...",
+    "cardQuestionCount": "{{count}} Questions",
+    "cardGrade": "Grade {{grade}}",
+    "cardMinutes": "{{minutes}} Minutes",
+    "cardCompleted": "Completed",
+    "emptyTitle": "No results found",
+    "emptyText": "Try changing your search criteria"
+  }
+}

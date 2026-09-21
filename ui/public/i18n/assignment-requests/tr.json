@@ -1,0 +1,37 @@
+{
+  "title": "Atama İzin Talepleri",
+  "subtitle": "Diğer öğretmenlerin sınavlarını öğrencilerine atamak için gönderdiği izin talepleri.",
+  "filter": {
+    "label": "Talep filtresi",
+    "pending": "Bekleyenler",
+    "all": "Tümü"
+  },
+  "state": {
+    "loading": "Talepler yükleniyor...",
+    "empty": "Bekleyen atama izni talebi yok"
+  },
+  "columns": {
+    "requester": "Talep eden",
+    "worksheet": "Sınav",
+    "date": "Tarih",
+    "note": "Not",
+    "status": "Durum",
+    "actions": "Aksiyon"
+  },
+  "status": {
+    "pending": "Bekliyor",
+    "approved": "Onaylandı",
+    "rejected": "Reddedildi"
+  },
+  "actions": {
+    "approve": "Onayla",
+    "reject": "Reddet"
+  },
+  "messages": {
+    "loadFailed": "Talepler yüklenemedi.",
+    "approved": "Talep onaylandı.",
+    "rejected": "Talep reddedildi.",
+    "actionFailed": "İşlem tamamlanamadı.",
+    "ok": "Tamam"
+  }
+}

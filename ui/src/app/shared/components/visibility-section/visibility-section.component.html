@@ -1,8 +1,8 @@
-<div class="visibility-section">
+<div class="visibility-section" *transloco="let t; prefix: 'shared.visibilitySection'">
   <div class="vs-group">
     <div class="vs-label">
       <mat-icon>visibility</mat-icon>
-      <span>Öğretmenler Arası Paylaşım</span>
+      <span>{{ t('teacherSharingTitle') }}</span>
     </div>
 
     <!-- Masaüstü: radio group -->
@@ -14,8 +14,8 @@
       (change)="onTeacherSharingChange($event.value)"
     >
       <div class="vs-radio-option" *ngFor="let option of teacherSharingOptions">
-        <mat-radio-button [value]="option.value">{{ option.label }}</mat-radio-button>
-        <p class="vs-option-desc">{{ option.description }}</p>
+        <mat-radio-button [value]="option.value">{{ optionLabel(option.key) }}</mat-radio-button>
+        <p class="vs-option-desc">{{ optionDescription(option.key) }}</p>
       </div>
     </mat-radio-group>
 
@@ -27,12 +27,12 @@
         (selectionChange)="onTeacherSharingChange($event.value)"
       >
         <mat-option *ngFor="let option of teacherSharingOptions" [value]="option.value">
-          {{ option.label }}
+          {{ optionLabel(option.key) }}
         </mat-option>
       </mat-select>
     </mat-form-field>
     <p class="vs-option-desc" *ngIf="isMobile()">
-      {{ selectedTeacherSharingOption()?.description }}
+      {{ optionDescription(selectedTeacherSharingOption()?.key ?? 'private') }}
     </p>
   </div>
 
@@ -41,15 +41,9 @@
       <div class="vs-toggle-text">
         <div class="vs-label">
           <mat-icon>school</mat-icon>
-          <span>Öğrenciye Görünürlük</span>
+          <span>{{ t('studentVisibilityTitle') }}</span>
         </div>
-        <p class="vs-option-desc">
-          {{
-            studentVisibility === WorksheetStudentVisibility.Restricted
-              ? 'Restricted: Yalnızca atanan öğrenciler görür ve başlatabilir.'
-              : 'Normal: Öğrenci keşfet listesinde görünür ve başlatabilir.'
-          }}
-        </p>
+        <p class="vs-option-desc">{{ studentVisibilityDescription() }}</p>
       </div>
       <mat-slide-toggle
         [checked]="studentVisibility === WorksheetStudentVisibility.Restricted"

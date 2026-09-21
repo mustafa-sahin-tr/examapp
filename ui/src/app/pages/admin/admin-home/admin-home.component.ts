@@ -1,32 +1,37 @@
 import { Component } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { TaxonomyManagerComponent } from '../taxonomy-manager/taxonomy-manager.component';
 import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.component';
 import { TeacherApprovalsComponent } from '../teacher-approvals/teacher-approvals.component';
 
+/** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
+const ADMIN_SCOPE = 'admin';
+
 @Component({
   selector: 'app-admin-home',
   standalone: true,
+  providers: [provideTranslocoScope(ADMIN_SCOPE)],
   template: `
-    <div class="admin-page">
+    <div class="admin-page" *transloco="let t; prefix: 'admin.home'">
       <header class="admin-header">
         <mat-icon>admin_panel_settings</mat-icon>
-        <h1>Yönetim</h1>
+        <h1>{{ t('title') }}</h1>
       </header>
 
       <mat-tab-group animationDuration="150ms" mat-stretch-tabs="false">
-        <mat-tab label="Taksonomi">
+        <mat-tab [label]="t('tabs.taxonomy')">
           <div class="tab-body">
             <app-taxonomy-manager></app-taxonomy-manager>
           </div>
         </mat-tab>
-        <mat-tab label="Sınıflandırma Cache">
+        <mat-tab [label]="t('tabs.classifierCache')">
           <div class="tab-body">
             <app-classifier-cache></app-classifier-cache>
           </div>
         </mat-tab>
-        <mat-tab label="Öğretmen Başvuruları">
+        <mat-tab [label]="t('tabs.teacherApplications')">
           <div class="tab-body">
             <app-teacher-approvals></app-teacher-approvals>
           </div>
@@ -62,6 +67,13 @@ import { TeacherApprovalsComponent } from '../teacher-approvals/teacher-approval
       }
     `,
   ],
-  imports: [MatTabsModule, MatIconModule, TaxonomyManagerComponent, ClassifierCacheComponent, TeacherApprovalsComponent],
+  imports: [
+    MatTabsModule,
+    MatIconModule,
+    TaxonomyManagerComponent,
+    ClassifierCacheComponent,
+    TeacherApprovalsComponent,
+    TranslocoDirective,
+  ],
 })
 export class AdminHomeComponent {}

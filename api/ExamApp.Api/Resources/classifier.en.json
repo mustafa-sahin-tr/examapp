@@ -1,0 +1,10 @@
+{
+  "classifier": {
+    "cache": {
+      "apiKeyMissing": "The Gemini API key is not configured (Gemini:ApiKey).",
+      "taxonomyEmpty": "The taxonomy is empty — the cache could not be created.",
+      "createFailed": "The Gemini cache could not be created: {0}",
+      "refreshed": "The classification cache has been refreshed."
+    }
+  }
+}

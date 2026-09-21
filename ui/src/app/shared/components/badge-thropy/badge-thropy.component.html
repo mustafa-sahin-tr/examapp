@@ -1,7 +1,7 @@
 <div class="ms-badge-list-container" [class.ms-badge-loading]="isLoading()">
   <div class="ms-badge-header">
-    <h2 class="ms-badge-title">{{ title }}</h2>
-    <p class="ms-badge-subtitle">{{ subtitle }}</p>
+    <h2 class="ms-badge-title">{{ headingTitle }}</h2>
+    <p class="ms-badge-subtitle">{{ headingSubtitle }}</p>
   </div>
   <section class="ms-badge-paths" *ngIf="badgePaths().length">
     <article class="ms-badge-path" *ngFor="let path of badgePaths()">
@@ -11,10 +11,10 @@
 
   <ng-container *ngIf="!isLoading() && !badgePaths().length && !standaloneBadges().length">
     <div *ngIf="hasError(); else badgeEmptyState" class="ms-badge-empty ms-badge-error" role="alert">
-      Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.
+      {{ 'shared.badgeThropy.loadFailed' | transloco }}
     </div>
     <ng-template #badgeEmptyState>
-      <div class="ms-badge-empty">Rozet bilgisi bulunamadı.</div>
+      <div class="ms-badge-empty">{{ 'shared.badgeThropy.notFound' | transloco }}</div>
     </ng-template>
   </ng-container>
   <section class="ms-badge-paths" *ngIf="badgePaths().length">
@@ -22,7 +22,7 @@
       <header class="ms-badge-path-header">
         <div class="ms-badge-path-info">
           <h3>{{ path.name }}</h3>
-          <span class="ms-badge-path-progress">{{ path.completedCount }} / {{ path.badges.length }} tamamlandı</span>
+          <span class="ms-badge-path-progress">{{ 'shared.badgeThropy.pathProgress' | transloco: { completed: path.completedCount, total: path.badges.length } }}</span>
         </div>
         <span class="ms-badge-path-percent">%{{ path.completionPercent }}</span>
       </header>
@@ -46,12 +46,12 @@
           @if (isLoading()) {
           <div class="ms-badge-status" role="status" aria-live="polite">
             <mat-spinner diameter="36"></mat-spinner>
-            <span>Rozetler yükleniyor...</span>
+            <span>{{ 'shared.badgeThropy.loading' | transloco }}</span>
           </div>
           } @else if (loadError()) {
           <div class="ms-badge-status ms-badge-error" role="alert">
-            <span>Rozet bilgisi alınırken bir hata oluştu.</span>
-            <button mat-stroked-button type="button" (click)="reload()">Tekrar dene</button>
+            <span>{{ 'shared.badgeThropy.error' | transloco }}</span>
+            <button mat-stroked-button type="button" (click)="reload()">{{ 'common.retry' | transloco }}</button>
           </div>
           } @else {
           @if (badgePaths().length) {
@@ -66,7 +66,7 @@
 
           @if (standaloneBadges().length) {
           <section class="ms-badge-standalone">
-            <h3 class="ms-badge-standalone-title">Tekil Rozetler</h3>
+            <h3 class="ms-badge-standalone-title">{{ 'shared.badgeThropy.standaloneTitle' | transloco }}</h3>
             <div class="ms-badge-list">
               @for (badge of standaloneBadges(); track badge.id) {
               <div class="ms-badge-item" [class.ms-badge-selected]="badge.id === selectedBadge()?.id"
@@ -90,8 +90,7 @@
                 <div class="ms-badge-content-top">
                   <h1 class="ms-badge-title">{{ selected.name }}</h1>
                   <span class="ms-badge-description">{{ selected.description }}</span>
-                  <span class="ms-badge-progress-text">{{ selected.completedLabel }} / {{ selected.totalLabel }}
-                    tamamlandı</span>
+                  <span class="ms-badge-progress-text">{{ 'shared.badgePath.progress' | transloco: { completed: selected.completedLabel, total: selected.totalLabel } }}</span>
                 </div>
 
                 <div class="ms-badge-progress">
@@ -105,7 +104,7 @@
           }
 
           @if (!badgePaths().length && !standaloneBadges().length) {
-          <div class="ms-badge-empty">Henüz kazanılmış veya takip edilen bir rozet yok.</div>
+          <div class="ms-badge-empty">{{ 'shared.badgeThropy.empty' | transloco }}</div>
           }
           }
         </div>

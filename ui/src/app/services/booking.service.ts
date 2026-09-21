@@ -1,8 +1,9 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { TranslocoService } from '@jsverse/transloco';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable, defer, expand, map, toArray } from 'rxjs';
 import {
+  AvailabilitySlot,
   AvailabilitySlotListResult,
   AvailabilitySlotResult,
   BookingListResult,
@@ -15,6 +16,11 @@ import {
 
 /** Liste uçlarının varsayılan sayfa boyutu — backend skip/take bekliyor. */
 const DEFAULT_TAKE = 100;
+
+/** `slots/mine` için backend `take` üst sınırı (issue #175: haftalık grid tüm slotları ister). */
+const SLOTS_PAGE_SIZE = 200;
+/** Sayfalama döngüsünün emniyet sınırı (25 x 200 = 5000 slot); backend skip'i yok saysa bile sonsuz döngü olmaz. */
+const SLOTS_MAX_PAGES = 25;
 
 /**
  * Ders planlama / randevu uçları (issue #96). Tüm çağrılar gateway üzerinden
@@ -37,6 +43,35 @@ export class BookingService {
     return this.http.get<AvailabilitySlotListResult>(`${this.baseUrl}/slots/mine`, {
       params: this.page(skip, take),
     });
+  }
+
+  /**
+   * Öğretmenin tüm slotlarını sayfa sayfa (`skip/take=200`) çekip tek sonuçta birleştirir (issue #175).
+   * Gelen sayfa 200'den azsa durur; `id` ile tekilleştirir. Bir sayfa hata verirse akış `error` ile biter
+   * (tüketici mevcut hata yolunu kullanır). Sonuç bayrakları (`success`, `message`) ilk sayfadan gelir.
+   */
+  getAllMySlots(): Observable<AvailabilitySlotListResult> {
+    return defer(() =>
+      this.getMySlots(0, SLOTS_PAGE_SIZE).pipe(
+        expand((page, index) =>
+          (page.items?.length ?? 0) >= SLOTS_PAGE_SIZE && index + 1 < SLOTS_MAX_PAGES
+            ? this.getMySlots((index + 1) * SLOTS_PAGE_SIZE, SLOTS_PAGE_SIZE)
+            : EMPTY
+        ),
+        toArray(),
+        map((pages): AvailabilitySlotListResult => {
+          const byId = new Map<number, AvailabilitySlot>();
+          for (const page of pages) {
+            for (const slot of page.items ?? []) {
+              if (!byId.has(slot.id)) {
+                byId.set(slot.id, slot);
+              }
+            }
+          }
+          return { ...pages[0], items: [...byId.values()] };
+        })
+      )
+    );
   }
 
   deleteSlot(id: number): Observable<void> {

@@ -22,6 +22,18 @@
     "approved": "Onaylı randevu",
     "pending": "Bekleyen talep"
   },
+  "grid": {
+    "ariaLabel": "Haftalık müsaitlik takvimi",
+    "navLabel": "Hafta gezinme",
+    "previousWeek": "Önceki hafta",
+    "nextWeek": "Sonraki hafta",
+    "today": "Bugün",
+    "legendLabel": "Renk açıklaması",
+    "tooltip": {
+      "student": "Öğrenci: {{name}}",
+      "past": "Geçmiş"
+    }
+  },
   "actions": {
     "delete": "Müsaitlik aralığını sil",
     "lockedHint": "Randevusu olan aralık silinemez"

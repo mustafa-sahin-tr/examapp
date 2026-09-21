@@ -38,6 +38,10 @@ interface LegendItem {
  * Yalnızca tarayıcıda render edilir (SSR/prerender'da `document` gerektiren kütüphane çalıştırılmaz).
  * Olay içeriği metin olarak (`eventContent` şablonu) basılır; HTML enjekte edilmez.
  *
+ * Klavye erişimi (issue #208): tab durağı şablondaki `.awg__ev` elemanıdır — çevirili `aria-label` ve
+ * `matTooltip` aynı elemanda durur. FullCalendar'ın `eventInteractive` seçeneği bilinçli olarak kapalıdır;
+ * açılırsa olay başına iç içe iki tab durağı oluşur.
+ *
  * Stil `ViewEncapsulation.None` ile yazılır çünkü FullCalendar DOM'unu kendisi üretir; tüm kurallar
  * `.awg` kök sınıfına kapsanır ve renkler yalnızca proje token'larından türer.
  */

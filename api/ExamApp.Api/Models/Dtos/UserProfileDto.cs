@@ -10,6 +10,11 @@ public class UserProfileDto
     public string Email { get; set; }
     public string Role { get; set; }
     public string Avatar { get; set;}
+    /// <summary>
+    /// issue #189: sunucu tarafında (Teacher/Student tablosundan) doğrulanmış okul kimliği.
+    /// null = okulsuz/bağımsız kullanıcı, admin veya servis hesabı. Bkz. ISchoolContextResolver.
+    /// </summary>
+    public int? SchoolId { get; set; }
     // public int ProfileId { get; set;}    
     // public string? SchoolName { get; set; } // Student bilgisi
     // public string? Department { get; set; } // opsiyonel

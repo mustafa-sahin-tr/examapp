@@ -35,12 +35,21 @@ public class ExamControllerStartTestTests
     {
         _authApiClient.GetUserProfileAsync().Returns(authenticatedUser);
 
+        // issue #189: BaseController.GetAuthenticatedUserAsync artık IUserProfileProvider
+        // kullanıyor; testte gerçek UserProfileProvider'ı, DB gerektirmeyen bir
+        // ISchoolContextResolver substitute'u ile sarmalıyoruz.
+        var schoolContextResolver = Substitute.For<ISchoolContextResolver>();
+        schoolContextResolver.ResolveSchoolIdAsync(Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns((int?)null);
+
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
         services.AddSingleton(_authApiClient);
         services.AddSingleton<IDistributedCache>(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));
         services.AddSingleton<UserProfileCacheService>();
+        services.AddSingleton(schoolContextResolver);
+        services.AddSingleton<IUserProfileProvider, UserProfileProvider>();
         var provider = services.BuildServiceProvider();
 
         var identity = new ClaimsIdentity(new[]

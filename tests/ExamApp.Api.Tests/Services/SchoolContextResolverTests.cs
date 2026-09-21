@@ -1,0 +1,253 @@
+using ExamApp.Api.Data;
+using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services;
+using ExamApp.Api.Tests.Support;
+
+namespace ExamApp.Api.Tests.Services;
+
+/// <summary>
+/// issue #189: SchoolContextResolver davranışı — kullanıcının tenant (okul)
+/// bağlamını DB'den doğrulamak.
+///
+/// Davranış tablosu (Rol × kayıt durumu → sonuç):
+///   Teacher, Teachers'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId
+///   Teacher, satır var, SchoolId null (bağımsız öğretmen)          -> null
+///   Teacher, Teachers'da satır yok                                 -> null
+///   Student, Students'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId
+///   Student, satır var, SchoolId null                              -> null
+///   Student, Students'da satır yok                                 -> null
+///   Admin / Service / Parent / diğer roller                        -> null (sorgu atılmaz)
+///   user null                                                       -> null
+/// </summary>
+public class SchoolContextResolverTests : IDisposable
+{
+    private readonly TestDb _db = TestDb.Create();
+
+    public void Dispose() => _db.Dispose();
+
+    private SchoolContextResolver NewResolver(AppDbContext ctx) => new(ctx);
+
+    private async Task<int> SeedSchoolAsync(string name = "Test Okulu")
+    {
+        await using var ctx = _db.NewContext();
+        var school = new School { Name = name };
+        ctx.Schools.Add(school);
+        await ctx.SaveChangesAsync();
+        return school.Id;
+    }
+
+    // ---- Teacher role tests ----
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_Teacher_WithSchoolId_ReturnsSchoolId()
+    {
+        var schoolId = await SeedSchoolAsync("Öğretmen Okulu");
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.Add(new Teacher { UserId = 101, SchoolId = schoolId });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 101, KeycloakId = "kc-101", Role = "Teacher" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBe(schoolId);
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_Teacher_WithNullSchoolId_ReturnsNull()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            // Bağımsız öğretmen: SchoolId null
+            ctx.Teachers.Add(new Teacher { UserId = 102, SchoolId = null, IsIndependentTutor = true });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 102, KeycloakId = "kc-102", Role = "Teacher" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_Teacher_NoRow_ReturnsNull()
+    {
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 103, KeycloakId = "kc-103", Role = "Teacher" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    // ---- Student role tests ----
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_Student_WithSchoolId_ReturnsSchoolId()
+    {
+        var schoolId = await SeedSchoolAsync("Öğrenci Okulu");
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "5" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            gradeId = grade.Id;
+
+            ctx.Students.Add(new Student { UserId = 201, StudentNumber = "S201", SchoolId = schoolId, GradeId = gradeId });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 201, KeycloakId = "kc-201", Role = "Student" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBe(schoolId);
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_Student_WithNullSchoolId_ReturnsNull()
+    {
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "6" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            gradeId = grade.Id;
+
+            ctx.Students.Add(new Student { UserId = 202, StudentNumber = "S202", SchoolId = null, GradeId = gradeId });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 202, KeycloakId = "kc-202", Role = "Student" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_Student_NoRow_ReturnsNull()
+    {
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 203, KeycloakId = "kc-203", Role = "Student" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    // ---- Other roles tests ----
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_AdminRole_ReturnsNull()
+    {
+        var schoolId = await SeedSchoolAsync("Admin Okulu");
+        // Admin rolü olan kullanıcı Teacher/Student tablosuna kaydedilmeseler de test var
+        await using (var ctx = _db.NewContext())
+        {
+            ctx.Teachers.Add(new Teacher { UserId = 301, SchoolId = schoolId });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 301, KeycloakId = "kc-301", Role = "Admin" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_ParentRole_ReturnsNull()
+    {
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 401, KeycloakId = "kc-401", Role = "Parent" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_ServiceRole_ReturnsNull()
+    {
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 501, KeycloakId = "kc-501", Role = "Service" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_UnknownRole_ReturnsNull()
+    {
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 601, KeycloakId = "kc-601", Role = "UnknownRole" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        result.ShouldBeNull();
+    }
+
+    // ---- Edge cases ----
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_NullUser_ReturnsNull()
+    {
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+
+        var result = await resolver.ResolveSchoolIdAsync(null!);
+
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_MultipleTeachers_ReturnsFirst()
+    {
+        var school1Id = await SeedSchoolAsync("Okul 1");
+        var school2Id = await SeedSchoolAsync("Okul 2");
+
+        await using (var ctx = _db.NewContext())
+        {
+            // Aynı UserId ile iki Teacher satırı (schema tarafından bu tutarsızlık kontrol edilmelidir,
+            // fakat test verisi olarak, resolver FirstOrDefault dönecektir).
+            ctx.Teachers.AddRange(
+                new Teacher { UserId = 701, SchoolId = school1Id },
+                new Teacher { UserId = 701, SchoolId = school2Id }
+            );
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 701, KeycloakId = "kc-701", Role = "Teacher" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        // FirstOrDefaultAsync'in order'ı belirsiz, fakat schema'da UserId unique olmalı.
+        // Bu test data integrity'yi gösterir — production'da bu duruma düşülmemeli.
+        result.ShouldNotBeNull();
+        (result == school1Id || result == school2Id).ShouldBeTrue();
+    }
+}

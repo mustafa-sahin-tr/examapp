@@ -2,7 +2,7 @@
 name: angular-dev
 description: ui/ ve auth-ui/ Angular uygulamalarında sayfa, komponent, servis ve state işi yapar. Frontend ekranı, form veya API entegrasyonu gerektiğinde kullan.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: opus
+model: sonnet
 color: green
 memory: project
 skills:

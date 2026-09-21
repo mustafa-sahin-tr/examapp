@@ -43,23 +43,21 @@ Planı bana göstermeden önce `grilling` skill'ini kullanarak planı kendi içi
 
 Planı bana göster ve **onay bekle**. Onaysız kod yazma.
 
-**1.5. Worktree aç.** Plan onaylandıktan sonra, kod yazılmadan önce:
+**1.5. Branch aç.** Plan onaylandıktan sonra, kod yazılmadan önce. Worktree KULLANMA — aynı anda
+tek issue üzerinde, ana klasörde çalışılır (paralel `/feature` yok).
 
-- Aynı ana klasörde başka bir issue için zaten paralel bir `/feature` çalışıyor olabilir —
-  bu yüzden ana klasörde `git checkout -b` YAPMA, her issue kendi git worktree'sinde çalışsın.
-- `EnterWorktree` tool'unu çağır, `name: "issue-$ARGUMENTS"`. Bu, `.claude/worktrees/issue-$ARGUMENTS`
-  altında **yeni bir branch üzerinde izole bir checkout** oluşturur ve session'ın çalışma dizinini
-  oraya taşır (varsayılan olarak `origin/master`'dan dallanır, ana klasördeki kirli/commitlenmemiş
-  değişikliklerden etkilenmez). Mater'ın pull edilip son haline geldiğinden emin ol sonra worktree'yi oluştur.
-- Worktree oluştuktan sonra branch adını `feature/issue-$ARGUMENTS-<slug>` olacak şekilde yeniden adlandır
-  (`git branch -m feature/issue-$ARGUMENTS-<slug>`) — slug: issue başlığından türetilmiş kısa,
-  küçük harf, tire ile ayrılmış, Türkçe karakterleri sadeleştirilmiş en fazla 4-5 kelime.
-- Zaten bu issue için açılmış bir worktree/branch varsa yenisini açma; `EnterWorktree`'ye
-  `path` vererek ona geç ve bana söyle.
-- Worktree yolunu ve branch adını raporda belirt.
+- Önce `git status` çalıştır. Commitlenmemiş değişiklik varsa ve bu issue ile ilgisiz görünüyorsa
+  branch açmadan dur ve bana söyle (yeni branch'e taşınıp yanlışlıkla commit'e girmesin).
+- Zaten bu issue için açılmış bir branch varsa (`feature/issue-$ARGUMENTS-*`) yenisini açma;
+  ona geç (`git checkout <branch>`) ve bana söyle.
+- Yoksa master'ı güncelle, sonra yeni branch aç:
+  `git fetch origin` → `git checkout master` → `git pull --ff-only` →
+  `git checkout -b feature/issue-$ARGUMENTS-<slug>`
+  Slug: issue başlığından türetilmiş kısa, küçük harf, tire ile ayrılmış, Türkçe karakterleri
+  sadeleştirilmiş en fazla 4-5 kelime.
+- Branch adını raporda belirt.
 - Claude'nin çalıştığı session ismini de `rename` komutu ile `issue-$ARGUMENTS` yap.
-- Bundan sonraki tüm adımlar (agent devirleri, commit, push, PR) bu worktree içinde çalışır —
-  ana klasöre dönmeye gerek yok.
+- Bundan sonraki tüm adımlar (agent devirleri, commit, push, PR) bu branch üzerinde, ana klasörde çalışır.
 
 **2. Backend.** Onaydan sonra `dotnet-api-dev` agent'ına devret.
 Akış outbox gerektiriyorsa o parçayı `event-integration-dev` alsın.
@@ -95,7 +93,7 @@ Onay verirsem:
 
 `Closes #$ARGUMENTS` satırını atlama — merge'de issue'yu otomatik kapatan tek şey o.
 
-**8. Worktree temizliği.** PR açıldıktan sonra worktree'yi hemen silme — PR review sürecinde
-üzerinde tekrar çalışman gerekebilir. Bana sormadan `ExitWorktree` çağırma. Ben "worktree'yi
-kapat" dersem, PR merge olduysa `action: "remove"`, olmadıysa `action: "keep"` kullan (keep,
-branch ve dizini diskte bırakır, session ana klasöre döner).
+**8. Branch'te kal.** PR açıldıktan sonra branch'ten ayrılma — PR review sürecinde üzerinde tekrar
+çalışman gerekebilir. Bana sormadan `master`'a dönme. Ben "kapat" dersem: PR merge olduysa
+`git checkout master` + `git pull --ff-only` ile master'a dön; olmadıysa branch'i olduğu gibi
+bırakıp master'a dön. Yerel branch'i silmeyi ayrıca bana sor, kendiliğinden silme.

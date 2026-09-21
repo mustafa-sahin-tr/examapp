@@ -8,6 +8,7 @@ import {
   MinLengthValidator,
 } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
+import { LocaleHintService } from '../../services/locale-hint.service';
 import { Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -39,6 +40,7 @@ export class LoginComponent implements OnInit {
   authService = inject(AuthService);
   router = inject(Router);
   snackBar = inject(MatSnackBar);
+  private readonly localeHint = inject(LocaleHintService);
   isLoading = false;
   loginForm = new FormGroup({
     email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -49,9 +51,10 @@ export class LoginComponent implements OnInit {
     const token = localStorage.getItem('access_token');
     //
     if (token && this.isTokenValid(token)) {
-      window.location.href = '/dashboard'; // veya /dashboard gibi temiz bir path
+      this.redirect('/dashboard'); // veya /dashboard gibi temiz bir path
     } else {
-      window.location.href = '/oidc-login'; // veya /oidc-login gibi temiz bir path
+      // ui_locales (standart OIDC parametresi), Keycloak login ekranının dilini belirler (issue #186).
+      this.redirect(this.withLoginLocale('/oidc-login'));
     }
 
     // const token = localStorage.getItem('auth_token');
@@ -74,7 +77,27 @@ export class LoginComponent implements OnInit {
   }
 
   checkUserSession(role: string) {
-    window.location.href = '/dashboard'; // ✅ Öğretmen veya Veli ise Home sayfasına git
+    this.redirect('/dashboard'); // ✅ Öğretmen veya Veli ise Home sayfasına git
+  }
+
+  /**
+   * Keycloak'a giden URL'e çözümlenen dili standart OIDC `ui_locales` parametresi olarak
+   * ekler; mevcut query parametreleri korunur. Gateway `/oidc-login` rotasını query'lerle
+   * birlikte Keycloak auth endpoint'ine iletir (`AddQueriesToRequest: true`).
+   *
+   * Not: Keycloak'a özel `kc_locale` bilinçli olarak kullanılmıyor — session'sız ilk
+   * `/auth` isteğinde yok sayılıyor, `ui_locales` ise ilk istekte doğru çalışıyor.
+   */
+  protected withLoginLocale(url: string): string {
+    const [path, existingQuery = ''] = url.split('?');
+    const params = new URLSearchParams(existingQuery);
+    params.set('ui_locales', this.localeHint.resolveLoginLocale());
+    return `${path}?${params.toString()}`;
+  }
+
+  /** Tarayıcı navigasyonu — test edilebilirlik için ayrı metot (spec bunu spy'lar). */
+  protected redirect(url: string): void {
+    window.location.href = url;
   }
 
   onSubmit() {

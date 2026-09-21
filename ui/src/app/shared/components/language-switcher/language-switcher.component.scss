@@ -1,0 +1,18 @@
+.language-switcher-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--main-foreground-color);
+  font-family: var(--mainFontFamily);
+}
+
+.language-switcher-code {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.language-switcher-check-spacer {
+  display: inline-block;
+  width: 24px;
+}

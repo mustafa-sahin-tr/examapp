@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { WorksheetTeacherSharing } from '../../../models/test-instance';
 import { SharingBadgeComponent } from './sharing-badge.component';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('SharingBadgeComponent', () => {
   let component: SharingBadgeComponent;
@@ -9,7 +10,7 @@ describe('SharingBadgeComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SharingBadgeComponent],
+      imports: [translocoTestingModule(), SharingBadgeComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SharingBadgeComponent);

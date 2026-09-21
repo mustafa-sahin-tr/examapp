@@ -1,4 +1,7 @@
-<header class="navbar-area education-navbar-area" [class.sticky]="isSticky">
+<header
+    class="navbar-area education-navbar-area"
+    [class.sticky]="isSticky"
+    *transloco="let t; prefix: 'landing'">
     <div class="container-fluid">
         <nav class="navbar navbar-expand-xl">
 
@@ -6,7 +9,8 @@
                 <img src="assets/images/banner/logo.svg" alt="Hedef Okul" height="38">
             </a>
 
-            <button class="navbar-toggler" type="button" (click)="toggleMenu()" [attr.aria-expanded]="isMenuOpen">
+            <button class="navbar-toggler" type="button" (click)="toggleMenu()" [attr.aria-expanded]="isMenuOpen"
+                [attr.aria-label]="t('nav.toggleMenu')">
                 <span class="toggler-icon"></span>
                 <span class="toggler-icon"></span>
                 <span class="toggler-icon"></span>
@@ -15,39 +19,43 @@
             <div class="navbar-collapse" [class.show]="isMenuOpen">
                 <ul class="navbar-nav m-auto">
                     <li class="nav-item">
-                        <a href="#anasayfa" class="nav-link" (click)="closeMenu()">Ana Sayfa</a>
+                        <a href="#anasayfa" class="nav-link" (click)="closeMenu()">{{ t('nav.home') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#ozellikler" class="nav-link" (click)="closeMenu()">Özellikler</a>
+                        <a href="#ozellikler" class="nav-link" (click)="closeMenu()">{{ t('nav.features') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#dersler" class="nav-link" (click)="closeMenu()">Dersler</a>
+                        <a href="#dersler" class="nav-link" (click)="closeMenu()">{{ t('nav.courses') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#nasil-calisir" class="nav-link" (click)="closeMenu()">Nasıl Çalışır?</a>
+                        <a href="#nasil-calisir" class="nav-link" (click)="closeMenu()">{{ t('nav.howItWorks') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#fiyatlandirma" class="nav-link" (click)="closeMenu()">Fiyatlandırma</a>
+                        <a href="#fiyatlandirma" class="nav-link" (click)="closeMenu()">{{ t('nav.pricing') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#sss" class="nav-link" (click)="closeMenu()">SSS</a>
+                        <a href="#sss" class="nav-link" (click)="closeMenu()">{{ t('nav.faq') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#blog" class="nav-link" (click)="closeMenu()">Blog</a>
+                        <a href="#blog" class="nav-link" (click)="closeMenu()">{{ t('nav.blog') }}</a>
                     </li>
 
                     <li class="nav-item nav-item-register" [class.open]="isRegisterOpen">
                         <a href="#" class="nav-link" (click)="toggleRegister($event)">
-                            Kayıt Ol <span class="caret">▾</span>
+                            {{ t('nav.register') }} <span class="caret" aria-hidden="true">▾</span>
                         </a>
                         <ul class="register-submenu">
-                            <li><a href="/oidc-login?intent=student">Öğrenci</a></li>
-                            <li><a href="/oidc-login?intent=teacher">Öğretmen</a></li>
-                            <li><a href="/oidc-login?intent=parent">Veli</a></li>
+                            <li><a href="/oidc-login?intent=student">{{ t('nav.registerStudent') }}</a></li>
+                            <li><a href="/oidc-login?intent=teacher">{{ t('nav.registerTeacher') }}</a></li>
+                            <li><a href="/oidc-login?intent=parent">{{ t('nav.registerParent') }}</a></li>
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a href="/app/login" class="nav-link">Giriş Yap</a>
+                        <a href="/app/login" class="nav-link">{{ t('nav.login') }}</a>
+                    </li>
+
+                    <li class="nav-item nav-item-language">
+                        <app-language-switcher />
                     </li>
 
                 </ul>

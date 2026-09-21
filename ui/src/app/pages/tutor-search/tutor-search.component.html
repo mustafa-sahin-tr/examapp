@@ -1,61 +1,63 @@
-<section class="ts">
+<section class="ts" *transloco="let t; prefix: 'tutor-search.search'">
   <header class="ts__head">
-    <h2>Özel Ders Öğretmeni Ara</h2>
-    <p>Branşa, ücrete ve ders şekline göre onaylı bağımsız öğretmenleri listeleyin.</p>
+    <h2>{{ t('title') }}</h2>
+    <p>{{ t('subtitle') }}</p>
   </header>
 
   <form class="ts__filters" [formGroup]="filterForm" (ngSubmit)="search()">
     <mat-form-field appearance="outline" class="ts__filter">
-      <mat-label>Ders</mat-label>
+      <mat-label>{{ t('subject') }}</mat-label>
       <mat-select formControlName="subjectId">
-        <mat-option [value]="null">Tümü</mat-option>
+        <mat-option [value]="null">{{ t('allSubjects') }}</mat-option>
         @for (subject of subjects(); track subject.id) {
           <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
         }
       </mat-select>
-      @if (subjectsError()) {
-        <mat-hint class="ts__hint-error">{{ subjectsError() }}</mat-hint>
+      @if (subjectsFailed()) {
+        <mat-hint class="ts__hint-error">{{ t('subjectsError') }}</mat-hint>
       }
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="ts__filter ts__filter--narrow">
-      <mat-label>Min. ücret</mat-label>
+      <mat-label>{{ t('minPrice') }}</mat-label>
       <input matInput type="number" min="0" formControlName="minPrice" />
       <span matTextSuffix>₺</span>
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="ts__filter ts__filter--narrow">
-      <mat-label>Maks. ücret</mat-label>
+      <mat-label>{{ t('maxPrice') }}</mat-label>
       <input matInput type="number" min="0" formControlName="maxPrice" />
       <span matTextSuffix>₺</span>
     </mat-form-field>
 
     <div class="ts__modes">
-      <mat-checkbox formControlName="online">Online</mat-checkbox>
-      <mat-checkbox formControlName="inPerson">Yüz yüze</mat-checkbox>
+      <mat-checkbox formControlName="online">{{ t('online') }}</mat-checkbox>
+      <mat-checkbox formControlName="inPerson">{{ t('inPerson') }}</mat-checkbox>
     </div>
 
     <div class="ts__filter-actions">
-      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">Filtrele</button>
-      <button mat-stroked-button type="button" (click)="resetFilters()" [disabled]="loading()">Temizle</button>
+      <button mat-flat-button color="primary" type="submit" [disabled]="loading()">{{ t('submit') }}</button>
+      <button mat-stroked-button type="button" (click)="resetFilters()" [disabled]="loading()">
+        {{ t('reset') }}
+      </button>
     </div>
   </form>
 
   @if (loading()) {
     <div class="ts__state" aria-busy="true" aria-live="polite">
       <mat-spinner diameter="36"></mat-spinner>
-      <span>Öğretmenler aranıyor...</span>
+      <span>{{ t('loading') }}</span>
     </div>
   } @else if (error()) {
     <div class="ts__state ts__state--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <span>{{ error() }}</span>
-      <button mat-stroked-button type="button" (click)="search()">Tekrar dene</button>
+      <button mat-stroked-button type="button" (click)="search()">{{ t('retry') }}</button>
     </div>
   } @else if (isEmpty()) {
     <div class="ts__state">
       <mat-icon class="ts__state-icon">person_search</mat-icon>
-      <span>Bu filtrelere uygun öğretmen bulunamadı</span>
+      <span>{{ t('empty') }}</span>
     </div>
   } @else {
     <div class="ts__grid">

@@ -1,18 +1,18 @@
 import { Component } from '@angular/core';
-import { Title, Meta } from '@angular/platform-browser';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+
+import { PUBLIC_PAGES_SCOPE, usePublicPageMeta } from '../public-page-meta';
 
 @Component({
   selector: 'app-about',
   standalone: true,
+  imports: [TranslocoDirective],
+  providers: [provideTranslocoScope(PUBLIC_PAGES_SCOPE)],
   templateUrl: './about.component.html',
   styleUrl: './about.component.scss',
 })
 export class AboutComponent {
-  constructor(
-    private title: Title,
-    private meta: Meta
-  ) {
-    this.title.setTitle('Hakkında | ExamApp');
-    this.meta.updateTag({ name: 'description', content: 'ExamApp hakkında detaylı bilgi ve vizyon.' });
+  constructor() {
+    usePublicPageMeta('about');
   }
 }

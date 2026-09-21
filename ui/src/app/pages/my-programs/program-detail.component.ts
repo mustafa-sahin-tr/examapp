@@ -1,4 +1,6 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
@@ -26,6 +28,12 @@ import {
 import { StudyPage } from '../../models/study-page';
 import { AddStudyPagesDialogComponent } from './add-study-pages-dialog.component';
 import { ScheduleDetailDialogComponent } from './schedule-detail-dialog.component';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { LocaleService } from '../../services/locale.service';
+import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
+
+/** Sözlükte karşılığı olan program türleri; bunun dışındaki değer backend'den geldiği gibi gösterilir. */
+const KNOWN_STUDY_TYPES = ['intensive', 'regular', 'flexible', 'weekend', 'exam', 'question'];
 
 interface ProgramDayDetail {
   date: string;
@@ -67,7 +75,9 @@ interface ScheduleBar {
     MatCheckboxModule,
     MatDialogModule,
     MatButtonToggleModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './program-detail.component.html',
   styleUrls: ['./program-detail.component.scss'],
 })
@@ -77,6 +87,9 @@ export class ProgramDetailComponent implements OnInit {
   private studyPageService = inject(StudyPageService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
+  private readonly destroyRef = inject(DestroyRef);
 
   programId: string | null = null;
   userProgram: UserProgram | null = null;
@@ -262,13 +275,47 @@ export class ProgramDetailComponent implements OnInit {
   }
 
   get currentMonthLabel(): string {
-    return this.currentMonth.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    return this.currentMonth.toLocaleDateString(this.intlLocale, { month: 'long', year: 'numeric' });
   }
 
   get nextMonthLabel(): string {
     const next = new Date(this.currentMonth);
     next.setMonth(next.getMonth() + 1);
-    return next.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    return next.toLocaleDateString(this.intlLocale, { month: 'long', year: 'numeric' });
+  }
+
+  /** Intl çağrılarında kullanılacak aktif dil (issue #183). */
+  private get intlLocale(): string {
+    return this.localeService.localeDefinition().angularLocale;
+  }
+
+  /** Pazartesi başlangıçlı kısa gün adları — aktif dile göre üretilir. */
+  get weekdayNames(): string[] {
+    return this.buildWeekdayNames('short');
+  }
+
+  /** Mini takvimin tek harflik gün başlıkları. */
+  get weekdayInitials(): string[] {
+    return this.buildWeekdayNames('narrow');
+  }
+
+  /**
+   * Program türünün okunur adı. Backend kod döndürür (`question`, `intensive`…); sözlükte
+   * karşılığı yoksa ham değer gösterilir ki yeni bir tür sessizce kaybolmasın.
+   */
+  get studyTypeLabel(): string {
+    const raw = this.userProgram?.studyType ?? this.program.studyType ?? '';
+    const code = raw.toLowerCase();
+    if (!KNOWN_STUDY_TYPES.includes(code)) {
+      return raw;
+    }
+    return this.transloco.translate<string>(`${MY_PROGRAMS_SCOPE}.studyType.${code}`) ?? raw;
+  }
+
+  /** 2024-01-01 bir pazartesidir; haftanın yedi günü oradan türetilir. */
+  private buildWeekdayNames(weekday: 'short' | 'narrow'): string[] {
+    const format = new Intl.DateTimeFormat(this.intlLocale, { weekday });
+    return Array.from({ length: 7 }, (_, i) => format.format(new Date(2024, 0, 1 + i)));
   }
 
   get monthCalendarDays(): (Date | null)[] {
@@ -582,7 +629,7 @@ export class ProgramDetailComponent implements OnInit {
     if (!this.userProgram) return;
 
     if (!selectedPages.length) {
-      this.snackBar.open('En az bir calisma sayfasi secmelisiniz.', 'Tamam', { duration: 2000 });
+      this.notify('detail.selectAtLeastOnePage', 2000);
       return;
     }
 
@@ -595,10 +642,10 @@ export class ProgramDetailComponent implements OnInit {
     this.programService.addStudyPages(this.userProgram.id, { items }).subscribe({
       next: (program) => {
         this.userProgram = program;
-        this.snackBar.open('Calisma sayfalari programa eklendi.', 'Tamam', { duration: 2000 });
+        this.notify('detail.pagesAdded', 2000);
       },
       error: () => {
-        this.snackBar.open('Program guncellenemedi.', 'Tamam', { duration: 3000 });
+        this.notify('detail.updateFailed');
       },
     });
   }
@@ -613,7 +660,22 @@ export class ProgramDetailComponent implements OnInit {
   }
 
   formatDayLabel(day: Date): string {
-    return day.toLocaleDateString('tr-TR', { weekday: 'short', day: '2-digit', month: 'short' });
+    return day.toLocaleDateString(this.intlLocale, { weekday: 'short', day: '2-digit', month: 'short' });
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string, duration = 3000): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, MY_PROGRAMS_SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, MY_PROGRAMS_SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration });
+      });
   }
 
   private loadProgram(programId: number): void {
@@ -622,7 +684,7 @@ export class ProgramDetailComponent implements OnInit {
         this.userProgram = program;
       },
       error: () => {
-        this.snackBar.open('Program bilgisi yuklenemedi.', 'Tamam', { duration: 3000 });
+        this.notify('detail.loadFailed');
       },
     });
   }
@@ -641,7 +703,7 @@ export class ProgramDetailComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading study pages:', err);
-        this.snackBar.open("Study-page'ler yuklenemedi.", 'Tamam', { duration: 3000 });
+        this.notify('detail.studyPagesLoadFailed');
       },
     });
   }
@@ -656,7 +718,7 @@ export class ProgramDetailComponent implements OnInit {
   }
 
   private formatShortDate(date: Date): string {
-    return date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+    return date.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
   }
 
   get totalDays() {

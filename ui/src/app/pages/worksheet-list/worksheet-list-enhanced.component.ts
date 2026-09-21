@@ -20,6 +20,7 @@ import { IsStudentDirective } from '../../shared/directives/is-student.directive
 import { toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { GradesService } from '../../services/grades.service';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-worksheet-list-enhanced',
@@ -41,7 +42,9 @@ import { GradesService } from '../../services/grades.service';
     FormsModule,
     PaginationComponent,
     IsStudentDirective,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope('worksheet-list')],
 })
 export class WorksheetListEnhancedComponent {
   testService = inject(TestService);

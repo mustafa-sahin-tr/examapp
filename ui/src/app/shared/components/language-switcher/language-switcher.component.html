@@ -1,0 +1,30 @@
+<ng-container *transloco="let t">
+  <button
+    type="button"
+    mat-button
+    class="language-switcher-trigger"
+    [matMenuTriggerFor]="languageMenu"
+    [matTooltip]="t('layout.language.switch')"
+    [attr.aria-label]="t('layout.language.switch')">
+    <mat-icon aria-hidden="true">language</mat-icon>
+    <span class="language-switcher-code">{{ activeLocaleLabel() }}</span>
+  </button>
+
+  <mat-menu #languageMenu="matMenu" class="language-switcher-menu">
+    @for (locale of locales; track locale.code) {
+      <button
+        type="button"
+        mat-menu-item
+        [attr.aria-label]="t('layout.language.select', { language: locale.label })"
+        [attr.aria-current]="isActive(locale.code) ? 'true' : null"
+        (click)="selectLocale(locale.code)">
+        @if (isActive(locale.code)) {
+          <mat-icon aria-hidden="true">check</mat-icon>
+        } @else {
+          <span class="language-switcher-check-spacer" aria-hidden="true"></span>
+        }
+        <span>{{ locale.label }}</span>
+      </button>
+    }
+  </mat-menu>
+</ng-container>

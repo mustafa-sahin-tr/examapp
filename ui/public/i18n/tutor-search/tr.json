@@ -1,0 +1,39 @@
+{
+  "search": {
+    "title": "Özel Ders Öğretmeni Ara",
+    "subtitle": "Branşa, ücrete ve ders şekline göre onaylı bağımsız öğretmenleri listeleyin.",
+    "subject": "Ders",
+    "allSubjects": "Tümü",
+    "subjectsError": "Ders listesi yüklenemedi.",
+    "minPrice": "Min. ücret",
+    "maxPrice": "Maks. ücret",
+    "online": "Online",
+    "inPerson": "Yüz yüze",
+    "submit": "Filtrele",
+    "reset": "Temizle",
+    "loading": "Öğretmenler aranıyor...",
+    "error": "Öğretmenler aranırken bir sorun oluştu.",
+    "retry": "Tekrar dene",
+    "empty": "Bu filtrelere uygun öğretmen bulunamadı"
+  },
+  "profile": {
+    "back": "Geri",
+    "loading": "Profil yükleniyor...",
+    "notFound": "Öğretmen bulunamadı.",
+    "error": "Öğretmen profili yüklenirken bir sorun oluştu.",
+    "retry": "Tekrar dene",
+    "hourlyRate": "{{rate}} ₺ / saat",
+    "noRate": "Ücret belirtilmemiş",
+    "book": "Randevu Al",
+    "subjectsTitle": "Verdiği dersler",
+    "noSubjects": "Ders bilgisi girilmemiş.",
+    "modesTitle": "Ders şekli",
+    "online": "Online",
+    "inPerson": "Yüz yüze",
+    "noModes": "Belirtilmemiş.",
+    "bioTitle": "Tanıtım",
+    "noBio": "Öğretmen henüz bir tanıtım yazısı eklememiş.",
+    "bookingCreated": "Randevu talebin gönderildi, öğretmenin onayı bekleniyor.",
+    "bookingCreatedAction": "Randevularım"
+  }
+}

@@ -5,34 +5,34 @@
   <div class="auth-inner">
 
     <div class="auth-image-col">
-      <img src="${url.resourcesPath}/img/login.png" alt="Giriş">
+      <img src="${url.resourcesPath}/img/login.png" alt="${msg("loginImageAlt")}">
     </div>
 
     <div class="auth-form-col">
       <div class="auth-form-header">
-        <h3>Tekrar Hoş Geldin!</h3>
-        <p>Hesabına giriş yap ve öğrenmeye devam et.</p>
+        <h3>${msg("welcomeBackTitle")}</h3>
+        <p>${msg("welcomeBackSubtitle")}</p>
       </div>
 
       <#if message?? && message.type == "error">
-        <div class="auth-alert auth-alert--error">${message.summary}</div>
+        <div class="auth-alert auth-alert--error">${kcSanitize(message.summary)?no_esc}</div>
       </#if>
 
       <form action="${url.loginAction}" method="post" class="auth-form">
 
         <div class="form-group">
-          <label for="username">E-posta veya Kullanıcı Adı</label>
+          <label for="username">${msg("usernameOrEmail")}</label>
           <input id="username" name="username" type="text"
-                 placeholder="siz@ornek.com"
+                 placeholder="${msg("usernameOrEmailPlaceholder")}"
                  class="form-control"
                  value="${(login.username)!''}"
                  autofocus autocomplete="username" />
-        </div>  
+        </div>
 
         <div class="form-group">
-          <label for="password">Şifre</label>
+          <label for="password">${msg("password")}</label>
           <input id="password" name="password" type="password"
-                 placeholder="Şifreniz"
+                 placeholder="${msg("passwordPlaceholder")}"
                  class="form-control"
                  autocomplete="current-password" />
         </div>
@@ -40,15 +40,15 @@
         <div class="auth-options">
           <#if realm.rememberMe>
             <label class="remember-me">
-              <input type="checkbox" name="rememberMe" <#if login.rememberMe??>checked</#if>> Beni Hatırla
+              <input type="checkbox" name="rememberMe" <#if login.rememberMe??>checked</#if>> ${msg("rememberMe")}
             </label>
           </#if>
-          <a href="${url.loginResetCredentialsUrl}" class="forgot-link">Şifremi Unuttum</a>
+          <a href="${url.loginResetCredentialsUrl}" class="forgot-link">${msg("doForgotPassword")}</a>
         </div>
 
         <div class="auth-submit">
           <button type="submit" class="default-btn">
-            Giriş Yap
+            ${msg("doLogIn")}
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="14" viewBox="0 0 18 14" fill="none">
               <path opacity="0.5" d="M16.25 6.75V7.25H1.25V6.75H16.25Z" fill="white" stroke="white"></path>
               <path d="M10.75 1L16.75 7L10.75 13" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -59,7 +59,7 @@
       </form>
 
       <#if social.providers?? && social.providers?size gt 0>
-        <div class="social-divider"><span>veya</span></div>
+        <div class="social-divider"><span>${msg("orDivider")}</span></div>
         <div class="social-login">
           <#list social.providers as idp>
             <#if idp.alias == "google">
@@ -74,7 +74,7 @@
                       <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
                     </svg>
                   </div>
-                  <span class="gsi-material-button-contents">Google ile Giriş Yap</span>
+                  <span class="gsi-material-button-contents">${msg("googleSignIn")}</span>
                 </div>
               </a>
             </#if>
@@ -83,7 +83,7 @@
       </#if>
 
       <div class="auth-bottom-text">
-        <span>Hesabın yok mu? <a href="/app/register">Kayıt Ol</a></span>
+        <span>${msg("noAccount")} <a href="/app/register">${msg("doRegister")}</a></span>
       </div>
 
     </div>

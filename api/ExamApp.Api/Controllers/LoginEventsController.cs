@@ -2,8 +2,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.LoginEvents;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
 
@@ -20,10 +22,16 @@ public class LoginEventsController : BaseController
 {
     private readonly ILoginEventService _loginEventService;
 
-    public LoginEventsController(ILoginEventService loginEventService)
+    // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public LoginEventsController(ILoginEventService loginEventService, IStringLocalizer<Messages>? localizer = null)
         : base()
     {
         _loginEventService = loginEventService;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     [HttpPost]
@@ -33,17 +41,17 @@ public class LoginEventsController : BaseController
     {
         if (string.IsNullOrWhiteSpace(request.KeycloakUserId))
         {
-            return BadRequest(new { message = "keycloakUserId zorunludur." });
+            return BadRequest(new { message = _localizer["loginEvents.keycloakUserIdRequired"].Value });
         }
 
         if (string.IsNullOrWhiteSpace(request.Role))
         {
-            return BadRequest(new { message = "role zorunludur." });
+            return BadRequest(new { message = _localizer["loginEvents.roleRequired"].Value });
         }
 
         if (request.OccurredAtUtc == default)
         {
-            return BadRequest(new { message = "occurredAtUtc zorunludur." });
+            return BadRequest(new { message = _localizer["loginEvents.occurredAtUtcRequired"].Value });
         }
 
         var result = await _loginEventService.RecordAsync(request, ct);

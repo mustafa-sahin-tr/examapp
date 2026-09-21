@@ -1,0 +1,12 @@
+{
+  "practice": {
+    "sessionNotFound": "Practice session not found",
+    "gradeRequired": "You need a grade set on your profile before you can practise",
+    "questionNotShown": "This question was not shown in this session",
+    "questionAlreadyAnswered": "This question has already been answered",
+    "questionNotFound": "Question not found",
+    "answerOrSkipRequired": "Either select an answer or skip the question",
+    "answerNotBelongToQuestion": "The selected answer does not belong to this question",
+    "sessionAlreadyEnded": "This practice session has already ended"
+  }
+}

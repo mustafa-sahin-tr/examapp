@@ -1,11 +1,11 @@
-<section class="day-dialog" role="region" [attr.aria-labelledby]="titleId">
+<section class="day-dialog" role="region" [attr.aria-labelledby]="titleId" *transloco="let t">
   <header class="day-dialog__head">
     <h2 class="day-dialog__title" [id]="titleId">{{ title }}</h2>
     <button
       mat-icon-button
       type="button"
       class="day-dialog__close"
-      aria-label="Kapat"
+      [attr.aria-label]="t('common.close')"
       (click)="close()"
     >
       <mat-icon>close</mat-icon>

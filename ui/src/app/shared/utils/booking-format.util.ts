@@ -4,19 +4,34 @@
  * `date`/`startTime` alanları yalnızca form/DTO tarafında iş görür.
  */
 
-const DAY_FMT = new Intl.DateTimeFormat('tr-TR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  weekday: 'long',
-});
+import { activeIntlLocale } from './active-locale.util';
 
-const TIME_FMT = new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit' });
+/**
+ * Biçimlendiriciler aktif dile bağlıdır (issue #183). Dil değişiminde sayfa yeniden yüklendiği
+ * için ilk kullanımda üretilip önbelleğe alınır; SSR'da `DEFAULT_LOCALE` kullanılır.
+ */
+let dayFmt: Intl.DateTimeFormat | null = null;
+let timeFmt: Intl.DateTimeFormat | null = null;
+
+function dayFormatter(): Intl.DateTimeFormat {
+  dayFmt ??= new Intl.DateTimeFormat(activeIntlLocale(), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    weekday: 'long',
+  });
+  return dayFmt;
+}
+
+function timeFormatter(): Intl.DateTimeFormat {
+  timeFmt ??= new Intl.DateTimeFormat(activeIntlLocale(), { hour: '2-digit', minute: '2-digit' });
+  return timeFmt;
+}
 
 /** "20 Eylül 2026 Pazar" */
 export function formatSlotDay(utcIso: string): string {
   const d = new Date(utcIso);
-  return Number.isNaN(d.getTime()) ? '—' : DAY_FMT.format(d);
+  return Number.isNaN(d.getTime()) ? '—' : dayFormatter().format(d);
 }
 
 /** "14:00 – 15:00" */
@@ -26,7 +41,7 @@ export function formatSlotRange(startUtcIso: string, endUtcIso: string): string 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return '—';
   }
-  return `${TIME_FMT.format(start)} – ${TIME_FMT.format(end)}`;
+  return `${timeFormatter().format(start)} – ${timeFormatter().format(end)}`;
 }
 
 /** "20 Eylül 2026 Pazar · 14:00 – 15:00" */

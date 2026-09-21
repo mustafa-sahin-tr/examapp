@@ -1,0 +1,104 @@
+{
+  "about": {
+    "meta": {
+      "title": "Hakkında | ExamApp",
+      "description": "ExamApp hakkında detaylı bilgi ve vizyon."
+    },
+    "title": "ExamApp Hakkında",
+    "intro": "ExamApp, modern ve güvenli online sınav platformudur. Öğrenciler, öğretmenler ve kurumlar için esnek, hızlı ve kullanıcı dostu bir deneyim sunar.",
+    "vision": "Vizyonumuz, eğitimde dijitalleşmeyi kolaylaştırmak ve herkes için erişilebilir sınav çözümleri sunmaktır."
+  },
+  "contact": {
+    "meta": {
+      "title": "İletişim | ExamApp",
+      "description": "ExamApp iletişim ve destek kanalları."
+    },
+    "title": "İletişim",
+    "intro": "Her türlü soru, öneri ve destek talepleriniz için bize ulaşabilirsiniz.",
+    "emailLabel": "E-posta",
+    "phoneLabel": "Telefon",
+    "addressLabel": "Adres",
+    "addressValue": "İstanbul, Türkiye"
+  },
+  "faq": {
+    "meta": {
+      "title": "Sıkça Sorulan Sorular | ExamApp",
+      "description": "ExamApp hakkında sıkça sorulan sorular ve yanıtları."
+    },
+    "title": "Sıkça Sorulan Sorular",
+    "whatIs": {
+      "question": "ExamApp nedir?",
+      "answer": "Online sınav ve değerlendirme platformudur."
+    },
+    "whoCanUse": {
+      "question": "Kimler kullanabilir?",
+      "answer": "Öğrenciler, öğretmenler, kurumlar ve veliler."
+    },
+    "isPaid": {
+      "question": "Ücretli mi?",
+      "answer": "Temel paket ücretsizdir, gelişmiş özellikler için ücretli paketler vardır."
+    },
+    "dataSafety": {
+      "question": "Verilerim güvende mi?",
+      "answer": "Evet, tüm verileriniz güvenli sunucularda saklanır."
+    }
+  },
+  "features": {
+    "meta": {
+      "title": "Özellikler | ExamApp",
+      "description": "ExamApp platformunun öne çıkan özellikleri."
+    },
+    "title": "Öne Çıkan Özellikler",
+    "authoring": "Kolay sınav oluşturma ve yönetim",
+    "security": "Güçlü güvenlik ve kimlik doğrulama",
+    "analytics": "Gerçek zamanlı sonuçlar ve analizler",
+    "responsive": "Mobil uyumlu ve erişilebilir arayüz",
+    "roles": "Çoklu kullanıcı ve rol desteği",
+    "richContent": "Dosya ve görsel ekleme, zengin soru tipleri"
+  },
+  "pricing": {
+    "meta": {
+      "title": "Fiyatlandırma | ExamApp",
+      "description": "ExamApp fiyatlandırma seçenekleri ve paketler."
+    },
+    "title": "Fiyatlandırma",
+    "planColumn": "Paket",
+    "featuresColumn": "Özellikler",
+    "priceColumn": "Fiyat",
+    "basic": {
+      "name": "Temel",
+      "features": "10 sınav/ay, temel analiz",
+      "price": "Ücretsiz"
+    },
+    "pro": {
+      "name": "Pro",
+      "features": "Sınırsız sınav, gelişmiş analiz, dosya yükleme",
+      "price": "99 TL/ay"
+    },
+    "enterprise": {
+      "name": "Kurum",
+      "features": "Çoklu kullanıcı, özel destek, API erişimi",
+      "price": "İletişime Geçin"
+    }
+  },
+  "privacyPolicy": {
+    "meta": {
+      "title": "Gizlilik Politikası | ExamApp",
+      "description": "ExamApp gizlilik politikası ve veri koruma taahhüdü."
+    },
+    "title": "Gizlilik Politikası",
+    "intro": "ExamApp olarak kullanıcılarımızın gizliliğine büyük önem veriyoruz. Kişisel verileriniz, yasal mevzuata uygun şekilde korunur ve asla üçüncü şahıslarla paylaşılmaz.",
+    "contact": "Daha fazla bilgi için bizimle iletişime geçebilirsiniz."
+  },
+  "terms": {
+    "meta": {
+      "title": "Kullanım Şartları | ExamApp",
+      "description": "ExamApp kullanım şartları: Hizmetlerimizin kullanımına ilişkin kurallar ve koşullar."
+    },
+    "title": "Kullanım Şartları",
+    "intro": "ExamApp hizmetlerini kullanarak aşağıdaki şartları kabul etmiş olursunuz. Lütfen tüm kuralları dikkatlice okuyunuz.",
+    "purpose": "ExamApp, kullanıcıların sınav deneyimini iyileştirmek için tasarlanmıştır.",
+    "misuse": "Hizmetlerimizin kötüye kullanımı yasaktır.",
+    "updates": "Güncellenen şartlar ve koşullar için bu sayfayı düzenli olarak kontrol ediniz."
+  }
+}

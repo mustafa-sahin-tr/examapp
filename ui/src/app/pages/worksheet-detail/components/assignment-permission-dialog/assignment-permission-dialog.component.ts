@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { WorksheetAccessRequestService } from '../../../../services/worksheet-access-request.service';
 import { ResponseBase } from '../../../../models/worksheet-access-request.model';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 
 export interface AssignmentPermissionDialogData {
   worksheetId: number;
@@ -34,7 +35,10 @@ export interface AssignmentPermissionDialogResult {
     MatInputModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    TranslocoDirective,
   ],
+  // MatDialog ile açılan komponent element injector'dan scope devralmaz; kendi provider'ını verir.
+  providers: [provideTranslocoScope('worksheet-detail')],
   templateUrl: './assignment-permission-dialog.component.html',
   styleUrl: './assignment-permission-dialog.component.scss',
 })
@@ -45,6 +49,7 @@ export class AssignmentPermissionDialogComponent {
   );
   private readonly service = inject(WorksheetAccessRequestService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly noteControl = new FormControl('', {
     nonNullable: true,
@@ -87,7 +92,9 @@ export class AssignmentPermissionDialogComponent {
             this.conflict.set(true);
             return;
           }
-          this.errorMessage.set(body?.message || 'Talep gönderilemedi. Lütfen tekrar deneyin.');
+          this.errorMessage.set(
+            body?.message || this.transloco.translate<string>('worksheet-detail.permissionDialog.submitFailed') || ''
+          );
         },
       });
   }

@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { Subject, takeUntil } from 'rxjs';
 
 import { ThemeConfigService, ThemePreset, WorksheetCardThemeConfig } from '../../services/theme-config.service';
@@ -26,96 +27,97 @@ import { UserThemeService } from '../../services/user-theme.service';
     MatProgressSpinnerModule,
     MatSnackBarModule,
     FormsModule,
+    TranslocoDirective,
   ],
   template: `
-    <mat-card class="user-theme-card">
+    <mat-card class="user-theme-card" *transloco="let t; prefix: 'shared.userTheme'">
       <mat-card-header>
-        <mat-card-title>🎨 Kişisel Tema Ayarları</mat-card-title>
-        <mat-card-subtitle>Seçiminiz kaydedilecek ve bir dahaki girişinizde hatırlanacak</mat-card-subtitle>
+        <mat-card-title>🎨 {{ t('title') }}</mat-card-title>
+        <mat-card-subtitle>{{ t('subtitle') }}</mat-card-subtitle>
       </mat-card-header>
 
       <mat-card-content>
         <div *ngIf="loading" class="loading-container">
           <mat-spinner diameter="40"></mat-spinner>
-          <p>Tema yükleniyor...</p>
+          <p>{{ t('loading') }}</p>
         </div>
 
         <div *ngIf="!loading">
           <!-- Mevcut Durum -->
           <div class="current-theme-info" *ngIf="currentUserTheme">
-            <h4>📌 Kaydedilmiş Tema Durumunuz</h4>
+            <h4>📌 {{ t('savedStateTitle') }}</h4>
             <p>
-              <strong>Preset:</strong> {{ getPresetDisplayName(currentUserTheme.themePreset) }}
-              <span *ngIf="currentUserTheme.themeCustomConfig" class="custom-badge">+ Özel Ayarlar</span>
+              <strong>{{ t('presetLabel') }}</strong> {{ getPresetDisplayName(currentUserTheme.themePreset) }}
+              <span *ngIf="currentUserTheme.themeCustomConfig" class="custom-badge">+ {{ t('customSettings') }}</span>
             </p>
-            <p class="hint">💡 "Mevcut Durumum" seçeneğini seçerek bu ayarları düzenleyebilirsiniz.</p>
+            <p class="hint">💡 {{ t('editHint') }}</p>
             <div class="divider"></div>
           </div>
 
           <!-- Preset Seçimi -->
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Tema Yükle veya Seç</mat-label>
+            <mat-label>{{ t('presetSelectLabel') }}</mat-label>
             <mat-select [(value)]="selectedPreset" (selectionChange)="onPresetChange($event.value)">
               <mat-option value="current" *ngIf="currentUserTheme">
                 <div class="current-option">
-                  <strong>👤 Mevcut Durumum</strong>
+                  <strong>👤 {{ t('presets.current') }}</strong>
                   <small>{{ getCurrentThemeDescription() }}</small>
                 </div>
               </mat-option>
               <mat-option value="divider-1" disabled>──────────────────</mat-option>
-              <mat-option value="minimal">🔳 Minimal - Sadece Renkli Çerçeveler</mat-option>
-              <mat-option value="standard">⭐ Standard - Çerçeve + Gradient + İkonlar + İlerleme</mat-option>
-              <mat-option value="enhanced">✨ Enhanced - Standard + Ribbon + Işıltı + Typography</mat-option>
-              <mat-option value="full">🚀 Full - Tüm Efektler (Animasyonlar Dahil)</mat-option>
+              <mat-option value="minimal">🔳 {{ t('presets.minimal') }}</mat-option>
+              <mat-option value="standard">⭐ {{ t('presets.standard') }}</mat-option>
+              <mat-option value="enhanced">✨ {{ t('presets.enhanced') }}</mat-option>
+              <mat-option value="full">🚀 {{ t('presets.full') }}</mat-option>
             </mat-select>
           </mat-form-field>
 
           <!-- Özel Ayarlar -->
           <div class="custom-settings">
-            <h4>🔧 Özel Ayarlar</h4>
-            <p class="settings-note">Bu ayarları değiştirdiğinizde özel bir tema oluşturmuş olursunuz.</p>
+            <h4>🔧 {{ t('customSettings') }}</h4>
+            <p class="settings-note">{{ t('customSettingsNote') }}</p>
 
             <div class="settings-grid">
               <div class="setting-item">
                 <mat-slide-toggle [(ngModel)]="currentTheme.borders" (change)="onCustomChange()" color="primary">
-                  🖼️ Renkli Çerçeveler
+                  🖼️ {{ t('settings.borders.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Duruma göre renkli border'lar</span>
+                <span class="setting-description">{{ t('settings.borders.description') }}</span>
               </div>
 
               <div class="setting-item">
                 <mat-slide-toggle [(ngModel)]="currentTheme.gradient" (change)="onCustomChange()" color="primary">
-                  🌈 Gradient Overlay
+                  🌈 {{ t('settings.gradient.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Arka plan gradient efektleri</span>
+                <span class="setting-description">{{ t('settings.gradient.description') }}</span>
               </div>
 
               <div class="setting-item">
                 <mat-slide-toggle [(ngModel)]="currentTheme.iconBadges" (change)="onCustomChange()" color="primary">
-                  🏷️ İkon Rozetleri
+                  🏷️ {{ t('settings.iconBadges.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Sağ üst köşe durum ikonları</span>
+                <span class="setting-description">{{ t('settings.iconBadges.description') }}</span>
               </div>
 
               <div class="setting-item">
                 <mat-slide-toggle [(ngModel)]="currentTheme.ribbons" (change)="onCustomChange()" color="primary">
-                  🎗️ Ribbon Banner
+                  🎗️ {{ t('settings.ribbons.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Sol üst köşe atama türü ribbon'u</span>
+                <span class="setting-description">{{ t('settings.ribbons.description') }}</span>
               </div>
 
               <div class="setting-item">
                 <mat-slide-toggle [(ngModel)]="currentTheme.glowEffects" (change)="onCustomChange()" color="primary">
-                  ✨ Işıltı Efektleri
+                  ✨ {{ t('settings.glow.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Glow ve shadow efektleri</span>
+                <span class="setting-description">{{ t('settings.glow.description') }}</span>
               </div>
 
               <div class="setting-item">
                 <mat-slide-toggle [(ngModel)]="currentTheme.progressBar" (change)="onCustomChange()" color="primary">
-                  📊 İlerleme Çubuğu
+                  📊 {{ t('settings.progressBar.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Alt kısımda zaman ilerlemesi</span>
+                <span class="setting-description">{{ t('settings.progressBar.description') }}</span>
               </div>
 
               <div class="setting-item">
@@ -124,9 +126,9 @@ import { UserThemeService } from '../../services/user-theme.service';
                   (change)="onCustomChange()"
                   color="primary"
                 >
-                  🔄 Transform Animasyonları
+                  🔄 {{ t('settings.transform.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Döndürme, titreme animasyonları</span>
+                <span class="setting-description">{{ t('settings.transform.description') }}</span>
               </div>
 
               <div class="setting-item">
@@ -135,9 +137,9 @@ import { UserThemeService } from '../../services/user-theme.service';
                   (change)="onCustomChange()"
                   color="primary"
                 >
-                  📝 Typography Efektleri
+                  📝 {{ t('settings.typography.label') }}
                 </mat-slide-toggle>
-                <span class="setting-description">Font ağırlığı ve şeffaflık değişiklikleri</span>
+                <span class="setting-description">{{ t('settings.typography.description') }}</span>
               </div>
             </div>
           </div>
@@ -146,11 +148,11 @@ import { UserThemeService } from '../../services/user-theme.service';
 
       <mat-card-actions>
         <button mat-raised-button color="warn" (click)="resetToDefault()" [disabled]="loading">
-          🔄 Varsayılana Dön
+          🔄 {{ t('resetButton') }}
         </button>
-        <button mat-raised-button color="accent" (click)="showPreview()" [disabled]="loading">👁️ Önizleme</button>
+        <button mat-raised-button color="accent" (click)="showPreview()" [disabled]="loading">👁️ {{ t('previewButton') }}</button>
         <button mat-raised-button color="primary" (click)="saveTheme()" [disabled]="loading">
-          💾 Kaydet ve Uygula
+          💾 {{ t('saveButton') }}
         </button>
       </mat-card-actions>
     </mat-card>
@@ -288,6 +290,7 @@ import { UserThemeService } from '../../services/user-theme.service';
 })
 export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
   private readonly userThemeService = inject(UserThemeService);
+  private readonly transloco = inject(TranslocoService);
   private readonly themeConfigService = inject(ThemeConfigService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroy$ = new Subject<void>();
@@ -380,14 +383,14 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
       next: () => {
         this.loading = false;
         this.selectedPreset = 'current'; // Artık custom tema mevcut durumunuz
-        this.snackBar.open('✅ Özel tema ayarlarınız kaydedildi ve mevcut durumunuz oldu!', 'Tamam', {
+        this.snackBar.open(`✅ ${this.tr('shared.userTheme.messages.customSaved')}`, this.tr('common.ok'), {
           duration: 4000,
         });
       },
       error: (error) => {
         this.loading = false;
         console.error('Custom theme save error:', error);
-        this.snackBar.open('❌ Özel tema kaydedilemedi.', 'Tamam', {
+        this.snackBar.open(`❌ ${this.tr('shared.userTheme.messages.customSaveFailed')}`, this.tr('common.ok'), {
           duration: 4000,
         });
       },
@@ -421,7 +424,7 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
         this.currentTheme = this.themeConfigService.getCurrentTheme();
         this.selectedPreset = 'standard';
         this.loading = false;
-        this.snackBar.open('🔄 Tema varsayılan ayarlara döndürüldü!', 'Tamam', {
+        this.snackBar.open(`🔄 ${this.tr('shared.userTheme.messages.reset')}`, this.tr('common.ok'), {
           duration: 4000,
         });
 
@@ -430,7 +433,7 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
       error: (error) => {
         this.loading = false;
         console.error('Theme reset error:', error);
-        this.snackBar.open('❌ Tema sıfırlanamadı.', 'Tamam', {
+        this.snackBar.open(`❌ ${this.tr('shared.userTheme.messages.resetFailed')}`, this.tr('common.ok'), {
           duration: 4000,
         });
       },
@@ -440,7 +443,7 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
   showPreview(): void {
     // Önizleme - sadece theme config service'i güncelle, kaydetme
     this.themeConfigService.setCustomTheme(this.currentTheme);
-    this.snackBar.open('👁️ Önizleme uygulandı! Kaydet butonuna basarak kalıcı hale getirebilirsiniz.', 'Tamam', {
+    this.snackBar.open(`👁️ ${this.tr('shared.userTheme.messages.preview')}`, this.tr('common.ok'), {
       duration: 5000,
     });
   }
@@ -451,9 +454,13 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
       standard: 'Standard',
       enhanced: 'Enhanced',
       full: 'Full',
-      current: 'Mevcut Durumum',
+      current: this.tr('shared.userTheme.presetShort.current'),
     };
     return names[preset] || preset;
+  }
+
+  private tr(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
   }
 
   private detectCurrentPreset(): void {
@@ -477,10 +484,9 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
     const hasCustom = this.currentUserTheme.themeCustomConfig;
 
     if (hasCustom) {
-      return `${this.getPresetDisplayName(preset)} + Özel Ayarlar`;
-    } else {
-      return `${this.getPresetDisplayName(preset)} Preset`;
+      return `${this.getPresetDisplayName(preset)} + ${this.tr('shared.userTheme.customSettings')}`;
     }
+    return `${this.getPresetDisplayName(preset)} ${this.tr('shared.userTheme.presetSuffix')}`;
   }
 
   loadCurrentUserTheme(): void {
@@ -495,7 +501,7 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
         this.currentTheme = customConfig;
         this.themeConfigService.setCustomTheme(customConfig);
         this.selectedPreset = 'current'; // Artık düzenleme modunda
-        this.snackBar.open('✅ Kaydedilmiş özel tema ayarlarınız yüklendi ve düzenleyebilirsiniz!', 'Tamam', {
+        this.snackBar.open(`✅ ${this.tr('shared.userTheme.messages.customLoaded')}`, this.tr('common.ok'), {
           duration: 4000,
         });
       } catch (error) {
@@ -504,7 +510,7 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
         this.themeConfigService.setTheme(this.currentUserTheme.themePreset as ThemePreset);
         this.currentTheme = this.themeConfigService.getCurrentTheme();
         this.selectedPreset = 'current';
-        this.snackBar.open('✅ Kaydedilmiş preset tema yüklendi ve düzenleyebilirsiniz!', 'Tamam', {
+        this.snackBar.open(`✅ ${this.tr('shared.userTheme.messages.presetLoaded')}`, this.tr('common.ok'), {
           duration: 4000,
         });
       }
@@ -513,7 +519,7 @@ export class UserThemeSwitcherComponent implements OnInit, OnDestroy {
       this.themeConfigService.setTheme(this.currentUserTheme.themePreset as ThemePreset);
       this.currentTheme = this.themeConfigService.getCurrentTheme();
       this.selectedPreset = 'current';
-      this.snackBar.open('✅ Kaydedilmiş preset tema yüklendi ve düzenleyebilirsiniz!', 'Tamam', {
+      this.snackBar.open(`✅ ${this.tr('shared.userTheme.messages.presetLoaded')}`, this.tr('common.ok'), {
         duration: 4000,
       });
     }

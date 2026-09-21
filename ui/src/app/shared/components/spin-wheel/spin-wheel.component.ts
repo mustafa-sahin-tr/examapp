@@ -1,14 +1,20 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component, AfterViewInit, inject } from '@angular/core';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import gsap from 'gsap';
 
 @Component({
   selector: 'app-spin-wheel',
   standalone: true,
   templateUrl: './spin-wheel.component.html',
-  styleUrls: ['./spin-wheel.component.scss']
+  styleUrls: ['./spin-wheel.component.scss'],
+  imports: [TranslocoDirective],
 })
 export class SpinWheelComponent implements AfterViewInit {
-  prizes = ['Tatlı', '10 Puan', 'Ekstra Soru', 'Sürpriz', 'Yeni Hak']; // Ödüller
+  private readonly transloco = inject(TranslocoService);
+  /** Çark üzerinde çizilen ödül adları — `shared.spinWheel.prizes.*` (issue #183). */
+  prizes = ['dessert', 'tenPoints', 'extraQuestion', 'surprise', 'extraLife'].map(
+    (key) => this.transloco.translate<string>(`shared.spinWheel.prizes.${key}`) ?? ''
+  );
   wheelCanvas!: HTMLCanvasElement;
   wheelCtx!: CanvasRenderingContext2D;
   isSpinning = false; // Tekrar tıklamayı önlemek için

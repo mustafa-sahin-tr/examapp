@@ -1,0 +1,39 @@
+{
+  "search": {
+    "title": "Find a Private Tutor",
+    "subtitle": "List approved independent teachers by subject, price and lesson format.",
+    "subject": "Subject",
+    "allSubjects": "All",
+    "subjectsError": "The subject list could not be loaded.",
+    "minPrice": "Min. price",
+    "maxPrice": "Max. price",
+    "online": "Online",
+    "inPerson": "In person",
+    "submit": "Filter",
+    "reset": "Clear",
+    "loading": "Searching for teachers...",
+    "error": "Something went wrong while searching for teachers.",
+    "retry": "Try again",
+    "empty": "No teachers match these filters"
+  },
+  "profile": {
+    "back": "Back",
+    "loading": "Loading profile...",
+    "notFound": "Teacher not found.",
+    "error": "Something went wrong while loading the teacher profile.",
+    "retry": "Try again",
+    "hourlyRate": "{{rate}} ₺ / hour",
+    "noRate": "No rate specified",
+    "book": "Book a Lesson",
+    "subjectsTitle": "Subjects taught",
+    "noSubjects": "No subject information provided.",
+    "modesTitle": "Lesson format",
+    "online": "Online",
+    "inPerson": "In person",
+    "noModes": "Not specified.",
+    "bioTitle": "Introduction",
+    "noBio": "This teacher has not added an introduction yet.",
+    "bookingCreated": "Your booking request has been sent and is awaiting the teacher's approval.",
+    "bookingCreatedAction": "My bookings"
+  }
+}

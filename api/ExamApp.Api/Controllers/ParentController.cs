@@ -1,9 +1,11 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers
 {
@@ -14,10 +16,16 @@ namespace ExamApp.Api.Controllers
         private readonly AppDbContext _context;
         private readonly IKeycloakService _keycloakService;
 
-        public ParentController(AppDbContext context, IKeycloakService keycloakService) : base()
+        // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+        private readonly IStringLocalizer<Messages> _localizer;
+
+        public ParentController(AppDbContext context, IKeycloakService keycloakService, IStringLocalizer<Messages>? localizer = null) : base()
         {
             _context = context;
             _keycloakService = keycloakService;
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
 
         // Veli kaydı: profil alanı yok — sadece realm rolünü ata ve Parent satırını aç.
@@ -28,7 +36,7 @@ namespace ExamApp.Api.Controllers
             var user = await GetAuthenticatedUserAsync();
             if (user == null || user.Id <= 0)
             {
-                return Unauthorized(new { message = "Kullanıcı çözümlenemedi." });
+                return Unauthorized(new { message = _localizer["auth.userNotResolved"].Value });
             }
 
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Parent);
@@ -42,7 +50,7 @@ namespace ExamApp.Api.Controllers
 
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("No refresh token provided.");
+                return Unauthorized(_localizer["auth.noRefreshToken"].Value);
 
             var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
 

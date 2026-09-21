@@ -14,6 +14,8 @@ import {
 import { routes } from '../../../app.routes';
 import { authGuard } from '../../../shared/guards/auth.guard';
 import { adminGuard } from '../../../shared/guards/admin.guard';
+import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
+import adminTr from '../../../../../public/i18n/admin/tr.json';
 
 describe('AdminDashboardComponent', () => {
   let fixture: ComponentFixture<AdminDashboardComponent>;
@@ -74,7 +76,11 @@ describe('AdminDashboardComponent', () => {
     adminService.getDashboardTrends.and.returnValue(of(trends));
 
     TestBed.configureTestingModule({
-      imports: [AdminDashboardComponent],
+      imports: [AdminDashboardComponent, translocoTestingModule({
+        langs: { 'admin/tr': adminTr },
+        // app.config.ts ile aynı: tireli scope önekleri camelCase'e çevrilmez.
+        translocoConfig: { scopes: { keepCasing: true } },
+      })],
       providers: [{ provide: AdminService, useValue: adminService }, provideRouter([]), provideNoopAnimations()],
     });
 
@@ -325,7 +331,8 @@ describe('AdminDashboardComponent', () => {
     expect(weeks.length).toBe(52);
     expect(weeks.every((w) => w.series.length >= 1 && w.series.length <= 7)).toBeTrue();
     expect(weeks[0].series.length).toBe(7);
-    expect(weeks[0].name).toMatch(/^\d{1,2} \S+$/); // "10 Ağu"
+    // Etiket aktif dile göre biçimlenir: "10 Ağu" (tr) / "Aug 10" (en)
+    expect(weeks[0].name).toMatch(/^(\d{1,2} \S+|\S+ \d{1,2})$/);
 
     // Izgara serinin ilk gününden son gününe kadar tam 52×7 hücre: gün atılmaz, gün uydurulmaz.
     const cells = weeks.flatMap((w) => w.series);

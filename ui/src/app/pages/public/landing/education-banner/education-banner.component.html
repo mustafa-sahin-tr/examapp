@@ -1,38 +1,36 @@
-<div class="education-banner-area">
+<div class="education-banner-area" *transloco="let t; prefix: 'landing'">
     <div class="container">
         <div class="row justify-content-center align-items-center g-5">
             <div class="col-lg-6 col-md-12">
                 <div class="education-banner-content">
-                    <h1>Her Sınavda Başarı — Tek <span>Güçlü Platform.<img src="assets/images/banner/line.png"
-                                alt="image"></span></h1>
-                    <p>Hedef Okul, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve
-                        çalışma yaprağı platformudur. Akıllı soru bankası, gerçek zamanlı sınavlar ve ilerleme takibi
-                        ile hedefine ulaş.</p>
+                    <h1>{{ t('hero.titleLead') }} <span>{{ t('hero.titleHighlight') }}<img
+                                src="assets/images/banner/line.png" alt=""></span></h1>
+                    <p>{{ t('hero.description') }}</p>
                     <button mat-flat-button color="primary">
-                        Çalışma Yapraklarını Keşfet
+                        {{ t('hero.cta') }}
                     </button>
                 </div>
             </div>
             <div class="col-lg-6 col-md-12">
-                <div class="education-banner-image"><img src="assets/images/banner/teacher.png" alt="image">
-                    <div class="mesh-grad"><img src="assets/images/banner/mesh-grad.png" alt="image"></div>
-                    <div class="trust-review"><span class="sub">Öğrenci Yorumları</span>
+                <div class="education-banner-image"><img src="assets/images/banner/teacher.png" alt="">
+                    <div class="mesh-grad"><img src="assets/images/banner/mesh-grad.png" alt=""></div>
+                    <div class="trust-review"><span class="sub">{{ t('hero.reviewsLabel') }}</span>
                         <ul class="list">
-                            <li><img src="assets/images/banner/star2.svg" alt="star2"></li>
-                            <li><img src="assets/images/banner/star2.svg" alt="star2"></li>
-                            <li><img src="assets/images/banner/star2.svg" alt="star2"></li>
-                            <li><img src="assets/images/banner/star2.svg" alt="star2"></li>
-                            <li><img src="assets/images/banner/star2.svg" alt="star2"></li>
-                        </ul><span>10.000+ Aktif Öğrenci</span>
-                        <div class="arrow"><img src="assets/images/banner/arrow.png" alt="image"></div>
+                            <li><img src="assets/images/banner/star2.svg" alt=""></li>
+                            <li><img src="assets/images/banner/star2.svg" alt=""></li>
+                            <li><img src="assets/images/banner/star2.svg" alt=""></li>
+                            <li><img src="assets/images/banner/star2.svg" alt=""></li>
+                            <li><img src="assets/images/banner/star2.svg" alt=""></li>
+                        </ul><span>{{ t('hero.activeStudents') }}</span>
+                        <div class="arrow"><img src="assets/images/banner/arrow.png" alt=""></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="education-banner-vector"><img src="assets/images/banner/vector.png" alt="image"></div>
-    <div class="education-banner-shape1"><img src="assets/images/banner/shape1.png" alt="image"></div>
-    <div class="education-banner-shape2"><img src="assets/images/banner/shape2.png" alt="image"></div>
-    <div class="education-banner-shape3"><img src="assets/images/banner/shape3.png" alt="image"></div>
-    <div class="education-banner-shape4"><img src="assets/images/banner/shape4.png" alt="image"></div>
+    <div class="education-banner-vector"><img src="assets/images/banner/vector.png" alt=""></div>
+    <div class="education-banner-shape1"><img src="assets/images/banner/shape1.png" alt=""></div>
+    <div class="education-banner-shape2"><img src="assets/images/banner/shape2.png" alt=""></div>
+    <div class="education-banner-shape3"><img src="assets/images/banner/shape3.png" alt=""></div>
+    <div class="education-banner-shape4"><img src="assets/images/banner/shape4.png" alt=""></div>
 </div>

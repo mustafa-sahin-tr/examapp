@@ -1,0 +1,93 @@
+{
+  "actions": {
+    "ok": "Tamam"
+  },
+  "tabs": {
+    "what": "Neler Var",
+    "info": "Bilgilerim",
+    "badges": "Rozetler",
+    "assignments": "Ödevler ve Sınavlar",
+    "weeklyCalendar": "Haftalık Takvim",
+    "theme": "Tema Ayarları"
+  },
+  "learning": {
+    "eyebrow": "Öncelikli öğrenme ortağın",
+    "title": "Alanının uzmanlarından nitelikli içerik",
+    "description": "Uzmanlarımız konularına hâkim. Kanıtı mı? Yaklaşık %6 kabul oranıyla titizlikle seçiliyorlar. İçeriklerimizi de sürekli gözden geçiriyoruz ki her alanda en güncel ve güvenilir dersleri bulabilesin.",
+    "expertsAlt": "Uzmanlar",
+    "certification": {
+      "title": "Üst düzey sertifika sınavı hazırlığı",
+      "description": "Sınırsız deneme sınavı ve laboratuvarla aranan sertifikalara hazırlan. Anlık geri bildirimle deneyimini en üst düzeye, sınav günü heyecanını en aza indir.",
+      "cta": "Daha fazla bilgi",
+      "imageAlt": "Sertifika"
+    },
+    "path": {
+      "title": "Sana özel öğrenme yolu",
+      "description": "Beceri veya rol değerlendirmesiyle tam olarak neyi bildiğini gör. İçerik önerileri ve sana göre hazırlanan öğrenme yollarıyla eksiklerini kapat.",
+      "cta": "Değerlendirmeye başla",
+      "imageAlt": "Öğrenme yolu"
+    },
+    "handsOn": {
+      "title": "Uygulamalı deneyim",
+      "description": "Etkileşimli derslere, projelere ve laboratuvarlara dalarak yaparak öğren. Ardından canlı deneme ortamlarında pratik yap ve yeni bilgini kalıcı beceriye dönüştür.",
+      "cta": "Laboratuvarları gör",
+      "imageAlt": "Uygulamalı çalışma"
+    }
+  },
+  "profile": {
+    "changeAvatar": "Değiştir",
+    "avatarAlt": "Profil fotoğrafı",
+    "level": "Seviye: {{level}} ({{xp}} XP)",
+    "questionsSolved": "{{count}} Soru Çözüldü",
+    "correctAnswers": "{{count}} Doğru Cevap",
+    "wrongAnswers": "{{count}} Yanlış Cevap",
+    "testsCompleted": "{{count}} Tamamlanan Test",
+    "rewards": "{{count}} Kazanılan Ödül",
+    "leaderboardRank": "Liderlik Sıralaması: {{rank}}",
+    "badgesTitle": "🎖 Kazanılan Rozetler",
+    "gradeUpdated": "Sınıf güncellendi!",
+    "avatarUpdated": "Avatar güncellendi!"
+  },
+  "points": {
+    "myPoints": "Puanlarım",
+    "classRank": "Sınıf Sıralaması",
+    "yearRank": "Kademe Sıralaması",
+    "myBadges": "Rozetlerim",
+    "leaderboards": "Liderlik Tabloları",
+    "classLeaderboard": "Sınıf Liderlik Tablosu",
+    "groupLeaderboard": "Grup Liderlik Tablosu"
+  },
+  "goal": {
+    "title": "Haftalık Hedef",
+    "monthly": "Aylık",
+    "current": "Bu hafta",
+    "streak": "{{count}} hafta",
+    "streakLabel": "En uzun haftalık hedef serisi",
+    "noActivity": "Aktivite yok"
+  },
+  "heatmap": {
+    "title": "Aktivite Isı Haritası",
+    "titleSecondary": "Aktivite Isı Haritası 2",
+    "titleApi": "Aktivite Isı Haritası (API)",
+    "loading": "Aktivite verisi yükleniyor...",
+    "error": "Aktivite verisi alınırken bir hata oluştu.",
+    "empty": "Son bir yıl için aktivite verisi bulunamadı.",
+    "tooltip": {
+      "questions": "Soru",
+      "correct": "Doğru",
+      "duration": "Süre",
+      "activityScore": "Aktivite Skoru"
+    }
+  },
+  "duration": {
+    "minutesAndSeconds": "{{minutes}} dk {{seconds}} sn",
+    "minutes": "{{minutes}} dk",
+    "seconds": "{{seconds}} sn"
+  },
+  "stats": {
+    "completedTests": "Çözülen Test",
+    "studyMinutes": "Çalışma Süresi (dk)",
+    "solvedQuestions": "Çözülen Soru",
+    "correctAnswers": "Doğru Cevap"
+  }
+}

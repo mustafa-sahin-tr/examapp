@@ -1,0 +1,219 @@
+{
+  "home": {
+    "title": "Administration",
+    "tabs": {
+      "taxonomy": "Taxonomy",
+      "classifierCache": "Classification Cache",
+      "teacherApplications": "Teacher Applications"
+    }
+  },
+  "dashboard": {
+    "title": "Admin Panel",
+    "subtitle": "Overall platform status — teacher, student, exam and question statistics",
+    "error": "Something went wrong while loading the overview.",
+    "empty": "There is no data on the platform yet. The counters will update here once a teacher, student, exam or question is added.",
+    "cards": {
+      "teachers": "Teachers",
+      "students": "Students",
+      "worksheets": "Exams",
+      "questions": "Questions"
+    },
+    "ai": {
+      "title": "AI Classified",
+      "ratioLabel": "AI classification rate",
+      "percent": "{{value}}%",
+      "noQuestions": "No questions yet"
+    },
+    "trends": {
+      "title": "Trends",
+      "error": "Something went wrong while loading the trend data.",
+      "empty": "Not enough data yet",
+      "questionTotal": "{{count}} questions",
+      "loginTotal": "{{count}} logins",
+      "cardAria": "{{title}} trend, {{period}}",
+      "loginCardAria": "{{title}}, {{period}}",
+      "createdTitle": "Questions Created",
+      "solvedTitle": "Questions Solved",
+      "loginTitle": "Student Login Trend",
+      "periodYear": "Last year",
+      "periodDays": "Last {{days}} days",
+      "verbCreated": "created",
+      "verbSolved": "solved",
+      "tooltip": "{{label}}: {{count}} questions {{verb}}",
+      "loginTooltip": "{{label}}: {{count}} logins",
+      "summaryEmpty": "Last year: not enough data yet.",
+      "summary": "Last year: {{total}} questions {{verb}} in total. Peak day {{peak}}, {{count}} questions.",
+      "loginSummaryEmpty": "Last {{days}} days: not enough data yet.",
+      "loginSummary": "Last {{days}} days: {{total}} student logins in total. Peak day {{peak}}, {{count}} logins.",
+      "today": "today",
+      "yesterday": "yesterday",
+      "daysAgo": "{{count}} days ago"
+    }
+  },
+  "taxonomy": {
+    "gradeFilter": {
+      "label": "Grade",
+      "aria": "Grade filter",
+      "all": "All Grades",
+      "unassigned": "No grade assigned"
+    },
+    "subjects": {
+      "title": "Subjects",
+      "newPlaceholder": "New subject",
+      "add": "Add subject",
+      "gradeChipsAria": "Linked grades",
+      "unassignedChip": "No grade assigned",
+      "topicCount": "{{count}} topics",
+      "manageGrades": "Manage Grades",
+      "edit": "Edit subject",
+      "delete": "Delete subject",
+      "nameAria": "Subject name",
+      "emptyUnassignedTitle": "No subject without a grade",
+      "emptyUnassignedHint": "Every subject is linked to at least one grade",
+      "emptyGradeTitle": "No subject linked to this grade",
+      "emptyGradeHint": "You can add this grade from a subject's \"Manage Grades\" action",
+      "emptyLinkedTitle": "No subject linked to a grade",
+      "emptyLinkedHint": "Assign grades to subjects from the \"No grade assigned\" filter",
+      "emptyTitle": "No subjects added yet",
+      "emptyHint": "Add the first subject from the field above"
+    },
+    "topics": {
+      "title": "Topics",
+      "newPlaceholder": "New topic",
+      "gradePlaceholder": "Grade",
+      "add": "Add topic",
+      "subTopicCount": "{{count}} subtopics",
+      "edit": "Edit topic",
+      "delete": "Delete topic",
+      "nameAria": "Topic name",
+      "emptyTitle": "This subject has no topics yet",
+      "emptyHint": "Enter a topic name, pick a grade and add it",
+      "noSubjectTitle": "Pick a subject first",
+      "noSubjectHint": "The topics of the selected subject are listed here",
+      "nameAndGradeRequired": "Topic name and grade are required"
+    },
+    "subTopics": {
+      "title": "Subtopics",
+      "newPlaceholder": "New subtopic",
+      "add": "Add subtopic",
+      "questionCount": "{{count}} questions",
+      "edit": "Edit subtopic",
+      "delete": "Delete subtopic",
+      "nameAria": "Subtopic name",
+      "emptyTitle": "This topic has no subtopics yet",
+      "emptyHint": "Add the first subtopic from the field above",
+      "noTopicTitle": "Pick a topic first",
+      "noTopicHint": "The subtopics of the selected topic are listed here"
+    },
+    "schools": {
+      "title": "Schools",
+      "newPlaceholder": "New school name",
+      "provincePlaceholder": "Province (optional)",
+      "provinceAria": "Province",
+      "provinceNone": "— No province —",
+      "districtPlaceholder": "District (optional)",
+      "districtAria": "District",
+      "districtNone": "— No district —",
+      "addressPlaceholder": "Street address (optional)",
+      "addressAria": "Street address",
+      "addressEditPlaceholder": "Street address",
+      "add": "Add school",
+      "edit": "Edit school",
+      "delete": "Delete school",
+      "nameAria": "School name",
+      "emptyTitle": "No schools added yet",
+      "emptyHint": "Enter a school name and optional province / district / address, then add it"
+    },
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "delete": {
+      "subjectTitle": "delete subject",
+      "subjectMessage": "Are you sure you want to delete the subject \"{{name}}\"?",
+      "topicTitle": "delete topic",
+      "topicMessage": "Are you sure you want to delete the topic \"{{name}}\"?",
+      "subtopicTitle": "delete subtopic",
+      "subtopicMessage": "Are you sure you want to delete the subtopic \"{{name}}\"?",
+      "schoolTitle": "delete school",
+      "schoolMessage": "Are you sure you want to delete the school \"{{name}}\"?",
+      "confirm": "Delete"
+    },
+    "messages": {
+      "taxonomyLoadFailed": "The taxonomy could not be loaded",
+      "schoolsLoadFailed": "Schools could not be loaded",
+      "provincesLoadFailed": "Provinces could not be loaded",
+      "districtsLoadFailed": "Districts could not be loaded",
+      "actionFailed": "The action failed",
+      "close": "Close"
+    }
+  },
+  "subjectGrades": {
+    "title": "Manage Grades",
+    "listAria": "Grades",
+    "empty": "No grades defined",
+    "toAdd": "{{count}} to add",
+    "toRemove": "{{count}} to remove",
+    "cancel": "Cancel",
+    "save": "Save",
+    "actionFailed": "The action failed"
+  },
+  "classifierCache": {
+    "title": "Question Classification Cache",
+    "subtitle": "Gemini cached content — the subject/topic/subtopic taxonomy. BadgeService classifies questions against it.",
+    "notCreated": "No cache has been created yet.",
+    "stale": "The cache is out of date — the taxonomy has changed. Refreshing is recommended.",
+    "fresh": "The cache is up to date.",
+    "fields": {
+      "cachedContent": "Cached content",
+      "model": "Model",
+      "subTopicCount": "Subtopic count (last build)",
+      "refreshedAt": "Last refresh",
+      "apiKey": "API key"
+    },
+    "apiKeyConfigured": "configured",
+    "apiKeyMissing": "missing (Gemini:ApiKey)",
+    "refreshStatus": "Refresh status",
+    "refreshCache": "Refresh Cache",
+    "confirm": {
+      "title": "Refresh the classification cache",
+      "message": "A new Gemini cached content will be created from the current subject/topic/subtopic taxonomy and activated. Continue?",
+      "confirmText": "Refresh"
+    },
+    "statusFailed": "The cache status could not be loaded",
+    "refreshFailed": "The refresh failed",
+    "close": "Close"
+  },
+  "approvals": {
+    "title": "Independent Teacher Applications",
+    "subtitle": "Applications awaiting approval from teachers who registered without a school.",
+    "refresh": "Refresh",
+    "loading": "Loading applications...",
+    "empty": "No pending applications",
+    "columns": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "appliedAt": "Application Date",
+      "actions": "Action"
+    },
+    "unnamed": "Unnamed (user #{{userId}})",
+    "approve": "Approve",
+    "reject": "Reject",
+    "acting": "Processing",
+    "loadFailed": "Something went wrong while loading the applications.",
+    "approved": "The application has been approved.",
+    "rejected": "The application has been rejected.",
+    "actionFailed": "The action could not be completed.",
+    "close": "Close",
+    "rejectDialog": {
+      "title": "Reject Application",
+      "description": "A rejection reason is required. The text you enter is stored on the application record.",
+      "reasonLabel": "Rejection reason",
+      "reasonPlaceholder": "Briefly describe why the application was rejected",
+      "required": "The rejection reason cannot be empty.",
+      "maxLength": "The rejection reason can be at most {{max}} characters.",
+      "cancel": "Cancel",
+      "submit": "Reject"
+    }
+  }
+}

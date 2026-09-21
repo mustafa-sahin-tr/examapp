@@ -1,12 +1,12 @@
-<div class="ms-study-content-viewer">
+<div class="ms-study-content-viewer" *transloco="let t; prefix: 'shared.study.content'">
   <div *ngIf="isLoading" class="ms-loading-placeholder">
     <mat-icon>autorenew</mat-icon>
-    <span>İçerik yükleniyor...</span>
+    <span>{{ t('loading') }}</span>
   </div>
 
   <div *ngIf="!isLoading && !content" class="ms-empty-state">
     <mat-icon>error</mat-icon>
-    <p>İçerik bulunamadı.</p>
+    <p>{{ t('notFound') }}</p>
   </div>
 
   <ng-container *ngIf="!isLoading && content">
@@ -20,12 +20,12 @@
           color="warn"
           [class.active]="isFavorite"
           (click)="toggleFavorite()"
-          matTooltip="Favorilere Ekle"
+          [matTooltip]="t('addFavorite')"
         >
           <mat-icon>{{ isFavorite ? 'favorite' : 'favorite_border' }}</mat-icon>
         </button>
 
-        <button mat-icon-button [matMenuTriggerFor]="shareMenu" matTooltip="Paylaş">
+        <button mat-icon-button [matMenuTriggerFor]="shareMenu" [matTooltip]="t('share')">
           <mat-icon>share</mat-icon>
         </button>
         <mat-menu #shareMenu="matMenu">
@@ -44,13 +44,13 @@
           <mat-divider></mat-divider>
           <button mat-menu-item (click)="shareContent('copy')">
             <mat-icon>content_copy</mat-icon>
-            <span>Linki Kopyala</span>
+            <span>{{ t('copyLink') }}</span>
           </button>
         </mat-menu>
 
         <button mat-raised-button color="primary" [disabled]="isCompleted" (click)="onMarkCompleted()">
           <mat-icon>{{ isCompleted ? 'check_circle' : 'check' }}</mat-icon>
-          {{ isCompleted ? 'Tamamlandı' : 'Tamamlandı Olarak İşaretle' }}
+          {{ isCompleted ? t('completed') : t('markCompleted') }}
         </button>
       </div>
     </div>
@@ -73,10 +73,10 @@
         <div class="ms-document-container">
           <mat-card>
             <mat-card-content>
-              <p>Dökümanı görüntülemek için aşağıdaki linke tıklayabilirsiniz.</p>
+              <p>{{ t('documentHint') }}</p>
               <a mat-raised-button color="accent" [href]="content.url" target="_blank">
                 <mat-icon>launch</mat-icon>
-                Dökümanı Görüntüle
+                {{ t('openDocument') }}
               </a>
             </mat-card-content>
           </mat-card>
@@ -90,19 +90,19 @@
 
     <!-- Tabs for comments and notes -->
     <mat-tab-group animationDuration="0ms" class="ms-content-tabs">
-      <mat-tab label="Yorumlar">
+      <mat-tab [label]="t('commentsTab')">
         <div class="ms-comments-section">
           <div class="ms-comment-form">
             <mat-form-field appearance="outline" class="ms-comment-input">
-              <mat-label>Yorum ekle</mat-label>
+              <mat-label>{{ t('addComment') }}</mat-label>
               <textarea
                 matInput
                 [formControl]="commentControl"
-                placeholder="Bu içerik hakkında bir yorum yazın..."
+                [placeholder]="t('commentPlaceholder')"
               ></textarea>
             </mat-form-field>
             <button mat-raised-button color="primary" [disabled]="!commentControl.value" (click)="addComment()">
-              Gönder
+              {{ t('send') }}
             </button>
           </div>
 
@@ -110,7 +110,7 @@
 
           <div class="ms-comments-list">
             <div *ngIf="comments.length === 0" class="ms-empty-comments">
-              <p>Henüz hiç yorum yok. İlk yorumu siz yapın!</p>
+              <p>{{ t('noComments') }}</p>
             </div>
 
             <div *ngFor="let comment of comments" class="ms-comment">
@@ -126,26 +126,26 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="Notlarım">
+      <mat-tab [label]="t('notesTab')">
         <div class="ms-notes-section">
           <div class="ms-note-form">
             <mat-form-field appearance="outline" class="ms-note-input">
-              <mat-label>Not ekle</mat-label>
+              <mat-label>{{ t('addNote') }}</mat-label>
               <textarea
                 matInput
                 [formControl]="noteControl"
-                placeholder="Bu içerik hakkında notlarınızı yazın..."
+                [placeholder]="t('notePlaceholder')"
               ></textarea>
             </mat-form-field>
             <button mat-raised-button color="primary" [disabled]="!noteControl.value" (click)="saveNote()">
-              Kaydet
+              {{ 'common.save' | transloco }}
             </button>
           </div>
 
           <mat-divider *ngIf="notes.length > 0"></mat-divider>
 
           <div class="ms-notes-list" *ngIf="notes.length > 0">
-            <h3>Önceki Notlarınız</h3>
+            <h3>{{ t('previousNotes') }}</h3>
             <div *ngFor="let note of notes" class="ms-note">
               <div class="ms-note-header">
                 <span class="ms-note-date">{{ note.updatedAt | date : 'dd.MM.yyyy HH:mm' }}</span>

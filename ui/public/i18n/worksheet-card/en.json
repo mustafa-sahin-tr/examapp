@@ -1,0 +1,35 @@
+{
+  "shorts": {
+    "openAria": "Open the test {{name}}",
+    "questionCount": "{{count}} questions",
+    "defaultDescription": "New test",
+    "studentCount": "{{count}} students",
+    "moreActions": "More actions"
+  },
+  "background": {
+    "uploading": "Uploading...",
+    "edit": "Edit image"
+  },
+  "badge": {
+    "questionCount": "{{count}} Questions",
+    "grade": "Grade {{grade}}",
+    "ribbonGrade": "CLASS",
+    "ribbonPersonal": "PERSONAL"
+  },
+  "duration": {
+    "minutes": "{{minutes}}m",
+    "hours": "{{hours}}h",
+    "hoursMinutes": "{{hours}}h {{minutes}}m"
+  },
+  "actions": {
+    "start": "Start",
+    "edit": "Edit",
+    "dismiss": "OK"
+  },
+  "snackbar": {
+    "selectImageFile": "Please select an image file.",
+    "backgroundUpdated": "Background image updated.",
+    "uploadFailed": "Something went wrong while uploading the image.",
+    "processFailed": "Something went wrong while processing the image."
+  }
+}

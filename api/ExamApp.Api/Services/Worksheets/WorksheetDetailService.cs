@@ -2,7 +2,9 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -14,15 +16,22 @@ namespace ExamApp.Api.Services.Worksheets;
 /// </summary>
 public class WorksheetDetailService : IWorksheetDetailService
 {
-    private const string UnclassifiedTopicName = "Sınıflandırılmamış";
     private const string RoleTeacher = "Teacher";
     private const string RoleStudent = "Student";
 
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
 
-    public WorksheetDetailService(AppDbContext context, IAuthApiClient authApiClient)
+    // Client'a donen mesajlar ve ekranda gosterilen etiketler buradan gelir (issue #184).
+    // DI her zaman gercek localizer'i verir; parametre yalnizca DI'siz (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    /// <summary>Konusu atanmamis sorular icin gosterilen grup adi.</summary>
+    private string UnclassifiedTopicName => _localizer["worksheets.detail.unclassifiedTopic"].Value;
+
+    public WorksheetDetailService(AppDbContext context, IAuthApiClient authApiClient, IStringLocalizer<Messages>? localizer = null)
     {
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _context = context;
         _authApiClient = authApiClient;
     }
@@ -567,10 +576,10 @@ public class WorksheetDetailService : IWorksheetDetailService
             return null;
 
         if (instance.StudentId != studentId)
-            throw new UnauthorizedAccessException("Bu test oturumu size ait değil.");
+            throw new UnauthorizedAccessException(_localizer["worksheets.detail.sessionNotYours"]);
 
         if (instance.Status != WorksheetInstanceStatus.Completed)
-            throw new InvalidOperationException("Test tamamlanmamış.");
+            throw new InvalidOperationException(_localizer["worksheets.detail.sessionNotCompleted"]);
 
         var expectedName = $"{instance.Worksheet.Name} — Yanlışlarım";
 
@@ -599,7 +608,7 @@ public class WorksheetDetailService : IWorksheetDetailService
             .ToList();
 
         if (wrongQuestions.Count == 0)
-            throw new InvalidOperationException("Yanlış soru yok.");
+            throw new InvalidOperationException(_localizer["worksheets.detail.noWrongQuestions"]);
 
         var source = instance.Worksheet;
         var order = 1;

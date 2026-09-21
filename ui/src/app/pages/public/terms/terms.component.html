@@ -1,11 +1,9 @@
-<section class="terms">
-  <h1>Kullanım Şartları</h1>
-  <p>
-    ExamApp hizmetlerini kullanarak aşağıdaki şartları kabul etmiş olursunuz. Lütfen tüm kuralları dikkatlice okuyunuz.
-  </p>
+<section class="terms" *transloco="let t; prefix: 'public-pages.terms'">
+  <h1>{{ t('title') }}</h1>
+  <p>{{ t('intro') }}</p>
   <ul>
-    <li>ExamApp, kullanıcıların sınav deneyimini iyileştirmek için tasarlanmıştır.</li>
-    <li>Hizmetlerimizin kötüye kullanımı yasaktır.</li>
-    <li>Güncellenen şartlar ve koşullar için bu sayfayı düzenli olarak kontrol ediniz.</li>
+    <li>{{ t('purpose') }}</li>
+    <li>{{ t('misuse') }}</li>
+    <li>{{ t('updates') }}</li>
   </ul>
 </section>

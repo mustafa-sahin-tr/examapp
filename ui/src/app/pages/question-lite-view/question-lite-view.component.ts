@@ -4,11 +4,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { Question } from '../../models/question';
 import { SafeHtmlPipe } from '../../services/safehtml';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-question-lite-view',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, SafeHtmlPipe],
+  imports: [CommonModule, MatCardModule, MatButtonModule, SafeHtmlPipe, TranslocoDirective],
+  // test-solve / practice-solve gibi baska scope'lu sayfalardan da kullanildigi icin scope'u kendisi saglar.
+  providers: [provideTranslocoScope('question')],
   templateUrl: './question-lite-view.component.html',
   styleUrl: './question-lite-view.component.scss',
 })

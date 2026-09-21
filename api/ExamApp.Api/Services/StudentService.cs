@@ -4,7 +4,9 @@ using System.Linq;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services;
 
@@ -13,10 +15,16 @@ public class StudentService : IStudentService
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
 
-    public StudentService(AppDbContext context, IAuthApiClient authApiClient)
+    // Client'a ulaşan ResponseBaseDto.Message metinleri buradan gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'sız kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public StudentService(AppDbContext context, IAuthApiClient authApiClient, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _authApiClient = authApiClient;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
     public async Task<List<Grade>> GetGradesAsync()
     {
@@ -78,7 +86,7 @@ public class StudentService : IStudentService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Seçilen okul bulunamadı."
+                Message = _localizer["student.schoolNotFound"]
             };
         }
 
@@ -106,7 +114,7 @@ public class StudentService : IStudentService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = "Öğrenci başarıyla kaydedildi.",
+            Message = _localizer["student.registered"],
             ObjectId = student.Id
         };
     }
@@ -119,7 +127,7 @@ public class StudentService : IStudentService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Öğrenci bulunamadı."
+                Message = _localizer["student.notFound"]
             };
         }
 
@@ -128,7 +136,7 @@ public class StudentService : IStudentService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = "Öğrenci sınıfı başarıyla güncellendi."
+            Message = _localizer["student.gradeUpdated"]
         };
 
     }
@@ -203,7 +211,7 @@ public class StudentService : IStudentService
             return new UpdateThemeDto
             {
                 Success = false,
-                Message = "Öğrenci bulunamadı."
+                Message = _localizer["student.notFound"]
             };
         }
 
@@ -215,7 +223,7 @@ public class StudentService : IStudentService
         return new UpdateThemeDto
         {
             Success = true,
-            Message = "Theme tercihi güncellendi.",
+            Message = _localizer["student.theme.updated"],
             ThemePreset = student.ThemePreset,
             ThemeCustomConfig = student.ThemeCustomConfig
         };

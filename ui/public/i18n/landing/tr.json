@@ -1,0 +1,367 @@
+{
+  "meta": {
+    "title": "Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu",
+    "description": "Hedef Okul, 3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları, online sınavlar ve yapay zekâ destekli soru tespiti sunan Türkiye'nin eğitim platformu.",
+    "ogTitle": "Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu",
+    "ogDescription": "3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi kolaylaştırıyoruz."
+  },
+  "common": {
+    "backToTop": "Başa dön"
+  },
+  "nav": {
+    "toggleMenu": "Menüyü aç/kapat",
+    "home": "Ana Sayfa",
+    "features": "Özellikler",
+    "courses": "Dersler",
+    "howItWorks": "Nasıl Çalışır?",
+    "pricing": "Fiyatlandırma",
+    "faq": "SSS",
+    "blog": "Blog",
+    "register": "Kayıt Ol",
+    "registerStudent": "Öğrenci",
+    "registerTeacher": "Öğretmen",
+    "registerParent": "Veli",
+    "login": "Giriş Yap"
+  },
+  "hero": {
+    "titleLead": "Her Sınavda Başarı — Tek",
+    "titleHighlight": "Güçlü Platform.",
+    "description": "Hedef Okul, öğrenciler, öğretmenler ve ebeveynler için tasarlanmış kapsamlı bir online sınav ve çalışma yaprağı platformudur. Akıllı soru bankası, gerçek zamanlı sınavlar ve ilerleme takibi ile hedefine ulaş.",
+    "cta": "Çalışma Yapraklarını Keşfet",
+    "reviewsLabel": "Öğrenci Yorumları",
+    "activeStudents": "10.000+ Aktif Öğrenci"
+  },
+  "discover": {
+    "title": "Sınıf Seviyene Göre En İyi Çalışma Yapraklarını Keşfet",
+    "description": "Öğretmenler tarafından hazırlanan 10.000+ çalışma yaprağı ve sınav — 3. sınıftan 8. sınıfa kadar tüm dersler için.",
+    "cta": "Çalışmaya Başla",
+    "ratingHighlight": "50.000+ öğrenci çalışma yapraklarına 5 yıldız verdi"
+  },
+  "news": {
+    "title": "Hedef Okul'dan Haberler",
+    "morePrompt": "Daha fazlasını okumak ister misin?",
+    "allNews": "Tüm haberler",
+    "featureRelease": {
+      "tag": "Yeni Özellik",
+      "title": "Yapay Zekâ Destekli Soru Tespiti Artık Canlıda",
+      "excerpt": "YOLOv8 tabanlı görüntü işleme motoru sayesinde tarayıcıdan yüklenen soru kâğıtları otomatik olarak tanınıyor ve dijital ortama aktarılıyor.",
+      "author": "Geliştirici Ekibi",
+      "date": "2 gün önce"
+    },
+    "parentGuide": {
+      "tag": "Ebeveyn Rehberi",
+      "title": "Çocuğunuzun Sınav Sürecini Takip Etmenin 5 Yolu",
+      "excerpt": "Hedef Okul'daki ebeveyn paneli ile çocuğunuzun hangi konularda zorlandığını anlık olarak görün, eksik konulara odaklanın.",
+      "author": "Editör Ekibi",
+      "date": "5 saat önce"
+    },
+    "successStory": {
+      "tag": "Başarı Hikayesi",
+      "title": "\"Matematik Sınavına Hazırlandım, 95 Aldım\"",
+      "excerpt": "4. sınıf öğrencisi Ali, her gün 10 dakika çalışma yaprağı çözerek dönem sonunda sınıfının birincisi oldu.",
+      "date": "1 hafta önce"
+    },
+    "teacherTips": {
+      "tag": "Öğretmen İpuçları",
+      "title": "Etkili Çalışma Yaprağı Nasıl Hazırlanır?",
+      "excerpt": "Soru çeşitliliği, görsel destekler ve zorluk dengesiyle öğrenci motivasyonunu artıran yapraklar oluşturun.",
+      "date": "21 Mart 2026"
+    }
+  },
+  "funfacts": {
+    "students": {
+      "value": "50.000+",
+      "label": "Aktif Öğrenci"
+    },
+    "teachers": {
+      "value": "2.000+",
+      "label": "Kayıtlı Öğretmen"
+    },
+    "questions": {
+      "value": "500.000+",
+      "label": "Çözülen Soru"
+    },
+    "worksheets": {
+      "value": "10.000+",
+      "label": "Çalışma Yaprağı"
+    }
+  },
+  "categories": {
+    "title": "Ders Kategorileri",
+    "description": "Tüm sınıf düzeyleri için müfredata uygun çalışma yaprakları ve sınavlar.",
+    "viewAll": "Tümünü Görüntüle",
+    "turkish": "Türkçe",
+    "math": "Matematik",
+    "science": "Fen Bilimleri",
+    "social": "Sosyal Bilgiler",
+    "english": "İngilizce",
+    "life": "Hayat Bilgisi",
+    "religion": "Din Kültürü",
+    "history": "İnkılâp Tarihi",
+    "physicalEducation": "Beden Eğitimi"
+  },
+  "courses": {
+    "sub": "Öne Çıkan Çalışma Yaprakları",
+    "title": "Öğrenme Yolculuğuna Başla",
+    "description": "Uzman öğretmenler tarafından hazırlanan müfredata uygun çalışma yaprakları ve sınavlarla hedefine ulaş.",
+    "tabs": {
+      "turkish": "Türkçe",
+      "math": "Matematik",
+      "science": "Fen Bilimleri",
+      "social": "Sosyal Bilgiler",
+      "english": "İngilizce",
+      "life": "Hayat Bilgisi"
+    },
+    "topics": {
+      "phonetics": { "name": "Ses Bilgisi", "students": "1.200+ Öğrenci" },
+      "semantics": { "name": "Anlam Bilgisi", "students": "3.500+ Öğrenci" },
+      "reading": { "name": "Okuma Anlama", "students": "5.100+ Öğrenci" },
+      "spelling": { "name": "Yazım Kuralları", "students": "2.800+ Öğrenci" },
+      "punctuation": { "name": "Noktalama İşaretleri", "students": "1.900+ Öğrenci" },
+      "paragraph": { "name": "Paragraf", "students": "4.300+ Öğrenci" },
+      "wordTypes": { "name": "Sözcük Türleri", "students": "2.100+ Öğrenci" }
+    },
+    "price": "Ücretsiz",
+    "cta": "Çalışmaya Başla",
+    "reading4": {
+      "badge": "En Çok Beğenilen",
+      "title": "4. Sınıf Türkçe Okuma Anlama",
+      "description": "Metni anlama, ana fikir bulma, olayları sıralamayla öğrencilerin Türkçe okuma anlama becerilerini geliştirin.",
+      "rating": "4.9",
+      "reviews": "(1.240 Değerlendirme)",
+      "questions": "20 Soru",
+      "questionsExtended": "25 Soru",
+      "students": "7.820 Öğrenci"
+    },
+    "math3": {
+      "badge": "Trend",
+      "title": "3. Sınıf Matematik İşlemler",
+      "description": "Dört işlem, basamak değeri ve örüntüler konularında öğrencilerin temel matematik becerilerini geliştirir.",
+      "rating": "4.0",
+      "reviews": "(980 Değerlendirme)",
+      "questions": "18 Soru",
+      "students": "5.645 Öğrenci"
+    },
+    "geometry5": {
+      "badge": "Öğrenci Favorisi",
+      "title": "5. Sınıf Matematik Geometri",
+      "description": "Yüzey alanları, çevre hesaplama ve geometrik şekiller konularında öğrencilerin problem çözme becerilerini geliştirir.",
+      "rating": "4.5",
+      "reviews": "(1.560 Değerlendirme)",
+      "questions": "22 Soru",
+      "students": "5.985 Öğrenci"
+    },
+    "science4": {
+      "badge": "Yeni Eklendi",
+      "title": "4. Sınıf Fen Bilimleri Madde",
+      "description": "Maddenin özellikleri, hal değişimleri ve karışımlar konularında öğrencilerin fen bilgisi temellerini güçlendirir.",
+      "rating": "4.7",
+      "reviews": "(2.180 Değerlendirme)",
+      "questions": "28 Soru",
+      "students": "8.735 Öğrenci"
+    },
+    "bottomText": "Tüm derslerde müfredata uygun, uzman öğretmenler tarafından hazırlanmış içeriklerle öğrenme yolculuğuna devam et.",
+    "bottomCta": "Tüm Çalışma Yapraklarını Gör"
+  },
+  "howItWorks": {
+    "sub": "Nasıl Çalışır?",
+    "title": "Hedef Okul Nasıl Çalışır?",
+    "register": {
+      "title": "Kayıt Ol",
+      "description": "Öğrenci, öğretmen veya ebeveyn olarak"
+    },
+    "choose": {
+      "title": "Sınavı Seç veya Oluştur",
+      "description": "Çalışma yaprağına katıl veya kendin oluştur"
+    },
+    "track": {
+      "title": "Takip Et & Rozet Kazan",
+      "description": "Gelişimini izle ve başarılarını rozetlerle ödüllendir"
+    }
+  },
+  "overview": {
+    "students": { "value": "50.000+", "label": "AKTİF ÖĞRENCİ" },
+    "worksheets": { "value": "10.000+", "label": "ÇALIŞMA YAPRAĞI" },
+    "subjects": { "value": "10+", "label": "DERS KONUSU" },
+    "rating": { "value": "4.8", "label": "ORTALAMA PUAN" },
+    "titleLead": "Sınav Yolculuğuna Başla ve",
+    "titleHighlight": "Hedeflediğin",
+    "titleTrail": "Başarıya Ulaş",
+    "description": "Uzman öğretmenlerin hazırladığı çalışma yapraklarıyla daha hızlı, daha akıllıca çalış.",
+    "cta": "Hemen Başla",
+    "communityTitle": "Tüm Derslerde Öğrencilerinize Erişin",
+    "communityDescription": "Öğrencilerinizin gelişimini takip edin, çalışma yapraklarını yönetin ve başarılarını anında görün.",
+    "communityCta": "Topluluğumuza Katıl"
+  },
+  "blog": {
+    "sub": "Blogumuz",
+    "titleLead": "Hedef Okul'dan",
+    "titleHighlight": "Bilgi, İpucu",
+    "titleTrail": "ve İlham",
+    "description": "Öğrenci, öğretmen ve ebeveynler için hazırlanmış çalışma tüyoları, başarı hikayeleri ve eğitim rehberleriyle her zaman bir adım önde ol.",
+    "cta": "Tüm Yazıları Gör",
+    "motivation": {
+      "tag": "Öğrenme İpuçları",
+      "title": "Sınavlara Hazırlanırken Motivasyonunu Nasıl Yüksek Tutarsın?",
+      "date": "10 Mart 2026",
+      "readTime": "4 dk okuma",
+      "excerpt": "Sınavlara hazırlanırken odağını kaybetme! Bu basit yöntemlerle düzenli ve motive bir çalışma alışkanlığı edinebilirsin."
+    },
+    "success": {
+      "tag": "Başarı Hikayeleri",
+      "title": "Hedef Okul ile Sınav Başarısına Ulaşan Öğrenciler",
+      "date": "5 Mart 2026",
+      "readTime": "7 dk okuma",
+      "excerpt": "Platforma üye olan öğrencilerin çalışma yapraklarıyla nasıl sınav başarısı yakaladıklarını gerçek hikayelerle keşfet."
+    }
+  },
+  "about": {
+    "sub": "Hedef Okul Hakkında",
+    "titleLead": "Tek Platform. Sınırsız",
+    "titleHighlight": "Başarı",
+    "titleTrail": "Fırsatları.",
+    "description": "Hedef Okul'da kaliteli eğitimin tüm öğrenciler için ulaşılabilir, eğlenceli ve güçlendirici olması gerektiğine inanıyoruz.",
+    "students": { "value": "50.000+", "label": "Aktif Öğrenci" },
+    "teachers": { "value": "2.000+", "label": "Uzman Öğretmen" },
+    "anywhere": {
+      "title": "Her Yerden Erişin",
+      "description": "Ev, okul veya hareket halindeyken — istediğin cihazda, istediğin zaman çalış."
+    },
+    "teach": {
+      "title": "Güvenle Öğret",
+      "description": "Sınavları oluşturmak, takip etmek ve yönetmek için gereken tüm araçlar parmak ucunda."
+    },
+    "badges": {
+      "title": "Rozet Kazan",
+      "description": "Sınavları tamamla ve başarılarını gösteren dijital rozetler kazan."
+    },
+    "cta": "Hakkımızda Daha Fazlası"
+  },
+  "faq": {
+    "sub": "Sıkça Sorulan Sorular",
+    "titleLead": "Hedef Okul Hakkında",
+    "titleHighlight": "Merak Ettikleriniz",
+    "membership": {
+      "question": "Hedef Okul'a nasıl üye olabilirim?",
+      "answer": "Siteye girerek \"Kayıt Ol\" butonuna tıklayın, e-posta adresiniz ve şifrenizle birkaç saniyede ücretsiz hesap oluşturun. Kayıt sonrasında tüm çalışma yapraklarına ve sınavlara anında erişebilirsiniz."
+    },
+    "pricing": {
+      "question": "Çalışma yaprakları ücretli mi?",
+      "answer": "Platformdaki çalışma yapraklarının büyük çoğunluğu ücretsizdir. Tüm öğrenciler kayıt olmadan önizleme yapabilir; kayıt sonrasında ise içerikleri tam olarak kullanabilir."
+    },
+    "teacher": {
+      "question": "Öğretmen olarak kendi sınavımı oluşturabilir miyim?",
+      "answer": "Evet! Öğretmen hesabıyla giriş yaparak ders, konu ve sınıf seviyesine göre özelleştirilmiş sınavlar ve çalışma yaprakları hazırlayabilir, öğrencilerinize atayabilirsiniz. Yapay zekâ destekli soru tespiti de bu süreçte size yardımcı olur."
+    },
+    "parent": {
+      "question": "Ebeveyn olarak çocuğumun ilerlemesini takip edebilir miyim?",
+      "answer": "Evet, ebeveyn hesabıyla çocuğunuzun tamamladığı sınavları, aldığı puanları ve kazandığı rozetleri gerçek zamanlı olarak takip edebilirsiniz. Böylece öğrenme sürecinin her adımında yanında olabilirsiniz."
+    }
+  },
+  "pricing": {
+    "title": "Planınızı Seçin",
+    "description": "Öğrenci, öğretmen ve okullar için uygun fiyatlı planlarla sınırsız öğrenme deneyimi.",
+    "monthly": "Aylık",
+    "yearly": "Yıllık (%15 İndirim)",
+    "perMonth": "/aylık",
+    "free": {
+      "name": "Ücretsiz",
+      "price": "0 ₺",
+      "cta": "Ücretsiz Başla",
+      "worksheetLimit": "10 çalışma yaprağına erişim",
+      "basicProgress": "Temel ilerleme takibi",
+      "limitedExams": "Sınırlı sınav oluşturma",
+      "emailNotifications": "E-posta bildirimleri",
+      "freeArchive": "Ücretsiz içerik arşivi",
+      "community": "Topluluk forumlarına erişim",
+      "mobile": "Mobil uyumlu kullanım"
+    },
+    "teacher": {
+      "name": "Öğretmen",
+      "price": "99 ₺",
+      "cta": "Öğretmen Planı Al",
+      "unlimitedWorksheets": "Sınırsız çalışma yaprağı erişimi",
+      "customExams": "Özel sınav ve çalışma yaprağı oluşturma",
+      "aiDetection": "YZ destekli soru tespiti",
+      "progressReports": "Öğrenci ilerleme raporları",
+      "badges": "Rozet ve ödül sistemi",
+      "downloads": "Materyal indirme",
+      "prioritySupport": "Öncelikli destek",
+      "parentNotifications": "Ebeveyn bildirim sistemi",
+      "classAnalytics": "Sınıf bazlı analitik"
+    },
+    "school": {
+      "name": "Okul",
+      "price": "499 ₺",
+      "cta": "Teklif Al",
+      "multiTeacher": "Çoklu öğretmen yönetimi",
+      "classReports": "Sınıf ve şube bazlı raporlar",
+      "customContent": "Özelleştirilmiş içerik havuzu",
+      "advancedAnalytics": "Gelişmiş analitik ve raporlama",
+      "bulkEnrollment": "Toplu öğrenci kaydı",
+      "branding": "Özel okul markalaşması",
+      "api": "API entegrasyonu",
+      "rbac": "Rol bazlı erişim kontrolü",
+      "sla": "SLA & öncelikli teknik destek"
+    }
+  },
+  "services": {
+    "titleLead": "Neden",
+    "titleHighlight": "Hedef Okul",
+    "titleTrail": "ile öğrenmelisiniz?",
+    "description": "Öğrenci, öğretmen ve ebeveynler için tasarlanmış, her ihtiyaca cevap veren bir platform.",
+    "worksheets": {
+      "titleTop": "10.000+",
+      "titleBottom": "Çalışma Yaprağı",
+      "description": "3. sınıftan 8. sınıfa kadar tüm dersler için müfredata uygun içerikler."
+    },
+    "badges": {
+      "titleTop": "Rozet &",
+      "titleBottom": "Ödül Sistemi",
+      "description": "Öğrenciler tamamladıkları sınavlarda rozet kazanarak motivasyonlarını canlı tutar."
+    },
+    "panels": {
+      "titleTop": "Öğretmen &",
+      "titleBottom": "Ebeveyn Paneli",
+      "description": "Öğretmenler sınav oluşturur, ebeveynler çocuklarının ilerlemesini anlık takip eder."
+    },
+    "ai": {
+      "titleTop": "YZ Destekli",
+      "titleBottom": "Soru Tespiti",
+      "description": "YOLOv8 tabanlı yapay zekâ ile fotoğraftan soru algılama ve otomatik sınav oluşturma."
+    }
+  },
+  "footer": {
+    "about": "Öğrencilere, öğretmenlere ve ebeveynlere yönelik müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi her yerde, her zaman mümkün kılıyoruz.",
+    "followUs": "Bizi Takip Edin",
+    "newsletterTitle": "Bültenimize Abone Ol",
+    "newsletterDescription": "En yeni çalışma yaprakları, ipuçları ve başarı hikayelerini doğrudan gelen kutunuza alın.",
+    "emailPlaceholder": "E-posta adresiniz",
+    "subscribe": "Abone Ol",
+    "quickLinksTitle": "Hızlı Bağlantılar",
+    "quickLinks": {
+      "about": "Hakkımızda",
+      "worksheets": "Tüm Çalışma Yaprakları",
+      "becomeTeacher": "Öğretmen Ol",
+      "blog": "Blog",
+      "contact": "İletişim",
+      "help": "Yardım Merkezi"
+    },
+    "categoriesTitle": "Ders Kategorileri",
+    "legalTitle": "Yasal",
+    "legal": {
+      "terms": "Kullanım Koşulları",
+      "privacy": "Gizlilik Politikası",
+      "teachers": "Öğretmenler",
+      "successStories": "Başarı Hikayeleri"
+    },
+    "contactTitle": "İletişim",
+    "contact": {
+      "emailLabel": "E-posta:",
+      "phoneLabel": "Telefon:",
+      "addressLabel": "Adres:",
+      "address": "Ankara, Türkiye"
+    },
+    "copyright": "Tüm hakları saklıdır."
+  }
+}

@@ -9,7 +9,9 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.TeacherApprovals;
 
@@ -20,10 +22,16 @@ public class TeacherApprovalService : ITeacherApprovalService
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
 
-    public TeacherApprovalService(AppDbContext context, IAuthApiClient authApiClient)
+    // Client'a ulasan mesajlar sozlukten gelir (issue #184). Localizer opsiyoneldir: DI disinda
+    // olusturulan (birim test) ornekler varsayilan dile kilitli fallback'e duser.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public TeacherApprovalService(AppDbContext context, IAuthApiClient authApiClient,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _authApiClient = authApiClient;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default)
@@ -67,17 +75,17 @@ public class TeacherApprovalService : ITeacherApprovalService
         teacher!.ApprovalStatus = TeacherApprovalStatus.Approved;
         teacher.RejectionReason = null;
         await _context.SaveChangesAsync(ct);
-        return Ok("Başvuru onaylandı.", teacher.Id);
+        return Ok(_localizer["admin.teacherApplication.approved"], teacher.Id);
     }
 
     public async Task<ResponseBaseDto> RejectAsync(int teacherId, string reason, int adminUserId, CancellationToken ct = default)
     {
         var trimmedReason = reason?.Trim();
         if (string.IsNullOrWhiteSpace(trimmedReason))
-            return Fail("Red nedeni boş olamaz.");
+            return Fail(_localizer["admin.teacherApplication.rejectReasonRequired"]);
 
         if (trimmedReason.Length > RejectionReasonMaxLength)
-            return Fail($"Red nedeni en fazla {RejectionReasonMaxLength} karakter olabilir.");
+            return Fail(_localizer["admin.teacherApplication.rejectReasonTooLong", RejectionReasonMaxLength]);
 
         var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.Id == teacherId, ct);
         var guardError = GuardPendingIndependent(teacher);
@@ -88,23 +96,23 @@ public class TeacherApprovalService : ITeacherApprovalService
         teacher!.ApprovalStatus = TeacherApprovalStatus.Rejected;
         teacher.RejectionReason = trimmedReason;
         await _context.SaveChangesAsync(ct);
-        return Ok("Başvuru reddedildi.", teacher.Id);
+        return Ok(_localizer["admin.teacherApplication.rejected"], teacher.Id);
     }
 
     /// <summary>
     /// Yalnızca bağımsız + Pending kayıtlar karar alabilir. Okula bağlı öğretmen hiçbir zaman uygun değildir;
     /// zaten karar verilmiş başvuru tekrar onaylanamaz/reddedilemez (idempotency).
     /// </summary>
-    private static ResponseBaseDto? GuardPendingIndependent(Teacher? teacher)
+    private ResponseBaseDto? GuardPendingIndependent(Teacher? teacher)
     {
         if (teacher == null)
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Başvuru bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["admin.teacherApplication.notFound"] };
 
         if (!teacher.IsIndependentTutor)
-            return Fail("Bu öğretmen bağımsız öğretmen başvurusu değil.");
+            return Fail(_localizer["admin.teacherApplication.notIndependent"]);
 
         if (teacher.ApprovalStatus != TeacherApprovalStatus.Pending)
-            return new ResponseBaseDto { Success = false, Conflict = true, Message = "Bu başvuru için zaten karar verilmiş." };
+            return new ResponseBaseDto { Success = false, Conflict = true, Message = _localizer["admin.teacherApplication.alreadyDecided"] };
 
         return null;
     }

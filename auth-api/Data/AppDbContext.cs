@@ -1,5 +1,6 @@
 using System;
 using System.Linq.Expressions;
+using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,7 +38,14 @@ public abstract class BaseEntity
 
     [Required]
     public string Role { get; set; } // Öğrenci, Öğretmen, Veli
- 
+
+    /// <summary>
+    /// Kullanıcının tercih ettiği arayüz dili (issue #181). Kanonik, bölgesiz dil kodu:
+    /// <c>tr</c> | <c>en</c> — izin verilen liste <see cref="ExamApp.Foundation.Localization.SupportedLocales"/>.
+    /// Mevcut satırlar migration'daki kolon default'u ile "tr" alır.
+    /// </summary>
+    [Required, MaxLength(8)]
+    public string PreferredLocale { get; set; } = SupportedLocales.Default;
 }
 
 public enum UserRole
@@ -106,7 +114,13 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        
+        // PreferredLocale (issue #181): DB tarafında da default "tr" — böylece migration
+        // mevcut satırları "tr" ile doldurur ve EF dışından yapılan INSERT'ler de boş kalmaz.
+        modelBuilder.Entity<User>()
+            .Property(u => u.PreferredLocale)
+            .HasMaxLength(8)
+            .IsRequired()
+            .HasDefaultValue(SupportedLocales.Default);
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {

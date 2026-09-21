@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Observable, forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
@@ -29,6 +30,9 @@ import { Question } from '../../models/question';
 import { Subject } from '../../models/subject';
 import { Paged } from '../../models/test-instance';
 import { Topic } from '../../models/topic';
+
+/** Sayfanin Transloco scope'u: `public/i18n/practice/<lang>.json` (issue #183). */
+const SCOPE = 'practice';
 
 /**
  * Sayfa fazları:
@@ -92,13 +96,16 @@ const EMPTY_HISTORY: Paged<PracticeSession> = { items: [], totalCount: 0, pageNu
     PaginationComponent,
     QuestionCanvasViewComponentv5,
     QuestionLiteViewComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './practice-solve.component.html',
   styleUrls: ['./practice-solve.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PracticeSolveComponent implements OnInit {
   private readonly practiceService = inject(PracticeService);
+  private readonly transloco = inject(TranslocoService);
   private readonly studentService = inject(StudentService);
   private readonly subjectService = inject(SubjectService);
   private readonly route = inject(ActivatedRoute);
@@ -257,13 +264,13 @@ export class PracticeSolveComponent implements OnInit {
                 this.setupLoading.set(false);
               },
               error: (err: unknown) => {
-                this.setupError.set(this.messageOf(err, 'Dersler yüklenemedi.'));
+                this.setupError.set(this.messageOf(err, this.text('setup.loadError')));
                 this.setupLoading.set(false);
               },
             });
         },
         error: (err: unknown) => {
-          this.setupError.set(this.messageOf(err, 'Profil bilgisi yüklenemedi.'));
+          this.setupError.set(this.messageOf(err, this.text('setup.profileError')));
           this.setupLoading.set(false);
         },
       });
@@ -333,7 +340,7 @@ export class PracticeSolveComponent implements OnInit {
           this.historyLoading.set(false);
         },
         error: (err: unknown) => {
-          this.historyError.set(this.messageOf(err, 'Geçmiş oturumlar yüklenemedi.'));
+          this.historyError.set(this.messageOf(err, this.text('history.loadError')));
           this.historyLoading.set(false);
         },
       });
@@ -345,11 +352,13 @@ export class PracticeSolveComponent implements OnInit {
 
   /** Liste öğesi yalnız id taşır; adlar kurulum ekranının zaten yüklediği ders/konu kaynağından çözülür. */
   scopeLabel(session: PracticeSession): string {
-    if (session.subjectIds.length === 0 && session.topicIds.length === 0) return 'Tüm dersler';
+    if (session.subjectIds.length === 0 && session.topicIds.length === 0) return this.text('scope.allSubjects');
 
     const subjectNames = this.subjectNameById();
     const parts: string[] = [];
-    const subjects = session.subjectIds.map((id) => subjectNames.get(id) ?? `Ders #${id}`);
+    const subjects = session.subjectIds.map(
+      (id) => subjectNames.get(id) ?? this.text('scope.subjectFallback', { id })
+    );
     if (subjects.length) parts.push(subjects.join(', '));
 
     if (session.topicIds.length) {
@@ -358,7 +367,7 @@ export class PracticeSolveComponent implements OnInit {
       parts.push(
         resolved.length === session.topicIds.length
           ? resolved.join(', ')
-          : `${session.topicIds.length} konu`
+          : this.text('scope.topicCount', { count: session.topicIds.length })
       );
     }
     return parts.join(' · ');
@@ -378,7 +387,9 @@ export class PracticeSolveComponent implements OnInit {
   durationLabel(session: PracticeSession): string {
     if (!session.endTime) return '';
     const seconds = Math.max(0, Math.round((Date.parse(session.endTime) - Date.parse(session.startTime)) / 1000));
-    return seconds < 60 ? `${seconds} sn` : `${Math.round(seconds / 60)} dk`;
+    return seconds < 60
+      ? this.text('duration.seconds', { count: seconds })
+      : this.text('duration.minutes', { count: Math.round(seconds / 60) });
   }
 
   /** Listeden tıklama: aktif oturum kaldığı yerden devam eder, bitmiş oturum incelemeye açılır. */
@@ -418,7 +429,7 @@ export class PracticeSolveComponent implements OnInit {
           this.reviewLoading.set(false);
         },
         error: (err: unknown) => {
-          this.reviewError.set(this.messageOf(err, 'Oturum detayı yüklenemedi.'));
+          this.reviewError.set(this.messageOf(err, this.text('review.loadError')));
           this.reviewLoading.set(false);
         },
       });
@@ -451,17 +462,14 @@ export class PracticeSolveComponent implements OnInit {
     return question.isCorrect ? 'correct' : 'wrong';
   }
 
-  reviewKindLabel(kind: ReviewStatusKind): string {
-    switch (kind) {
-      case 'correct':
-        return 'Doğru';
-      case 'wrong':
-        return 'Yanlış';
-      case 'skipped':
-        return 'Pas';
-      default:
-        return 'Cevaplanmadı';
-    }
+  /** Inceleme durumunun ceviri anahtari (`practice` onekine goreli). */
+  reviewKindLabelKey(kind: ReviewStatusKind): string {
+    return `review.status.${kind}`;
+  }
+
+  /** Sozlukten senkron metin; sayfa sablonu render oldugunda scope yuklu olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${SCOPE}.${key}`, params) ?? '';
   }
 
   private toReviewEntry(row: PracticeSessionReviewQuestion): ReviewEntry {
@@ -739,7 +747,7 @@ export class PracticeSolveComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.busy.set(false);
-        this.error.set(this.messageOf(err, 'İşlem tamamlanamadı. Lütfen tekrar deneyin.'));
+        this.error.set(this.messageOf(err, this.text('error.generic')));
       },
     });
   }

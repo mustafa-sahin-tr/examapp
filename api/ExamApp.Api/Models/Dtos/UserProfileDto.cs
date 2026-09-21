@@ -10,6 +10,13 @@ public class UserProfileDto
     public string Email { get; set; }
     public string Role { get; set; }
     public string Avatar { get; set;}
+    /// <summary>
+    /// Kullanıcının dil tercihi (issue #181): "tr" | "en". Kaynağı auth-api'deki Users tablosu;
+    /// buraya <c>IAuthApiClient.GetUserProfileAsync()</c> yanıtının deserialize'ı ile gelir ve
+    /// Redis profil cache'inde saklanır. Cache'te eski (alanı olmayan) bir kayıt varsa bu
+    /// varsayılan devreye girer.
+    /// </summary>
+    public string PreferredLocale { get; set; } = ExamApp.Foundation.Localization.SupportedLocales.Default;
     // public int ProfileId { get; set;}    
     // public string? SchoolName { get; set; } // Student bilgisi
     // public string? Department { get; set; } // opsiyonel

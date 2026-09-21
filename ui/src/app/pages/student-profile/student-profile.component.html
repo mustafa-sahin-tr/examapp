@@ -1,61 +1,47 @@
-@if(student) {
-
-<!-- Avatar Component (avatar.component.html) -->
-
+@if (student) {
+<ng-container *transloco="let t; prefix: 'student-profile'">
 <mat-tab-group [(selectedIndex)]="activeTab">
-  <mat-tab label="What">
+  <mat-tab [label]="t('tabs.what')">
     <div class="learning-container">
       <div class="learning-text">
-        <h5>Your premier learning partner</h5>
-        <h3>High-caliber content from industry experts</h3>
-        <p>
-          Our experts know their topics. The proof? We carefully select them at about a 6% acceptance rate. And we’re
-          constantly peer reviewing our content for the freshest, most reliable courses across tech.
-        </p>
+        <h5>{{ t('learning.eyebrow') }}</h5>
+        <h3>{{ t('learning.title') }}</h3>
+        <p>{{ t('learning.description') }}</p>
       </div>
       <div class="learning-image">
-        <img src="/assets/experts.jpg" alt="Experts" />
+        <img src="/assets/experts.jpg" [alt]="t('learning.expertsAlt')" />
       </div>
     </div>
 
     <div class="features-container">
       <div class="feature-card">
-        <img src="/assets/certification.svg" alt="Certification" />
-        <h3>Top-tier certification exam prep</h3>
-        <p>
-          Prepare for in-demand certs with unlimited practice exams and labs that validate your learning. Get in-moment
-          feedback to maximize your experience and minimize exam-day nerves.
-        </p>
-        <a href="#">Learn more</a>
+        <img src="/assets/certification.svg" [alt]="t('learning.certification.imageAlt')" />
+        <h3>{{ t('learning.certification.title') }}</h3>
+        <p>{{ t('learning.certification.description') }}</p>
+        <a href="#">{{ t('learning.certification.cta') }}</a>
       </div>
       <div class="feature-card">
-        <img src="/assets/learning-path.svg" alt="Learning Path" />
-        <h3>Curated learning as unique as you</h3>
-        <p>
-          Take a skill or role assessment to track exactly what you know. With content recommendations and tailor-made
-          learning paths, you can close identified gaps—and make you more hireable, too.
-        </p>
-        <a href="#">Take an assessment</a>
+        <img src="/assets/learning-path.svg" [alt]="t('learning.path.imageAlt')" />
+        <h3>{{ t('learning.path.title') }}</h3>
+        <p>{{ t('learning.path.description') }}</p>
+        <a href="#">{{ t('learning.path.cta') }}</a>
       </div>
       <div class="feature-card">
-        <img src="/assets/hands-on.svg" alt="Hands-on" />
-        <h3>Hands-on experiences</h3>
-        <p>
-          Dive into our interactive courses, projects, and labs to learn by doing. Then, practice in live sandbox
-          environments and turn your new knowledge into solid skills that stick.
-        </p>
-        <a href="#">See our labs</a>
+        <img src="/assets/hands-on.svg" [alt]="t('learning.handsOn.imageAlt')" />
+        <h3>{{ t('learning.handsOn.title') }}</h3>
+        <p>{{ t('learning.handsOn.description') }}</p>
+        <a href="#">{{ t('learning.handsOn.cta') }}</a>
       </div>
     </div>
   </mat-tab>
-  <mat-tab label="Info">
+  <mat-tab [label]="t('tabs.info')">
     <mat-card class="profile-card">
       <mat-card-header>
         <div class="profile-header stats-container">
           <div class="avatar-container">
-            <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" />
+            <img [src]="student.avatarUrl || 'default-avatar.png'" class="avatar" [alt]="t('profile.avatarAlt')" />
             <div class="avatar-overlay" (click)="avatarInput.click()">
-              <span>Change</span>
+              <span>{{ t('profile.changeAvatar') }}</span>
             </div>
             <input type="file" #avatarInput (change)="onAvatarChange($event)" hidden />
           </div>
@@ -71,7 +57,7 @@
             </mat-select>
           </div>
           <div class="stat">
-            <p>Seviye: {{ student.level }} ({{ student.xp }} XP)</p>
+            <p>{{ t('profile.level', { level: student.level, xp: student.xp }) }}</p>
           </div>
         </div>
       </mat-card-header>
@@ -79,31 +65,31 @@
         <div class="stats-container">
           <div class="stat">
             <mat-icon>question_answer</mat-icon>
-            <span>{{ student.totalQuestionsSolved }} Soru Çözüldü</span>
+            <span>{{ t('profile.questionsSolved', { count: student.totalQuestionsSolved }) }}</span>
           </div>
           <div class="stat">
             <mat-icon>check_circle</mat-icon>
-            <span>{{ student.correctAnswers }} Doğru Cevap</span>
+            <span>{{ t('profile.correctAnswers', { count: student.correctAnswers }) }}</span>
           </div>
           <div class="stat">
             <mat-icon>highlight_off</mat-icon>
-            <span>{{ student.wrongAnswers }} Yanlış Cevap</span>
+            <span>{{ t('profile.wrongAnswers', { count: student.wrongAnswers }) }}</span>
           </div>
           <div class="stat">
             <mat-icon>assignment_turned_in</mat-icon>
-            <span>{{ student.testsCompleted }} Tamamlanan Test</span>
+            <span>{{ t('profile.testsCompleted', { count: student.testsCompleted }) }}</span>
           </div>
           <div class="stat">
             <mat-icon>emoji_events</mat-icon>
-            <span>{{ student.totalRewards }} Kazanılan Ödül</span>
+            <span>{{ t('profile.rewards', { count: student.totalRewards }) }}</span>
           </div>
           <div class="stat">
             <mat-icon>leaderboard</mat-icon>
-            <span>Liderlik Sıralaması: {{ student.leaderboardRank || '-' }}</span>
+            <span>{{ t('profile.leaderboardRank', { rank: student.leaderboardRank || '-' }) }}</span>
           </div>
         </div>
 
-        <h3>🎖 Kazanılan Rozetler</h3>
+        <h3>{{ t('profile.badgesTitle') }}</h3>
         <div class="badges-container">
           @for ( badge of student.badges ; track badge.name ) {
           <img [src]="badge.imageUrl" [matTooltip]="badge.name" class="badge" />
@@ -124,23 +110,24 @@
       </mat-card-content>
     </mat-card>
   </mat-tab>
-  <mat-tab label="Badges">
+  <mat-tab [label]="t('tabs.badges')">
     <div class="points-container">
-      <app-point-card title="My Points" value="2,500" icon="whatshot"></app-point-card>
-      <app-point-card title="Class Rank" value="3rd" icon="terrain"></app-point-card>
-      <app-point-card title="Year 12 Rank" value="128" icon="flag"></app-point-card>
+      <app-point-card [title]="t('points.myPoints')" value="2,500" icon="whatshot"></app-point-card>
+      <app-point-card [title]="t('points.classRank')" value="3rd" icon="terrain"></app-point-card>
+      <app-point-card [title]="t('points.yearRank')" value="128" icon="flag"></app-point-card>
     </div>
-    <app-section-header title="My Badges" icon="assets/icons/badge.png"></app-section-header>
+    <app-section-header [title]="t('points.myBadges')" icon="assets/icons/badge.png"></app-section-header>
 
     <app-badge-thropy [userId]="studentId ?? 0"></app-badge-thropy>
 
-    <app-section-header title="Leaderboards" icon="assets/icons/leaderboard.png"></app-section-header>
+    <app-section-header [title]="t('points.leaderboards')" icon="assets/icons/leaderboard.png"></app-section-header>
 
     <div class="leaderboards-container">
-      <app-leaderboard leaderboardTitle="Class Leaderboard" [leaderboardData]="classLeaderboard"> </app-leaderboard>
+      <app-leaderboard [leaderboardTitle]="t('points.classLeaderboard')" [leaderboardData]="classLeaderboard">
+      </app-leaderboard>
 
       <app-leaderboard
-        leaderboardTitle="Group Level Leaderboard"
+        [leaderboardTitle]="t('points.groupLeaderboard')"
         [leaderboardData]="groupLeaderboard"
         [showDetails]="true"
       >
@@ -150,7 +137,7 @@
   <!-- Info Tab (Gelecekte Kullanılabilir) -->
 
   <!-- Assignments and Exams Tab -->
-  <mat-tab label="Assignments and Exams">
+  <mat-tab [label]="t('tabs.assignments')">
     <!-- <canvas
     baseChart
     [data]="bubbleChartData"
@@ -197,26 +184,26 @@
 
     <div class="goal-container">
       <div class="goal-header">
-        <h2>Weekly Goal</h2>
+        <h2>{{ t('goal.title') }}</h2>
         <mat-icon>visibility</mat-icon>
       </div>
       <mat-tab-group [(selectedIndex)]="activeTab2">
-        <mat-tab label="Monthly">
-          <div class="goal-stats">0 weeks</div>
-          <p class="goal-subtext">Longest weekly goal streak</p>
+        <mat-tab [label]="t('goal.monthly')">
+          <div class="goal-stats">{{ t('goal.streak', { count: 0 }) }}</div>
+          <p class="goal-subtext">{{ t('goal.streakLabel') }}</p>
           <div class="goal-divider"></div>
-          <h4>March 2025</h4>
-          <p class="goal-subtext">No activity</p>
+          <h4>{{ goalMonth | date: 'LLLL y' }}</h4>
+          <p class="goal-subtext">{{ t('goal.noActivity') }}</p>
         </mat-tab>
-        <mat-tab label="Current"> </mat-tab>
+        <mat-tab [label]="t('goal.current')"> </mat-tab>
       </mat-tab-group>
     </div>
   </mat-tab>
 
   <!-- Weekly Calendar Tab -->
-  <mat-tab label="Weekly Calendar">
+  <mat-tab [label]="t('tabs.weeklyCalendar')">
     <div class="heatmap-container">
-      <h2>Activity Heatmap</h2>
+      <h2>{{ t('heatmap.title') }}</h2>
       <ngx-charts-heat-map
         [view]="[1200, 210]"
         [scheme]="sunsetScheme"
@@ -233,7 +220,7 @@
     </div>
 
     <div class="heatmap-container">
-      <h2>Activity Heatmap 2</h2>
+      <h2>{{ t('heatmap.titleSecondary') }}</h2>
       <ngx-charts-heat-map
         [view]="[1200, 210]"
         [scheme]="sunsetScheme"
@@ -250,7 +237,7 @@
     </div>
 
     <div class="heatmap-container">
-      <h2>Activity Heatmap (API)</h2>
+      <h2>{{ t('heatmap.titleApi') }}</h2>
 
       <ng-container *ngIf="!activityApiLoading; else activityHeatmapLoading">
         <ng-container *ngIf="!activityApiError; else activityHeatmapError">
@@ -274,25 +261,25 @@
       </ng-container>
 
       <ng-template #activityHeatmapLoading>
-        <p>Aktivite verisi yükleniyor...</p>
+        <p>{{ t('heatmap.loading') }}</p>
       </ng-template>
 
       <ng-template #activityHeatmapError>
-        <p>Aktivite verisi alınırken bir hata oluştu.</p>
+        <p>{{ t('heatmap.error') }}</p>
       </ng-template>
 
       <ng-template #activityHeatmapEmpty>
-        <p>Son bir yıl için aktivite verisi bulunamadı.</p>
+        <p>{{ t('heatmap.empty') }}</p>
       </ng-template>
     </div>
   </mat-tab>
 
   <!-- User Theme Settings Tab -->
-  <mat-tab label="Tema Ayarları">
+  <mat-tab [label]="t('tabs.theme')">
     <div class="theme-settings-container">
       <app-user-theme-switcher></app-user-theme-switcher>
     </div>
   </mat-tab>
 </mat-tab-group>
-
+</ng-container>
 }

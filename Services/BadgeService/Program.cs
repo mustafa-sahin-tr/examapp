@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using BadgeService.Security;
+using ExamApp.Foundation.Localization;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +54,14 @@ builder.Services.AddScoped<StudentReportService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.SectionName));
 builder.Services.AddScoped<IQuestionClassifier, GeminiQuestionClassifier>();
+
+// Bildirim lokalizasyonu (issue #185): notifications.<dil>.json altında toplanan metinler +
+// hedef kullanıcının UserLocalePreference'tan çözülen dili. IStringLocalizer değil doğrudan
+// JsonResourceStore kullanılır — consumer'larda istek bağlamı (CurrentUICulture) yok, bkz.
+// NotificationTextFactory XML yorumu.
+builder.Services.AddJsonLocalization(o => o.ResourcesPath = "Resources");
+builder.Services.AddScoped<IUserLocaleResolver, UserLocaleResolver>();
+builder.Services.AddSingleton<INotificationTextFactory, NotificationTextFactory>();
 
 // Badge DbContext
 builder.Services.AddDbContext<BadgeDbContext>(options =>
@@ -129,6 +138,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<IndependentTeacherRegisteredConsumer, IndependentTeacherRegisteredConsumerDefinition>();
     x.AddConsumer<BookingRequestCreatedConsumer, BookingRequestCreatedConsumerDefinition>();
     x.AddConsumer<BookingDecisionConsumer, BookingDecisionConsumerDefinition>();
+    x.AddConsumer<UserPreferredLocaleChangedConsumer, UserPreferredLocaleChangedConsumerDefinition>();
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -152,6 +162,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<IndependentTeacherRegisteredConsumer>(context);
             e.ConfigureConsumer<BookingRequestCreatedConsumer>(context);
             e.ConfigureConsumer<BookingDecisionConsumer>(context);
+            e.ConfigureConsumer<UserPreferredLocaleChangedConsumer>(context);
         });
     });
 });

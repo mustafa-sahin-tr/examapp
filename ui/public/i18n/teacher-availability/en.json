@@ -1,0 +1,37 @@
+{
+  "title": "My Available Hours",
+  "subtitle": "Define the time slots you are available for so students can request appointments.",
+  "bookingRequests": "Appointment Requests",
+  "form": {
+    "dateLabel": "Date",
+    "dateRequired": "Please pick a date.",
+    "startLabel": "Start",
+    "startRequired": "Start time is required.",
+    "endLabel": "End",
+    "endRequired": "End time is required.",
+    "submit": "Add Slot",
+    "invalidTimeFormat": "Enter the times in HH:MM format.",
+    "endBeforeStart": "The end time must be after the start time."
+  },
+  "state": {
+    "loading": "Loading your available slots...",
+    "empty": "You have not defined any available slots yet."
+  },
+  "status": {
+    "free": "Free",
+    "approved": "Approved appointment",
+    "pending": "Pending request"
+  },
+  "actions": {
+    "delete": "Delete availability slot",
+    "lockedHint": "A slot with an appointment cannot be deleted"
+  },
+  "messages": {
+    "loadFailed": "Availability slots could not be loaded.",
+    "added": "Availability slot added.",
+    "addFailed": "The slot could not be added.",
+    "deleted": "Availability slot deleted.",
+    "deleteFailed": "The slot could not be deleted.",
+    "ok": "OK"
+  }
+}

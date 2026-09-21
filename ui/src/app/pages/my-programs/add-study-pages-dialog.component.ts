@@ -9,7 +9,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { FormsModule } from '@angular/forms';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { StudyPage } from '../../models/study-page';
+import { MY_PROGRAMS_SCOPE } from './my-programs-scope';
 
 export interface AddStudyPagesDialogData {
   availableStudyPages: Array<StudyPage & { selected?: boolean; startDate?: Date | null; endDate?: Date | null }>;
@@ -34,7 +36,10 @@ export interface AddStudyPagesDialogResult {
     MatInputModule,
     MatDatepickerModule,
     FormsModule,
+    TranslocoDirective,
   ],
+  // Dialog `MatDialog` ile açıldığı için sayfanın scope'unu devralmaz; kendi provider'ını verir.
+  providers: [provideTranslocoScope(MY_PROGRAMS_SCOPE)],
   templateUrl: './add-study-pages-dialog.component.html',
   styleUrls: ['./add-study-pages-dialog.component.scss'],
 })
@@ -69,10 +74,6 @@ export class AddStudyPagesDialogComponent implements OnInit {
       page.startDate = new Date(this.selectedDate);
       page.endDate = new Date(this.selectedDate);
     }
-  }
-
-  trackByPageId(index: number, page: StudyPage): number {
-    return page.id;
   }
 
   onCancel(): void {

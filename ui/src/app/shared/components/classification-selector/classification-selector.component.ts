@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { StudentService } from '../../../services/student.service';
 import { SubjectService } from '../../../services/subject.service';
 import { Grade } from '../../../models/student';
@@ -23,7 +24,7 @@ export interface ClassificationSelection {
 @Component({
   selector: 'app-classification-selector',
   standalone: true,
-  imports: [CommonModule, MatChipsModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatChipsModule, MatButtonModule, MatIconModule, TranslocoDirective],
   templateUrl: './classification-selector.component.html',
   styleUrls: ['./classification-selector.component.scss'],
 })

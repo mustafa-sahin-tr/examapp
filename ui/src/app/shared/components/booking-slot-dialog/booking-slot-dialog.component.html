@@ -1,24 +1,26 @@
-<h2 mat-dialog-title>{{ data.teacherName }} · Randevu Al</h2>
+<h2 mat-dialog-title>
+  {{ 'shared.bookingSlotDialog.title' | transloco: { teacher: data.teacherName } }}
+</h2>
 
-<mat-dialog-content class="bsd__content">
+<mat-dialog-content class="bsd__content" *transloco="let t; prefix: 'shared.bookingSlotDialog'">
   @if (loading()) {
     <div class="bsd__state" aria-busy="true" aria-live="polite">
       <mat-spinner diameter="32" />
-      <span>Müsait saatler yükleniyor...</span>
+      <span>{{ t('loading') }}</span>
     </div>
   } @else if (error()) {
     <div class="bsd__state bsd__state--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <span>{{ error() }}</span>
-      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+      <button mat-stroked-button type="button" (click)="load()">{{ t('retry') }}</button>
     </div>
   } @else if (isEmpty()) {
     <div class="bsd__state">
       <mat-icon class="bsd__empty-icon">event_busy</mat-icon>
-      <span>Bu öğretmenin şu anda müsait bir saati yok.</span>
+      <span>{{ t('empty') }}</span>
     </div>
   } @else {
-    <mat-radio-group class="bsd__groups" [(ngModel)]="selectedId" aria-label="Müsait saat seçimi">
+    <mat-radio-group class="bsd__groups" [(ngModel)]="selectedId" [attr.aria-label]="t('slotGroupAria')">
       @for (group of groups(); track group.day) {
         <div class="bsd__group">
           <h3 class="bsd__group-day">{{ group.day }}</h3>
@@ -39,8 +41,8 @@
   }
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button mat-stroked-button type="button" (click)="close()">Vazgeç</button>
+<mat-dialog-actions align="end" *transloco="let t; prefix: 'shared.bookingSlotDialog'">
+  <button mat-stroked-button type="button" (click)="close()">{{ 'common.cancel' | transloco }}</button>
   <button
     mat-flat-button
     color="primary"
@@ -51,6 +53,6 @@
     @if (submitting()) {
       <mat-spinner diameter="18" />
     }
-    Randevu Talebi Gönder
+    {{ t('submit') }}
   </button>
 </mat-dialog-actions>

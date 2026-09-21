@@ -1,0 +1,20 @@
+{
+  "student": {
+    "notFound": "Student not found.",
+    "profileNotFound": "Student profile not found",
+    "userNotFound": "User not found.",
+    "registrationFailed": "Student registration failed.",
+    "registered": "Student registered successfully.",
+    "schoolNotFound": "The selected school was not found.",
+    "gradeUpdated": "Student grade updated successfully.",
+    "invalidFile": "Invalid file.",
+    "reset": {
+      "queued": "The reset request has been queued.",
+      "usePost": "This endpoint works with POST: POST /api/exam/student/me/reset"
+    },
+    "theme": {
+      "updated": "Theme preference updated.",
+      "updateFailed": "An error occurred while updating the theme."
+    }
+  }
+}

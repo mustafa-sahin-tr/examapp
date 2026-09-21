@@ -5,7 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
-import { finalize } from 'rxjs';
+import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { finalize, take } from 'rxjs';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TeacherService } from '../../services/teacher.service';
 import {
@@ -16,7 +17,8 @@ import {
 
 interface SummaryCardViewModel {
   key: 'worksheets' | 'students';
-  label: string;
+  /** Scope'a göreli çeviri anahtarı; şablonda `t()` ile çözülür. */
+  labelKey: string;
   value: number;
   icon: string;
 }
@@ -30,7 +32,11 @@ const COMPLETION_SUCCESS_THRESHOLD = 50;
  * - Issue #54: "Sınavlarım" tablosu (mobilde kart listesi).
  * - Issue #55: "Geride Kalan Öğrenciler" tablosu (etiketli).
  * Aktivite kartları sonraki alt issue'da (#56).
+ *
+ * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-dashboard/<lang>.json` (issue #183).
  */
+const TEACHER_DASHBOARD_SCOPE = 'teacher-dashboard';
+
 @Component({
   selector: 'app-teacher-dashboard',
   standalone: true,
@@ -41,13 +47,17 @@ const COMPLETION_SUCCESS_THRESHOLD = 50;
     MatProgressSpinnerModule,
     MatTableModule,
     SectionHeaderComponent,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(TEACHER_DASHBOARD_SCOPE)],
   templateUrl: './teacher-dashboard.component.html',
   styleUrls: ['./teacher-dashboard.component.scss'],
 })
 export class TeacherDashboardComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
 
   // ── Issue #53: özet kartları ──────────────────────────────────────────────
   readonly loading = signal(true);
@@ -66,8 +76,8 @@ export class TeacherDashboardComponent implements OnInit {
       return [];
     }
     return [
-      { key: 'worksheets', label: 'Toplam Sınav', value: s.totalWorksheets, icon: 'assignment' },
-      { key: 'students', label: 'Benzersiz Öğrenci', value: s.totalUniqueStudents, icon: 'groups' },
+      { key: 'worksheets', labelKey: 'summary.cards.worksheets', value: s.totalWorksheets, icon: 'assignment' },
+      { key: 'students', labelKey: 'summary.cards.students', value: s.totalUniqueStudents, icon: 'groups' },
     ];
   });
 
@@ -87,6 +97,10 @@ export class TeacherDashboardComponent implements OnInit {
 
   readonly laggingDisplayedColumns: readonly string[] = ['studentName', 'worksheetName', 'flags'];
 
+  constructor() {
+    this.preloadScope();
+  }
+
   ngOnInit(): void {
     this.loadSummary();
     this.loadWorksheetsOverview();
@@ -104,7 +118,7 @@ export class TeacherDashboardComponent implements OnInit {
         next: (rows) => this.laggingStudents.set(rows),
         error: () => {
           this.laggingStudents.set([]);
-          this.laggingStudentsError.set('Geride kalan öğrenci listesi alınırken bir sorun oluştu.');
+          this.laggingStudentsError.set(this.text('lagging.error'));
         },
       });
   }
@@ -125,7 +139,7 @@ export class TeacherDashboardComponent implements OnInit {
         next: (summary) => this.summary.set(summary),
         error: () => {
           this.summary.set(null);
-          this.error.set('Özet bilgileri alınırken bir sorun oluştu.');
+          this.error.set(this.text('summary.error'));
         },
       });
   }
@@ -141,7 +155,7 @@ export class TeacherDashboardComponent implements OnInit {
         next: (rows) => this.worksheets.set(rows),
         error: () => {
           this.worksheets.set([]);
-          this.worksheetsError.set('Sınav listesi alınırken bir sorun oluştu.');
+          this.worksheetsError.set(this.text('worksheets.error'));
         },
       });
   }
@@ -151,7 +165,24 @@ export class TeacherDashboardComponent implements OnInit {
     return percentage >= COMPLETION_SUCCESS_THRESHOLD ? 'is-success' : 'is-warning';
   }
 
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string): string {
+    return this.transloco.translate<string>(`${TEACHER_DASHBOARD_SCOPE}.${key}`) ?? '';
+  }
+
   openWorksheet(row: TeacherWorksheetOverview): void {
     void this.router.navigate(['/test', row.worksheetId]);
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${TEACHER_DASHBOARD_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

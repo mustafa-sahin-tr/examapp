@@ -10,7 +10,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { firstValueFrom } from 'rxjs';
+import {
+  TranslocoDirective,
+  TranslocoPipe,
+  TranslocoService,
+  provideTranslocoScope,
+} from '@jsverse/transloco';
+import { firstValueFrom, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import {
   DistrictDto,
@@ -33,6 +39,9 @@ type Level = 'subject' | 'topic' | 'subtopic' | 'school';
 /** Sınıf filtresi: 'all' → en az bir sınıfa bağlı dersler, 'unassigned' → sınıfsız dersler, number → o sınıfa bağlı dersler. */
 export type GradeFilter = number | 'all' | 'unassigned';
 
+/** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
+const ADMIN_SCOPE = 'admin';
+
 @Component({
   selector: 'app-taxonomy-manager',
   standalone: true,
@@ -50,12 +59,16 @@ export type GradeFilter = number | 'all' | 'unassigned';
     MatButtonToggleModule,
     MatDialogModule,
     MatSnackBarModule,
+    TranslocoDirective,
+    TranslocoPipe,
   ],
+  providers: [provideTranslocoScope(ADMIN_SCOPE)],
 })
 export class TaxonomyManagerComponent implements OnInit {
   private readonly admin = inject(AdminService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -124,6 +137,10 @@ export class TaxonomyManagerComponent implements OnInit {
   editGradeId: number | null = null;
   editAddressLine = '';
 
+  constructor() {
+    this.preloadScope();
+  }
+
   ngOnInit(): void {
     this.load();
     this.loadSchools();
@@ -149,8 +166,8 @@ export class TaxonomyManagerComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Taksonomi yüklenemedi');
-        this.snack.open('Taksonomi yüklenemedi', 'Kapat', { duration: 4000 });
+        this.error.set(this.text('messages.taxonomyLoadFailed'));
+        this.snack.open(this.text('messages.taxonomyLoadFailed'), this.close, { duration: 4000 });
         this.loading.set(false);
       },
     });
@@ -165,7 +182,7 @@ export class TaxonomyManagerComponent implements OnInit {
         this.schoolsLoading.set(false);
       },
       error: () => {
-        this.schoolsError.set('Okullar yüklenemedi');
+        this.schoolsError.set(this.text('messages.schoolsLoadFailed'));
         this.schoolsLoading.set(false);
       },
     });
@@ -182,7 +199,7 @@ export class TaxonomyManagerComponent implements OnInit {
         this.provincesLoading.set(false);
       },
       error: () => {
-        this.provincesError.set('İller yüklenemedi');
+        this.provincesError.set(this.text('messages.provincesLoadFailed'));
         this.provincesLoading.set(false);
       },
     });
@@ -199,7 +216,7 @@ export class TaxonomyManagerComponent implements OnInit {
       },
       error: () => {
         if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
-        this.snack.open('İlçeler yüklenemedi', 'Kapat', { duration: 4000 });
+        this.snack.open(this.text('messages.districtsLoadFailed'), this.close, { duration: 4000 });
       },
     });
   }
@@ -270,21 +287,34 @@ export class TaxonomyManagerComponent implements OnInit {
   subjectsEmptyText(): { title: string; hint: string } {
     const f = this.selectedGradeFilter();
     if (f === 'unassigned') {
-      return { title: 'Sınıf atanmamış ders yok', hint: 'Tüm dersler en az bir sınıfa bağlı' };
+      return {
+        title: this.text('subjects.emptyUnassignedTitle'),
+        hint: this.text('subjects.emptyUnassignedHint'),
+      };
     }
     if (typeof f === 'number') {
       return {
-        title: 'Bu sınıfa bağlı ders yok',
-        hint: 'Bir dersin "Sınıfları Yönet" aksiyonundan bu sınıfı ekleyebilirsin',
+        title: this.text('subjects.emptyGradeTitle'),
+        hint: this.text('subjects.emptyGradeHint'),
       };
     }
     if (this.subjects().length > 0) {
       return {
-        title: 'Sınıfa bağlı ders yok',
-        hint: '"Sınıf atanmamış" filtresinden derslere sınıf ata',
+        title: this.text('subjects.emptyLinkedTitle'),
+        hint: this.text('subjects.emptyLinkedHint'),
       };
     }
-    return { title: 'Henüz ders eklenmemiş', hint: 'Yukarıdaki alandan ilk dersi ekle' };
+    return { title: this.text('subjects.emptyTitle'), hint: this.text('subjects.emptyHint') };
+  }
+
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${ADMIN_SCOPE}.taxonomy.${key}`, params) ?? '';
+  }
+
+  /** Snackbar kapatma butonunun metni. */
+  private get close(): string {
+    return this.text('messages.close');
   }
 
   async manageGrades(s: TaxonomySubject): Promise<void> {
@@ -319,7 +349,7 @@ export class TaxonomyManagerComponent implements OnInit {
     const name = this.newTopicName.trim();
     const subjectId = this.selectedSubjectId();
     if (!name || !subjectId || !this.newTopicGradeId) {
-      this.snack.open('Konu adı ve sınıf gerekli', 'Kapat', { duration: 3000 });
+      this.snack.open(this.text('topics.nameAndGradeRequired'), this.close, { duration: 3000 });
       return;
     }
     await this.run(() =>
@@ -434,16 +464,10 @@ export class TaxonomyManagerComponent implements OnInit {
   // ---- delete ----
 
   async remove(level: Level, item: { id: number; name: string }): Promise<void> {
-    const labels: Record<Level, string> = {
-      subject: 'ders',
-      topic: 'konu',
-      subtopic: 'alt konu',
-      school: 'okul',
-    };
     const data: ConfirmDialogData = {
-      title: `${labels[level]} sil`,
-      message: `"${item.name}" ${labels[level]}unu silmek istediğine emin misin?`,
-      confirmText: 'Sil',
+      title: this.text(`delete.${level}Title`),
+      message: this.text(`delete.${level}Message`, { name: item.name }),
+      confirmText: this.text('delete.confirm'),
       icon: 'delete',
       confirmColor: 'warn',
     };
@@ -469,12 +493,12 @@ export class TaxonomyManagerComponent implements OnInit {
     this.busy.set(true);
     try {
       const res = await action();
-      this.snack.open(res.message, 'Kapat', { duration: 3000 });
+      this.snack.open(res.message, this.close, { duration: 3000 });
       if (res.success) this.load();
     } catch (err: unknown) {
       const msg =
-        (err as { error?: { message?: string } } | null)?.error?.message ?? 'İşlem başarısız';
-      this.snack.open(msg, 'Kapat', { duration: 4000 });
+        (err as { error?: { message?: string } } | null)?.error?.message ?? this.text('messages.actionFailed');
+      this.snack.open(msg, this.close, { duration: 4000 });
     } finally {
       this.busy.set(false);
     }
@@ -487,16 +511,28 @@ export class TaxonomyManagerComponent implements OnInit {
     this.busy.set(true);
     try {
       const res = await action();
-      this.snack.open(res.message, 'Kapat', { duration: 3000 });
+      this.snack.open(res.message, this.close, { duration: 3000 });
       if (res.success) this.loadSchools();
       return res.success;
     } catch (err: unknown) {
       const msg =
-        (err as { error?: { message?: string } } | null)?.error?.message ?? 'İşlem başarısız';
-      this.snack.open(msg, 'Kapat', { duration: 4000 });
+        (err as { error?: { message?: string } } | null)?.error?.message ?? this.text('messages.actionFailed');
+      this.snack.open(msg, this.close, { duration: 4000 });
       return false;
     } finally {
       this.busy.set(false);
     }
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

@@ -1,18 +1,18 @@
 import { Component } from '@angular/core';
-import { Title, Meta } from '@angular/platform-browser';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+
+import { PUBLIC_PAGES_SCOPE, usePublicPageMeta } from '../public-page-meta';
 
 @Component({
   selector: 'app-privacy-policy',
   standalone: true,
+  imports: [TranslocoDirective],
+  providers: [provideTranslocoScope(PUBLIC_PAGES_SCOPE)],
   templateUrl: './privacy-policy.component.html',
   styleUrl: './privacy-policy.component.scss',
 })
 export class PrivacyPolicyComponent {
-  constructor(
-    private title: Title,
-    private meta: Meta
-  ) {
-    this.title.setTitle('Gizlilik Politikası | ExamApp');
-    this.meta.updateTag({ name: 'description', content: 'ExamApp gizlilik politikası ve veri koruma taahhüdü.' });
+  constructor() {
+    usePublicPageMeta('privacyPolicy');
   }
 }

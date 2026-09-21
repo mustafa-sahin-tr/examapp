@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BadgeService.Entities;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
@@ -23,16 +24,22 @@ public class WorksheetReminderDueConsumer : IConsumer<WorksheetReminderDueEvent>
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly IUserLocaleResolver _localeResolver;
+    private readonly INotificationTextFactory _texts;
     private readonly ILogger<WorksheetReminderDueConsumer> _logger;
 
     public WorksheetReminderDueConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
-        ILogger<WorksheetReminderDueConsumer> logger)
+        ILogger<WorksheetReminderDueConsumer> logger,
+        IUserLocaleResolver localeResolver,
+        INotificationTextFactory texts)
     {
         _db = db;
         _hub = hub;
         _logger = logger;
+        _localeResolver = localeResolver ?? throw new ArgumentNullException(nameof(localeResolver));
+        _texts = texts ?? throw new ArgumentNullException(nameof(texts));
     }
 
     public async Task Consume(ConsumeContext<WorksheetReminderDueEvent> context)
@@ -50,15 +57,19 @@ public class WorksheetReminderDueConsumer : IConsumer<WorksheetReminderDueEvent>
             return;
         }
 
-        var worksheetName = string.IsNullOrWhiteSpace(e.WorksheetName) ? "Sınavın" : e.WorksheetName;
+        var culture = await _localeResolver.ResolveAsync(e.UserId, e.UserKeycloakId, ct);
+        var worksheetName = string.IsNullOrWhiteSpace(e.WorksheetName)
+            ? _texts.Resolve("notifications.common.worksheetFallback", culture)
+            : e.WorksheetName;
+        var text = _texts.Build(NotificationType, culture, worksheetName, e.RemindBeforeMinutes);
 
         var notification = new Notification
         {
             UserId = e.UserId,
             UserKeycloakId = string.IsNullOrWhiteSpace(e.UserKeycloakId) ? null : e.UserKeycloakId,
             Type = NotificationType,
-            Title = "Sınavın yaklaşıyor",
-            Body = $"{worksheetName} {e.RemindBeforeMinutes} dakika sonra başlıyor.",
+            Title = text.Title,
+            Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 reminderId = e.ReminderId,

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output, signal } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Test } from '../../models/test-instance';
 import { HasRoleDirective } from '../../shared/directives/has-role.directive';
 import { IsStudentDirective } from '../../shared/directives/is-student.directive';
@@ -14,13 +15,21 @@ import { ThemeConfigService, WorksheetCardThemeConfig } from '../../services/the
 import { TestService } from '../../services/test.service';
 import { AuthService } from '../../services/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/**
+ * Kart hem worksheet listelerinin içinde hem de tek başına kullanıldığı için scope'u
+ * kendisi sağlar (issue #183): `public/i18n/worksheet-card/<lang>.json`.
+ */
+const WORKSHEET_CARD_SCOPE = 'worksheet-card';
 
 @Component({
   selector: 'app-worksheet-card',
   templateUrl: './worksheet-card.component.html',
   styleUrls: ['./worksheet-card.component.scss'],
   standalone: true,
-  imports: [CommonModule, IsStudentDirective, MatCardModule, MatIconModule],
+  imports: [CommonModule, IsStudentDirective, MatCardModule, MatIconModule, TranslocoDirective],
+  providers: [provideTranslocoScope(WORKSHEET_CARD_SCOPE)],
 })
 export class WorksheetCardComponent implements OnInit, OnDestroy {
   @Input() test!: Test;
@@ -39,6 +48,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
   private readonly testService = inject(TestService);
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
   private readonly destroy$ = new Subject<void>();
   readonly backgroundUploading = signal(false);
 
@@ -52,9 +62,36 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
     return this.authService.hasRole('Teacher') && this.test?.canEdit !== false;
   }
 
+  constructor() {
+    this.warmTranslationScope();
+  }
+
+  /**
+   * Şablon dışından (snackbar, dialog, hesaplanan etiket) çağrılan senkron `translate()`
+   * çağrılarının çalışabilmesi için scope sözlüğünü render'dan bağımsız yükler.
+   */
+  private warmTranslationScope(): void {
+    this.transloco
+      .selectTranslate('actions.dismiss', {}, WORKSHEET_CARD_SCOPE)
+      .pipe(takeUntilDestroyed())
+      .subscribe();
+  }
+
   themeConfig!: WorksheetCardThemeConfig;
 
-  images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
+  /**
+   * Scope'lu anahtarı tam adıyla senkron çevirir. Şablondan çağrılan yardımcılar `*transloco`
+   * bloğunun içinde çalıştığı için sözlük o noktada yüklüdür.
+   */
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${WORKSHEET_CARD_SCOPE}.${key}`, params) ?? '';
+  }
+
+  private get dismissLabel(): string {
+    return this.tr('actions.dismiss');
+  }
+
+  images =['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
   public getBackgroundImage() {
     if (this.test?.imageUrl) {
       return this.test.imageUrl;
@@ -85,7 +122,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
     }
 
     if (!file.type.startsWith('image/')) {
-      this.snackBar.open('Lutfen bir gorsel dosyasi secin.', 'Tamam', { duration: 2500 });
+      this.snackBar.open(this.tr('snackbar.selectImageFile'), this.dismissLabel, { duration: 2500 });
       input.value = '';
       return;
     }
@@ -101,20 +138,22 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
               if (response?.success && response.imageUrl) {
                 this.test = { ...this.test, imageUrl: response.imageUrl };
               }
-              this.snackBar.open(response?.message || 'Arka plan gorseli guncellendi.', 'Tamam', { duration: 2500 });
+              this.snackBar.open(response?.message || this.tr('snackbar.backgroundUpdated'), this.dismissLabel, {
+                duration: 2500,
+              });
               this.backgroundUploading.set(false);
               input.value = '';
             },
             error: (error) => {
-              const message = error?.error?.message || 'Gorsel yuklenirken bir hata olustu.';
-              this.snackBar.open(message, 'Tamam', { duration: 3000 });
+              const message = error?.error?.message || this.tr('snackbar.uploadFailed');
+              this.snackBar.open(message, this.dismissLabel, { duration: 3000 });
               this.backgroundUploading.set(false);
               input.value = '';
             },
           });
       })
       .catch(() => {
-        this.snackBar.open('Gorsel islenirken bir hata olustu.', 'Tamam', { duration: 3000 });
+        this.snackBar.open(this.tr('snackbar.processFailed'), this.dismissLabel, { duration: 3000 });
         this.backgroundUploading.set(false);
         input.value = '';
       });
@@ -332,7 +371,7 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
 
   getRibbonText(): string {
     if (!this.assignment) return '';
-    return this.assignment.isGradeAssignment ? 'SINIF' : 'KİŞİSEL';
+    return this.assignment.isGradeAssignment ? this.tr('badge.ribbonGrade') : this.tr('badge.ribbonPersonal');
   }
 
   // 4. Glow/Shadow Class
@@ -494,12 +533,12 @@ export class WorksheetCardComponent implements OnInit, OnDestroy {
   getMaxDurationText(): string {
     const totalMinutes = Math.round(this.test.maxDurationSeconds / 60);
     if (totalMinutes < 60) {
-      return `${totalMinutes}dk`;
-    } else {
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return minutes > 0 ? `${hours}s ${minutes}dk` : `${hours}s`;
+      return this.tr('duration.minutes', { minutes: totalMinutes });
     }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return minutes > 0 ? this.tr('duration.hoursMinutes', { hours, minutes }) : this.tr('duration.hours', { hours });
   }
 
   // Gauge Progress Methods

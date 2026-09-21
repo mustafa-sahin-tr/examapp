@@ -1,11 +1,11 @@
-<section class="features">
-  <h1>Öne Çıkan Özellikler</h1>
+<section class="features" *transloco="let t; prefix: 'public-pages.features'">
+  <h1>{{ t('title') }}</h1>
   <ul>
-    <li>Kolay sınav oluşturma ve yönetim</li>
-    <li>Güçlü güvenlik ve kimlik doğrulama</li>
-    <li>Gerçek zamanlı sonuçlar ve analizler</li>
-    <li>Mobil uyumlu ve erişilebilir arayüz</li>
-    <li>Çoklu kullanıcı ve rol desteği</li>
-    <li>Dosya ve görsel ekleme, zengin soru tipleri</li>
+    <li>{{ t('authoring') }}</li>
+    <li>{{ t('security') }}</li>
+    <li>{{ t('analytics') }}</li>
+    <li>{{ t('responsive') }}</li>
+    <li>{{ t('roles') }}</li>
+    <li>{{ t('richContent') }}</li>
   </ul>
 </section>

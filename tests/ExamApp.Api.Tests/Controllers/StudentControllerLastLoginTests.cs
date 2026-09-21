@@ -50,7 +50,8 @@ public class StudentControllerLastLoginTests : IDisposable
             _keycloakService,
             _backgroundJobs,
             studentResetJob,
-            _loginEventService);
+            _loginEventService,
+            Substitute.For<ILogger<StudentController>>());
 
         var identity = keycloakUserId is null
             ? new ClaimsIdentity()

@@ -18,15 +18,17 @@ namespace ExamApp.Api.Controllers
 
         private readonly UserProfileCacheService _userProfileCacheService;
         private readonly IKeycloakService _keycloakService;
+        private readonly ILogger<TeacherController> _logger;
 
         public TeacherController(ITeacherService teacherService, UserProfileCacheService userProfileCacheService,
-            IKeycloakService keycloakService
+            IKeycloakService keycloakService, ILogger<TeacherController> logger
         )
             : base()
         {
             _userProfileCacheService = userProfileCacheService;
             _teacherService = teacherService;
             _keycloakService = keycloakService;
+            _logger = logger;
         }
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
@@ -38,20 +40,11 @@ namespace ExamApp.Api.Controllers
 
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Teacher);
 
-            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
-            // (Role boş) haliyle Redis'e cache'lemiş olabilir. Cache'i güncel rolle tazele
-            // ki 1 saat boyunca diğer endpoint'ler eski/boş rolü görmesin.
-            user.Role = UserRole.Teacher.ToString();
-            await _userProfileCacheService.SetAsync(user.KeycloakId, user);
-
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
                 return Unauthorized("No refresh token provided.");
 
-            // 2. Keycloak token endpoint'ine isteği hazırla
-            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
-
-            // 🔹 Öğrenci zaten var mı?
+            // 🔹 Öğretmen zaten var mı?
             var response = await _teacherService.Save(user.Id, request);
             if (response == null)
             {
@@ -62,6 +55,28 @@ namespace ExamApp.Api.Controllers
             {
                 return BadRequest(new { message = response.Message });
             }
+
+            // issue #189: Teacher.SchoolId değişmiş olabilir — Keycloak "school_id" attribute'unu
+            // (JWT'ye taşınan ipucu) RefreshTokenAsync'ten ÖNCE güncelle ki hemen aşağıda alınan
+            // yeni token bu claim'i güncel haliyle içersin. Keycloak hatası kayıt akışını kırmamalı.
+            try
+            {
+                await _keycloakService.SetSchoolIdAttributeAsync(user.KeycloakId, request.SchoolId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Keycloak school_id attribute update failed for {KeycloakId}", user.KeycloakId);
+            }
+
+            // 2. Keycloak token endpoint'ine isteği hazırla
+            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
+
+            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
+            // (Role boş, SchoolId eski) haliyle Redis'e cache'lemiş olabilir. Tek seferde güncel
+            // Role + SchoolId ile cache'le ki 1 saat boyunca diğer endpoint'ler eski değeri görmesin.
+            user.Role = UserRole.Teacher.ToString();
+            user.SchoolId = request.SchoolId;
+            await _userProfileCacheService.SetAsync(user.KeycloakId, user);
 
             if (!string.IsNullOrEmpty(tokenData.RefreshToken))
             {

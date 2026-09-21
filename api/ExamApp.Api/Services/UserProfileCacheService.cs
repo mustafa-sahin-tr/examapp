@@ -14,7 +14,7 @@ public class UserProfileCacheService
         _logger = logger;
     }
 
-    public async Task<UserProfileDto?> GetAsync(string keycloakId)
+    public virtual async Task<UserProfileDto?> GetAsync(string keycloakId)
     {
         var json = await _cache.GetStringAsync(keycloakId);
         return json is not null
@@ -22,7 +22,7 @@ public class UserProfileCacheService
             : null;
     }
 
-    public async Task SetAsync(string keycloakId, UserProfileDto profile, TimeSpan? expiration = null)
+    public virtual async Task SetAsync(string keycloakId, UserProfileDto profile, TimeSpan? expiration = null)
     {
         var json = JsonSerializer.Serialize(profile);
         var options = new DistributedCacheEntryOptions
@@ -31,9 +31,18 @@ public class UserProfileCacheService
         };
 
         await _cache.SetStringAsync(keycloakId, json, options);
-    }    
+    }
 
-    public async Task<UserProfileDto> GetOrSetAsync(string keycloakId, Func<Task<UserProfileDto>> loader, TimeSpan? expiration = null)
+    /// <summary>
+    /// Bir kullanıcının cache'lenmiş profilini siler. issue #189 / #194: kullanıcının okulu
+    /// değiştiğinde (transfer vb.) bu metod çağrılmalı ki bir sonraki istekte SchoolId DB'den
+    /// yeniden doğrulanıp cache'lensin — #194'ün invalidation noktası budur. Register akışında
+    /// (Teacher/StudentController) artık tek seferlik SetAsync ile güncel Role+SchoolId
+    /// yazıldığı için oradan çağrılmıyor; okul transferi gibi asenkron değişikliklerde kullanılacak.
+    /// </summary>
+    public virtual Task RemoveAsync(string keycloakId) => _cache.RemoveAsync(keycloakId);
+
+    public virtual async Task<UserProfileDto> GetOrSetAsync(string keycloakId, Func<Task<UserProfileDto>> loader, TimeSpan? expiration = null)
     {
         var cached = await GetAsync(keycloakId);
         if (cached != null)

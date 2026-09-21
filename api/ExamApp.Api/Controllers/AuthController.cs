@@ -22,16 +22,20 @@ namespace ExamApp.Api.Controllers
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
+        private readonly IUserProfileProvider _userProfileProvider;
+
         private readonly IKeycloakService _keycloakService;
 
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService,
+             IUserProfileProvider userProfileProvider,
              IKeycloakService keycloakService)
             : base()
         {
             _context = context;
             _keycloakSettings = options.Value;
             _userProfileCacheService = userProfileCacheService;
+            _userProfileProvider = userProfileProvider;
             _keycloakService = keycloakService;
         }
 
@@ -41,15 +45,16 @@ namespace ExamApp.Api.Controllers
         {
             // 1) Token içindeki Sub claim (user.Id) alınır
             var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var profile = await _userProfileCacheService.GetOrSetAsync(sub, async () =>
-            {
-                var authApiClient = HttpContext.RequestServices.GetRequiredService<IAuthApiClient>();
-                return await authApiClient.GetUserProfileAsync();
-            });
-            await _userProfileCacheService.SetAsync(sub, profile);
+            // issue #189: cache get-or-set + SchoolId DB doğrulaması artık IUserProfileProvider'da
+            // ortaklaştırıldı (BaseController.GetAuthenticatedUserAsync ile aynı yol).
+            var profile = await _userProfileProvider.GetAsync(sub);
 
             if (profile != null)
             {
+                // Eski davranış korunuyor: TTL'i tazele (get-or-set cache hit olduğunda entry'nin
+                // absolute expiration'ı yenilenmiş olur).
+                await _userProfileCacheService.SetAsync(sub, profile);
+
                 if (profile.Role == "Student")
                 {
                     var student = await _context.Students

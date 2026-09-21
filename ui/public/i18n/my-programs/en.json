@@ -94,7 +94,7 @@
     "pagesAdded": "Study pages were added to the program.",
     "updateFailed": "The program could not be updated.",
     "loadFailed": "Program details could not be loaded.",
-    "studyPagesLoadFailed": "Study pages could not be loaded."
+    "typeAria": "Activity type: {{type}}"
   },
   "addStudyPages": {
     "titleWithoutDate": "Add Page to Program",
@@ -104,10 +104,29 @@
     "noDescription": "No description",
     "pageCount": "{{count}} pages",
     "startDate": "Start",
-    "endDate": "End"
+    "endDate": "End",
+    "searchLabel": "Search activities",
+    "filterAria": "Activity type filter",
+    "filters": {
+      "all": "All",
+      "image": "Image",
+      "link": "Link",
+      "book": "Book pages"
+    },
+    "loading": "Loading activities...",
+    "loadFailed": "Activities could not be loaded.",
+    "retry": "Try again",
+    "noResults": "No activities match your filter.",
+    "linkUnavailable": "Invalid link",
+    "bookFallback": "Book pages"
   },
   "scheduleDetail": {
-    "studyPageId": "Study page no: {{id}}",
-    "cover": "Cover:"
+    "itemNo": "Study page no: {{id}}",
+    "type": "Activity type: {{type}}",
+    "cover": "Cover:",
+    "open": "Open",
+    "openAria": "Open {{title}} link in a new tab",
+    "linkUnavailable": "This activity's link is invalid, so it cannot be opened.",
+    "bookMissing": "No book details were entered."
   }
 }

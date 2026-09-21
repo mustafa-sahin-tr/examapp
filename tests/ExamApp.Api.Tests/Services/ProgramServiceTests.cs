@@ -491,6 +491,94 @@ public class ProgramServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task AddStudyItemSchedulesAsync_AllContentTypes_AcceptsImageLinkAndBookPageRange()
+    {
+        // AC #5: POST /api/exam/program/{id}/study-pages tüm tiplerdeki etkinlikleri kabul ediyor (regresyon).
+        int programId;
+        await using (var ctx = _db.NewContext())
+        {
+            programId = (await NewService(ctx).CreateUserProgramAsync(User, new CreateProgramRequestDto
+            {
+                ProgramName = "P", Description = "d",
+                StartDate = "2026-03-02", EndDate = "2026-03-02",
+                UserSelections = new() { Sel(1, "time"), Sel(2, "25-5") },
+            })).Id;
+        }
+
+        // Seed different content types
+        int imageItemId, linkItemId, bookItemId;
+        await using (var ctx = _db.NewContext())
+        {
+            var imageItem = new StudyItem
+            {
+                Title = "Image Item",
+                Description = "d",
+                CreatedByUserId = 1,
+                ContentType = StudyItemContentType.Image
+            };
+            ctx.StudyItems.Add(imageItem);
+            await ctx.SaveChangesAsync();
+            imageItemId = imageItem.Id;
+
+            var linkItem = new StudyItem
+            {
+                Title = "Link Item",
+                Description = "d",
+                CreatedByUserId = 1,
+                ContentType = StudyItemContentType.Link,
+                Url = "https://www.youtube.com/watch?v=test",
+                Platform = StudyItemLinkPlatform.YouTube
+            };
+            ctx.StudyItems.Add(linkItem);
+            await ctx.SaveChangesAsync();
+            linkItemId = linkItem.Id;
+
+            // For BookPageRange, need Book and BookTest
+            var book = new Book { Name = "Math Book" };
+            ctx.Books.Add(book);
+            await ctx.SaveChangesAsync();
+
+            var bookTest = new BookTest { BookId = book.Id, Name = "Test 1" };
+            ctx.BookTests.Add(bookTest);
+            await ctx.SaveChangesAsync();
+
+            var bookItem = new StudyItem
+            {
+                Title = "Book Item",
+                Description = "d",
+                CreatedByUserId = 1,
+                ContentType = StudyItemContentType.BookPageRange,
+                BookId = book.Id,
+                BookTestId = bookTest.Id,
+                StartPage = 10,
+                EndPage = 15
+            };
+            ctx.StudyItems.Add(bookItem);
+            await ctx.SaveChangesAsync();
+            bookItemId = bookItem.Id;
+        }
+
+        // Add all three types in single request
+        var addRequest = new ProgramStudyItemScheduleRequestDto
+        {
+            Items = new List<ProgramStudyItemScheduleItemDto>
+            {
+                new() { StudyItemId = imageItemId, StartDate = new DateTime(2026, 3, 2), EndDate = new DateTime(2026, 3, 5) },
+                new() { StudyItemId = linkItemId, StartDate = new DateTime(2026, 3, 6), EndDate = new DateTime(2026, 3, 8) },
+                new() { StudyItemId = bookItemId, StartDate = new DateTime(2026, 3, 9), EndDate = new DateTime(2026, 3, 12) }
+            }
+        };
+
+        UserProgramDto? result;
+        await using (var ctx = _db.NewContext())
+            result = await NewService(ctx).AddStudyItemSchedulesAsync(User, programId, addRequest);
+
+        result.ShouldNotBeNull();
+        result!.StudyItemSchedules.Count.ShouldBe(3);
+        result.StudyItemSchedules.Select(s => s.StudyItemId).ShouldBe(new[] { imageItemId, linkItemId, bookItemId });
+    }
+
+    [Fact]
     public async Task MapToUserProgramDto_ZeroStudyItems_ProgressPercentageIsZero()
     {
         int programId;

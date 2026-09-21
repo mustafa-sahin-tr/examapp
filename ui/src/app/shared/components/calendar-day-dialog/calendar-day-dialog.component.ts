@@ -12,6 +12,7 @@ import { AuthService } from '../../../services/auth.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { activeIntlLocale } from '../../utils/active-locale.util';
 import { formatFullDate } from '../../utils/calendar-month.util';
+import { describeStudyItem } from '../../utils/study-item-display.util';
 
 /** Girdi: bir günün tarihi + o güne düşen etkinlikler. */
 export interface CalendarDayDialogData {
@@ -32,8 +33,16 @@ interface DayEventAction {
   /** Çevrilmiş buton metni. */
   label: string;
   icon: string;
-  /** Gezinme yapar; önce dialog/bottom-sheet kapatılır. */
+  /** Gezinme yapar; önce dialog/bottom-sheet kapatılır. `href` verilirse buton yerine yeni sekmede açan bağlantı render edilir. */
   run: () => void;
+  /** Yalnızca güvenli (http/https) dış bağlantılar için; satır tıklamasını/gezinmeyi tetiklemez. */
+  href?: string;
+}
+
+/** program-study-page satırında tipe göre ek bilgi satırı (link host'u, kitap/sayfa aralığı). */
+interface DayEventDetail {
+  icon: string;
+  text: string;
 }
 
 interface DayEventRow {
@@ -48,6 +57,7 @@ interface DayEventRow {
   sunkLabel: string | null;
   sunkIcon: string | null;
   actions: DayEventAction[];
+  detail: DayEventDetail | null;
   /** program-study-page satırları: "X/Y sayfa tamamlandı" bilgisini sonradan eklemek için. */
   programId: number | null;
 }
@@ -205,6 +215,7 @@ export class CalendarDayDialogComponent {
             },
           },
         ],
+        detail: null,
         programId: null,
       };
     }
@@ -215,25 +226,38 @@ export class CalendarDayDialogComponent {
       const end = ev.endDate ? new Date(ev.endDate) : null;
       const range = end ? `${RANGE_FMT.format(at)} – ${RANGE_FMT.format(end)}` : RANGE_FMT.format(at);
       const programId = ev.programId;
+      const item = describeStudyItem(ev, (key, params) => this.t(key, params));
+      const actions: DayEventAction[] = [];
+      let detail: DayEventDetail | null = null;
+      if (item.kind === 'link') {
+        const linkIcon = item.platformIcon ?? item.typeIcon;
+        if (item.href) {
+          detail = { icon: linkIcon, text: [item.platformLabel, item.host].filter((p) => !!p).join(' · ') };
+          actions.push({ label: this.t('shared.studyItem.open'), icon: 'open_in_new', href: item.href, run: () => undefined });
+        } else if (item.platformLabel) {
+          detail = { icon: linkIcon, text: item.platformLabel };
+        }
+      } else if (item.kind === 'book' && item.bookLine) {
+        detail = { icon: item.typeIcon, text: item.bookLine };
+      }
+      if (programId !== null) {
+        actions.push({
+          label: this.t('shared.calendarDayDialog.goToProgram'),
+          icon: 'menu_book',
+          run: () => this.navigateToProgram(programId),
+        });
+      }
       return {
         time,
         variant,
         icon: VARIANT_ICON[variant],
-        title: ev.studyPageTitle || this.t('shared.calendar.variant.programPlan'),
+        title: ev.studyItemTitle || this.t('shared.calendar.variant.programPlan'),
         meta: this.metaLine([ev.programName, range]),
         sunk: done,
         sunkLabel: done ? this.t('shared.calendarDayDialog.completed') : null,
         sunkIcon: done ? 'check_circle' : null,
-        actions:
-          programId !== null
-            ? [
-                {
-                  label: this.t('shared.calendarDayDialog.goToProgram'),
-                  icon: 'menu_book',
-                  run: () => this.navigateToProgram(programId),
-                },
-              ]
-            : [],
+        actions,
+        detail,
         programId,
       };
     }
@@ -262,6 +286,7 @@ export class CalendarDayDialogComponent {
             run: () => this.navigate(ev.worksheetId, { reminder: 'edit' }),
           },
         ],
+        detail: null,
         programId: null,
       };
     }
@@ -294,6 +319,7 @@ export class CalendarDayDialogComponent {
               run: () => this.navigate(ev.worksheetId),
             },
       ],
+      detail: null,
       programId: null,
     };
   }

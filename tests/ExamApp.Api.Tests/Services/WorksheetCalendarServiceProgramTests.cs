@@ -234,5 +234,141 @@ public class WorksheetCalendarServiceProgramTests : IDisposable
         result.Events.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task GetMyCalendarAsync_LinkTypeEvent_ProjectsContentTypeUrlAndPlatform()
+    {
+        // AC #8: günün etkinlik detayı — Backend projection'ı yeni alanları (ContentType, Url, Platform,
+        // BookName, BookTestName, StartPage, EndPage) üç tip için doğru döndürür;
+        // diğer kind'larda (reminder/assignment-deadline) bu alanlar null.
+        await using var ctx = _db.NewContext();
+        {
+            var linkItem = new StudyItem
+            {
+                Title = "YouTube Video",
+                Description = "d",
+                CreatedByUserId = 1,
+                ContentType = StudyItemContentType.Link,
+                Url = "https://www.youtube.com/watch?v=test123",
+                Platform = StudyItemLinkPlatform.YouTube
+            };
+            ctx.StudyItems.Add(linkItem);
+            await ctx.SaveChangesAsync();
+
+            var program = new UserProgram
+            {
+                UserId = KeycloakUserId,
+                ProgramName = "Video Program",
+                Description = "d",
+                StudyType = "time",
+                StudyDuration = "25-5",
+                SubjectsPerDay = 1,
+                RestDays = "",
+                DifficultSubjects = "",
+                IsActive = true
+            };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+
+            var schedule = new UserProgramStudyPageSchedule
+            {
+                UserProgramId = program.Id,
+                StudyItemId = linkItem.Id,
+                StartDate = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
+                IsCompleted = false
+            };
+            ctx.UserProgramStudyPageSchedules.Add(schedule);
+            await ctx.SaveChangesAsync();
+        }
+
+        var result = await NewService(ctx).GetMyCalendarAsync(
+            StudentId, KeycloakUserId, null, null,
+            new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var ev = result.Events.ShouldHaveSingleItem();
+        ev.ContentType.ShouldBe(StudyItemContentType.Link);
+        ev.Url.ShouldBe("https://www.youtube.com/watch?v=test123");
+        ev.Platform.ShouldBe(StudyItemLinkPlatform.YouTube);
+        // BookPageRange fields should be null for Link type
+        ev.BookName.ShouldBeNull();
+        ev.BookTestName.ShouldBeNull();
+        ev.StartPage.ShouldBeNull();
+        ev.EndPage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetMyCalendarAsync_BookPageRangeTypeEvent_ProjectsBookAndPageFields()
+    {
+        await using var ctx = _db.NewContext();
+        {
+            // Create Book and BookTest
+            var book = new Book { Name = "Matematik Kitabı" };
+            ctx.Books.Add(book);
+            await ctx.SaveChangesAsync();
+
+            var bookTest = new BookTest { BookId = book.Id, Name = "Test 5" };
+            ctx.BookTests.Add(bookTest);
+            await ctx.SaveChangesAsync();
+
+            var bookItem = new StudyItem
+            {
+                Title = "Book Pages",
+                Description = "d",
+                CreatedByUserId = 1,
+                ContentType = StudyItemContentType.BookPageRange,
+                BookId = book.Id,
+                BookTestId = bookTest.Id,
+                StartPage = 42,
+                EndPage = 57
+            };
+            ctx.StudyItems.Add(bookItem);
+            await ctx.SaveChangesAsync();
+
+            var program = new UserProgram
+            {
+                UserId = KeycloakUserId,
+                ProgramName = "Book Program",
+                Description = "d",
+                StudyType = "time",
+                StudyDuration = "25-5",
+                SubjectsPerDay = 1,
+                RestDays = "",
+                DifficultSubjects = "",
+                IsActive = true
+            };
+            ctx.UserPrograms.Add(program);
+            await ctx.SaveChangesAsync();
+
+            var schedule = new UserProgramStudyPageSchedule
+            {
+                UserProgramId = program.Id,
+                StudyItemId = bookItem.Id,
+                StartDate = new DateTime(2026, 3, 8, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 3, 8, 0, 0, 0, DateTimeKind.Utc),
+                IsCompleted = false
+            };
+            ctx.UserProgramStudyPageSchedules.Add(schedule);
+            await ctx.SaveChangesAsync();
+        }
+
+        var result = await NewService(ctx).GetMyCalendarAsync(
+            StudentId, KeycloakUserId, null, null,
+            new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 3, 10, 0, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var ev = result.Events.ShouldHaveSingleItem();
+        ev.ContentType.ShouldBe(StudyItemContentType.BookPageRange);
+        ev.BookName.ShouldBe("Matematik Kitabı");
+        ev.BookTestName.ShouldBe("Test 5");
+        ev.StartPage.ShouldBe(42);
+        ev.EndPage.ShouldBe(57);
+        // Link fields should be null for BookPageRange type
+        ev.Url.ShouldBeNull();
+        ev.Platform.ShouldBeNull();
+    }
+
     public void Dispose() => _db.Dispose();
 }

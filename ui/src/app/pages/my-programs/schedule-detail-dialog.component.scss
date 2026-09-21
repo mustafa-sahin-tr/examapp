@@ -18,7 +18,7 @@
       margin: 0 0 8px 0;
       font-size: 1.2rem;
       font-weight: 600;
-      color: var(--main-text-color, #1f2937);
+      color: var(--ms-text-strong);
     }
 
     .date-range {
@@ -26,7 +26,7 @@
       align-items: center;
       gap: 6px;
       font-size: 0.9rem;
-      color: #64748b;
+      color: var(--ms-text-weak);
 
       mat-icon {
         font-size: 18px;
@@ -46,7 +46,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #475569;
+    color: var(--ms-text-medium);
     font-size: 0.9rem;
 
     mat-icon {
@@ -60,7 +60,7 @@
     margin-top: 8px;
     border-radius: 8px;
     overflow: hidden;
-    border: 1px solid rgba(148, 163, 184, 0.3);
+    border: 1px solid var(--ms-border);
 
     img {
       width: 100%;
@@ -74,4 +74,16 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.schedule-detail-body {
+  .open-link {
+    align-self: flex-start;
+  }
+
+  .detail-note {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--ms-text-weak);
+  }
 }

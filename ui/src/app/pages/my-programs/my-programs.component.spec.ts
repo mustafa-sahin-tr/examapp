@@ -42,7 +42,7 @@ describe('MyProgramsComponent', () => {
       totalPageCount: 10,
       progressPercentage: 30,
       schedules: [],
-      studyPageSchedules: [],
+      studyItemSchedules: [],
       ...overrides,
     };
   }

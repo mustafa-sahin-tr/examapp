@@ -15,21 +15,61 @@ mat-dialog-content {
   }
 }
 
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .search-field {
+    width: 100%;
+  }
+
+  .type-filter {
+    font-family: var(--paragraphFontFamily);
+  }
+}
+
+.state-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  color: var(--ms-text-weak);
+  font-family: var(--paragraphFontFamily);
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  &.state-error {
+    color: var(--ms-danger-text-weak);
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+  }
+}
+
 .no-pages-message {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 24px;
-  background: rgba(255, 193, 7, 0.1);
+  background: var(--ms-warning-surface-weak);
   border-radius: 8px;
-  color: #f57c00;
-  
+  color: var(--ms-warning-text, var(--ms-text));
+  font-family: var(--paragraphFontFamily);
+
   mat-icon {
     font-size: 32px;
     width: 32px;
     height: 32px;
   }
-  
+
   p {
     margin: 0;
     font-size: 14px;
@@ -48,15 +88,15 @@ mat-dialog-content {
   cursor: pointer;
   transition: all 0.3s ease;
   border: 2px solid transparent;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
   }
 
   &.selected {
-    border-color: #1976d2;
-    background: rgba(25, 118, 210, 0.05);
+    border-color: var(--ms-action-border);
   }
 }
 
@@ -65,17 +105,16 @@ mat-dialog-content {
   top: 12px;
   right: 12px;
   z-index: 2;
-  background: white;
+  background: var(--ms-surface-weak);
   border-radius: 50%;
   padding: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .card-media {
   height: 140px;
   background-size: cover;
   background-position: center;
-  background-color: #f5f5f5;
+  background-color: var(--ms-surface-medium);
   border-radius: 8px 8px 0 0;
   position: relative;
 
@@ -85,18 +124,40 @@ mat-dialog-content {
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #9e9e9e;
-    
+    color: var(--ms-text-weak);
+
     mat-icon {
       font-size: 48px;
       width: 48px;
       height: 48px;
       margin-bottom: 8px;
     }
-    
+
     span {
       font-size: 12px;
     }
+  }
+}
+
+// Link ve kitap kartlarında kapak alanı yoktur; rozet kart içeriğinin üstünde durur.
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 12px 0 8px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-medium);
+  color: var(--ms-text-medium);
+  font-family: var(--paragraphFontFamily);
+  font-size: 12px;
+  font-weight: 600;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
   }
 }
 
@@ -104,7 +165,7 @@ mat-dialog-content {
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 8px 0;
-  color: var(--main-text-color);
+  color: var(--ms-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -112,7 +173,7 @@ mat-dialog-content {
 
 .card-description {
   font-size: 13px;
-  color: #666;
+  color: var(--ms-text-weak);
   margin: 0 0 12px 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -128,12 +189,21 @@ mat-dialog-content {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #999;
+  color: var(--ms-text-weak);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
 
   mat-icon {
     font-size: 16px;
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
   }
 }
 
@@ -141,17 +211,13 @@ mat-dialog-content {
   display: flex;
   gap: 12px;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.02);
-  border-top: 1px solid #e0e0e0;
+  background: var(--ms-surface-medium);
+  border-top: 1px solid var(--ms-border);
   margin-top: 12px;
 
   .date-field {
     flex: 1;
     font-size: 13px;
-
-    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-      display: none;
-    }
   }
 }
 

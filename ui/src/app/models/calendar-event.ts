@@ -1,3 +1,5 @@
+import { StudyPageContentType, StudyPageLinkPlatform } from './study-page';
+
 /**
  * Öğrenci takvimi etkinlikleri — backend `CalendarEventDto` ile birebir
  * (api/ExamApp.Api/Models/Dtos/CalendarEventDto.cs).
@@ -35,8 +37,19 @@ export interface CalendarEvent {
   /** Yalnızca kind === 'program-study-page'. */
   programId: number | null;
   programName: string | null;
-  studyPageId: number | null;
-  studyPageTitle: string | null;
+  studyItemId: number | null;
+  studyItemTitle: string | null;
+
+  // --- çalışma etkinliği tipi alanları (issue #141/#142, yalnızca kind === 'program-study-page') ---
+  // Takvim ızgarası tip ayrımı yapmaz; yalnızca gün detayı (calendar-day-dialog) kullanır.
+  contentType?: StudyPageContentType | null;
+  /** Link tipi: http/https dışı şema gelebilir — render öncesi `safeExternalUrl` ile doğrula. */
+  url?: string | null;
+  platform?: StudyPageLinkPlatform | null;
+  bookName?: string | null;
+  bookTestName?: string | null;
+  startPage?: number | null;
+  endPage?: number | null;
 
   // --- booking alanları (issue #96, yalnızca kind === 'booking') ---
   /** Onaylanmış randevunun kimliği. `endDate` randevunun bitişidir (startUtc/endUtc). */

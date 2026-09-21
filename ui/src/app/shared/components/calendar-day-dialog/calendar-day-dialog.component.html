@@ -33,6 +33,12 @@
           @if (row.meta) {
             <p class="day-dialog__row-meta">{{ row.meta }}</p>
           }
+          @if (row.detail) {
+            <p class="day-dialog__row-detail">
+              <mat-icon>{{ row.detail.icon }}</mat-icon>
+              <span>{{ row.detail.text }}</span>
+            </p>
+          }
           @if (row.sunkLabel) {
             <p class="day-dialog__row-status">
               <mat-icon>{{ row.sunkIcon }}</mat-icon>
@@ -42,15 +48,25 @@
 
           <div class="day-dialog__actions">
             @for (action of row.actions; track action.label) {
-              <button
-                mat-stroked-button
-                type="button"
-                class="day-dialog__action"
-                (click)="action.run()"
-              >
-                <mat-icon>{{ action.icon }}</mat-icon>
-                {{ action.label }}
-              </button>
+              @if (action.href) {
+                <a
+                  mat-stroked-button
+                  class="day-dialog__action"
+                  [href]="action.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  [attr.aria-label]="t('shared.studyItem.openAria', { title: row.title })"
+                  (click)="$event.stopPropagation()"
+                >
+                  <mat-icon>{{ action.icon }}</mat-icon>
+                  {{ action.label }}
+                </a>
+              } @else {
+                <button mat-stroked-button type="button" class="day-dialog__action" (click)="action.run()">
+                  <mat-icon>{{ action.icon }}</mat-icon>
+                  {{ action.label }}
+                </button>
+              }
             }
           </div>
         </div>

@@ -159,6 +159,24 @@
         "sun": "Paz"
       }
     },
+    "studyItem": {
+      "open": "Aç",
+      "openAria": "{{title}} bağlantısını yeni sekmede aç",
+      "type": {
+        "image": "Görsel",
+        "link": "Link",
+        "bookPageRange": "Kitap Sayfası"
+      },
+      "platform": {
+        "other": "Diğer",
+        "eba": "EBA",
+        "youtube": "YouTube"
+      },
+      "book": {
+        "pageSingle": "sayfa {{page}}",
+        "pageRange": "sayfa {{start}}-{{end}}"
+      }
+    },
     "calendarDayDialog": {
       "completed": "Tamamlandı",
       "sent": "Gönderildi",

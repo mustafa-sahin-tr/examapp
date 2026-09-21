@@ -1,5 +1,6 @@
 using BadgeService.Consumers;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using BadgeService.Tests.Support;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
@@ -33,7 +34,11 @@ public class TeacherApplicationSubmittedConsumerTests : IDisposable
     }
 
     private TeacherApplicationSubmittedConsumer NewConsumer(IHubContext<BadgeNotificationHub> hub)
-        => new(_db.NewContext(), hub, NullLogger<TeacherApplicationSubmittedConsumer>.Instance);
+        => new(
+            _db.NewContext(),
+            hub,
+            NullLogger<TeacherApplicationSubmittedConsumer>.Instance,
+            FallbackNotificationTextFactory.Instance);
 
     private static TeacherApplicationSubmittedEvent Evt(int teacherId = 7, int userId = 42, string? name = "Ayşe Yılmaz")
         => new()

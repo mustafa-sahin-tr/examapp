@@ -1,8 +1,5 @@
 {
   "common": {
-    "invalidData": "Geçersiz veri.",
-    "notFound": "Kayıt bulunamadı.",
-    "forbidden": "Bu işlem için yetkiniz yok.",
-    "unexpectedError": "Beklenmeyen bir hata oluştu."
+    "invalidData": "Geçersiz veri."
   }
 }

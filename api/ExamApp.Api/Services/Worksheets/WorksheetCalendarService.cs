@@ -264,6 +264,8 @@ public class WorksheetCalendarService : IWorksheetCalendarService
     /// tek nokta değil aralık kesişimi uygulanır: StartDate &lt; toUtc &amp;&amp; EndDate &gt;= fromUtc.
     /// Legacy günlük UserProgramSchedule kapsam dışıdır. UserProgram.UserId Keycloak sub tuttuğu için
     /// filtre <paramref name="keycloakUserId"/> ile yapılır — başka öğrencinin programı sızmaz.
+    /// Etkinlik detayı için StudyItem içerik tipi alanları (ContentType/Url/Platform/BookName/BookTestName/
+    /// StartPage/EndPage) da aynı sorguda projekte edilir (issue #141/#142).
     /// </summary>
     private async Task<List<CalendarEventDto>> BuildProgramStudyItemEventsAsync(
         string keycloakUserId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
@@ -285,7 +287,15 @@ public class WorksheetCalendarService : IWorksheetCalendarService
                 StudyItemTitle = s.StudyItem.Title,
                 s.StartDate,
                 s.EndDate,
-                s.IsCompleted
+                s.IsCompleted,
+                // İçerik tipi alanları (issue #141/#142) — tek sorguda LEFT JOIN ile gelir, N+1 yok.
+                s.StudyItem.ContentType,
+                s.StudyItem.Url,
+                s.StudyItem.Platform,
+                BookName = s.StudyItem.Book != null ? s.StudyItem.Book.Name : null,
+                BookTestName = s.StudyItem.BookTest != null ? s.StudyItem.BookTest.Name : null,
+                s.StudyItem.StartPage,
+                s.StudyItem.EndPage
             })
             .ToListAsync(ct);
 
@@ -298,7 +308,14 @@ public class WorksheetCalendarService : IWorksheetCalendarService
             ProgramName = r.ProgramName,
             StudyItemId = r.StudyItemId,
             StudyItemTitle = r.StudyItemTitle,
-            IsCompleted = r.IsCompleted
+            IsCompleted = r.IsCompleted,
+            ContentType = r.ContentType,
+            Url = r.Url,
+            Platform = r.Platform,
+            BookName = r.BookName,
+            BookTestName = r.BookTestName,
+            StartPage = r.StartPage,
+            EndPage = r.EndPage
         }).ToList();
     }
 

@@ -73,10 +73,12 @@
                 [style.grid-row]="bar.weekRow + 1"
                 [style.transform]="'translateY(calc(var(--bar-top-offset) + ' + bar.offsetY + 'px))'"
                 [style.background]="bar.color"
-                [title]="bar.schedule.studyPageTitle"
+                [title]="bar.schedule.studyItemTitle + ' · ' + bar.typeLabel"
+                [attr.data-kind]="bar.schedule.contentType"
                 (click)="onScheduleClick(bar, $event)"
               >
-                <span class="schedule-bar-title">{{ bar.schedule.studyPageTitle }}</span>
+                <mat-icon class="schedule-bar-icon" [attr.aria-label]="t('detail.typeAria', { type: bar.typeLabel })">{{ bar.typeIcon }}</mat-icon>
+                <span class="schedule-bar-title">{{ bar.schedule.studyItemTitle }}</span>
               </div>
             </div>
 

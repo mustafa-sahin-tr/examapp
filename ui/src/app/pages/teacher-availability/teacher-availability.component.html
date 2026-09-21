@@ -10,6 +10,10 @@
     </a>
   </header>
 
+  @if (!error()) {
+    <app-availability-week-grid [slots]="slots()" [loading]="loading()" />
+  }
+
   <form class="avail__form" [formGroup]="form" (ngSubmit)="submit()">
     <mat-form-field appearance="outline">
       <mat-label>{{ t('form.dateLabel') }}</mat-label>

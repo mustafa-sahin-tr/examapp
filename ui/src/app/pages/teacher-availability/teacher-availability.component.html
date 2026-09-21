@@ -10,7 +10,7 @@
     </a>
   </header>
 
-  @if (!error()) {
+  @if (!error() || slots().length) {
     <app-availability-week-grid [slots]="slots()" [loading]="loading()" />
   }
 

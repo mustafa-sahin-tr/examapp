@@ -75,7 +75,7 @@ describe('BookingService', () => {
       httpReq.flush({ success: true, slot: mockSlot });
     });
 
-    it('createSlot_ApiReturns409Conflict_ResultIncludesConflictFlag', (done) => {
+    it('createSlot_ApiReturns409Conflict_ErrorPropagates', (done) => {
       const req: CreateAvailabilitySlotRequest = {
         date: '2026-09-20',
         startTime: '14:00:00',
@@ -83,9 +83,11 @@ describe('BookingService', () => {
       };
 
       service.createSlot(req).subscribe({
-        next: (result) => {
-          expect(result.success).toBeFalse();
-          expect(result.conflict).toBeTrue();
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(409);
+          expect(error.error.conflict).toBeTrue();
+          expect(error.error.message).toBe('Time slot overlaps');
           done();
         },
       });
@@ -113,6 +115,7 @@ describe('BookingService', () => {
       const slotId = 1;
 
       service.deleteSlot(slotId).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
         error: (error: HttpErrorResponse) => {
           expect(error.status).toBe(403);
           done();
@@ -185,13 +188,17 @@ describe('BookingService', () => {
       httpReq.flush({ success: true, items: [mockSlot] });
     });
 
-    it('getTeacherSlots_ApiReturns404_NotFound', (done) => {
+    it('getTeacherSlots_ApiReturns404_ErrorPropagates', (done) => {
       const teacherId = 999;
 
-      service.getTeacherSlots(teacherId).subscribe((result) => {
-        expect(result.success).toBeFalse();
-        expect(result.notFound).toBeTrue();
-        done();
+      service.getTeacherSlots(teacherId).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(404);
+          expect(error.error.notFound).toBeTrue();
+          expect(error.error.message).toBe('Teacher not found');
+          done();
+        },
       });
 
       const httpReq = httpMock.expectOne(
@@ -242,13 +249,17 @@ describe('BookingService', () => {
       httpReq.flush({ success: true, booking: mockBooking });
     });
 
-    it('createBooking_ApiReturns409Conflict_SlotAlreadyBooked', (done) => {
+    it('createBooking_ApiReturns409Conflict_ErrorPropagates', (done) => {
       const req: CreateBookingRequest = { availabilitySlotId: 1 };
 
-      service.createBooking(req).subscribe((result) => {
-        expect(result.success).toBeFalse();
-        expect(result.conflict).toBeTrue();
-        done();
+      service.createBooking(req).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(409);
+          expect(error.error.conflict).toBeTrue();
+          expect(error.error.message).toBe('Slot already booked');
+          done();
+        },
       });
 
       const httpReq = httpMock.expectOne(`${service['baseUrl']}/requests`);
@@ -305,6 +316,7 @@ describe('BookingService', () => {
       const bookingId = 1;
 
       service.approveBooking(bookingId).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
         error: (error: HttpErrorResponse) => {
           expect(error.status).toBe(403);
           done();
@@ -393,6 +405,7 @@ describe('BookingService', () => {
       const bookingId = 12;
 
       service.getVideoSession(bookingId).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
         error: (error: HttpErrorResponse) => {
           expect(error.status).toBe(409);
           expect(service.extractError(error, 'fallback')).toContain('katılabilirsiniz');
@@ -469,7 +482,7 @@ describe('BookingService', () => {
   });
 
   describe('getAllMySlots', () => {
-    it('getAllMySlots_SinglePageLessThan200_MakesOneRequest', (done) => {
+    it('getAllMySlots_SinglePageLessThan200_MakesEmptyPageRequest', (done) => {
       const mockSlots: AvailabilitySlot[] = [
         {
           id: 1,
@@ -490,16 +503,25 @@ describe('BookingService', () => {
         done();
       });
 
-      const httpReq = httpMock.expectOne(
+      const httpReq1 = httpMock.expectOne(
         (req) =>
           req.url === `${service['baseUrl']}/slots/mine` &&
           req.params.get('skip') === '0' &&
           req.params.get('take') === '200'
       );
-      httpReq.flush({ success: true, items: mockSlots });
+      httpReq1.flush({ success: true, items: mockSlots });
+
+      // New behavior: service makes a second request with cumulative skip to confirm end of list
+      const httpReq2 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '1' &&
+          req.params.get('take') === '200'
+      );
+      httpReq2.flush({ success: true, items: [] });
     });
 
-    it('getAllMySlots_ExactlyTwoHundredSlots_MakesSecondRequest', (done) => {
+    it('getAllMySlots_ExactlyTwoHundredSlots_FetchesThirdEmpty', (done) => {
       const mockSlots1: AvailabilitySlot[] = Array.from({ length: 200 }, (_, i) => ({
         id: i + 1,
         teacherId: 10,
@@ -547,9 +569,18 @@ describe('BookingService', () => {
           req.params.get('take') === '200'
       );
       httpReq2.flush({ success: true, items: mockSlots2 });
+
+      // Page 2 had 1 item (< 200), so service fetches page 3 with cumulative skip
+      const httpReq3 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '201' &&
+          req.params.get('take') === '200'
+      );
+      httpReq3.flush({ success: true, items: [] });
     });
 
-    it('getAllMySlots_ThreePages_MakesThreeRequests', (done) => {
+    it('getAllMySlots_ThreePages_AccumulativeSkipWithEmptyEnd', (done) => {
       const makePage = (startId: number, count: number): AvailabilitySlot[] =>
         Array.from({ length: count }, (_, i) => ({
           id: startId + i,
@@ -596,6 +627,15 @@ describe('BookingService', () => {
           req.params.get('take') === '200'
       );
       httpReq3.flush({ success: true, items: page3 });
+
+      // Page 3 had 50 items (< 200), so service fetches page 4 with cumulative skip
+      const httpReq4 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '450' &&
+          req.params.get('take') === '200'
+      );
+      httpReq4.flush({ success: true, items: [] });
     });
 
     it('getAllMySlots_DuplicateIds_DeduplicatesByIdKeepingFirst', (done) => {
@@ -646,9 +686,17 @@ describe('BookingService', () => {
           req.params.get('skip') === '200'
       );
       httpReq2.flush({ success: true, items: page2 });
+
+      // Page 2 had 1 item (< 200), so service fetches page 3 with cumulative skip
+      const httpReq3 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '201'
+      );
+      httpReq3.flush({ success: true, items: [] });
     });
 
-    it('getAllMySlots_MaxPagesExceeded_StopsAt25Pages', (done) => {
+    it('getAllMySlots_MaxPagesReached_WarnsAndStops', (done) => {
       const makePage = (pageNum: number): AvailabilitySlot[] =>
         Array.from({ length: 200 }, (_, i) => ({
           id: pageNum * 200 + i + 1,
@@ -662,8 +710,17 @@ describe('BookingService', () => {
           isBooked: false,
         }));
 
+      spyOn(console, 'warn');
       service.getAllMySlots().subscribe((result) => {
-        expect(result.items.length).toBeLessThanOrEqual(25 * 200);
+        expect(result.items.length).toBe(25 * 200);
+        expect(console.warn).toHaveBeenCalledWith(
+          jasmine.stringContaining('25 sayfa sınırına ulaşıldı')
+        );
+        // Verify no 26th request is made
+        httpMock.expectNone((req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === String(25 * 200)
+        );
         done();
       });
 
@@ -677,8 +734,197 @@ describe('BookingService', () => {
       }
     });
 
+    it('getAllMySlots_BelowMaxPages_DoesNotWarn', (done) => {
+      const makePage = (pageNum: number): AvailabilitySlot[] =>
+        Array.from({ length: 200 }, (_, i) => ({
+          id: pageNum * 200 + i + 1,
+          teacherId: 10,
+          date: '2026-09-20',
+          startTime: '14:00:00',
+          endTime: '15:00:00',
+          createdAt: '2026-09-15T10:00:00Z',
+          startUtc: '2026-09-20T12:00:00Z',
+          endUtc: '2026-09-20T13:00:00Z',
+          isBooked: false,
+        }));
+
+      spyOn(console, 'warn');
+      service.getAllMySlots().subscribe((result) => {
+        expect(result.items.length).toBe(3 * 200);
+        expect(console.warn).not.toHaveBeenCalled();
+        done();
+      });
+
+      for (let i = 0; i < 3; i++) {
+        const httpReq = httpMock.expectOne(
+          (req) =>
+            req.url === `${service['baseUrl']}/slots/mine` &&
+            req.params.get('skip') === String(i * 200)
+        );
+        httpReq.flush({ success: true, items: makePage(i) });
+      }
+
+      // Page 3 is full, so one more request to check end
+      const finalReq = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === String(3 * 200)
+      );
+      finalReq.flush({ success: true, items: [] });
+    });
+
+    it('getAllMySlots_BackendReturnsSmallPages_AdaptsWithAccumulativeSkip', (done) => {
+      const page1 = Array.from({ length: 50 }, (_, i) => ({
+        id: i + 1,
+        teacherId: 10,
+        date: '2026-09-20',
+        startTime: '14:00:00',
+        endTime: '15:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-20T12:00:00Z',
+        endUtc: '2026-09-20T13:00:00Z',
+        isBooked: false,
+      }));
+      const page2 = Array.from({ length: 50 }, (_, i) => ({
+        id: i + 51,
+        teacherId: 10,
+        date: '2026-09-20',
+        startTime: '14:00:00',
+        endTime: '15:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-20T12:00:00Z',
+        endUtc: '2026-09-20T13:00:00Z',
+        isBooked: false,
+      }));
+
+      service.getAllMySlots().subscribe((result) => {
+        expect(result.items.length).toBe(100);
+        expect(result.items[0].id).toBe(1);
+        expect(result.items[99].id).toBe(100);
+        done();
+      });
+
+      const httpReq1 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '0'
+      );
+      httpReq1.flush({ success: true, items: page1 });
+
+      const httpReq2 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '50'
+      );
+      httpReq2.flush({ success: true, items: page2 });
+
+      const httpReq3 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '100'
+      );
+      httpReq3.flush({ success: true, items: [] });
+    });
+
+    it('getAllMySlots_TwentyFourFullPagesThenEmpty_NoWarnAndTwentyFiveRequests', (done) => {
+      const makePage = (pageNum: number): AvailabilitySlot[] =>
+        Array.from({ length: 200 }, (_, i) => ({
+          id: pageNum * 200 + i + 1,
+          teacherId: 10,
+          date: '2026-09-20',
+          startTime: '14:00:00',
+          endTime: '15:00:00',
+          createdAt: '2026-09-15T10:00:00Z',
+          startUtc: '2026-09-20T12:00:00Z',
+          endUtc: '2026-09-20T13:00:00Z',
+          isBooked: false,
+        }));
+
+      spyOn(console, 'warn');
+      service.getAllMySlots().subscribe((result) => {
+        expect(result.items.length).toBe(24 * 200);
+        expect(console.warn).not.toHaveBeenCalled();
+        done();
+      });
+
+      // 25. (son izinli) sayfa boş: veri kesilmediği için uyarı verilmez.
+      for (let i = 0; i < 25; i++) {
+        const httpReq = httpMock.expectOne(
+          (req) => req.url === `${service['baseUrl']}/slots/mine` && req.params.get('skip') === String(i * 200)
+        );
+        httpReq.flush({ success: true, items: i < 24 ? makePage(i) : [] });
+      }
+    });
+
+    it('getAllMySlots_SubscribedTwice_SecondSubscriptionRestartsFromSkipZero', () => {
+      const slot: AvailabilitySlot = {
+        id: 1,
+        teacherId: 10,
+        date: '2026-09-20',
+        startTime: '14:00:00',
+        endTime: '15:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-20T12:00:00Z',
+        endUtc: '2026-09-20T13:00:00Z',
+        isBooked: false,
+      };
+      const all$ = service.getAllMySlots();
+      const results: number[] = [];
+
+      for (let run = 0; run < 2; run++) {
+        all$.subscribe((result) => results.push(result.items.length));
+
+        // Sayaç abonelik başına sıfırlanmalı: ikinci abonelik de skip=0, ardından skip=1 ister.
+        httpMock
+          .expectOne((req) => req.url === `${service['baseUrl']}/slots/mine` && req.params.get('skip') === '0')
+          .flush({ success: true, items: [slot] });
+        httpMock
+          .expectOne((req) => req.url === `${service['baseUrl']}/slots/mine` && req.params.get('skip') === '1')
+          .flush({ success: true, items: [] });
+      }
+
+      expect(results).toEqual([1, 1]);
+    });
+
+    it('getAllMySlots_MiddlePageError_PropagatesErrorStopsStream', (done) => {
+      const page1 = Array.from({ length: 200 }, (_, i) => ({
+        id: i + 1,
+        teacherId: 10,
+        date: '2026-09-20',
+        startTime: '14:00:00',
+        endTime: '15:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-20T12:00:00Z',
+        endUtc: '2026-09-20T13:00:00Z',
+        isBooked: false,
+      }));
+
+      service.getAllMySlots().subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (err: HttpErrorResponse) => {
+          expect(err.status).toBe(500);
+          done();
+        },
+      });
+
+      const httpReq1 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '0'
+      );
+      httpReq1.flush({ success: true, items: page1 });
+
+      const httpReq2 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '200'
+      );
+      httpReq2.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
+    });
+
     it('getAllMySlots_PageError_PropagatesError', (done) => {
       service.getAllMySlots().subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
         error: (error: HttpErrorResponse) => {
           expect(error.status).toBe(500);
           done();
@@ -740,34 +986,23 @@ describe('BookingService', () => {
         done();
       });
 
-      const httpReq = httpMock.expectOne((req) => req.url === `${service['baseUrl']}/slots/mine`);
-      httpReq.flush({
+      const httpReq1 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '0'
+      );
+      httpReq1.flush({
         success: true,
         message: 'Custom message from first page',
         items: [slot],
       });
-    });
 
-    it('getAllMySlots_LargeSlotId_PreservesIdAsNumber', (done) => {
-      const slot: AvailabilitySlot = {
-        id: 2147483647, // Max 32-bit int
-        teacherId: 10,
-        date: '2026-09-20',
-        startTime: '14:00:00',
-        endTime: '15:00:00',
-        createdAt: '2026-09-15T10:00:00Z',
-        startUtc: '2026-09-20T12:00:00Z',
-        endUtc: '2026-09-20T13:00:00Z',
-        isBooked: false,
-      };
-
-      service.getAllMySlots().subscribe((result) => {
-        expect(result.items[0].id).toBe(2147483647);
-        done();
-      });
-
-      const httpReq = httpMock.expectOne((req) => req.url === `${service['baseUrl']}/slots/mine`);
-      httpReq.flush({ success: true, items: [slot] });
+      const httpReq2 = httpMock.expectOne(
+        (req) =>
+          req.url === `${service['baseUrl']}/slots/mine` &&
+          req.params.get('skip') === '1'
+      );
+      httpReq2.flush({ success: true, items: [] });
     });
   });
 });

@@ -29,7 +29,8 @@
           <ng-template #eventContent let-arg>
             @let p = props(arg);
             @let tip = tooltipText(p, t(p.statusKey), p.studentName ? t('grid.tooltip.student', { name: p.studentName }) : '', p.past ? t('grid.tooltip.past') : '');
-            <div class="awg__ev" role="group" [matTooltip]="tip" [attr.aria-label]="tip">
+            <!-- Tek tab durağı bu elemandır (`eventInteractive` kapalı); matTooltip odakta da açılır. -->
+            <div class="awg__ev" role="group" tabindex="0" [matTooltip]="tip" [attr.aria-label]="tip">
               <span class="awg__ev-time">{{ p.timeRange }}</span>
               <span class="awg__ev-note">{{ p.studentName ?? t(p.statusKey) }}</span>
             </div>

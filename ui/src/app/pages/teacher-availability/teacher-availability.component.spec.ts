@@ -4,14 +4,15 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, provideRouter } from '@angular/router';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { By } from '@angular/platform-browser';
 import { of, throwError } from 'rxjs';
 
 import { TeacherAvailabilityComponent } from './teacher-availability.component';
 import { BookingService } from '../../services/booking.service';
 import { AvailabilitySlot } from '../../models/booking.model';
+import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 const translocoTesting = translocoTestingModule();
 
@@ -42,7 +43,7 @@ describe('TeacherAvailabilityComponent', () => {
     ]);
     bookingService.getAllMySlots.and.returnValue(of({ items: [mockSlot], success: true }));
     bookingService.createSlot.and.returnValue(of({ success: true, slot: mockSlot }));
-    bookingService.deleteSlot.and.returnValue(of());
+    bookingService.deleteSlot.and.returnValue(of(undefined));
     bookingService.extractError.and.returnValue('Error message');
 
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
@@ -55,7 +56,6 @@ describe('TeacherAvailabilityComponent', () => {
         provideRouter([]),
         provideNativeDateAdapter(),
       ],
-      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TeacherAvailabilityComponent);
@@ -97,7 +97,57 @@ describe('TeacherAvailabilityComponent', () => {
     expect(grid).toBeTruthy();
   }));
 
-  it('should not render grid when error occurs', fakeAsync(() => {
+  it('should pass slots from service to grid component', fakeAsync(() => {
+    const slots = [
+      mockSlot,
+      {
+        id: 2,
+        teacherId: 10,
+        date: '2026-09-21',
+        startTime: '15:00:00',
+        endTime: '16:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-21T13:00:00Z',
+        endUtc: '2026-09-21T14:00:00Z',
+        isBooked: false,
+      },
+    ];
+    bookingService.getAllMySlots.and.returnValue(of({ items: slots, success: true }));
+
+    fixture.detectChanges();
+    tick();
+
+    // Grid'in `slots` input'u servisten dönen diziyle aynı olmalı (yalnızca sayfanın kendi sinyali değil).
+    const grid = fixture.debugElement.query(By.directive(AvailabilityWeekGridComponent));
+    expect(grid).toBeTruthy();
+    expect((grid.componentInstance as AvailabilityWeekGridComponent).slots()).toEqual(slots);
+  }));
+
+  it('should render grid when error occurs but previous data exists', fakeAsync(() => {
+    bookingService.getAllMySlots.and.returnValue(of({ items: [mockSlot], success: true }));
+
+    fixture.detectChanges();
+    tick();
+
+    expect(fixture.nativeElement.querySelector('app-availability-week-grid')).toBeTruthy();
+
+    // Now simulate error on reload
+    const errorResponse = new HttpErrorResponse({ status: 500, statusText: 'Server Error' });
+    bookingService.getAllMySlots.and.returnValue(throwError(() => errorResponse));
+
+    // Trigger load again
+    component['load']();
+    tick();
+    fixture.detectChanges();
+
+    // Hata gerçekten render edildi VE grid önceki veriyle yerinde kaldı.
+    expect(fixture.nativeElement.querySelector('.avail__state--error')).toBeTruthy();
+    const gridDe = fixture.debugElement.query(By.directive(AvailabilityWeekGridComponent));
+    expect(gridDe).toBeTruthy();
+    expect((gridDe.componentInstance as AvailabilityWeekGridComponent).slots()).toEqual([mockSlot]);
+  }));
+
+  it('should not render grid when initial load error and no previous data', fakeAsync(() => {
     const errorResponse = new HttpErrorResponse({ status: 500, statusText: 'Server Error' });
     bookingService.getAllMySlots.and.returnValue(throwError(() => errorResponse));
     bookingService.extractError.and.returnValue('Failed to load slots');
@@ -207,6 +257,46 @@ describe('TeacherAvailabilityComponent', () => {
     tick();
 
     expect(bookingService.deleteSlot).toHaveBeenCalledWith(1);
+  }));
+
+  it('should show snackbar and remove slot after delete success', fakeAsync(() => {
+    const slots = [
+      mockSlot,
+      {
+        id: 2,
+        teacherId: 10,
+        date: '2026-09-21',
+        startTime: '15:00:00',
+        endTime: '16:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-21T13:00:00Z',
+        endUtc: '2026-09-21T14:00:00Z',
+        isBooked: false,
+      },
+    ];
+    bookingService.getAllMySlots.and.returnValue(of({ items: slots, success: true }));
+
+    fixture.detectChanges();
+    tick();
+
+    let rows = fixture.nativeElement.querySelectorAll('.avail__row');
+    expect(rows.length).toBe(2);
+
+    const deleteButton = fixture.nativeElement.querySelector('.avail__row button') as HTMLButtonElement;
+    bookingService.deleteSlot.and.returnValue(of(undefined));
+    deleteButton?.click();
+    tick();
+
+    // Verify snackbar was called with success message
+    expect(snackBar.open).toHaveBeenCalledWith(
+      jasmine.any(String),
+      jasmine.any(String),
+      jasmine.any(Object)
+    );
+
+    // Verify slot was removed from component state
+    expect(component['slots']().length).toBe(1);
+    expect(component['slots']()[0].id).toBe(2);
   }));
 
   it('should have visible delete button for free slots', fakeAsync(() => {

@@ -12,8 +12,10 @@ using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Video;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -62,13 +64,18 @@ public class BookingService : IBookingService
 
     private readonly ILogger<BookingService> _logger;
 
+    // Client'a ulasan mesajlar sozlukten gelir (issue #184). Localizer opsiyoneldir: DI disinda
+    // olusturulan (birim test) ornekler varsayilan dile kilitli fallback'e duser.
+    private readonly IStringLocalizer<Messages> _localizer;
+
     public BookingService(
         AppDbContext context,
         IAuthApiClient authApiClient,
         IVideoSessionProvider videoSessionProvider,
         IOptions<VideoOptions> videoOptions,
         TimeProvider timeProvider,
-        ILogger<BookingService> logger)
+        ILogger<BookingService> logger,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _authApiClient = authApiClient;
@@ -76,6 +83,7 @@ public class BookingService : IBookingService
         _videoOptions = videoOptions;
         _timeProvider = timeProvider;
         _logger = logger;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     // ------------------------------------------------------------------
@@ -86,18 +94,18 @@ public class BookingService : IBookingService
         int teacherUserId, CreateAvailabilitySlotDto dto, CancellationToken ct = default)
     {
         if (dto.EndTime <= dto.StartTime)
-            return SlotFail("Bitiş saati başlangıç saatinden sonra olmalıdır.");
+            return SlotFail(_localizer["booking.slot.endBeforeStart"]);
 
         if (ToUtc(dto.Date, dto.StartTime) <= DateTime.UtcNow)
-            return SlotFail("Geçmiş bir zaman aralığı tanımlanamaz.");
+            return SlotFail(_localizer["booking.slot.inPast"]);
 
         // Üst sınırlar sunucu tarafında zorunlu (istemci doğrulaması güvenlik sınırı değildir).
         var maxDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(MaxAdvanceDays);
         if (dto.Date > maxDate)
-            return SlotFail($"Müsaitlik aralığı en fazla {MaxAdvanceDays} gün sonrası için tanımlanabilir.");
+            return SlotFail(_localizer["booking.slot.tooFarAhead", MaxAdvanceDays]);
 
         if (dto.EndTime - dto.StartTime > MaxSlotDuration)
-            return SlotFail($"Bir müsaitlik aralığı en fazla {MaxSlotDurationHours} saat sürebilir.");
+            return SlotFail(_localizer["booking.slot.tooLong", MaxSlotDurationHours]);
 
         var teacher = await _context.Teachers
             .AsNoTracking()
@@ -106,7 +114,7 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (teacher == null)
-            return new AvailabilitySlotResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new AvailabilitySlotResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
         // Sadece onaylı öğretmenler randevu alabilir (tutor-search ile aynı kısıt).
         if (teacher.ApprovalStatus != TeacherApprovalStatus.Approved)
@@ -114,7 +122,7 @@ public class BookingService : IBookingService
             {
                 Success = false,
                 Forbidden = true,
-                Message = "Müsaitlik tanımlayabilmek için öğretmen hesabınızın onaylanmış olması gerekir."
+                Message = _localizer["booking.teacherNotApproved"]
             };
 
         // Aynı gün içinde kesişen bir aralık varsa ikinci slot açılmaz — aksi halde öğretmen
@@ -131,7 +139,7 @@ public class BookingService : IBookingService
             {
                 Success = false,
                 Conflict = true,
-                Message = "Bu zaman aralığı mevcut bir müsaitlik aralığıyla çakışıyor."
+                Message = _localizer["booking.slot.overlapping"]
             };
 
         _context.SetCurrentUser(teacherUserId);
@@ -159,7 +167,7 @@ public class BookingService : IBookingService
             {
                 Success = false,
                 Conflict = true,
-                Message = "Bu zaman aralığı zaten tanımlı."
+                Message = _localizer["booking.slot.duplicate"]
             };
         }
 
@@ -167,7 +175,7 @@ public class BookingService : IBookingService
         {
             Success = true,
             ObjectId = slot.Id,
-            Message = "Müsaitlik aralığı eklendi.",
+            Message = _localizer["booking.slot.created"],
             Slot = MapSlot(slot.Id, teacher.Id, slot.Date, slot.StartTime, slot.EndTime, slot.CreatedAt, null, null, null)
         };
     }
@@ -182,7 +190,7 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (teacherId == null)
-            return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
         var rows = await _context.TeacherAvailabilitySlots
             .AsNoTracking()
@@ -236,17 +244,17 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (teacherId == null)
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
         var slot = await _context.TeacherAvailabilitySlots
             .FirstOrDefaultAsync(s => s.Id == slotId, ct);
 
         if (slot == null)
-            return new ResponseBaseDto { Success = false, NotFound = true, Message = "Müsaitlik aralığı bulunamadı." };
+            return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         // Başkasının slotu: 403 (worksheet sahiplik deseniyle tutarlı).
         if (slot.TeacherId != teacherId.Value)
-            return new ResponseBaseDto { Success = false, Forbidden = true, Message = "Bu müsaitlik aralığı size ait değil." };
+            return new ResponseBaseDto { Success = false, Forbidden = true, Message = _localizer["booking.slot.notOwned"] };
 
         var hasActiveBooking = await _context.Bookings
             .AsNoTracking()
@@ -256,14 +264,14 @@ public class BookingService : IBookingService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Bekleyen veya onaylanmış randevusu olan bir müsaitlik aralığı silinemez."
+                Message = _localizer["booking.slot.hasActiveBooking"]
             };
 
         _context.SetCurrentUser(teacherUserId);
         _context.TeacherAvailabilitySlots.Remove(slot); // BaseEntity → soft delete
         await _context.SaveChangesAsync(ct);
 
-        return new ResponseBaseDto { Success = true, ObjectId = slotId, Message = "Müsaitlik aralığı silindi." };
+        return new ResponseBaseDto { Success = true, ObjectId = slotId, Message = _localizer["booking.slot.deleted"] };
     }
 
     // ------------------------------------------------------------------
@@ -279,7 +287,7 @@ public class BookingService : IBookingService
 
         // Onaysız/olmayan öğretmen ayrımı sızdırılmaz (tutor public-profile ile aynı desen).
         if (!isApproved)
-            return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = "Öğretmen bulunamadı." };
+            return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherNotFound"] };
 
         var now = DateTime.UtcNow;
         var today = DateOnly.FromDateTime(now);
@@ -328,7 +336,7 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (studentId == null)
-            return new BookingResultDto { Success = false, NotFound = true, Message = "Öğrenci kaydı bulunamadı." };
+            return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.studentRecordNotFound"] };
 
         var slot = await _context.TeacherAvailabilitySlots
             .AsNoTracking()
@@ -347,10 +355,10 @@ public class BookingService : IBookingService
 
         // Onaysız öğretmenin slotu öğrenciye hiç görünmez → var/yok ayrımı da sızdırılmaz.
         if (slot == null || slot.TeacherApproval != TeacherApprovalStatus.Approved)
-            return new BookingResultDto { Success = false, NotFound = true, Message = "Müsaitlik aralığı bulunamadı." };
+            return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.slot.notFound"] };
 
         if (ToUtc(slot.Date, slot.StartTime) <= DateTime.UtcNow)
-            return new BookingResultDto { Success = false, Message = "Geçmiş bir zaman aralığı için randevu oluşturulamaz." };
+            return new BookingResultDto { Success = false, Message = _localizer["booking.request.slotInPast"] };
 
         var alreadyBooked = await _context.Bookings
             .AsNoTracking()
@@ -361,7 +369,7 @@ public class BookingService : IBookingService
             {
                 Success = false,
                 Conflict = true,
-                Message = "Bu zaman aralığı için zaten bir randevu talebi var."
+                Message = _localizer["booking.request.duplicate"]
             };
 
         // auth-api lookup TEK yazım işleminden önce, best-effort (WorksheetAccessRequestService ile
@@ -439,7 +447,7 @@ public class BookingService : IBookingService
             {
                 Success = false,
                 Conflict = true,
-                Message = "Bu zaman aralığı için zaten bir randevu talebi var."
+                Message = _localizer["booking.request.duplicate"]
             };
         }
 
@@ -449,7 +457,7 @@ public class BookingService : IBookingService
         {
             Success = true,
             ObjectId = booking.Id,
-            Message = "Randevu talebi oluşturuldu.",
+            Message = _localizer["booking.request.created"],
             Booking = new BookingDto
             {
                 Id = booking.Id,
@@ -479,7 +487,7 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (teacherId == null)
-            return new BookingListResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new BookingListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
         return await QueryBookingsAsync(b => b.TeacherId == teacherId.Value, skip, take, ct);
     }
@@ -494,7 +502,7 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (studentId == null)
-            return new BookingListResultDto { Success = false, NotFound = true, Message = "Öğrenci kaydı bulunamadı." };
+            return new BookingListResultDto { Success = false, NotFound = true, Message = _localizer["booking.studentRecordNotFound"] };
 
         return await QueryBookingsAsync(b => b.StudentId == studentId.Value, skip, take, ct);
     }
@@ -516,7 +524,7 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (teacherId == null)
-            return new BookingResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
 
         var booking = await _context.Bookings
             .Include(b => b.AvailabilitySlot)
@@ -524,16 +532,16 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
 
         if (booking == null)
-            return new BookingResultDto { Success = false, NotFound = true, Message = "Randevu talebi bulunamadı." };
+            return new BookingResultDto { Success = false, NotFound = true, Message = _localizer["booking.request.notFound"] };
 
         if (booking.TeacherId != teacherId.Value)
-            return new BookingResultDto { Success = false, Forbidden = true, Message = "Bu randevu talebi size ait değil." };
+            return new BookingResultDto { Success = false, Forbidden = true, Message = _localizer["booking.request.notOwned"] };
 
         if (booking.Status != BookingStatus.Pending)
             return new BookingResultDto
             {
                 Success = false,
-                Message = $"Bu talep zaten sonuçlandırılmış ({booking.Status})."
+                Message = _localizer["booking.request.alreadyDecided", booking.Status]
             };
 
         // auth-api lookup best-effort, karar yazılmadan önce (WorksheetAccessRequestService'in
@@ -593,7 +601,7 @@ public class BookingService : IBookingService
         {
             Success = true,
             ObjectId = bookingId,
-            Message = newStatus == BookingStatus.Approved ? "Randevu onaylandı." : "Randevu reddedildi.",
+            Message = newStatus == BookingStatus.Approved ? _localizer["booking.request.approved"] : _localizer["booking.request.rejected"],
             Booking = result.Items.FirstOrDefault()
         };
     }
@@ -621,17 +629,17 @@ public class BookingService : IBookingService
             .FirstOrDefaultAsync(ct);
 
         if (row == null)
-            return VideoFail(notFound: true, message: "Randevu bulunamadı.");
+            return VideoFail(notFound: true, message: _localizer["booking.video.bookingNotFound"]);
 
         var isTeacher = row.TeacherUserId == callerUserId;
         var isStudent = row.StudentUserId == callerUserId;
 
         // Sadece randevunun iki tarafı odaya girebilir — rol attribute'u tek başına yetmez.
         if (!isTeacher && !isStudent)
-            return VideoFail(forbidden: true, message: "Bu randevuya katılma yetkiniz yok.");
+            return VideoFail(forbidden: true, message: _localizer["booking.video.notParticipant"]);
 
         if (row.Status != BookingStatus.Approved)
-            return VideoFail(conflict: true, message: "Görüşme yalnızca onaylanmış randevular için başlatılabilir.");
+            return VideoFail(conflict: true, message: _localizer["booking.video.notApproved"]);
 
         var options = _videoOptions.Value;
         var startUtc = ToUtc(row.Date, row.StartTime);
@@ -643,17 +651,17 @@ public class BookingService : IBookingService
 
         if (now < windowOpensAt)
             return VideoFail(conflict: true, message:
-                $"Görüşmeye ders saatinden en erken {options.JoinWindowBeforeMinutes} dakika önce katılabilirsiniz.");
+                _localizer["booking.video.windowNotOpen", options.JoinWindowBeforeMinutes]);
 
         if (now > windowClosesAt)
             return VideoFail(conflict: true, message:
-                $"Bu dersin görüşme penceresi kapandı (bitişten {options.JoinWindowAfterMinutes} dakika sonra kapanır).");
+                _localizer["booking.video.windowClosed", options.JoinWindowAfterMinutes]);
 
         var participantUserId = isTeacher ? row.TeacherUserId : row.StudentUserId;
         var names = await ResolveUserNamesAsync(new[] { participantUserId }, ct);
         var displayName = names.TryGetValue(participantUserId, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
             ? resolved
-            : isTeacher ? "Öğretmen" : "Öğrenci";
+            : _localizer[isTeacher ? "booking.video.participantTeacher" : "booking.video.participantStudent"];
 
         VideoSessionDto session;
         try
@@ -676,7 +684,7 @@ public class BookingService : IBookingService
             _logger.LogError(ex,
                 "Video sağlayıcısı yapılandırılmamış; görüşme odası üretilemedi. BookingId={BookingId}", row.Id);
             return VideoFail(conflict: true, message:
-                "Görüşme servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.");
+                _localizer["booking.video.providerUnavailable"]);
         }
 
         return new VideoSessionResultDto

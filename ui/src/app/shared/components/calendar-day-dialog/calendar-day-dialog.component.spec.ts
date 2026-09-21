@@ -10,6 +10,7 @@ import { CalendarEvent } from '../../../models/calendar-event';
 import { ProgramService } from '../../../services/program.service';
 import { AuthService } from '../../../services/auth.service';
 import { UserProgram } from '../../../models/program.interfaces';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 function reminder(overrides: Partial<CalendarEvent> & { worksheetId: number }): CalendarEvent {
   return {
@@ -99,7 +100,7 @@ async function setup(
   authService.hasRealmRole.and.returnValue(false);
 
   await TestBed.configureTestingModule({
-    imports: [CalendarDayDialogComponent],
+    imports: [translocoTestingModule(), CalendarDayDialogComponent],
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),

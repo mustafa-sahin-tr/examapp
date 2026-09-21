@@ -1,0 +1,19 @@
+{
+  "school": {
+    "nameRequired": "School name cannot be empty.",
+    "nameAlreadyExists": "A school with this name already exists.",
+    "otherNameAlreadyExists": "Another school with this name already exists.",
+    "notFound": "School not found.",
+    "created": "School created.",
+    "updated": "School updated.",
+    "deleted": "School deleted.",
+    "hasTeachers": "There are teachers linked to this school, so it cannot be deleted.",
+    "hasStudents": "There are students linked to this school, so it cannot be deleted.",
+    "address": {
+      "tooLong": "The address can be at most {0} characters long.",
+      "provinceRequiredWithDistrict": "A province must also be selected when a district is chosen.",
+      "invalidProvince": "Invalid province.",
+      "invalidDistrict": "Invalid district, or the district does not belong to the selected province."
+    }
+  }
+}

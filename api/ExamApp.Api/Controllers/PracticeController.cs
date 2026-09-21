@@ -4,8 +4,10 @@ using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Practice;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
 
@@ -21,11 +23,20 @@ public class PracticeController : BaseController
     private readonly IPracticeSessionService _practice;
     private readonly IStudentService _studentService;
 
-    public PracticeController(IPracticeSessionService practice, IStudentService studentService)
+    // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public PracticeController(
+        IPracticeSessionService practice,
+        IStudentService studentService,
+        IStringLocalizer<Messages>? localizer = null)
         : base()
     {
         _practice = practice;
         _studentService = studentService;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     /// <summary>Yeni pratik oturumu açar. Gövde boş/eksikse: öğrencinin sınıfı + tüm dersler.</summary>
@@ -69,7 +80,7 @@ public class PracticeController : BaseController
 
         var result = await _practice.GetReviewAsync(id, student!.Id, ct);
         if (result == null)
-            return NotFound(new { message = "Pratik oturumu bulunamadı" });
+            return NotFound(new { message = _localizer["practice.sessionNotFound"].Value });
 
         return Ok(result);
     }
@@ -83,7 +94,7 @@ public class PracticeController : BaseController
 
         var result = await _practice.GetAsync(id, student!.Id, ct);
         if (result == null)
-            return NotFound(new { message = "Pratik oturumu bulunamadı" });
+            return NotFound(new { message = _localizer["practice.sessionNotFound"].Value });
 
         return Ok(result);
     }
@@ -103,7 +114,7 @@ public class PracticeController : BaseController
         {
             var result = await _practice.NextQuestionAsync(id, student!.Id, ct);
             if (result == null)
-                return NotFound(new { message = "Pratik oturumu bulunamadı" });
+                return NotFound(new { message = _localizer["practice.sessionNotFound"].Value });
 
             return Ok(result);
         }
@@ -124,7 +135,7 @@ public class PracticeController : BaseController
         {
             var result = await _practice.SubmitAnswerAsync(id, student!.Id, dto, ct);
             if (result == null)
-                return NotFound(new { message = "Pratik oturumu bulunamadı" });
+                return NotFound(new { message = _localizer["practice.sessionNotFound"].Value });
 
             return Ok(result);
         }
@@ -143,7 +154,7 @@ public class PracticeController : BaseController
 
         var result = await _practice.EndAsync(id, student!.Id, ct);
         if (result == null)
-            return NotFound(new { message = "Pratik oturumu bulunamadı" });
+            return NotFound(new { message = _localizer["practice.sessionNotFound"].Value });
 
         return Ok(result);
     }
@@ -154,11 +165,11 @@ public class PracticeController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return (null, Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu"));
+            return (null, Unauthorized(_localizer["auth.authenticationFailed"].Value));
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return (null, Unauthorized("Öğrenci profili bulunamadı"));
+            return (null, Unauthorized(_localizer["student.profileNotFound"].Value));
 
         return (student, null);
     }

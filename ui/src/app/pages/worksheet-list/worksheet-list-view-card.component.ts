@@ -7,13 +7,22 @@ import { Router, RouterModule } from '@angular/router';
 import { InstanceSummary, Test, WorksheetTeacherSharing } from '../../models/test-instance';
 import { AssignedWorksheet } from '../../models/assignment';
 import { SharingBadgeComponent } from '../../shared/components/sharing-badge/sharing-badge.component';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 
 type CardStatus = 'none' | 'inprogress' | 'completed';
 
 @Component({
   selector: 'app-worksheet-list-view-card',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatIconModule, MatMenuModule, MatButtonModule, SharingBadgeComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatIconModule,
+    MatMenuModule,
+    MatButtonModule,
+    SharingBadgeComponent,
+    TranslocoDirective,
+  ],
   templateUrl: './worksheet-list-view-card.component.html',
   styleUrl: './worksheet-list-view-card.component.scss',
 })
@@ -32,6 +41,12 @@ export class WorksheetListViewCardComponent {
   @Output() copy = new EventEmitter<number>();
 
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
+
+  /** Scope provider'ı üst sayfa (`worksheet-list`) verir; burada yalnızca tam anahtarla okunur. */
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`worksheet-list.${key}`, params) ?? '';
+  }
   private readonly images = ['honey-back.png', 'rect-back.png', 'triangle-back.png', 'diamond-back.png'];
 
   get coverUrl(): string {
@@ -137,26 +152,26 @@ export class WorksheetListViewCardComponent {
     }
     const diff = new Date(endAt).getTime() - Date.now();
     if (diff <= 0) {
-      return 'Süre doldu';
+      return this.tr('card.dueExpired');
     }
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
     if (days <= 1) {
-      return 'Bugün son gün';
+      return this.tr('card.dueToday');
     }
-    return `${days} gün kaldı`;
+    return this.tr('card.dueDaysLeft', { days });
   }
 
   get primaryLabel(): string {
     if (this.isTeacher) {
-      return 'Düzenle';
+      return this.tr('card.edit');
     }
     switch (this.status) {
       case 'inprogress':
-        return 'Devam Et';
+        return this.tr('card.primaryContinue');
       case 'completed':
-        return 'Sonucu Gör';
+        return this.tr('card.primaryViewResult');
       default:
-        return this.course.isPracticeTest ? 'Çalışmaya Başla' : 'Başla';
+        return this.tr(this.course.isPracticeTest ? 'card.primaryStartPractice' : 'card.primaryStart');
     }
   }
 

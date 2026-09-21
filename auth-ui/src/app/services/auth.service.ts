@@ -10,6 +10,7 @@ import {
   RegisterTeacherPayload,
   School,
 } from '../models/registration.model';
+import { LocaleHintService } from './locale-hint.service';
 
 export interface UserProfile {
   email: string;
@@ -19,6 +20,8 @@ export interface UserProfile {
   keycloakId: string;
   profileId: number;
   role: string;
+  /** Kullanıcının dil tercihi (issue #181, auth-api `UserProfileDto.PreferredLocale`): "tr" | "en". */
+  preferredLocale?: string;
 }
 
 export interface TokenResponse {
@@ -31,6 +34,7 @@ export interface TokenResponse {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly localeHint = inject(LocaleHintService);
   private tokenKey = 'auth_token';
   private roleKey = 'user_role';
   private avatarKey = 'user_avatar';
@@ -76,6 +80,9 @@ export class AuthService {
         localStorage.setItem(this.roleKey, res.profile.role);
         localStorage.setItem(this.avatarKey, res.profile.avatar);
         localStorage.setItem('user', JSON.stringify(res.profile));
+        // Profildeki dil tercihini ana uygulamanın okuduğu anahtara yansıt, böylece bir
+        // sonraki /oidc-login doğru ui_locales ile açılır (issue #186).
+        this.localeHint.rememberPreferredLocale(res.profile.preferredLocale);
         this.isAuthenticatedSubject.next(true);
       })
     );

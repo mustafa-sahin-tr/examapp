@@ -1,0 +1,47 @@
+{
+  "booking": {
+    "unauthorized": "User authentication failed",
+    "teacherRecordNotFound": "Teacher record not found.",
+    "teacherNotFound": "Teacher not found.",
+    "teacherNotApproved": "Your teacher account must be approved before you can define availability.",
+    "studentRecordNotFound": "Student record not found.",
+
+    "slot": {
+      "endBeforeStart": "The end time must be later than the start time.",
+      "inPast": "An availability slot cannot be created in the past.",
+      "tooFarAhead": "An availability slot can be created at most {0} days ahead.",
+      "tooLong": "An availability slot can last at most {0} hours.",
+      "overlapping": "This time range overlaps with an existing availability slot.",
+      "duplicate": "This time range is already defined.",
+      "created": "Availability slot added.",
+      "notFound": "Availability slot not found.",
+      "notOwned": "This availability slot does not belong to you.",
+      "hasActiveBooking": "An availability slot with a pending or approved booking cannot be deleted.",
+      "deleted": "Availability slot deleted."
+    },
+
+    "request": {
+      "slotIdRequired": "A valid availability slot must be selected.",
+      "rejectionReasonTooLong": "The rejection reason can be at most 500 characters.",
+      "slotInPast": "A booking cannot be created for a time range in the past.",
+      "duplicate": "There is already a booking request for this time range.",
+      "created": "Booking request created.",
+      "notFound": "Booking request not found.",
+      "notOwned": "This booking request does not belong to you.",
+      "alreadyDecided": "This request has already been resolved ({0}).",
+      "approved": "Booking approved.",
+      "rejected": "Booking rejected."
+    },
+
+    "video": {
+      "bookingNotFound": "Booking not found.",
+      "notParticipant": "You are not allowed to join this booking.",
+      "notApproved": "A meeting can only be started for approved bookings.",
+      "windowNotOpen": "You can join the meeting at the earliest {0} minutes before the lesson starts.",
+      "windowClosed": "The meeting window for this lesson is closed (it closes {0} minutes after the end time).",
+      "providerUnavailable": "The meeting service is not configured at the moment. Please try again later.",
+      "participantTeacher": "Teacher",
+      "participantStudent": "Student"
+    }
+  }
+}

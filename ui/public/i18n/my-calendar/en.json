@@ -1,0 +1,21 @@
+{
+  "title": "My Plan",
+  "subtitle": {
+    "teacher": "See all the lesson bookings you approved in a single calendar.",
+    "student": "See your scheduled exams, assignment due dates, study plans and lesson bookings in a single calendar."
+  },
+  "prevMonth": "Previous month",
+  "nextMonth": "Next month",
+  "today": "Today",
+  "error": {
+    "message": "The calendar could not be loaded",
+    "retry": "Try again"
+  },
+  "loading": "Preparing your calendar…",
+  "empty": {
+    "teacher": "You have no approved lesson bookings this month",
+    "teacherCta": "Edit my available hours",
+    "student": "No exams, assignments or bookings scheduled this month",
+    "studentCta": "Go to exams"
+  }
+}

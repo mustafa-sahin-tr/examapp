@@ -6,6 +6,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { Subscription } from 'rxjs';
 import { WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../../models/test-instance';
 
@@ -19,7 +20,15 @@ export interface VisibilityChange {
   standalone: true,
   templateUrl: './visibility-section.component.html',
   styleUrl: './visibility-section.component.scss',
-  imports: [CommonModule, MatRadioModule, MatSlideToggleModule, MatSelectModule, MatFormFieldModule, MatIconModule],
+  imports: [
+    CommonModule,
+    MatRadioModule,
+    MatSlideToggleModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatIconModule,
+    TranslocoDirective,
+  ],
 })
 export class VisibilitySectionComponent implements OnDestroy {
   readonly WorksheetTeacherSharing = WorksheetTeacherSharing;
@@ -47,36 +56,27 @@ export class VisibilitySectionComponent implements OnDestroy {
   private readonly _studentVisibility = signal<WorksheetStudentVisibility>(WorksheetStudentVisibility.Normal);
 
   private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly transloco = inject(TranslocoService);
   readonly isMobile = signal(false);
   private readonly breakpointSub: Subscription;
 
-  readonly teacherSharingOptions: { value: WorksheetTeacherSharing; label: string; description: string }[] = [
-    {
-      value: WorksheetTeacherSharing.Private,
-      label: 'Özel',
-      description: 'Yalnızca siz ve admin görür/düzenler/atar.',
-    },
-    {
-      value: WorksheetTeacherSharing.PublicView,
-      label: 'Herkese Açık (Görüntüleme)',
-      description: 'Tüm öğretmenler görüntüler. Atamak için sizden onay gerekir.',
-    },
-    {
-      value: WorksheetTeacherSharing.PublicAssignable,
-      label: 'Herkese Açık (Atanabilir)',
-      description: 'Tüm öğretmenler görüntüler ve onaysız kendi öğrencilerine atayabilir.',
-    },
+  /** Etiket/açıklama metinleri `shared.visibilitySection.*` altından çözülür (issue #183). */
+  readonly teacherSharingOptions: { value: WorksheetTeacherSharing; key: string }[] = [
+    { value: WorksheetTeacherSharing.Private, key: 'private' },
+    { value: WorksheetTeacherSharing.PublicView, key: 'publicView' },
+    { value: WorksheetTeacherSharing.PublicAssignable, key: 'publicAssignable' },
   ];
 
   readonly selectedTeacherSharingOption = computed(
     () => this.teacherSharingOptions.find((option) => option.value === this._teacherSharing())
   );
 
-  readonly summary = computed(() => {
-    const teacherText = this.teacherSharingSummary(this._teacherSharing());
-    const studentText = this.studentVisibilitySummary(this._studentVisibility());
-    return `Şu an: ${teacherText} ${studentText}`;
-  });
+  readonly summary = computed(() =>
+    this.t('shared.visibilitySection.summary', {
+      teacher: this.teacherSharingSummary(this._teacherSharing()),
+      student: this.studentVisibilitySummary(this._studentVisibility()),
+    })
+  );
 
   constructor() {
     this.breakpointSub = this.breakpointObserver.observe([Breakpoints.Handset]).subscribe((state) => {
@@ -105,21 +105,40 @@ export class VisibilitySectionComponent implements OnDestroy {
     });
   }
 
+  /** Seçilen seçeneğin çevrilmiş etiketi/açıklaması (şablon için). */
+  optionLabel(key: string): string {
+    return this.t(`shared.visibilitySection.teacherSharing.${key}.label`);
+  }
+
+  optionDescription(key: string): string {
+    return this.t(`shared.visibilitySection.teacherSharing.${key}.description`);
+  }
+
+  studentVisibilityDescription(): string {
+    return this._studentVisibility() === WorksheetStudentVisibility.Restricted
+      ? this.t('shared.visibilitySection.studentVisibility.restricted')
+      : this.t('shared.visibilitySection.studentVisibility.normal');
+  }
+
   private teacherSharingSummary(value: WorksheetTeacherSharing): string {
     switch (value) {
       case WorksheetTeacherSharing.PublicView:
-        return 'Tüm öğretmenler görüntüleyebilir, atamak için onayınız gerekir.';
+        return this.t('shared.visibilitySection.summaryTeacher.publicView');
       case WorksheetTeacherSharing.PublicAssignable:
-        return 'Tüm öğretmenler görüntüleyebilir ve onaysız atayabilir.';
+        return this.t('shared.visibilitySection.summaryTeacher.publicAssignable');
       case WorksheetTeacherSharing.Private:
       default:
-        return 'Yalnızca siz ve admin görebilir/düzenleyebilir/atayabilirsiniz.';
+        return this.t('shared.visibilitySection.summaryTeacher.private');
     }
   }
 
   private studentVisibilitySummary(value: WorksheetStudentVisibility): string {
     return value === WorksheetStudentVisibility.Restricted
-      ? 'Öğrenciler yalnızca atandığında görebilir.'
-      : 'Öğrenciler keşfet listesinde görebilir.';
+      ? this.t('shared.visibilitySection.summaryStudent.restricted')
+      : this.t('shared.visibilitySection.summaryStudent.normal');
+  }
+
+  private t(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(key, params) ?? '';
   }
 }

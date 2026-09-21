@@ -1,18 +1,18 @@
 import { Component } from '@angular/core';
-import { Title, Meta } from '@angular/platform-browser';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+
+import { PUBLIC_PAGES_SCOPE, usePublicPageMeta } from '../public-page-meta';
 
 @Component({
   selector: 'app-features',
   standalone: true,
+  imports: [TranslocoDirective],
+  providers: [provideTranslocoScope(PUBLIC_PAGES_SCOPE)],
   templateUrl: './features.component.html',
   styleUrl: './features.component.scss',
 })
 export class FeaturesComponent {
-  constructor(
-    private title: Title,
-    private meta: Meta
-  ) {
-    this.title.setTitle('Özellikler | ExamApp');
-    this.meta.updateTag({ name: 'description', content: 'ExamApp platformunun öne çıkan özellikleri.' });
+  constructor() {
+    usePublicPageMeta('features');
   }
 }

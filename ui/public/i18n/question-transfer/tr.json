@@ -1,0 +1,51 @@
+{
+  "title": "Soru Transferi",
+  "actions": {
+    "bundles": "Bundle’lar",
+    "bundlesTooltip": "Bundle listesini yeniler",
+    "hangfire": "Hangfire",
+    "hangfireTooltip": "Hangfire dashboard aç"
+  },
+  "export": {
+    "title": "Soruları Dışa Aktar",
+    "sourceKeyLabel": "Paket Kodu",
+    "questionIdsLabel": "Soru Numaraları",
+    "questionIdsPlaceholder": "örn: 12, 15, 99, 100-200",
+    "questionIdsHint": "Boş bırakırsan tüm sorular export edilir",
+    "allSelected": "Tümü",
+    "idCount": "{{count}} id",
+    "start": "Export Başlat"
+  },
+  "import": {
+    "title": "Soruları İçe Aktar",
+    "noFile": "Zip seçilmedi",
+    "sourceChip": "Kaynak: {{sourceKey}}",
+    "questionChip": "Soru: {{count}}",
+    "alreadyChip": "Zaten: {{count}}",
+    "start": "Import Başlat"
+  },
+  "bundles": {
+    "title": "Export Bundle’ları",
+    "subtitle": "{{sourceKey}} için paketler",
+    "index": "Index (json)",
+    "singleZip": "Tek ZIP (package)",
+    "empty": "Bu kaynak için henüz bundle yok.",
+    "bundleTitle": "Bundle {{no}}",
+    "questionCount": "{{count}} soru",
+    "zip": "ZIP",
+    "map": "Map"
+  },
+  "jobs": {
+    "title": "İşler",
+    "subtitle": "Son 10 iş (otomatik yenilenir)",
+    "refreshNow": "Şimdi yenile",
+    "empty": "Henüz iş yok.",
+    "exportColumn": "Export",
+    "importColumn": "Import",
+    "exportEmpty": "Export işi yok.",
+    "importEmpty": "Import işi yok.",
+    "downloadIndex": "Index",
+    "downloadZip": "ZIP",
+    "downloadFile": "Dosya"
+  }
+}

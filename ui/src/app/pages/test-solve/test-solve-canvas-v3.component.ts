@@ -17,7 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { MatBottomSheet, MatBottomSheetModule, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { TestSolveCanvasComponentv2 } from './test-solve-canvas-enhanced.component';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+import { TEST_SOLVE_SCOPE, TestSolveCanvasComponentv2 } from './test-solve-canvas-enhanced.component';
 import { TestService } from '../../services/test.service';
 import { QuestionLiteViewComponent } from '../question-lite-view/question-lite-view.component';
 import { CountdownComponent } from '../../shared/components/countdown/countdown.component';
@@ -52,7 +53,9 @@ import { QuestionCanvasDragDropLabelingComponent } from '../../shared/components
     CountdownComponent,
     QuestionCanvasViewComponentv5,
     QuestionCanvasDragDropLabelingComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(TEST_SOLVE_SCOPE)],
 })
 export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
   private static readonly MOBILE_VIEWPORT_QUERY =
@@ -155,7 +158,7 @@ export class TestSolveCanvasComponentv3 extends TestSolveCanvasComponentv2 {
     this.mapSheetRef = this.bottomSheet.open(this.mapSheetContent, {
       panelClass: 'solve-map-sheet',
       restoreFocus: true,
-      ariaLabel: 'Soru haritası',
+      ariaLabel: this.tr('dock.mapTooltip'),
     });
     this.mobileMapSheetOpen.set(true);
     this.mapSheetRef.afterDismissed().subscribe(() => {

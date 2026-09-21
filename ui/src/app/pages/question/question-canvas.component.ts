@@ -29,6 +29,10 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { TestCreateEnhancedComponent } from '../test-create-enhanced/test-create-enhanced.component';
 import { ClassificationSource, QuestionRegion } from '../../models/draws';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/** Sayfa metinleri kendi Transloco scope'unda: `public/i18n/question/<lang>.json` (issue #183). */
+const QUESTION_SCOPE = 'question';
 @Component({
   selector: 'app-question-canvas',
   standalone: true,
@@ -45,7 +49,9 @@ import { ClassificationSource, QuestionRegion } from '../../models/draws';
     MatProgressSpinnerModule,
     ImageSelectorComponent,
     TestCreateEnhancedComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(QUESTION_SCOPE)],
 })
 export class QuestionCanvasComponent implements OnInit {
   @ViewChild(ImageSelectorComponent) imageSelector!: ImageSelectorComponent; // 🔥 Alt bileşene erişim
@@ -86,6 +92,16 @@ export class QuestionCanvasComponent implements OnInit {
   subjectService = inject(SubjectService);
   sidenavService = inject(SidenavService);
   snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+
+  /** Scope'a göreli anahtarı senkron çevirir. */
+  private tr(key: string): string {
+    return this.transloco.translate<string>(`${QUESTION_SCOPE}.${key}`) ?? '';
+  }
+
+  private notify(key: string, durationMs = 3000): void {
+    this.snackBar.open(this.tr(key), this.tr('common.snackbarAction'), { duration: durationMs });
+  }
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
   /** Model eğitim verisi üretme (sendToFix) yalnızca Admin'e açık. */
@@ -360,17 +376,17 @@ export class QuestionCanvasComponent implements OnInit {
   readonly selectedBookLabel = computed(() => {
     const id = Number(this.bookIdSignal());
     const book = this.booksSignal().find((b) => b.id === id);
-    return book?.name || 'Kitap seç';
+    return book?.name || this.tr('canvas.selectBook');
   });
 
   readonly selectedBookTestLabel = computed(() => {
     const id = Number(this.bookTestIdSignal());
     const bt = this.bookTestsSignal().find((b) => b.id === id);
-    return bt?.name || 'Kitap testi';
+    return bt?.name || this.tr('canvas.selectBookTest');
   });
 
   get selectedTestLabel(): string {
-    return this.questionForm.get('testId')?.value || 'Test seç';
+    return this.questionForm.get('testId')?.value || this.tr('canvas.selectTest');
   }
 
   get pageFiles(): File[] {
@@ -720,7 +736,9 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating test:', error);
-        this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+        this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
+          duration: 3000,
+        });
       },
     });
   }
@@ -740,7 +758,9 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating test:', error);
-        this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+        this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
+          duration: 3000,
+        });
       },
     });
   }
@@ -774,7 +794,9 @@ export class QuestionCanvasComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error creating test:', error);
-        this.snackBar.open(error?.message || 'Soru kaydedilirken hata oluştu!', 'Tamam', { duration: 3000 });
+        this.snackBar.open(error?.message || this.tr('common.saveError'), this.tr('common.snackbarAction'), {
+          duration: 3000,
+        });
       },
     });
   }
@@ -784,7 +806,7 @@ export class QuestionCanvasComponent implements OnInit {
 
     if (formData.isExample) {
       if (!formData.practiceCorrectAnswer) {
-        this.snackBar.open('Lütfen örnek soru için doğru cevabı seçin!', 'Tamam', { duration: 3000 });
+        this.notify('common.exampleAnswerRequired');
         return;
       }
     }
@@ -805,7 +827,7 @@ export class QuestionCanvasComponent implements OnInit {
       next: (data) => {
         this.saving.set(false);
         console.log('Soru Kaydedildi:', data);
-        this.snackBar.open('sorular Başarıyla Kaydedildi', 'Tamam', { duration: 2000 });
+        this.notify('canvas.bulkSaveSuccess', 2000);
         // Eğitim verisi üretimi (Python question-detector) yan etkidir; sadece Admin için çalışır.
         if (sendToFix && this.isAdmin) {
           this.imageSelector.sendToFix();
@@ -820,7 +842,7 @@ export class QuestionCanvasComponent implements OnInit {
         console.log(err);
         for (const key in err?.error?.errors) {
           if (key.startsWith('$.')) {
-            this.snackBar.open('Hatalı alan yolu:', key);
+            this.snackBar.open(this.tr('canvas.invalidFieldPath'), key);
           }
         }
       },

@@ -2,6 +2,8 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using Microsoft.EntityFrameworkCore;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Worksheets;
 
@@ -12,9 +14,15 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 {
     private readonly AppDbContext _context;
 
-    public WorksheetAssignmentService(AppDbContext context)
+    // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
+    // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
+    // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public WorksheetAssignmentService(AppDbContext context, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId, bool isAdmin = false)
@@ -23,12 +31,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         if (!request.StudentId.HasValue && !request.GradeId.HasValue)
         {
-            return new ResponseBaseDto { Success = false, Message = "En az bir hedef (öğrenci veya sınıf) seçilmelidir." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.targetRequired"] };
         }
 
         if (request.StudentId.HasValue && request.GradeId.HasValue)
         {
-            return new ResponseBaseDto { Success = false, Message = "Aynı atamada öğrenci ve sınıf birlikte seçilemez." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.studentAndGradeTogether"] };
         }
 
         var startAtUtc = NormalizeToUtc(request.StartAt);
@@ -36,7 +44,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         if (endAtUtc.HasValue && endAtUtc <= startAtUtc)
         {
-            return new ResponseBaseDto { Success = false, Message = "Bitiş zamanı başlangıç zamanından sonra olmalıdır." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.endBeforeStart"] };
         }
 
         var worksheet = await _context.Worksheets
@@ -45,7 +53,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         if (worksheet == null)
         {
-            return new ResponseBaseDto { Success = false, Message = "Worksheet bulunamadı." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.worksheetNotFound"] };
         }
 
         // Görünürlük kapısı (issue #11/#12 review bulgusu): CanAssign'e göre farklılaştırılmış red
@@ -54,7 +62,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // aynı "bulunamadı" mesajıyla çık — ExamService/WorksheetDetailService ile aynı desen.
         if (!WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
         {
-            return new ResponseBaseDto { Success = false, Message = "Worksheet bulunamadı." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.worksheetNotFound"] };
         }
 
         // Öğretmen kendi worksheet'ini her zaman atayabilir; admin hepsini; ayrıca
@@ -74,8 +82,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         {
             var hasOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0;
             var message = hasOwner
-                ? "Bu testi atamak için sahibinden atama izni istemeniz gerekir."
-                : "Bu testi atama yetkiniz yok.";
+                ? _localizer["worksheets.assignment.grantRequired"].Value
+                : _localizer["worksheets.assignment.assignForbidden"].Value;
             return new ResponseBaseDto { Success = false, Message = message };
         }
 
@@ -91,7 +99,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
             if (!isOwnerOrAdmin && (assigningTeacher == null || !assigningTeacher.SchoolId.HasValue))
             {
-                return new ResponseBaseDto { Success = false, Message = "Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz." };
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
             }
 
             assignmentSchoolId = assigningTeacher?.SchoolId;
@@ -106,12 +114,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
             if (student == null)
             {
-                return new ResponseBaseDto { Success = false, Message = "Öğrenci bulunamadı." };
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.studentNotFound"] };
             }
 
             if (!isOwnerOrAdmin && student.SchoolId != assignmentSchoolId)
             {
-                return new ResponseBaseDto { Success = false, Message = "Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz." };
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
             }
 
             // Öğrenci hedefli atamalarda SchoolId set edilmez — zaten öğrenciye özel.
@@ -127,7 +135,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
             if (grade == null)
             {
-                return new ResponseBaseDto { Success = false, Message = "Sınıf bulunamadı." };
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.gradeNotFound"] };
             }
         }
 
@@ -149,7 +157,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         var hasOverlap = await overlapQuery.AnyAsync();
         if (hasOverlap)
         {
-            return new ResponseBaseDto { Success = false, Message = "Seçilen aralıkta mevcut bir atama bulunuyor." };
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.overlappingAssignment"] };
         }
 
         _context.SetCurrentUser(userId);
@@ -170,7 +178,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = "Sınav başarıyla atandı.",
+            Message = _localizer["worksheets.assignment.assigned"],
             ObjectId = assignment.Id
         };
     }
@@ -402,11 +410,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
             var targetName = assignment.StudentId.HasValue
                 ? studentDtos.FirstOrDefault()?.StudentNumber is { Length: > 0 } studentNumber
-                    ? $"Öğrenci #{studentNumber}"
-                    : $"Öğrenci {assignment.StudentId}"
+                    ? _localizer["worksheets.assignment.studentWithNumber", studentNumber].Value
+                    : _localizer["worksheets.assignment.studentWithId", assignment.StudentId].Value
                 : assignment.GradeId.HasValue && gradeMap.TryGetValue(assignment.GradeId.Value, out var resolvedGradeName)
                     ? resolvedGradeName
-                    : assignment.Grade?.Name ?? "Tanımlı Sınıf";
+                    : assignment.Grade?.Name ?? _localizer["worksheets.assignment.unnamedGrade"].Value;
 
             var assignmentDto = new TeacherWorksheetAssignmentDto
             {

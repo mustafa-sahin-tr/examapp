@@ -1,25 +1,26 @@
-<h2 mat-dialog-title>Yeni Atama Oluştur</h2>
+<ng-container *transloco="let t; prefix: 'worksheet-detail'">
+<h2 mat-dialog-title>{{ t('assignDialog.title') }}</h2>
 <section mat-dialog-content>
   <form [formGroup]="form" class="assignment-form">
     <mat-radio-group formControlName="scope" class="scope-selector">
-      <mat-radio-button value="grade">Sınıfa Ata</mat-radio-button>
-      <mat-radio-button value="student">Öğrenciye Ata</mat-radio-button>
+      <mat-radio-button value="grade">{{ t('assignDialog.scopeGrade') }}</mat-radio-button>
+      <mat-radio-button value="student">{{ t('assignDialog.scopeStudent') }}</mat-radio-button>
     </mat-radio-group>
 
     <div class="field-pair" *ngIf="isGradeScope(); else studentScope">
       <mat-form-field appearance="outline" class="wide">
-        <mat-label>Sınıf</mat-label>
+        <mat-label>{{ t('assignDialog.gradeLabel') }}</mat-label>
         <mat-select formControlName="gradeId">
           <mat-option *ngFor="let grade of grades" [value]="grade.id">{{ grade.name }}</mat-option>
         </mat-select>
-        <mat-error>Sınıf seçimi zorunlu</mat-error>
+        <mat-error>{{ t('assignDialog.gradeRequired') }}</mat-error>
       </mat-form-field>
-      <div class="helper-text">Seçilen sınıftaki tüm öğrenciler için atama oluşturulur.</div>
+      <div class="helper-text">{{ t('assignDialog.gradeHelper') }}</div>
     </div>
 
     <ng-template #studentScope>
       <mat-form-field appearance="outline" class="wide">
-        <mat-label>Öğrenci</mat-label>
+        <mat-label>{{ t('assignDialog.studentLabel') }}</mat-label>
         <mat-select formControlName="studentId">
           <mat-option *ngFor="let student of filteredStudents()" [value]="student.id">
             <div class="student-option">
@@ -33,48 +34,49 @@
             </div>
           </mat-option>
         </mat-select>
-        <mat-error>Öğrenci seçimi zorunlu</mat-error>
+        <mat-error>{{ t('assignDialog.studentRequired') }}</mat-error>
       </mat-form-field>
-      <div class="helper-text">İsteğe bağlı olarak önce sınıf seçerek öğrencileri filtreleyebilirsin.</div>
+      <div class="helper-text">{{ t('assignDialog.studentHelper') }}</div>
     </ng-template>
 
     <div class="datetime-grid">
       <mat-form-field appearance="outline">
-        <mat-label>Başlangıç Tarihi</mat-label>
+        <mat-label>{{ t('assignDialog.startDateLabel') }}</mat-label>
         <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
         <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
         <mat-datepicker #startPicker></mat-datepicker>
-        <mat-error>Tarih zorunlu</mat-error>
+        <mat-error>{{ t('assignDialog.dateRequired') }}</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Başlangıç Saati</mat-label>
+        <mat-label>{{ t('assignDialog.startTimeLabel') }}</mat-label>
         <input matInput placeholder="09:00" formControlName="startTime" />
-        <mat-error>Geçerli bir saat gir</mat-error>
+        <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
       </mat-form-field>
     </div>
 
-    <mat-checkbox formControlName="hasEndDate">Bitiş zamanı belirle</mat-checkbox>
+    <mat-checkbox formControlName="hasEndDate">{{ t('assignDialog.hasEndDate') }}</mat-checkbox>
 
     <div class="datetime-grid" *ngIf="form.controls.hasEndDate.value">
       <mat-form-field appearance="outline">
-        <mat-label>Bitiş Tarihi</mat-label>
+        <mat-label>{{ t('assignDialog.endDateLabel') }}</mat-label>
         <input matInput [matDatepicker]="endPicker" formControlName="endDate" />
         <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
         <mat-datepicker #endPicker></mat-datepicker>
-        <mat-error>Tarih zorunlu</mat-error>
+        <mat-error>{{ t('assignDialog.dateRequired') }}</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Bitiş Saati</mat-label>
+        <mat-label>{{ t('assignDialog.endTimeLabel') }}</mat-label>
         <input matInput placeholder="23:59" formControlName="endTime" />
-        <mat-error>Geçerli bir saat gir</mat-error>
+        <mat-error>{{ t('assignDialog.timeInvalid') }}</mat-error>
       </mat-form-field>
     </div>
   </form>
 </section>
 
 <section mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="cancel()">Vazgeç</button>
-  <button mat-flat-button color="primary" type="button" (click)="submit()">Kaydet</button>
+  <button mat-button type="button" (click)="cancel()">{{ t('assignDialog.cancel') }}</button>
+  <button mat-flat-button color="primary" type="button" (click)="submit()">{{ t('assignDialog.save') }}</button>
 </section>
+</ng-container>

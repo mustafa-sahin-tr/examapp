@@ -1,0 +1,19 @@
+{
+  "title": "Lesson #{{id}}",
+  "titleFallback": "Lesson",
+  "role": {
+    "moderator": "Moderator (teacher)",
+    "participant": "Participant"
+  },
+  "leave": "Leave lesson",
+  "loading": "Preparing the meeting room...",
+  "retry": "Try again",
+  "goBack": "Go back",
+  "roomTitle": "{{title}} meeting room",
+  "noRoom": "Meeting room not found.",
+  "error": {
+    "invalidRoute": "Invalid lesson address.",
+    "roomUnavailable": "The meeting room could not be opened.",
+    "addressUnverified": "The meeting address could not be verified."
+  }
+}

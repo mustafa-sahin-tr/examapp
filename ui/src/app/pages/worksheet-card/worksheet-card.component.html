@@ -1,17 +1,19 @@
+<ng-container *transloco="let t; prefix: 'worksheet-card'">
 <div *ngIf="type === 'shorts'" class="shorts-card" (click)="onClick()">
   <a class="shorts-thumb" [style.background-image]="'url(' + getBackgroundImage() + ')'"
     [style.background-size]="'cover'" [style.background-position]="'center'" [style.background-repeat]="'no-repeat'"
-    [attr.aria-label]="test.name + ' testini ac'">
-    <span class="shorts-count">{{ test.questionCount || 0 }} soru</span>
+    [attr.aria-label]="t('shorts.openAria', { name: test.name })">
+    <span class="shorts-count">{{ t('shorts.questionCount', { count: test.questionCount || 0 }) }}</span>
   </a>
 
   <div class="shorts-meta">
     <h4 class="shorts-title">{{ test.name }}</h4>
-    <p class="shorts-subtitle">{{ test.description || 'Yeni test' }}</p>
-    <p class="shorts-views">{{ test.instanceCount ?? 0 }} ogrenci</p>
+    <p class="shorts-subtitle">{{ test.description || t('shorts.defaultDescription') }}</p>
+    <p class="shorts-views">{{ t('shorts.studentCount', { count: test.instanceCount ?? 0 }) }}</p>
   </div>
 
-  <button type="button" class="shorts-menu" [attr.aria-label]="'Daha fazla islem'" (click)="$event.stopPropagation()">
+  <button type="button" class="shorts-menu" [attr.aria-label]="t('shorts.moreActions')"
+    (click)="$event.stopPropagation()">
     <mat-icon>more_vert</mat-icon>
   </button>
 </div>
@@ -41,7 +43,7 @@
         <button *ngIf="canEditBackground" class="background-edit-btn" type="button" [disabled]="backgroundUploading()"
           (click)="openBackgroundPicker(backgroundFileInput, $event)">
           <mat-icon>{{ backgroundUploading() ? 'hourglass_empty' : 'edit' }}</mat-icon>
-          <span>{{ backgroundUploading() ? 'Yukleniyor...' : 'Gorsel duzenle' }}</span>
+          <span>{{ backgroundUploading() ? t('background.uploading') : t('background.edit') }}</span>
         </button>
         <input #backgroundFileInput type="file" accept="image/png,image/jpeg,image/webp" class="background-file-input"
           (click)="$event.stopPropagation()" (change)="onBackgroundFileSelected($event)" />
@@ -54,7 +56,7 @@
             <div class="progress-badge-container">
               <!-- Test başlamamışsa simple badge göster -->
               <div class="simple-badge" *ngIf="!test.instance">
-                <span class="badge-text">{{ test.questionCount }} Soru</span>
+                <span class="badge-text">{{ t('badge.questionCount', { count: test.questionCount }) }}</span>
                 <span class="badge-duration">{{ getMaxDurationText() }}</span>
               </div>
 
@@ -196,7 +198,7 @@
           letter-spacing: 0em;
           line-height: 1.5;
         " x="149" y="123">
-        <div xmlns="http://www.w3.org/1999/xhtml">{{ test.gradeId }}. Sınıf</div>
+        <div xmlns="http://www.w3.org/1999/xhtml">{{ t('badge.grade', { grade: test.gradeId }) }}</div>
       </foreignObject>
       <svg viewBox="0 0 200 200" width="202" height="202"
         style="font-size: 30px; font-family: 'Arial'; font-weight: 400" x="99" y="65">
@@ -216,10 +218,13 @@
   </div>
 
   <!-- 🏷️ Sağ alt köşe badge (Soru Sayısı) -->
-  <div *ngIf="test.questionCount" class="badge badge-bottom-right">{{ test.questionCount }} Soru</div>
+  <div *ngIf="test.questionCount" class="badge badge-bottom-right">
+    {{ t('badge.questionCount', { count: test.questionCount }) }}
+  </div>
 
   <div class="button-container">
-    <button class="action-button" (click)="onClick()">Başlat</button>
-    <button *appIsStudent class="action-button" (click)="edit()">Düzenle</button>
+    <button class="action-button" (click)="onClick()">{{ t('actions.start') }}</button>
+    <button *appIsStudent class="action-button" (click)="edit()">{{ t('actions.edit') }}</button>
   </div>
 </div>
+</ng-container>

@@ -5,6 +5,8 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 using System.Text.Json;
 
 namespace ExamApp.Api.Services.Worksheets;
@@ -18,9 +20,15 @@ public class TestSessionService : ITestSessionService
 {
     private readonly AppDbContext _context;
 
-    public TestSessionService(AppDbContext context)
+    // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
+    // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
+    // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public TestSessionService(AppDbContext context, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<Paged<InstanceSummaryDto>> GetCompletedTestsAsync(StudentProfileDto student, int pageNumber, int pageSize)
@@ -98,7 +106,7 @@ public class TestSessionService : ITestSessionService
 
         if (!WorksheetAccess.CanStudentStartTest(hasActiveAssignment, isGradeMatch, worksheet.StudentVisibility))
         {
-            throw new UnauthorizedAccessException("Bu sınava erişim izniniz yok.");
+            throw new UnauthorizedAccessException(_localizer["worksheets.session.accessDenied"]);
         }
 
         var existing = await _context.TestInstances
@@ -113,7 +121,7 @@ public class TestSessionService : ITestSessionService
                 return new TestStartResultDto
                 {
                     Success = false,
-                    Message = "Bu test zaten tamamlanmış.",
+                    Message = _localizer["worksheets.session.alreadyCompleted"],
                     InstanceId = existing.Id,
                     StartTime = existing.StartTime
                 };
@@ -353,7 +361,7 @@ public class TestSessionService : ITestSessionService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Test instance question not found."
+                Message = _localizer["worksheets.session.instanceQuestionNotFound"]
             };
         }
         // Store MCQ selection and/or structured answer payload
@@ -367,7 +375,7 @@ public class TestSessionService : ITestSessionService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Question data not found for the worksheet."
+                Message = _localizer["worksheets.session.questionDataNotFound"]
             };
         }
 
@@ -426,7 +434,7 @@ public class TestSessionService : ITestSessionService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = "Answer saved successfully."
+            Message = _localizer["worksheets.session.answerSaved"]
         };
     }
 
@@ -440,7 +448,7 @@ public class TestSessionService : ITestSessionService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Test instance not found."
+                Message = _localizer["worksheets.session.instanceNotFound"]
             };
         }
 
@@ -460,7 +468,7 @@ public class TestSessionService : ITestSessionService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = "Test ended successfully."
+            Message = _localizer["worksheets.session.ended"]
         };
     }
 }

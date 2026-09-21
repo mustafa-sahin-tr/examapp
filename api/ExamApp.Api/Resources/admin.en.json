@@ -1,0 +1,22 @@
+{
+  "admin": {
+    "taxonomy": {
+      "filterConflict": "gradeId and unassigned cannot be used together."
+    },
+
+    "dashboard": {
+      "invalidDays": "days must be between 1 and 365."
+    },
+
+    "teacherApplication": {
+      "notFound": "Application not found.",
+      "approved": "Application approved.",
+      "rejected": "Application rejected.",
+      "notIndependent": "This teacher is not an independent teacher application.",
+      "alreadyDecided": "This application has already been decided.",
+      "rejectReasonRequired": "The rejection reason cannot be empty.",
+      "rejectReasonTooLong": "The rejection reason can be at most {0} characters.",
+      "rejectReasonMaxLength": "The rejection reason can be at most 500 characters."
+    }
+  }
+}

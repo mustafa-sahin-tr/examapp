@@ -1,0 +1,136 @@
+{
+  "list": {
+    "title": "Çalışma Sayfaları",
+    "searchLabel": "Başlık veya açıklama ara",
+    "subjectFilterLabel": "Ders filtrele",
+    "allSubjects": "Tüm Dersler",
+    "new": "Yeni Ekle",
+    "coverFallback": "Çalışma Sayfası",
+    "bookFallback": "Kitap",
+    "newBadge": "Yeni",
+    "pageCount": "{{count}} Sayfa",
+    "bookRange": "{{book}} · s. {{start}}-{{end}}",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "deleteDialog": {
+      "title": "Çalışma Sayfasını Sil",
+      "message": "Bu çalışma sayfasını silmek istediğinizden emin misiniz? Bu işlem geri alınmaz.",
+      "confirm": "Evet, Sil",
+      "cancel": "İptal"
+    },
+    "deleted": "Çalışma sayfası silindi.",
+    "deleteFailed": "Silme işleminde hata oluştu."
+  },
+  "contentType": {
+    "image": "Görsel",
+    "link": "Link",
+    "bookPageRange": "Kitap Sayfası"
+  },
+  "platform": {
+    "other": "Diğer",
+    "eba": "EBA",
+    "youtube": "YouTube"
+  },
+  "editor": {
+    "titleEdit": "Çalışma Etkinliğini Düzenle",
+    "titleNew": "Yeni Çalışma Etkinliği",
+    "contentTypeLabel": "Etkinlik Tipi",
+    "titleField": "Başlık",
+    "descriptionField": "Açıklama",
+    "link": {
+      "sectionTitle": "Link Bilgileri",
+      "urlLabel": "URL",
+      "urlHint": "http/https ile başlayan tam adres",
+      "platformLabel": "Platform"
+    },
+    "book": {
+      "sectionTitle": "Kitap / Test",
+      "loading": "Kitaplar yükleniyor...",
+      "selectBook": "Kitap Seç",
+      "noBooks": "Kayıtlı kitap yok",
+      "addBook": "Yeni Kitap Ekle",
+      "newBookName": "Yeni Kitap Adı",
+      "newBookHint": "Boş bırakıp çıkarsanız listeye geri döner",
+      "selectBookTest": "Kitap Testi",
+      "loadingTests": "Yükleniyor...",
+      "noBookTests": "Bu kitapta test yok",
+      "addBookTest": "Yeni Kitap Testi Ekle",
+      "newBookTestName": "Yeni Kitap Testi Adı",
+      "startPage": "Başlangıç Sayfası",
+      "endPage": "Bitiş Sayfası"
+    },
+    "taxonomy": {
+      "grade": "Sınıf",
+      "subject": "Ders",
+      "topic": "Konu",
+      "subTopic": "Alt Konu",
+      "select": "Seçiniz"
+    },
+    "publish": "Yayınla",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "saving": "Kaydediliyor...",
+    "images": {
+      "title": "Resimler",
+      "downloadZip": "ZIP İndir",
+      "downloadingZip": "İndiriliyor...",
+      "uploadJson": "JSON Yükle",
+      "readingJson": "Okuyor...",
+      "pickFolder": "Klasör Seç - Otomatik Filtrele",
+      "pickImages": "Resim Seç",
+      "add": "Ekle",
+      "remove": "Çıkar",
+      "imageFallback": "Resim",
+      "new": "Yeni",
+      "existing": "Mevcut",
+      "selected": "Seçili",
+      "notSelected": "Seçili Değil",
+      "excluded": "Hariç",
+      "empty": "Henüz resim eklenmedi",
+      "selectedTitle": "Programa Eklenecek Resimler",
+      "viewLarge": "Büyük Gör"
+    },
+    "guidance": {
+      "title": "Dosya Kılavuzu",
+      "found": "{{found}}/{{total}} Bulundu",
+      "missing": "{{count}} Eksik",
+      "clear": "JSON kılavuzunu temizle",
+      "help": "JSON'dan: {{fileName}} - Aşağıdaki dosyaları klasörlerinizden bulup yükleyin.",
+      "fileLabel": "{{book}} - Sayfa {{page}}",
+      "fileFound": "Bulundu",
+      "fileMissing": "Eksik"
+    },
+    "preview": {
+      "linkTitleFallback": "Link etkinliği",
+      "linkHint": "URL girildiğinde burada önizlenir.",
+      "bookTitleFallback": "Kitap sayfa aralığı",
+      "pageRange": "Sayfa {{start}} - {{end}}",
+      "bookHint": "Kitap, test ve sayfa aralığını seçin."
+    },
+    "messages": {
+      "booksLoadFailed": "Kitap listesi yüklenemedi.",
+      "bookTestsLoadFailed": "Kitap testleri yüklenemedi.",
+      "jsonPickFile": "Lütfen JSON dosyası seçin.",
+      "jsonLoaded": "JSON yüklendi: MinIO'dan {{count}} resim bulundu.",
+      "jsonReadFailed": "JSON dosyası okunamadı. Format: [{\"book\":\"kitap_adi\",\"pages\":[87,88,89]}]",
+      "filesAdded": "{{count}} adet dosya eklendi.",
+      "zipFailed": "ZIP indirme sırasında hata oluştu.",
+      "urlRequired": "Link tipi için URL zorunludur.",
+      "urlInvalid": "Geçerli bir http/https URL giriniz.",
+      "bookRequired": "Kitap seçin veya yeni kitap adı girin.",
+      "bookTestRequired": "Kitap testi seçin veya yeni test adı girin.",
+      "pagesRequired": "Başlangıç ve bitiş sayfası zorunludur.",
+      "pagesPositive": "Sayfa numaraları pozitif olmalıdır.",
+      "endBeforeStart": "Bitiş sayfası başlangıçtan küçük olamaz.",
+      "imageRequired": "En az bir resim seçmelisiniz.",
+      "imageMinOne": "Bu sayfada en az bir resim kalmalı.",
+      "fillRequired": "Lütfen gerekli alanları doldurun.",
+      "updated": "Çalışma etkinliği güncellendi.",
+      "updateFailed": "Güncelleme sırasında hata oluştu.",
+      "created": "Çalışma etkinliği kaydedildi.",
+      "createFailed": "Kayıt sırasında hata oluştu.",
+      "notFound": "Çalışma etkinliği bulunamadı.",
+      "ok": "Tamam"
+    }
+  }
+}

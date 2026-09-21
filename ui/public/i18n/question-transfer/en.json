@@ -1,0 +1,51 @@
+{
+  "title": "Question Transfer",
+  "actions": {
+    "bundles": "Bundles",
+    "bundlesTooltip": "Refreshes the bundle list",
+    "hangfire": "Hangfire",
+    "hangfireTooltip": "Open the Hangfire dashboard"
+  },
+  "export": {
+    "title": "Export Questions",
+    "sourceKeyLabel": "Package Key",
+    "questionIdsLabel": "Question Numbers",
+    "questionIdsPlaceholder": "e.g. 12, 15, 99, 100-200",
+    "questionIdsHint": "Leave empty to export all questions",
+    "allSelected": "All",
+    "idCount": "{{count}} ids",
+    "start": "Start Export"
+  },
+  "import": {
+    "title": "Import Questions",
+    "noFile": "No zip selected",
+    "sourceChip": "Source: {{sourceKey}}",
+    "questionChip": "Questions: {{count}}",
+    "alreadyChip": "Already imported: {{count}}",
+    "start": "Start Import"
+  },
+  "bundles": {
+    "title": "Export Bundles",
+    "subtitle": "Packages for {{sourceKey}}",
+    "index": "Index (json)",
+    "singleZip": "Single ZIP (package)",
+    "empty": "There are no bundles for this source yet.",
+    "bundleTitle": "Bundle {{no}}",
+    "questionCount": "{{count}} questions",
+    "zip": "ZIP",
+    "map": "Map"
+  },
+  "jobs": {
+    "title": "Jobs",
+    "subtitle": "Last 10 jobs (auto-refreshed)",
+    "refreshNow": "Refresh now",
+    "empty": "There are no jobs yet.",
+    "exportColumn": "Export",
+    "importColumn": "Import",
+    "exportEmpty": "No export jobs.",
+    "importEmpty": "No import jobs.",
+    "downloadIndex": "Index",
+    "downloadZip": "ZIP",
+    "downloadFile": "File"
+  }
+}

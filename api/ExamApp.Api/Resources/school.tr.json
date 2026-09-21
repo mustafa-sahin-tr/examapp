@@ -1,0 +1,19 @@
+{
+  "school": {
+    "nameRequired": "Okul adı boş olamaz.",
+    "nameAlreadyExists": "Bu isimde bir okul zaten var.",
+    "otherNameAlreadyExists": "Bu isimde başka bir okul zaten var.",
+    "notFound": "Okul bulunamadı.",
+    "created": "Okul eklendi.",
+    "updated": "Okul güncellendi.",
+    "deleted": "Okul silindi.",
+    "hasTeachers": "Bu okula bağlı öğretmen kayıtları var, silinemez.",
+    "hasStudents": "Bu okula bağlı öğrenci kayıtları var, silinemez.",
+    "address": {
+      "tooLong": "Açık adres en fazla {0} karakter olabilir.",
+      "provinceRequiredWithDistrict": "İlçe seçildiğinde il de seçilmelidir.",
+      "invalidProvince": "Geçersiz il.",
+      "invalidDistrict": "Geçersiz ilçe veya ilçe seçilen ile ait değil."
+    }
+  }
+}

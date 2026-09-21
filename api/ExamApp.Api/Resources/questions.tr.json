@@ -1,0 +1,60 @@
+{
+  "questions": {
+    "notFound": "Soru bulunamadı!",
+    "saveFailed": "Soru kaydedilemedi!",
+    "created": "Soru başarıyla kaydedildi!",
+    "updated": "Soru başarıyla güncellendi!",
+    "passageNotFound": "Kapsam bulunamadı!",
+    "imageNotFound": "Soru veya soru görseli bulunamadı.",
+    "imageNotFoundInStorage": "Soru görseli depoda bulunamadı.",
+    "unknownName": "(bulunamadı)",
+
+    "bulk": {
+      "saveFailed": "Soru seti kaydedilemedi.",
+      "saved": "Sorular başarıyla kaydedildi!",
+      "saveError": "Veri kaydedilirken hata oluştu: {0}",
+      "correctAnswerMissing": "Doğru cevap belirtilmemiş.{0}",
+      "invalidTopicId": "Geçersiz TopicId: {0}",
+      "invalidSubTopicIds": "Geçersiz SubTopicId(ler): {0}",
+      "subjectTopicMismatch": "Topic.SubjectId ile Question.SubjectId uyumsuz. Question.SubjectId={0} ('{1}'), Topic(Id={2}, Name='{3}') SubjectId={4} ('{5}').",
+      "subTopicsFromMultipleTopics": "Aynı question için birden fazla TopicId'ye ait SubTopic gönderildi. Tüm subtopic'lerin TopicId değeri aynı olmalı. {0}",
+      "topicIdMissingWithSubTopics": "Header.TopicId belirtilmemiş/0 ancak SubTopic listesi var. SubTopic'lerin TopicId değeri {0}. Detay: {1}",
+      "subTopicTopicMismatch": "SubTopic'nin topic'i, question üzerinde setlenen TopicId'den farklı. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}')."
+    },
+
+    "image": {
+      "notFound": "Soru resmi bulunamadı!",
+      "downloadFailed": "Soru resmi indirilemedi!",
+      "resizeFailed": "Resim boyutlandırılamadı!",
+      "uploadFailed": "Boyutlandırılmış resim yüklenemedi!",
+      "resized": "Soru resmi başarıyla boyutlandırıldı!",
+      "resizeError": "Soru resmi boyutlandırılırken hata oluştu: {0}"
+    },
+
+    "classification": {
+      "invalidData": "Geçersiz sınıflandırma verisi.",
+      "invalidCorrectAnswerId": "Geçersiz doğru cevap ID'si.",
+      "answerNotInQuestion": "Seçilen cevap bu soruya ait değil!",
+      "correctAnswerUpdated": "Doğru cevap başarıyla güncellendi!",
+      "correctAnswerUpdateError": "Doğru cevap güncellenirken hata oluştu: {0}",
+      "invalidSubTopicId": "Geçersiz alt konu (subtopic) ID'si.",
+      "invalidSubjectId": "Geçersiz ders (subject) ID'si.",
+      "invalidTopicId": "Geçersiz konu (topic) ID'si.",
+      "invalidSource": "Geçersiz sınıflandırma kaynağı: {0}. 'Human' veya 'AI' beklenmektedir.",
+      "invalidDifficulty": "Geçersiz zorluk seviyesi. 1 ile 10 arasında olmalıdır.",
+      "updated": "Soru sınıflandırması başarıyla güncellendi!",
+      "updateError": "Soru sınıflandırması güncellenirken hata oluştu: {0}",
+      "notInTest": "Soru bu testte bulunamadı!",
+      "removedFromTest": "Soru başarıyla testten çıkarıldı!",
+      "removeFromTestError": "Soru testten çıkarılırken hata oluştu: {0}"
+    },
+
+    "studyPage": {
+      "imageDataRequired": "ImageData zorunludur.",
+      "invalidImageDataFormat": "Geçersiz imageData formatı.",
+      "imageDataDecodeFailed": "ImageData decode edilemedi.",
+      "uploaded": "Görsel study page books altına yüklendi.",
+      "uploadError": "Resim yüklenirken hata oluştu: {0}"
+    }
+  }
+}

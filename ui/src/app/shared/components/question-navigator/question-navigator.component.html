@@ -1,4 +1,4 @@
-<div class="ms-question-navigator">
+<div class="ms-question-navigator" *transloco="let t; prefix: 'shared.questionNavigator'">
   <div
     class="ms-question-pager"
     *ngIf="questions.length"
@@ -12,9 +12,9 @@
       (click)="$event.stopPropagation(); prevPage()"
       [disabled]="!canPrev()"
     >
-      Önceki
+      {{ t('previous') }}
     </button>
-    <span class="ms-pager-info"> Sayfa {{ currentPage() }} / {{ pageCount() }} </span>
+    <span class="ms-pager-info"> {{ t('pageInfo', { current: currentPage(), total: pageCount() }) }} </span>
     <button
       class="ms-pager-btn"
       type="button"
@@ -22,7 +22,7 @@
       (click)="$event.stopPropagation(); nextPage()"
       [disabled]="!canNext()"
     >
-      Sonraki
+      {{ t('next') }}
     </button>
   </div>
 

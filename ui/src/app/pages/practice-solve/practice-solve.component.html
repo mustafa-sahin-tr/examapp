@@ -1,6 +1,6 @@
-<section class="practice">
-  <app-section-header title="Soru Çöz" iconName="bolt"
-    subtitle="Kapsamını seç, rastgele sorularla pratik yap; her cevaptan sonra sonucu anında gör."
+<section class="practice" *transloco="let t; prefix: 'practice'">
+  <app-section-header [title]="t('title')" iconName="bolt"
+    [subtitle]="t('subtitle')"
     [showBackButton]="true" (onBackClick)="onHeaderBack()" />
 
   <!-- Oturum çağrısı hatası: her fazda aynı yerde -->
@@ -9,9 +9,9 @@
     <mat-icon>error_outline</mat-icon>
     <p class="state-text">{{ message }}</p>
     @if (phase() === 'setup') {
-    <button mat-stroked-button type="button" (click)="error.set(null)">Kapat</button>
+    <button mat-stroked-button type="button" (click)="error.set(null)">{{ t('common.close') }}</button>
     } @else {
-    <button mat-stroked-button type="button" (click)="retry()">Tekrar dene</button>
+    <button mat-stroked-button type="button" (click)="retry()">{{ t('common.retry') }}</button>
     }
   </div>
   }
@@ -23,28 +23,26 @@
     @if (setupLoading()) {
     <div class="practice__loading">
       <mat-progress-spinner mode="indeterminate" diameter="40" />
-      <p>Dersler hazırlanıyor…</p>
+      <p>{{ t('setup.loading') }}</p>
     </div>
     } @else if (setupError()) {
     <div class="state-box state-box--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <p class="state-text">{{ setupError() }}</p>
-      <button mat-stroked-button type="button" (click)="loadSetupData()">Tekrar dene</button>
+      <button mat-stroked-button type="button" (click)="loadSetupData()">{{ t('common.retry') }}</button>
     </div>
     } @else if (!gradeId()) {
     <div class="state-box state-box--error" role="alert">
       <mat-icon>school</mat-icon>
-      <p class="state-text">Pratik yapabilmek için sınıf bilginin tanımlı olması gerekir.</p>
-      <a mat-stroked-button routerLink="/student-profile">Profilime git</a>
+      <p class="state-text">{{ t('setup.noGrade') }}</p>
+      <a mat-stroked-button routerLink="/student-profile">{{ t('setup.goToProfile') }}</a>
     </div>
     } @else {
-    <h2 class="practice__card-title">Kapsam</h2>
-    <p class="practice__card-hint">
-      İstersen ders ve konu seç; hiçbir şey seçmezsen sınıfındaki tüm derslerden soru gelir.
-    </p>
+    <h2 class="practice__card-title">{{ t('setup.scopeTitle') }}</h2>
+    <p class="practice__card-hint">{{ t('setup.scopeHint') }}</p>
 
     <mat-form-field appearance="outline" class="practice__field">
-      <mat-label>Dersler</mat-label>
+      <mat-label>{{ t('setup.subjects') }}</mat-label>
       <mat-select multiple [value]="selectedSubjectIds()" (selectionChange)="onSubjectsChange($event)">
         @for (subject of subjects(); track subject.id) {
         <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
@@ -53,11 +51,11 @@
     </mat-form-field>
 
     @if (selectedSubjects().length) {
-    <mat-chip-set aria-label="Seçili dersler" class="practice__chips">
+    <mat-chip-set [attr.aria-label]="t('setup.selectedSubjects')" class="practice__chips">
       @for (subject of selectedSubjects(); track subject.id) {
       <mat-chip (removed)="removeSubject(subject.id)">
         {{ subject.name }}
-        <button matChipRemove type="button" [attr.aria-label]="subject.name + ' dersini kaldır'">
+        <button matChipRemove type="button" [attr.aria-label]="t('setup.removeSubject', { name: subject.name })">
           <mat-icon>cancel</mat-icon>
         </button>
       </mat-chip>
@@ -65,7 +63,7 @@
     </mat-chip-set>
 
     <mat-form-field appearance="outline" class="practice__field">
-      <mat-label>Konular (isteğe bağlı)</mat-label>
+      <mat-label>{{ t('setup.topics') }}</mat-label>
       <mat-select multiple [value]="selectedTopicIds()" [disabled]="topicsLoading() || !topicGroups().length"
         (selectionChange)="onTopicsChange($event)">
         @for (group of topicGroups(); track group.subject.id) {
@@ -77,18 +75,18 @@
         }
       </mat-select>
       @if (topicsLoading()) {
-      <mat-hint>Konular yükleniyor…</mat-hint>
+      <mat-hint>{{ t('setup.topicsLoading') }}</mat-hint>
       } @else if (!topicGroups().length) {
-      <mat-hint>Seçili dersler için tanımlı konu yok.</mat-hint>
+      <mat-hint>{{ t('setup.noTopics') }}</mat-hint>
       }
     </mat-form-field>
 
     @if (selectedTopics().length) {
-    <mat-chip-set aria-label="Seçili konular" class="practice__chips">
+    <mat-chip-set [attr.aria-label]="t('setup.selectedTopics')" class="practice__chips">
       @for (topic of selectedTopics(); track topic.id) {
       <mat-chip (removed)="removeTopic(topic.id)">
         {{ topic.name }}
-        <button matChipRemove type="button" [attr.aria-label]="topic.name + ' konusunu kaldır'">
+        <button matChipRemove type="button" [attr.aria-label]="t('setup.removeTopic', { name: topic.name })">
           <mat-icon>cancel</mat-icon>
         </button>
       </mat-chip>
@@ -101,20 +99,21 @@
     <div class="state-box state-box--info">
       <mat-icon>info</mat-icon>
       <p class="state-text">
-        Varsayılan kapsam: <strong>kendi sınıfın + tüm dersler</strong>. Daraltmak için yukarıdan ders ve konu seç.
+        {{ t('setup.defaultScopeLead') }} <strong>{{ t('setup.defaultScopeValue') }}</strong
+        >{{ t('setup.defaultScopeTail') }}
       </p>
     </div>
     } @else if (!subjects().length) {
     <div class="state-box state-box--empty">
       <mat-icon>inbox</mat-icon>
-      <p class="state-text">Sınıfın için tanımlı ders bulunamadı.</p>
+      <p class="state-text">{{ t('setup.noSubjects') }}</p>
     </div>
     }
 
     <div class="practice__actions">
       <button mat-raised-button color="primary" type="button" (click)="startSession()" [disabled]="busy()">
         <mat-icon>play_arrow</mat-icon>
-        Başla
+        {{ t('common.start') }}
       </button>
     </div>
     }
@@ -123,31 +122,31 @@
   <!-- Geçmiş oturumlar: aynı ekranda, kurulum kartının altında -->
   <section class="practice__card practice__card--history" aria-labelledby="practice-history-title">
     <div class="history__head">
-      <h2 id="practice-history-title" class="practice__card-title">Geçmiş Oturumlar</h2>
+      <h2 id="practice-history-title" class="practice__card-title">{{ t('history.title') }}</h2>
       @if (historyTotal() > 0) {
-      <span class="history__count">{{ historyTotal() }} oturum</span>
+      <span class="history__count">{{ t('history.count', { count: historyTotal() }) }}</span>
       }
     </div>
 
     @if (historyLoading()) {
     <div class="practice__loading" aria-busy="true">
       <mat-progress-spinner mode="indeterminate" diameter="32" />
-      <p>Geçmiş oturumlar yükleniyor…</p>
+      <p>{{ t('history.loading') }}</p>
     </div>
     } @else if (historyError()) {
     <div class="state-box state-box--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <p class="state-text">{{ historyError() }}</p>
-      <button mat-stroked-button type="button" (click)="loadHistory()">Tekrar dene</button>
+      <button mat-stroked-button type="button" (click)="loadHistory()">{{ t('common.retry') }}</button>
     </div>
     } @else if (!historyItems().length) {
     <div class="state-box state-box--empty">
       <mat-icon>history</mat-icon>
-      <p class="state-text">Henüz pratik oturumun yok. Yukarıdan kapsamını seç ve ilk sorunu çözmeye başla.</p>
+      <p class="state-text">{{ t('history.empty') }}</p>
       @if (gradeId() && !setupLoading()) {
       <button mat-stroked-button color="primary" type="button" (click)="startSession()" [disabled]="busy()">
         <mat-icon>play_arrow</mat-icon>
-        Başla
+        {{ t('common.start') }}
       </button>
       }
     </div>
@@ -157,8 +156,10 @@
       <li>
         <button type="button" class="history__row" [class.history__row--active]="item.status === 'Active'"
           (click)="openHistoryItem(item)" [attr.aria-label]="
-                    (item.status === 'Active' ? 'Devam eden oturuma dön: ' : 'Oturumu incele: ') +
-                    (item.startTime | date: 'd MMM y HH:mm') + ', ' + scopeLabel(item)
+                    t(item.status === 'Active' ? 'history.resumeAria' : 'history.reviewAria', {
+                      date: item.startTime | date: 'd MMM y HH:mm',
+                      scope: scopeLabel(item)
+                    })
                   ">
           <div class="history__main">
             <span class="history__date">{{ item.startTime | date: 'd MMM y, HH:mm' }}</span>
@@ -167,19 +168,19 @@
 
           <div class="history__stats">
             <span class="stat">
-              <span class="stat__label">Soru</span>
+              <span class="stat__label">{{ t('stats.questions') }}</span>
               <span class="stat__value">{{ item.answeredCount }}</span>
             </span>
             <span class="stat stat--correct">
-              <span class="stat__label">Doğru</span>
+              <span class="stat__label">{{ t('stats.correct') }}</span>
               <span class="stat__value">{{ item.correctCount }}</span>
             </span>
             <span class="stat stat--wrong">
-              <span class="stat__label">Yanlış</span>
+              <span class="stat__label">{{ t('stats.wrong') }}</span>
               <span class="stat__value">{{ wrongCountOf(item) }}</span>
             </span>
             <span class="stat">
-              <span class="stat__label">Pas</span>
+              <span class="stat__label">{{ t('stats.skipped') }}</span>
               <span class="stat__value">{{ item.skippedCount }}</span>
             </span>
           </div>
@@ -187,9 +188,9 @@
           <div class="history__meta">
             <span class="history__accuracy">%{{ accuracyOf(item) }}</span>
             @if (item.status === 'Active') {
-            <span class="history__badge history__badge--active">Devam ediyor</span>
+            <span class="history__badge history__badge--active">{{ t('history.active') }}</span>
             } @else {
-            <span class="history__badge">Tamamlandı</span>
+            <span class="history__badge">{{ t('history.completed') }}</span>
             @if (durationLabel(item); as duration) {
             <span class="history__duration">{{ duration }}</span>
             }
@@ -215,20 +216,20 @@
     <div class="review__toolbar">
       <button mat-stroked-button type="button" (click)="closeReview()">
         <mat-icon>arrow_back</mat-icon>
-        Geçmiş Oturumlar
+        {{ t('review.back') }}
       </button>
     </div>
 
     @if (reviewLoading()) {
     <div class="practice__card practice__loading">
       <mat-progress-spinner mode="indeterminate" diameter="40" />
-      <p>Oturum detayı yükleniyor…</p>
+      <p>{{ t('review.loading') }}</p>
     </div>
     } @else if (reviewError()) {
     <div class="state-box state-box--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <p class="state-text">{{ reviewError() }}</p>
-      <button mat-stroked-button type="button" (click)="loadReview()">Tekrar dene</button>
+      <button mat-stroked-button type="button" (click)="loadReview()">{{ t('common.retry') }}</button>
     </div>
     } @else {
     @if (reviewSession(); as s) {
@@ -239,36 +240,36 @@
           <p class="practice__card-hint">{{ scopeLabel(s) }}</p>
         </div>
         @if (s.status === 'Active') {
-        <span class="history__badge history__badge--active">Devam ediyor</span>
+        <span class="history__badge history__badge--active">{{ t('history.active') }}</span>
         } @else {
-        <span class="history__badge">Tamamlandı</span>
+        <span class="history__badge">{{ t('history.completed') }}</span>
         }
       </div>
 
       <dl class="practice__summary">
         <div>
-          <dt>Cevaplanan</dt>
+          <dt>{{ t('stats.answered') }}</dt>
           <dd>{{ s.answeredCount }}</dd>
         </div>
         <div>
-          <dt>Doğru</dt>
+          <dt>{{ t('stats.correct') }}</dt>
           <dd class="is-correct">{{ s.correctCount }}</dd>
         </div>
         <div>
-          <dt>Yanlış</dt>
+          <dt>{{ t('stats.wrong') }}</dt>
           <dd class="is-wrong">{{ reviewWrongCount() }}</dd>
         </div>
         <div>
-          <dt>Pas</dt>
+          <dt>{{ t('stats.skipped') }}</dt>
           <dd>{{ s.skippedCount }}</dd>
         </div>
         <div>
-          <dt>Başarı</dt>
+          <dt>{{ t('stats.accuracy') }}</dt>
           <dd>%{{ accuracyOf(s) }}</dd>
         </div>
         @if (durationLabel(s); as duration) {
         <div>
-          <dt>Süre</dt>
+          <dt>{{ t('stats.duration') }}</dt>
           <dd>{{ duration }}</dd>
         </div>
         }
@@ -278,17 +279,17 @@
     @if (!reviewEntries().length) {
     <div class="state-box state-box--empty">
       <mat-icon>inbox</mat-icon>
-      <p class="state-text">Bu oturumda henüz soru gösterilmemiş.</p>
+      <p class="state-text">{{ t('review.noQuestions') }}</p>
     </div>
     } @else {
     <!-- Soru şeridi: worksheet-detail'deki navigatörün pas/bekliyor ayrımı yapan sade karşılığı -->
-    <nav class="review__nav" aria-label="Oturumdaki sorular">
+    <nav class="review__nav" [attr.aria-label]="t('review.navAria')">
       <ol class="review__strip">
         @for (entry of reviewEntries(); track entry.row.question.id; let i = $index) {
         <li>
           <button type="button" class="review__pill review__pill--{{ entry.kind }}"
             [class.review__pill--current]="i === reviewIndex()" [attr.aria-current]="i === reviewIndex() ? 'step' : null"
-            [attr.aria-label]="'Soru ' + (i + 1) + ': ' + reviewKindLabel(entry.kind)"
+            [attr.aria-label]="t('review.questionAria', { number: i + 1, status: t(reviewKindLabelKey(entry.kind)) })"
             (click)="selectReviewQuestion(i)">
             {{ i + 1 }}
           </button>
@@ -307,9 +308,15 @@
         @case ('skipped') { <mat-icon>skip_next</mat-icon> }
         @default { <mat-icon>hourglass_empty</mat-icon> }
         }
-        <span class="feedback__label">Soru {{ reviewIndex() + 1 }} / {{ reviewEntries().length }} · {{ reviewKindLabel(entry.kind) }}</span>
+        <span class="feedback__label">{{
+          t('review.banner', {
+            current: reviewIndex() + 1,
+            total: reviewEntries().length,
+            status: t(reviewKindLabelKey(entry.kind))
+          })
+        }}</span>
         @if (entry.row.status !== 'Pending') {
-        <span class="feedback__meta">{{ entry.row.timeTaken }} sn</span>
+        <span class="feedback__meta">{{ t('review.timeTaken', { count: entry.row.timeTaken }) }}</span>
         }
       </div>
     </div>
@@ -334,10 +341,10 @@
     <div class="practice__actions practice__actions--stage review__pager">
       <button mat-stroked-button type="button" (click)="reviewPrev()" [disabled]="!reviewHasPrev()">
         <mat-icon>arrow_back</mat-icon>
-        Önceki
+        {{ t('review.prev') }}
       </button>
       <button mat-stroked-button type="button" (click)="reviewNext()" [disabled]="!reviewHasNext()">
-        Sonraki
+        {{ t('review.next') }}
         <mat-icon iconPositionEnd>arrow_forward</mat-icon>
       </button>
     </div>
@@ -362,20 +369,20 @@
   <div class="practice__card practice__state practice__state--empty">
     <mat-icon>inbox</mat-icon>
     @if (answeredCount() > 0) {
-    <h2>Bu kapsamdaki soruların hepsini çözdün</h2>
-    <p>Kapsamı genişleterek devam edebilir ya da oturumu bitirip özetini görebilirsin.</p>
+    <h2>{{ t('empty.allSolvedTitle') }}</h2>
+    <p>{{ t('empty.allSolvedText') }}</p>
     } @else {
-    <h2>Seçtiğin kapsamda soru bulunamadı</h2>
-    <p>Başka bir ders ya da konu seçerek tekrar dene.</p>
+    <h2>{{ t('empty.noQuestionsTitle') }}</h2>
+    <p>{{ t('empty.noQuestionsText') }}</p>
     }
     <div class="practice__actions practice__actions--center">
       <button mat-raised-button color="primary" type="button" (click)="changeScope()" [disabled]="busy()">
         <mat-icon>tune</mat-icon>
-        Kapsamı Değiştir
+        {{ t('empty.changeScope') }}
       </button>
       <button mat-stroked-button type="button" (click)="finishSession()" [disabled]="busy()">
         <mat-icon>done_all</mat-icon>
-        Bitir
+        {{ t('common.finish') }}
       </button>
     </div>
   </div>
@@ -385,41 +392,41 @@
   @case ('ended') {
   <div class="practice__card practice__state practice__state--ended">
     <mat-icon>emoji_events</mat-icon>
-    <h2>Oturum tamamlandı</h2>
+    <h2>{{ t('ended.title') }}</h2>
     <dl class="practice__summary">
       <div>
-        <dt>Cevaplanan</dt>
+        <dt>{{ t('stats.answered') }}</dt>
         <dd>{{ answeredCount() }}</dd>
       </div>
       <div>
-        <dt>Doğru</dt>
+        <dt>{{ t('stats.correct') }}</dt>
         <dd class="is-correct">{{ correctCount() }}</dd>
       </div>
       <div>
-        <dt>Yanlış</dt>
+        <dt>{{ t('stats.wrong') }}</dt>
         <dd class="is-wrong">{{ wrongCount() }}</dd>
       </div>
       <div>
-        <dt>Pas</dt>
+        <dt>{{ t('stats.skipped') }}</dt>
         <dd>{{ skippedCount() }}</dd>
       </div>
       <div>
-        <dt>Başarı</dt>
+        <dt>{{ t('stats.accuracy') }}</dt>
         <dd>%{{ accuracy() }}</dd>
       </div>
     </dl>
     <div class="practice__actions practice__actions--center">
       <button mat-raised-button color="primary" type="button" (click)="changeScope()">
         <mat-icon>replay</mat-icon>
-        Yeni Oturum
+        {{ t('ended.newSession') }}
       </button>
       @if (session(); as s) {
       <button mat-stroked-button type="button" (click)="openReview(s.id)">
         <mat-icon>fact_check</mat-icon>
-        Oturumu İncele
+        {{ t('ended.reviewSession') }}
       </button>
       }
-      <a mat-stroked-button routerLink="/dashboard">Panele dön</a>
+      <a mat-stroked-button routerLink="/dashboard">{{ t('ended.backToDashboard') }}</a>
     </div>
   </div>
   }
@@ -428,33 +435,34 @@
 
 <!-- İstatistik çubuğu: soru, geri bildirim ve boş durumda ortak -->
 <ng-template #statsBar>
-  <div class="practice__stats" aria-label="Oturum ilerlemesi">
+  <div class="practice__stats" *transloco="let t; prefix: 'practice'" [attr.aria-label]="t('stats.progressAria')">
     <span class="stat">
-      <span class="stat__label">Cevaplanan</span>
+      <span class="stat__label">{{ t('stats.answered') }}</span>
       <span class="stat__value">{{ answeredCount() }}</span>
     </span>
     <span class="stat stat--correct">
-      <span class="stat__label">Doğru</span>
+      <span class="stat__label">{{ t('stats.correct') }}</span>
       <span class="stat__value">{{ correctCount() }}</span>
     </span>
     <span class="stat stat--wrong">
-      <span class="stat__label">Yanlış</span>
+      <span class="stat__label">{{ t('stats.wrong') }}</span>
       <span class="stat__value">{{ wrongCount() }}</span>
     </span>
     <span class="stat">
-      <span class="stat__label">Pas</span>
+      <span class="stat__label">{{ t('stats.skipped') }}</span>
       <span class="stat__value">{{ skippedCount() }}</span>
     </span>
     <button mat-stroked-button type="button" class="practice__finish" (click)="finishSession()" [disabled]="busy()"
-      aria-label="Oturumu bitir">
+      [attr.aria-label]="t('stats.finishAria')">
       <mat-icon>done_all</mat-icon>
-      <span>Bitir</span>
+      <span>{{ t('common.finish') }}</span>
     </button>
   </div>
 </ng-template>
 
 <!-- Soru sahnesi: sınav çözme ekranıyla aynı bileşenler (v5 canvas / lite view) -->
 <ng-template #questionStage>
+  <ng-container *transloco="let t; prefix: 'practice'">
   <ng-container *ngTemplateOutlet="statsBar" />
 
   @if (question(); as q) {
@@ -468,12 +476,12 @@
           @if (showPassageOnly()) {
           <button mat-stroked-button color="primary" type="button" (click)="showQuestion()">
             <mat-icon>help_outline</mat-icon>
-            Soruyu Göster
+            {{ t('stage.showQuestion') }}
           </button>
           } @else {
           <button mat-stroked-button type="button" (click)="showPassage()">
             <mat-icon>assignment</mat-icon>
-            Pasaja Dön
+            {{ t('stage.backToPassage') }}
           </button>
           }
         </div>
@@ -485,7 +493,7 @@
           <div class="passage-only__text">{{ q.passage?.text }}</div>
           }
           @if (q.passage?.imageUrl) {
-          <img class="passage-only__image" [src]="q.passage?.imageUrl" alt="Pasaj görseli" />
+          <img class="passage-only__image" [src]="q.passage?.imageUrl" [alt]="t('stage.passageAlt')" />
           }
         </div>
         } @else {
@@ -516,19 +524,19 @@
     @case ('correct') {
     <div class="feedback__banner feedback__banner--correct">
       <mat-icon>check_circle</mat-icon>
-      <span>Doğru cevap! Harika gidiyorsun.</span>
+      <span>{{ t('stage.correct') }}</span>
     </div>
     }
     @case ('wrong') {
     <div class="feedback__banner feedback__banner--wrong">
       <mat-icon>cancel</mat-icon>
-      <span>Yanlış cevap. Doğru şık aşağıda gösteriliyor.</span>
+      <span>{{ t('stage.wrong') }}</span>
     </div>
     }
     @case ('skipped') {
     <div class="feedback__banner feedback__banner--skipped">
       <mat-icon>skip_next</mat-icon>
-      <span>Soru pas geçildi. Doğru şık aşağıda gösteriliyor.</span>
+      <span>{{ t('stage.skipped') }}</span>
     </div>
     }
     }
@@ -537,18 +545,19 @@
   <div class="practice__actions practice__actions--stage">
     @if (phase() === 'feedback') {
     <button mat-raised-button color="primary" type="button" (click)="loadNext()" [disabled]="busy()">
-      Sonraki Soru
+      {{ t('stage.nextQuestion') }}
       <mat-icon iconPositionEnd>arrow_forward</mat-icon>
     </button>
     } @else {
     <button mat-stroked-button type="button" (click)="skipQuestion()" [disabled]="busy()">
       <mat-icon>skip_next</mat-icon>
-      Pas Geç
+      {{ t('stage.skip') }}
     </button>
     <button mat-raised-button color="primary" type="button" (click)="submitAnswer()" [disabled]="!canSubmit()">
       <mat-icon>send</mat-icon>
-      Cevabı Gönder
+      {{ t('stage.submit') }}
     </button>
     }
   </div>
+  </ng-container>
 </ng-template>

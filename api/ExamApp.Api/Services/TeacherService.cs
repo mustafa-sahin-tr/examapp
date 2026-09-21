@@ -6,8 +6,10 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services;
 
@@ -16,10 +18,16 @@ public class TeacherService : ITeacherService
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
 
-    public TeacherService(AppDbContext context, IAuthApiClient authApiClient)
+    // Client'a ulasan mesajlar sozlukten gelir (issue #184). Localizer opsiyoneldir: DI disinda
+    // olusturulan (birim test) ornekler varsayilan dile kilitli fallback'e duser.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public TeacherService(AppDbContext context, IAuthApiClient authApiClient,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _authApiClient = authApiClient;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<Teacher?> GetTeacher(int userId)
@@ -37,7 +45,7 @@ public class TeacherService : ITeacherService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = "Seçilen okul bulunamadı."
+                Message = _localizer["teacher.schoolNotFound"]
             };
         }
 
@@ -149,7 +157,7 @@ public class TeacherService : ITeacherService
         return new ResponseBaseDto
         {
             Success = true,
-            Message = isUpdate ? "Öğretmen başarıyla güncellendi." : "Öğretmen başarıyla kaydedildi.",
+            Message = isUpdate ? _localizer["teacher.updated"] : _localizer["teacher.saved"],
             ObjectId = teacherId
         };
     }
@@ -203,7 +211,7 @@ public class TeacherService : ITeacherService
             return new UpdateThemeDto
             {
                 Success = false,
-                Message = "Öğretmen bulunamadı."
+                Message = _localizer["teacher.notFound"]
             };
         }
 
@@ -215,7 +223,7 @@ public class TeacherService : ITeacherService
         return new UpdateThemeDto
         {
             Success = true,
-            Message = "Theme tercihi güncellendi.",
+            Message = _localizer["teacher.themeUpdated"],
             ObjectId = teacher.Id,
             ThemePreset = teacher.ThemePreset,
             ThemeCustomConfig = teacher.ThemeCustomConfig
@@ -624,7 +632,7 @@ public class TeacherService : ITeacherService
                     StudentId = r.Student.Id,
                     StudentName = nameByUserId.TryGetValue(r.Student.UserId, out var fullName)
                         ? fullName
-                        : $"Öğrenci #{r.Student.StudentNumber}",
+                        : _localizer["teacher.fallbackStudentName", r.Student.StudentNumber],
                     WorksheetId = r.WorksheetId,
                     WorksheetName = worksheetNameById[r.WorksheetId],
                     CompletionPercentage = completionPercentage,
@@ -666,10 +674,10 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync(ct);
 
         if (teacher == null)
-            return new TutorProfileResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new TutorProfileResultDto { Success = false, NotFound = true, Message = _localizer["teacher.recordNotFound"] };
 
         if (!teacher.IsIndependentTutor)
-            return new TutorProfileResultDto { Success = false, Forbidden = true, Message = "Tutor profili yalnızca bağımsız öğretmenler için kullanılabilir." };
+            return new TutorProfileResultDto { Success = false, Forbidden = true, Message = _localizer["teacher.tutorProfile.independentOnly"] };
 
         return new TutorProfileResultDto
         {
@@ -694,13 +702,13 @@ public class TeacherService : ITeacherService
         var subjectIds = (dto.SubjectIds ?? new List<int>()).Distinct().ToList();
 
         if (subjectIds.Count == 0)
-            return Fail("En az bir ders seçilmelidir.");
+            return Fail(_localizer["teacher.tutorProfile.subjectsRequired"]);
 
         if (!dto.TeachesOnline && !dto.TeachesInPerson)
-            return Fail("Ders şekli olarak online veya yüz yüze seçeneklerinden en az biri seçilmelidir.");
+            return Fail(_localizer["teacher.tutorProfile.teachingModeRequired"]);
 
         if (dto.HourlyRate <= 0)
-            return Fail("Saatlik ücret 0'dan büyük olmalıdır.");
+            return Fail(_localizer["teacher.tutorProfile.hourlyRateInvalid"]);
 
         // 2) Sahiplik + bağımsız öğretmen kontrolü. ApprovalStatus fark etmez: onay beklerken de
         //    doldurulabilir; aramada görünürlük ayrıca ApprovalStatus=Approved ile filtrelenir.
@@ -709,10 +717,10 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync(t => t.UserId == userId, ct);
 
         if (teacher == null)
-            return new TutorProfileResultDto { Success = false, NotFound = true, Message = "Öğretmen kaydı bulunamadı." };
+            return new TutorProfileResultDto { Success = false, NotFound = true, Message = _localizer["teacher.recordNotFound"] };
 
         if (!teacher.IsIndependentTutor)
-            return new TutorProfileResultDto { Success = false, Forbidden = true, Message = "Tutor profili yalnızca bağımsız öğretmenler için güncellenebilir." };
+            return new TutorProfileResultDto { Success = false, Forbidden = true, Message = _localizer["teacher.tutorProfile.independentOnlyUpdate"] };
 
         // 3) SubjectId'ler gerçekten var mı (soft-delete edilmişler global filter ile zaten dışarıda).
         var existingSubjectIds = await _context.Subjects
@@ -723,7 +731,7 @@ public class TeacherService : ITeacherService
 
         var missing = subjectIds.Except(existingSubjectIds).ToList();
         if (missing.Count > 0)
-            return Fail($"Geçersiz ders seçimi: {string.Join(", ", missing)}");
+            return Fail(_localizer["teacher.tutorProfile.invalidSubjects", string.Join(", ", missing)]);
 
         // 4) Alanları güncelle + ders listesini diff'le (kaldırılanları hard delete, yenileri ekle).
         _context.SetCurrentUser(userId);
@@ -747,7 +755,7 @@ public class TeacherService : ITeacherService
         await _context.SaveChangesAsync(ct);
 
         var result = await GetTutorProfileAsync(userId, ct);
-        result.Message = "Tutor profili güncellendi.";
+        result.Message = _localizer["teacher.tutorProfile.updated"];
         return result;
 
         static TutorProfileResultDto Fail(string message) => new() { Success = false, Message = message };
@@ -810,7 +818,7 @@ public class TeacherService : ITeacherService
             TeacherId = r.Id,
             FullName = users.TryGetValue(r.UserId, out var user) && !string.IsNullOrWhiteSpace(user.FullName)
                 ? user.FullName
-                : $"Öğretmen #{r.Id}",
+                : _localizer["teacher.fallbackTeacherName", r.Id],
             Subjects = r.Subjects,
             HourlyRate = r.HourlyRate,
             TeachesOnline = r.TeachesOnline,
@@ -851,7 +859,7 @@ public class TeacherService : ITeacherService
         return new TeacherPublicProfileDto
         {
             TeacherId = row.Id,
-            FullName = !string.IsNullOrWhiteSpace(user?.FullName) ? user!.FullName : $"Öğretmen #{row.Id}",
+            FullName = !string.IsNullOrWhiteSpace(user?.FullName) ? user!.FullName : _localizer["teacher.fallbackTeacherName", row.Id],
             Avatar = user?.Avatar ?? string.Empty,
             Subjects = row.Subjects,
             HourlyRate = row.HourlyRate,

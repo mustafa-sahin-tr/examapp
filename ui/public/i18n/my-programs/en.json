@@ -1,0 +1,113 @@
+{
+  "actions": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close"
+  },
+  "list": {
+    "title": "My Study Programs",
+    "subtitle": "Manage the study programs designed specifically to help you reach your goals",
+    "create": "Create New Program",
+    "stats": {
+      "total": "Total Programs",
+      "active": "Active Programs",
+      "completed": "Completed"
+    },
+    "loading": {
+      "title": "Loading Your Programs",
+      "description": "Your study programs are being prepared..."
+    },
+    "error": {
+      "title": "Programs could not be loaded",
+      "description": "Something went wrong while fetching your study programs. Check your connection and try again.",
+      "retry": "Try Again"
+    },
+    "empty": {
+      "title": "You do not have a study program yet",
+      "description": "Create a personalised study program to reach your goals. Study more effectively with a program tailored to you.",
+      "featurePersonal": "Personal program",
+      "featureProgress": "Progress tracking",
+      "featureReminders": "Reminders",
+      "cta": "Create My First Program"
+    },
+    "sectionTitle": "Your Programs",
+    "filter": {
+      "all": "All",
+      "active": "Active",
+      "completed": "Completed"
+    },
+    "filterEmpty": {
+      "title": "No {{filter}} programs found",
+      "active": "You do not have an active program right now. You can start a new program, or pick the \"All\" filter to see your existing ones.",
+      "completed": "You have not completed a program yet. Keep studying and reach your goals!",
+      "reset": "Show All Programs"
+    },
+    "status": {
+      "completed": "Completed",
+      "active": "In Progress",
+      "notStarted": "Not Started"
+    },
+    "card": {
+      "durationAria": "Duration: {{count}} days",
+      "duration": "{{count}} days",
+      "subjectsAria": "{{count}} topics per day",
+      "subjects": "{{count}} topics/day",
+      "typeAria": "Type: {{type}}",
+      "progressLabel": "Progress",
+      "pageProgress": "{{completed}}/{{total}} pages completed",
+      "edit": "Edit",
+      "delete": "Delete",
+      "restart": "Start Again",
+      "continue": "Continue",
+      "details": "Details"
+    },
+    "deleteDialog": {
+      "title": "Delete Program",
+      "message": "Are you sure you want to delete the program \"{{name}}\"? This action cannot be undone.",
+      "confirm": "Yes, Delete",
+      "cancel": "Cancel"
+    },
+    "deleted": "Program deleted.",
+    "deleteFailed": "The program could not be deleted. Please try again."
+  },
+  "studyType": {
+    "intensive": "Intensive",
+    "regular": "Regular",
+    "flexible": "Flexible",
+    "weekend": "Weekend",
+    "exam": "Exam",
+    "question": "Question"
+  },
+  "detail": {
+    "dailyTarget": "{{questions}} questions, {{subjects}} topics per day",
+    "type": "Type: {{type}}",
+    "pagesTitle": "Program Pages",
+    "addPages": "Add Study Page",
+    "calendarSize": {
+      "label": "Calendar size",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large"
+    },
+    "selectAtLeastOnePage": "You must select at least one study page.",
+    "pagesAdded": "Study pages were added to the program.",
+    "updateFailed": "The program could not be updated.",
+    "loadFailed": "Program details could not be loaded.",
+    "studyPagesLoadFailed": "Study pages could not be loaded."
+  },
+  "addStudyPages": {
+    "titleWithoutDate": "Add Page to Program",
+    "title": "Add a page on {{date}}",
+    "noPages": "You have not created any study pages yet. Create one in the study page editor first.",
+    "noImage": "No Image",
+    "noDescription": "No description",
+    "pageCount": "{{count}} pages",
+    "startDate": "Start",
+    "endDate": "End"
+  },
+  "scheduleDetail": {
+    "studyPageId": "Study page no: {{id}}",
+    "cover": "Cover:"
+  }
+}

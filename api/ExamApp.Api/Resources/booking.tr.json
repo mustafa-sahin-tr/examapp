@@ -1,0 +1,47 @@
+{
+  "booking": {
+    "unauthorized": "Kullanıcı kimlik doğrulaması başarısız oldu",
+    "teacherRecordNotFound": "Öğretmen kaydı bulunamadı.",
+    "teacherNotFound": "Öğretmen bulunamadı.",
+    "teacherNotApproved": "Müsaitlik tanımlayabilmek için öğretmen hesabınızın onaylanmış olması gerekir.",
+    "studentRecordNotFound": "Öğrenci kaydı bulunamadı.",
+
+    "slot": {
+      "endBeforeStart": "Bitiş saati başlangıç saatinden sonra olmalıdır.",
+      "inPast": "Geçmiş bir zaman aralığı tanımlanamaz.",
+      "tooFarAhead": "Müsaitlik aralığı en fazla {0} gün sonrası için tanımlanabilir.",
+      "tooLong": "Bir müsaitlik aralığı en fazla {0} saat sürebilir.",
+      "overlapping": "Bu zaman aralığı mevcut bir müsaitlik aralığıyla çakışıyor.",
+      "duplicate": "Bu zaman aralığı zaten tanımlı.",
+      "created": "Müsaitlik aralığı eklendi.",
+      "notFound": "Müsaitlik aralığı bulunamadı.",
+      "notOwned": "Bu müsaitlik aralığı size ait değil.",
+      "hasActiveBooking": "Bekleyen veya onaylanmış randevusu olan bir müsaitlik aralığı silinemez.",
+      "deleted": "Müsaitlik aralığı silindi."
+    },
+
+    "request": {
+      "slotIdRequired": "Geçerli bir müsaitlik aralığı seçilmelidir.",
+      "rejectionReasonTooLong": "Ret gerekçesi en fazla 500 karakter olabilir.",
+      "slotInPast": "Geçmiş bir zaman aralığı için randevu oluşturulamaz.",
+      "duplicate": "Bu zaman aralığı için zaten bir randevu talebi var.",
+      "created": "Randevu talebi oluşturuldu.",
+      "notFound": "Randevu talebi bulunamadı.",
+      "notOwned": "Bu randevu talebi size ait değil.",
+      "alreadyDecided": "Bu talep zaten sonuçlandırılmış ({0}).",
+      "approved": "Randevu onaylandı.",
+      "rejected": "Randevu reddedildi."
+    },
+
+    "video": {
+      "bookingNotFound": "Randevu bulunamadı.",
+      "notParticipant": "Bu randevuya katılma yetkiniz yok.",
+      "notApproved": "Görüşme yalnızca onaylanmış randevular için başlatılabilir.",
+      "windowNotOpen": "Görüşmeye ders saatinden en erken {0} dakika önce katılabilirsiniz.",
+      "windowClosed": "Bu dersin görüşme penceresi kapandı (bitişten {0} dakika sonra kapanır).",
+      "providerUnavailable": "Görüşme servisi şu anda yapılandırılmamış. Lütfen daha sonra tekrar deneyin.",
+      "participantTeacher": "Öğretmen",
+      "participantStudent": "Öğrenci"
+    }
+  }
+}

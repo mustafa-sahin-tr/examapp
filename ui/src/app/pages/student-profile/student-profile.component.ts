@@ -1,4 +1,6 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { StudentProfile } from '../../models/student-profile';
@@ -24,6 +26,11 @@ import { TestService } from '../../services/test.service';
 import { letters } from './letters';
 import { UserThemeSwitcherComponent } from '../../components/user-theme-switcher/user-theme-switcher.component';
 import { BadgeService, UserActivityResponse } from '../../services/badge.service';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { LocaleService } from '../../services/locale.service';
+
+/** Sayfanin Transloco scope'u: `public/i18n/student-profile/<lang>.json` (issue #183). */
+const SCOPE = 'student-profile';
 
 @Component({
   selector: 'app-student-profile',
@@ -47,10 +54,18 @@ import { BadgeService, UserActivityResponse } from '../../services/badge.service
     StudentTimeChartComponent,
     BadgeThropyComponent,
     UserThemeSwitcherComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(SCOPE)],
 })
 export class StudentProfileComponent implements OnInit {
   testService = inject(TestService);
+  private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** "Haftalik Hedef" sekmesindeki ay basligi; bicimlendirme `date` pipe'i ile dile baglidir. */
+  readonly goalMonth = new Date();
   industry: { name: string; value: number } = { name: 'Software Development', value: 100 };
   yearsOfExperience: number = 0;
   avatarUrl: string = 'http://localhost/minio-api/avatars/avatar.png';
@@ -503,19 +518,19 @@ export class StudentProfileComponent implements OnInit {
       this.single = [];
       this.single = this.single.concat([
         {
-          name: 'Çözülen Test',
+          name: this.text('stats.completedTests'),
           value: response.total.completedTests,
         },
         {
-          name: 'Çalışma Süresi (dk)',
+          name: this.text('stats.studyMinutes'),
           value: response.total.totalTimeSpentMinutes,
         },
         {
-          name: 'Çözülen Soru',
+          name: this.text('stats.solvedQuestions'),
           value: response.total.totalCorrectAnswers + response.total.totalWrongAnswers,
         },
         {
-          name: 'Doğru Cevap',
+          name: this.text('stats.correctAnswers'),
           value: response.total.totalCorrectAnswers,
         },
       ]);
@@ -530,7 +545,7 @@ export class StudentProfileComponent implements OnInit {
   changeGrade(): void {
     if (this.student) {
       this.studentService.updateGrade(this.student.gradeId).subscribe(() => {
-        this.snackBar.open('Grade güncellendi!', 'Tamam', { duration: 3000 });
+        this.notify('profile.gradeUpdated');
       });
     }
   }
@@ -540,7 +555,7 @@ export class StudentProfileComponent implements OnInit {
     if (file) {
       this.studentService.updateAvatar(file).subscribe((response) => {
         this.student = response;
-        this.snackBar.open('Avatar güncellendi!', 'Tamam', { duration: 3000 });
+        this.notify('profile.avatarUpdated');
       });
     }
   }
@@ -553,12 +568,16 @@ export class StudentProfileComponent implements OnInit {
     const cell = tooltip.cell ?? tooltip.data ?? tooltip;
     const extra = cell?.extra ?? {};
     const date = extra.date ? new Date(extra.date) : new Date();
-    const dateLabel = extra.label ?? date.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+    const dateLabel = extra.label ?? date.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
     const duration = this.formatDuration(extra.totalTimeSeconds ?? 0);
 
-    return `${dateLabel}\nSoru: ${extra.questionCount ?? 0}\nDoğru: ${
-      extra.correctCount ?? 0
-    }\nSüre: ${duration}\nAktivite Skoru: ${cell?.value ?? 0}`;
+    return [
+      dateLabel,
+      `${this.text('heatmap.tooltip.questions')}: ${extra.questionCount ?? 0}`,
+      `${this.text('heatmap.tooltip.correct')}: ${extra.correctCount ?? 0}`,
+      `${this.text('heatmap.tooltip.duration')}: ${duration}`,
+      `${this.text('heatmap.tooltip.activityScore')}: ${cell?.value ?? 0}`,
+    ].join('\n');
   };
 
   private loadUserActivityHeatmap(userId: number): void {
@@ -617,7 +636,7 @@ export class StudentProfileComponent implements OnInit {
           value: activityScore,
           extra: {
             date: currentDate.toISOString(),
-            label: currentDate.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+            label: currentDate.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' }),
             questionCount: dayActivity?.questionCount ?? 0,
             correctCount: dayActivity?.correctCount ?? 0,
             totalTimeSeconds: dayActivity?.totalTimeSeconds ?? 0,
@@ -691,30 +710,55 @@ export class StudentProfileComponent implements OnInit {
   }
 
   private formatDayLabel(date: Date): string {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString(this.intlLocale, { weekday: 'short' });
   }
 
   private formatWeekLabel(weekStart: Date): string {
-    return weekStart.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' });
+    return weekStart.toLocaleDateString(this.intlLocale, { day: '2-digit', month: 'short' });
+  }
+
+  /** Intl cagrilarinda kullanilacak aktif dil (issue #183). */
+  private get intlLocale(): string {
+    return this.localeService.localeDefinition().angularLocale;
+  }
+
+  /** Sozlukten senkron metin; sayfa sablonu render oldugunda scope yuklu olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${SCOPE}.${key}`, params) ?? '';
+  }
+
+  /**
+   * Snackbar metni sablon disinda oldugu icin scope once `selectTranslate` ile yuklenir; sozluk
+   * hazir oldugunda aksiyon etiketi senkron okunabilir.
+   */
+  private notify(messageKey: string): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration: 3000 });
+      });
   }
 
   private formatDuration(totalSeconds: number): string {
     if (!totalSeconds) {
-      return '0 sn';
+      return this.text('duration.seconds', { seconds: 0 });
     }
 
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
 
     if (minutes && seconds) {
-      return `${minutes} dk ${seconds} sn`;
+      return this.text('duration.minutesAndSeconds', { minutes, seconds });
     }
 
     if (minutes) {
-      return `${minutes} dk`;
+      return this.text('duration.minutes', { minutes });
     }
 
-    return `${seconds} sn`;
+    return this.text('duration.seconds', { seconds });
   }
 
   private endOfWeek(date: Date): Date {

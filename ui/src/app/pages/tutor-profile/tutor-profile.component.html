@@ -1,13 +1,13 @@
-<section class="tp">
+<section class="tp" *transloco="let t; prefix: 'tutor-profile'">
   <header class="tp__head">
     <div>
-      <h2>Özel Ders Profilim</h2>
-      <p>Verdiğiniz dersleri, saatlik ücretinizi ve ders şeklinizi öğrencilerin görebileceği şekilde düzenleyin.</p>
+      <h2>{{ t('title') }}</h2>
+      <p>{{ t('subtitle') }}</p>
     </div>
     @if (profile()) {
       <span class="tp__status" [class]="'tp__status--' + statusTone()">
         <mat-icon>verified_user</mat-icon>
-        {{ statusLabel() }}
+        {{ statusLabelKey() ? t(statusLabelKey()) : '' }}
       </span>
     }
   </header>
@@ -15,7 +15,7 @@
   @if (loading()) {
     <div class="tp__state" aria-busy="true" aria-live="polite">
       <mat-spinner diameter="36"></mat-spinner>
-      <span>Profiliniz yükleniyor...</span>
+      <span>{{ t('state.loading') }}</span>
     </div>
   } @else if (unavailable()) {
     <div class="tp__state">
@@ -26,18 +26,16 @@
     <div class="tp__state tp__state--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <span>{{ error() }}</span>
-      <button mat-stroked-button type="button" (click)="load()">Tekrar dene</button>
+      <button mat-stroked-button type="button" (click)="load()">{{ 'common.retry' | transloco }}</button>
     </div>
   } @else {
     @if (!isApproved()) {
-      <p class="tp__notice">
-        Profiliniz onaylanana kadar öğrenci aramalarında görünmez. Bilgilerinizi şimdiden doldurabilirsiniz.
-      </p>
+      <p class="tp__notice">{{ t('state.notApprovedNotice') }}</p>
     }
 
     <form class="tp__form" [formGroup]="form" (ngSubmit)="save()">
       <mat-form-field appearance="outline" class="tp__field">
-        <mat-label>Verdiğim dersler</mat-label>
+        <mat-label>{{ t('form.subjectsLabel') }}</mat-label>
         <mat-select formControlName="subjectIds" multiple>
           @for (subject of subjects(); track subject.id) {
             <mat-option [value]="subject.id">{{ subject.name }}</mat-option>
@@ -46,16 +44,20 @@
         @if (subjectsError()) {
           <mat-hint class="tp__hint-error">{{ subjectsError() }}</mat-hint>
         } @else {
-          <mat-hint>En az bir ders seçmelisiniz.</mat-hint>
+          <mat-hint>{{ t('form.subjectsHint') }}</mat-hint>
         }
       </mat-form-field>
 
       @if (selectedSubjectIds().length) {
-        <mat-chip-set class="tp__chips" aria-label="Seçili dersler">
+        <mat-chip-set class="tp__chips" [attr.aria-label]="t('form.selectedSubjects')">
           @for (subjectId of selectedSubjectIds(); track subjectId) {
             <mat-chip (removed)="removeSubject(subjectId)">
               {{ subjectName(subjectId) }}
-              <button matChipRemove type="button" [attr.aria-label]="subjectName(subjectId) + ' dersini kaldır'">
+              <button
+                matChipRemove
+                type="button"
+                [attr.aria-label]="t('form.removeSubject', { subject: subjectName(subjectId) })"
+              >
                 <mat-icon>cancel</mat-icon>
               </button>
             </mat-chip>
@@ -64,35 +66,35 @@
       }
 
       <mat-form-field appearance="outline" class="tp__field tp__field--narrow">
-        <mat-label>Saatlik ücret</mat-label>
+        <mat-label>{{ t('form.hourlyRateLabel') }}</mat-label>
         <input matInput type="number" min="1" step="1" formControlName="hourlyRate" />
         <span matTextSuffix>₺</span>
-        <mat-hint>Ödeme alınmaz; yalnızca bilgi amaçlı gösterilir.</mat-hint>
+        <mat-hint>{{ t('form.hourlyRateHint') }}</mat-hint>
       </mat-form-field>
 
       <fieldset class="tp__modes">
-        <legend>Ders şekli</legend>
-        <mat-checkbox formControlName="teachesOnline">Online</mat-checkbox>
-        <mat-checkbox formControlName="teachesInPerson">Yüz yüze</mat-checkbox>
-        <p class="tp__modes-hint">En az birini seçmelisiniz; ikisi birden de seçilebilir.</p>
+        <legend>{{ t('form.modesLegend') }}</legend>
+        <mat-checkbox formControlName="teachesOnline">{{ t('form.online') }}</mat-checkbox>
+        <mat-checkbox formControlName="teachesInPerson">{{ t('form.inPerson') }}</mat-checkbox>
+        <p class="tp__modes-hint">{{ t('form.modesHint') }}</p>
       </fieldset>
 
       <mat-form-field appearance="outline" class="tp__field">
-        <mat-label>Kısa tanıtım</mat-label>
+        <mat-label>{{ t('form.bioLabel') }}</mat-label>
         <textarea
           matInput
           rows="4"
           formControlName="bio"
           [maxlength]="bioMaxLength"
-          placeholder="Deneyiminiz, ders yönteminiz hakkında kısa bir tanıtım."
+          [placeholder]="t('form.bioPlaceholder')"
         ></textarea>
         <mat-hint align="end">{{ bioLength() }} / {{ bioMaxLength }}</mat-hint>
       </mat-form-field>
 
       <div class="tp__actions">
-        <button mat-flat-button color="primary" type="submit" [disabled]="!canSave()">Kaydet</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="!canSave()">{{ t('form.save') }}</button>
         @if (saving()) {
-          <mat-spinner diameter="20" aria-label="Kaydediliyor"></mat-spinner>
+          <mat-spinner diameter="20" [attr.aria-label]="t('form.saving')"></mat-spinner>
         }
       </div>
     </form>

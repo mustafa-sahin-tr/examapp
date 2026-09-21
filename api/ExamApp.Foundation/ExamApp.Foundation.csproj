@@ -5,11 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageId>ExamApp.Foundation</PackageId>
-    <Version>1.4.0</Version>
+    <Version>1.5.0</Version>
     <Authors>ExamApp Team</Authors>
     <Company>ExamApp</Company>
-    <Description>Shared event contracts, persistence layer for OutboxMessage and EF context</Description>
+    <Description>Shared event contracts, persistence layer for OutboxMessage and EF context, JSON tabanlı mesaj yerelleştirme</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.11" />
+  </ItemGroup>
 
 </Project>

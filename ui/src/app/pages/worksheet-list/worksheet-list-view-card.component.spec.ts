@@ -4,12 +4,31 @@ import { provideRouter } from '@angular/router';
 import { WorksheetListViewCardComponent } from './worksheet-list-view-card.component';
 import { Test, WorksheetTeacherSharing } from '../../models/test-instance';
 
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
+import rootTr from '../../../../public/i18n/tr.json';
+import worksheetListTr from '../../../../public/i18n/worksheet-list/tr.json';
+
+/** Gercek scope sozlugu yuklenir; anahtar bozulursa test kirilir (issue #183). */
+const translocoTesting = TranslocoTestingModule.forRoot({
+  // Scope sozlugu hem scope yolu (provideTranslocoScope yukleyicisi) hem de kok 'tr' icine
+  // gomulu olarak verilir; sablondaki 'prefix' bicimi ikincisinden cozulur.
+  langs: { tr: { ...rootTr, 'worksheet-list': worksheetListTr }, 'worksheet-list/tr': worksheetListTr },
+  translocoConfig: {
+    availableLangs: [...SUPPORTED_LOCALE_CODES],
+    defaultLang: DEFAULT_LOCALE,
+    // TranslocoTestingModule uygulamanin config'ini almaz; scope oneki kebab kalsin (issue #183).
+    scopes: { keepCasing: true },
+  },
+  preloadLangs: true,
+});
+
 describe('WorksheetListViewCardComponent', () => {
   let component: WorksheetListViewCardComponent;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [WorksheetListViewCardComponent],
+      imports: [WorksheetListViewCardComponent, translocoTesting],
       providers: [provideRouter([])],
     });
 

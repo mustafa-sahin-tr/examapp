@@ -1,18 +1,18 @@
-<div class="ms-study-topic">
-  <h2>{{ subject?.name }} Konuları</h2>
+<div class="ms-study-topic" *transloco="let t; prefix: 'shared.study.topic'">
+  <h2>{{ t('title', { subject: subject?.name }) }}</h2>
 
   <div class="ms-topic-description">
-    <p>İncelemek istediğiniz konuyu seçin. Her konu, alt konular ve çalışma materyalleri içerir.</p>
+    <p>{{ t('description') }}</p>
   </div>
 
   <div *ngIf="isLoading" class="ms-loading-placeholder">
     <mat-icon>autorenew</mat-icon>
-    <span>Konular yükleniyor...</span>
+    <span>{{ t('loading') }}</span>
   </div>
 
   <div *ngIf="!isLoading && topics.length === 0" class="ms-empty-state">
     <mat-icon>category</mat-icon>
-    <p>Bu ders için henüz konu eklenmemiş.</p>
+    <p>{{ t('empty') }}</p>
   </div>
 
   <div *ngIf="!isLoading && topics.length > 0" class="ms-topic-list">
@@ -32,7 +32,7 @@
           <h3>{{ topic.name }}</h3>
           <mat-progress-bar mode="determinate" [value]="50" color="primary"></mat-progress-bar>
           <div class="ms-topic-progress-text">
-            <span>%50 Tamamlandı</span>
+            <span>{{ t('progress', { percent: 50 }) }}</span>
           </div>
         </div>
 

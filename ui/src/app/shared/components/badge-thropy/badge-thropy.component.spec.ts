@@ -4,6 +4,7 @@ import { Subject, of, throwError } from 'rxjs';
 import { BadgeThropyComponent } from './badge-thropy.component';
 import { BadgeProgressItem, BadgeProgressResponse, BadgeService } from '../../../services/badge.service';
 import { AuthService } from '../../../services/auth.service';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('BadgeThropyComponent', () => {
   let component: BadgeThropyComponent;
@@ -56,7 +57,7 @@ describe('BadgeThropyComponent', () => {
     authServiceSpy.getUserIdFromLocalStorage.and.returnValue(null);
 
     await TestBed.configureTestingModule({
-      imports: [BadgeThropyComponent],
+      imports: [translocoTestingModule(), BadgeThropyComponent],
       providers: [
         { provide: BadgeService, useValue: badgeServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },

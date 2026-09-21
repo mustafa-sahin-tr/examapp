@@ -1,63 +1,67 @@
 <app-section-header
   class="section-container"
-  [title]="isEditMode() ? 'Calisma Etkinligini Duzenle' : 'Yeni Calisma Etkinligi'"
+  [title]="(isEditMode() ? 'study-pages.editor.titleEdit' : 'study-pages.editor.titleNew') | transloco"
   icon="/icons/18.svg"
 ></app-section-header>
 
-<div class="form-container editor-grid">
+<div class="form-container editor-grid" *transloco="let t; prefix: 'study-pages.editor'">
   <div class="form-column">
     <mat-card class="editor-card">
       <mat-card-content>
         <form class="field-grid" [formGroup]="form">
           <!-- Tip seçici -->
           <div class="content-type-field">
-            <span class="content-type-label">Etkinlik Tipi</span>
-            <mat-button-toggle-group formControlName="contentType" class="content-type-toggle" aria-label="Etkinlik tipi">
+            <span class="content-type-label">{{ t('contentTypeLabel') }}</span>
+            <mat-button-toggle-group
+              formControlName="contentType"
+              class="content-type-toggle"
+              [attr.aria-label]="t('contentTypeLabel')"
+            >
               @for (opt of contentTypeOptions; track opt.value) {
               <mat-button-toggle [value]="opt.value">
                 <mat-icon>{{ opt.icon }}</mat-icon>
-                <span>{{ opt.label }}</span>
+                <span>{{ 'study-pages.' + opt.labelKey | transloco }}</span>
               </mat-button-toggle>
               }
             </mat-button-toggle-group>
           </div>
 
           <mat-form-field appearance="outline">
-            <mat-label>Baslik</mat-label>
+            <mat-label>{{ t('titleField') }}</mat-label>
             <input matInput formControlName="title" />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Aciklama</mat-label>
+            <mat-label>{{ t('descriptionField') }}</mat-label>
             <textarea matInput rows="4" formControlName="description"></textarea>
           </mat-form-field>
 
           <!-- Link tipi -->
           @if (isLinkType()) {
           <div class="typed-section">
-            <h4 class="typed-section-title"><mat-icon>link</mat-icon> Link Bilgileri</h4>
+            <h4 class="typed-section-title"><mat-icon>link</mat-icon> {{ t('link.sectionTitle') }}</h4>
 
             <mat-form-field appearance="outline">
-              <mat-label>URL</mat-label>
+              <mat-label>{{ t('link.urlLabel') }}</mat-label>
               <input matInput formControlName="url" type="url" placeholder="https://..." />
               <mat-icon matPrefix class="platform-icon" [attr.data-platform]="selectedPlatform()">{{ selectedPlatformIcon() }}</mat-icon>
-              <mat-hint>http/https ile baslayan tam adres</mat-hint>
+              <mat-hint>{{ t('link.urlHint') }}</mat-hint>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
-              <mat-label>Platform</mat-label>
+              <mat-label>{{ t('link.platformLabel') }}</mat-label>
               <mat-select formControlName="platform">
                 <mat-select-trigger>
                   <span class="platform-option">
                     <mat-icon class="platform-icon" [attr.data-platform]="selectedPlatform()">{{ selectedPlatformIcon() }}</mat-icon>
-                    {{ selectedPlatformLabel() }}
+                    {{ 'study-pages.' + selectedPlatformLabelKey() | transloco }}
                   </span>
                 </mat-select-trigger>
                 @for (opt of platformOptions; track opt.value) {
                 <mat-option [value]="opt.value">
                   <span class="platform-option">
                     <mat-icon class="platform-icon" [attr.data-platform]="opt.value">{{ opt.icon }}</mat-icon>
-                    {{ opt.label }}
+                    {{ 'study-pages.' + opt.labelKey | transloco }}
                   </span>
                 </mat-option>
                 }
@@ -69,24 +73,24 @@
           <!-- Kitap sayfa aralığı tipi -->
           @if (isBookPageRangeType()) {
           <div class="typed-section">
-            <h4 class="typed-section-title"><mat-icon>menu_book</mat-icon> Kitap / Test</h4>
+            <h4 class="typed-section-title"><mat-icon>menu_book</mat-icon> {{ t('book.sectionTitle') }}</h4>
 
             @if (booksLoading()) {
-            <p class="typed-section-status"><mat-icon>hourglass_empty</mat-icon> Kitaplar yukleniyor...</p>
+            <p class="typed-section-status"><mat-icon>hourglass_empty</mat-icon> {{ t('book.loading') }}</p>
             } @else if (booksError()) {
             <p class="typed-section-status status-error">
               <mat-icon>error_outline</mat-icon> {{ booksError() }}
-              <button mat-button type="button" (click)="retryLoadBooks()">Tekrar dene</button>
+              <button mat-button type="button" (click)="retryLoadBooks()">{{ 'common.retry' | transloco }}</button>
             </p>
             } @else {
 
             <!-- Kitap -->
             @if (!showAddBookInput()) {
             <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Kitap Sec</mat-label>
+              <mat-label>{{ t('book.selectBook') }}</mat-label>
               <mat-select formControlName="bookId" (selectionChange)="onBookChange($event.value)">
                 @if (books().length === 0) {
-                <mat-option disabled>Kayitli kitap yok</mat-option>
+                <mat-option disabled>{{ t('book.noBooks') }}</mat-option>
                 }
                 @for (book of books(); track book.id) {
                 <mat-option [value]="book.id">{{ book.name }}</mat-option>
@@ -94,25 +98,25 @@
               </mat-select>
             </mat-form-field>
             <a class="inline-add-link" (click)="openNewBookAdd()">
-              <mat-icon>add</mat-icon> Yeni Kitap Ekle
+              <mat-icon>add</mat-icon> {{ t('book.addBook') }}
             </a>
             } @else {
             <mat-form-field appearance="outline">
-              <mat-label>Yeni Kitap Adi</mat-label>
+              <mat-label>{{ t('book.newBookName') }}</mat-label>
               <input matInput formControlName="newBookName" appAutofocus (blur)="onNewBookBlur()" />
-              <mat-hint>Bos birakip cikarsaniz listeye geri doner</mat-hint>
+              <mat-hint>{{ t('book.newBookHint') }}</mat-hint>
             </mat-form-field>
             }
 
             <!-- Kitap testi -->
             @if (!showAddBookTestInput()) {
             <mat-form-field appearance="outline" class="hide-subscript">
-              <mat-label>Kitap Testi</mat-label>
+              <mat-label>{{ t('book.selectBookTest') }}</mat-label>
               <mat-select formControlName="bookTestId" [disabled]="!form.controls.bookId.value || bookTestsLoading()">
                 @if (bookTestsLoading()) {
-                <mat-option disabled>Yukleniyor...</mat-option>
+                <mat-option disabled>{{ t('book.loadingTests') }}</mat-option>
                 } @else if (bookTests().length === 0) {
-                <mat-option disabled>Bu kitapta test yok</mat-option>
+                <mat-option disabled>{{ t('book.noBookTests') }}</mat-option>
                 }
                 @for (test of bookTests(); track test.id) {
                 <mat-option [value]="test.id">{{ test.name }}</mat-option>
@@ -120,11 +124,11 @@
               </mat-select>
             </mat-form-field>
             <a class="inline-add-link" (click)="openNewBookTestAdd()">
-              <mat-icon>add</mat-icon> Yeni Kitap Testi Ekle
+              <mat-icon>add</mat-icon> {{ t('book.addBookTest') }}
             </a>
             } @else {
             <mat-form-field appearance="outline">
-              <mat-label>Yeni Kitap Testi Adi</mat-label>
+              <mat-label>{{ t('book.newBookTestName') }}</mat-label>
               <input matInput formControlName="newBookTestName" (blur)="onNewBookTestBlur()" />
             </mat-form-field>
             }
@@ -132,11 +136,11 @@
             <!-- Sayfa aralığı -->
             <div class="page-range-row">
               <mat-form-field appearance="outline">
-                <mat-label>Baslangic Sayfasi</mat-label>
+                <mat-label>{{ t('book.startPage') }}</mat-label>
                 <input matInput type="number" min="1" formControlName="startPage" />
               </mat-form-field>
               <mat-form-field appearance="outline">
-                <mat-label>Bitis Sayfasi</mat-label>
+                <mat-label>{{ t('book.endPage') }}</mat-label>
                 <input matInput type="number" min="1" formControlName="endPage" />
               </mat-form-field>
             </div>
@@ -145,7 +149,7 @@
           }
 
           <mat-form-field appearance="outline">
-            <mat-label>Sinif</mat-label>
+            <mat-label>{{ t('taxonomy.grade') }}</mat-label>
             <mat-select formControlName="gradeId">
               <mat-option [value]="null">Seciniz</mat-option>
               @for (grade of grades(); track grade.id) {
@@ -155,7 +159,7 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Ders</mat-label>
+            <mat-label>{{ t('taxonomy.subject') }}</mat-label>
             <mat-select formControlName="subjectId" [disabled]="!form.get('gradeId')?.value">
               <mat-option [value]="null">Seciniz</mat-option>
               @for (subject of subjects(); track subject.id) {
@@ -165,7 +169,7 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Konu</mat-label>
+            <mat-label>{{ t('taxonomy.topic') }}</mat-label>
             <mat-select formControlName="topicId" [disabled]="!form.get('gradeId')?.value">
               <mat-option [value]="null">Seciniz</mat-option>
               @for (topic of topics(); track topic.id) {
@@ -175,7 +179,7 @@
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Alt Konu</mat-label>
+            <mat-label>{{ t('taxonomy.subTopic') }}</mat-label>
             <mat-select formControlName="subTopicId" [disabled]="!form.get('gradeId')?.value">
               <mat-option [value]="null">Seciniz</mat-option>
               @for (subtopic of subtopics(); track subtopic.id) {
@@ -184,14 +188,14 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-slide-toggle formControlName="isPublished">Yayinla</mat-slide-toggle>
+          <mat-slide-toggle formControlName="isPublished">{{ t('publish') }}</mat-slide-toggle>
         </form>
       </mat-card-content>
 
       <mat-card-actions class="action-row">
-        <button mat-stroked-button (click)="onCancel()">Iptal</button>
+        <button mat-stroked-button (click)="onCancel()">{{ t('cancel') }}</button>
         <button mat-flat-button color="primary" (click)="onSave()" [disabled]="loading()">
-          {{ loading() ? 'Kaydediliyor...' : 'Kaydet' }}
+          {{ loading() ? t('saving') : t('save') }}
         </button>
       </mat-card-actions>
     </mat-card>
@@ -205,31 +209,31 @@
         <mat-card-content>
           <div class="upload-header">
             <div>
-              <h3>Resimler</h3>
+              <h3>{{ t('images.title') }}</h3>
             </div>
             <div class="upload-actions">
               @if (existingImages().length > 0) {
               <button mat-stroked-button [disabled]="downloadingZip()" (click)="downloadAsZip()">
                 <mat-icon>download</mat-icon>
-                {{ downloadingZip() ? 'Indiriliyor...' : 'ZIP Indir' }}
+                {{ downloadingZip() ? t('images.downloadingZip') : t('images.downloadZip') }}
               </button>
               }
               <label class="upload-btn json-upload-btn">
                 <input type="file" accept=".json" (change)="onJsonSelected($event)" [disabled]="jsonProcessing()" />
                 <mat-icon>upload_file</mat-icon>
-                {{ jsonProcessing() ? 'Okuyor...' : 'JSON Yukle' }}
+                {{ jsonProcessing() ? t('images.readingJson') : t('images.uploadJson') }}
               </label>
               @if (hasJsonConfig) {
               <label class="upload-btn">
                 <input #bulkFileInput type="file" webkitdirectory multiple (change)="onBulkFilesSelected($event)" />
                 <mat-icon>folder_open</mat-icon>
-                Klasör Seç - Otomatik Filtrele
+                {{ t('images.pickFolder') }}
               </label>
               }
               <label class="upload-btn">
                 <input type="file" accept="image/*" multiple (change)="onFilesSelected($event)" />
                 <mat-icon>upload</mat-icon>
-                Resim Sec
+                {{ t('images.pickImages') }}
               </label>
             </div>
           </div>
@@ -244,38 +248,38 @@
                 @if (!preview.selected) {
                 <button mat-flat-button color="primary" (click)="toggleCurrentSelection()">
                   <mat-icon>add</mat-icon>
-                  Ekle
+                  {{ t('images.add') }}
                 </button>
                 } @else {
                 <button mat-stroked-button color="warn" (click)="toggleCurrentSelection()">
                   <mat-icon>remove_circle</mat-icon>
-                  Cikar
+                  {{ t('images.remove') }}
                 </button>
                 }
               </div>
               <div class="preview-meta">
-                <span>{{ preview.fileName || 'Resim' }}</span>
+                <span>{{ preview.fileName || t('images.imageFallback') }}</span>
                 <span class="badge-generic" [class.badge-new]="preview.type === 'new'">
-                  {{ preview.type === 'new' ? 'Yeni' : 'Mevcut' }}
+                  {{ preview.type === 'new' ? t('images.new') : t('images.existing') }}
                 </span>
                 <span
                   class="badge-generic"
                   [class.badge-selected]="preview.selected"
                   [class.badge-unselected]="!preview.selected"
                 >
-                  {{ preview.selected ? 'Secili' : 'Secili Degil' }}
+                  {{ preview.selected ? t('images.selected') : t('images.notSelected') }}
                 </span>
               </div>
               <div class="preview-actions">
                 @if (!preview.selected) {
                 <button mat-flat-button color="primary" (click)="toggleCurrentSelection()">
                   <mat-icon>add</mat-icon>
-                  Ekle
+                  {{ t('images.add') }}
                 </button>
                 } @else {
                 <button mat-stroked-button color="warn" (click)="toggleCurrentSelection()">
                   <mat-icon>remove_circle</mat-icon>
-                  Cikar
+                  {{ t('images.remove') }}
                 </button>
                 }
               </div>
@@ -284,7 +288,7 @@
           } @else {
           <div class="empty-preview">
             <mat-icon>image</mat-icon>
-            <span>Henuz resim eklenmedi</span>
+            <span>{{ t('images.empty') }}</span>
           </div>
           }
 
@@ -298,16 +302,16 @@
             >
               <img [src]="item.url" alt="" />
               <div class="thumb-info">
-                <span>{{ item.fileName || 'Resim' }}</span>
+                <span>{{ item.fileName || t('images.imageFallback') }}</span>
                 <span class="badge-generic" [class.badge-new]="item.type === 'new'">{{
-                  item.type === 'new' ? 'Yeni' : 'Mevcut'
+                  item.type === 'new' ? t('images.new') : t('images.existing')
                 }}</span>
                 <span
                   class="badge-generic"
                   [class.badge-selected]="item.selected"
                   [class.badge-unselected]="!item.selected"
                 >
-                  {{ item.selected ? 'Secili' : 'Haric' }}
+                  {{ item.selected ? t('images.selected') : t('images.excluded') }}
                 </span>
               </div>
             </div>
@@ -320,14 +324,16 @@
             <div class="guidance-header">
               <h4>
                 <mat-icon>list_alt</mat-icon>
-                Dosya Klavuzu
+                {{ t('guidance.title') }}
               </h4>
               <div class="guidance-stats">
-                <span class="stat-item found">{{ guidanceStats.found }}/{{ guidanceStats.total }} Bulundu</span>
+                <span class="stat-item found">
+                  {{ t('guidance.found', { found: guidanceStats.found, total: guidanceStats.total }) }}
+                </span>
                 @if (guidanceStats.missing > 0) {
-                <span class="stat-item missing">{{ guidanceStats.missing }} Eksik</span>
+                <span class="stat-item missing">{{ t('guidance.missing', { count: guidanceStats.missing }) }}</span>
                 }
-                <button mat-icon-button (click)="clearJsonConfig()" title="JSON klavuzunu temizle">
+                <button mat-icon-button (click)="clearJsonConfig()" [title]="t('guidance.clear')">
                   <mat-icon>clear</mat-icon>
                 </button>
               </div>
@@ -335,8 +341,7 @@
 
             <p class="guidance-help">
               <mat-icon>info</mat-icon>
-              JSON'dan: <strong>{{ jsonFileName() }}</strong> -
-              Aşağıdaki dosyaları klasörlerinizden bulup yükleyin.
+              {{ t('guidance.help', { fileName: jsonFileName() }) }}
             </p>
 
             <div class="expected-files">
@@ -350,8 +355,10 @@
                   @for (file of book.value; track file.pageNumber) {
                   <div class="expected-file" [class.found]="file.found" [class.missing]="!file.found">
                     <mat-icon>{{ file.found ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                    <span class="file-name">{{ file.bookName }} - Sayfa {{ file.pageNumber }}</span>
-                    <span class="file-status">{{ file.found ? 'Bulundu' : 'Eksik' }}</span>
+                    <span class="file-name">
+                      {{ t('guidance.fileLabel', { book: file.bookName, page: file.pageNumber }) }}
+                    </span>
+                    <span class="file-status">{{ file.found ? t('guidance.fileFound') : t('guidance.fileMissing') }}</span>
                   </div>
                   }
                 </div>
@@ -366,21 +373,21 @@
       @if (selectedItems.length > 0) {
       <mat-card class="editor-card">
         <mat-card-content>
-          <h3>Programa Eklenecek Resimler</h3>
+          <h3>{{ t('images.selectedTitle') }}</h3>
           <div class="image-list">
             @for (item of selectedItems; track item.key) {
             <div class="image-item">
               <img [src]="item.url" alt="" (click)="setPreviewByKey(item.key)" class="clickable" />
               <div class="image-actions">
-                <button mat-stroked-button (click)="setPreviewByKey(item.key)">Buyuk Gor</button>
+                <button mat-stroked-button (click)="setPreviewByKey(item.key)">{{ t('images.viewLarge') }}</button>
                 <button mat-icon-button color="warn" (click)="removeSelectedByKey(item.key)">
                   <mat-icon>delete</mat-icon>
                 </button>
               </div>
               <div class="thumb-info">
-                <span>{{ item.fileName || 'Resim' }}</span>
+                <span>{{ item.fileName || t('images.imageFallback') }}</span>
                 <span class="badge" [class.badge-new]="item.type === 'new'">{{
-                  item.type === 'new' ? 'Yeni' : 'Mevcut'
+                  item.type === 'new' ? t('images.new') : t('images.existing')
                 }}</span>
               </div>
             </div>
@@ -401,25 +408,25 @@
         @if (isLinkType()) {
         <div class="typed-preview">
           <mat-icon class="typed-preview-icon platform-icon" [attr.data-platform]="selectedPlatform()">{{ selectedPlatformIcon() }}</mat-icon>
-          <h3>{{ form.controls.title.value || 'Link etkinligi' }}</h3>
+          <h3>{{ form.controls.title.value || t('preview.linkTitleFallback') }}</h3>
           @if (form.controls.url.value) {
           <a [href]="form.controls.url.value" target="_blank" rel="noopener" class="typed-preview-link">
             {{ form.controls.url.value }}
             <mat-icon>open_in_new</mat-icon>
           </a>
           } @else {
-          <p class="typed-preview-hint">URL girildiginde burada onizlenir.</p>
+          <p class="typed-preview-hint">{{ t('preview.linkHint') }}</p>
           }
         </div>
         } @else {
         <div class="typed-preview">
           <mat-icon class="typed-preview-icon">menu_book</mat-icon>
-          <h3>{{ form.controls.title.value || 'Kitap sayfa araligi' }}</h3>
+          <h3>{{ form.controls.title.value || t('preview.bookTitleFallback') }}</h3>
           <p class="typed-preview-hint">
             @if (form.controls.startPage.value && form.controls.endPage.value) {
-            Sayfa {{ form.controls.startPage.value }} - {{ form.controls.endPage.value }}
+            {{ t('preview.pageRange', { start: form.controls.startPage.value, end: form.controls.endPage.value }) }}
             } @else {
-            Kitap, test ve sayfa araligini secin.
+            {{ t('preview.bookHint') }}
             }
           </p>
         </div>

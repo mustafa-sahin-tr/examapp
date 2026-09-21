@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "title": "Özet",
+    "error": "Özet bilgileri alınırken bir sorun oluştu.",
+    "empty": "Henüz hiç sınav oluşturmadınız. İlk sınavınızı oluşturduğunuzda özet burada görünecek.",
+    "cards": {
+      "worksheets": "Toplam Sınav",
+      "students": "Benzersiz Öğrenci"
+    }
+  },
+  "worksheets": {
+    "title": "Sınavlarım",
+    "loading": "Sınavlar yükleniyor...",
+    "error": "Sınav listesi alınırken bir sorun oluştu.",
+    "empty": "Henüz hiç sınavınız yok. Sınav oluşturduğunuzda burada listelenecek.",
+    "columns": {
+      "name": "Sınav adı",
+      "assignedStudents": "Atanan öğrenci",
+      "completion": "Tamamlanma"
+    },
+    "completionValue": "%{{value}}",
+    "studentCount": "{{count}} öğrenci",
+    "openDetail": "{{name}} detayına git"
+  },
+  "lagging": {
+    "title": "Geride Kalan Öğrenciler",
+    "loading": "Geride kalan öğrenciler yükleniyor...",
+    "error": "Geride kalan öğrenci listesi alınırken bir sorun oluştu.",
+    "empty": "Geride kalan öğrenci yok, harika gidiyorsunuz!",
+    "columns": {
+      "student": "Öğrenci adı",
+      "worksheet": "Sınav adı",
+      "flags": "Etiketler"
+    },
+    "flags": {
+      "lowCompletion": "Düşük Tamamlama",
+      "expired": "Süresi Geçti"
+    }
+  }
+}

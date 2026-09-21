@@ -1,6 +1,7 @@
-import { Component, Input, computed, signal } from '@angular/core';
+import { Component, Input, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslocoService } from '@jsverse/transloco';
 
 import { WorksheetTeacherSharing } from '../../../models/test-instance';
 
@@ -17,6 +18,7 @@ import { WorksheetTeacherSharing } from '../../../models/test-instance';
   styleUrl: './sharing-badge.component.scss',
 })
 export class SharingBadgeComponent {
+  private readonly transloco = inject(TranslocoService);
   private readonly sharingSignal = signal<WorksheetTeacherSharing | null>(null);
   private readonly ownerNameSignal = signal<string | null | undefined>(null);
 
@@ -56,12 +58,22 @@ export class SharingBadgeComponent {
   readonly label = computed(() => {
     switch (this.sharingSignal()) {
       case WorksheetTeacherSharing.PublicAssignable:
-        return 'Herkese Açık · Atanabilir';
+        return this.translate('shared.sharingBadge.publicAssignable');
       case WorksheetTeacherSharing.PublicView:
-        return 'Herkese Açık · Görüntüleme';
+        return this.translate('shared.sharingBadge.publicView');
       case WorksheetTeacherSharing.Private:
       default:
         return '';
     }
   });
+
+  /** Sahip adı verilmişse tooltip "<ad> tarafından paylaşıldı" olur. */
+  readonly tooltip = computed(() => {
+    const owner = this.ownerNameSignal();
+    return owner ? this.translate('shared.sharingBadge.sharedBy', { owner }) : this.label();
+  });
+
+  private translate(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(key, params) ?? '';
+  }
 }

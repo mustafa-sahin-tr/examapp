@@ -1,5 +1,7 @@
 import { NgFor } from '@angular/common';
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -12,6 +14,10 @@ import { ProgramStep } from '../../models/programstep';
 import { ProgramService } from '../../services/program.service';
 import { CreateProgramRequest, UserSelection } from '../../models/program.interfaces';
 import { Router } from '@angular/router';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/** Sayfanın Transloco scope'u: `public/i18n/program-create/<lang>.json` (issue #183). */
+const SCOPE = 'program-create';
 export interface Option {
   label: string;
   value: string;
@@ -42,7 +48,9 @@ export interface UserStepSelection {
     MatInputModule,
     MatDatepickerModule,
     FormsModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(SCOPE)],
   templateUrl: './program-create.component.html',
   styleUrl: './program-create.component.scss',
 })
@@ -54,6 +62,8 @@ export class ProgramCreateComponent implements OnInit {
   readonly stepsLoading = signal(true);
   readonly stepsError = signal<string | null>(null);
   private snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
   private programService = inject(ProgramService);
   private router = inject(Router);
 
@@ -87,17 +97,15 @@ export class ProgramCreateComponent implements OnInit {
         this.programSteps = steps ?? [];
         this.stepsLoading.set(false);
         if (this.programSteps.length === 0) {
-          this.stepsError.set('Program adımları bulunamadı.');
+          this.setStepsError('wizard.stepsNotFound');
         }
       },
       error: (error) => {
-        console.error('Program adımları yüklenemedi:', error);
+        console.error('Program steps could not be loaded:', error);
         this.programSteps = [];
         this.stepsLoading.set(false);
-        this.stepsError.set('Sorular yüklenemedi, lütfen tekrar deneyin.');
-        this.snackBar.open('Sorular yüklenemedi, lütfen sayfayı yenileyin', 'Tamam', {
-          duration: 4000,
-        });
+        this.setStepsError('wizard.loadError');
+        this.notify('wizard.reloadHint', 4000);
       },
     });
   }
@@ -161,9 +169,7 @@ export class ProgramCreateComponent implements OnInit {
     const selectedOptions = currentStep.options.filter((o) => o.selected);
 
     if (selectedOptions.length === 0) {
-      this.snackBar.open('Bir seçim yapmadınız', 'Tamam', {
-        duration: 2000,
-      });
+      this.notify('wizard.noSelection', 2000);
       return;
     }
 
@@ -253,30 +259,22 @@ export class ProgramCreateComponent implements OnInit {
 
   createProgram() {
     if (!this.programName.trim()) {
-      this.snackBar.open('Program adı gereklidir', 'Tamam', {
-        duration: 2000,
-      });
+      this.notify('form.nameRequired', 2000);
       return;
     }
 
     if (!this.programStartDate) {
-      this.snackBar.open('Başlangıç tarihi gereklidir', 'Tamam', {
-        duration: 2000,
-      });
+      this.notify('form.startDateRequired', 2000);
       return;
     }
 
     if (!this.programEndDate) {
-      this.snackBar.open('Bitiş tarihi gereklidir', 'Tamam', {
-        duration: 2000,
-      });
+      this.notify('form.endDateRequired', 2000);
       return;
     }
 
     if (this.programStartDate >= this.programEndDate) {
-      this.snackBar.open('Bitiş tarihi, başlangıç tarihinden sonra olmalıdır', 'Tamam', {
-        duration: 3000,
-      });
+      this.notify('form.endDateAfterStart');
       return;
     }
 
@@ -292,18 +290,14 @@ export class ProgramCreateComponent implements OnInit {
     };
 
     this.programService.createProgram(request).subscribe({
-      next: (userProgram) => {
-        this.snackBar.open('Program başarıyla oluşturuldu!', 'Tamam', {
-          duration: 3000,
-        });
+      next: () => {
+        this.notify('form.created');
         // Reset form or navigate to another page
         this.router.navigate(['/programs']);
       },
       error: (error) => {
-        console.error('Program oluşturma hatası:', error);
-        this.snackBar.open('Program oluşturulurken bir hata oluştu', 'Tamam', {
-          duration: 3000,
-        });
+        console.error('Program create error:', error);
+        this.notify('form.createFailed');
       },
     });
   }
@@ -346,5 +340,30 @@ export class ProgramCreateComponent implements OnInit {
 
   getSelectedOptionsText(selection: UserStepSelection): string {
     return selection.selectedOptions.map((o) => o.label).join(', ');
+  }
+
+  /**
+   * Hata metnini sözlükten okur. Scope henüz yüklenmemiş olabileceği için `selectTranslate`.
+   */
+  private setStepsError(messageKey: string): void {
+    this.transloco
+      .selectTranslate<string>(messageKey, {}, SCOPE)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe((message) => this.stepsError.set(message));
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string, duration = 3000): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration });
+      });
   }
 }

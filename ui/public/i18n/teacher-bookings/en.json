@@ -1,0 +1,39 @@
+{
+  "title": "Appointment Requests",
+  "subtitle": "Lesson appointment requests students have sent for your available hours.",
+  "filter": {
+    "label": "Request filter",
+    "pending": "Pending",
+    "all": "All"
+  },
+  "availability": "My Available Hours",
+  "state": {
+    "loading": "Loading requests...",
+    "empty": "There are no appointment requests to show."
+  },
+  "row": {
+    "studentFallback": "Student",
+    "rejectionReason": "Rejection reason: {{reason}}"
+  },
+  "status": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "join": {
+    "button": "Join lesson"
+  },
+  "actions": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "cancel": "Cancel",
+    "reasonLabel": "Rejection reason (optional)"
+  },
+  "messages": {
+    "loadFailed": "Appointment requests could not be loaded.",
+    "approved": "The appointment has been approved.",
+    "rejected": "The appointment has been rejected.",
+    "actionFailed": "The action could not be completed.",
+    "ok": "OK"
+  }
+}

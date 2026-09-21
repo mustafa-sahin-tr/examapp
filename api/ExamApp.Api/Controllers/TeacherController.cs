@@ -3,9 +3,11 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers
 {
@@ -20,8 +22,13 @@ namespace ExamApp.Api.Controllers
         private readonly IKeycloakService _keycloakService;
         private readonly ILogger<TeacherController> _logger;
 
+        // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
+        private readonly IStringLocalizer<Messages> _localizer;
+
         public TeacherController(ITeacherService teacherService, UserProfileCacheService userProfileCacheService,
-            IKeycloakService keycloakService, ILogger<TeacherController> logger
+            IKeycloakService keycloakService,
+            ILogger<TeacherController> logger,
+            IStringLocalizer<Messages>? localizer = null
         )
             : base()
         {
@@ -29,6 +36,7 @@ namespace ExamApp.Api.Controllers
             _teacherService = teacherService;
             _keycloakService = keycloakService;
             _logger = logger;
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
 
         [Authorize] // 🔹 Kullanıcının giriş yapmış olması gerekiyor
@@ -42,13 +50,13 @@ namespace ExamApp.Api.Controllers
 
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("No refresh token provided.");
+                return Unauthorized(_localizer["teacher.refreshTokenMissing"].Value);
 
             // 🔹 Öğretmen zaten var mı?
             var response = await _teacherService.Save(user.Id, request);
             if (response == null)
             {
-                return BadRequest(new { message = "Öğretmen kaydı başarısız." });
+                return BadRequest(new { message = _localizer["teacher.registerFailed"].Value });
             }
 
             if (response.Success == false)
@@ -106,7 +114,7 @@ namespace ExamApp.Api.Controllers
             var user = await _userProfileCacheService.GetAsync(KeyCloakId);
             if (user == null)
             {
-                return NotFound(new { message = "Kullanıcı bulunamadı." });
+                return NotFound(new { message = _localizer["teacher.userNotFound"].Value });
             }
 
             var teacher = await _teacherService.GetTeacher(user.Id);
@@ -128,7 +136,7 @@ namespace ExamApp.Api.Controllers
 
             if (response == null || !response.Success)
             {
-                return BadRequest(new { message = response?.Message ?? "Theme güncellenirken hata oluştu." });
+                return BadRequest(new { message = response?.Message ?? _localizer["teacher.themeUpdateFailed"].Value });
             }
 
             return Ok(response);
@@ -213,7 +221,7 @@ namespace ExamApp.Api.Controllers
         public async Task<ActionResult<List<TeacherSearchResultDto>>> SearchTutors([FromQuery] TeacherSearchFilterDto filter, CancellationToken ct)
         {
             if (filter.MinPrice.HasValue && filter.MaxPrice.HasValue && filter.MinPrice > filter.MaxPrice)
-                return BadRequest(new { message = "minPrice, maxPrice değerinden büyük olamaz." });
+                return BadRequest(new { message = _localizer["teacher.search.priceRangeInvalid"].Value });
 
             var results = await _teacherService.SearchTutorsAsync(filter, ct);
             return Ok(results);
@@ -229,7 +237,7 @@ namespace ExamApp.Api.Controllers
         {
             var profile = await _teacherService.GetPublicProfileAsync(id, ct);
             if (profile == null)
-                return NotFound(new { message = "Öğretmen bulunamadı." });
+                return NotFound(new { message = _localizer["teacher.notFound"].Value });
 
             return Ok(profile);
         }

@@ -1,0 +1,19 @@
+{
+  "title": "Ders #{{id}}",
+  "titleFallback": "Ders",
+  "role": {
+    "moderator": "Moderatör (öğretmen)",
+    "participant": "Katılımcı"
+  },
+  "leave": "Dersten ayrıl",
+  "loading": "Görüşme odası hazırlanıyor...",
+  "retry": "Tekrar dene",
+  "goBack": "Geri dön",
+  "roomTitle": "{{title}} görüşme odası",
+  "noRoom": "Görüşme odası bulunamadı.",
+  "error": {
+    "invalidRoute": "Geçersiz ders adresi.",
+    "roomUnavailable": "Görüşme odası açılamadı.",
+    "addressUnverified": "Görüşme adresi doğrulanamadı."
+  }
+}

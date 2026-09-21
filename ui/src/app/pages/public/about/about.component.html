@@ -1,8 +1,5 @@
-<section class="about">
-  <h1>ExamApp Hakkında</h1>
-  <p>
-    ExamApp, modern ve güvenli online sınav platformudur. Öğrenciler, öğretmenler ve kurumlar için esnek, hızlı ve
-    kullanıcı dostu bir deneyim sunar.
-  </p>
-  <p>Vizyonumuz, eğitimde dijitalleşmeyi kolaylaştırmak ve herkes için erişilebilir sınav çözümleri sunmaktır.</p>
+<section class="about" *transloco="let t; prefix: 'public-pages.about'">
+  <h1>{{ t('title') }}</h1>
+  <p>{{ t('intro') }}</p>
+  <p>{{ t('vision') }}</p>
 </section>

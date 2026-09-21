@@ -339,6 +339,29 @@ namespace BadgeService.Migrations
                     b.ToTable("StudentSubjectAggregates");
                 });
 
+            modelBuilder.Entity("BadgeService.Entities.UserLocalePreference", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("KeycloakId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Locale")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("KeycloakId");
+
+                    b.ToTable("UserLocalePreferences");
+                });
+
             modelBuilder.Entity("BadgeService.Entities.BadgeEarned", b =>
                 {
                     b.HasOne("BadgeService.Entities.BadgeDefinition", "BadgeDefinition")

@@ -1,0 +1,64 @@
+{
+  "common": {
+    "ok": "Tamam",
+    "close": "Kapat"
+  },
+  "labels": {
+    "answerNumbered": "Şık {{number}}"
+  },
+  "preview": {
+    "questions": "Sorular",
+    "combinedView": "Birleşik görünüm",
+    "splitView": "Ayrık görünüm — soru + şıklar",
+    "difficulty": "Zorluk",
+    "level": "Seviye",
+    "classification": "Sınıflandırma"
+  },
+  "warnings": {
+    "dismiss": "Uyarıyı Kapat",
+    "noDropZone": "Drop zone eklenmemiş",
+    "noDraggables": "Etiketler (draggables) oluşturulmamış",
+    "noSolutionPlacements": "Örnek soru için solution placements yok",
+    "answerCountMismatch": "Şık sayısı {{count}} olmalı",
+    "noCorrectAnswer": "Doğru cevap yok"
+  },
+  "menu": {
+    "removeQuestion": "Soru Sil",
+    "drawAnswer": "Şık Çiz (MCQ)",
+    "drawDropZone": "Zone Çiz (dragDropLabeling)",
+    "labelCount": "Etiket Sayısı",
+    "generateLabels": "Etiketleri Oluştur",
+    "autoSolution": "Auto Solution",
+    "removeAll": "Tüm Soruları Sil",
+    "alignAnswers": "Cevapları Hizala",
+    "selectPassage": "Pasaj Seçiniz",
+    "passageOption": "Pasaj {{id}}",
+    "removeAnswer": "Seçeneği Sil",
+    "zoneLabel": "Zone: {{id}}",
+    "correctLabel": "Doğru Etiket",
+    "emptyOption": "(boş)",
+    "removeDropZone": "Zone Sil",
+    "passageLabel": "Pasaj: {{id}}",
+    "passageFirstOn": "Pasaj önce çıksın",
+    "passageFirstOff": "Pasaj önce çıkmasın",
+    "removePassage": "Pasajı Sil",
+    "selectQuestion": "Soru Seç",
+    "askAi": "Yapay Zekâya Sor",
+    "selectPassageMode": "Pasaj Seç"
+  },
+  "messages": {
+    "classificationApplied": "Sınıflandırma uygulandı.",
+    "classificationError": "Uygulama sırasında hata oluştu.",
+    "previewLoadError": "Önizleme yüklenemedi.",
+    "dropZoneOutsideQuestion": "Drop zone soru alanının içinde olmalı.",
+    "selectQuestionFirst": "Lütfen önce bir soru seçin ve ardından şıkları ekleyin.",
+    "analysisStarted": "Resim analizi başlatılıyor...",
+    "analysisCompleted": "Resim analizi tamamlandı.",
+    "correctAnswerUpdated": "Doğru cevap başarıyla güncellendi!",
+    "correctAnswerUpdateError": "Doğru cevap güncellenirken hata oluştu!",
+    "removeQuestionConfirm": "Bu soruyu testten çıkarmak istediğinizden emin misiniz?",
+    "questionRemoved": "Soru başarıyla testten çıkarıldı!",
+    "previewClosedNoQuestions": "Testte soru kalmadığı için önizleme kapatıldı.",
+    "questionRemoveError": "Soru silinirken hata oluştu!"
+  }
+}

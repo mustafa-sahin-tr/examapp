@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { QuestionNavigatorComponent } from './question-navigator.component';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('QuestionNavigatorComponent', () => {
   let component: QuestionNavigatorComponent;
@@ -8,7 +9,7 @@ describe('QuestionNavigatorComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QuestionNavigatorComponent]
+      imports: [translocoTestingModule(), QuestionNavigatorComponent]
     })
     .compileComponents();
 

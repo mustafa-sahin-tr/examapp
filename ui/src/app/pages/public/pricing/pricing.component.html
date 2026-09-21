@@ -1,28 +1,28 @@
-<section class="pricing">
-  <h1>Fiyatlandırma</h1>
+<section class="pricing" *transloco="let t; prefix: 'public-pages.pricing'">
+  <h1>{{ t('title') }}</h1>
   <table>
     <thead>
       <tr>
-        <th>Paket</th>
-        <th>Özellikler</th>
-        <th>Fiyat</th>
+        <th>{{ t('planColumn') }}</th>
+        <th>{{ t('featuresColumn') }}</th>
+        <th>{{ t('priceColumn') }}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Temel</td>
-        <td>10 sınav/ay, temel analiz</td>
-        <td>Ücretsiz</td>
+        <td>{{ t('basic.name') }}</td>
+        <td>{{ t('basic.features') }}</td>
+        <td>{{ t('basic.price') }}</td>
       </tr>
       <tr>
-        <td>Pro</td>
-        <td>Sınırsız sınav, gelişmiş analiz, dosya yükleme</td>
-        <td>99 TL/ay</td>
+        <td>{{ t('pro.name') }}</td>
+        <td>{{ t('pro.features') }}</td>
+        <td>{{ t('pro.price') }}</td>
       </tr>
       <tr>
-        <td>Kurum</td>
-        <td>Çoklu kullanıcı, özel destek, API erişimi</td>
-        <td>İletişime Geçin</td>
+        <td>{{ t('enterprise.name') }}</td>
+        <td>{{ t('enterprise.features') }}</td>
+        <td>{{ t('enterprise.price') }}</td>
       </tr>
     </tbody>
   </table>

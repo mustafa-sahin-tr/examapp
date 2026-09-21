@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
@@ -17,9 +19,15 @@ namespace ExamApp.Api.Controllers
     {
         private readonly IProgramService _programService;
 
-        public ProgramController(IProgramService programService)
+        // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+        private readonly IStringLocalizer<Messages> _localizer;
+
+        public ProgramController(IProgramService programService, IStringLocalizer<Messages>? localizer = null)
         {
             _programService = programService;
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
 
         [HttpGet("steps")]
@@ -36,7 +44,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var userProgram = await _programService.CreateUserProgramAsync(userId, request);
@@ -49,7 +57,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var programs = await _programService.GetUserProgramsAsync(userId);
@@ -62,7 +70,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var program = await _programService.GetUserProgramByIdAsync(userId, id);
@@ -80,7 +88,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var program = await _programService.AddStudyItemSchedulesAsync(userId, id, request);
@@ -98,7 +106,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var found = await _programService.CompleteStudyItemAsync(userId, programId, scheduleId, ct);
@@ -116,7 +124,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var found = await _programService.UncompleteStudyItemAsync(userId, programId, scheduleId, ct);
@@ -134,7 +142,7 @@ namespace ExamApp.Api.Controllers
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized("User ID not found in token");
+                return Unauthorized(_localizer["program.userIdNotFoundInToken"].Value);
             }
 
             var found = await _programService.DeleteUserProgramAsync(userId, id, ct);

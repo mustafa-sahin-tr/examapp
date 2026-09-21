@@ -1,18 +1,18 @@
 import { Component } from '@angular/core';
-import { Title, Meta } from '@angular/platform-browser';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
+
+import { PUBLIC_PAGES_SCOPE, usePublicPageMeta } from '../public-page-meta';
 
 @Component({
   selector: 'app-faq',
   standalone: true,
+  imports: [TranslocoDirective],
+  providers: [provideTranslocoScope(PUBLIC_PAGES_SCOPE)],
   templateUrl: './faq.component.html',
   styleUrl: './faq.component.scss',
 })
 export class FaqComponent {
-  constructor(
-    private title: Title,
-    private meta: Meta
-  ) {
-    this.title.setTitle('Sıkça Sorulan Sorular | ExamApp');
-    this.meta.updateTag({ name: 'description', content: 'ExamApp hakkında sıkça sorulan sorular ve yanıtları.' });
+  constructor() {
+    usePublicPageMeta('faq');
   }
 }

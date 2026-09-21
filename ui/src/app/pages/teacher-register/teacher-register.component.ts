@@ -1,4 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -8,7 +10,15 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { TeacherService } from '../../services/teacher.service';
+import { REGISTER_SCOPE } from '../register/register-scope';
+
+/** Öğretmen kayıt ucunun yanıtı (servis henüz `any` döndürüyor). */
+interface TeacherRegistrationResult {
+  accessToken?: string;
+  profileId?: number;
+}
 
 @Component({
   selector: 'app-teacher-register',
@@ -21,7 +31,9 @@ import { TeacherService } from '../../services/teacher.service';
     MatButtonModule,
     MatSelectModule,
     MatSnackBarModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './teacher-register.component.html',
 })
 export class TeacherRegisterComponent {
@@ -29,6 +41,8 @@ export class TeacherRegisterComponent {
   private teacherService = inject(TeacherService);
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
 
   isSubmitting = signal(false);
 
@@ -42,14 +56,14 @@ export class TeacherRegisterComponent {
     this.isSubmitting.set(true);
 
     this.teacherService.register(this.teacherForm.value).subscribe({
-      next: (val) => {
+      next: (val: TeacherRegistrationResult) => {
         this.isSubmitting.set(false);
         if (val.accessToken) {
           localStorage.setItem('auth_token', val.accessToken);
         }
         localStorage.setItem('user_role', 'Teacher');
         if (val.profileId) {
-          var user = localStorage.getItem('user');
+          const user = localStorage.getItem('user');
           if (user) {
             try {
               const userObj = JSON.parse(user);
@@ -61,14 +75,29 @@ export class TeacherRegisterComponent {
             }
           }
         }
-        this.snackBar.open('Öğretmen kaydı başarılı!', 'Tamam', { duration: 3000 });
+        this.notify('teacher.success');
         this.router.navigate(['/tests']); // Kayıt sonrası yönlendirme
       },
-      error: (err) => {
+      error: (err: unknown) => {
         this.isSubmitting.set(false);
-        this.snackBar.open('Öğretmen kaydı başarısız! Tekrar deneyin.', 'Tamam', { duration: 3000 });
+        this.notify('teacher.error');
         console.error('Teacher Register Error:', err);
       },
     });
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, REGISTER_SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, REGISTER_SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration: 3000 });
+      });
   }
 }

@@ -1,14 +1,19 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Controllers
@@ -26,12 +31,19 @@ namespace ExamApp.Api.Controllers
 
         private readonly IKeycloakService _keycloakService;
 
+        // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+        private readonly IStringLocalizer<Messages> _localizer;
+
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService,
              IUserProfileProvider userProfileProvider,
-             IKeycloakService keycloakService)
+             IKeycloakService keycloakService,
+             IStringLocalizer<Messages>? localizer = null)
             : base()
         {
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
             _context = context;
             _keycloakSettings = options.Value;
             _userProfileCacheService = userProfileCacheService;
@@ -45,16 +57,16 @@ namespace ExamApp.Api.Controllers
         {
             // 1) Token içindeki Sub claim (user.Id) alınır
             var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            // issue #189: cache get-or-set + SchoolId DB doğrulaması artık IUserProfileProvider'da
-            // ortaklaştırıldı (BaseController.GetAuthenticatedUserAsync ile aynı yol).
+
+            // Bu endpoint'in tek amacı önbelleği tazelemek: önce mevcut kaydı düşür, sonra profili
+            // yeniden yükle. (GetOrSet cache hit'te eski profili döndürürdü, önbellek hiç tazelenmezdi.)
+            // issue #189: yükleme IUserProfileProvider'dan geçer — auth-api'den taze profil çeker,
+            // SchoolId'yi DB'den doldurur ve cache'e yazar (BaseController ile aynı yol).
+            await _userProfileCacheService.RemoveAsync(sub);
             var profile = await _userProfileProvider.GetAsync(sub);
 
             if (profile != null)
             {
-                // Eski davranış korunuyor: TTL'i tazele (get-or-set cache hit olduğunda entry'nin
-                // absolute expiration'ı yenilenmiş olur).
-                await _userProfileCacheService.SetAsync(sub, profile);
-
                 if (profile.Role == "Student")
                 {
                     var student = await _context.Students
@@ -105,6 +117,40 @@ namespace ExamApp.Api.Controllers
 
 
 
+        /// <summary>
+        /// Tanı endpoint'i (issue #181): bu istek için çözümlenmiş kültürü ve onu hangi
+        /// provider'ın belirlediğini döner. #184'teki mesaj sözlüğü ve ui-tester doğrulaması
+        /// bunun üzerine kurulacak.
+        /// Kaynak (source) değerleri sabit bir sözleşmedir, iç tip adı sızdırılmaz:
+        /// "header" (Accept-Language), "profile" (kullanıcının kayıtlı tercihi),
+        /// "default" (hiçbiri eşleşmedi → tr-TR).
+        /// </summary>
+        [Authorize]
+        [HttpGet("culture")]
+        public IActionResult GetCurrentCulture()
+        {
+            var feature = HttpContext.Features.Get<IRequestCultureFeature>();
+            var requestCulture = feature?.RequestCulture
+                ?? new RequestCulture(CultureInfo.CurrentCulture, CultureInfo.CurrentUICulture);
+
+            return Ok(new
+            {
+                culture = requestCulture.Culture.Name,
+                uiCulture = requestCulture.UICulture.Name,
+                source = MapCultureSource(feature?.Provider)
+            });
+        }
+
+        /// <summary>
+        /// Provider tipini istemciye açık sözleşme değerine eşler ("header" | "profile" | "default").
+        /// </summary>
+        private static string MapCultureSource(IRequestCultureProvider? provider) => provider switch
+        {
+            NormalizedAcceptLanguageCultureProvider => "header",
+            UserPreferredLocaleCultureProvider => "profile",
+            _ => "default"
+        };
+
         [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
@@ -129,7 +175,7 @@ namespace ExamApp.Api.Controllers
             // 1. Refresh token'ı cookie'den al
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("No refresh token provided.");
+                return Unauthorized(_localizer["auth.noRefreshToken"].Value);
 
             // 2. Keycloak token endpoint'ine isteği hazırla
             var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);

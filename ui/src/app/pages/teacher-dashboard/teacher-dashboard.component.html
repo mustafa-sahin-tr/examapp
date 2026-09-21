@@ -1,6 +1,6 @@
-<div class="teacher-dashboard">
+<div class="teacher-dashboard" *transloco="let t; prefix: 'teacher-dashboard'">
   <div class="dashboard-section">
-    <app-section-header title="Özet" iconName="dashboard"></app-section-header>
+    <app-section-header [title]="t('summary.title')" iconName="dashboard"></app-section-header>
 
     @if (loading()) {
       <div class="summary-grid" aria-busy="true" aria-live="polite">
@@ -16,14 +16,14 @@
       <div class="state-box state-box--error" role="alert">
         <mat-icon>error_outline</mat-icon>
         <p class="state-text">{{ error() }}</p>
-        <button mat-stroked-button type="button" (click)="loadSummary()">Tekrar dene</button>
+        <button mat-stroked-button type="button" (click)="loadSummary()">{{ 'common.retry' | transloco }}</button>
       </div>
     } @else {
       <div class="summary-grid">
         @for (card of cards(); track card.key) {
           <div class="summary-card" [attr.data-key]="card.key">
             <div class="summary-card__header">
-              <span class="summary-label">{{ card.label }}</span>
+              <span class="summary-label">{{ t(card.labelKey) }}</span>
               <mat-icon class="summary-icon">{{ card.icon }}</mat-icon>
             </div>
             <span class="summary-value">{{ card.value }}</span>
@@ -34,7 +34,7 @@
       @if (isEmpty()) {
         <div class="state-box state-box--empty">
           <mat-icon>inbox</mat-icon>
-          <p class="state-text">Henüz hiç sınav oluşturmadınız. İlk sınavınızı oluşturduğunuzda özet burada görünecek.</p>
+          <p class="state-text">{{ t('summary.empty') }}</p>
         </div>
       }
     }
@@ -43,42 +43,44 @@
   <!-- Issue #54: Sınavlarım -->
   <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
   <div class="dashboard-section" ngSkipHydration>
-    <app-section-header title="Sınavlarım" iconName="list_alt"></app-section-header>
+    <app-section-header [title]="t('worksheets.title')" iconName="list_alt"></app-section-header>
 
     @if (worksheetsLoading()) {
       <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
         <mat-spinner diameter="28"></mat-spinner>
-        <p class="state-text">Sınavlar yükleniyor...</p>
+        <p class="state-text">{{ t('worksheets.loading') }}</p>
       </div>
     } @else if (worksheetsError()) {
       <div class="state-box state-box--error" role="alert">
         <mat-icon>error_outline</mat-icon>
         <p class="state-text">{{ worksheetsError() }}</p>
-        <button mat-stroked-button type="button" (click)="loadWorksheetsOverview()">Tekrar dene</button>
+        <button mat-stroked-button type="button" (click)="loadWorksheetsOverview()">
+          {{ 'common.retry' | transloco }}
+        </button>
       </div>
     } @else if (worksheetsEmpty()) {
       <div class="state-box state-box--empty">
         <mat-icon>inbox</mat-icon>
-        <p class="state-text">Henüz hiç sınavınız yok. Sınav oluşturduğunuzda burada listelenecek.</p>
+        <p class="state-text">{{ t('worksheets.empty') }}</p>
       </div>
     } @else {
       <!-- Masaüstü: tablo -->
       <table mat-table [dataSource]="worksheets()" class="worksheets-table">
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Sınav adı</th>
+          <th mat-header-cell *matHeaderCellDef>{{ t('worksheets.columns.name') }}</th>
           <td mat-cell *matCellDef="let row" class="worksheets-table__name">{{ row.name }}</td>
         </ng-container>
 
         <ng-container matColumnDef="assignedStudentCount">
-          <th mat-header-cell *matHeaderCellDef>Atanan öğrenci</th>
+          <th mat-header-cell *matHeaderCellDef>{{ t('worksheets.columns.assignedStudents') }}</th>
           <td mat-cell *matCellDef="let row">{{ row.assignedStudentCount }}</td>
         </ng-container>
 
         <ng-container matColumnDef="completionPercentage">
-          <th mat-header-cell *matHeaderCellDef>Tamamlanma</th>
+          <th mat-header-cell *matHeaderCellDef>{{ t('worksheets.columns.completion') }}</th>
           <td mat-cell *matCellDef="let row">
             <span class="completion-chip" [class]="completionClass(row.completionPercentage)">
-              %{{ row.completionPercentage | number: '1.0-2' }}
+              {{ t('worksheets.completionValue', { value: row.completionPercentage | number: '1.0-2' }) }}
             </span>
           </td>
         </ng-container>
@@ -90,32 +92,32 @@
           class="worksheets-table__row"
           tabindex="0"
           role="link"
-          [attr.aria-label]="row.name + ' detayına git'"
+          [attr.aria-label]="t('worksheets.openDetail', { name: row.name })"
           (click)="openWorksheet(row)"
           (keydown.enter)="openWorksheet(row)"
         ></tr>
       </table>
 
       <!-- Mobil: kart listesi (aynı veri, CSS ile değişir) -->
-      <ul class="worksheet-cards" aria-label="Sınavlarım">
+      <ul class="worksheet-cards" [attr.aria-label]="t('worksheets.title')">
         @for (row of worksheets(); track row.worksheetId) {
           <li
             class="worksheet-card"
             tabindex="0"
             role="link"
-            [attr.aria-label]="row.name + ' detayına git'"
+            [attr.aria-label]="t('worksheets.openDetail', { name: row.name })"
             (click)="openWorksheet(row)"
             (keydown.enter)="openWorksheet(row)"
           >
             <div class="worksheet-card__header">
               <span class="worksheet-card__name">{{ row.name }}</span>
               <span class="completion-chip" [class]="completionClass(row.completionPercentage)">
-                %{{ row.completionPercentage | number: '1.0-2' }}
+                {{ t('worksheets.completionValue', { value: row.completionPercentage | number: '1.0-2' }) }}
               </span>
             </div>
             <div class="worksheet-card__meta">
               <mat-icon>groups</mat-icon>
-              <span>{{ row.assignedStudentCount }} öğrenci</span>
+              <span>{{ t('worksheets.studentCount', { count: row.assignedStudentCount }) }}</span>
             </div>
           </li>
         }
@@ -126,46 +128,48 @@
   <!-- Issue #55: Geride Kalan Öğrenciler -->
   <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
   <div class="dashboard-section" ngSkipHydration>
-    <app-section-header title="Geride Kalan Öğrenciler" iconName="report_problem"></app-section-header>
+    <app-section-header [title]="t('lagging.title')" iconName="report_problem"></app-section-header>
 
     @if (laggingStudentsLoading()) {
       <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
         <mat-spinner diameter="28"></mat-spinner>
-        <p class="state-text">Geride kalan öğrenciler yükleniyor...</p>
+        <p class="state-text">{{ t('lagging.loading') }}</p>
       </div>
     } @else if (laggingStudentsError()) {
       <div class="state-box state-box--error" role="alert">
         <mat-icon>error_outline</mat-icon>
         <p class="state-text">{{ laggingStudentsError() }}</p>
-        <button mat-stroked-button type="button" (click)="loadLaggingStudents()">Tekrar dene</button>
+        <button mat-stroked-button type="button" (click)="loadLaggingStudents()">
+          {{ 'common.retry' | transloco }}
+        </button>
       </div>
     } @else if (laggingStudentsEmpty()) {
       <div class="state-box state-box--empty">
         <mat-icon>celebration</mat-icon>
-        <p class="state-text">Geride kalan öğrenci yok, harika gidiyorsunuz!</p>
+        <p class="state-text">{{ t('lagging.empty') }}</p>
       </div>
     } @else {
       <div class="lagging-table-wrapper">
         <table mat-table [dataSource]="laggingStudents()" [trackBy]="trackLaggingRow" class="lagging-table">
           <ng-container matColumnDef="studentName">
-            <th mat-header-cell *matHeaderCellDef>Öğrenci adı</th>
+            <th mat-header-cell *matHeaderCellDef>{{ t('lagging.columns.student') }}</th>
             <td mat-cell *matCellDef="let row" class="lagging-table__student">{{ row.studentName }}</td>
           </ng-container>
 
           <ng-container matColumnDef="worksheetName">
-            <th mat-header-cell *matHeaderCellDef>Sınav adı</th>
+            <th mat-header-cell *matHeaderCellDef>{{ t('lagging.columns.worksheet') }}</th>
             <td mat-cell *matCellDef="let row">{{ row.worksheetName }}</td>
           </ng-container>
 
           <ng-container matColumnDef="flags">
-            <th mat-header-cell *matHeaderCellDef>Etiketler</th>
+            <th mat-header-cell *matHeaderCellDef>{{ t('lagging.columns.flags') }}</th>
             <td mat-cell *matCellDef="let row">
               <div class="flag-chips">
                 @if (row.isLowCompletion) {
-                  <span class="completion-chip is-warning">Düşük Tamamlama</span>
+                  <span class="completion-chip is-warning">{{ t('lagging.flags.lowCompletion') }}</span>
                 }
                 @if (row.isExpired) {
-                  <span class="completion-chip is-danger">Süresi Geçti</span>
+                  <span class="completion-chip is-danger">{{ t('lagging.flags.expired') }}</span>
                 }
               </div>
             </td>

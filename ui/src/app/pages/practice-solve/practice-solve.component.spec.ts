@@ -14,6 +14,17 @@ import { Question } from '../../models/question';
 import { Subject } from '../../models/subject';
 import { Paged } from '../../models/test-instance';
 
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import practiceTr from '../../../../public/i18n/practice/tr.json';
+// QuestionLiteViewComponent kendi 'question' scope'unu kullanir; sozlugu de verilmeli.
+import questionTr from '../../../../public/i18n/question/tr.json';
+
+/**
+ * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
+ * sahte ceviri kullanilmaz - boylece bir anahtar bozulursa test kirilir.
+ */
+const translocoTesting = translocoTestingModule({ langs: { 'practice/tr': practiceTr, 'question/tr': questionTr } });
+
 describe('PracticeSolveComponent', () => {
   let fixture: ComponentFixture<PracticeSolveComponent>;
   let component: PracticeSolveComponent;
@@ -83,7 +94,7 @@ describe('PracticeSolveComponent', () => {
 
   function setup(queryParams: Record<string, string> = {}): void {
     TestBed.configureTestingModule({
-      imports: [PracticeSolveComponent],
+      imports: [PracticeSolveComponent, translocoTesting],
       providers: [
         { provide: PracticeService, useValue: practiceService },
         { provide: StudentService, useValue: studentService },

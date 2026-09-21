@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { interval, Subscription, switchMap } from 'rxjs';
 import {
   QuestionTransferExportBundle,
@@ -18,6 +19,9 @@ import {
   QuestionTransferJob,
   QuestionTransferService,
 } from '../../services/question-transfer.service';
+
+/** Çeviriler kendi Transloco scope'unda: `public/i18n/question-transfer/<lang>.json` (issue #183). */
+const QUESTION_TRANSFER_SCOPE = 'question-transfer';
 
 @Component({
   selector: 'app-question-transfer',
@@ -36,7 +40,9 @@ import {
     MatChipsModule,
     MatDividerModule,
     MatAutocompleteModule,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(QUESTION_TRANSFER_SCOPE)],
   templateUrl: './question-transfer.component.html',
   styleUrls: ['./question-transfer.component.scss'],
 })
@@ -361,11 +367,12 @@ export class QuestionTransferComponent implements OnDestroy {
     return !!job?.fileUrl && job.status === 'Completed';
   }
 
-  jobDownloadLabel(job: QuestionTransferJob): string {
+  /** İndirme butonunun çeviri anahtarı (scope'a göreli; şablonda `t()` ile çözülür). */
+  jobDownloadLabelKey(job: QuestionTransferJob): string {
     const url = (job?.fileUrl ?? '').toLowerCase();
-    if (url.endsWith('.json')) return 'Index';
-    if (url.endsWith('.zip')) return 'ZIP';
-    return 'Dosya';
+    if (url.endsWith('.json')) return 'jobs.downloadIndex';
+    if (url.endsWith('.zip')) return 'jobs.downloadZip';
+    return 'jobs.downloadFile';
   }
 
   jobChipColor(job: QuestionTransferJob): 'primary' | 'accent' | 'warn' | undefined {

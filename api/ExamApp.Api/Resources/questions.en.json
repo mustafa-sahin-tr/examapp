@@ -1,0 +1,60 @@
+{
+  "questions": {
+    "notFound": "Question not found!",
+    "saveFailed": "The question could not be saved!",
+    "created": "Question saved successfully!",
+    "updated": "Question updated successfully!",
+    "passageNotFound": "Passage not found!",
+    "imageNotFound": "Question or question image not found.",
+    "imageNotFoundInStorage": "The question image was not found in storage.",
+    "unknownName": "(not found)",
+
+    "bulk": {
+      "saveFailed": "The question set could not be saved.",
+      "saved": "Questions saved successfully!",
+      "saveError": "An error occurred while saving data: {0}",
+      "correctAnswerMissing": "No correct answer specified.{0}",
+      "invalidTopicId": "Invalid TopicId: {0}",
+      "invalidSubTopicIds": "Invalid SubTopicId(s): {0}",
+      "subjectTopicMismatch": "Topic.SubjectId does not match Question.SubjectId. Question.SubjectId={0} ('{1}'), Topic(Id={2}, Name='{3}') SubjectId={4} ('{5}').",
+      "subTopicsFromMultipleTopics": "SubTopics belonging to more than one TopicId were sent for the same question. All subtopics must share the same TopicId. {0}",
+      "topicIdMissingWithSubTopics": "Header.TopicId is missing/0 but a SubTopic list was provided. The SubTopics' TopicId is {0}. Details: {1}",
+      "subTopicTopicMismatch": "The SubTopic's topic differs from the TopicId set on the question. Question.TopicId={0} ('{1}'), SubTopic(Id={2}, Name='{3}') TopicId={4} ('{5}')."
+    },
+
+    "image": {
+      "notFound": "Question image not found!",
+      "downloadFailed": "The question image could not be downloaded!",
+      "resizeFailed": "The image could not be resized!",
+      "uploadFailed": "The resized image could not be uploaded!",
+      "resized": "Question image resized successfully!",
+      "resizeError": "An error occurred while resizing the question image: {0}"
+    },
+
+    "classification": {
+      "invalidData": "Invalid classification data.",
+      "invalidCorrectAnswerId": "Invalid correct answer ID.",
+      "answerNotInQuestion": "The selected answer does not belong to this question!",
+      "correctAnswerUpdated": "Correct answer updated successfully!",
+      "correctAnswerUpdateError": "An error occurred while updating the correct answer: {0}",
+      "invalidSubTopicId": "Invalid subtopic ID.",
+      "invalidSubjectId": "Invalid subject ID.",
+      "invalidTopicId": "Invalid topic ID.",
+      "invalidSource": "Invalid classification source: {0}. Expected 'Human' or 'AI'.",
+      "invalidDifficulty": "Invalid difficulty level. It must be between 1 and 10.",
+      "updated": "Question classification updated successfully!",
+      "updateError": "An error occurred while updating the question classification: {0}",
+      "notInTest": "The question was not found in this test!",
+      "removedFromTest": "Question removed from the test successfully!",
+      "removeFromTestError": "An error occurred while removing the question from the test: {0}"
+    },
+
+    "studyPage": {
+      "imageDataRequired": "ImageData is required.",
+      "invalidImageDataFormat": "Invalid imageData format.",
+      "imageDataDecodeFailed": "ImageData could not be decoded.",
+      "uploaded": "The image was uploaded under study page books.",
+      "uploadError": "An error occurred while uploading the image: {0}"
+    }
+  }
+}

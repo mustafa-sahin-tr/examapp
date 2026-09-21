@@ -8,8 +8,10 @@ using ExamApp.Api.Services.Locations;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
 using ExamApp.Api.Services.TeacherApprovals;
+using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
 
@@ -30,8 +32,12 @@ public class AdminController : BaseController
     private readonly ILocationService _locations;
     private readonly ITeacherApprovalService _teacherApprovals;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals)
+    // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IStringLocalizer<Messages>? localizer = null)
     {
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
         _classifierCache = classifierCache;
         _schools = schools;
@@ -61,7 +67,7 @@ public class AdminController : BaseController
         CancellationToken ct = default)
     {
         if (gradeId.HasValue && unassigned)
-            return BadRequest("gradeId ve unassigned birlikte kullanılamaz.");
+            return BadRequest(_localizer["admin.taxonomy.filterConflict"].Value);
 
         return Ok(await _taxonomy.GetTreeAsync(gradeId, unassigned, ct));
     }
@@ -167,7 +173,7 @@ public class AdminController : BaseController
     public async Task<ActionResult<DashboardTrendsDto>> GetDashboardTrends([FromQuery] int days = 30, CancellationToken ct = default)
     {
         if (days < 1 || days > 365)
-            return BadRequest(new { message = "days 1 ile 365 arasında olmalı." });
+            return BadRequest(new { message = _localizer["admin.dashboard.invalidDays"].Value });
 
         return Ok(await _dashboard.GetTrendsAsync(days, ct));
     }

@@ -1,0 +1,458 @@
+{
+  "common": {
+    "loading": "Yükleniyor...",
+    "retry": "Tekrar dene",
+    "error": "Bir hata oluştu.",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "confirm": "Onayla",
+    "close": "Kapat",
+    "ok": "Tamam",
+    "clear": "Temizle",
+    "errors": {
+      "bookingConflict": "Bu zaman aralığı için zaten bir randevu var.",
+      "forbidden": "Bu işlem için yetkiniz yok.",
+      "notFound": "Kayıt bulunamadı.",
+      "jitsi": {
+        "browserOnly": "Jitsi yalnızca tarayıcıda yüklenebilir.",
+        "invalidUrl": "Geçersiz Jitsi adresi.",
+        "otherServer": "Farklı bir Jitsi sunucusu zaten yüklü; sayfanın yenilenmesi gerekiyor.",
+        "apiMissing": "Jitsi betiği yüklendi ancak JitsiMeetExternalAPI bulunamadı.",
+        "loadFailed": "Jitsi betiği yüklenemedi."
+      }
+    },
+    "notifications": {
+      "goToExam": "Sınava Git",
+      "teacherApplication": "Yeni bağımsız öğretmen başvurusu: {{name}}",
+      "goToApplications": "Başvurulara Git"
+    }
+  },
+  "layout": {
+    "language": {
+      "label": "Dil",
+      "switch": "Dili değiştir",
+      "select": "{{language}} diline geç"
+    },
+    "sidebar": {
+      "expand": "Menüyü Genişlet",
+      "collapse": "Menüyü Daralt",
+      "close": "Menüyü Kapat",
+      "open": "Menüyü Aç"
+    },
+    "menu": {
+      "dashboard": "Dashboard",
+      "exams": "Sınavlar",
+      "practice": "Soru Çöz",
+      "study": "Ders Çalışma",
+      "programs": "Programlarım",
+      "myCalendar": "Planım",
+      "tutors": "Özel Ders Öğretmeni Ara",
+      "myBookings": "Ders Randevularım",
+      "students": "Öğrenciler",
+      "tutorProfile": "Özel Ders Profilim",
+      "availability": "Müsait Saatlerim",
+      "bookingRequests": "Randevu Talepleri",
+      "accessRequests": "Atama İzin Talepleri",
+      "studyPages": "Çalışma Ekleme",
+      "examAuthoring": "Test Ekleme",
+      "questionTransfer": "Soru Transferi",
+      "reports": "Raporlar",
+      "settings": "Ayarlar",
+      "admin": "Yönetim",
+      "teacherApprovals": "Öğretmen Başvuruları",
+      "help": "Yardım",
+      "feedback": "Geri Bildirim"
+    },
+    "bottomNav": {
+      "home": "Ana Sayfa",
+      "study": "Çalışma",
+      "menu": "Menü"
+    },
+    "toolbar": {
+      "newest": "Yeni",
+      "popular": "Popüler",
+      "searchPlaceholder": "Ara ..."
+    },
+    "search": {
+      "recentTitle": "Son aramalar",
+      "remove": "Aramayı listeden kaldır",
+      "history": {
+        "math": "Matematik",
+        "turkish": "Türkçe",
+        "life": "Hayat Bilgisi",
+        "science": "Fen Bilimleri"
+      },
+      "suggestions": {
+        "naturalNumbers": "Doğal Sayılar",
+        "ourPlanet": "Gezegenimiz",
+        "multiplication": "Çarpma",
+        "antonyms": "Zıt Anlamlı"
+      }
+    },
+    "profile": {
+      "fallbackName": "Kullanıcı",
+      "avatarAlt": "Profil fotoğrafı",
+      "info": "Profil Bilgileri",
+      "settingsSubtitle": "Ayarlar, Hesap, Güvenlik",
+      "tasks": "Görevler",
+      "achievements": "Başarılar",
+      "notifications": "Bildirimler",
+      "support": "Destek",
+      "logout": "Çıkış Yap"
+    }
+  },
+  "shared": {
+    "badgePath": {
+      "empty": "Rozet yolu bulunamadı.",
+      "step": "Adım {{step}}",
+      "progress": "{{completed}} / {{total}} tamamlandı"
+    },
+    "badgeThropy": {
+      "title": "Başarı Rozetleri",
+      "subtitle": "Çalışma alışkanlıklarınıza göre rozetlerin durumunu takip edin.",
+      "loading": "Rozetler yükleniyor...",
+      "error": "Rozet bilgisi alınırken bir hata oluştu.",
+      "loadFailed": "Rozet bilgisi yüklenemedi. Lütfen daha sonra tekrar deneyin.",
+      "notFound": "Rozet bilgisi bulunamadı.",
+      "empty": "Henüz kazanılmış veya takip edilen bir rozet yok.",
+      "standaloneTitle": "Tekil Rozetler",
+      "pathProgress": "{{completed}} / {{total}} tamamlandı"
+    },
+    "bookingSlotDialog": {
+      "title": "{{teacher}} · Randevu Al",
+      "loading": "Müsait saatler yükleniyor...",
+      "retry": "Tekrar dene",
+      "empty": "Bu öğretmenin şu anda müsait bir saati yok.",
+      "slotGroupAria": "Müsait saat seçimi",
+      "submit": "Randevu Talebi Gönder",
+      "loadError": "Müsait saatler yüklenemedi.",
+      "submitError": "Randevu talebi oluşturulamadı."
+    },
+    "calendar": {
+      "today": "bugün",
+      "variant": {
+        "reminderPending": "Hatırlatma",
+        "reminderSent": "Gönderilmiş hatırlatma",
+        "deadlineOpen": "Teslim tarihi",
+        "deadlineDone": "Tamamlanan atama",
+        "programPlan": "Çalışma planı",
+        "programPlanDone": "Tamamlanan plan",
+        "booking": "Ders randevusu"
+      }
+    },
+    "calendarLegend": {
+      "aria": "Takvim gösterge açıklaması"
+    },
+    "calendarGrid": {
+      "gridAria": "Aylık takvim",
+      "moreEvents": "+{{count}} daha",
+      "cellAria": "{{date}}, {{count}} etkinlik",
+      "barAria": "{{title}}{{program}}, programa git",
+      "barCompleted": "✓ {{title}} (tamamlandı)",
+      "weekday": {
+        "mon": "Pzt",
+        "tue": "Sal",
+        "wed": "Çar",
+        "thu": "Per",
+        "fri": "Cum",
+        "sat": "Cmt",
+        "sun": "Paz"
+      }
+    },
+    "calendarDayDialog": {
+      "completed": "Tamamlandı",
+      "sent": "Gönderildi",
+      "bookingConfirmed": "Onaylı randevu",
+      "dueAt": "Son tarih: {{date}}",
+      "pagesCompleted": "{{completed}}/{{total}} sayfa tamamlandı",
+      "goToBookings": "Randevularıma git",
+      "goToProgram": "Programa git",
+      "goToDetail": "Detaya git",
+      "editReminder": "Hatırlatıcıyı düzenle",
+      "viewResult": "Sonucu gör",
+      "startSolving": "Çözmeye başla"
+    },
+    "classificationSelector": {
+      "grade": "Sınıf",
+      "subject": "Ders",
+      "topic": "Konu",
+      "subtopics": "Alt Konular (Çoklu Seçim)",
+      "apply": "Uygula"
+    },
+    "colorSchemeToggle": {
+      "toDark": "Koyu temaya geç",
+      "toLight": "Açık temaya geç"
+    },
+    "countdown": {
+      "label": "Kalan Süre",
+      "timeUp": "Süre Doldu!"
+    },
+    "joinWindow": {
+      "tooEarly": "Ders başlamadan {{minutes}} dk önce aktif olur",
+      "closed": "Ders süresi doldu",
+      "unknown": "Ders saati okunamadı."
+    },
+    "pagination": {
+      "previous": "Önceki",
+      "next": "Sonraki"
+    },
+    "questionNavigator": {
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "pageInfo": "Sayfa {{current}} / {{total}}"
+    },
+    "questionCanvas": {
+      "zoomGroup": "Yakınlaştırma",
+      "zoomOut": "Küçült (-5%)",
+      "zoomIn": "Büyüt (+5%)",
+      "apply": "Uygula",
+      "removeQuestion": "Soruyu Testten Çıkar",
+      "correctAnswer": "Doğru Cevap",
+      "showResult": "Sonucu Gör",
+      "passageAlt": "Paragraf görseli",
+      "questionAlt": "Soru görseli",
+      "choiceAria": "Şık {{label}}",
+      "labels": "Etiketler"
+    },
+    "sharingBadge": {
+      "publicAssignable": "Herkese Açık · Atanabilir",
+      "publicView": "Herkese Açık · Görüntüleme",
+      "sharedBy": "{{owner}} tarafından paylaşıldı"
+    },
+    "spinWheel": {
+      "spin": "Çarkı Çevir!",
+      "prizes": {
+        "dessert": "Tatlı",
+        "tenPoints": "10 Puan",
+        "extraQuestion": "Ekstra Soru",
+        "surprise": "Sürpriz",
+        "extraLife": "Yeni Hak"
+      }
+    },
+    "studentTimeChart": {
+      "legend": "Gösterge",
+      "xAxis": "Ders",
+      "yAxis": "Çalışma süresi (dk)"
+    },
+    "tutorCard": {
+      "subjectsAria": "Verdiği dersler",
+      "hourlyRate": "{{amount}} ₺ / saat",
+      "rateUnset": "Ücret belirtilmemiş",
+      "online": "Online",
+      "inPerson": "Yüz yüze"
+    },
+    "visibilitySection": {
+      "teacherSharingTitle": "Öğretmenler Arası Paylaşım",
+      "studentVisibilityTitle": "Öğrenciye Görünürlük",
+      "teacherSharing": {
+        "private": {
+          "label": "Özel",
+          "description": "Yalnızca siz ve admin görür/düzenler/atar."
+        },
+        "publicView": {
+          "label": "Herkese Açık (Görüntüleme)",
+          "description": "Tüm öğretmenler görüntüler. Atamak için sizden onay gerekir."
+        },
+        "publicAssignable": {
+          "label": "Herkese Açık (Atanabilir)",
+          "description": "Tüm öğretmenler görüntüler ve onaysız kendi öğrencilerine atayabilir."
+        }
+      },
+      "studentVisibility": {
+        "restricted": "Restricted: Yalnızca atanan öğrenciler görür ve başlatabilir.",
+        "normal": "Normal: Öğrenci keşfet listesinde görünür ve başlatabilir."
+      },
+      "summary": "Şu an: {{teacher}} {{student}}",
+      "summaryTeacher": {
+        "private": "Yalnızca siz ve admin görebilir/düzenleyebilir/atayabilirsiniz.",
+        "publicView": "Tüm öğretmenler görüntüleyebilir, atamak için onayınız gerekir.",
+        "publicAssignable": "Tüm öğretmenler görüntüleyebilir ve onaysız atayabilir."
+      },
+      "summaryStudent": {
+        "restricted": "Öğrenciler yalnızca atandığında görebilir.",
+        "normal": "Öğrenciler keşfet listesinde görebilir."
+      }
+    },
+    "study": {
+      "page": {
+        "title": "Ders Çalışma",
+        "subtitle": "Konulara göz at, videolar izle, dökümanları incele",
+        "searchLabel": "Ders, konu veya içerik ara",
+        "searchPlaceholder": "Aramak istediğiniz konuyu yazın...",
+        "progressTitle": "İlerleme Durumu"
+      },
+      "catalog": {
+        "title": "Ders Kataloğu",
+        "description": "Çalışmak istediğiniz dersi seçin. Her ders, konular ve alt konular içerir.",
+        "loading": "Dersler yükleniyor...",
+        "empty": "Henüz hiç ders bulunamadı.",
+        "openHint": "Konuları görüntülemek için tıklayın"
+      },
+      "topic": {
+        "title": "{{subject}} Konuları",
+        "description": "İncelemek istediğiniz konuyu seçin. Her konu, alt konular ve çalışma materyalleri içerir.",
+        "loading": "Konular yükleniyor...",
+        "empty": "Bu ders için henüz konu eklenmemiş.",
+        "progress": "%{{percent}} Tamamlandı"
+      },
+      "subtopic": {
+        "title": "{{topic}} Alt Konuları",
+        "description": "İlgilendiğiniz alt konuyu seçin. Her alt konu, videolar ve dokümanlar içerir.",
+        "loading": "Alt konular yükleniyor...",
+        "empty": "Bu konu için henüz alt konu eklenmemiş.",
+        "videoCount": "{{count}} Video",
+        "documentCount": "{{count}} Doküman",
+        "emptyContent": "Bu alt konu için henüz içerik eklenmemiş."
+      },
+      "content": {
+        "loading": "İçerik yükleniyor...",
+        "notFound": "İçerik bulunamadı.",
+        "addFavorite": "Favorilere Ekle",
+        "share": "Paylaş",
+        "copyLink": "Linki Kopyala",
+        "linkCopied": "Link kopyalandı!",
+        "fallbackTitle": "Ders içeriği",
+        "completed": "Tamamlandı",
+        "markCompleted": "Tamamlandı Olarak İşaretle",
+        "documentHint": "Dokümanı görüntülemek için aşağıdaki linke tıklayabilirsiniz.",
+        "openDocument": "Dokümanı Görüntüle",
+        "commentsTab": "Yorumlar",
+        "addComment": "Yorum ekle",
+        "commentPlaceholder": "Bu içerik hakkında bir yorum yazın...",
+        "send": "Gönder",
+        "noComments": "Henüz hiç yorum yok. İlk yorumu siz yapın!",
+        "notesTab": "Notlarım",
+        "addNote": "Not ekle",
+        "notePlaceholder": "Bu içerik hakkında notlarınızı yazın...",
+        "previousNotes": "Önceki Notlarınız"
+      }
+    },
+    "userTheme": {
+      "title": "Kişisel Tema Ayarları",
+      "subtitle": "Seçiminiz kaydedilecek ve bir dahaki girişinizde hatırlanacak",
+      "loading": "Tema yükleniyor...",
+      "savedStateTitle": "Kaydedilmiş Tema Durumunuz",
+      "presetLabel": "Preset:",
+      "presetSuffix": "Preset",
+      "customSettings": "Özel Ayarlar",
+      "customSettingsNote": "Bu ayarları değiştirdiğinizde özel bir tema oluşturmuş olursunuz.",
+      "editHint": "\"Mevcut Durumum\" seçeneğini seçerek bu ayarları düzenleyebilirsiniz.",
+      "presetSelectLabel": "Tema Yükle veya Seç",
+      "presetShort": {
+        "current": "Mevcut Durumum"
+      },
+      "presets": {
+        "current": "Mevcut Durumum",
+        "minimal": "Minimal - Sadece Renkli Çerçeveler",
+        "standard": "Standard - Çerçeve + Gradient + İkonlar + İlerleme",
+        "enhanced": "Enhanced - Standard + Ribbon + Işıltı + Typography",
+        "full": "Full - Tüm Efektler (Animasyonlar Dahil)"
+      },
+      "settings": {
+        "borders": {
+          "label": "Renkli Çerçeveler",
+          "description": "Duruma göre renkli çerçeveler"
+        },
+        "gradient": {
+          "label": "Gradient Katmanı",
+          "description": "Arka plan gradient efektleri"
+        },
+        "iconBadges": {
+          "label": "İkon Rozetleri",
+          "description": "Sağ üst köşe durum ikonları"
+        },
+        "ribbons": {
+          "label": "Ribbon Banner",
+          "description": "Sol üst köşe atama türü ribbon'u"
+        },
+        "glow": {
+          "label": "Işıltı Efektleri",
+          "description": "Işıltı ve gölge efektleri"
+        },
+        "progressBar": {
+          "label": "İlerleme Çubuğu",
+          "description": "Alt kısımda zaman ilerlemesi"
+        },
+        "transform": {
+          "label": "Transform Animasyonları",
+          "description": "Döndürme, titreme animasyonları"
+        },
+        "typography": {
+          "label": "Typography Efektleri",
+          "description": "Font ağırlığı ve şeffaflık değişiklikleri"
+        }
+      },
+      "resetButton": "Varsayılana Dön",
+      "previewButton": "Önizleme",
+      "saveButton": "Kaydet ve Uygula",
+      "messages": {
+        "customSaved": "Özel tema ayarlarınız kaydedildi ve mevcut durumunuz oldu!",
+        "customSaveFailed": "Özel tema kaydedilemedi.",
+        "reset": "Tema varsayılan ayarlara döndürüldü!",
+        "resetFailed": "Tema sıfırlanamadı.",
+        "preview": "Önizleme uygulandı! Kaydet butonuna basarak kalıcı hale getirebilirsiniz.",
+        "customLoaded": "Kaydedilmiş özel tema ayarlarınız yüklendi ve düzenleyebilirsiniz!",
+        "presetLoaded": "Kaydedilmiş preset tema yüklendi ve düzenleyebilirsiniz!"
+      }
+    }
+  },
+  "dashboard": {
+    "welcome": {
+      "title": "Hoş geldin",
+      "lastLogin": "Son giriş: {{value}}"
+    },
+    "lastLogin": {
+      "daysAgo": "{{count}} gün önce",
+      "hoursAgo": "{{count}} saat önce",
+      "minutesAgo": "{{count}} dakika önce",
+      "justNow": "az önce"
+    },
+    "activity": {
+      "loading": "Aktivite verisi yükleniyor...",
+      "error": "Aktivite verisi alınırken bir hata oluştu.",
+      "empty": "Son bir yıl için aktivite verisi bulunamadı.",
+      "totalQuestions": "Toplam Soru",
+      "correctAnswers": "Doğru Cevap",
+      "studyMinutes": "Çalışma Süresi (dk)",
+      "activityScore": "Aktivite Skoru"
+    },
+    "tooltip": {
+      "questions": "Soru",
+      "correct": "Doğru",
+      "duration": "Süre",
+      "activityScore": "Aktivite Skoru"
+    },
+    "duration": {
+      "minutes": "{{minutes}} dk",
+      "seconds": "{{seconds}} sn",
+      "minutesSeconds": "{{minutes}} dk {{seconds}} sn"
+    },
+    "badges": {
+      "title": "Rozetler",
+      "loading": "Rozetler yükleniyor...",
+      "error": "Rozetler yüklenirken bir sorun oluştu.",
+      "earnedTitle": "Kazanılan Rozetler",
+      "earnedEmpty": "Henüz kazanılmış rozet bulunmuyor.",
+      "upcomingTitle": "Sıradaki Rozetler",
+      "allCompleted": "Tebrikler, tüm rozetleri tamamladın!",
+      "upcomingEmpty": "Soru çözmeye başladığında rozet ilerlemen burada görünecek."
+    },
+    "assignments": {
+      "title": "Atanmış Testler",
+      "loading": "Atanmış testler yükleniyor...",
+      "empty": "Aktif atanmış test bulunmuyor.",
+      "error": "Atanmış testler alınırken bir sorun oluştu.",
+      "due": "Bitiş: {{date}}"
+    },
+    "reset": {
+      "confirm": "Tüm sınav ilerlemen, atanmış kişisel sınavların, puanların ve rozet/aktivite verilerin sıfırlanacak. Devam edilsin mi?",
+      "queued": "Sıfırlama işlemi kuyruğa alındı.",
+      "failed": "Sıfırlama isteği gönderilemedi. Lütfen tekrar deneyin."
+    }
+  },
+  "myPrograms": {
+    "addStudyPages": {
+      "title": "{{date}} için Sayfa Ekle"
+    }
+  }
+}

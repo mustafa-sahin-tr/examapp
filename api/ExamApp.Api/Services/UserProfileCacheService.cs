@@ -40,7 +40,8 @@ public class UserProfileCacheService
     /// (Teacher/StudentController) artık tek seferlik SetAsync ile güncel Role+SchoolId
     /// yazıldığı için oradan çağrılmıyor; okul transferi gibi asenkron değişikliklerde kullanılacak.
     /// </summary>
-    public virtual Task RemoveAsync(string keycloakId) => _cache.RemoveAsync(keycloakId);
+    public virtual Task RemoveAsync(string keycloakId) =>
+        string.IsNullOrEmpty(keycloakId) ? Task.CompletedTask : _cache.RemoveAsync(keycloakId);
 
     public virtual async Task<UserProfileDto> GetOrSetAsync(string keycloakId, Func<Task<UserProfileDto>> loader, TimeSpan? expiration = null)
     {

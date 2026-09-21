@@ -5,7 +5,9 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Schools;
 
@@ -15,9 +17,14 @@ public class SchoolService : ISchoolService
 
     private readonly AppDbContext _context;
 
-    public SchoolService(AppDbContext context)
+    // Client'a ulaşan ResponseBaseDto.Message metinleri buradan gelir (issue #184). DI her zaman
+    // gerçek localizer'ı verir; parametre yalnızca DI'sız (birim test) senaryolar için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public SchoolService(AppDbContext context, IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<List<SchoolDto>> GetAllAsync(CancellationToken ct = default)
@@ -42,10 +49,10 @@ public class SchoolService : ISchoolService
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Okul adı boş olamaz.");
+            return Fail(_localizer["school.nameRequired"]);
 
         if (await _context.Schools.AnyAsync(s => s.Name.ToLower() == name.ToLower(), ct))
-            return Fail("Bu isimde bir okul zaten var.");
+            return Fail(_localizer["school.nameAlreadyExists"]);
 
         var addressError = await ValidateAddressAsync(dto, ct);
         if (addressError != null)
@@ -61,21 +68,21 @@ public class SchoolService : ISchoolService
         };
         _context.Schools.Add(school);
         await _context.SaveChangesAsync(ct);
-        return Ok("Okul eklendi.", school.Id);
+        return Ok(_localizer["school.created"], school.Id);
     }
 
     public async Task<ResponseBaseDto> UpdateAsync(int id, UpsertSchoolDto dto, int userId, CancellationToken ct = default)
     {
         var name = dto.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
-            return Fail("Okul adı boş olamaz.");
+            return Fail(_localizer["school.nameRequired"]);
 
         var school = await _context.Schools.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (school == null)
-            return Fail("Okul bulunamadı.");
+            return Fail(_localizer["school.notFound"]);
 
         if (await _context.Schools.AnyAsync(s => s.Id != id && s.Name.ToLower() == name.ToLower(), ct))
-            return Fail("Bu isimde başka bir okul zaten var.");
+            return Fail(_localizer["school.otherNameAlreadyExists"]);
 
         var addressError = await ValidateAddressAsync(dto, ct);
         if (addressError != null)
@@ -87,28 +94,28 @@ public class SchoolService : ISchoolService
         school.DistrictId = dto.DistrictId;
         school.AddressLine = NormalizeAddressLine(dto.AddressLine);
         await _context.SaveChangesAsync(ct);
-        return Ok("Okul güncellendi.", school.Id);
+        return Ok(_localizer["school.updated"], school.Id);
     }
 
     public async Task<ResponseBaseDto> DeleteAsync(int id, int userId, CancellationToken ct = default)
     {
         var school = await _context.Schools.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (school == null)
-            return Fail("Okul bulunamadı.");
+            return Fail(_localizer["school.notFound"]);
 
         // Teacher/Student do not have a SchoolId FK yet (out of scope for this issue) —
         // match against the free-text SchoolName field instead.
         var name = school.Name.ToLower();
         if (await _context.Teachers.AnyAsync(t => t.SchoolName != null && t.SchoolName.ToLower() == name, ct))
-            return Fail("Bu okula bağlı öğretmen kayıtları var, silinemez.");
+            return Fail(_localizer["school.hasTeachers"]);
 
         if (await _context.Students.AnyAsync(s => s.SchoolName != null && s.SchoolName.ToLower() == name, ct))
-            return Fail("Bu okula bağlı öğrenci kayıtları var, silinemez.");
+            return Fail(_localizer["school.hasStudents"]);
 
         _context.SetCurrentUser(userId);
         _context.Schools.Remove(school); // soft delete via AppDbContext.ApplyAuditInfo
         await _context.SaveChangesAsync(ct);
-        return Ok("Okul silindi.", id);
+        return Ok(_localizer["school.deleted"], id);
     }
 
     /// <summary>
@@ -118,18 +125,18 @@ public class SchoolService : ISchoolService
     private async Task<string?> ValidateAddressAsync(UpsertSchoolDto dto, CancellationToken ct)
     {
         if (dto.AddressLine != null && dto.AddressLine.Trim().Length > AddressLineMaxLength)
-            return $"Açık adres en fazla {AddressLineMaxLength} karakter olabilir.";
+            return _localizer["school.address.tooLong", AddressLineMaxLength];
 
         if (dto.DistrictId.HasValue && !dto.ProvinceId.HasValue)
-            return "İlçe seçildiğinde il de seçilmelidir.";
+            return _localizer["school.address.provinceRequiredWithDistrict"];
 
         if (dto.ProvinceId.HasValue &&
             !await _context.Provinces.AnyAsync(p => p.Id == dto.ProvinceId.Value, ct))
-            return "Geçersiz il.";
+            return _localizer["school.address.invalidProvince"];
 
         if (dto.DistrictId.HasValue &&
             !await _context.Districts.AnyAsync(d => d.Id == dto.DistrictId.Value && d.ProvinceId == dto.ProvinceId!.Value, ct))
-            return "Geçersiz ilçe veya ilçe seçilen ile ait değil.";
+            return _localizer["school.address.invalidDistrict"];
 
         return null;
     }

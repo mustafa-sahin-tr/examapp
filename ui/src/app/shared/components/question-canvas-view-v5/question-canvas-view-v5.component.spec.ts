@@ -3,6 +3,7 @@ import { By } from '@angular/platform-browser';
 
 import { QuestionCanvasViewComponentv5 } from './question-canvas-view-v5.component';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 /**
  * calculateBestLayout unit testleri (issue #70 / #69).
@@ -55,7 +56,7 @@ describe('QuestionCanvasViewComponentv5', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QuestionCanvasViewComponentv5],
+      imports: [translocoTestingModule(), QuestionCanvasViewComponentv5],
     }).compileComponents();
 
     fixture = TestBed.createComponent(QuestionCanvasViewComponentv5);

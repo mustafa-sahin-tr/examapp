@@ -7,11 +7,23 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ImageSelectorComponent } from '../image-selector/image-selector.component';
 import { TestService } from '../../services/test.service';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/** Ayrı bir route olduğu için scope'u kendisi sağlar (issue #183). */
+const QUESTION_SCOPE = 'question';
 
 @Component({
   selector: 'app-question-canvas-preview',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatSnackBarModule, ImageSelectorComponent],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSnackBarModule,
+    ImageSelectorComponent,
+    TranslocoDirective,
+  ],
+  providers: [provideTranslocoScope(QUESTION_SCOPE)],
   templateUrl: './question-canvas-preview.component.html',
   styleUrls: ['./question-canvas-preview.component.scss'],
 })
@@ -24,6 +36,7 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly testService = inject(TestService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   readonly returnUrl = signal<string | null>(null);
   readonly returnState = signal<any | null>(null);
@@ -78,7 +91,11 @@ export class QuestionCanvasPreviewComponent implements AfterViewInit {
     const resolvedTestId = Number.isFinite(paramTestId) && paramTestId > 0 ? paramTestId : queryTestId;
 
     if (!Number.isFinite(resolvedTestId) || resolvedTestId <= 0) {
-      this.snackBar.open('Ön izleme için test seçilmedi.', 'Tamam', { duration: 2500 });
+      this.snackBar.open(
+        this.transloco.translate<string>(`${QUESTION_SCOPE}.preview.noTestSelected`) ?? '',
+        this.transloco.translate<string>(`${QUESTION_SCOPE}.common.snackbarAction`) ?? '',
+        { duration: 2500 }
+      );
       this.closePreview();
       return;
     }

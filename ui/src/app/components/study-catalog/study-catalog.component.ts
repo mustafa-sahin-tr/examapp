@@ -4,13 +4,14 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { StudyService } from '../../services/study.service';
 import { Subject } from '../../models/subject';
 
 @Component({
   selector: 'app-study-catalog',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule, TranslocoDirective],
   templateUrl: './study-catalog.component.html',
   styleUrls: ['./study-catalog.component.scss'],
 })

@@ -1,0 +1,20 @@
+{
+  "exam": {
+    "unauthenticated": "User authentication failed",
+    "studentProfileNotFound": "Student profile not found",
+    "testNotFound": "Test not found!",
+    "testSessionNotFound": "Test session not found.",
+    "unexpectedError": "An error occurred: {0}",
+
+    "calendar": {
+      "rangeRequired": "The 'from' and 'to' parameters are required",
+      "invalidIsoDate": "'from' and 'to' must be ISO-8601 dates with an explicit time zone ('Z' or ±hh:mm)",
+      "toBeforeFrom": "'to' must be later than 'from'",
+      "rangeTooLarge": "The date range can be at most {0} days"
+    },
+
+    "bulkImport": {
+      "failed": "The bulk import could not be processed."
+    }
+  }
+}

@@ -1,63 +1,54 @@
-<div class="faq-area ptb-140">
+<div class="faq-area ptb-140" *transloco="let t; prefix: 'landing'">
     <div class="container">
         <div class="row justify-content-center align-items-center g-4">
             <div class="col-lg-6 col-md-12">
-                <div class="faq-image"><img src="assets/images/faq.png" alt="image"></div>
+                <div class="faq-image"><img src="assets/images/faq.png" alt=""></div>
             </div>
             <div class="col-lg-6 col-md-12">
                 <div class="faq-content">
-                    <div class="title"><span class="sub">Sıkça Sorulan Sorular</span>
-                        <h2>Hedef Okul Hakkında <span>Merak
-                                Ettikleriniz <img src="assets/images/title-line.png" alt="image"></span></h2>
+                    <div class="title"><span class="sub">{{ t('faq.sub') }}</span>
+                        <h2>{{ t('faq.titleLead') }} <span>{{ t('faq.titleHighlight') }}
+                                <img src="assets/images/title-line.png" alt=""></span></h2>
                     </div>
                     <div class="faq-accordion">
                         <mat-accordion class="accordion">
                             <mat-expansion-panel class="accordion-item" hideToggle #membershipPanel>
                                 <mat-expansion-panel-header class="accordion-button"
                                     [class.open]="membershipPanel.expanded">
-                                    Hedef Okul'a nasıl üye olabilirim?
+                                    {{ t('faq.membership.question') }}
                                 </mat-expansion-panel-header>
                                 <div class="accordion-body">
-                                    <p>Siteye girerek "Kayıt Ol" butonuna tıklayın, e-posta adresiniz ve şifrenizle
-                                        birkaç saniyede ücretsiz hesap oluşturun. Kayıt sonrasında tüm çalışma
-                                        yapraklarına ve sınavlara anında erişebilirsiniz.</p>
+                                    <p>{{ t('faq.membership.answer') }}</p>
                                 </div>
                             </mat-expansion-panel>
 
                             <mat-expansion-panel class="accordion-item" hideToggle #worksheetPanel>
                                 <mat-expansion-panel-header class="accordion-button"
                                     [class.open]="worksheetPanel.expanded">
-                                    Çalışma yaprakları ücretli mi?
+                                    {{ t('faq.pricing.question') }}
                                 </mat-expansion-panel-header>
                                 <div class="accordion-body">
-                                    <p>Platformdaki çalışma yapraklarının büyük çoğunluğu ücretsizdir. Tüm
-                                        öğrenciler kayıt olmadan önizleme yapabilir; kayıt sonrasında ise içerikleri
-                                        tam olarak kullanabilir.</p>
+                                    <p>{{ t('faq.pricing.answer') }}</p>
                                 </div>
                             </mat-expansion-panel>
 
                             <mat-expansion-panel class="accordion-item" [expanded]="true" hideToggle #teacherPanel>
                                 <mat-expansion-panel-header class="accordion-button"
                                     [class.open]="teacherPanel.expanded">
-                                    Öğretmen olarak kendi sınavımı oluşturabilir miyim?
+                                    {{ t('faq.teacher.question') }}
                                 </mat-expansion-panel-header>
                                 <div class="accordion-body">
-                                    <p>Evet! Öğretmen hesabıyla giriş yaparak ders, konu ve sınıf seviyesine göre
-                                        özelleştirilmiş sınavlar ve çalışma yaprakları hazırlayabilir,
-                                        öğrencilerinize atayabilirsiniz. Yapay zekâ destekli soru tespiti de bu
-                                        süreçte size yardımcı olur.</p>
+                                    <p>{{ t('faq.teacher.answer') }}</p>
                                 </div>
                             </mat-expansion-panel>
 
                             <mat-expansion-panel class="accordion-item" hideToggle #parentPanel>
                                 <mat-expansion-panel-header class="accordion-button"
                                     [class.open]="parentPanel.expanded">
-                                    Ebeveyn olarak çocuğumun ilerlemesini takip edebilir miyim?
+                                    {{ t('faq.parent.question') }}
                                 </mat-expansion-panel-header>
                                 <div class="accordion-body">
-                                    <p>Evet, ebeveyn hesabıyla çocuğunuzun tamamladığı sınavları, aldığı puanları
-                                        ve kazandığı rozetleri gerçek zamanlı olarak takip edebilirsiniz. Böylece
-                                        öğrenme sürecinin her adımında yanında olabilirsiniz.</p>
+                                    <p>{{ t('faq.parent.answer') }}</p>
                                 </div>
                             </mat-expansion-panel>
                         </mat-accordion>

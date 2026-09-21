@@ -1,11 +1,11 @@
-<button class="tutor-card" type="button" (click)="onSelect()">
+<button class="tutor-card" type="button" (click)="onSelect()" *transloco="let t; prefix: 'shared.tutorCard'">
   <span class="tutor-card__avatar" aria-hidden="true">{{ initials() }}</span>
 
   <span class="tutor-card__body">
     <span class="tutor-card__name">{{ tutor().fullName }}</span>
 
     @if (tutor().subjects.length) {
-      <mat-chip-set class="tutor-card__subjects" aria-label="Verdiği dersler">
+      <mat-chip-set class="tutor-card__subjects" [attr.aria-label]="t('subjectsAria')">
         @for (subject of tutor().subjects; track subject.subjectId) {
           <mat-chip disabled>{{ subject.name }}</mat-chip>
         }
@@ -15,17 +15,17 @@
     <span class="tutor-card__meta">
       <span class="tutor-card__rate">
         @if (tutor().hourlyRate !== null) {
-          {{ tutor().hourlyRate }} ₺ / saat
+          {{ t('hourlyRate', { amount: tutor().hourlyRate }) }}
         } @else {
-          Ücret belirtilmemiş
+          {{ t('rateUnset') }}
         }
       </span>
 
       @if (tutor().teachesOnline) {
-        <span class="tutor-card__mode"><mat-icon>videocam</mat-icon> Online</span>
+        <span class="tutor-card__mode"><mat-icon>videocam</mat-icon> {{ t('online') }}</span>
       }
       @if (tutor().teachesInPerson) {
-        <span class="tutor-card__mode"><mat-icon>place</mat-icon> Yüz yüze</span>
+        <span class="tutor-card__mode"><mat-icon>place</mat-icon> {{ t('inPerson') }}</span>
       }
     </span>
 

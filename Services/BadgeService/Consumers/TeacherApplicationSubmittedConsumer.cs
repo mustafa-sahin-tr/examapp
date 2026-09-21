@@ -1,7 +1,10 @@
+using System.Globalization;
 using System.Text.Json;
 using BadgeService.Entities;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
+using ExamApp.Foundation.Localization;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -26,15 +29,18 @@ public class TeacherApplicationSubmittedConsumer : IConsumer<TeacherApplicationS
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly INotificationTextFactory _texts;
     private readonly ILogger<TeacherApplicationSubmittedConsumer> _logger;
 
     public TeacherApplicationSubmittedConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
-        ILogger<TeacherApplicationSubmittedConsumer> logger)
+        ILogger<TeacherApplicationSubmittedConsumer> logger,
+        INotificationTextFactory texts)
     {
         _db = db;
         _hub = hub;
+        _texts = texts ?? throw new ArgumentNullException(nameof(texts));
         _logger = logger;
     }
 
@@ -53,17 +59,23 @@ public class TeacherApplicationSubmittedConsumer : IConsumer<TeacherApplicationS
             return;
         }
 
-        var applicantName = string.IsNullOrWhiteSpace(e.ApplicantName) ? "Bir öğretmen" : e.ApplicantName;
+        // Admin bildirimleri belirli bir kullanıcıya değil role bağlıdır; hedef admin'in dili
+        // bilinmiyor (WorksheetAccessRequestedConsumer'daki gibi tek hedef yok) — platform
+        // varsayılan diline (tr) kilitlenir (issue #185 karar #5).
+        var culture = CultureInfo.GetCultureInfo(SupportedLocales.DefaultCultureName);
+        var applicantName = string.IsNullOrWhiteSpace(e.ApplicantName)
+            ? _texts.Resolve("notifications.common.defaultApplicant", culture)
+            : e.ApplicantName;
+        var text = _texts.Build(NotificationType, culture, applicantName);
 
-        // Admin bildirimleri belirli bir kullanıcıya değil role bağlıdır; UserId/UserKeycloakId
-        // burada anlamsız (WorksheetAccessRequestedConsumer'daki gibi tek hedef yok), boş geçilir.
+        // UserId/UserKeycloakId burada anlamsız (tek hedef yok), boş geçilir.
         var notification = new Notification
         {
             UserId = 0,
             UserKeycloakId = null,
             Type = NotificationType,
-            Title = "Yeni bağımsız öğretmen başvurusu",
-            Body = $"{applicantName}, bağımsız öğretmen olarak başvurdu ve onay bekliyor.",
+            Title = text.Title,
+            Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 teacherId = e.TeacherId,

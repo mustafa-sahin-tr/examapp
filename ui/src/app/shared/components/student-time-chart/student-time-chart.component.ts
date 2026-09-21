@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoService } from '@jsverse/transloco';
 import { BubbleChartComponent, BubbleChartMultiSeries, LegendPosition, NgxChartsModule, ScaleType } from '@swimlane/ngx-charts';
 import { Color, colorSets } from '@swimlane/ngx-charts';
 import { bubble } from './data';
@@ -54,8 +55,13 @@ class="chart-container"
   `]
 })
 export class StudentTimeChartComponent {
+  private readonly transloco = inject(TranslocoService);
 
-  bubble: any;
+  private translate(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
+  }
+
+  bubble: unknown;
   width: number = 700;
   height: number = 300;
   view: [number, number] = [this.width, this.height];
@@ -65,14 +71,14 @@ export class StudentTimeChartComponent {
   showYAxis = true;
   gradient = false;
   showLegend = true;
-  legendTitle = 'Legend';
+  legendTitle = this.translate('shared.studentTimeChart.legend');
   legendPosition = LegendPosition.Right;
   showXAxisLabel = true;
   tooltipDisabled = false;
   showText = true;
-  xAxisLabel = 'Country';
+  xAxisLabel = this.translate('shared.studentTimeChart.xAxis');
   showYAxisLabel = true;
-  yAxisLabel = 'GDP Per Capita';
+  yAxisLabel = this.translate('shared.studentTimeChart.yAxis');
   showGridLines = true;
   innerPadding = '10%';
   barPadding = 8;

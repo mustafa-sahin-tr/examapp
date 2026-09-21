@@ -1,0 +1,219 @@
+{
+  "home": {
+    "title": "Yönetim",
+    "tabs": {
+      "taxonomy": "Taksonomi",
+      "classifierCache": "Sınıflandırma Cache",
+      "teacherApplications": "Öğretmen Başvuruları"
+    }
+  },
+  "dashboard": {
+    "title": "Yönetim Paneli",
+    "subtitle": "Platformun genel durumu — öğretmen, öğrenci, test ve soru istatistikleri",
+    "error": "Özet bilgileri alınırken bir sorun oluştu.",
+    "empty": "Platformda henüz veri yok. Öğretmen, öğrenci, test veya soru eklendiğinde sayaçlar burada güncellenecek.",
+    "cards": {
+      "teachers": "Öğretmen",
+      "students": "Öğrenci",
+      "worksheets": "Test",
+      "questions": "Soru"
+    },
+    "ai": {
+      "title": "AI Sınıflandırılmış",
+      "ratioLabel": "AI sınıflandırma oranı",
+      "percent": "%{{value}}",
+      "noQuestions": "Henüz soru yok"
+    },
+    "trends": {
+      "title": "Trendler",
+      "error": "Trend verileri alınırken bir sorun oluştu.",
+      "empty": "Henüz yeterli veri yok",
+      "questionTotal": "{{count}} soru",
+      "loginTotal": "{{count}} giriş",
+      "cardAria": "{{title}} trendi, {{period}}",
+      "loginCardAria": "{{title}}, {{period}}",
+      "createdTitle": "Soru Oluşturma",
+      "solvedTitle": "Soru Çözme",
+      "loginTitle": "Öğrenci Login Trendi",
+      "periodYear": "Son 1 yıl",
+      "periodDays": "Son {{days}} gün",
+      "verbCreated": "oluşturuldu",
+      "verbSolved": "çözüldü",
+      "tooltip": "{{label}}: {{count}} soru {{verb}}",
+      "loginTooltip": "{{label}}: {{count}} giriş",
+      "summaryEmpty": "Son 1 yıl: henüz yeterli veri yok.",
+      "summary": "Son 1 yıl: toplam {{total}} soru {{verb}}. En yüksek gün {{peak}}, {{count}} soru.",
+      "loginSummaryEmpty": "Son {{days}} gün: henüz yeterli veri yok.",
+      "loginSummary": "Son {{days}} gün: toplam {{total}} öğrenci girişi. En yüksek gün {{peak}}, {{count}} giriş.",
+      "today": "bugün",
+      "yesterday": "dün",
+      "daysAgo": "{{count}} gün önce"
+    }
+  },
+  "taxonomy": {
+    "gradeFilter": {
+      "label": "Sınıf",
+      "aria": "Sınıf filtresi",
+      "all": "Tüm Sınıflar",
+      "unassigned": "Sınıf atanmamış"
+    },
+    "subjects": {
+      "title": "Dersler",
+      "newPlaceholder": "Yeni ders",
+      "add": "Ders ekle",
+      "gradeChipsAria": "Bağlı sınıflar",
+      "unassignedChip": "Sınıf atanmamış",
+      "topicCount": "{{count}} konu",
+      "manageGrades": "Sınıfları Yönet",
+      "edit": "Dersi düzenle",
+      "delete": "Dersi sil",
+      "nameAria": "Ders adı",
+      "emptyUnassignedTitle": "Sınıf atanmamış ders yok",
+      "emptyUnassignedHint": "Tüm dersler en az bir sınıfa bağlı",
+      "emptyGradeTitle": "Bu sınıfa bağlı ders yok",
+      "emptyGradeHint": "Bir dersin \"Sınıfları Yönet\" aksiyonundan bu sınıfı ekleyebilirsin",
+      "emptyLinkedTitle": "Sınıfa bağlı ders yok",
+      "emptyLinkedHint": "\"Sınıf atanmamış\" filtresinden derslere sınıf ata",
+      "emptyTitle": "Henüz ders eklenmemiş",
+      "emptyHint": "Yukarıdaki alandan ilk dersi ekle"
+    },
+    "topics": {
+      "title": "Konular",
+      "newPlaceholder": "Yeni konu",
+      "gradePlaceholder": "Sınıf",
+      "add": "Konu ekle",
+      "subTopicCount": "{{count}} alt",
+      "edit": "Konuyu düzenle",
+      "delete": "Konuyu sil",
+      "nameAria": "Konu adı",
+      "emptyTitle": "Bu derste henüz konu yok",
+      "emptyHint": "Konu adı ve sınıf seçip ekle",
+      "noSubjectTitle": "Önce bir ders seç",
+      "noSubjectHint": "Seçilen dersin konuları burada listelenir",
+      "nameAndGradeRequired": "Konu adı ve sınıf gerekli"
+    },
+    "subTopics": {
+      "title": "Alt Konular",
+      "newPlaceholder": "Yeni alt konu",
+      "add": "Alt konu ekle",
+      "questionCount": "{{count}} soru",
+      "edit": "Alt konuyu düzenle",
+      "delete": "Alt konuyu sil",
+      "nameAria": "Alt konu adı",
+      "emptyTitle": "Bu konuda henüz alt konu yok",
+      "emptyHint": "Yukarıdaki alandan ilk alt konuyu ekle",
+      "noTopicTitle": "Önce bir konu seç",
+      "noTopicHint": "Seçilen konunun alt konuları burada listelenir"
+    },
+    "schools": {
+      "title": "Okullar",
+      "newPlaceholder": "Yeni okul adı",
+      "provincePlaceholder": "İl (opsiyonel)",
+      "provinceAria": "İl",
+      "provinceNone": "— İl yok —",
+      "districtPlaceholder": "İlçe (opsiyonel)",
+      "districtAria": "İlçe",
+      "districtNone": "— İlçe yok —",
+      "addressPlaceholder": "Açık adres (opsiyonel)",
+      "addressAria": "Açık adres",
+      "addressEditPlaceholder": "Açık adres",
+      "add": "Okul ekle",
+      "edit": "Okulu düzenle",
+      "delete": "Okulu sil",
+      "nameAria": "Okul adı",
+      "emptyTitle": "Henüz okul eklenmemiş",
+      "emptyHint": "Okul adı ve isteğe bağlı il / ilçe / adres girip ekle"
+    },
+    "actions": {
+      "save": "Kaydet",
+      "cancel": "Vazgeç"
+    },
+    "delete": {
+      "subjectTitle": "ders sil",
+      "subjectMessage": "\"{{name}}\" dersini silmek istediğine emin misin?",
+      "topicTitle": "konu sil",
+      "topicMessage": "\"{{name}}\" konusunu silmek istediğine emin misin?",
+      "subtopicTitle": "alt konu sil",
+      "subtopicMessage": "\"{{name}}\" alt konusunu silmek istediğine emin misin?",
+      "schoolTitle": "okul sil",
+      "schoolMessage": "\"{{name}}\" okulunu silmek istediğine emin misin?",
+      "confirm": "Sil"
+    },
+    "messages": {
+      "taxonomyLoadFailed": "Taksonomi yüklenemedi",
+      "schoolsLoadFailed": "Okullar yüklenemedi",
+      "provincesLoadFailed": "İller yüklenemedi",
+      "districtsLoadFailed": "İlçeler yüklenemedi",
+      "actionFailed": "İşlem başarısız",
+      "close": "Kapat"
+    }
+  },
+  "subjectGrades": {
+    "title": "Sınıfları Yönet",
+    "listAria": "Sınıflar",
+    "empty": "Tanımlı sınıf yok",
+    "toAdd": "{{count}} eklenecek",
+    "toRemove": "{{count}} kaldırılacak",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "actionFailed": "İşlem başarısız"
+  },
+  "classifierCache": {
+    "title": "Soru Sınıflandırma Cache’i",
+    "subtitle": "Gemini cached content — ders/konu/alt konu taksonomisi. BadgeService soruları buna göre sınıflandırır.",
+    "notCreated": "Henüz cache oluşturulmamış.",
+    "stale": "Cache güncel değil — taksonomi değişmiş. Yenilemen önerilir.",
+    "fresh": "Cache güncel.",
+    "fields": {
+      "cachedContent": "Cached content",
+      "model": "Model",
+      "subTopicCount": "Alt konu sayısı (son build)",
+      "refreshedAt": "Son yenileme",
+      "apiKey": "API anahtarı"
+    },
+    "apiKeyConfigured": "yapılandırılmış",
+    "apiKeyMissing": "eksik (Gemini:ApiKey)",
+    "refreshStatus": "Durumu yenile",
+    "refreshCache": "Cache’i Yenile",
+    "confirm": {
+      "title": "Sınıflandırma cache’ini yenile",
+      "message": "Mevcut ders/konu/alt konu taksonomisinden yeni bir Gemini cached content oluşturulacak ve aktif hale gelecek. Devam edilsin mi?",
+      "confirmText": "Yenile"
+    },
+    "statusFailed": "Cache durumu alınamadı",
+    "refreshFailed": "Yenileme başarısız",
+    "close": "Kapat"
+  },
+  "approvals": {
+    "title": "Bağımsız Öğretmen Başvuruları",
+    "subtitle": "Bir okula bağlı olmadan kayıt olan öğretmenlerin onay bekleyen başvuruları.",
+    "refresh": "Yenile",
+    "loading": "Başvurular yükleniyor...",
+    "empty": "Bekleyen başvuru yok",
+    "columns": {
+      "fullName": "Ad Soyad",
+      "email": "E-posta",
+      "appliedAt": "Başvuru Tarihi",
+      "actions": "İşlem"
+    },
+    "unnamed": "İsimsiz (kullanıcı #{{userId}})",
+    "approve": "Onayla",
+    "reject": "Reddet",
+    "acting": "İşleniyor",
+    "loadFailed": "Başvurular alınırken bir sorun oluştu.",
+    "approved": "Başvuru onaylandı.",
+    "rejected": "Başvuru reddedildi.",
+    "actionFailed": "İşlem tamamlanamadı.",
+    "close": "Kapat",
+    "rejectDialog": {
+      "title": "Başvuruyu Reddet",
+      "description": "Red nedeni zorunludur. Girdiğiniz metin başvuru kaydına işlenir.",
+      "reasonLabel": "Red nedeni",
+      "reasonPlaceholder": "Başvurunun neden reddedildiğini kısaca yazın",
+      "required": "Red nedeni boş olamaz.",
+      "maxLength": "Red nedeni en fazla {{max}} karakter olabilir.",
+      "cancel": "İptal",
+      "submit": "Reddet"
+    }
+  }
+}

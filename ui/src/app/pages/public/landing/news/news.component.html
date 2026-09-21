@@ -1,32 +1,30 @@
-<section class="news-area">
+<section class="news-area" *transloco="let t; prefix: 'landing'">
     <div class="container">
         <div class="row mb-4">
             <div class="d-md-flex justify-content-md-between align-items-center" style="width: 100%;">
-                <h2 class="mb-2 mb-md-0">Hedef Okul'dan Haberler</h2>
-                <div><span class="me-2">Daha fazlasını okumak ister misin?</span><a href="javascript:void(0);"
-                        class="btn btn-sm btn-primary-soft mb-0">Tüm haberler<i class="fas fa-angle-right ms-2"></i></a>
+                <h2 class="mb-2 mb-md-0">{{ t('news.title') }}</h2>
+                <div><span class="me-2">{{ t('news.morePrompt') }}</span><a href="javascript:void(0);"
+                        class="btn btn-sm btn-primary-soft mb-0">{{ t('news.allNews') }}<i
+                            class="fas fa-angle-right ms-2" aria-hidden="true"></i></a>
                 </div>
             </div>
         </div>
         <div class="row g-4">
             <div class="col-md-6 col-lg-4">
                 <div class="card bg-transparent">
-                    <div class="overflow-hidden rounded-3"><img src="assets/images/events/02.jpg" alt="Card image"
+                    <div class="overflow-hidden rounded-3"><img src="assets/images/events/02.jpg" alt=""
                             class="card-img">
                         <div class="bg-overlay bg-dark opacity-4"></div>
-                        <div class="card-img-overlay d-flex align-items-start flex-column p-3"><a class="tag-btn">Yeni
-                                Özellik</a></div>
+                        <div class="card-img-overlay d-flex align-items-start flex-column p-3"><a class="tag-btn">{{
+                                t('news.featureRelease.tag') }}</a></div>
                     </div>
                     <div class="card-body px-3">
-                        <h5 class="card-title"><a href="javascript:void(0);">Yapay Zekâ Destekli Soru Tespiti Artık
-                                Canlıda</a>
+                        <h5 class="card-title"><a href="javascript:void(0);">{{ t('news.featureRelease.title') }}</a>
                         </h5>
-                        <p class="text-truncate-2"> YOLOv8 tabanlı görüntü işleme motoru sayesinde
-                            tarayıcıdan yüklenen soru kâğıtları otomatik olarak tanınıyor ve
-                            dijital ortama aktarılıyor. </p>
+                        <p class="text-truncate-2">{{ t('news.featureRelease.excerpt') }}</p>
                         <div class="d-flex justify-content-between">
-                            <h6 class="mb-0"><a href="javascript:void(0);">Geliştirici Ekibi</a></h6><span
-                                class="small">2 gün önce</span>
+                            <h6 class="mb-0"><a href="javascript:void(0);">{{ t('news.featureRelease.author') }}</a></h6><span
+                                class="small">{{ t('news.featureRelease.date') }}</span>
                         </div>
                     </div>
                 </div>
@@ -35,34 +33,29 @@
                 <div class="row g-4">
                     <div class="col-lg-7">
                         <div class="card bg-light p-3 mb-4">
-                            <div class="card-body"><a href="javascript:void(0);" class="tag-btn">Ebeveyn Rehberi</a>
-                                <h5 class="card-title"><a href="javascript:void(0);">Çocuğunuzun Sınav Sürecini Takip
-                                        Etmenin 5 Yolu</a></h5>
-                                <p> Hedef Okul'daki ebeveyn paneli ile çocuğunuzun hangi
-                                    konularda zorlandığını anlık olarak görün,
-                                    eksik konulara odaklanın. </p>
+                            <div class="card-body"><a href="javascript:void(0);" class="tag-btn">{{
+                                    t('news.parentGuide.tag') }}</a>
+                                <h5 class="card-title"><a href="javascript:void(0);">{{ t('news.parentGuide.title') }}</a></h5>
+                                <p>{{ t('news.parentGuide.excerpt') }}</p>
                                 <div class="d-flex justify-content-between">
-                                    <h6 class="mb-0"><a href="javascript:void(0);">Editör Ekibi</a></h6><span
-                                        class="small">5 saat önce</span>
+                                    <h6 class="mb-0"><a href="javascript:void(0);">{{ t('news.parentGuide.author') }}</a></h6><span
+                                        class="small">{{ t('news.parentGuide.date') }}</span>
                                 </div>
                             </div>
                         </div>
                         <div class="card bg-transparent">
                             <div class="overflow-hidden rounded-3"><img src="assets/images/events/01.jpg"
-                                    alt="Card image" class="card-imgp">
+                                    alt="" class="card-imgp">
                                 <div class="bg-overlay bg-dark opacity-4"></div>
                                 <div class="card-img-overlay d-flex align-items-start flex-column p-3"><a
-                                        href="javascript:void(0);" class="tag-btn">Başarı Hikayesi</a></div>
+                                        href="javascript:void(0);" class="tag-btn">{{ t('news.successStory.tag') }}</a></div>
                             </div>
                             <div class="card-body px-3">
-                                <h5 class="card-title"><a href="javascript:void(0);">"Matematik Sınavına Hazırlandım,
-                                        95 Aldım"</a></h5>
-                                <p class="text-truncate-2"> 4. sınıf öğrencisi Ali, her gün
-                                    10 dakika çalışma yaprağı çözerek dönem sonunda
-                                    sınıfının birincisi oldu. </p>
+                                <h5 class="card-title"><a href="javascript:void(0);">{{ t('news.successStory.title') }}</a></h5>
+                                <p class="text-truncate-2">{{ t('news.successStory.excerpt') }}</p>
                                 <div class="d-flex justify-content-between">
                                     <h6 class="mb-0"><a href="javascript:void(0);">Ali Yıldız</a></h6><span
-                                        class="small">1 hafta önce</span>
+                                        class="small">{{ t('news.successStory.date') }}</span>
                                 </div>
                             </div>
                         </div>
@@ -70,22 +63,18 @@
                     <div class="col-lg-5">
                         <div class="card bg-transparent">
                             <div class="overflow-hidden rounded-3"><img src="assets/images/events/03.jpg"
-                                    alt="course image" class="card-img-top">
+                                    alt="" class="card-img-top">
                                 <div class="bg-overlay bg-dark opacity-2 rounded-2"></div>
                                 <div class="card-img-overlay d-flex align-items-start flex-column p-3"><a
-                                        class="tag-btn">Öğretmen İpuçları</a></div>
+                                        class="tag-btn">{{ t('news.teacherTips.tag') }}</a></div>
                             </div>
                             <div class="card-body px-3">
-                                <h5 class="card-title"><a href="javascript:void(0);">Etkili Çalışma Yaprağı
-                                        Nasıl Hazırlanır?</a></h5>
-                                <p> Soru çeşitliliği, görsel destekler ve zorluk
-                                    dengesiyle öğrenci motivasyonunu artıran yapraklar oluşturun. </p>
+                                <h5 class="card-title"><a href="javascript:void(0);">{{ t('news.teacherTips.title') }}</a></h5>
+                                <p>{{ t('news.teacherTips.excerpt') }}</p>
                                 <div class="d-flex justify-content-between">
                                     <h6 class="mb-0"><a href="javascript:void(0);">Ayşe Öztürk</a></h6><span
-                                        class="small">21 Mart 2026</span>
+                                        class="small">{{ t('news.teacherTips.date') }}</span>
                                 </div>
-                                <h6 class="mb-0"><a href="javascript:void(0);">Ayşe Öztürk</a></h6><span
-                                    class="small">21 Mart 2026</span>
                             </div>
                         </div>
                     </div>

@@ -14,6 +14,15 @@ import { StudentStatisticsResponse } from '../../models/statistics';
 import { StudentProfile } from '../../models/student-profile';
 import { BadgeThropyComponent } from '../../shared/components/badge-thropy/badge-thropy.component';
 
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+import studentProfileTr from '../../../../public/i18n/student-profile/tr.json';
+
+/**
+ * Sayfa cevirileri kendi Transloco scope'undadir (issue #183); testte gercek sozluk verilir,
+ * sahte ceviri kullanilmaz - boylece bir anahtar bozulursa test kirilir.
+ */
+const translocoTesting = translocoTestingModule({ langs: { 'student-profile/tr': studentProfileTr } });
+
 describe('StudentProfileComponent', () => {
   let component: StudentProfileComponent;
   let fixture: ComponentFixture<StudentProfileComponent>;
@@ -72,7 +81,7 @@ describe('StudentProfileComponent', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [StudentProfileComponent, NoopAnimationsModule],
+      imports: [StudentProfileComponent, NoopAnimationsModule, translocoTesting],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),

@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { TranslocoDirective } from '@jsverse/transloco';
 import { StudyService } from '../../services/study.service';
 import { Topic } from '../../models/topic';
 import { Subject } from '../../models/subject';
@@ -12,7 +13,7 @@ import { Subject } from '../../models/subject';
 @Component({
   selector: 'app-study-topic',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule, MatProgressBarModule],
+  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule, MatProgressBarModule, TranslocoDirective],
   templateUrl: './study-topic.component.html',
   styleUrls: ['./study-topic.component.scss'],
 })

@@ -8,7 +8,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
-import { Observable, finalize } from 'rxjs';
+import {
+  TranslocoDirective,
+  TranslocoPipe,
+  TranslocoService,
+  provideTranslocoScope,
+} from '@jsverse/transloco';
+import { Observable, finalize, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { SignalRService } from '../../../services/signalr.service';
 import {
@@ -25,11 +31,27 @@ import {
  * Liste tek seferde yüklenir; onay/red sonrası satır listeden düşürülür (backend zaten Pending dışını
  * döndürmez, yeniden fetch gereksiz). Aksiyon durumu satır bazlı tutulur (`actingIds`), diğer satırlar
  * kullanılabilir kalır.
+ *
+ * Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183).
+ * Kendi route'undan da (`/admin/teacher-approvals`) açıldığı için scope'u admin-home'dan devralmaz,
+ * provider'ı burada da verilir.
  */
+const ADMIN_SCOPE = 'admin';
+
 @Component({
   selector: 'app-teacher-approvals',
   standalone: true,
-  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatProgressSpinnerModule, MatTableModule],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatDialogModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatTableModule,
+    TranslocoDirective,
+    TranslocoPipe,
+  ],
+  providers: [provideTranslocoScope(ADMIN_SCOPE)],
   templateUrl: './teacher-approvals.component.html',
   styleUrls: ['./teacher-approvals.component.scss'],
 })
@@ -39,6 +61,7 @@ export class TeacherApprovalsComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly transloco = inject(TranslocoService);
 
   readonly displayedColumns = ['fullName', 'email', 'appliedAt', 'actions'];
 
@@ -52,6 +75,10 @@ export class TeacherApprovalsComponent implements OnInit {
 
   /** Satır kaldırılınca mat-table diğer satırları yeniden oluşturmasın (spinner/focus korunur). */
   readonly trackByTeacherId = (_: number, row: PendingTeacherApplication): number => row.teacherId;
+
+  constructor() {
+    this.preloadScope();
+  }
 
   ngOnInit(): void {
     this.load();
@@ -77,7 +104,7 @@ export class TeacherApprovalsComponent implements OnInit {
         next: (list) => this.applications.set(list),
         error: (err: HttpErrorResponse) => {
           this.applications.set([]);
-          this.error.set(this.extractMessage(err, 'Başvurular alınırken bir sorun oluştu.'));
+          this.error.set(this.extractMessage(err, this.text('loadFailed')));
         },
       });
   }
@@ -89,11 +116,11 @@ export class TeacherApprovalsComponent implements OnInit {
   /** auth-api ad çözümlemesi başarısızsa boş gelir; userId ile ayırt edilebilir fallback göster. */
   displayName(row: PendingTeacherApplication): string {
     const name = row.fullName?.trim();
-    return name ? name : `İsimsiz (kullanıcı #${row.userId})`;
+    return name ? name : this.text('unnamed', { userId: row.userId });
   }
 
   approve(row: PendingTeacherApplication): void {
-    this.act(row, this.adminService.approveTeacherApplication(row.teacherId), 'Başvuru onaylandı.');
+    this.act(row, this.adminService.approveTeacherApplication(row.teacherId), this.text('approved'));
   }
 
   reject(row: PendingTeacherApplication): void {
@@ -112,7 +139,7 @@ export class TeacherApprovalsComponent implements OnInit {
         if (!reason) {
           return;
         }
-        this.act(row, this.adminService.rejectTeacherApplication(row.teacherId, reason), 'Başvuru reddedildi.');
+        this.act(row, this.adminService.rejectTeacherApplication(row.teacherId, reason), this.text('rejected'));
       });
   }
 
@@ -135,14 +162,16 @@ export class TeacherApprovalsComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (!res.success) {
-            this.snackBar.open(res.message || 'İşlem tamamlanamadı.', 'Kapat', { duration: 4000 });
+            this.snackBar.open(res.message || this.text('actionFailed'), this.text('close'), { duration: 4000 });
             return;
           }
           this.applications.update((list) => list.filter((a) => a.teacherId !== id));
-          this.snackBar.open(successMessage, 'Kapat', { duration: 3000 });
+          this.snackBar.open(successMessage, this.text('close'), { duration: 3000 });
         },
         error: (err: HttpErrorResponse) => {
-          this.snackBar.open(this.extractMessage(err, 'İşlem tamamlanamadı.'), 'Kapat', { duration: 5000 });
+          this.snackBar.open(this.extractMessage(err, this.text('actionFailed')), this.text('close'), {
+            duration: 5000,
+          });
           // 404 / 409: kayıt artık Pending değil; listeyi güncel tut.
           if (err.status === 404 || err.status === 409) {
             this.applications.update((list) => list.filter((a) => a.teacherId !== id));
@@ -160,8 +189,25 @@ export class TeacherApprovalsComponent implements OnInit {
     });
   }
 
+  /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${ADMIN_SCOPE}.approvals.${key}`, params) ?? '';
+  }
+
   private extractMessage(err: HttpErrorResponse, fallback: string): string {
     const body = err.error as Partial<TeacherApplicationActionResult> | null;
     return body?.message || fallback;
   }
+
+  /**
+   * Şablon dışı metinler (snackbar, dialog, hata mesajı) senkron `translate()` ile okunur;
+   * sözlük şablon render edilmeden de hazır olsun diye scope burada yüklenir.
+   */
+  private preloadScope(): void {
+    this.transloco
+      .load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
+
 }

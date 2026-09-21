@@ -1,0 +1,45 @@
+{
+  "notifications": {
+    "common": {
+      "defaultTeacher": "Öğretmeniniz",
+      "defaultStudent": "Bir öğrenci",
+      "defaultApplicant": "Bir öğretmen",
+      "defaultRequester": "Bir öğretmen",
+      "unnamedWorksheet": "bir sınav",
+      "worksheetFallback": "Sınavın",
+      "rejectionReasonSuffix": " Gerekçe: {0}"
+    },
+    "BookingRequestCreated": {
+      "title": "Yeni ders talebi",
+      "body": "{0}, {1} için ders talebinde bulundu."
+    },
+    "BookingApproved": {
+      "title": "Ders talebiniz onaylandı",
+      "body": "{0}, {1} için ders talebinizi onayladı."
+    },
+    "BookingRejected": {
+      "title": "Ders talebiniz reddedildi",
+      "body": "{0}, {1} için ders talebinizi reddetti.{2}"
+    },
+    "TeacherApplicationSubmitted": {
+      "title": "Yeni bağımsız öğretmen başvurusu",
+      "body": "{0}, bağımsız öğretmen olarak başvurdu ve onay bekliyor."
+    },
+    "WorksheetAccessRequested": {
+      "title": "Yeni atama izni talebi",
+      "body": "{0}, \"{1}\" sınavı için atama izni istiyor."
+    },
+    "WorksheetAccessApproved": {
+      "title": "Atama izniniz onaylandı",
+      "body": "\"{0}\" sınavı için atama izni talebiniz onaylandı."
+    },
+    "WorksheetAccessRejected": {
+      "title": "Atama izni talebiniz reddedildi",
+      "body": "\"{0}\" sınavı için atama izni talebiniz reddedildi."
+    },
+    "WorksheetReminderDue": {
+      "title": "Sınavın yaklaşıyor",
+      "body": "{0} {1} dakika sonra başlıyor."
+    }
+  }
+}

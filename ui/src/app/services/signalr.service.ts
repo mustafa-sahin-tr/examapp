@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AccessRequestUpdate } from '../models/worksheet-access-request.model';
 import { TeacherApplicationSubmittedPayload } from '../models/teacher-application.model';
+import { TranslocoService } from '@jsverse/transloco';
 import { AuthService } from './auth.service';
 
 export interface ReminderDuePayload {
@@ -22,6 +23,7 @@ export class SignalRService {
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly transloco = inject(TranslocoService);
 
   /** BadgeService `AccessRequestUpdate` event akışı (atama izni request/approve — issue #13). */
   private readonly accessRequestUpdatesSubject = new Subject<AccessRequestUpdate>();
@@ -49,7 +51,7 @@ export class SignalRService {
       .catch((err) => console.error('SignalR bağlantı hatası:', err));
 
     this.hubConnection.on('BadgeEarned', (data: any) => {
-      this.snackBar.open(`🎉 ${data.badgeName}: ${data.description}`, 'Kapat', {
+      this.snackBar.open(`🎉 ${data.badgeName}: ${data.description}`, this.t('common.close'), {
         duration: 4000,
       });
     });
@@ -57,12 +59,14 @@ export class SignalRService {
     this.hubConnection.on('AccessRequestUpdate', (data: AccessRequestUpdate) => {
       this.accessRequestUpdatesSubject.next(data);
       if (data.kind === 'approved' || data.kind === 'rejected') {
-        this.snackBar.open(data.title || data.body, 'Tamam', { duration: 6000 });
+        this.snackBar.open(data.title || data.body, this.t('common.ok'), { duration: 6000 });
       }
     });
 
     this.hubConnection.on('ReminderDue', (data: ReminderDuePayload) => {
-      const ref = this.snackBar.open(`⏰ ${data.title}`, 'Sınava Git', { duration: 8000 });
+      const ref = this.snackBar.open(`⏰ ${data.title}`, this.t('common.notifications.goToExam'), {
+        duration: 8000,
+      });
       ref.onAction().subscribe(() => {
         this.router.navigate(['/test', data.worksheetId]);
       });
@@ -75,13 +79,17 @@ export class SignalRService {
       }
       this.teacherApplicationSubmittedSubject.next(data);
       const ref = this.snackBar.open(
-        `Yeni bağımsız öğretmen başvurusu: ${data.applicantName}`,
-        'Başvurulara Git',
+        this.t('common.notifications.teacherApplication', { name: data.applicantName }),
+        this.t('common.notifications.goToApplications'),
         { duration: 8000 },
       );
       ref.onAction().subscribe(() => {
         this.router.navigate(['/admin/teacher-approvals']);
       });
     });
+  }
+
+  private t(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(key, params) ?? '';
   }
 }

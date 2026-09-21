@@ -1,0 +1,88 @@
+{
+  "worksheets": {
+    "session": {
+      "accessDenied": "Bu sınava erişim izniniz yok.",
+      "instanceQuestionNotFound": "Test sorusu bulunamadı.",
+      "questionDataNotFound": "Worksheet için soru verisi bulunamadı.",
+      "answerSaved": "Cevap başarıyla kaydedildi.",
+      "instanceNotFound": "Test oturumu bulunamadı.",
+      "ended": "Test başarıyla sonlandırıldı.",
+      "alreadyCompleted": "Bu test zaten tamamlanmış."
+    },
+
+    "accessRequest": {
+      "worksheetNotFound": "Worksheet bulunamadı.",
+      "ownWorksheet": "Kendi sınavınız için izin talebi oluşturamazsınız.",
+      "alreadyAssignable": "Bu sınavı zaten atayabilirsiniz.",
+      "sharingClosed": "Bu sınav paylaşıma kapalı.",
+      "pendingExists": "Bu sınav için zaten bekleyen bir talebiniz var.",
+      "notFound": "Talep bulunamadı.",
+      "alreadyAnswered": "Bu talep zaten yanıtlanmış.",
+      "grantNotFound": "Aktif bir atama izni bulunamadı.",
+      "created": "Atama izni talebiniz sahibine iletildi.",
+      "granted": "Atama izni verildi.",
+      "rejected": "Talep reddedildi.",
+      "grantRevoked": "Atama izni geri alındı."
+    },
+
+    "assignment": {
+      "targetRequired": "En az bir hedef (öğrenci veya sınıf) seçilmelidir.",
+      "studentAndGradeTogether": "Aynı atamada öğrenci ve sınıf birlikte seçilemez.",
+      "endBeforeStart": "Bitiş zamanı başlangıç zamanından sonra olmalıdır.",
+      "worksheetNotFound": "Worksheet bulunamadı.",
+      "grantRequired": "Bu testi atamak için sahibinden atama izni istemeniz gerekir.",
+      "assignForbidden": "Bu testi atama yetkiniz yok.",
+      "onlyOwnStudents": "Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz.",
+      "studentNotFound": "Öğrenci bulunamadı.",
+      "gradeNotFound": "Sınıf bulunamadı.",
+      "overlappingAssignment": "Seçilen aralıkta mevcut bir atama bulunuyor.",
+      "assigned": "Sınav başarıyla atandı.",
+      "studentWithNumber": "Öğrenci #{0}",
+      "studentWithId": "Öğrenci {0}",
+      "unnamedGrade": "Tanımlı Sınıf"
+    },
+
+    "authoring": {
+      "examInfoMissing": "Sınav bilgileri eksik!",
+      "bookNotSelected": "Kitap seçilmedi!",
+      "bookTestNotSelected": "Kipta Test seçilmedi!",
+      "bookNotFound": "Kitap bulunamadı!",
+      "testNotFound": "Test bulunamadı!",
+      "editForbidden": "Bu testi düzenleme yetkiniz yok.",
+      "updated": "Test başarıyla güncellendi!",
+      "created": "Test başarıyla kaydedildi!",
+      "worksheetNotFound": "Worksheet bulunamadı.",
+      "deleted": "Worksheet başarıyla silindi.",
+      "visibilityForbidden": "Bu worksheet'in görünürlüğünü değiştirme yetkiniz yok.",
+      "visibilityUpdated": "Worksheet görünürlüğü güncellendi.",
+      "deleteForbidden": "Bu worksheet'i silme yetkiniz yok.",
+      "bulkCompleted": "Toplu sınav oluşturma tamamlandı",
+      "copied": "Sınav kopyalandı.",
+
+      "background": {
+        "imageRequired": "Yüklemek için geçerli bir görsel seçin.",
+        "tooLarge": "Görsel boyutu en fazla 2 MB olabilir.",
+        "unsupportedType": "Sadece PNG, JPEG veya WEBP görselleri yüklenebilir.",
+        "worksheetNotFound": "Worksheet bulunamadı.",
+        "editForbidden": "Bu worksheet'i düzenleme yetkiniz yok.",
+        "invalidContent": "Dosya içeriği geçerli bir PNG, JPEG veya WEBP görseli değil.",
+        "updated": "Arka plan görseli güncellendi."
+      }
+    },
+
+    "detail": {
+      "unclassifiedTopic": "Sınıflandırılmamış",
+      "sessionNotYours": "Bu test oturumu size ait değil.",
+      "sessionNotCompleted": "Test tamamlanmamış.",
+      "noWrongQuestions": "Yanlış soru yok."
+    },
+
+    "reminder": {
+      "pastDate": "Geçmiş bir tarih seçilemez",
+      "invalidRemindBefore": "Hatırlatma süresi 0 ile {0} dakika arasında olmalıdır",
+      "saveFailed": "Hatırlatma kaydedilemedi, lütfen tekrar deneyin",
+      "worksheetNotFound": "Worksheet bulunamadı",
+      "notAssigned": "Bu worksheet size atanmamış"
+    }
+  }
+}

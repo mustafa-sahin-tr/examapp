@@ -12,10 +12,11 @@ import {
 } from '@angular/core';
 import { AnswerChoice, QuestionRegion } from '../../../models/draws';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslocoDirective } from '@jsverse/transloco';
 
 @Component({
   selector: 'app-question-canvas-view',
-  imports: [MatIconModule],
+  imports: [MatIconModule, TranslocoDirective],
   templateUrl: './question-canvas-view.component.html',
   styleUrl: './question-canvas-view.component.scss',
 })

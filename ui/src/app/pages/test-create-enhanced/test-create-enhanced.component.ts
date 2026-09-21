@@ -34,6 +34,13 @@ import {
   VisibilityChange,
   VisibilitySectionComponent,
 } from '../../shared/components/visibility-section/visibility-section.component';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
+/**
+ * Test oluşturma/düzenleme akışının çevirileri tek scope'ta toplanır (issue #183):
+ * `public/i18n/test-create/<lang>.json`. `app-test-form` alt komponenti bunu devralır.
+ */
+const TEST_CREATE_SCOPE = 'test-create';
 
 @Component({
   selector: 'app-test-create-enhanced',
@@ -49,9 +56,33 @@ import {
     MatSnackBarModule,
     TestFormComponent,
     VisibilitySectionComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(TEST_CREATE_SCOPE)],
 })
 export class TestCreateEnhancedComponent implements OnInit {
+  private readonly transloco = inject(TranslocoService);
+
+  constructor() {
+    this.warmTranslationScope();
+  }
+
+  /**
+   * Şablon dışından (snackbar, dialog, hesaplanan etiket) çağrılan senkron `translate()`
+   * çağrılarının çalışabilmesi için scope sözlüğünü render'dan bağımsız yükler.
+   */
+  private warmTranslationScope(): void {
+    this.transloco
+      .selectTranslate('snackbar.close', {}, TEST_CREATE_SCOPE)
+      .pipe(takeUntilDestroyed())
+      .subscribe();
+  }
+
+  /** Scope'lu anahtarı tam adıyla senkron çevirir; şablon yardımcıları `*transloco` bloğu içinde çalışır. */
+  private tr(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${TEST_CREATE_SCOPE}.${key}`, params) ?? '';
+  }
+
   @Input() mode: string = 'default'; // 'default' | 'miniform'
   /** miniform modunda "Oluştur ve devam et" sonrası tetiklenir (examId). */
   @Output() createdAndContinue = new EventEmitter<number>();
@@ -73,7 +104,7 @@ export class TestCreateEnhancedComponent implements OnInit {
       .subscribe({
         next: (res) => {
           this.creatingInline = false;
-          this.snackBar.open('Test oluşturuldu.', 'Kapat', { duration: 2000 });
+          this.snackBar.open(this.tr('snackbar.testCreated'), this.tr('snackbar.close'), { duration: 2000 });
           // NOT: reloadComponent çağırma — parent (onQuickCreated) form senkronunu yönetir,
           // aksi halde testForm FormGroup yeniden kurulup parent'ın patch'lediği referans uçar.
           this.createdAndContinue.emit(res.examId);
@@ -81,7 +112,7 @@ export class TestCreateEnhancedComponent implements OnInit {
         error: (err) => {
           this.creatingInline = false;
           console.error('createAndContinue failed:', err);
-          this.snackBar.open(this.toUserErrorMessage(err), 'Kapat', { duration: 3000 });
+          this.snackBar.open(this.toUserErrorMessage(err), this.tr('snackbar.close'), { duration: 3000 });
         },
       });
   }
@@ -89,12 +120,12 @@ export class TestCreateEnhancedComponent implements OnInit {
   /** Ham backend hata gövdesini kullanıcıya basmadan okunur mesaja çevirir. */
   private toUserErrorMessage(err: any): string {
     if (err?.status >= 500) {
-      return 'Bir hata oluştu, tekrar deneyin.';
+      return this.tr('snackbar.genericError');
     }
     if (typeof err?.error === 'string') {
       return err.error;
     }
-    return err?.error?.message || err?.message || 'Test oluşturulamadı.';
+    return err?.error?.message || err?.message || this.tr('snackbar.createFailed');
   }
 
   id!: number | null;
@@ -338,12 +369,12 @@ export class TestCreateEnhancedComponent implements OnInit {
       return;
     }
     if (!file.type.startsWith('image/')) {
-      this.snackBar.open('Lütfen bir görsel dosyası seçin.', 'Kapat', { duration: 3000 });
+      this.snackBar.open(this.tr('snackbar.pickImage'), this.tr('snackbar.close'), { duration: 3000 });
       input.value = '';
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      this.snackBar.open('Görsel en fazla 2 MB olabilir.', 'Kapat', { duration: 3000 });
+      this.snackBar.open(this.tr('snackbar.imageTooLarge'), this.tr('snackbar.close'), { duration: 3000 });
       input.value = '';
       return;
     }
@@ -367,12 +398,12 @@ export class TestCreateEnhancedComponent implements OnInit {
               this.testForm.patchValue({ imageUrl: res.imageUrl });
               this.imagePreviewUrl = res.imageUrl;
             }
-            this.snackBar.open('Kapak görseli güncellendi.', 'Kapat', { duration: 2500 });
+            this.snackBar.open(this.tr('snackbar.coverUpdated'), this.tr('snackbar.close'), { duration: 2500 });
           },
           error: () => {
             this.isImageUploading = false;
             this.imagePreviewUrl = previousImageUrl;
-            this.snackBar.open('Kapak görseli yüklenemedi.', 'Kapat', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.coverFailed'), this.tr('snackbar.close'), { duration: 3000 });
           },
         });
     }
@@ -395,18 +426,20 @@ export class TestCreateEnhancedComponent implements OnInit {
           this.isSavingVisibility.set(false);
           this.teacherSharing.set(updated.teacherSharing ?? change.teacherSharing);
           this.studentVisibility.set(updated.studentVisibility ?? change.studentVisibility);
-          this.snackBar.open('Görünürlük ayarları güncellendi.', 'Kapat', { duration: 2000 });
+          this.snackBar.open(this.tr('snackbar.visibilityUpdated'), this.tr('snackbar.close'), { duration: 2000 });
         },
         error: (err: HttpErrorResponse) => {
           this.isSavingVisibility.set(false);
           this.teacherSharing.set(previousTeacherSharing);
           this.studentVisibility.set(previousStudentVisibility);
           if (err?.status === 403) {
-            this.snackBar.open('Bu sınavın görünürlüğünü değiştirme yetkiniz yok.', 'Kapat', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.visibilityForbidden'), this.tr('snackbar.close'), {
+              duration: 3000,
+            });
           } else if (err?.status === 404) {
-            this.snackBar.open('Test bulunamadı.', 'Kapat', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.testNotFound'), this.tr('snackbar.close'), { duration: 3000 });
           } else {
-            this.snackBar.open('Görünürlük ayarları güncellenemedi.', 'Kapat', { duration: 3000 });
+            this.snackBar.open(this.tr('snackbar.visibilityFailed'), this.tr('snackbar.close'), { duration: 3000 });
           }
         },
       });
@@ -496,12 +529,12 @@ export class TestCreateEnhancedComponent implements OnInit {
         },
         error: (err) => {
           if (err?.status === 404) {
-            this.snackBar.open('Bu teste erişiminiz yok veya test bulunamadı.', 'Kapat', { duration: 4000 });
+            this.snackBar.open(this.tr('snackbar.noAccess'), this.tr('snackbar.close'), { duration: 4000 });
             this.router.navigate(['/tests']);
             return;
           }
-          this.loadError.set('Test bilgileri yüklenemedi.');
-          this.snackBar.open('Test bilgileri yüklenemedi.', 'Kapat', { duration: 3000 });
+          this.loadError.set(this.tr('snackbar.loadFailed'));
+          this.snackBar.open(this.tr('snackbar.loadFailed'), this.tr('snackbar.close'), { duration: 3000 });
         },
       });
   }
@@ -604,7 +637,7 @@ export class TestCreateEnhancedComponent implements OnInit {
 
   onSubmit() {
     if (!this.testForm.valid) {
-      this.snackBar.open('Form eksik veya hatalı!', 'Kapat', { duration: 2000 });
+      this.snackBar.open(this.tr('snackbar.formInvalid'), this.tr('snackbar.close'), { duration: 2000 });
       return;
     }
 
@@ -612,9 +645,11 @@ export class TestCreateEnhancedComponent implements OnInit {
       .create(this.createTestPayload())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((response) => {
-        this.snackBar.open(this.isEditMode ? 'Değişiklikler kaydedildi.' : 'Test oluşturuldu.', 'Kapat', {
-          duration: 2000,
-        });
+        this.snackBar.open(
+          this.tr(this.isEditMode ? 'snackbar.changesSaved' : 'snackbar.testCreated'),
+          this.tr('snackbar.close'),
+          { duration: 2000 }
+        );
         if (this.isEditMode) {
           this.reloadComponent(response.examId);
         } else {
@@ -628,7 +663,12 @@ export class TestCreateEnhancedComponent implements OnInit {
     if (requireSubtopic && !payload.subTopicId) {
       // Observable error olarak dönmek için throwError kullanılır
       return throwError(
-        () => new HttpErrorResponse({ status: 400, statusText: 'Alt konu seçilmedi', error: 'Alt konu seçilmedi' })
+        () =>
+          new HttpErrorResponse({
+            status: 400,
+            statusText: this.tr('snackbar.subtopicRequired'),
+            error: this.tr('snackbar.subtopicRequired'),
+          })
       );
     }
     payload = { ...payload, id: null }; // id'yi null yaparak yeni bir test oluşturulacağını belirt
@@ -638,7 +678,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   navigateToTestList() {
     // Örneğin bir router ile test listesine yönlendirme yapılabilir
     // this.router.navigate(['/test-list']);
-    this.snackBar.open('Test listesine yönlendiriliyorsunuz...', 'Kapat', { duration: 2000 });
+    this.snackBar.open(this.tr('snackbar.navigatingToList'), this.tr('snackbar.close'), { duration: 2000 });
   }
   onBulkFileSelected(event: any) {
     const file = event.target.files[0];
@@ -679,7 +719,7 @@ export class TestCreateEnhancedComponent implements OnInit {
       this.ensureBulkImportNames(); // Gerekirse ekle
       this.isUploading = false;
     } catch (e) {
-      this.bulkImportResults = { success: false, message: 'Excel dosyası okunamadı.' };
+      this.bulkImportResults = { success: false, message: this.tr('snackbar.excelReadFailed') };
       this.isUploading = false;
     }
   }
@@ -808,7 +848,10 @@ export class TestCreateEnhancedComponent implements OnInit {
           if (failureCount > 0 || failedExams.length > 0) {
             this.bulkImportResults = {
               success: false,
-              message: `Bazı testler oluşturulamadı. Başarılı: ${successCount}, Hatalı: ${failureCount || failedExams.length}`,
+              message: this.tr('snackbar.bulkPartial', {
+                success: successCount,
+                failed: failureCount || failedExams.length,
+              }),
               successCount,
               failureCount: failureCount || failedExams.length,
               failedExams,
@@ -817,13 +860,13 @@ export class TestCreateEnhancedComponent implements OnInit {
             return;
           }
 
-          this.bulkImportResults = { success: true, message: 'Tüm testler oluşturuldu.', successCount };
+          this.bulkImportResults = { success: true, message: this.tr('snackbar.bulkAllCreated'), successCount };
           this.snackBar.open(this.bulkImportResults.message, 'Kapat', { duration: 3000 });
           this.clearBulkImport();
         },
         error: () => {
           this.isUploading = false;
-          this.bulkImportResults = { success: false, message: 'Toplu yükleme sırasında bir hata oluştu.' };
+          this.bulkImportResults = { success: false, message: this.tr('snackbar.bulkError') };
           this.snackBar.open(this.bulkImportResults.message, 'Kapat', { duration: 4000 });
         },
       });
@@ -1045,7 +1088,7 @@ export class TestCreateEnhancedComponent implements OnInit {
 
   get getSelectedGradeName(): string {
     const selectedGrade = this.grades.find((grade) => grade.id === this.testForm.value.gradeId);
-    return selectedGrade ? selectedGrade.name : 'Sınıf Seçin';
+    return selectedGrade ? selectedGrade.name : this.tr('preview.gradePlaceholder');
   }
 
   private lookupName(list: any[], id: any): string {
@@ -1054,7 +1097,7 @@ export class TestCreateEnhancedComponent implements OnInit {
   }
 
   get previewName(): string {
-    return this.testForm?.value.name || 'Test Adı';
+    return this.testForm?.value.name || this.tr('preview.defaultName');
   }
 
   get previewSubtitle(): string {
@@ -1094,7 +1137,7 @@ export class TestCreateEnhancedComponent implements OnInit {
       //   const navigationExtras = { ... };
       //   this.router.navigate(['/questioncanvas'], navigationExtras);
       // });
-      this.snackBar.open('Soru ekleme adımına geçiliyor...', 'Kapat', { duration: 1000 });
+      this.snackBar.open(this.tr('snackbar.navigatingToQuestions'), this.tr('snackbar.close'), { duration: 1000 });
       const navigationExtras: NavigationExtras = {
         state: {
           subjectId: null,
@@ -1110,7 +1153,7 @@ export class TestCreateEnhancedComponent implements OnInit {
         this.router.navigate(['/questioncanvas'], navigationExtras);
       }, 1000);
     } else {
-      this.snackBar.open('Form eksik veya hatalı!', 'Kapat', { duration: 2000 });
+      this.snackBar.open(this.tr('snackbar.formInvalid'), this.tr('snackbar.close'), { duration: 2000 });
     }
   }
 

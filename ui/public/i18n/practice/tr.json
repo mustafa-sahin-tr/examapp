@@ -1,0 +1,107 @@
+{
+  "title": "Soru Çöz",
+  "subtitle": "Kapsamını seç, rastgele sorularla pratik yap; her cevaptan sonra sonucu anında gör.",
+  "common": {
+    "close": "Kapat",
+    "retry": "Tekrar dene",
+    "start": "Başla",
+    "finish": "Bitir"
+  },
+  "setup": {
+    "loading": "Dersler hazırlanıyor…",
+    "loadError": "Dersler yüklenemedi.",
+    "profileError": "Profil bilgisi yüklenemedi.",
+    "noGrade": "Pratik yapabilmek için sınıf bilginin tanımlı olması gerekir.",
+    "goToProfile": "Profilime git",
+    "scopeTitle": "Kapsam",
+    "scopeHint": "İstersen ders ve konu seç; hiçbir şey seçmezsen sınıfındaki tüm derslerden soru gelir.",
+    "subjects": "Dersler",
+    "selectedSubjects": "Seçili dersler",
+    "removeSubject": "{{name}} dersini kaldır",
+    "topics": "Konular (isteğe bağlı)",
+    "topicsLoading": "Konular yükleniyor…",
+    "noTopics": "Seçili dersler için tanımlı konu yok.",
+    "selectedTopics": "Seçili konular",
+    "removeTopic": "{{name}} konusunu kaldır",
+    "defaultScopeLead": "Varsayılan kapsam:",
+    "defaultScopeValue": "kendi sınıfın + tüm dersler",
+    "defaultScopeTail": ". Daraltmak için yukarıdan ders ve konu seç.",
+    "noSubjects": "Sınıfın için tanımlı ders bulunamadı."
+  },
+  "history": {
+    "title": "Geçmiş Oturumlar",
+    "count": "{{count}} oturum",
+    "loading": "Geçmiş oturumlar yükleniyor…",
+    "loadError": "Geçmiş oturumlar yüklenemedi.",
+    "empty": "Henüz pratik oturumun yok. Yukarıdan kapsamını seç ve ilk sorunu çözmeye başla.",
+    "resumeAria": "Devam eden oturuma dön: {{date}}, {{scope}}",
+    "reviewAria": "Oturumu incele: {{date}}, {{scope}}",
+    "active": "Devam ediyor",
+    "completed": "Tamamlandı"
+  },
+  "scope": {
+    "allSubjects": "Tüm dersler",
+    "subjectFallback": "Ders #{{id}}",
+    "topicCount": "{{count}} konu"
+  },
+  "duration": {
+    "seconds": "{{count}} sn",
+    "minutes": "{{count}} dk"
+  },
+  "stats": {
+    "questions": "Soru",
+    "correct": "Doğru",
+    "wrong": "Yanlış",
+    "skipped": "Pas",
+    "answered": "Cevaplanan",
+    "accuracy": "Başarı",
+    "duration": "Süre",
+    "progressAria": "Oturum ilerlemesi",
+    "finishAria": "Oturumu bitir"
+  },
+  "review": {
+    "back": "Geçmiş Oturumlar",
+    "loading": "Oturum detayı yükleniyor…",
+    "loadError": "Oturum detayı yüklenemedi.",
+    "noQuestions": "Bu oturumda henüz soru gösterilmemiş.",
+    "navAria": "Oturumdaki sorular",
+    "questionAria": "Soru {{number}}: {{status}}",
+    "banner": "Soru {{current}} / {{total}} · {{status}}",
+    "timeTaken": "{{count}} sn",
+    "prev": "Önceki",
+    "next": "Sonraki",
+    "status": {
+      "correct": "Doğru",
+      "wrong": "Yanlış",
+      "skipped": "Pas",
+      "pending": "Cevaplanmadı"
+    }
+  },
+  "empty": {
+    "allSolvedTitle": "Bu kapsamdaki soruların hepsini çözdün",
+    "allSolvedText": "Kapsamı genişleterek devam edebilir ya da oturumu bitirip özetini görebilirsin.",
+    "noQuestionsTitle": "Seçtiğin kapsamda soru bulunamadı",
+    "noQuestionsText": "Başka bir ders ya da konu seçerek tekrar dene.",
+    "changeScope": "Kapsamı Değiştir"
+  },
+  "ended": {
+    "title": "Oturum tamamlandı",
+    "newSession": "Yeni Oturum",
+    "reviewSession": "Oturumu İncele",
+    "backToDashboard": "Panele dön"
+  },
+  "stage": {
+    "showQuestion": "Soruyu Göster",
+    "backToPassage": "Pasaja Dön",
+    "passageAlt": "Pasaj görseli",
+    "correct": "Doğru cevap! Harika gidiyorsun.",
+    "wrong": "Yanlış cevap. Doğru şık aşağıda gösteriliyor.",
+    "skipped": "Soru pas geçildi. Doğru şık aşağıda gösteriliyor.",
+    "nextQuestion": "Sonraki Soru",
+    "skip": "Pas Geç",
+    "submit": "Cevabı Gönder"
+  },
+  "error": {
+    "generic": "İşlem tamamlanamadı. Lütfen tekrar deneyin."
+  }
+}

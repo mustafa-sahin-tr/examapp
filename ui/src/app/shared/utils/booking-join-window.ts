@@ -25,33 +25,46 @@ export type JoinWindowState = 'tooEarly' | 'open' | 'closed' | 'unknown';
 export interface JoinWindowInfo {
   state: JoinWindowState;
   canJoin: boolean;
-  /** Buton pasifken gösterilecek açıklama; katılıma açıkken null. */
+  /**
+   * Buton pasifken gösterilecek açıklama; katılıma açıkken null.
+   * Çağıran `translate` vermezse de null olur (bkz. {@link getJoinWindow}).
+   */
   hint: string | null;
 }
+
+/**
+ * Çağıranın verdiği çevirmen (genelde `TranslocoService.translate`). Util saf kalsın diye
+ * metin buradan gelir; verilmezse `hint` null döner ve tooltip gösterilmez (issue #183).
+ * Anahtarlar kök sözlükte `shared.joinWindow.*` altındadır.
+ */
+export type JoinWindowTranslate = (key: string, params?: Record<string, unknown>) => string;
 
 /** Randevunun `startUtc`/`endUtc` değerlerine göre katılım penceresi durumu. */
 export function getJoinWindow(
   startUtcIso: string,
   endUtcIso: string,
-  now: number = Date.now()
+  now: number = Date.now(),
+  translate?: JoinWindowTranslate
 ): JoinWindowInfo {
+  const hint = (key: string, params?: Record<string, unknown>): string | null =>
+    translate ? translate(`shared.joinWindow.${key}`, params) : null;
   const start = new Date(startUtcIso).getTime();
   const end = new Date(endUtcIso).getTime();
 
   if (Number.isNaN(start) || Number.isNaN(end)) {
-    return { state: 'unknown', canJoin: false, hint: 'Ders saati okunamadı.' };
+    return { state: 'unknown', canJoin: false, hint: hint('unknown') };
   }
 
   if (now < start - JOIN_WINDOW_BEFORE_MINUTES * MINUTE_MS) {
     return {
       state: 'tooEarly',
       canJoin: false,
-      hint: `Ders başlamadan ${JOIN_WINDOW_BEFORE_MINUTES} dk önce aktif olur`,
+      hint: hint('tooEarly', { minutes: JOIN_WINDOW_BEFORE_MINUTES }),
     };
   }
 
   if (now > end + JOIN_WINDOW_AFTER_MINUTES * MINUTE_MS) {
-    return { state: 'closed', canJoin: false, hint: 'Ders süresi doldu' };
+    return { state: 'closed', canJoin: false, hint: hint('closed') };
   }
 
   return { state: 'open', canJoin: true, hint: null };

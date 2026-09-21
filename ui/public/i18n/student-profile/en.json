@@ -1,0 +1,93 @@
+{
+  "actions": {
+    "ok": "OK"
+  },
+  "tabs": {
+    "what": "What",
+    "info": "Info",
+    "badges": "Badges",
+    "assignments": "Assignments and Exams",
+    "weeklyCalendar": "Weekly Calendar",
+    "theme": "Theme Settings"
+  },
+  "learning": {
+    "eyebrow": "Your premier learning partner",
+    "title": "High-caliber content from industry experts",
+    "description": "Our experts know their topics. The proof? We carefully select them at about a 6% acceptance rate. And we are constantly peer reviewing our content for the freshest, most reliable courses across tech.",
+    "expertsAlt": "Experts",
+    "certification": {
+      "title": "Top-tier certification exam prep",
+      "description": "Prepare for in-demand certs with unlimited practice exams and labs that validate your learning. Get in-moment feedback to maximize your experience and minimize exam-day nerves.",
+      "cta": "Learn more",
+      "imageAlt": "Certification"
+    },
+    "path": {
+      "title": "Curated learning as unique as you",
+      "description": "Take a skill or role assessment to track exactly what you know. With content recommendations and tailor-made learning paths, you can close identified gaps.",
+      "cta": "Take an assessment",
+      "imageAlt": "Learning path"
+    },
+    "handsOn": {
+      "title": "Hands-on experiences",
+      "description": "Dive into our interactive courses, projects, and labs to learn by doing. Then, practice in live sandbox environments and turn your new knowledge into solid skills that stick.",
+      "cta": "See our labs",
+      "imageAlt": "Hands-on"
+    }
+  },
+  "profile": {
+    "changeAvatar": "Change",
+    "avatarAlt": "Profile photo",
+    "level": "Level: {{level}} ({{xp}} XP)",
+    "questionsSolved": "{{count}} Questions Solved",
+    "correctAnswers": "{{count}} Correct Answers",
+    "wrongAnswers": "{{count}} Wrong Answers",
+    "testsCompleted": "{{count}} Tests Completed",
+    "rewards": "{{count}} Rewards Earned",
+    "leaderboardRank": "Leaderboard Rank: {{rank}}",
+    "badgesTitle": "🎖 Badges Earned",
+    "gradeUpdated": "Grade updated!",
+    "avatarUpdated": "Avatar updated!"
+  },
+  "points": {
+    "myPoints": "My Points",
+    "classRank": "Class Rank",
+    "yearRank": "Year Rank",
+    "myBadges": "My Badges",
+    "leaderboards": "Leaderboards",
+    "classLeaderboard": "Class Leaderboard",
+    "groupLeaderboard": "Group Level Leaderboard"
+  },
+  "goal": {
+    "title": "Weekly Goal",
+    "monthly": "Monthly",
+    "current": "Current",
+    "streak": "{{count}} weeks",
+    "streakLabel": "Longest weekly goal streak",
+    "noActivity": "No activity"
+  },
+  "heatmap": {
+    "title": "Activity Heatmap",
+    "titleSecondary": "Activity Heatmap 2",
+    "titleApi": "Activity Heatmap (API)",
+    "loading": "Loading activity data...",
+    "error": "Something went wrong while fetching activity data.",
+    "empty": "No activity data found for the last year.",
+    "tooltip": {
+      "questions": "Questions",
+      "correct": "Correct",
+      "duration": "Duration",
+      "activityScore": "Activity Score"
+    }
+  },
+  "duration": {
+    "minutesAndSeconds": "{{minutes}} min {{seconds}} s",
+    "minutes": "{{minutes}} min",
+    "seconds": "{{seconds}} s"
+  },
+  "stats": {
+    "completedTests": "Tests Completed",
+    "studyMinutes": "Study Time (min)",
+    "solvedQuestions": "Questions Solved",
+    "correctAnswers": "Correct Answers"
+  }
+}

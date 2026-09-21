@@ -4,7 +4,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { firstValueFrom } from 'rxjs';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+import { firstValueFrom, take } from 'rxjs';
 import { AdminService } from '../../../../services/admin.service';
 import { TaxonomyGrade } from '../../../../models/taxonomy';
 
@@ -19,16 +20,29 @@ export interface ManageSubjectGradesDialogData {
 /**
  * Ders ↔ Sınıf (GradeSubject) bağlantılarını yöneten dialog.
  * Kapanış değeri: `true` → en az bir bağlantı değişti, ana ekran yeniden yüklemeli.
+ *
+ * Dialog komponentleri element injector'dan scope devralmadığı için admin scope'u burada da verilir.
  */
+const ADMIN_SCOPE = 'admin';
+
 @Component({
   selector: 'app-manage-subject-grades-dialog',
   standalone: true,
   templateUrl: './manage-subject-grades-dialog.component.html',
   styleUrls: ['./manage-subject-grades-dialog.component.scss'],
-  imports: [MatDialogModule, MatButtonModule, MatCheckboxModule, MatIconModule, MatProgressBarModule],
+  imports: [
+    MatDialogModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatIconModule,
+    MatProgressBarModule,
+    TranslocoDirective,
+  ],
+  providers: [provideTranslocoScope(ADMIN_SCOPE)],
 })
 export class ManageSubjectGradesDialogComponent {
   private readonly admin = inject(AdminService);
+  private readonly transloco = inject(TranslocoService);
   private readonly dialogRef = inject<MatDialogRef<ManageSubjectGradesDialogComponent, boolean>>(MatDialogRef);
   readonly data = inject<ManageSubjectGradesDialogData>(MAT_DIALOG_DATA);
 
@@ -43,6 +57,14 @@ export class ManageSubjectGradesDialogComponent {
   readonly toAdd = computed(() => [...this.checked()].filter((id) => !this.initial.has(id)));
   readonly toRemove = computed(() => [...this.initial].filter((id) => !this.checked().has(id)));
   readonly hasChanges = computed(() => this.toAdd().length > 0 || this.toRemove().length > 0);
+
+  constructor() {
+    // Hata mesajı senkron `translate()` ile okunur; sözlük hazır olsun diye scope burada yüklenir.
+    this.transloco
+      .load(`${ADMIN_SCOPE}/${this.transloco.getActiveLang()}`)
+      .pipe(take(1))
+      .subscribe();
+  }
 
   isChecked(gradeId: number): boolean {
     return this.checked().has(gradeId);
@@ -109,6 +131,10 @@ export class ManageSubjectGradesDialogComponent {
 
   private extractMessage(err: unknown): string {
     const e = err as { error?: { message?: string } } | null;
-    return e?.error?.message ?? 'İşlem başarısız';
+    return (
+      e?.error?.message ??
+      this.transloco.translate<string>(`${ADMIN_SCOPE}.subjectGrades.actionFailed`) ??
+      ''
+    );
   }
 }

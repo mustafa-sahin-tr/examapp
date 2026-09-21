@@ -1,12 +1,14 @@
 <!-- Program Step Selection -->
 @if (!isCreatingProgram()) {
-<div class="ms-wizard-container">
+<div class="ms-wizard-container" *transloco="let t; prefix: 'program-create'">
   <div class="ms-wizard-header">
     <div class="ms-wizard-title">
-      <b>Soru {{ stepIndex() + 1 }}</b>
+      <b>{{ t('wizard.questionNumber', { number: stepIndex() + 1 }) }}</b>
     </div>
     <div class="ms-wizard-progress">
-      <div class="ms-progress-text">{{ stepIndex() + 1 }} / {{ getStepIndicators().length }}</div>
+      <div class="ms-progress-text">
+        {{ t('wizard.stepCounter', { current: stepIndex() + 1, total: getStepIndicators().length }) }}
+      </div>
       <div
         class="ms-progress-bar-bg"
         role="progressbar"
@@ -25,7 +27,7 @@
   @if (stepsLoading()) {
   <div class="ms-wizard-state" role="status" aria-live="polite">
     <mat-spinner diameter="40"></mat-spinner>
-    <p>Sorular yükleniyor...</p>
+    <p>{{ t('wizard.loading') }}</p>
   </div>
   } @else {
   <!-- Hata durumunda programSteps boşaltılır; currentStep undefined olur ve hata bloğu görünür. -->
@@ -39,7 +41,7 @@
       mat-icon-button
       type="button"
       class="ms-wizard-nav ms-wizard-nav-prev"
-      aria-label="Önceki soru"
+      [attr.aria-label]="t('wizard.prevQuestion')"
       (click)="previous()"
       [disabled]="stepIndex() === 0"
     >
@@ -76,7 +78,7 @@
       mat-icon-button
       type="button"
       class="ms-wizard-nav ms-wizard-nav-next"
-      aria-label="Sonraki soru"
+      [attr.aria-label]="t('wizard.nextQuestion')"
       (click)="next()"
     >
       <mat-icon>chevron_right</mat-icon>
@@ -85,10 +87,10 @@
   } @else {
   <div class="ms-wizard-state ms-wizard-state-error" role="alert">
     <mat-icon>error_outline</mat-icon>
-    <p>{{ stepsError() ?? 'Sorular yüklenemedi, lütfen tekrar deneyin.' }}</p>
+    <p>{{ stepsError() ?? t('wizard.loadError') }}</p>
     <button mat-raised-button color="primary" type="button" (click)="loadProgramSteps()">
       <mat-icon>refresh</mat-icon>
-      Tekrar Dene
+      {{ t('wizard.retry') }}
     </button>
   </div>
   }
@@ -109,7 +111,7 @@
   <!-- Selection Summary -->
   @if (userSelections.length > 0) {
   <div class="ms-selection-summary">
-    <h3>Seçimleriniz:</h3>
+    <h3>{{ t('wizard.summaryTitle') }}</h3>
     @for (selection of userSelections; track selection.stepId) {
     <div class="ms-summary-item">
       <strong>{{ selection.stepTitle }}:</strong>
@@ -123,38 +125,38 @@
 
 <!-- Program Creation Form -->
 @if (isCreatingProgram()) {
-<div class="ms-program-creation-container">
+<div class="ms-program-creation-container" *transloco="let t; prefix: 'program-create'">
   <div class="ms-program-creation-header">
-    <h2>Programınızı Oluşturun</h2>
-    <p>Son bir adım! Programınıza bir isim verin ve açıklama ekleyin.</p>
+    <h2>{{ t('form.title') }}</h2>
+    <p>{{ t('form.subtitle') }}</p>
   </div>
 
   <div class="ms-program-creation-form">
     <mat-form-field appearance="outline" class="ms-full-width">
-      <mat-label>Program Adı</mat-label>
-      <input matInput [(ngModel)]="programName" placeholder="Örn: Matematik Çalışma Programım" required />
+      <mat-label>{{ t('form.name') }}</mat-label>
+      <input matInput [(ngModel)]="programName" [placeholder]="t('form.namePlaceholder')" required />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="ms-full-width">
-      <mat-label>Açıklama (İsteğe bağlı)</mat-label>
+      <mat-label>{{ t('form.description') }}</mat-label>
       <textarea
         matInput
         [(ngModel)]="programDescription"
         rows="3"
-        placeholder="Programınız hakkında kısa bir açıklama yazabilirsiniz..."
+        [placeholder]="t('form.descriptionPlaceholder')"
       ></textarea>
     </mat-form-field>
 
     <div class="date-fields-row">
       <mat-form-field appearance="outline" class="date-field">
-        <mat-label>Başlangıç Tarihi</mat-label>
+        <mat-label>{{ t('form.startDate') }}</mat-label>
         <input matInput [matDatepicker]="startPicker" [(ngModel)]="programStartDate" required />
         <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
         <mat-datepicker #startPicker></mat-datepicker>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="date-field">
-        <mat-label>Bitiş Tarihi</mat-label>
+        <mat-label>{{ t('form.endDate') }}</mat-label>
         <input matInput [matDatepicker]="endPicker" [(ngModel)]="programEndDate" required />
         <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
         <mat-datepicker #endPicker></mat-datepicker>
@@ -169,18 +171,18 @@
         [disabled]="!programName.trim() || !programStartDate || !programEndDate"
       >
         <mat-icon>add</mat-icon>
-        Programı Oluştur
+        {{ t('form.submit') }}
       </button>
       <button mat-button (click)="cancelProgramCreation()">
         <mat-icon>arrow_back</mat-icon>
-        Geri Dön
+        {{ t('form.back') }}
       </button>
     </div>
   </div>
 
   <!-- Final Selection Summary -->
   <div class="ms-selection-summary">
-    <h3>Seçimleriniz:</h3>
+    <h3>{{ t('wizard.summaryTitle') }}</h3>
     @for (selection of userSelections; track selection.stepId) {
     <div class="ms-summary-item">
       <strong>{{ selection.stepTitle }}:</strong>

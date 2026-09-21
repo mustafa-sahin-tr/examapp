@@ -1,14 +1,14 @@
-<section class="wd-wrap">
+<section class="wd-wrap" *transloco="let t; prefix: 'worksheet-detail'">
   @if (detailLoading() && !detail()) {
     <div class="wd-state">
       <mat-spinner diameter="40"></mat-spinner>
-      <span>Sınav yükleniyor...</span>
+      <span>{{ t('state.loading') }}</span>
     </div>
   } @else if (detailError() && !detail()) {
     <div class="wd-state error">
       <mat-icon>error_outline</mat-icon>
       <span>{{ detailError() }}</span>
-      <button mat-stroked-button (click)="reloadDetail()">Tekrar Dene</button>
+      <button mat-stroked-button (click)="reloadDetail()">{{ t('state.retry') }}</button>
     </div>
   } @else if (detail()) {
    @if (detail(); as d) {
@@ -33,7 +33,7 @@
             }
             <div class="chips">
               @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
-              <span class="chip">{{ d.worksheet.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</span>
+              <span class="chip">{{ t(d.worksheet.isPracticeTest ? 'hero.practice' : 'hero.assessment') }}</span>
               @if (d.rewardBadgeText) {
                 <span class="chip badge"><mat-icon>military_tech</mat-icon>{{ d.rewardBadgeText }}</span>
               }
@@ -43,33 +43,33 @@
               <div class="stat">
                 <mat-icon>menu_book</mat-icon>
                 <span class="st-val">{{ d.worksheet.questionCount ?? 0 }}</span>
-                <span class="st-lbl">Soru</span>
+                <span class="st-lbl">{{ t('stats.questions') }}</span>
               </div>
               <div class="stat">
                 <mat-icon>timer</mat-icon>
                 <span class="st-val">{{ formatDuration(d.worksheet.maxDurationSeconds) }}</span>
-                <span class="st-lbl">Süre</span>
+                <span class="st-lbl">{{ t('stats.duration') }}</span>
               </div>
               <div class="stat">
                 <mat-icon>groups</mat-icon>
                 <span class="st-val">{{ d.stats.solverCount }}</span>
-                <span class="st-lbl">Çözen öğrenci</span>
+                <span class="st-lbl">{{ t('stats.solvers') }}</span>
               </div>
               <div class="stat">
                 <mat-icon>trending_up</mat-icon>
                 <span class="st-val">{{ percentLabel(d.stats.averageScorePercent) }}</span>
-                <span class="st-lbl">Ort. başarı</span>
+                <span class="st-lbl">{{ t('stats.averageScore') }}</span>
               </div>
             </div>
 
             <div class="cta-row" *appIsStudent>
               @if (!exam.instance) {
                 <button class="btn btn-primary" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>Sınava Başla
+                  <mat-icon>play_arrow</mat-icon>{{ t('cta.start') }}
                 </button>
               } @else if (instanceStarted) {
                 <button class="btn btn-primary" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>Devam Et
+                  <mat-icon>play_arrow</mat-icon>{{ t('cta.continue') }}
                 </button>
               }
             </div>
@@ -80,19 +80,19 @@
           <div class="stack">
             @if (d.worksheet.description) {
               <div class="card">
-                <h3><span class="dot"></span>Genel Bakış</h3>
+                <h3><span class="dot"></span>{{ t('start.overviewTitle') }}</h3>
                 <p class="p">{{ d.worksheet.description }}</p>
               </div>
             }
 
             @if (d.topicBreakdown.length) {
               <div class="card">
-                <h3><span class="dot"></span>Konu Dağılımı</h3>
+                <h3><span class="dot"></span>{{ t('start.topicBreakdownTitle') }}</h3>
                 @for (topic of d.topicBreakdown; track trackByTopicId($index, topic)) {
                   <div class="topic">
                     <div class="t-head">
                       <span class="t-name">{{ topic.name }}</span>
-                      <span class="t-count">{{ topic.questionCount }} soru</span>
+                      <span class="t-count">{{ t('start.topicQuestionCount', { count: topic.questionCount }) }}</span>
                     </div>
                     <div class="track"><i [style.width.%]="topic.weightPercent"></i></div>
                   </div>
@@ -102,7 +102,7 @@
 
             @if (d.outcomes.length || d.rewardBadgeText) {
               <div class="card">
-                <h3><span class="dot"></span>Neler Kazanacaksın</h3>
+                <h3><span class="dot"></span>{{ t('start.outcomesTitle') }}</h3>
                 @for (outcome of d.outcomes; track outcome) {
                   <div class="outcome"><span class="ok"><mat-icon>check</mat-icon></span>{{ outcome }}</div>
                 }
@@ -110,23 +110,23 @@
                   <div class="reward">
                     <span class="medal"><mat-icon>military_tech</mat-icon></span>
                     <div><div class="r-t">{{ d.rewardBadgeText }}</div>
-                      <div class="r-s">Eşiği geçerek tamamla, rozetini kazan</div></div>
+                      <div class="r-s">{{ t('start.rewardSubtitle') }}</div></div>
                   </div>
                 }
               </div>
             }
 
             <div class="card">
-              <h3><span class="dot"></span>Örnek Soru</h3>
+              <h3><span class="dot"></span>{{ t('start.sampleTitle') }}</h3>
               @if (d.sampleQuestion?.imageUrl) {
                 <div class="sample">
-                  <img [src]="d.sampleQuestion!.imageUrl" alt="Örnek soru" class="sample-img" />
+                  <img [src]="d.sampleQuestion!.imageUrl" [alt]="t('start.sampleAlt')" class="sample-img" />
                 </div>
               } @else {
                 <div class="sample">
                   <div class="q-over">
-                    <b>Sınavda seni {{ d.worksheet.questionCount ?? 0 }} soru bekliyor</b>
-                    <span>{{ d.sampleQuestion?.text || 'Başladığında ilk soru burada açılır' }}</span>
+                    <b>{{ t('start.sampleWaiting', { count: d.worksheet.questionCount ?? 0 }) }}</b>
+                    <span>{{ d.sampleQuestion?.text || t('start.samplePlaceholder') }}</span>
                   </div>
                 </div>
               }
@@ -135,57 +135,57 @@
 
           <div class="stack">
             <div class="sticky-cta" *appIsStudent>
-              <span class="s-status"><i></i>Başlamaya hazır</span>
+              <span class="s-status"><i></i>{{ t('start.ready') }}</span>
               <div class="s-meta">
-                <div><mat-icon>timer</mat-icon>{{ formatDuration(d.worksheet.maxDurationSeconds) }} · süre dolunca otomatik biter</div>
-                <div><mat-icon>swap_horiz</mat-icon>{{ d.worksheet.questionCount ?? 0 }} soru · geri dönüp değiştirebilirsin</div>
-                <div><mat-icon>shield</mat-icon>İnternet kesilse bile cevapların kaydedilir</div>
+                <div><mat-icon>timer</mat-icon>{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</div>
+                <div><mat-icon>swap_horiz</mat-icon>{{ t('start.navigateBack', { count: d.worksheet.questionCount ?? 0 }) }}</div>
+                <div><mat-icon>shield</mat-icon>{{ t('start.offlineSafe') }}</div>
               </div>
               @if (!exam.instance) {
                 <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>Sınava Başla
+                  <mat-icon>play_arrow</mat-icon>{{ t('cta.start') }}
                 </button>
               } @else if (instanceStarted) {
                 <button class="btn btn-primary full" (click)="StartTest(exam.id)">
-                  <mat-icon>play_arrow</mat-icon>Devam Et
+                  <mat-icon>play_arrow</mat-icon>{{ t('cta.continue') }}
                 </button>
               }
             </div>
 
             <div class="card" *appIsStudent id="planla-hatirlat" tabindex="-1">
-              <h3><span class="dot"></span>Planla &amp; Hatırlat</h3>
+              <h3><span class="dot"></span>{{ t('reminder.title') }}</h3>
 
               @if (hasActiveReminder() && !showReminderForm() && reminder(); as active) {
                 <div class="plan">
                   <span class="cal"><mat-icon>calendar_today</mat-icon></span>
                   <div class="plan-info">
                     <div class="p-when">{{ reminderWhenLabel(active.scheduledFor) }}</div>
-                    <div class="p-sub">{{ remindBeforeLabel(active.remindBeforeMinutes) }} bildirim gönderilecek</div>
+                    <div class="p-sub">{{ t('reminder.notice', { before: remindBeforeLabel(active.remindBeforeMinutes) }) }}</div>
                   </div>
                 </div>
                 <div class="plan-actions">
                   <button class="btn btn-ghost btn-sm" (click)="startEditReminder()" [disabled]="reminderSaving()">
-                    <mat-icon>edit</mat-icon>Güncelle
+                    <mat-icon>edit</mat-icon>{{ t('reminder.update') }}
                   </button>
                   <button class="btn btn-ghost btn-sm danger" (click)="removeReminder()" [disabled]="reminderSaving()">
-                    <mat-icon>close</mat-icon>İptal Et
+                    <mat-icon>close</mat-icon>{{ t('reminder.cancel') }}
                   </button>
                 </div>
               } @else {
                 <div class="plan-form">
                   <mat-form-field appearance="outline" class="plan-field">
-                    <mat-label>Tarih</mat-label>
+                    <mat-label>{{ t('reminder.dateLabel') }}</mat-label>
                     <input matInput [matDatepicker]="picker" [min]="minReminderDate" [(ngModel)]="reminderDate"
                       name="reminderDate" readonly (click)="picker.open()" />
                     <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
                     <mat-datepicker #picker></mat-datepicker>
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="plan-field">
-                    <mat-label>Saat</mat-label>
+                    <mat-label>{{ t('reminder.timeLabel') }}</mat-label>
                     <input matInput type="time" [(ngModel)]="reminderTime" name="reminderTime" />
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="plan-field">
-                    <mat-label>Ne zaman hatırlatılsın</mat-label>
+                    <mat-label>{{ t('reminder.remindWhenLabel') }}</mat-label>
                     <mat-select [(ngModel)]="remindBeforeMinutes" name="remindBefore">
                       @for (option of remindBeforeOptions; track option) {
                         <mat-option [value]="option">{{ remindBeforeLabel(option) }}</mat-option>
@@ -194,11 +194,11 @@
                   </mat-form-field>
                   <div class="plan-actions">
                     <button class="btn btn-primary btn-sm" (click)="saveReminder()" [disabled]="reminderSaving()">
-                      <mat-icon>notifications_active</mat-icon>{{ hasActiveReminder() ? 'Kaydet' : 'Planla' }}
+                      <mat-icon>notifications_active</mat-icon>{{ t(hasActiveReminder() ? 'reminder.save' : 'reminder.plan') }}
                     </button>
                     @if (hasActiveReminder()) {
                       <button class="btn btn-ghost btn-sm" (click)="cancelEditReminder()" [disabled]="reminderSaving()">
-                        Vazgeç
+                        {{ t('reminder.discard') }}
                       </button>
                     }
                   </div>
@@ -208,23 +208,30 @@
 
             @if (d.attempts.length) {
               <div class="card">
-                <h3><span class="dot"></span>Denemelerin</h3>
+                <h3><span class="dot"></span>{{ t('attempts.title') }}</h3>
                 @for (attempt of d.attempts; track attempt.instanceId; let first = $first) {
                   <div class="attempt">
-                    <span class="a-score" [class.weak]="!first">%{{ attempt.scorePercent }}</span>
-                    <span class="a-when">{{ formatShortDate(attempt.completedDate) }} · {{ formatMinutes(attempt.durationSeconds) }} · {{ attempt.correctCount }}/{{ attempt.totalCount }} doğru</span>
-                    @if (first) { <span class="a-tag">En iyi</span> }
+                    <span class="a-score" [class.weak]="!first">{{ t('format.percent', { value: attempt.scorePercent }) }}</span>
+                    <span class="a-when">{{
+                      t('attempts.meta', {
+                        date: formatShortDate(attempt.completedDate),
+                        duration: formatMinutes(attempt.durationSeconds),
+                        correct: attempt.correctCount,
+                        total: attempt.totalCount
+                      })
+                    }}</span>
+                    @if (first) { <span class="a-tag">{{ t('attempts.best') }}</span> }
                   </div>
                 }
                 @if (d.improvementPoints !== null) {
                   <div class="best">
-                    <span>Gelişimin
+                    <span>{{ t('attempts.improvement') }}
                       <svg width="70" height="20" viewBox="0 0 100 32" class="spark" fill="none"
                         stroke="var(--ms-success-text-weak)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                         <path [attr.d]="sparkline()" />
                       </svg>
                     </span>
-                    <b>{{ d.improvementPoints > 0 ? '+' : '' }}{{ d.improvementPoints }} puan</b>
+                    <b>{{ t('attempts.points', { value: (d.improvementPoints > 0 ? '+' : '') + d.improvementPoints }) }}</b>
                   </div>
                 }
               </div>
@@ -232,14 +239,20 @@
 
             @if (d.similarWorksheets.length) {
               <div class="card">
-                <h3><span class="dot"></span>Benzer Sınavlar</h3>
+                <h3><span class="dot"></span>{{ t('similar.title') }}</h3>
                 @for (similar of d.similarWorksheets; track similar.id) {
                   <button class="similar" type="button" (click)="openSimilarWorksheet(similar.id)">
                     <span class="s-thumb"><mat-icon>quiz</mat-icon></span>
                     <span class="s-body">
                       <span class="s-name">{{ similar.name }}</span>
-                      <span class="s-meta">{{ similar.questionCount }} soru ·
-                        {{ similar.isPracticeTest ? 'pratik' : percentLabel(similar.averageScorePercent) + ' ort.' }}</span>
+                      <span class="s-meta">{{
+                        t('similar.meta', {
+                          count: similar.questionCount,
+                          extra: similar.isPracticeTest
+                            ? t('similar.practice')
+                            : t('similar.average', { percent: percentLabel(similar.averageScorePercent) })
+                        })
+                      }}</span>
                     </span>
                   </button>
                 }
@@ -249,9 +262,9 @@
         </div>
 
         <div class="rules">
-          <div class="r"><span class="ri"><mat-icon>timer</mat-icon></span>Süre dolunca test otomatik olarak tamamlanır</div>
-          <div class="r"><span class="ri"><mat-icon>swap_horiz</mat-icon></span>Sorular arasında ileri–geri gezinebilirsin</div>
-          <div class="r"><span class="ri"><mat-icon>check</mat-icon></span>Cevapların anlık kaydedilir, sonra devam edebilirsin</div>
+          <div class="r"><span class="ri"><mat-icon>timer</mat-icon></span>{{ t('start.ruleAutoComplete') }}</div>
+          <div class="r"><span class="ri"><mat-icon>swap_horiz</mat-icon></span>{{ t('start.ruleNavigate') }}</div>
+          <div class="r"><span class="ri"><mat-icon>check</mat-icon></span>{{ t('start.ruleAutoSave') }}</div>
         </div>
       }
 
@@ -265,21 +278,26 @@
                 stroke-linecap="round" [attr.stroke-dasharray]="donutCircumference"
                 [attr.stroke-dashoffset]="donutDashoffset()" transform="rotate(-90 75 75)" />
             </svg>
-            <div class="rv"><b>%{{ result.scorePercent }}</b><span>Başarı</span></div>
+            <div class="rv"><b>{{ t('format.percent', { value: result.scorePercent }) }}</b><span>{{ t('completed.successLabel') }}</span></div>
           </div>
           <div class="rh-body">
-            <span class="kick">Sınav tamamlandı</span>
-            <h1>{{ result.correctCount }} / {{ result.correctCount + result.wrongCount + result.emptyCount }} doğru</h1>
+            <span class="kick">{{ t('completed.kicker') }}</span>
+            <h1>{{
+              t('completed.headline', {
+                correct: result.correctCount,
+                total: result.correctCount + result.wrongCount + result.emptyCount
+              })
+            }}</h1>
             <div class="pills">
-              <span class="pill g"><mat-icon>check</mat-icon>{{ result.correctCount }} doğru</span>
-              <span class="pill r"><mat-icon>close</mat-icon>{{ result.wrongCount }} yanlış</span>
-              <span class="pill n">{{ result.emptyCount }} boş</span>
+              <span class="pill g"><mat-icon>check</mat-icon>{{ t('completed.correct', { count: result.correctCount }) }}</span>
+              <span class="pill r"><mat-icon>close</mat-icon>{{ t('completed.wrong', { count: result.wrongCount }) }}</span>
+              <span class="pill n">{{ t('completed.empty', { count: result.emptyCount }) }}</span>
               <span class="pill n"><mat-icon>timer</mat-icon>{{ formatDurationDetailed(result.durationSeconds) }}</span>
             </div>
           </div>
           <div class="rh-actions">
             <button class="btn btn-amber" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">
-              <mat-icon>add</mat-icon>Yanlışlarımdan Test Oluştur
+              <mat-icon>add</mat-icon>{{ t('completed.fromMistakes') }}
             </button>
           </div>
         </div>
@@ -288,30 +306,30 @@
           <div class="stack">
             @if (result.topicSuccess.length) {
               <div class="card">
-                <h3><span class="dot"></span>Konu Bazlı Başarın</h3>
+                <h3><span class="dot"></span>{{ t('completed.topicTitle') }}</h3>
                 @for (topic of result.topicSuccess; track trackByTopicId($index, topic)) {
                   <div class="brk">
                     <div class="b-head">
                       <span class="b-name">{{ topic.name }}</span>
-                      <span class="b-acc" [class.danger]="topic.successPercent < 60">%{{ topic.successPercent }}</span>
+                      <span class="b-acc" [class.danger]="topic.successPercent < 60">{{ t('format.percent', { value: topic.successPercent }) }}</span>
                     </div>
                     <div class="track split">
                       <i class="ok" [style.width.%]="topic.successPercent"></i>
                       <i class="no" [style.width.%]="100 - topic.successPercent"></i>
                     </div>
-                    <span class="b-sub">{{ topic.correctCount }} / {{ topic.totalCount }} doğru</span>
+                    <span class="b-sub">{{ t('completed.topicSub', { correct: topic.correctCount, total: topic.totalCount }) }}</span>
                   </div>
                 }
               </div>
             }
 
             <div class="card">
-              <h3><span class="dot"></span>Soru Soru Görünüm</h3>
+              <h3><span class="dot"></span>{{ t('completed.questionsTitle') }}</h3>
               @if (regions().length) {
                 <mat-accordion>
                   <mat-expansion-panel [expanded]="true">
                     <mat-expansion-panel-header>
-                      <mat-panel-title>Sonuçları İncele</mat-panel-title>
+                      <mat-panel-title>{{ t('completed.reviewPanel') }}</mat-panel-title>
                     </mat-expansion-panel-header>
                     <app-question-navigator [questions]="questions" (questionSelected)="questionSelected($event)">
                     </app-question-navigator>
@@ -326,7 +344,7 @@
                   </mat-expansion-panel>
                 </mat-accordion>
               } @else {
-                <p class="p muted">Soru dökümü yükleniyor...</p>
+                <p class="p muted">{{ t('completed.questionsLoading') }}</p>
               }
             </div>
           </div>
@@ -334,12 +352,12 @@
           <div class="stack">
             @if (result.rank; as rank) {
               <div class="card">
-                <h3><span class="dot"></span>Sıralaman</h3>
+                <h3><span class="dot"></span>{{ t('completed.rankTitle') }}</h3>
                 <div class="rank">
-                  <span class="r-num">{{ rank.position }}.</span>
+                  <span class="r-num">{{ t('completed.rankPosition', { position: rank.position }) }}</span>
                   <div>
-                    <div class="r-t">Sınıfında {{ rank.totalStudents }} öğrenci içinde</div>
-                    <div class="r-s">Sınıf ortalaması %{{ rank.classAveragePercent }} · sen %{{ result.scorePercent }}</div>
+                    <div class="r-t">{{ t('completed.rankText', { count: rank.totalStudents }) }}</div>
+                    <div class="r-s">{{ t('completed.rankSub', { classAverage: rank.classAveragePercent, score: result.scorePercent }) }}</div>
                   </div>
                 </div>
               </div>
@@ -347,22 +365,22 @@
 
             @if (d.rewardBadgeText) {
               <div class="card">
-                <h3><span class="dot"></span>Kazandığın Rozet</h3>
+                <h3><span class="dot"></span>{{ t('completed.badgeTitle') }}</h3>
                 <div class="badge-won">
                   <span class="m"><mat-icon>military_tech</mat-icon></span>
                   <div><div class="b-t">{{ d.rewardBadgeText }}</div>
-                    <div class="b-s">%{{ result.scorePercent }} ile eşiği geçtin</div></div>
+                    <div class="b-s">{{ t('completed.badgeSub', { score: result.scorePercent }) }}</div></div>
                 </div>
               </div>
             }
 
             @if (d.similarWorksheets.length) {
               <div class="card">
-                <h3><span class="dot"></span>Sıradaki Adım</h3>
+                <h3><span class="dot"></span>{{ t('completed.nextTitle') }}</h3>
                 @for (similar of d.similarWorksheets; track similar.id) {
                   <button class="next" type="button" (click)="openSimilarWorksheet(similar.id)">
                     <mat-icon>arrow_forward</mat-icon>
-                    <span>Benzer sınav: "{{ similar.name }}"</span>
+                    <span>{{ t('completed.nextItem', { name: similar.name }) }}</span>
                   </button>
                 }
               </div>
@@ -384,12 +402,12 @@
           <div class="hero-body">
             <div class="title-row">
               <h1>{{ d.worksheet.name }}</h1>
-              <span class="role-tag">ÖĞRETMEN</span>
+              <span class="role-tag">{{ t('teacher.roleTag') }}</span>
             </div>
             @if (isSharedReadOnlyForTeacher()) {
               <div class="readonly-strip">
                 <mat-icon>visibility</mat-icon>
-                <span>{{ sharedOwnerName() || 'Başka bir öğretmenin' }} sınavı · Salt görüntüleme</span>
+                <span>{{ t('teacher.readonlyStrip', { owner: sharedOwnerName() || t('teacher.readonlyOwnerFallback') }) }}</span>
                 <button
                   mat-stroked-button
                   type="button"
@@ -398,13 +416,13 @@
                   (click)="copyWorksheet()"
                 >
                   <mat-icon>content_copy</mat-icon>
-                  Kendi hesabıma kopyala
+                  {{ t('teacher.copyToMyAccount') }}
                 </button>
                 @if (canRequestAssignPermission()) {
                   @if (accessRequestPending()) {
                     <span class="readonly-strip__pending">
                       <mat-icon>hourglass_top</mat-icon>
-                      Talebiniz bekleniyor
+                      {{ t('teacher.pendingRequest') }}
                     </span>
                   } @else {
                     <button
@@ -414,7 +432,7 @@
                       (click)="openAssignPermissionDialog()"
                     >
                       <mat-icon>how_to_reg</mat-icon>
-                      Atama izni iste
+                      {{ t('teacher.requestAssignPermission') }}
                     </button>
                   }
                 }
@@ -425,19 +443,19 @@
             }
             <div class="chips">
               @if (gradeName()) { <span class="chip">{{ gradeName() }}</span> }
-              <span class="chip">{{ d.worksheet.questionCount ?? 0 }} soru</span>
-              <span class="chip">{{ d.worksheet.isPracticeTest ? 'Pratik çalışma' : 'Değerlendirme sınavı' }}</span>
+              <span class="chip">{{ t('hero.questionCount', { count: d.worksheet.questionCount ?? 0 }) }}</span>
+              <span class="chip">{{ t(d.worksheet.isPracticeTest ? 'hero.practice' : 'hero.assessment') }}</span>
               @if (d.teacherInsights && d.teacherInsights.unclassifiedCount > 0) {
-                <span class="chip draft">{{ d.teacherInsights.unclassifiedCount }} soru sınıflandırılmadı</span>
+                <span class="chip draft">{{ t('teacher.unclassifiedChip', { count: d.teacherInsights.unclassifiedCount }) }}</span>
               }
             </div>
             @if (canEditWorksheet()) {
               <div class="actions" *appIsTeacher>
                 <button class="btn btn-primary" (click)="navigateToQuestionCanvas()">
-                  <mat-icon>add_circle</mat-icon>Soru Ekle
+                  <mat-icon>add_circle</mat-icon>{{ t('teacher.addQuestion') }}
                 </button>
                 <button class="btn btn-ghost" (click)="editWorksheet(exam.id)">
-                  <mat-icon>edit</mat-icon>Düzenle
+                  <mat-icon>edit</mat-icon>{{ t('teacher.edit') }}
                 </button>
               </div>
             }
@@ -447,30 +465,30 @@
         <div class="cols">
           <div class="stack">
             <div class="card">
-              <h3><span class="dot"></span>Sınıf İlerlemesi</h3>
+              <h3><span class="dot"></span>{{ t('teacher.classProgressTitle') }}</h3>
 
               @switch (assignmentPanel()) {
                 @case ('loading') {
-                  <div class="panel-state"><mat-spinner diameter="32"></mat-spinner><span>Atamalar yükleniyor...</span></div>
+                  <div class="panel-state"><mat-spinner diameter="32"></mat-spinner><span>{{ t('teacher.assignmentsLoading') }}</span></div>
                 }
                 @case ('error') {
                   <div class="panel-state error">
                     <mat-icon>error_outline</mat-icon>
                     <span>{{ teacherError() }}</span>
-                    <button mat-stroked-button (click)="refreshAssignments()">Tekrar Dene</button>
+                    <button mat-stroked-button (click)="refreshAssignments()">{{ t('state.retry') }}</button>
                   </div>
                 }
                 @case ('empty') {
                   <div class="panel-state">
                     <mat-icon>playlist_add</mat-icon>
-                    <span>Henüz atama yok. Bu sınavı sınıfına veya öğrencilerine ata.</span>
+                    <span>{{ t('teacher.noAssignments') }}</span>
                     @if (canAssignWorksheet()) {
                       <div class="a-btns">
                         <button class="btn btn-primary btn-sm" (click)="openAssignmentDialog('grade')">
-                          <mat-icon>groups</mat-icon>Sınıfa Ata
+                          <mat-icon>groups</mat-icon>{{ t('teacher.assignToGrade') }}
                         </button>
                         <button class="btn btn-ghost btn-sm" (click)="openAssignmentDialog('student')">
-                          <mat-icon>person_add</mat-icon>Öğrenci Seç
+                          <mat-icon>person_add</mat-icon>{{ t('teacher.pickStudent') }}
                         </button>
                       </div>
                     }
@@ -479,16 +497,16 @@
                 @case ('loaded') {
                   @if (teacherSummary(); as summary) {
                     <div class="summary">
-                      <div class="sm"><span class="v">{{ summary.totalStudents }}</span><span class="l">Atanan</span></div>
-                      <div class="sm"><span class="v g">{{ summary.completedCount }}</span><span class="l">Tamamlayan</span></div>
-                      <div class="sm"><span class="v w">{{ summary.inProgressCount }}</span><span class="l">Devam eden</span></div>
-                      <div class="sm"><span class="v">{{ summaryPendingCount(summary) }}</span><span class="l">Başlamadı</span></div>
-                      <div class="sm"><span class="v">{{ percentLabel(d.stats.averageScorePercent) }}</span><span class="l">Sınıf ort.</span></div>
+                      <div class="sm"><span class="v">{{ summary.totalStudents }}</span><span class="l">{{ t('teacher.summaryAssigned') }}</span></div>
+                      <div class="sm"><span class="v g">{{ summary.completedCount }}</span><span class="l">{{ t('teacher.summaryCompleted') }}</span></div>
+                      <div class="sm"><span class="v w">{{ summary.inProgressCount }}</span><span class="l">{{ t('teacher.summaryInProgress') }}</span></div>
+                      <div class="sm"><span class="v">{{ summaryPendingCount(summary) }}</span><span class="l">{{ t('teacher.summaryNotStarted') }}</span></div>
+                      <div class="sm"><span class="v">{{ percentLabel(d.stats.averageScorePercent) }}</span><span class="l">{{ t('teacher.summaryClassAverage') }}</span></div>
                     </div>
                   }
                   @if (lastRefreshed(); as refreshed) {
                     <div class="last-refreshed"><mat-icon>schedule</mat-icon>
-                      <span>Son güncelleme {{ refreshed | date : 'dd MMM HH:mm' }}</span></div>
+                      <span>{{ t('teacher.lastUpdate', { date: refreshed | date : 'dd MMM HH:mm' }) }}</span></div>
                   }
                   <mat-accordion class="assignment-accordion" multi>
                     @for (assignment of teacherAssignments(); track assignment.assignmentId) {
@@ -499,20 +517,31 @@
                             {{ assignment.targetName }}
                           </mat-panel-title>
                           <mat-panel-description>
-                            {{ assignment.completedCount }}/{{ assignment.studentCount }} tamamladı
+                            {{
+                              t('teacher.completedOf', {
+                                completed: assignment.completedCount,
+                                total: assignment.studentCount
+                              })
+                            }}
                           </mat-panel-description>
                         </mat-expansion-panel-header>
                         <table>
-                          <thead><tr><th>Öğrenci</th><th>Durum</th><th>Son aktivite</th></tr></thead>
+                          <thead>
+                            <tr>
+                              <th>{{ t('teacher.thStudent') }}</th>
+                              <th>{{ t('teacher.thStatus') }}</th>
+                              <th>{{ t('teacher.thLastActivity') }}</th>
+                            </tr>
+                          </thead>
                           <tbody>
                             @for (student of assignment.students; track student.studentId) {
                               <tr>
-                                <td>{{ student.studentNumber }} · {{ studentGradeLabel(student) }}</td>
+                                <td>{{ t('teacher.studentRow', { studentNumber: student.studentNumber, grade: studentGradeLabel(student) }) }}</td>
                                 <td><span [class]="statusClass(student.status)">{{ statusLabel(student.status) }}</span></td>
                                 <td>{{ lastActivityLabel(student.lastActivity) }}</td>
                               </tr>
                             } @empty {
-                              <tr><td colspan="3" class="muted">Bu atama için öğrenci bilgisi bulunamadı.</td></tr>
+                              <tr><td colspan="3" class="muted">{{ t('teacher.noStudents') }}</td></tr>
                             }
                           </tbody>
                         </table>
@@ -525,15 +554,20 @@
 
             @if (d.teacherInsights && d.teacherInsights.hardestQuestions.length) {
               <div class="card">
-                <h3><span class="dot"></span>Zorlanılan Sorular</h3>
+                <h3><span class="dot"></span>{{ t('teacher.hardestTitle') }}</h3>
                 @for (hard of d.teacherInsights.hardestQuestions; track hard.questionId) {
                   <div class="hardq">
                     <span class="qn">{{ hard.order }}</span>
                     <div>
-                      <div class="qt">{{ hard.text || 'Soru ' + hard.order }}</div>
-                      <div class="qs">{{ hard.subtopicName || 'Konu belirtilmemiş' }} · {{ hard.answeredCount }} öğrenci yanıtladı</div>
+                      <div class="qt">{{ hard.text || t('teacher.hardFallback', { order: hard.order }) }}</div>
+                      <div class="qs">{{
+                        t('teacher.hardSub', {
+                          topic: hard.subtopicName || t('teacher.topicUnset'),
+                          count: hard.answeredCount
+                        })
+                      }}</div>
                     </div>
-                    <span class="qacc">%{{ hard.correctPercent }}</span>
+                    <span class="qacc">{{ t('format.percent', { value: hard.correctPercent }) }}</span>
                   </div>
                 }
               </div>
@@ -542,14 +576,14 @@
 
           <div class="stack">
             <div class="card" *appIsTeacher>
-              <h3><span class="dot"></span>Atama</h3>
+              <h3><span class="dot"></span>{{ t('teacher.assignmentTitle') }}</h3>
               @if (canAssignWorksheet()) {
                 <div class="a-btns">
                   <button class="btn btn-primary btn-sm full" (click)="openAssignmentDialog('grade')">
-                    <mat-icon>groups</mat-icon>Sınıfa Ata
+                    <mat-icon>groups</mat-icon>{{ t('teacher.assignToGrade') }}
                   </button>
                   <button class="btn btn-ghost btn-sm full" (click)="openAssignmentDialog('student')">
-                    <mat-icon>person_add</mat-icon>Öğrenci Seç
+                    <mat-icon>person_add</mat-icon>{{ t('teacher.pickStudent') }}
                   </button>
                 </div>
               }
@@ -559,7 +593,12 @@
                   <div>
                     <div class="s-t">{{ assignment.targetName }} · {{ assignment.startAt | date : 'dd MMM HH:mm' }}
                       @if (assignment.endAt) { → {{ assignment.endAt | date : 'dd MMM HH:mm' }} }</div>
-                    <div class="s-s">{{ assignment.studentCount }} öğrenci · {{ assignment.isActive ? 'aktif' : 'planlandı' }}</div>
+                    <div class="s-s">{{
+                      t('teacher.scheduleStudents', {
+                        count: assignment.studentCount,
+                        state: t(assignment.isActive ? 'teacher.stateActive' : 'teacher.stateScheduled')
+                      })
+                    }}</div>
                   </div>
                 </div>
               }
@@ -567,9 +606,14 @@
 
             @if (d.teacherInsights; as insights) {
               <div class="card">
-                <h3><span class="dot"></span>Soru Kalitesi</h3>
+                <h3><span class="dot"></span>{{ t('teacher.qualityTitle') }}</h3>
                 <p class="p muted">
-                  AI sınıflandırması {{ insights.classifiedCount }} / {{ insights.totalQuestionCount }} soruyu etiketledi. Zorluk dağılımı:
+                  {{
+                    t('teacher.qualityText', {
+                      classified: insights.classifiedCount,
+                      total: insights.totalQuestionCount
+                    })
+                  }}
                 </p>
                 <div class="diffbar">
                   <i class="easy" [style.width.%]="insights.difficultyDistribution.easy /
@@ -580,14 +624,20 @@
                     (insights.difficultyDistribution.easy + insights.difficultyDistribution.medium + insights.difficultyDistribution.hard || 1) * 100"></i>
                 </div>
                 <div class="legend">
-                  <span><i class="easy"></i>Kolay · {{ insights.difficultyDistribution.easy }}</span>
-                  <span><i class="med"></i>Orta · {{ insights.difficultyDistribution.medium }}</span>
-                  <span><i class="hard"></i>Zor · {{ insights.difficultyDistribution.hard }}</span>
+                  <span><i class="easy"></i>{{
+                    t('teacher.legendItem', { label: t('teacher.easy'), count: insights.difficultyDistribution.easy })
+                  }}</span>
+                  <span><i class="med"></i>{{
+                    t('teacher.legendItem', { label: t('teacher.medium'), count: insights.difficultyDistribution.medium })
+                  }}</span>
+                  <span><i class="hard"></i>{{
+                    t('teacher.legendItem', { label: t('teacher.hard'), count: insights.difficultyDistribution.hard })
+                  }}</span>
                 </div>
                 @if (insights.unclassifiedCount > 0) {
                   <div class="warnline">
                     <mat-icon>warning</mat-icon>
-                    {{ insights.unclassifiedCount }} soru sınıflandırılmadı — konu/zorluk elle atanmalı
+                    {{ t('teacher.unclassifiedWarn', { count: insights.unclassifiedCount }) }}
                   </div>
                 }
               </div>
@@ -602,15 +652,19 @@
     @if (view() !== 'teacher') {
       <div class="mobile-cta" *appIsStudent>
         @if (view() === 'start') {
-          <span class="meta">{{ formatDuration(d.worksheet.maxDurationSeconds) }} · süre dolunca otomatik biter</span>
+          <span class="meta">{{ t('start.autoFinish', { duration: formatDuration(d.worksheet.maxDurationSeconds) }) }}</span>
           @if (!exam.instance) {
-            <button class="btn btn-primary full" (click)="StartTest(exam.id)"><mat-icon>play_arrow</mat-icon>Sınava Başla</button>
+            <button class="btn btn-primary full" (click)="StartTest(exam.id)">
+            <mat-icon>play_arrow</mat-icon>{{ t('cta.start') }}
+          </button>
           } @else if (instanceStarted) {
-            <button class="btn btn-primary full" (click)="StartTest(exam.id)"><mat-icon>play_arrow</mat-icon>Devam Et</button>
+            <button class="btn btn-primary full" (click)="StartTest(exam.id)">
+            <mat-icon>play_arrow</mat-icon>{{ t('cta.continue') }}
+          </button>
           }
         } @else if (completedResult()) {
           <button class="btn btn-amber full" (click)="createFromMistakes()" [disabled]="fromMistakesLoading()">
-            <mat-icon>add</mat-icon>Yanlışlarımdan Test Oluştur
+            <mat-icon>add</mat-icon>{{ t('completed.fromMistakes') }}
           </button>
         }
       </div>

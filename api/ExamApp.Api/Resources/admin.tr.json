@@ -1,0 +1,22 @@
+{
+  "admin": {
+    "taxonomy": {
+      "filterConflict": "gradeId ve unassigned birlikte kullanılamaz."
+    },
+
+    "dashboard": {
+      "invalidDays": "days 1 ile 365 arasında olmalı."
+    },
+
+    "teacherApplication": {
+      "notFound": "Başvuru bulunamadı.",
+      "approved": "Başvuru onaylandı.",
+      "rejected": "Başvuru reddedildi.",
+      "notIndependent": "Bu öğretmen bağımsız öğretmen başvurusu değil.",
+      "alreadyDecided": "Bu başvuru için zaten karar verilmiş.",
+      "rejectReasonRequired": "Red nedeni boş olamaz.",
+      "rejectReasonTooLong": "Red nedeni en fazla {0} karakter olabilir.",
+      "rejectReasonMaxLength": "Red nedeni en fazla 500 karakter olabilir."
+    }
+  }
+}

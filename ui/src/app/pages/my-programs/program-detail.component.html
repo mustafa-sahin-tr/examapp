@@ -1,4 +1,4 @@
-<div class="program-detail-container">
+<div class="program-detail-container" *transloco="let t; prefix: 'my-programs'">
   <h2 class="program-title">{{ userProgram?.programName || program.programName }}</h2>
   <div class="program-meta">
     <span
@@ -6,24 +6,25 @@
       {{ userProgram?.endDate || program.endDate }}</span
     >
     <span
-      ><mat-icon>assignment</mat-icon> Günde {{ program.questionsPerDay }} soru, {{ program.subjectsPerDay }} konu</span
+      ><mat-icon>assignment</mat-icon>
+      {{ t('detail.dailyTarget', { questions: program.questionsPerDay, subjects: program.subjectsPerDay }) }}</span
     >
-    <span><mat-icon>timeline</mat-icon> Tür: {{ program.studyType }}</span>
+    <span><mat-icon>timeline</mat-icon> {{ t('detail.type', { type: studyTypeLabel }) }}</span>
   </div>
 
   <div class="study-page-schedule-section">
     <div class="study-page-schedule-header">
-      <h3>Program Sayfalari</h3>
+      <h3>{{ t('detail.pagesTitle') }}</h3>
       <button
         mat-raised-button
         color="primary"
         type="button"
         class="add-study-pages-btn"
         (click)="toggleAddStudyPages()"
-        aria-label="Çalışma sayfası ekle"
+        [attr.aria-label]="t('detail.addPages')"
       >
         <mat-icon>playlist_add</mat-icon>
-        Çalışma Sayfası Ekle
+        {{ t('detail.addPages') }}
       </button>
     </div>
 
@@ -38,14 +39,18 @@
           <button mat-icon-button (click)="nextMonth()">
             <mat-icon>chevron_right</mat-icon>
           </button>
-          <mat-button-toggle-group [(ngModel)]="calendarSize" class="calendar-size-toggle" aria-label="Takvim boyutu">
-            <mat-button-toggle value="small" matTooltip="Küçük">
+          <mat-button-toggle-group
+            [(ngModel)]="calendarSize"
+            class="calendar-size-toggle"
+            [attr.aria-label]="t('detail.calendarSize.label')"
+          >
+            <mat-button-toggle value="small" [matTooltip]="t('detail.calendarSize.small')">
               <mat-icon>view_module</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle value="medium" matTooltip="Orta">
+            <mat-button-toggle value="medium" [matTooltip]="t('detail.calendarSize.medium')">
               <mat-icon>grid_view</mat-icon>
             </mat-button-toggle>
-            <mat-button-toggle value="large" matTooltip="Büyük">
+            <mat-button-toggle value="large" [matTooltip]="t('detail.calendarSize.large')">
               <mat-icon>calendar_view_month</mat-icon>
             </mat-button-toggle>
           </mat-button-toggle-group>
@@ -53,13 +58,9 @@
 
         <div class="calendar-body">
           <div class="calendar-weekdays">
-            <div class="weekday">Pzt</div>
-            <div class="weekday">Sal</div>
-            <div class="weekday">Çar</div>
-            <div class="weekday">Per</div>
-            <div class="weekday">Cum</div>
-            <div class="weekday">Cmt</div>
-            <div class="weekday">Paz</div>
+            @for (weekday of weekdayNames; track weekday) {
+              <div class="weekday">{{ weekday }}</div>
+            }
           </div>
 
           <div class="calendar-grid-container">
@@ -100,13 +101,9 @@
       <div class="mini-calendar">
         <h4>{{ nextMonthLabel }}</h4>
         <div class="mini-weekdays">
-          <div>P</div>
-          <div>S</div>
-          <div>Ç</div>
-          <div>P</div>
-          <div>C</div>
-          <div>C</div>
-          <div>P</div>
+          @for (weekday of weekdayInitials; track $index) {
+            <div>{{ weekday }}</div>
+          }
         </div>
         <div class="mini-grid">
           <div

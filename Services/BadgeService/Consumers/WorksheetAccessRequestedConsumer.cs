@@ -1,6 +1,7 @@
 using System.Text.Json;
 using BadgeService.Entities;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.AspNetCore.SignalR;
@@ -23,15 +24,21 @@ public class WorksheetAccessRequestedConsumer : IConsumer<WorksheetAccessRequest
 
     private readonly BadgeDbContext _db;
     private readonly IHubContext<BadgeNotificationHub> _hub;
+    private readonly IUserLocaleResolver _localeResolver;
+    private readonly INotificationTextFactory _texts;
     private readonly ILogger<WorksheetAccessRequestedConsumer> _logger;
 
     public WorksheetAccessRequestedConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
+        IUserLocaleResolver localeResolver,
+        INotificationTextFactory texts,
         ILogger<WorksheetAccessRequestedConsumer> logger)
     {
         _db = db;
         _hub = hub;
+        _localeResolver = localeResolver;
+        _texts = texts;
         _logger = logger;
     }
 
@@ -50,16 +57,22 @@ public class WorksheetAccessRequestedConsumer : IConsumer<WorksheetAccessRequest
             return;
         }
 
-        var worksheetName = string.IsNullOrWhiteSpace(e.WorksheetName) ? "bir sınav" : e.WorksheetName;
-        var requesterName = string.IsNullOrWhiteSpace(e.RequesterName) ? "Bir öğretmen" : e.RequesterName;
+        var culture = await _localeResolver.ResolveAsync(e.OwnerUserId, e.TargetKeycloakId, ct);
+        var worksheetName = string.IsNullOrWhiteSpace(e.WorksheetName)
+            ? _texts.Resolve("notifications.common.unnamedWorksheet", culture)
+            : e.WorksheetName;
+        var requesterName = string.IsNullOrWhiteSpace(e.RequesterName)
+            ? _texts.Resolve("notifications.common.defaultRequester", culture)
+            : e.RequesterName;
+        var text = _texts.Build(NotificationType, culture, requesterName, worksheetName);
 
         var notification = new Notification
         {
             UserId = e.OwnerUserId,
             UserKeycloakId = string.IsNullOrWhiteSpace(e.TargetKeycloakId) ? null : e.TargetKeycloakId,
             Type = NotificationType,
-            Title = "Yeni atama izni talebi",
-            Body = $"{requesterName}, \"{worksheetName}\" sınavı için atama izni istiyor.",
+            Title = text.Title,
+            Body = text.Body,
             Data = JsonSerializer.Serialize(new
             {
                 requestId = e.RequestId,

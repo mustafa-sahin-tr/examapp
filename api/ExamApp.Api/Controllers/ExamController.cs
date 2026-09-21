@@ -13,6 +13,8 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Worksheets;
+using ExamApp.Foundation.Localization;
+using Microsoft.Extensions.Localization;
 
 [Route("api/worksheet")]
 [ApiController]
@@ -29,6 +31,11 @@ public class ExamController : BaseController
     private readonly IWorksheetReminderService _reminderService;
     private readonly IWorksheetCalendarService _calendarService;
     private readonly IWorksheetAccessRequestService _accessRequestService;
+
+    // Client'a donen tum metinler bu sozlukten gelir (issue #184). Aktif dil, istek kulturunu
+    // ayarlayan RequestLocalization middleware'inden (#181) okunur. DI her zaman gercek
+    // localizer'i verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
     public ExamController(IMinIoService minioService, IExamService examService,
             IStudentService studentService,
             IWorksheetAssignmentService assignmentService,
@@ -37,10 +44,12 @@ public class ExamController : BaseController
             IWorksheetDetailService worksheetDetail,
             IWorksheetReminderService reminderService,
             IWorksheetCalendarService calendarService,
-            IWorksheetAccessRequestService accessRequestService
+            IWorksheetAccessRequestService accessRequestService,
+            IStringLocalizer<Messages>? localizer = null
             )
         : base()
     {
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _accessRequestService = accessRequestService;
         _calendarService = calendarService;
         _examService = examService;
@@ -58,11 +67,11 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized("Öğrenci profili bulunamadı");
+            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
 
         // Frontend Observable<WorksheetReminderDto | null> bekliyor: yok durumunda da 200 + null.
         var result = await _reminderService.GetAsync(id, student.Id, ct);
@@ -75,11 +84,11 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized("Öğrenci profili bulunamadı");
+            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
 
         try
         {
@@ -98,11 +107,11 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized("Öğrenci profili bulunamadı");
+            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
 
         await _reminderService.DeleteAsync(id, student.Id, ct);
         return NoContent();
@@ -123,20 +132,20 @@ public class ExamController : BaseController
     public async Task<IActionResult> GetMyCalendar([FromQuery] string? from, [FromQuery] string? to, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(from) || string.IsNullOrWhiteSpace(to))
-            return BadRequest(new { message = "from ve to parametreleri zorunludur" });
+            return BadRequest(new { message = _localizer["exam.calendar.rangeRequired"].Value });
 
         if (!TryParseIsoUtc(from, out var fromUtc) || !TryParseIsoUtc(to, out var toUtc))
-            return BadRequest(new { message = "from ve to açık saat dilimi ('Z' veya ±hh:mm) içeren ISO-8601 tarih olmalıdır" });
+            return BadRequest(new { message = _localizer["exam.calendar.invalidIsoDate"].Value });
 
         if (toUtc <= fromUtc)
-            return BadRequest(new { message = "to, from tarihinden sonra olmalıdır" });
+            return BadRequest(new { message = _localizer["exam.calendar.toBeforeFrom"].Value });
 
         if ((toUtc - fromUtc).TotalDays > MaxRangeDays)
-            return BadRequest(new { message = $"Tarih aralığı en fazla {MaxRangeDays} gün olabilir" });
+            return BadRequest(new { message = _localizer["exam.calendar.rangeTooLarge", MaxRangeDays].Value });
 
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         // Öğretmen takvimi yalnızca onaylanmış randevuları içerir (issue #96); öğrenci akışı değişmedi.
         if (User.IsInRole("Teacher") && !User.IsInRole("Student"))
@@ -147,7 +156,7 @@ public class ExamController : BaseController
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized("Öğrenci profili bulunamadı");
+            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
 
         var result = await _calendarService.GetMyCalendarAsync(
             student.Id, user.KeycloakId, student.GradeId, student.SchoolId, fromUtc, toUtc, ct);
@@ -177,7 +186,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var result = await _examService.GetWorksheetByIdAsync(id, user, User.IsInRole("Admin"));
         if (result == null)
@@ -194,7 +203,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         int? studentId = null;
@@ -218,20 +227,20 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
         {
-            return Unauthorized("Öğrenci profili bulunamadı");
+            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
         }
 
         try
         {
             var result = await _worksheetDetail.CreateWorksheetFromMistakesAsync(instanceId, student.Id, user.Id, ct);
             if (result == null)
-                return NotFound(new { message = "Test oturumu bulunamadı." });
+                return NotFound(new { message = _localizer["exam.testSessionNotFound"].Value });
 
             return Ok(result);
         }
@@ -252,7 +261,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -283,7 +292,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -309,7 +318,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.CreateRequestAsync(
             request.WorksheetId, request.Note, user.Id, user.KeycloakId, User.IsInRole("Admin"), ct);
@@ -330,7 +339,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.GetIncomingAsync(user.Id, includeDecided, ct);
         return Ok(result);
@@ -342,7 +351,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var count = await _accessRequestService.GetIncomingPendingCountAsync(user.Id, ct);
         return Ok(count);
@@ -354,7 +363,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.ApproveAsync(id, user.Id, User.IsInRole("Admin"), ct);
         return MapAccessDecisionResult(result);
@@ -366,7 +375,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.RejectAsync(id, user.Id, User.IsInRole("Admin"), ct);
         return MapAccessDecisionResult(result);
@@ -378,7 +387,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.RevokeGrantAsync(worksheetId, teacherUserId, user.Id, User.IsInRole("Admin"), ct);
         return MapAccessDecisionResult(result);
@@ -401,7 +410,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -415,7 +424,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _examService.GetLatestWorksheetsAsync(pageNumber, pageSize, TeacherOwnerFilter(user));
@@ -436,7 +445,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         // Öğrenci ise kendi sınıfına göre filtrele (istekte gradeId gelmediyse)
@@ -498,7 +507,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
         if (user.Role == UserRole.Student.ToString())
         {
@@ -537,7 +546,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -547,7 +556,7 @@ public class ExamController : BaseController
         {
             var result = await _testSession.StartTestAsync(testId, student);
             if (result == null)
-                return NotFound(new { message = "Test bulunamadı!" });
+                return NotFound(new { message = _localizer["exam.testNotFound"].Value });
 
             return Ok(result);
         }
@@ -569,7 +578,7 @@ public class ExamController : BaseController
         var result = await _testSession.GetTestInstanceQuestionsAsync(testInstanceId, user.Id);
 
         if (result == null)
-            return NotFound(new { message = "Test bulunamadı!" });
+            return NotFound(new { message = _localizer["exam.testNotFound"].Value });
 
         return Ok(result);
     }
@@ -618,7 +627,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
         var response = await _authoring.CreateOrUpdateAsync(examDto, user.Id, User.IsInRole("Admin"));
         if (!response.Success)
@@ -644,7 +653,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         try
@@ -657,7 +666,7 @@ public class ExamController : BaseController
             return BadRequest(new BulkExamResultDto
             {
                 Success = false,
-                Message = "Toplu içe aktarma işlenemedi.",
+                Message = _localizer["exam.bulkImport.failed"],
                 TotalProcessed = bulkExamDto.Exams.Count,
                 SuccessCount = 0,
                 FailureCount = bulkExamDto.Exams.Count
@@ -672,7 +681,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
         var student = await _studentService.GetStudentProfile(user.Id);
 
@@ -697,7 +706,7 @@ public class ExamController : BaseController
             var user = await GetAuthenticatedUserAsync();
             if (user == null)
             {
-                return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+                return Unauthorized(_localizer["exam.unauthenticated"].Value);
             }
             var result = await _authoring.DeleteWorksheetAsync(id, user.Id, User.IsInRole("Admin"));
 
@@ -726,7 +735,7 @@ public class ExamController : BaseController
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Bir hata oluştu: " + ex.Message, success = false });
+            return StatusCode(500, new { message = _localizer["exam.unexpectedError", ex.Message].Value, success = false });
         }
     }
 
@@ -737,7 +746,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _authoring.CopyWorksheetAsync(id, user.Id, User.IsInRole("Admin"), ct);
@@ -765,7 +774,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _authoring.UpdateWorksheetBackgroundImageAsync(id, file, user.Id, User.IsInRole("Admin"));
@@ -792,7 +801,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+            return Unauthorized(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _authoring.UpdateVisibilityAsync(id, dto, user.Id, User.IsInRole("Admin"));

@@ -1,11 +1,17 @@
-<section class="faq">
-  <h1>Sıkça Sorulan Sorular</h1>
+<section class="faq" *transloco="let t; prefix: 'public-pages.faq'">
+  <h1>{{ t('title') }}</h1>
   <ul>
-    <li><strong>ExamApp nedir?</strong> <br />Online sınav ve değerlendirme platformudur.</li>
-    <li><strong>Kimler kullanabilir?</strong> <br />Öğrenciler, öğretmenler, kurumlar ve veliler.</li>
     <li>
-      <strong>Ücretli mi?</strong> <br />Temel paket ücretsizdir, gelişmiş özellikler için ücretli paketler vardır.
+      <strong>{{ t('whatIs.question') }}</strong> <br />{{ t('whatIs.answer') }}
     </li>
-    <li><strong>Verilerim güvende mi?</strong> <br />Evet, tüm verileriniz güvenli sunucularda saklanır.</li>
+    <li>
+      <strong>{{ t('whoCanUse.question') }}</strong> <br />{{ t('whoCanUse.answer') }}
+    </li>
+    <li>
+      <strong>{{ t('isPaid.question') }}</strong> <br />{{ t('isPaid.answer') }}
+    </li>
+    <li>
+      <strong>{{ t('dataSafety.question') }}</strong> <br />{{ t('dataSafety.answer') }}
+    </li>
   </ul>
 </section>

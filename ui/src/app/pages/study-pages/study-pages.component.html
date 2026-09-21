@@ -1,12 +1,16 @@
-<app-section-header class="section-container" title="Calisma Sayfalari" icon="/icons/18.svg"></app-section-header>
+<app-section-header
+  class="section-container"
+  [title]="'study-pages.list.title' | transloco"
+  icon="/icons/18.svg"
+></app-section-header>
 
-<div class="list-container">
+<div class="list-container" *transloco="let t; prefix: 'study-pages'">
   <!-- Filters Section -->
   <section class="filters-section">
     <div class="form-container align-center">
       <div class="form-column-3">
         <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Baslik veya aciklama ara</mat-label>
+          <mat-label>{{ t('list.searchLabel') }}</mat-label>
           <input matInput [formControl]="searchControl" (keyup.enter)="onSearch()" />
           <button mat-icon-button matSuffix (click)="onSearch()">
             <mat-icon>search</mat-icon>
@@ -15,9 +19,9 @@
       </div>
       <div class="form-column">
         <mat-form-field appearance="outline" class="filter-field">
-          <mat-label>Ders filtrele</mat-label>
+          <mat-label>{{ t('list.subjectFilterLabel') }}</mat-label>
           <mat-select [value]="selectedSubjectId()" (selectionChange)="onSubjectChange($event.value)">
-            <mat-option [value]="null">Tum Dersler</mat-option>
+            <mat-option [value]="null">{{ t('list.allSubjects') }}</mat-option>
             <mat-option *ngFor="let subject of subjectsSignal()" [value]="subject.id">
               {{ subject.name }}
             </mat-option>
@@ -27,7 +31,7 @@
       <div class="form-column actions">
         <button mat-flat-button color="primary" (click)="onNewPage()">
           <mat-icon>library_add</mat-icon>
-          Yeni Ekle
+          {{ t('list.new') }}
         </button>
       </div>
     </div>
@@ -43,28 +47,28 @@
           } @else if (isLink(page)) {
           <div class="image-placeholder">
             <mat-icon>{{ platformIcon(page) }}</mat-icon>
-            <span>{{ platformLabel(page) }}</span>
+            <span>{{ t(platformLabelKey(page)) }}</span>
           </div>
           } @else if (isBookPageRange(page)) {
           <div class="image-placeholder">
             <mat-icon>menu_book</mat-icon>
-            <span>{{ page.bookName || 'Kitap' }}</span>
+            <span>{{ page.bookName || t('list.bookFallback') }}</span>
           </div>
           } @else {
           <div class="image-placeholder">
             <mat-icon>auto_stories</mat-icon>
-            <span>Çalışma Sayfası</span>
+            <span>{{ t('list.coverFallback') }}</span>
           </div>
           }
 
           <!-- Tip rozeti -->
-          <div class="type-badge" [ngClass]="contentTypeClass(page)" [title]="contentTypeLabel(page)">
+          <div class="type-badge" [ngClass]="contentTypeClass(page)" [title]="t(contentTypeLabelKey(page))">
             <mat-icon>{{ contentTypeIcon(page) }}</mat-icon>
-            <span>{{ contentTypeLabel(page) }}</span>
+            <span>{{ t(contentTypeLabelKey(page)) }}</span>
           </div>
 
           <!-- Badge System -->
-          <div class="badge newly-launched" *ngIf="isRecentlyCreated(page.createTime)">Yeni</div>
+          <div class="badge newly-launched" *ngIf="isRecentlyCreated(page.createTime)">{{ t('list.newBadge') }}</div>
           
           <!-- Action Menu -->
           <!-- <div class="card-actions">
@@ -115,17 +119,25 @@
             @if (isLink(page)) {
             <div class="meta-item meta-link" [class.known-platform]="isKnownPlatform(page)">
               <mat-icon>{{ platformIcon(page) }}</mat-icon>
-              <span>{{ platformLabel(page) }}</span>
+              <span>{{ t(platformLabelKey(page)) }}</span>
             </div>
             } @else if (isBookPageRange(page)) {
             <div class="meta-item">
               <mat-icon>menu_book</mat-icon>
-              <span>{{ page.bookTestName || page.bookName || 'Kitap' }} · s. {{ page.startPage }}-{{ page.endPage }}</span>
+              <span>
+                {{
+                  t('list.bookRange', {
+                    book: page.bookTestName || page.bookName || t('list.bookFallback'),
+                    start: page.startPage,
+                    end: page.endPage
+                  })
+                }}
+              </span>
             </div>
             } @else {
             <div class="meta-item">
               <mat-icon>photo_library</mat-icon>
-              <span>{{ page.imageCount }} Sayfa</span>
+              <span>{{ t('list.pageCount', { count: page.imageCount }) }}</span>
             </div>
             }
             <div class="meta-item">
@@ -141,7 +153,7 @@
           <div class="card-buttons">
             <button mat-stroked-button color="primary" (click)="onEdit(page)" class="edit-btn">
               <mat-icon>edit</mat-icon>
-              Düzenle
+              {{ t('list.edit') }}
             </button>
             <button mat-icon-button color="warn" (click)="onDelete(page)" [disabled]="deletingId() === page.id" class="delete-btn">
               <mat-icon *ngIf="deletingId() !== page.id">delete</mat-icon>

@@ -7,11 +7,13 @@ using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.LoginEvents;
 using ExamApp.Api.Services.StudentReset;
+using ExamApp.Foundation.Localization;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
@@ -38,6 +40,11 @@ namespace ExamApp.Api.Controllers
         private readonly ILoginEventService _loginEventService;
         private readonly ILogger<StudentController> _logger;
 
+        // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+        private readonly IStringLocalizer<Messages> _localizer;
+
 
         public StudentController(
             IMinIoService minioService,
@@ -48,7 +55,8 @@ namespace ExamApp.Api.Controllers
             IBackgroundJobClient backgroundJobs,
             StudentResetJob studentResetJob,
             ILoginEventService loginEventService,
-            ILogger<StudentController> logger)
+            ILogger<StudentController> logger,
+            IStringLocalizer<Messages>? localizer = null)
             : base()
         {
             _minioService = minioService;
@@ -60,6 +68,7 @@ namespace ExamApp.Api.Controllers
             _studentResetJob = studentResetJob;
             _loginEventService = loginEventService;
             _logger = logger;
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
 
         /// <summary>
@@ -86,13 +95,13 @@ namespace ExamApp.Api.Controllers
             var user = await _userProfileCacheService.GetAsync(KeyCloakId);
             if (user == null)
             {
-                return Unauthorized("Kullanıcı kimlik doğrulaması başarısız oldu");
+                return Unauthorized(_localizer["auth.authenticationFailed"].Value);
             }
 
             var student = await _studentService.GetStudentProfile(user.Id);
             if (student == null)
             {
-                return NotFound(new { message = "Öğrenci bulunamadı." });
+                return NotFound(new { message = _localizer["student.notFound"].Value });
             }
 
             // Enqueue a Hangfire job so reset is handled asynchronously.
@@ -100,7 +109,7 @@ namespace ExamApp.Api.Controllers
             var jobId = _backgroundJobs.Enqueue(() =>
                 _studentResetJob.RunAsync(user.Id, student.Id, KeyCloakId));
 
-            return Accepted(new { jobId, message = "Sıfırlama işlemi kuyruğa alındı." });
+            return Accepted(new { jobId, message = _localizer["student.reset.queued"].Value });
         }
 
         // Handy for manual browser testing; the actual reset must be triggered via POST.
@@ -110,7 +119,7 @@ namespace ExamApp.Api.Controllers
         {
             return Ok(new
             {
-                message = "Bu endpoint POST ile çalışır: POST /api/exam/student/me/reset"
+                message = _localizer["student.reset.usePost"].Value
             });
         }
 
@@ -121,7 +130,7 @@ namespace ExamApp.Api.Controllers
             var response = await _studentService.UpdateStudentGrade(user.Id, newGradeId);
             if (response == null)
             {
-                return BadRequest(new { message = "Öğrenci kaydı başarısız." });
+                return BadRequest(new { message = _localizer["student.registrationFailed"].Value });
             }
             if (response.Success == false)
             {
@@ -136,7 +145,7 @@ namespace ExamApp.Api.Controllers
             var user = await GetAuthenticatedUserAsync();
 
             if (avatar == null || avatar.Length == 0)
-                return BadRequest(new { message = "Geçersiz dosya." });
+                return BadRequest(new { message = _localizer["student.invalidFile"].Value });
 
             var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
             var filePath = $"avatars/{fileName}";
@@ -161,14 +170,14 @@ namespace ExamApp.Api.Controllers
 
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("No refresh token provided.");
+                return Unauthorized(_localizer["auth.noRefreshToken"].Value);
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _studentService.Save(user.Id, request);
 
             if (response == null)
             {
-                return BadRequest(new { message = "Öğrenci kaydı başarısız." });
+                return BadRequest(new { message = _localizer["student.registrationFailed"].Value });
             }
 
             if (response.Success == false)
@@ -226,12 +235,12 @@ namespace ExamApp.Api.Controllers
         //     var user = await _userProfileCacheService.GetAsync(KeyCloakId);
         //     if (user == null)
         //     {
-        //         return NotFound(new { message = "Kullanıcı bulunamadı." });
+        //         return NotFound(new { message = _localizer["student.userNotFound"].Value });
         //     }
         //     var student = await _studentService.GetStudentProfile(user.Id);
         //     if (student == null)
         //     {
-        //         return NotFound(new { message = "Öğrenci bulunamadı." });
+        //         return NotFound(new { message = _localizer["student.notFound"].Value });
         //     }
         //     var activityData = await _studentService.GetStudentActivityHeatmap(student.Id);
         //     return Ok(activityData);
@@ -245,7 +254,7 @@ namespace ExamApp.Api.Controllers
             var user = await _userProfileCacheService.GetAsync(KeyCloakId);
             if (user == null)
             {
-                return NotFound(new { message = "Kullanıcı bulunamadı." });
+                return NotFound(new { message = _localizer["student.userNotFound"].Value });
             }
             var student = await _studentService.GetStudentProfile(user.Id);
             if (student != null)
@@ -272,7 +281,7 @@ namespace ExamApp.Api.Controllers
             var student = await _studentService.GetStudentProfile(user.Id);
             if (student == null)
             {
-                return NotFound(new { message = "Öğrenci bulunamadı." });
+                return NotFound(new { message = _localizer["student.notFound"].Value });
             }
             return Ok(student);
         }
@@ -294,7 +303,7 @@ namespace ExamApp.Api.Controllers
 
             if (response == null || !response.Success)
             {
-                return BadRequest(new { message = response?.Message ?? "Theme güncellenirken hata oluştu." });
+                return BadRequest(new { message = response?.Message ?? _localizer["student.theme.updateFailed"].Value });
             }
 
             return Ok(response);

@@ -1,23 +1,23 @@
 import {
-  Component,
-  HostListener,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  HostListener,
   OnInit,
-  OnDestroy,
   PLATFORM_ID,
-  Inject,
+  inject,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isPlatformBrowser } from '@angular/common';
-import { Title, Meta } from '@angular/platform-browser';
-import { CommonModule } from '@angular/common';
+import { Meta, Title } from '@angular/platform-browser';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
+
 import { NavbarComponent } from './navbar/navbar.component';
 import { EducationBannerComponent } from './education-banner/education-banner.component';
 import { FunfactsComponent } from './funfacts/funfacts.component';
-import { AboutComponent } from '../about/about.component';
 import { CategoriesComponent } from './categories/categories.component';
 import { LandingCoursesComponent } from './landing-courses/landing-courses.component';
-import { PartnersComponent } from './partners/partners.component';
 import { HowItWorksComponent } from './how-it-works/how-it-works.component';
 import { OverviewComponent } from './overview/overview.component';
 import { LandingFooterComponent } from './landing-footer/landing-footer.component';
@@ -28,20 +28,23 @@ import { PricingComponent } from './pricing/pricing.component';
 import { ServiceAreaComponent } from './service-area/service-area.component';
 import { DiscoverComponent } from './discover/discover.component';
 import { NewsComponent } from './news/news.component';
-import { NewLoginComponent } from './new-login/new-login.component';
+
+/**
+ * Landing sayfası çevirileri kök sözlükte değil, kendi Transloco scope'unda tutulur (issue #182):
+ * `public/i18n/landing/<lang>.json`. Scope provider burada verilir, alt komponentlerin hepsi
+ * (navbar, hero, fiyatlandırma, footer …) onu element injector ağacından devralır.
+ */
+const LANDING_SCOPE = 'landing';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
   imports: [
-    CommonModule,
     NavbarComponent,
     EducationBannerComponent,
     FunfactsComponent,
-    AboutComponent,
     CategoriesComponent,
     LandingCoursesComponent,
-    PartnersComponent,
     HowItWorksComponent,
     OverviewComponent,
     LandingFooterComponent,
@@ -52,16 +55,23 @@ import { NewLoginComponent } from './new-login/new-login.component';
     ServiceAreaComponent,
     DiscoverComponent,
     NewsComponent,
-    NewLoginComponent,
+    TranslocoDirective,
   ],
+  providers: [provideTranslocoScope(LANDING_SCOPE)],
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush, // Performans için
 })
-export class LandingComponent implements OnInit, OnDestroy {
+export class LandingComponent implements OnInit {
+  private readonly titleService = inject(Title);
+  private readonly metaService = inject(Meta);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
   isScrolled = false;
   showBackToTop = false;
-  appName = 'Hedef Okul';
 
   private touchStartY = 0;
   private touchStartTime = 0;
@@ -69,42 +79,36 @@ export class LandingComponent implements OnInit, OnDestroy {
   private readonly VELOCITY_THRESHOLD = 0.45; // px/ms
   private readonly MIN_DISTANCE = 55; // px
 
-  constructor(
-    private titleService: Title,
-    private metaService: Meta,
-    private cdr: ChangeDetectorRef,
-    @Inject(PLATFORM_ID) private platformId: object
-  ) {}
-
   ngOnInit(): void {
-    this.titleService.setTitle('Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu');
-    this.metaService.updateTag({
-      name: 'description',
-      content:
-        "Hedef Okul, 3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları, online sınavlar ve yapay zekâ destekli soru tespiti sunan Türkiye'nin eğitim platformu.",
-    });
-    this.metaService.updateTag({
-      property: 'og:title',
-      content: 'Hedef Okul | Online Sınav ve Çalışma Yaprağı Platformu',
-    });
-    this.metaService.updateTag({
-      property: 'og:description',
-      content:
-        '3-8. sınıf öğrencileri için müfredata uygun çalışma yaprakları ve sınavlarla öğrenmeyi kolaylaştırıyoruz.',
-    });
-    this.metaService.updateTag({ property: 'og:url', content: 'https://hedefokul.com/' });
+    // `selectTranslate` scope'u yükler ve dil değişiminde yeniden yayınlar; sözlük hazır olduğunda
+    // kalan anahtarlar senkron `translate()` ile okunabilir.
+    this.transloco
+      .selectTranslate<string>('meta.title', {}, LANDING_SCOPE)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((title) => {
+        this.titleService.setTitle(title);
+        this.metaService.updateTag({ name: 'description', content: this.text('landing.meta.description') });
+        this.metaService.updateTag({ property: 'og:title', content: this.text('landing.meta.ogTitle') });
+        this.metaService.updateTag({ property: 'og:description', content: this.text('landing.meta.ogDescription') });
+        this.metaService.updateTag({ property: 'og:url', content: 'https://hedefokul.com/' });
+      });
+  }
+
+  /** Sözlükten okunan metin; anahtar eksikse meta etiketi `undefined` yerine boş string alır. */
+  private text(key: string): string {
+    return this.transloco.translate<string>(key) ?? '';
   }
 
   @HostListener('window:touchstart', ['$event'])
   onTouchStart(e: TouchEvent): void {
-    if (!isPlatformBrowser(this.platformId) || window.innerWidth > 767) return;
+    if (!this.isBrowser || window.innerWidth > 767) return;
     this.touchStartY = e.touches[0].clientY;
     this.touchStartTime = Date.now();
   }
 
   @HostListener('window:touchend', ['$event'])
   onTouchEnd(e: TouchEvent): void {
-    if (!isPlatformBrowser(this.platformId) || window.innerWidth > 767) return;
+    if (!this.isBrowser || window.innerWidth > 767) return;
     const deltaY = this.touchStartY - e.changedTouches[0].clientY;
     const elapsed = Date.now() - this.touchStartTime;
     const velocity = Math.abs(deltaY) / elapsed;
@@ -136,6 +140,4 @@ export class LandingComponent implements OnInit, OnDestroy {
   scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
-  ngOnDestroy(): void {}
 }

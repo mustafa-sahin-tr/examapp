@@ -1,0 +1,37 @@
+{
+  "title": "Müsait Saatlerim",
+  "subtitle": "Öğrencilerin randevu talep edebilmesi için müsait olduğun zaman aralıklarını tanımla.",
+  "bookingRequests": "Randevu Talepleri",
+  "form": {
+    "dateLabel": "Tarih",
+    "dateRequired": "Tarih seçilmeli.",
+    "startLabel": "Başlangıç",
+    "startRequired": "Başlangıç saati gerekli.",
+    "endLabel": "Bitiş",
+    "endRequired": "Bitiş saati gerekli.",
+    "submit": "Aralık Ekle",
+    "invalidTimeFormat": "Saatleri SS:DD biçiminde girin.",
+    "endBeforeStart": "Bitiş saati başlangıçtan sonra olmalı."
+  },
+  "state": {
+    "loading": "Müsaitlik aralıkların yükleniyor...",
+    "empty": "Henüz müsaitlik aralığı tanımlamadın."
+  },
+  "status": {
+    "free": "Boş",
+    "approved": "Onaylı randevu",
+    "pending": "Bekleyen talep"
+  },
+  "actions": {
+    "delete": "Müsaitlik aralığını sil",
+    "lockedHint": "Randevusu olan aralık silinemez"
+  },
+  "messages": {
+    "loadFailed": "Müsaitlik aralıkları yüklenemedi.",
+    "added": "Müsaitlik aralığı eklendi.",
+    "addFailed": "Aralık eklenemedi.",
+    "deleted": "Müsaitlik aralığı silindi.",
+    "deleteFailed": "Aralık silinemedi.",
+    "ok": "Tamam"
+  }
+}

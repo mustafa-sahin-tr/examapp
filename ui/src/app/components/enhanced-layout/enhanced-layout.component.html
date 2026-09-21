@@ -1,4 +1,4 @@
-<div class="enhanced-layout">
+<div class="enhanced-layout" *transloco="let t; prefix: 'layout'">
   <mat-sidenav-container class="layout-container" [hasBackdrop]="isMobile()">
     <!-- Enhanced Sidebar (sınav çözme ekranında masaüstü/mobil fark etmeksizin kapalı: tam odak) -->
     <mat-sidenav [mode]="isMobile() ? 'over' : 'side'"
@@ -10,14 +10,14 @@
           <div class="app-logo" (click)="isSidenavCollapsed() ? toggleSidenav() : null"
             [attr.role]="isSidenavCollapsed() ? 'button' : null"
             [attr.tabindex]="isSidenavCollapsed() ? 0 : null"
-            [matTooltip]="isSidenavCollapsed() ? 'Menüyü Genişlet' : ''"
+            [matTooltip]="isSidenavCollapsed() ? t('sidebar.expand') : ''"
             (keydown.enter)="isSidenavCollapsed() ? toggleSidenav() : null"
             (keydown.space)="isSidenavCollapsed() ? toggleSidenav() : null">
             <mat-icon class="logo-icon">school</mat-icon>
             <span class="app-title" *ngIf="!isSidenavCollapsed()">ExamApp</span>
           </div>
           <button mat-icon-button class="toggle-btn" *ngIf="!isSidenavCollapsed()" (click)="toggleSidenav()"
-            [matTooltip]="isMobile() ? 'Menüyü Kapat' : 'Menüyü Daralt'">
+            [matTooltip]="isMobile() ? t('sidebar.close') : t('sidebar.collapse')">
             <mat-icon>{{ isMobile() ? 'close' : 'chevron_left' }}</mat-icon>
           </button>
         </div>
@@ -29,13 +29,13 @@
           <div *ngIf="item.type === 'menu'" class="menu-item" role="button" tabindex="0"
             [class.active]="item.id === activeMenuItem()"
             (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)"
-            (keydown.space)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? item.name : ''"
-            [matTooltip]="isSidenavCollapsed() ? item.name : ''" matTooltipPosition="right">
+            (keydown.space)="navigateTo(item.route)" [title]="isSidenavCollapsed() ? t(item.labelKey) : ''"
+            [matTooltip]="isSidenavCollapsed() ? t(item.labelKey) : ''" matTooltipPosition="right">
             <mat-icon class="menu-icon"
               [matBadge]="accessRequestCount()"
               [matBadgeHidden]="item.id !== 'access-requests' || accessRequestCount() === 0"
               matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
-            <span class="menu-text" *ngIf="!isSidenavCollapsed()">{{ item.name }}</span>
+            <span class="menu-text" *ngIf="!isSidenavCollapsed()">{{ t(item.labelKey) }}</span>
             <div class="ripple-effect"></div>
           </div>
 
@@ -56,10 +56,11 @@
     <mat-sidenav-content class="main-content-wrapper" [class.no-bottom-nav]="isExamRoute()"
       [style.margin-left.px]="sidenavContentOffsetPx()">
       <mat-toolbar color="primary" class="mobile-toolbar" *ngIf="isMobile() && !isFullScreen() && !isExamRoute()">
-        <button mat-icon-button (click)="toggleSidenav()" aria-label="Menüyü Aç">
+        <button mat-icon-button (click)="toggleSidenav()" [attr.aria-label]="t('sidebar.open')">
           <mat-icon>menu</mat-icon>
         </button>
         <span class="mobile-toolbar-title">ExamApp</span>
+        <app-language-switcher class="mobile-toolbar-actions"></app-language-switcher>
         <app-color-scheme-toggle class="mobile-toolbar-actions"></app-color-scheme-toggle>
       </mat-toolbar>
 
@@ -70,18 +71,18 @@
           <button class="section-nav-btn" [class.active]="currentSection() === 'newest'"
             (click)="showSection('newest')">
             <mat-icon>new_releases</mat-icon>
-            Yeni
+            {{ t('toolbar.newest') }}
           </button>
           <button class="section-nav-btn" [class.active]="currentSection() === 'hot'" (click)="showSection('hot')">
             <mat-icon>local_fire_department</mat-icon>
-            Popüler
+            {{ t('toolbar.popular') }}
           </button>
           <div class="search-box" (focusin)="onFocus()" (focusout)="onBlur()">
             <mat-icon class="search-icon">search</mat-icon>
             <input matInput [formControl]="globalSearchControl" (keyup.enter)="onGlobalSearch()"
-              placeholder="Ara ..." />
+              [placeholder]="t('toolbar.searchPlaceholder')" [attr.aria-label]="t('toolbar.searchPlaceholder')" />
             <div class="ms-search-dropdown" *ngIf="isInputFocused">
-              <p class="ms-recent-title" *ngIf="!globalSearchControl.value">Recent Searches</p>
+              <p class="ms-recent-title" *ngIf="!globalSearchControl.value">{{ t('search.recentTitle') }}</p>
               <ul class="ms-dropdown-list">
                 <li *ngFor="let item of filteredSuggestions" (click)="onSelectSuggestion(item)"
                   class="ms-dropdown-item">
@@ -89,7 +90,7 @@
                     <mat-icon class="ms-history-icon" *ngIf="!globalSearchControl.value">history</mat-icon>
                     <span class="ms-item-text">{{ item }}</span>
                   </div>
-                  <button class="ms-delete-btn" (click)="onDelete(item)">
+                  <button class="ms-delete-btn" (click)="onDelete(item)" [attr.aria-label]="t('search.remove')">
                     <mat-icon>close</mat-icon>
                   </button>
                 </li>
@@ -98,20 +99,20 @@
           </div>
         </div>
 
+        <app-language-switcher class="toolbar-language-switcher"></app-language-switcher>
         <app-color-scheme-toggle class="toolbar-scheme-toggle"></app-color-scheme-toggle>
 
         @if( isAuthenticated | async) {
 
         <div class="profile-menu" mat-button [matMenuTriggerFor]="profileMenu">
-          <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image" alt="Profile" />
+          <img [src]="'default-avatar.png'" ngSrcset="100w, 200w" class="preview-image"
+            [alt]="t('profile.avatarAlt')" />
           <span class="username">{{ userName() }}</span>
         </div>
 
         <mat-menu #profileMenu="matMenu" class="ms-menu-panel">
           <!-- Başlık Bölümü -->
           <div class="ms-menu-header">
-            <!-- <div class="ms-header-bg"></div> -->
-            <!-- <img [src]="userAvatarUrl || 'default-avatar.png'" alt="Profile" class="ms-header-avatar" /> -->
             <div class="ms-header-info">
               <div class="ms-user-name">{{ userName() }}</div>
               <div class="ms-user-email">{{ userEmail() }}</div>
@@ -122,15 +123,14 @@
           <button mat-menu-item class="ms-menu-item">
             <mat-icon>person</mat-icon>
             <div class="ms-item-content">
-              <span class="ms-item-title">Profil Bilgileri</span>
+              <span class="ms-item-title">{{ t('profile.info') }}</span>
             </div>
           </button>
 
           <button mat-menu-item class="ms-menu-item">
             <mat-icon>settings</mat-icon>
             <div class="ms-item-content">
-              <!-- <span class="ms-item-title">Ayarlar</span> -->
-              <span class="ms-item-subtitle">Ayarlar, Hesap, Güvenlik</span>
+              <span class="ms-item-subtitle">{{ t('profile.settingsSubtitle') }}</span>
             </div>
           </button>
 
@@ -138,32 +138,28 @@
           <button mat-menu-item class="ms-menu-item">
             <mat-icon>assignment</mat-icon>
             <div class="ms-item-content">
-              <span class="ms-item-title">Görevler</span>
-              <!-- <span class="ms-item-subtitle">Aktif görevler, Takvim</span> -->
+              <span class="ms-item-title">{{ t('profile.tasks') }}</span>
             </div>
           </button>
 
           <button mat-menu-item class="ms-menu-item">
             <mat-icon>emoji_events</mat-icon>
             <div class="ms-item-content">
-              <span class="ms-item-title">Başarılar</span>
-              <!-- <span class="ms-item-subtitle">Ödüller, Sertifikalar</span> -->
+              <span class="ms-item-title">{{ t('profile.achievements') }}</span>
             </div>
           </button>
 
           <button mat-menu-item class="ms-menu-item">
             <mat-icon>notifications</mat-icon>
             <div class="ms-item-content">
-              <span class="ms-item-title">Bildirimler</span>
-              <!-- <span class="ms-item-subtitle">Bildirim Ayarları</span> -->
+              <span class="ms-item-title">{{ t('profile.notifications') }}</span>
             </div>
           </button>
 
           <button mat-menu-item class="ms-menu-item">
             <mat-icon>support</mat-icon>
             <div class="ms-item-content">
-              <span class="ms-item-title">Destek</span>
-              <!-- <span class="ms-item-subtitle">SSS, Canlı Destek</span> -->
+              <span class="ms-item-title">{{ t('profile.support') }}</span>
             </div>
           </button>
 
@@ -172,7 +168,7 @@
           <button mat-menu-item class="ms-menu-item" (click)="logout()">
             <mat-icon>logout</mat-icon>
             <div class="ms-item-content">
-              <span class="ms-item-title">Çıkış Yap </span>
+              <span class="ms-item-title">{{ t('profile.logout') }}</span>
             </div>
           </button>
         </mat-menu>
@@ -193,12 +189,12 @@
       role="button" tabindex="0"
       (click)="navigateTo(item.route)" (keydown.enter)="navigateTo(item.route)" (keydown.space)="navigateTo(item.route)">
       <mat-icon>{{ item.icon }}</mat-icon>
-      <span class="bottom-nav-label">{{ item.name }}</span>
+      <span class="bottom-nav-label">{{ t(item.labelKey) }}</span>
     </div>
     <div class="bottom-nav-item menu-trigger" role="button" tabindex="0"
       (click)="toggleSidenav()" (keydown.enter)="toggleSidenav()" (keydown.space)="toggleSidenav()">
       <mat-icon>{{ isMobileSidenavOpen() ? 'close' : 'menu' }}</mat-icon>
-      <span class="bottom-nav-label">Menü</span>
+      <span class="bottom-nav-label">{{ t('bottomNav.menu') }}</span>
     </div>
   </nav>
 </div>

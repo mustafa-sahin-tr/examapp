@@ -1,24 +1,32 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { ParentService } from '../../services/parent.service';
+import { REGISTER_SCOPE } from '../register/register-scope';
+
+/** Veli kayıt ucunun yanıtı (servis henüz `any` döndürüyor). */
+interface ParentRegistrationResult {
+  accessToken?: string;
+  profileId?: number;
+}
 
 @Component({
   selector: 'app-parent-register',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatSnackBarModule],
+  imports: [CommonModule, MatButtonModule, MatCardModule, MatSnackBarModule, TranslocoDirective],
+  providers: [provideTranslocoScope(REGISTER_SCOPE)],
   template: `
-    <mat-card class="parent-register">
-      <h2>Veli Kaydı</h2>
-      <p>
-        Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden
-        ekleyebilirsiniz.
-      </p>
+    <mat-card class="parent-register" *transloco="let t; prefix: 'register'">
+      <h2>{{ t('parent.title') }}</h2>
+      <p>{{ t('parent.hint') }}</p>
       <button mat-raised-button color="primary" (click)="complete()" [disabled]="isSubmitting()">
-        {{ isSubmitting() ? 'Kaydediliyor…' : 'Kaydı Tamamla' }}
+        {{ isSubmitting() ? t('actions.saving') : t('actions.complete') }}
       </button>
     </mat-card>
   `,
@@ -39,13 +47,15 @@ export class ParentRegisterComponent {
   private parentService = inject(ParentService);
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
+  private readonly transloco = inject(TranslocoService);
+  private readonly destroyRef = inject(DestroyRef);
 
   isSubmitting = signal(false);
 
   complete() {
     this.isSubmitting.set(true);
     this.parentService.register().subscribe({
-      next: (val) => {
+      next: (val: ParentRegistrationResult) => {
         this.isSubmitting.set(false);
         if (val?.accessToken) {
           localStorage.setItem('auth_token', val.accessToken);
@@ -62,14 +72,29 @@ export class ParentRegisterComponent {
             console.error('User data parsing error:', e);
           }
         }
-        this.snackBar.open('Veli kaydı başarılı!', 'Tamam', { duration: 3000 });
+        this.notify('parent.success');
         this.router.navigate(['/dashboard']);
       },
-      error: (err) => {
+      error: (err: unknown) => {
         this.isSubmitting.set(false);
-        this.snackBar.open('Veli kaydı başarısız! Tekrar deneyin.', 'Tamam', { duration: 3000 });
+        this.notify('parent.error');
         console.error('Parent Register Error:', err);
       },
     });
+  }
+
+  /**
+   * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
+   * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
+   */
+  private notify(messageKey: string): void {
+    combineLatest([
+      this.transloco.selectTranslate<string>(messageKey, {}, REGISTER_SCOPE),
+      this.transloco.selectTranslate<string>('actions.ok', {}, REGISTER_SCOPE),
+    ])
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(([message, action]) => {
+        this.snackBar.open(message, action, { duration: 3000 });
+      });
   }
 }

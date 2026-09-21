@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { StudentTimeChartComponent } from './student-time-chart.component';
+import { translocoTestingModule } from '../../testing/transloco-testing';
 
 describe('StudentTimeChartComponent', () => {
   let component: StudentTimeChartComponent;
@@ -8,7 +9,7 @@ describe('StudentTimeChartComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [StudentTimeChartComponent]
+      imports: [translocoTestingModule(), StudentTimeChartComponent]
     })
     .compileComponents();
 

@@ -1,6 +1,8 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Services.Questions;
 
@@ -13,9 +15,17 @@ public class QuestionClassificationService : IQuestionClassificationService
 {
     private readonly AppDbContext _context;
 
-    public QuestionClassificationService(AppDbContext context)
+    // Client'a dönen ResponseBaseDto.Message metinleri buradan gelir (issue #184).
+    // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'sız kurulan (birim test)
+    // senaryolarda varsayılan dile düşebilmek için opsiyonel.
+    private readonly IStringLocalizer<Messages> _localizer;
+
+    public QuestionClassificationService(
+        AppDbContext context,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
     public async Task<ResponseBaseDto> UpdateCorrectAnswer(
@@ -33,7 +43,7 @@ public class QuestionClassificationService : IQuestionClassificationService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Soru bulunamadı!"
+                    Message = _localizer["questions.notFound"]
                 };
             }
 
@@ -44,7 +54,7 @@ public class QuestionClassificationService : IQuestionClassificationService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Seçilen cevap bu soruya ait değil!"
+                    Message = _localizer["questions.classification.answerNotInQuestion"]
                 };
             }
 
@@ -57,7 +67,7 @@ public class QuestionClassificationService : IQuestionClassificationService
             return new ResponseBaseDto
             {
                 Success = true,
-                Message = "Doğru cevap başarıyla güncellendi!"
+                Message = _localizer["questions.classification.correctAnswerUpdated"]
             };
         }
         catch (Exception ex)
@@ -65,7 +75,7 @@ public class QuestionClassificationService : IQuestionClassificationService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = $"Doğru cevap güncellenirken hata oluştu: {ex.Message}"
+                Message = _localizer["questions.classification.correctAnswerUpdateError", ex.Message]
             };
         }
     }
@@ -87,7 +97,7 @@ public class QuestionClassificationService : IQuestionClassificationService
 
             if (question == null)
             {
-                return new ResponseBaseDto { Success = false, Message = "Soru bulunamadı!" };
+                return new ResponseBaseDto { Success = false, Message = _localizer["questions.notFound"] };
             }
 
             // Resolve effective subtopic IDs: subTopicIds takes precedence over subTopicId.
@@ -110,7 +120,7 @@ public class QuestionClassificationService : IQuestionClassificationService
                 var missing = effectiveSubTopicIds.Except(foundSubTopics.Select(st => st.Id)).ToArray();
                 if (missing.Length > 0)
                 {
-                    return new ResponseBaseDto { Success = false, Message = "Geçersiz alt konu (subtopic) ID'si." };
+                    return new ResponseBaseDto { Success = false, Message = _localizer["questions.classification.invalidSubTopicId"] };
                 }
 
                 // Derive topicId and subjectId from the first subtopic's topic.
@@ -145,7 +155,7 @@ public class QuestionClassificationService : IQuestionClassificationService
                     {
                         var exists = await _context.Subjects.AnyAsync(s => s.Id == normalized.Value);
                         if (!exists)
-                            return new ResponseBaseDto { Success = false, Message = "Geçersiz ders (subject) ID'si." };
+                            return new ResponseBaseDto { Success = false, Message = _localizer["questions.classification.invalidSubjectId"] };
                     }
                     question.SubjectId = normalized;
                 }
@@ -157,7 +167,7 @@ public class QuestionClassificationService : IQuestionClassificationService
                     {
                         var exists = await _context.Topics.AnyAsync(t => t.Id == normalized.Value);
                         if (!exists)
-                            return new ResponseBaseDto { Success = false, Message = "Geçersiz konu (topic) ID'si." };
+                            return new ResponseBaseDto { Success = false, Message = _localizer["questions.classification.invalidTopicId"] };
                     }
                     question.TopicId = normalized;
                 }
@@ -175,12 +185,12 @@ public class QuestionClassificationService : IQuestionClassificationService
             if (Enum.TryParse<ClassificationSource>(sourceStr, ignoreCase: true, out var parsedSource))
                 question.ClassificationSource = parsedSource;
             else
-                return new ResponseBaseDto { Success = false, Message = $"Geçersiz sınıflandırma kaynağı: {sourceStr}. 'Human' veya 'AI' beklenmektedir." };
+                return new ResponseBaseDto { Success = false, Message = _localizer["questions.classification.invalidSource", sourceStr] };
 
             if (difficulty.HasValue)
             {
                 if (difficulty.Value < 1 || difficulty.Value > 10)
-                    return new ResponseBaseDto { Success = false, Message = "Geçersiz zorluk seviyesi. 1 ile 10 arasında olmalıdır." };
+                    return new ResponseBaseDto { Success = false, Message = _localizer["questions.classification.invalidDifficulty"] };
 
                 question.DifficultyLevel = difficulty.Value;
             }
@@ -188,14 +198,14 @@ public class QuestionClassificationService : IQuestionClassificationService
             _context.Questions.Update(question);
             await _context.SaveChangesAsync();
 
-            return new ResponseBaseDto { Success = true, Message = "Soru sınıflandırması başarıyla güncellendi!" };
+            return new ResponseBaseDto { Success = true, Message = _localizer["questions.classification.updated"] };
         }
         catch (Exception ex)
         {
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = $"Soru sınıflandırması güncellenirken hata oluştu: {ex.Message}"
+                Message = _localizer["questions.classification.updateError", ex.Message]
             };
         }
     }
@@ -211,7 +221,7 @@ public class QuestionClassificationService : IQuestionClassificationService
                 return new ResponseBaseDto
                 {
                     Success = false,
-                    Message = "Soru bu testte bulunamadı!"
+                    Message = _localizer["questions.classification.notInTest"]
                 };
             }
 
@@ -224,7 +234,7 @@ public class QuestionClassificationService : IQuestionClassificationService
             return new ResponseBaseDto
             {
                 Success = true,
-                Message = "Soru başarıyla testten çıkarıldı!"
+                Message = _localizer["questions.classification.removedFromTest"]
             };
         }
         catch (Exception ex)
@@ -232,7 +242,7 @@ public class QuestionClassificationService : IQuestionClassificationService
             return new ResponseBaseDto
             {
                 Success = false,
-                Message = $"Soru testten çıkarılırken hata oluştu: {ex.Message}"
+                Message = _localizer["questions.classification.removeFromTestError", ex.Message]
             };
         }
     }

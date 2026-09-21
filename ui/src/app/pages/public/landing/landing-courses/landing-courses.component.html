@@ -1,39 +1,25 @@
-<div class="education-courses-area ptb-140 ng-star-inserted">
+<div class="education-courses-area ptb-140" *transloco="let t; prefix: 'landing'">
     <div class="container">
-        <div class="section-title"><span class="sub">Öne Çıkan
-                Çalışma Yaprakları</span>
-            <h2>Öğrenme Yolculuğuna Başla <img src="assets/images/banner/line.png" alt="image"></h2>
-            <p>Uzman öğretmenler tarafından hazırlanan müfredata uygun çalışma yaprakları ve sınavlarla hedefine ulaş.
-            </p>
+        <div class="section-title"><span class="sub">{{ t('courses.sub') }}</span><h2>{{ t('courses.title') }} <img src="assets/images/banner/line.png" alt=""></h2><p>{{ t('courses.description') }}</p>
         </div>
         <div class="education-courses-tabs">
             <ul class="nav nav-tabs">
-                <li class="nav-item"><button type="button" class="nav-link active"> Türkçe </button></li>
-                <li class="nav-item"><button type="button" class="nav-link"> Matematik </button></li>
-                <li class="nav-item"><button type="button" class="nav-link"> Fen Bilimleri </button></li>
-                <li class="nav-item"><button type="button" class="nav-link"> Sosyal Bilgiler </button></li>
-                <li class="nav-item"><button type="button" class="nav-link"> İngilizce </button></li>
-                <li class="nav-item"><button type="button" class="nav-link"> Hayat Bilgisi </button></li>
+                <li class="nav-item"><button type="button" class="nav-link active">{{ t('courses.tabs.turkish') }}</button></li>
+                <li class="nav-item"><button type="button" class="nav-link">{{ t('courses.tabs.math') }}</button></li>
+                <li class="nav-item"><button type="button" class="nav-link">{{ t('courses.tabs.science') }}</button></li>
+                <li class="nav-item"><button type="button" class="nav-link">{{ t('courses.tabs.social') }}</button></li>
+                <li class="nav-item"><button type="button" class="nav-link">{{ t('courses.tabs.english') }}</button></li>
+                <li class="nav-item"><button type="button" class="nav-link">{{ t('courses.tabs.life') }}</button></li>
             </ul>
             <div class="tab-content">
                 <div class="tab-pane fade show active ng-star-inserted">
-                    <div class="inner-info-lists"><button type="button">
-                            <h5>Ses Bilgisi</h5><span>1.200+
-                                Öğrenci</span>
-                        </button><button type="button" class="active">
-                            <h5>Anlam Bilgisi</h5><span>3.500+
-                                Öğrenci</span>
-                        </button><button type="button">
-                            <h5>Okuma Anlama</h5><span>5.100+ Öğrenci</span>
-                        </button><button type="button">
-                            <h5>Yazım Kuralları</h5><span>2.800+
-                                Öğrenci</span>
-                        </button><button type="button">
-                            <h5>Noktalama İşaretleri</h5><span>1.900+ Öğrenci</span>
-                        </button><button type="button">
-                            <h5>Paragraf</h5><span>4.300+ Öğrenci</span>
-                        </button><button type="button">
-                            <h5>Sözcük Türleri</h5><span>2.100+ Öğrenci</span>
+                    <div class="inner-info-lists"><button type="button"><h5>{{ t('courses.topics.phonetics.name') }}</h5><span>{{ t('courses.topics.phonetics.students') }}</span>
+                        </button><button type="button" class="active"><h5>{{ t('courses.topics.semantics.name') }}</h5><span>{{ t('courses.topics.semantics.students') }}</span>
+                        </button><button type="button"><h5>{{ t('courses.topics.reading.name') }}</h5><span>{{ t('courses.topics.reading.students') }}</span>
+                        </button><button type="button"><h5>{{ t('courses.topics.spelling.name') }}</h5><span>{{ t('courses.topics.spelling.students') }}</span>
+                        </button><button type="button"><h5>{{ t('courses.topics.punctuation.name') }}</h5><span>{{ t('courses.topics.punctuation.students') }}</span>
+                        </button><button type="button"><h5>{{ t('courses.topics.paragraph.name') }}</h5><span>{{ t('courses.topics.paragraph.students') }}</span>
+                        </button><button type="button"><h5>{{ t('courses.topics.wordTypes.name') }}</h5><span>{{ t('courses.topics.wordTypes.students') }}</span>
                         </button></div>
                     <div class="row justify-content-center g-4">
                         <div class="col-xl-3 col-md-6">
@@ -41,23 +27,19 @@
                                 <div class="education-courses-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses1.jpg" alt="image"></a><a
-                                            routerlink="/courses" class="tag-btn" href="/hedefokul/courses">En Çok Beğenilen</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                                src="assets/images/courses/courses1.jpg" alt=""></a><a
+                                            routerlink="/courses" class="tag-btn" href="/hedefokul/courses">{{ t('courses.reading4.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">4. Sınıf
-                                                Türkçe
-                                                Okuma Anlama</a></h3>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.reading4.title') }}</a></h3>
                                         <ul class="info-rating">
-                                            <li><b>4.9</b>
+                                            <li><b>{{ t('courses.reading4.rating') }}</b>
                                             </li>
 
-                                            <li><span>(1.240
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.reading4.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -71,7 +53,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>20 Soru</span></li>
+                                                </svg><span>{{ t('courses.reading4.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -80,32 +62,26 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>7.820 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.reading4.students') }}</span></li>
                                         </ul>
                                     </div>
                                 </div>
                                 <div class="education-courses-hover-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses1.jpg" alt="image"></a><a
-                                            routerlink="/courses" class="tag-btn" href="/hedefokul/courses">En Çok Beğenilen</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                                src="assets/images/courses/courses1.jpg" alt=""></a><a
+                                            routerlink="/courses" class="tag-btn" href="/hedefokul/courses">{{ t('courses.reading4.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">4. Sınıf
-                                                Türkçe
-                                                Okuma Anlama</a></h3>
-                                        <p>Metni anlama, ana fikir bulma, olayları sıralamayla
-                                            öğrencilerin Türkçe okuma anlama becerilerini geliştirin.</p>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.reading4.title') }}</a></h3><p>{{ t('courses.reading4.description') }}</p>
                                         <ul class="info-rating">
-                                            <li><b>4.9</b>
+                                            <li><b>{{ t('courses.reading4.rating') }}</b>
                                             </li>
 
-                                            <li><span>(1.240
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.reading4.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -119,7 +95,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>25 Soru</span></li>
+                                                </svg><span>{{ t('courses.reading4.questionsExtended') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -128,10 +104,10 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>7.820 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.reading4.students') }}</span></li>
                                         </ul>
                                         <ul class="info-bottom">
-                                            <li><button type="button" class="default-btn"> Çalışmaya Başla <svg
+                                            <li><button type="button" class="default-btn"> {{ t('courses.cta') }} <svg
                                                         xmlns="http://www.w3.org/2000/svg" width="18" height="18"
                                                         viewBox="0 0 18 18" fill="none">
                                                         <path opacity="0.5"
@@ -163,23 +139,20 @@
                                 <div class="education-courses-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses2.jpg" alt="image"></a><a
+                                                src="assets/images/courses/courses2.jpg" alt=""></a><a
                                             routerlink="/courses" class="tag-btn wrap2"
-                                            href="/hedefokul/courses">Trend</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                            href="/hedefokul/courses">{{ t('courses.math3.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">3. Sınıf
-                                                Matematik İşlemler</a></h3>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.math3.title') }}</a></h3>
                                         <ul class="info-rating">
-                                            <li><b>4.0</b>
+                                            <li><b>{{ t('courses.math3.rating') }}</b>
                                             </li>
 
-                                            <li><span>(980
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.math3.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -193,7 +166,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>18 Soru</span></li>
+                                                </svg><span>{{ t('courses.math3.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -202,29 +175,27 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>5.645 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.math3.students') }}</span></li>
                                         </ul>
                                     </div>
                                 </div>
                                 <div class="education-courses-hover-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses2.jpg" alt="image"></a><a
+                                                src="assets/images/courses/courses2.jpg" alt=""></a><a
                                             routerlink="/courses" class="tag-btn wrap2"
-                                            href="/hedefokul/courses">Trend</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                            href="/hedefokul/courses">{{ t('courses.math3.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">3. Sınıf Matematik İşlemler</a></h3>
-                                        <p>Dört işlem, basamak değeri ve örüntüler konularında öğrencilerin temel matematik becerilerini geliştirir.</p>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.math3.title') }}</a></h3><p>{{ t('courses.math3.description') }}</p>
                                         <ul class="info-rating">
-                                            <li><b>4.0</b>
+                                            <li><b>{{ t('courses.math3.rating') }}</b>
                                             </li>
 
-                                            <li><span>(980 Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.math3.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -238,7 +209,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>18 Soru</span></li>
+                                                </svg><span>{{ t('courses.math3.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -247,10 +218,10 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>5.645 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.math3.students') }}</span></li>
                                         </ul>
                                         <ul class="info-bottom">
-                                            <li><button type="button" class="default-btn"> Çalışmaya Başla <svg
+                                            <li><button type="button" class="default-btn"> {{ t('courses.cta') }} <svg
                                                         xmlns="http://www.w3.org/2000/svg" width="18" height="18"
                                                         viewBox="0 0 18 18" fill="none">
                                                         <path opacity="0.5"
@@ -282,23 +253,20 @@
                                 <div class="education-courses-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses3.jpg" alt="image"></a><a
+                                                src="assets/images/courses/courses3.jpg" alt=""></a><a
                                             routerlink="/courses" class="tag-btn wrap3"
-                                            href="/hedefokul/courses">Öğrenci Favorisi</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                            href="/hedefokul/courses">{{ t('courses.geometry5.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">5. Sınıf
-                                                Matematik Geometri</a></h3>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.geometry5.title') }}</a></h3>
                                         <ul class="info-rating">
-                                            <li><b>4.5</b>
+                                            <li><b>{{ t('courses.geometry5.rating') }}</b>
                                             </li>
 
-                                            <li><span>(1.560
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.geometry5.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -312,7 +280,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>22 Soru</span></li>
+                                                </svg><span>{{ t('courses.geometry5.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -321,32 +289,27 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>5.985 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.geometry5.students') }}</span></li>
                                         </ul>
                                     </div>
                                 </div>
                                 <div class="education-courses-hover-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses3.jpg" alt="image"></a><a
+                                                src="assets/images/courses/courses3.jpg" alt=""></a><a
                                             routerlink="/courses" class="tag-btn wrap3"
-                                            href="/hedefokul/courses">Öğrenci Favorisi</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                            href="/hedefokul/courses">{{ t('courses.geometry5.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">5. Sınıf
-                                                Matematik Geometri</a></h3>
-                                        <p>Yüzey alanları, çevre hesaplama ve geometrik şekiller konularında öğrencilerin
-                                            problem çözme becerilerini geliştirir.</p>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.geometry5.title') }}</a></h3><p>{{ t('courses.geometry5.description') }}</p>
                                         <ul class="info-rating">
-                                            <li><b>4.5</b>
+                                            <li><b>{{ t('courses.geometry5.rating') }}</b>
                                             </li>
 
-                                            <li><span>(1.560
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.geometry5.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -360,7 +323,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>22 Soru</span></li>
+                                                </svg><span>{{ t('courses.geometry5.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -369,10 +332,10 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>5.985 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.geometry5.students') }}</span></li>
                                         </ul>
                                         <ul class="info-bottom">
-                                            <li><button type="button" class="default-btn"> Çalışmaya Başla <svg
+                                            <li><button type="button" class="default-btn"> {{ t('courses.cta') }} <svg
                                                         xmlns="http://www.w3.org/2000/svg" width="18" height="18"
                                                         viewBox="0 0 18 18" fill="none">
                                                         <path opacity="0.5"
@@ -404,22 +367,19 @@
                                 <div class="education-courses-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses4.jpg" alt="image"></a><a
-                                            routerlink="/courses" class="tag-btn wrap4" href="/hedefokul/courses">Yeni Eklendi</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                                src="assets/images/courses/courses4.jpg" alt=""></a><a
+                                            routerlink="/courses" class="tag-btn wrap4" href="/hedefokul/courses">{{ t('courses.science4.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">4. Sınıf
-                                                Fen Bilimleri Madde</a></h3>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.science4.title') }}</a></h3>
                                         <ul class="info-rating">
-                                            <li><b>4.7</b>
+                                            <li><b>{{ t('courses.science4.rating') }}</b>
                                             </li>
 
-                                            <li><span>(2.180
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.science4.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -433,7 +393,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>28 Soru</span></li>
+                                                </svg><span>{{ t('courses.science4.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -442,31 +402,26 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>8.735 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.science4.students') }}</span></li>
                                         </ul>
                                     </div>
                                 </div>
                                 <div class="education-courses-hover-card">
                                     <div class="image"><a routerlink="/course-details"
                                             href="/hedefokul/course-details"><img
-                                                src="assets/images/courses/courses4.jpg" alt="image"></a><a
-                                            routerlink="/courses" class="tag-btn wrap4" href="/hedefokul/courses">Yeni Eklendi</a>
-                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="image">
+                                                src="assets/images/courses/courses4.jpg" alt=""></a><a
+                                            routerlink="/courses" class="tag-btn wrap4" href="/hedefokul/courses">{{ t('courses.science4.badge') }}</a>
+                                        <div class="vector"><img src="assets/images/courses/vector.png" alt="">
                                         </div>
                                     </div>
                                     <div class="lc-content">
-                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">4. Sınıf
-                                                Fen Bilimleri Madde</a></h3>
-                                        <p>Maddenin özellikleri, hal değişimleri ve karışımlar konularında öğrencilerin
-                                            fen bilgisi temellerini güçlendirir.</p>
+                                        <h3><a routerlink="/course-details" href="/hedefokul/course-details">{{ t('courses.science4.title') }}</a></h3><p>{{ t('courses.science4.description') }}</p>
                                         <ul class="info-rating">
-                                            <li><b>4.7</b>
+                                            <li><b>{{ t('courses.science4.rating') }}</b>
                                             </li>
 
-                                            <li><span>(2.180
-                                                    Değerlendirme)</span></li>
-                                        </ul>
-                                        <div class="price">Ücretsiz</div>
+                                            <li><span>{{ t('courses.science4.reviews') }}</span></li>
+                                        </ul><div class="price">{{ t('courses.price') }}</div>
                                         <ul class="info-list">
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="18"
                                                     viewBox="0 0 14 18" fill="none">
@@ -480,7 +435,7 @@
                                                         d="M4 5.39258H10M4 8.01758H7.75M12.625 14.3926H4"
                                                         stroke="#4B5563" stroke-width="1.5" stroke-linecap="round">
                                                     </path>
-                                                </svg><span>28 Soru</span></li>
+                                                </svg><span>{{ t('courses.science4.questions') }}</span></li>
                                             <li><svg xmlns="http://www.w3.org/2000/svg" width="14" height="19"
                                                     viewBox="0 0 14 19" fill="none">
                                                     <path
@@ -489,10 +444,10 @@
                                                     <path opacity="0.5"
                                                         d="M7 17.2858C10.3137 17.2858 13 15.7508 13 13.8573C13 11.9637 10.3137 10.4287 7 10.4287C3.68629 10.4287 1 11.9637 1 13.8573C1 15.7508 3.68629 17.2858 7 17.2858Z"
                                                         stroke="#4B5563" stroke-width="1.5"></path>
-                                                </svg><span>8.735 Öğrenci</span></li>
+                                                </svg><span>{{ t('courses.science4.students') }}</span></li>
                                         </ul>
                                         <ul class="info-bottom">
-                                            <li><button type="button" class="default-btn"> Çalışmaya Başla <svg
+                                            <li><button type="button" class="default-btn"> {{ t('courses.cta') }} <svg
                                                         xmlns="http://www.w3.org/2000/svg" width="18" height="18"
                                                         viewBox="0 0 18 18" fill="none">
                                                         <path opacity="0.5"
@@ -523,9 +478,8 @@
                 </div><!----><!----><!----><!----><!----><!---->
             </div>
         </div>
-        <div class="education-courses-bottom-content">
-            <p>Tüm derslerde müfredata uygun, uzman öğretmenler tarafından hazırlanmış içeriklerle öğrenme yolculuğuna devam et.</p><a routerlink="/courses" class="link-btn"
-                href="/hedefokul/courses"> Tüm Çalışma Yapraklarını Gör <svg xmlns="http://www.w3.org/2000/svg"
+        <div class="education-courses-bottom-content"><p>{{ t('courses.bottomText') }}</p><a routerlink="/courses" class="link-btn"
+                href="/hedefokul/courses"> {{ t('courses.bottomCta') }} <svg xmlns="http://www.w3.org/2000/svg"
                     width="18" height="14" viewBox="0 0 18 14" fill="none">
                     <path opacity="0.5" d="M16.375 6.75V7.25H1.375V6.75H16.375Z" fill="white" stroke="#1C43FE"></path>
                     <path d="M10.875 1L16.875 7L10.875 13" stroke="#1C43FE" stroke-width="1.5" stroke-linecap="round"

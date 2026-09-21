@@ -1,0 +1,7 @@
+{
+  "auth": {
+    "noRefreshToken": "Yenileme jetonu sağlanmadı.",
+    "userNotResolved": "Kullanıcı çözümlenemedi.",
+    "authenticationFailed": "Kullanıcı kimlik doğrulaması başarısız oldu"
+  }
+}

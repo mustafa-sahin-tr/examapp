@@ -19,13 +19,13 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ProgramService } from '../../services/program.service';
-import { StudyPageService } from '../../services/study-page.service';
 import {
   ProgramStudyPageScheduleItem,
   UserProgram,
   UserProgramStudyPageSchedule,
 } from '../../models/program.interfaces';
 import { StudyPage } from '../../models/study-page';
+import { describeStudyItem, studyItemTypeIcon } from '../../shared/utils/study-item-display.util';
 import { AddStudyPagesDialogComponent } from './add-study-pages-dialog.component';
 import { ScheduleDetailDialogComponent } from './schedule-detail-dialog.component';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -53,6 +53,9 @@ interface ScheduleBar {
   stack: number;
   offsetY: number;
   color: string;
+  /** Etkinlik tipi rozeti (Görsel / Link / Kitap Sayfası) — bar üzerinde ikon, tooltip'te etiket. */
+  typeIcon: string;
+  typeLabel: string;
 }
 
 @Component({
@@ -84,7 +87,6 @@ interface ScheduleBar {
 export class ProgramDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private programService = inject(ProgramService);
-  private studyPageService = inject(StudyPageService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private readonly transloco = inject(TranslocoService);
@@ -94,8 +96,6 @@ export class ProgramDetailComponent implements OnInit {
   programId: string | null = null;
   userProgram: UserProgram | null = null;
   calendarSize: 'small' | 'medium' | 'large' = 'medium';
-
-  availableStudyPages: Array<StudyPage & { selected?: boolean; startDate?: Date | null; endDate?: Date | null }> = [];
 
   weekStart = this.getWeekStart(new Date());
   currentMonth = new Date();
@@ -254,7 +254,6 @@ export class ProgramDetailComponent implements OnInit {
     }
 
     this.loadProgram(idValue);
-    this.loadStudyPages();
   }
 
   get weekDays(): Date[] {
@@ -353,7 +352,7 @@ export class ProgramDetailComponent implements OnInit {
 
     if (calendarDays.length === 0) return bars;
 
-    this.userProgram.studyPageSchedules.forEach((schedule) => {
+    this.userProgram.studyItemSchedules.forEach((schedule) => {
       const scheduleStart = new Date(schedule.startDate);
       const scheduleEnd = new Date(schedule.endDate);
 
@@ -394,6 +393,8 @@ export class ProgramDetailComponent implements OnInit {
       const startRow = Math.floor(startIndex / 7);
       const endRow = Math.floor(endIndex / 7);
       const color = this.getScheduleColor(schedule);
+      const typeIcon = studyItemTypeIcon(schedule.contentType);
+      const typeLabel = this.studyItemTypeLabel(schedule);
 
       for (let row = startRow; row <= endRow; row++) {
         const rowStart = row * 7;
@@ -411,6 +412,8 @@ export class ProgramDetailComponent implements OnInit {
           stack: 0,
           offsetY: 0,
           color,
+          typeIcon,
+          typeLabel,
         });
       }
     });
@@ -421,9 +424,13 @@ export class ProgramDetailComponent implements OnInit {
     return bars;
   }
 
+  private studyItemTypeLabel(schedule: UserProgramStudyPageSchedule): string {
+    return describeStudyItem(schedule, (key, params) => this.transloco.translate<string>(key, params) ?? '').typeLabel;
+  }
+
   private getScheduleColor(schedule: UserProgramStudyPageSchedule): string {
     for (const [subject, color] of Object.entries(this.subjectColors)) {
-      if (schedule.studyPageTitle?.toLowerCase().includes(subject.toLowerCase())) {
+      if (schedule.studyItemTitle?.toLowerCase().includes(subject.toLowerCase())) {
         return color;
       }
     }
@@ -516,7 +523,7 @@ export class ProgramDetailComponent implements OnInit {
     schedules.forEach((schedule) => {
       let colorFound = false;
       for (const [subject, color] of Object.entries(this.subjectColors)) {
-        if (schedule.studyPageTitle?.toLowerCase().includes(subject.toLowerCase())) {
+        if (schedule.studyItemTitle?.toLowerCase().includes(subject.toLowerCase())) {
           colors.push(color);
           colorFound = true;
           break;
@@ -542,7 +549,7 @@ export class ProgramDetailComponent implements OnInit {
     schedules.forEach((schedule) => {
       let colorFound = false;
       for (const [subject, color] of Object.entries(this.subjectColors)) {
-        if (schedule.studyPageTitle?.toLowerCase().includes(subject.toLowerCase())) {
+        if (schedule.studyItemTitle?.toLowerCase().includes(subject.toLowerCase())) {
           colors.push(color);
           colorFound = true;
           break;
@@ -590,12 +597,6 @@ export class ProgramDetailComponent implements OnInit {
       width: '800px',
       maxWidth: '90vw',
       data: {
-        availableStudyPages: this.availableStudyPages.map((p) => ({
-          ...p,
-          selected: false,
-          startDate: null,
-          endDate: null,
-        })),
         selectedDate: selectedDate,
       },
       panelClass: 'add-study-pages-dialog',
@@ -634,7 +635,7 @@ export class ProgramDetailComponent implements OnInit {
     }
 
     const items: ProgramStudyPageScheduleItem[] = selectedPages.map((p) => ({
-      studyPageId: p.id,
+      studyItemId: p.id,
       startDate: p.startDate.toISOString(),
       endDate: p.endDate.toISOString(),
     }));
@@ -652,7 +653,7 @@ export class ProgramDetailComponent implements OnInit {
 
   getSchedulesForDay(day: Date) {
     if (!this.userProgram) return [];
-    return this.userProgram.studyPageSchedules.filter((s) => {
+    return this.userProgram.studyItemSchedules.filter((s) => {
       const start = new Date(s.startDate);
       const end = new Date(s.endDate);
       return start <= day && end >= day;
@@ -685,25 +686,6 @@ export class ProgramDetailComponent implements OnInit {
       },
       error: () => {
         this.notify('detail.loadFailed');
-      },
-    });
-  }
-
-  private loadStudyPages(): void {
-    this.studyPageService.getPaged({ pageNumber: 1, pageSize: 200 }).subscribe({
-      next: (result) => {
-        console.log('Study pages loaded from API:', result);
-        this.availableStudyPages = result.items.map((page) => ({
-          ...page,
-          selected: false,
-          startDate: null,
-          endDate: null,
-        }));
-        console.log('Available study pages after mapping:', this.availableStudyPages);
-      },
-      error: (err) => {
-        console.error('Error loading study pages:', err);
-        this.notify('detail.studyPagesLoadFailed');
       },
     });
   }

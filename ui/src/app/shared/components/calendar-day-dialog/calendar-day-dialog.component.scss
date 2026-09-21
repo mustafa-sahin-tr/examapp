@@ -117,6 +117,24 @@
     color: var(--secondaryColor);
   }
 
+  &__row-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0.125rem 0 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 0.8125rem;
+    color: var(--ms-text);
+    overflow-wrap: anywhere;
+
+    mat-icon {
+      flex-shrink: 0;
+      width: 1rem;
+      height: 1rem;
+      font-size: 1rem;
+    }
+  }
+
   &__row-status {
     display: inline-flex;
     align-items: center;

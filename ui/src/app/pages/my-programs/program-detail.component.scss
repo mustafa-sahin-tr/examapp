@@ -524,3 +524,15 @@
     scroll-behavior: auto !important;
   }
 }
+
+.schedule-bar {
+  gap: 4px;
+}
+
+.schedule-bar-icon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  color: var(--ms-colors-white);
+}

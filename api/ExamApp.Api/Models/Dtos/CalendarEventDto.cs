@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Models.Dtos;
 
 /// <summary>
 /// Öğrenci takvimindeki tek bir etkinlik. <see cref="Kind"/> değerine göre bazı alanlar dolu,
 /// diğerleri null olur (reminder vs. assignment-deadline vs. ProgramStudyItem).
+/// ProgramStudyItem etkinliği ayrıca StudyItem içerik tipi alanlarını taşır (ContentType, Url, Platform,
+/// BookName, BookTestName, StartPage, EndPage); diğer kind'larda bunlar null'dır.
 /// Etkinlikler <c>[from, to)</c> aralığında döner — <c>to</c> hariç (exclusive).
 /// </summary>
 public class CalendarEventDto
@@ -55,6 +58,30 @@ public class CalendarEventDto
     public int? StudyItemId { get; set; }
 
     public string? StudyItemTitle { get; set; }
+
+    // İçerik tipi (issue #141/#142): takvimde güne tıklanınca etkinlik detayı tipe göre render edilir.
+    // Alan adları/tipleri UserProgramStudyPageScheduleDto ile birebir aynıdır. Yalnızca Kind == "program-study-page" için dolu.
+
+    /// <summary>Etkinliğin içerik tipi (Image | Link | BookPageRange). Enum sayısal (int) serileşir.</summary>
+    public StudyItemContentType? ContentType { get; set; }
+
+    /// <summary>Link tipi — bağlantı adresi (yalnızca ContentType == Link iken dolu).</summary>
+    public string? Url { get; set; }
+
+    /// <summary>Link tipi — bağlantının platformu (yalnızca ContentType == Link iken dolu).</summary>
+    public StudyItemLinkPlatform? Platform { get; set; }
+
+    /// <summary>BookPageRange tipi — kitap adı (yalnızca ContentType == BookPageRange iken dolu).</summary>
+    public string? BookName { get; set; }
+
+    /// <summary>BookPageRange tipi — test adı (yalnızca ContentType == BookPageRange iken dolu).</summary>
+    public string? BookTestName { get; set; }
+
+    /// <summary>BookPageRange tipi — başlangıç sayfası.</summary>
+    public int? StartPage { get; set; }
+
+    /// <summary>BookPageRange tipi — bitiş sayfası.</summary>
+    public int? EndPage { get; set; }
 
     // --- booking alanları (issue #96, Kind == "booking") ---
 

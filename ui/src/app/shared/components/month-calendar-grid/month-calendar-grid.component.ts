@@ -158,7 +158,7 @@ export class MonthCalendarGridComponent {
       const startRow = Math.floor(startIndex / 7);
       const endRow = Math.floor(endIndex / 7);
       const completed = ev.isCompleted === true;
-      const title = ev.studyPageTitle || ev.programName || this.t('shared.calendar.variant.programPlan');
+      const title = ev.studyItemTitle || ev.programName || this.t('shared.calendar.variant.programPlan');
 
       for (let row = startRow; row <= endRow; row++) {
         const rowStart = row * 7;
@@ -218,7 +218,7 @@ export class MonthCalendarGridComponent {
   }
 
   barTrackKey(bar: ProgramBar): string {
-    return `${bar.event.programId}-${bar.event.studyPageId}-${bar.event.date}-${bar.weekRow}`;
+    return `${bar.event.programId}-${bar.event.studyItemId}-${bar.event.date}-${bar.weekRow}`;
   }
 
   eventsFor(cell: CalendarCell): CalendarEvent[] {

@@ -8,54 +8,116 @@
   </h2>
 
   <mat-dialog-content>
-    @if (studyPages.length === 0) {
+    <div class="filters">
+      <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+        <mat-label>{{ t('addStudyPages.searchLabel') }}</mat-label>
+        <mat-icon matIconPrefix>search</mat-icon>
+        <input matInput type="search" [ngModel]="searchText()" (ngModelChange)="onSearchChange($event)" />
+      </mat-form-field>
+
+      <mat-chip-listbox
+        class="type-filter"
+        [attr.aria-label]="t('addStudyPages.filterAria')"
+        [value]="typeFilter()"
+        (change)="onTypeFilterChange($event.value)"
+      >
+        @for (option of typeFilterOptions; track option.value) {
+          <mat-chip-option [value]="option.value">{{ t(option.labelKey) }}</mat-chip-option>
+        }
+      </mat-chip-listbox>
+    </div>
+
+    @if (loading()) {
+      <div class="state-message" role="status">
+        <mat-spinner diameter="32"></mat-spinner>
+        <p>{{ t('addStudyPages.loading') }}</p>
+      </div>
+    } @else if (error()) {
+      <div class="state-message state-error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ t('addStudyPages.loadFailed') }}</p>
+        <button mat-stroked-button type="button" (click)="retry()">{{ t('addStudyPages.retry') }}</button>
+      </div>
+    } @else if (cards().length === 0) {
       <div class="no-pages-message">
         <mat-icon>info</mat-icon>
-        <p>{{ t('addStudyPages.noPages') }}</p>
+        <p>{{ isFiltered() ? t('addStudyPages.noResults') : t('addStudyPages.noPages') }}</p>
       </div>
     } @else {
       <div class="study-pages-grid">
-        @for (page of studyPages; track page.id) {
-          <mat-card class="study-page-card" [class.selected]="page.selected" (click)="togglePageSelection(page)">
+        @for (card of cards(); track card.page.id) {
+          @let page = card.page;
+          @let display = card.display;
+          <mat-card
+            class="study-page-card"
+            [class.selected]="isSelected(page)"
+            [attr.data-kind]="display.kind"
+            (click)="togglePageSelection(page)"
+          >
             <div class="card-checkbox">
               <mat-checkbox
-                [(ngModel)]="page.selected"
-                (ngModelChange)="onCheckboxChange(page)"
+                [checked]="isSelected(page)"
+                (change)="setSelected(page, $event.checked)"
                 (click)="$event.stopPropagation()"
               ></mat-checkbox>
             </div>
-            <div
-              class="card-media"
-              [style.background-image]="page.coverImageUrl ? 'url(' + page.coverImageUrl + ')' : ''"
-            >
-              @if (!page.coverImageUrl) {
-                <div class="media-overlay">
-                  <mat-icon>image</mat-icon>
-                  <span>{{ t('addStudyPages.noImage') }}</span>
-                </div>
-              }
-            </div>
+
+            @if (display.kind === 'image') {
+              <div
+                class="card-media"
+                [style.background-image]="page.coverImageUrl ? 'url(' + page.coverImageUrl + ')' : ''"
+              >
+                @if (!page.coverImageUrl) {
+                  <div class="media-overlay">
+                    <mat-icon>image</mat-icon>
+                    <span>{{ t('addStudyPages.noImage') }}</span>
+                  </div>
+                }
+              </div>
+            }
+
             <mat-card-content>
+              <span class="type-badge">
+                <mat-icon>{{ display.typeIcon }}</mat-icon>
+                {{ display.typeLabel }}
+              </span>
               <h3 class="card-title">{{ page.title }}</h3>
               <p class="card-description">{{ page.description || t('addStudyPages.noDescription') }}</p>
               <div class="card-meta">
-                <span
-                  ><mat-icon>photo_library</mat-icon>{{ t('addStudyPages.pageCount', { count: page.imageCount }) }}</span
-                >
+                @switch (display.kind) {
+                  @case ('link') {
+                    <span [attr.title]="display.platformLabel">
+                      <mat-icon>{{ display.platformIcon }}</mat-icon>
+                      {{ display.host ?? t('addStudyPages.linkUnavailable') }}
+                    </span>
+                  }
+                  @case ('book') {
+                    <span>
+                      <mat-icon>{{ display.typeIcon }}</mat-icon>
+                      {{ display.bookLine ?? t('addStudyPages.bookFallback') }}
+                    </span>
+                  }
+                  @default {
+                    <span>
+                      <mat-icon>photo_library</mat-icon>
+                      {{ t('addStudyPages.pageCount', { count: page.imageCount }) }}
+                    </span>
+                  }
+                }
               </div>
             </mat-card-content>
 
-            @if (page.selected) {
+            @if (selectionOf(page); as sel) {
               <div class="study-page-date-fields" (click)="$event.stopPropagation()">
-                <mat-form-field appearance="outline" class="date-field">
+                <mat-form-field appearance="outline" class="date-field" subscriptSizing="dynamic">
                   <mat-label>{{ t('addStudyPages.startDate') }}</mat-label>
-                  <input matInput [matDatepicker]="picker1" [(ngModel)]="page.startDate" />
+                  <input matInput [matDatepicker]="picker1" [(ngModel)]="sel.startDate" />
                   <mat-datepicker-toggle matIconSuffix [for]="picker1"></mat-datepicker-toggle>
                   <mat-datepicker #picker1></mat-datepicker>
                 </mat-form-field>
-                <mat-form-field appearance="outline" class="date-field">
+                <mat-form-field appearance="outline" class="date-field" subscriptSizing="dynamic">
                   <mat-label>{{ t('addStudyPages.endDate') }}</mat-label>
-                  <input matInput [matDatepicker]="picker2" [(ngModel)]="page.endDate" />
+                  <input matInput [matDatepicker]="picker2" [(ngModel)]="sel.endDate" />
                   <mat-datepicker-toggle matIconSuffix [for]="picker2"></mat-datepicker-toggle>
                   <mat-datepicker #picker2></mat-datepicker>
                 </mat-form-field>

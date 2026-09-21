@@ -159,6 +159,24 @@
         "sun": "Sun"
       }
     },
+    "studyItem": {
+      "open": "Open",
+      "openAria": "Open {{title}} link in a new tab",
+      "type": {
+        "image": "Image",
+        "link": "Link",
+        "bookPageRange": "Book pages"
+      },
+      "platform": {
+        "other": "Other",
+        "eba": "EBA",
+        "youtube": "YouTube"
+      },
+      "book": {
+        "pageSingle": "page {{page}}",
+        "pageRange": "pages {{start}}-{{end}}"
+      }
+    },
     "calendarDayDialog": {
       "completed": "Completed",
       "sent": "Sent",

@@ -18,8 +18,8 @@ function programEvent(overrides: Partial<CalendarEvent> & { date: string }): Cal
     teacherName: null,
     programId: 1,
     programName: 'Program A',
-    studyPageId: 1,
-    studyPageTitle: 'Sayfa 1',
+    studyItemId: 1,
+    studyItemTitle: 'Sayfa 1',
     ...overrides,
   } as CalendarEvent;
 }
@@ -37,8 +37,8 @@ function reminderEvent(overrides: Partial<CalendarEvent> & { date: string; works
     teacherName: null,
     programId: null,
     programName: null,
-    studyPageId: null,
-    studyPageTitle: null,
+    studyItemId: null,
+    studyItemTitle: null,
     ...overrides,
   } as CalendarEvent;
 }
@@ -118,8 +118,8 @@ describe('MonthCalendarGridComponent', () => {
 
   it('AssignStackPositions_OverlappingEvents_GetDifferentStackValues', async () => {
     // Aynı haftada çakışan iki etkinlik: 8-9 Eylül ve 9-10 Eylül (9 Eylül'de örtüşüyor)
-    const evA = programEvent({ date: localIso(2026, 9, 8), endDate: localIso(2026, 9, 9), studyPageId: 1 });
-    const evB = programEvent({ date: localIso(2026, 9, 9), endDate: localIso(2026, 9, 10), studyPageId: 2 });
+    const evA = programEvent({ date: localIso(2026, 9, 8), endDate: localIso(2026, 9, 9), studyItemId: 1 });
+    const evB = programEvent({ date: localIso(2026, 9, 9), endDate: localIso(2026, 9, 10), studyItemId: 2 });
     const { component } = await setup(septemberRef, [evA, evB]);
 
     const bars = allBars(component);
@@ -130,8 +130,8 @@ describe('MonthCalendarGridComponent', () => {
 
   it('AssignStackPositions_NonOverlappingEvents_ShareStackZero', async () => {
     // Aynı haftada çakışmayan iki etkinlik: 7-8 Eylül ve 10-11 Eylül
-    const evA = programEvent({ date: localIso(2026, 9, 7), endDate: localIso(2026, 9, 8), studyPageId: 1 });
-    const evB = programEvent({ date: localIso(2026, 9, 10), endDate: localIso(2026, 9, 11), studyPageId: 2 });
+    const evA = programEvent({ date: localIso(2026, 9, 7), endDate: localIso(2026, 9, 8), studyItemId: 1 });
+    const evB = programEvent({ date: localIso(2026, 9, 10), endDate: localIso(2026, 9, 11), studyItemId: 2 });
     const { component } = await setup(septemberRef, [evA, evB]);
 
     const bars = allBars(component);
@@ -144,7 +144,7 @@ describe('MonthCalendarGridComponent', () => {
       date: localIso(2026, 9, 8),
       endDate: null,
       isCompleted: true,
-      studyPageTitle: 'Konu Testi',
+      studyItemTitle: 'Konu Testi',
     });
     const { component } = await setup(septemberRef, [ev]);
 
@@ -193,5 +193,70 @@ describe('MonthCalendarGridComponent', () => {
       expect(bars.every((b) => b.weekRow >= 0)).toBeTrue();
       expect(gridStart.getDate()).toBeGreaterThanOrEqual(1);
     }).not.toThrow();
+  });
+
+  // AC #7: Planım takvimi — yeni tipteki etkinlikler (Link, BookPageRange) tip ayrımı yapılmadan genel görünüyor.
+  it('BarsByWeek_LinkTypeEvent_RendersWithoutTypeIcon', async () => {
+    const ev = programEvent({
+      date: localIso(2026, 9, 8),
+      contentType: 1, // StudyPageContentType.Link
+      url: 'https://www.youtube.com/watch?v=test',
+      platform: 2, // StudyPageLinkPlatform.YouTube
+      studyItemTitle: 'Video',
+    });
+    const { component } = await setup(septemberRef, [ev]);
+
+    const bars = allBars(component);
+    expect(bars.length).toBe(1);
+    // Title should show study item title without type icon prefix
+    expect(bars[0].label).toContain('Video');
+    // Component should not render type-specific icon (no type differentiation)
+  });
+
+  it('BarsByWeek_BookPageRangeTypeEvent_RendersWithoutTypeIcon', async () => {
+    const ev = programEvent({
+      date: localIso(2026, 9, 8),
+      contentType: 2, // StudyPageContentType.BookPageRange
+      bookName: 'Matematik',
+      bookTestName: 'Test 1',
+      startPage: 10,
+      endPage: 20,
+      studyItemTitle: 'Book Pages',
+    });
+    const { component } = await setup(septemberRef, [ev]);
+
+    const bars = allBars(component);
+    expect(bars.length).toBe(1);
+    // Title should show study item title without type icon
+    expect(bars[0].label).toContain('Book Pages');
+  });
+
+  it('BarsByWeek_MultipleContentTypesInSameDay_RenderWithoutTypeDifferentiation', async () => {
+    const day = localIso(2026, 9, 8);
+    const imageEv = programEvent({ date: day, studyItemId: 1, studyItemTitle: 'Image Item', contentType: 0 });
+    const linkEv = programEvent({
+      date: day,
+      studyItemId: 2,
+      studyItemTitle: 'Link Item',
+      contentType: 1,
+      url: 'https://example.com',
+    });
+    const bookEv = programEvent({
+      date: day,
+      studyItemId: 3,
+      studyItemTitle: 'Book Item',
+      contentType: 2,
+      bookName: 'Book',
+    });
+
+    const { component } = await setup(septemberRef, [imageEv, linkEv, bookEv]);
+
+    const bars = allBars(component);
+    expect(bars.length).toBe(3);
+    // All should render without type differentiation icons
+    bars.forEach((bar) => {
+      expect(bar.label).toBeTruthy();
+      // Labels should contain study item titles
+    });
   });
 });

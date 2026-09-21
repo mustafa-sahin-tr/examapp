@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
@@ -341,5 +342,61 @@ public class KeycloakService : IKeycloakService
     public Task<string> GetUserNameFromTokenAsync(string token)
     {
         throw new NotImplementedException();
+    }
+
+    public async Task SetSchoolIdAttributeAsync(string keycloakUserId, int? schoolId)
+    {
+        if (string.IsNullOrEmpty(keycloakUserId))
+        {
+            throw new KeycloakException("Keycloak user ID cannot be null or empty.");
+        }
+
+        var adminToken = await GetKeycloakAdminTokenAsync();
+
+        _http.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", adminToken);
+
+        // Diğer alanları (email, firstName, lastName, diğer attribute'lar vb.) ezmemek için
+        // TAM UserRepresentation'ı çek, sadece attributes.school_id'yi değiştirip aynı nesneyi
+        // geri gönder. Keycloak 24 declarative user-profile ile eksik gövde (ör. yalnızca
+        // "attributes") required alanları (email vb.) boşaltabilir / 400 döndürebilir.
+        var getResponse = await _http.GetAsync($"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{keycloakUserId}");
+        if (!getResponse.IsSuccessStatusCode)
+        {
+            var error = await getResponse.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to fetch Keycloak user for school_id attribute update: {Error}", error);
+            throw new KeycloakException($"Failed to fetch Keycloak user: {error}");
+        }
+
+        var userJson = await getResponse.Content.ReadAsStringAsync();
+        var userNode = JsonNode.Parse(userJson)?.AsObject()
+            ?? throw new KeycloakException("Failed to parse Keycloak user representation.");
+
+        var attributesNode = userNode["attributes"]?.AsObject();
+        if (attributesNode is null)
+        {
+            attributesNode = new JsonObject();
+            userNode["attributes"] = attributesNode;
+        }
+
+        if (schoolId.HasValue)
+        {
+            attributesNode["school_id"] = new JsonArray(JsonValue.Create(schoolId.Value.ToString()));
+        }
+        else
+        {
+            attributesNode.Remove("school_id");
+        }
+
+        var updateContent = new StringContent(userNode.ToJsonString(), Encoding.UTF8, "application/json");
+
+        var putResponse = await _http.PutAsync(
+            $"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{keycloakUserId}", updateContent);
+        if (!putResponse.IsSuccessStatusCode)
+        {
+            var error = await putResponse.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to update school_id attribute in Keycloak: {Error}", error);
+            throw new KeycloakException($"Failed to update school_id attribute in Keycloak: {error}");
+        }
     }
 }

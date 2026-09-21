@@ -162,6 +162,8 @@ builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
+builder.Services.AddScoped<ISchoolContextResolver, SchoolContextResolver>(); // issue #189
+builder.Services.AddScoped<IUserProfileProvider, UserProfileProvider>(); // issue #189
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 builder.Services.AddScoped<IStudyItemService, StudyItemService>();
 

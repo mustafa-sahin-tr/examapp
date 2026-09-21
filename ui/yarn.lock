@@ -1250,6 +1250,32 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.24.2.tgz#34aa0b52d0fbb1a654b596acfa595f0c7b77a77b"
   integrity sha512-7VTgWzgMGvup6aSqDPLiW5zHaxYJGTO4OokMjIlrCtf+VpEL+cXKtCvg723iguPYI5oaUNdS+/V7OU2gvXVWEg==
 
+"@fullcalendar/angular@~6.1.21":
+  version "6.1.21"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/angular/-/angular-6.1.21.tgz#8162bc015f078dcedc87dbf8989316dc856f9fe7"
+  integrity sha512-ao2VKdqmu+y++Hyfb5q2qt9vXrNl9twgP74ClhcnVvDWaMNh7ku2QMAfkiYsyUXRY5YX74jP3eWSYAVGrU/rZQ==
+  dependencies:
+    tslib "^2.3.0"
+
+"@fullcalendar/core@~6.1.21":
+  version "6.1.21"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/core/-/core-6.1.21.tgz#e8b0ed592a60aba44499802fefdbb1fcc91b0a07"
+  integrity sha512-t3u/+sqh3Iq7TWtUnVLcGDUE6OWZh0UD3c04bI/l7lSLAgAKr3kngBmhHiQD1QXpwC8ZN5iNqG7a7gOVixhSKQ==
+  dependencies:
+    preact "~10.12.1"
+
+"@fullcalendar/daygrid@~6.1.21":
+  version "6.1.21"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/daygrid/-/daygrid-6.1.21.tgz#70eef7af5951b35a5f0380b15e32e5389ae029bc"
+  integrity sha512-QYb1y40RGYLlOxKpYWg8O+7njEnKnFG8Tt7qjnubJGR35s1phQg67E+81y2TyAbbm59p2JFOCXGDk9t6KDujIA==
+
+"@fullcalendar/timegrid@~6.1.21":
+  version "6.1.21"
+  resolved "https://registry.yarnpkg.com/@fullcalendar/timegrid/-/timegrid-6.1.21.tgz#62e8462f2c5f9bf1c8c4f4e1d9880f09cd8b4524"
+  integrity sha512-2DnShx/jallGmb8QCkr6pAOu/zuPhJrP7+uTrAtSnbqsX7GF3lTxqSeNGkTQwsgF5g/ia8udhQ+JNYaE+TN1cQ==
+  dependencies:
+    "@fullcalendar/daygrid" "~6.1.21"
+
 "@inquirer/checkbox@^4.0.4":
   version "4.1.1"
   resolved "https://registry.npmjs.org/@inquirer/checkbox/-/checkbox-4.1.1.tgz"
@@ -5990,6 +6016,11 @@ postcss@^8.2.14, postcss@^8.4.33, postcss@^8.4.49:
     nanoid "^3.3.8"
     picocolors "^1.1.1"
     source-map-js "^1.2.1"
+
+preact@~10.12.1:
+  version "10.12.1"
+  resolved "https://registry.yarnpkg.com/preact/-/preact-10.12.1.tgz#8f9cb5442f560e532729b7d23d42fd1161354a21"
+  integrity sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==
 
 proc-log@^5.0.0:
   version "5.0.0"

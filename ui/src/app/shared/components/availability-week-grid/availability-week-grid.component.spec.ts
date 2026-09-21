@@ -1,9 +1,69 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
+import { PLATFORM_ID } from '@angular/core';
 import { AvailabilityWeekGridComponent } from './availability-week-grid.component';
-import { AvailabilitySlot } from '../../../models/booking.model';
+import { AvailabilitySlot, ActiveBookingStatus } from '../../../models/booking.model';
 import { translocoTestingModule } from '../../testing/transloco-testing';
+import taTr from '../../../../../public/i18n/teacher-availability/tr.json';
+import taEn from '../../../../../public/i18n/teacher-availability/en.json';
 
-const translocoTesting = translocoTestingModule();
+// Scope sözlüğü gerçek dosyadan yüklenir; aksi halde şablon ham anahtarı basar ve etiket testleri anlamsızlaşır.
+const translocoTesting = translocoTestingModule({
+  langs: { 'teacher-availability/tr': taTr, 'teacher-availability/en': taEn },
+});
+
+/**
+ * Helper: İçinde bulunulan (Pazartesi başlangıçlı) haftanın `dayOffset`. gününde bir an üretir.
+ * FullCalendar da aynı `new Date()` haftasını gösterdiği için slot her zaman görünen aralıkta kalır.
+ */
+function createWeekTestDate(dayOffset: number, hour: number, minute: number = 0): Date {
+  // Get Monday of current week
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+
+  // Add dayOffset days (0=Mon, 3=Thu, 5=Sat, 6=Sun)
+  const slotDate = new Date(monday);
+  slotDate.setDate(slotDate.getDate() + dayOffset);
+  slotDate.setHours(hour, minute, 0, 0);
+  return slotDate;
+}
+
+/**
+ * Create AvailabilitySlot within the visible week.
+ * @param id - slot ID
+ * @param dayOffset - 0-6 (Mon-Sun)
+ * @param startHour - start time hour
+ * @param endHour - end time hour
+ * @param isBooked - booking status
+ * @param bookingStatus - if booked, status type
+ */
+function createSlotInWeek(
+  id: number,
+  dayOffset: number,
+  startHour: number,
+  endHour: number,
+  isBooked = false,
+  bookingStatus?: ActiveBookingStatus | null
+): AvailabilitySlot {
+  const start = createWeekTestDate(dayOffset, startHour);
+  const end = createWeekTestDate(dayOffset, endHour);
+  const dateStr = start.toISOString().split('T')[0];
+
+  return {
+    id,
+    teacherId: 10,
+    date: dateStr,
+    startTime: start.toISOString().split('T')[1].substring(0, 8),
+    endTime: end.toISOString().split('T')[1].substring(0, 8),
+    createdAt: new Date().toISOString(),
+    startUtc: start.toISOString(),
+    endUtc: end.toISOString(),
+    isBooked,
+    bookingStatus,
+  };
+}
 
 describe('AvailabilityWeekGridComponent', () => {
   let component: AvailabilityWeekGridComponent;
@@ -23,42 +83,16 @@ describe('AvailabilityWeekGridComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should render grid with valid slots', fakeAsync(() => {
-    const slot: AvailabilitySlot = {
-      id: 1,
-      teacherId: 10,
-      date: '2026-09-20',
-      startTime: '14:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: '2026-09-20T12:00:00Z',
-      endUtc: '2026-09-20T13:00:00Z',
-      isBooked: false,
-    };
-
-    TestBed.runInInjectionContext(() => {
-      fixture.componentRef.setInput('slots', [slot]);
-    });
-
+  it('should render exactly one event for a single valid slot', fakeAsync(() => {
+    fixture.componentRef.setInput('slots', [createSlotInWeek(1, 3, 14, 15)]);
     fixture.detectChanges();
     tick();
 
-    const section = fixture.nativeElement.querySelector('.awg');
-    expect(section).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.fc-timegrid-event').length).toBe(1);
   }));
 
   it('should apply is-free class to free slots', fakeAsync(() => {
-    const slot: AvailabilitySlot = {
-      id: 1,
-      teacherId: 10,
-      date: '2026-09-20',
-      startTime: '14:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: '2026-09-20T12:00:00Z',
-      endUtc: '2026-09-20T13:00:00Z',
-      isBooked: false,
-    };
+    const slot = createSlotInWeek(1, 3, 14, 15, false); // Thu 14:00-15:00, free
 
     TestBed.runInInjectionContext(() => {
       fixture.componentRef.setInput('slots', [slot]);
@@ -67,25 +101,14 @@ describe('AvailabilityWeekGridComponent', () => {
     fixture.detectChanges();
     tick(500);
 
-    // Calendar component should be created and render
-    const calendar = fixture.nativeElement.querySelector('full-calendar');
-    const gridElement = fixture.nativeElement.querySelector('.awg__canvas');
-    expect(gridElement).toBeTruthy();
+    const eventElements = fixture.nativeElement.querySelectorAll('.fc-timegrid-event') as NodeListOf<HTMLElement>;
+    expect(eventElements.length).toBeGreaterThan(0);
+    const freeEvent = Array.from(eventElements).find((el) => el.classList.contains('is-free'));
+    expect(freeEvent).toBeTruthy();
   }));
 
   it('should apply is-approved class to approved bookings', fakeAsync(() => {
-    const slot: AvailabilitySlot = {
-      id: 1,
-      teacherId: 10,
-      date: '2026-09-20',
-      startTime: '14:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: '2026-09-20T12:00:00Z',
-      endUtc: '2026-09-20T13:00:00Z',
-      isBooked: true,
-      bookingStatus: 'Approved',
-    };
+    const slot = createSlotInWeek(1, 3, 14, 15, true, 'Approved');
 
     TestBed.runInInjectionContext(() => {
       fixture.componentRef.setInput('slots', [slot]);
@@ -94,24 +117,14 @@ describe('AvailabilityWeekGridComponent', () => {
     fixture.detectChanges();
     tick(500);
 
-    // Verify calendar is rendered with events
-    const calendar = fixture.nativeElement.querySelector('.fc');
-    expect(calendar).toBeTruthy();
+    const eventElements = fixture.nativeElement.querySelectorAll('.fc-timegrid-event') as NodeListOf<HTMLElement>;
+    expect(eventElements.length).toBeGreaterThan(0);
+    const approvedEvent = Array.from(eventElements).find((el) => el.classList.contains('is-approved'));
+    expect(approvedEvent).toBeTruthy();
   }));
 
   it('should apply is-pending class to pending bookings', fakeAsync(() => {
-    const slot: AvailabilitySlot = {
-      id: 1,
-      teacherId: 10,
-      date: '2026-09-20',
-      startTime: '14:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: '2026-09-20T12:00:00Z',
-      endUtc: '2026-09-20T13:00:00Z',
-      isBooked: true,
-      bookingStatus: 'Pending',
-    };
+    const slot = createSlotInWeek(1, 3, 14, 15, true, 'Pending');
 
     TestBed.runInInjectionContext(() => {
       fixture.componentRef.setInput('slots', [slot]);
@@ -120,36 +133,28 @@ describe('AvailabilityWeekGridComponent', () => {
     fixture.detectChanges();
     tick(500);
 
-    // Verify calendar renders with the pending slot
-    const calendar = fixture.nativeElement.querySelector('.fc');
-    expect(calendar).toBeTruthy();
+    const eventElements = fixture.nativeElement.querySelectorAll('.fc-timegrid-event') as NodeListOf<HTMLElement>;
+    expect(eventElements.length).toBeGreaterThan(0);
+    const pendingEvent = Array.from(eventElements).find((el) => el.classList.contains('is-pending'));
+    expect(pendingEvent).toBeTruthy();
   }));
 
   it('should apply is-past class to past slots', fakeAsync(() => {
-    const now = new Date();
-    const pastDate = new Date(now.getTime() - 60 * 60 * 1000); // 1 hour ago
-    const slot: AvailabilitySlot = {
-      id: 1,
-      teacherId: 10,
-      date: '2026-09-20',
-      startTime: '14:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: pastDate.toISOString(),
-      endUtc: new Date(pastDate.getTime() + 60 * 60 * 1000).toISOString(),
-      isBooked: false,
-    };
+    // Saat haftanın ortasına (Çarşamba 12:00) sabitlenir; böylece "geçmiş" slot her zaman görünen haftada kalır
+    // (Pazartesi gece yarısı civarında koşulsa bile).
+    const past = createSlotInWeek(1, 0, 10, 11); // Pzt 10:00-11:00
+    const future = createSlotInWeek(2, 4, 10, 11); // Cum 10:00-11:00
+    jasmine.clock().mockDate(createWeekTestDate(2, 12));
 
-    TestBed.runInInjectionContext(() => {
-      fixture.componentRef.setInput('slots', [slot]);
-    });
-
+    fixture.componentRef.setInput('slots', [past, future]);
     fixture.detectChanges();
     tick();
 
-    const eventElements = fixture.nativeElement.querySelectorAll('.fc-timegrid-event');
-    const hasPastClass = Array.from(eventElements).some((el: any) => el.classList.contains('is-past'));
-    expect(hasPastClass).toBeTrue();
+    const events = Array.from(
+      fixture.nativeElement.querySelectorAll('.fc-timegrid-event') as NodeListOf<HTMLElement>
+    );
+    expect(events.length).toBe(2);
+    expect(events.filter((el) => el.classList.contains('is-past')).length).toBe(1);
   }));
 
   it('should render legend with three status items', fakeAsync(() => {
@@ -165,7 +170,7 @@ describe('AvailabilityWeekGridComponent', () => {
     tick();
 
     const swatches = fixture.nativeElement.querySelectorAll('.awg__swatch');
-    const classes = Array.from(swatches).map((el: any) => {
+    const classes = Array.from(swatches as NodeListOf<HTMLElement>).map((el) => {
       if (el.classList.contains('is-free')) return 'is-free';
       if (el.classList.contains('is-pending')) return 'is-pending';
       if (el.classList.contains('is-approved')) return 'is-approved';
@@ -205,80 +210,147 @@ describe('AvailabilityWeekGridComponent', () => {
     fixture.detectChanges();
     tick(100);
 
-    const navGroup = fixture.nativeElement.querySelector('[role="group"]');
+    const navGroup = fixture.nativeElement.querySelector('[role="group"]') as HTMLElement;
     expect(navGroup).toBeTruthy();
 
-    const buttons = navGroup?.querySelectorAll('button');
+    const buttons = navGroup?.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
     expect(buttons?.length).toBeGreaterThanOrEqual(3);
   }));
 
-  it('should have prev button that can be clicked', fakeAsync(() => {
+  describe('hafta gezinme', () => {
+    /** `rangeTitle` `datesSet` içinde `queueMicrotask` ile yazılır: mikro görevleri boşalt, sonra yeniden render et. */
+    function rangeText(): string {
+      tick();
+      fixture.detectChanges();
+      return (fixture.nativeElement.querySelector('.awg__range') as HTMLElement).textContent?.trim() ?? '';
+    }
+
+    function navButtons(): HTMLButtonElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.awg__nav button') as NodeListOf<HTMLButtonElement>);
+    }
+
+    it('ilk render sonrası hafta aralığı başlığı dolu', fakeAsync(() => {
+      fixture.detectChanges();
+
+      expect(rangeText()).not.toBe('');
+      expect(fixture.nativeElement.querySelector('full-calendar')).toBeTruthy();
+    }));
+
+    it('sonraki / önceki hafta başlığı değiştirir ve geri döndürür', fakeAsync(() => {
+      fixture.detectChanges();
+      const initial = rangeText();
+      const [prev, , next] = navButtons();
+
+      next.click();
+      const afterNext = rangeText();
+      expect(afterNext).not.toBe(initial);
+
+      prev.click();
+      expect(rangeText()).toBe(initial);
+
+      prev.click();
+      const afterPrev = rangeText();
+      expect(afterPrev).not.toBe(initial);
+      expect(afterPrev).not.toBe(afterNext);
+    }));
+
+    it('"Bugün" içinde bulunulan haftaya döndürür', fakeAsync(() => {
+      fixture.detectChanges();
+      const initial = rangeText();
+      const [, today, next] = navButtons();
+
+      next.click();
+      next.click();
+      expect(rangeText()).not.toBe(initial);
+
+      today.click();
+      expect(rangeText()).toBe(initial);
+    }));
+
+    it('gezinme sonrası yalnızca o haftanın olayları görünür', fakeAsync(() => {
+      fixture.componentRef.setInput('slots', [createSlotInWeek(1, 3, 14, 15)]);
+      fixture.detectChanges();
+      tick();
+      expect(fixture.nativeElement.querySelectorAll('.fc-timegrid-event').length).toBe(1);
+
+      navButtons()[2].click();
+      tick();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.fc-timegrid-event').length).toBe(0);
+    }));
+  });
+
+  it('should have tabindex="0" on wrapper element and NOT on .fc-event', fakeAsync(() => {
+    const slot = createSlotInWeek(1, 3, 14, 15, false); // Thu 14:00-15:00, free
+
+    TestBed.runInInjectionContext(() => {
+      fixture.componentRef.setInput('slots', [slot]);
+    });
+
     fixture.detectChanges();
     tick(500);
 
-    const navGroup = fixture.nativeElement.querySelector('[role="group"]');
-    const prevButton = navGroup?.querySelector('button:nth-child(1)') as HTMLButtonElement;
+    // Wrapper .awg__ev should have tabindex="0"
+    const eventWrappers = fixture.nativeElement.querySelectorAll('.awg__ev') as NodeListOf<HTMLElement>;
+    expect(eventWrappers.length).toBeGreaterThan(0);
+    const wrapperWithTabindex = Array.from(eventWrappers).find((el) => el.getAttribute('tabindex') === '0');
+    expect(wrapperWithTabindex).toBeTruthy('Wrapper should have tabindex="0"');
 
-    expect(prevButton).toBeTruthy();
-    prevButton?.click();
-    tick();
+    // .fc-event elements should NOT have tabindex (eventInteractive off)
+    const fcEvents = fixture.nativeElement.querySelectorAll('.fc-event') as NodeListOf<HTMLElement>;
+    for (const event of Array.from(fcEvents)) {
+      expect(event.hasAttribute('tabindex')).toBeFalsy('.fc-event should not have tabindex');
+    }
   }));
 
-  it('should have next button that can be clicked', fakeAsync(() => {
+  it('should expose day, time, status and student name in aria-label of a booked slot', fakeAsync(() => {
+    const slot = createSlotInWeek(1, 3, 14, 15, true, 'Approved');
+    slot.studentName = 'Ayşe';
+
+    fixture.componentRef.setInput('slots', [slot]);
     fixture.detectChanges();
-    tick(500);
-
-    const navGroup = fixture.nativeElement.querySelector('[role="group"]');
-    const nextButton = navGroup?.querySelector('button:nth-child(3)') as HTMLButtonElement;
-
-    expect(nextButton).toBeTruthy();
-    nextButton?.click();
     tick();
+
+    const wrappers = fixture.nativeElement.querySelectorAll('.awg__ev') as NodeListOf<HTMLElement>;
+    expect(wrappers.length).toBe(1);
+
+    const label = wrappers[0].getAttribute('aria-label') ?? '';
+    const parts = label.split(' · ');
+    expect(parts.length).toBe(4); // gün · saat · durum · öğrenci
+    expect(parts[1]).toContain('14:00');
+    expect(parts[1]).toContain('15:00');
+    expect(parts[2]).toBe(taTr.status.approved);
+    expect(parts[3]).toBe('Öğrenci: Ayşe');
+    expect(wrappers[0].querySelector('.awg__ev-note')?.textContent).toContain('Ayşe');
   }));
 
-  it('should have today button that can be clicked', fakeAsync(() => {
+  it('should not expose student name when slot is not booked', fakeAsync(() => {
+    const slot = createSlotInWeek(1, 3, 14, 15, false);
+    slot.studentName = 'Ayşe';
+
+    fixture.componentRef.setInput('slots', [slot]);
     fixture.detectChanges();
-    tick(500);
-
-    const navGroup = fixture.nativeElement.querySelector('[role="group"]');
-    const todayButton = navGroup?.querySelector('button:nth-child(2)') as HTMLButtonElement;
-
-    expect(todayButton).toBeTruthy();
-    todayButton?.click();
     tick();
-  }));
 
-  it('should update rangeTitle signal on datesSet event', fakeAsync(() => {
-    fixture.detectChanges();
-    tick(500);
-
-    const rangeTitle = fixture.nativeElement.querySelector('.awg__range');
-    expect(rangeTitle).toBeTruthy();
-    // FullCalendar initializes the date range asynchronously
+    const wrapper = fixture.nativeElement.querySelector('.awg__ev') as HTMLElement;
+    const label = wrapper.getAttribute('aria-label') ?? '';
+    expect(label).not.toContain('Ayşe');
+    expect(label.split(' · ')[2]).toBe(taTr.status.free);
+    expect(wrapper.querySelector('.awg__ev-note')?.textContent?.trim()).toBe(taTr.status.free);
   }));
 
   it('should skip invalid slots', fakeAsync(() => {
-    const validSlot: AvailabilitySlot = {
-      id: 1,
-      teacherId: 10,
-      date: '2026-09-20',
-      startTime: '14:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: '2026-09-20T12:00:00Z',
-      endUtc: '2026-09-20T13:00:00Z',
-      isBooked: false,
-    };
+    const validSlot = createSlotInWeek(1, 3, 14, 15, false); // Thu 14:00-15:00
 
     const invalidSlot: AvailabilitySlot = {
       id: 2,
       teacherId: 10,
-      date: '2026-09-20',
+      date: validSlot.date,
       startTime: '16:00:00',
-      endTime: '15:00:00',
-      createdAt: '2026-09-15T10:00:00Z',
-      startUtc: '2026-09-20T15:00:00Z',
-      endUtc: '2026-09-20T14:00:00Z', // end before start
+      endTime: '15:00:00', // Invalid: end before start
+      createdAt: new Date().toISOString(),
+      startUtc: new Date(new Date(validSlot.startUtc).getTime() + 2 * 60 * 60 * 1000).toISOString(),
+      endUtc: new Date(new Date(validSlot.startUtc).getTime() + 1 * 60 * 60 * 1000).toISOString(),
       isBooked: false,
     };
 
@@ -290,8 +362,12 @@ describe('AvailabilityWeekGridComponent', () => {
     tick(500);
 
     // Component should render without error - invalid slot is skipped internally
-    const calendar = fixture.nativeElement.querySelector('.awg__canvas');
+    const calendar = fixture.nativeElement.querySelector('.awg__canvas') as HTMLElement;
     expect(calendar).toBeTruthy();
+
+    // Verify only the valid slot is rendered (invalid one is skipped)
+    const eventElements = fixture.nativeElement.querySelectorAll('.fc-timegrid-event') as NodeListOf<HTMLElement>;
+    expect(eventElements.length).toBe(1, 'Should render only 1 valid event, skip invalid');
   }));
 
   it('should handle empty slots', fakeAsync(() => {
@@ -306,12 +382,37 @@ describe('AvailabilityWeekGridComponent', () => {
     expect(section).toBeTruthy();
   }));
 
-  it('should only render on browser (not SSR)', fakeAsync(() => {
+  it('should only render calendar on browser (not SSR)', fakeAsync(() => {
     fixture.detectChanges();
     tick();
 
-    const canvas = fixture.nativeElement.querySelector('.awg__canvas');
+    const canvas = fixture.nativeElement.querySelector('.awg__canvas') as HTMLElement;
     expect(canvas).toBeTruthy();
+  }));
+
+  it('should NOT render calendar in SSR environment but render toolbar', fakeAsync(() => {
+    // Create a separate test bed with server platform
+    const ssrTestBed = TestBed.resetTestingModule();
+    ssrTestBed.configureTestingModule({
+      imports: [AvailabilityWeekGridComponent, translocoTesting],
+      providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+    });
+
+    const ssrFixture = ssrTestBed.createComponent(AvailabilityWeekGridComponent);
+    ssrFixture.detectChanges();
+    tick();
+
+    // In SSR, FullCalendar canvas should not be rendered
+    const canvas = ssrFixture.nativeElement.querySelector('.awg__canvas') as HTMLElement;
+    expect(canvas).toBeFalsy('Calendar canvas should NOT be rendered in SSR');
+
+    // But toolbar should still be rendered
+    const toolbar = ssrFixture.nativeElement.querySelector('.awg__toolbar') as HTMLElement;
+    expect(toolbar).toBeTruthy('Toolbar should be rendered in SSR');
+
+    // Scroll area should not be rendered in SSR
+    const scrollArea = ssrFixture.nativeElement.querySelector('.awg__scroll') as HTMLElement;
+    expect(scrollArea).toBeFalsy('Scroll area should NOT be rendered in SSR');
   }));
 
   it('should have role="region" on scroll area for accessibility', fakeAsync(() => {

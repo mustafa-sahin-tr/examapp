@@ -22,6 +22,18 @@
     "approved": "Approved appointment",
     "pending": "Pending request"
   },
+  "grid": {
+    "ariaLabel": "Weekly availability calendar",
+    "navLabel": "Week navigation",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "today": "Today",
+    "legendLabel": "Color legend",
+    "tooltip": {
+      "student": "Student: {{name}}",
+      "past": "Past"
+    }
+  },
   "actions": {
     "delete": "Delete availability slot",
     "lockedHint": "A slot with an appointment cannot be deleted"

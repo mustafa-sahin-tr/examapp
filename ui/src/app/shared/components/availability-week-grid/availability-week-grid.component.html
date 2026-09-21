@@ -1,0 +1,41 @@
+<section class="awg" [class.awg--loading]="loading()" [attr.aria-busy]="loading()" *transloco="let t; prefix: 'teacher-availability'">
+  <div class="awg__toolbar">
+    <div class="awg__nav" role="group" [attr.aria-label]="t('grid.navLabel')">
+      <button mat-icon-button type="button" [attr.aria-label]="t('grid.previousWeek')" [matTooltip]="t('grid.previousWeek')" (click)="previous()">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button mat-stroked-button type="button" (click)="today()">{{ t('grid.today') }}</button>
+      <button mat-icon-button type="button" [attr.aria-label]="t('grid.nextWeek')" [matTooltip]="t('grid.nextWeek')" (click)="next()">
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+
+    <h2 class="awg__range" aria-live="polite">{{ rangeTitle() }}</h2>
+
+    <ul class="awg__legend" [attr.aria-label]="t('grid.legendLabel')">
+      @for (item of legend; track item.statusClass) {
+        <li class="awg__legend-item">
+          <span class="awg__swatch" [class]="item.statusClass" aria-hidden="true"></span>
+          {{ t(item.statusKey) }}
+        </li>
+      }
+    </ul>
+  </div>
+
+  @if (isBrowser) {
+    <div class="awg__scroll" role="region" [attr.aria-label]="t('grid.ariaLabel')" tabindex="0">
+      <div class="awg__canvas">
+        <full-calendar [options]="options()">
+          <ng-template #eventContent let-arg>
+            @let p = props(arg);
+            @let tip = tooltipText(p, t(p.statusKey), p.studentName ? t('grid.tooltip.student', { name: p.studentName }) : '', p.past ? t('grid.tooltip.past') : '');
+            <div class="awg__ev" role="group" [matTooltip]="tip" [attr.aria-label]="tip">
+              <span class="awg__ev-time">{{ p.timeRange }}</span>
+              <span class="awg__ev-note">{{ p.studentName ?? t(p.statusKey) }}</span>
+            </div>
+          </ng-template>
+        </full-calendar>
+      </div>
+    </div>
+  }
+</section>

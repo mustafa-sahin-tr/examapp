@@ -15,6 +15,7 @@ import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoSc
 import { finalize, take } from 'rxjs';
 import { AvailabilitySlot } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
+import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
 import { isPastSlot, parseMinutes, toDateOnly, toTimeOnly } from '../../shared/utils/booking-format.util';
 
 /** Listede tek satır — slotun türetilmiş gösterim alanlarıyla. */
@@ -44,6 +45,7 @@ const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
   selector: 'app-teacher-availability',
   standalone: true,
   imports: [
+    AvailabilityWeekGridComponent,
     DatePipe,
     ReactiveFormsModule,
     RouterLink,
@@ -105,7 +107,7 @@ export class TeacherAvailabilityComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.bookingService
-      .getMySlots()
+      .getAllMySlots()
       .pipe(
         finalize(() => this.loading.set(false)),
         takeUntilDestroyed(this.destroyRef)

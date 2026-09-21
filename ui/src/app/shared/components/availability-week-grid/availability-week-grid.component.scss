@@ -1,0 +1,200 @@
+// ViewEncapsulation.None: FullCalendar DOM'unu kendisi üretir. Tüm kurallar `.awg` kökü altındadır;
+// renkler yalnızca src/styles.scss token'larından gelir (dark/light temada otomatik çözülür).
+
+.awg {
+  --awg-event-mix: 30%;
+
+  display: block;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--main-foreground-color);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+  transition: opacity 0.15s ease;
+
+  &--loading {
+    opacity: 0.6;
+  }
+
+  // ---------------- Başlık / gezinme ----------------
+
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  &__range {
+    flex: 1;
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 1.125rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    color: var(--ms-text-strong);
+  }
+
+  &__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8125rem;
+  }
+
+  &__legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  &__swatch {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 0.25rem;
+    border: 2px solid transparent;
+
+    &.is-free {
+      background: color-mix(in srgb, var(--secondaryColor) var(--awg-event-mix), var(--ms-surface));
+      border-color: var(--secondaryColor);
+    }
+
+    &.is-pending {
+      background: color-mix(in srgb, var(--primaryColor) var(--awg-event-mix), var(--ms-surface));
+      border-color: var(--primaryColor);
+    }
+
+    &.is-approved {
+      background: color-mix(in srgb, var(--ms-action-background) var(--awg-event-mix), var(--ms-surface));
+      border-color: var(--ms-action-background);
+    }
+  }
+
+  // ---------------- Kaydırma (dar ekranda 7 sütun) ----------------
+
+  &__scroll {
+    overflow-x: auto;
+    border-radius: 0.5rem;
+
+    &:focus-visible {
+      outline: 2px solid var(--ms-action-border-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  &__canvas {
+    min-width: 44rem;
+  }
+
+  // ---------------- FullCalendar token eşlemesi ----------------
+
+  .fc {
+    --fc-page-bg-color: var(--ms-surface);
+    --fc-neutral-bg-color: var(--ms-surface-weak);
+    --fc-neutral-text-color: var(--ms-text-weak);
+    --fc-border-color: var(--ms-border-weak);
+    --fc-today-bg-color: color-mix(in srgb, var(--ms-action-background) 12%, transparent);
+    --fc-now-indicator-color: var(--ms-danger-background);
+    --fc-event-text-color: var(--ms-text-strong);
+    --fc-small-font-size: 0.75rem;
+
+    font-family: var(--paragraphFontFamily);
+    color: var(--ms-text);
+
+    .fc-col-header-cell-cushion {
+      padding: 0.5rem 0.25rem;
+      color: var(--ms-text-medium);
+      font-weight: 600;
+      text-transform: capitalize;
+      text-decoration: none;
+    }
+
+    .fc-timegrid-slot {
+      height: 2rem;
+    }
+
+    .fc-timegrid-slot-label-cushion {
+      color: var(--ms-text-weak);
+      font-size: 0.75rem;
+    }
+
+    .fc-timegrid-slot-minor {
+      border-top-style: dotted;
+    }
+
+    // Olay: opak yüzey + durum tonu; sol kenar çizgisi durumu renk dışında da vurgular.
+    .fc-timegrid-event {
+      border-radius: 0.375rem;
+      border-width: 0 0 0 4px;
+      box-shadow: none;
+
+      &.is-free {
+        --fc-event-bg-color: color-mix(in srgb, var(--secondaryColor) var(--awg-event-mix), var(--ms-surface));
+        --fc-event-border-color: var(--secondaryColor);
+      }
+
+      &.is-pending {
+        --fc-event-bg-color: color-mix(in srgb, var(--primaryColor) var(--awg-event-mix), var(--ms-surface));
+        --fc-event-border-color: var(--primaryColor);
+      }
+
+      &.is-approved {
+        --fc-event-bg-color: color-mix(in srgb, var(--ms-action-background) var(--awg-event-mix), var(--ms-surface));
+        --fc-event-border-color: var(--ms-action-background);
+      }
+
+      &.is-past {
+        opacity: 0.55;
+      }
+    }
+
+    .fc-event-main {
+      padding: 0;
+      overflow: hidden;
+    }
+  }
+
+  // ---------------- Olay içeriği ----------------
+
+  &__ev {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    height: 100%;
+    padding: 0.2rem 0.4rem;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    color: var(--ms-text-strong);
+  }
+
+  &__ev-time {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  &__ev-note {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Kısa (30 dk) olay: tek satır, sığmayan metin kırpılır.
+  .fc-timegrid-event-short &__ev {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    padding-block: 0;
+  }
+}

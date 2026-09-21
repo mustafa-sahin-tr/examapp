@@ -56,7 +56,6 @@ tek issue üzerinde, ana klasörde çalışılır (paralel `/feature` yok).
   Slug: issue başlığından türetilmiş kısa, küçük harf, tire ile ayrılmış, Türkçe karakterleri
   sadeleştirilmiş en fazla 4-5 kelime.
 - Branch adını raporda belirt.
-- Claude'nin çalıştığı session ismini de `rename` komutu ile `issue-$ARGUMENTS` yap.
 - Bundan sonraki tüm adımlar (agent devirleri, commit, push, PR) bu branch üzerinde, ana klasörde çalışır.
 
 **2. Backend.** Onaydan sonra `dotnet-api-dev` agent'ına devret.

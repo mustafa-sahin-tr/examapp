@@ -46,18 +46,30 @@ export class BookingService {
   }
 
   /**
-   * Öğretmenin tüm slotlarını sayfa sayfa (`skip/take=200`) çekip tek sonuçta birleştirir (issue #175).
-   * Gelen sayfa 200'den azsa durur; `id` ile tekilleştirir. Bir sayfa hata verirse akış `error` ile biter
+   * Öğretmenin tüm slotlarını sayfa sayfa (`take=200`) çekip tek sonuçta birleştirir (issue #175, #208).
+   * Boş sayfa gelene kadar devam eder; `skip` o ana kadar dönen toplam kayıt sayısıdır — böylece backend
+   * `take` üst sınırını düşürse bile veri eksik kalmaz (bedeli: sonda fazladan bir boş sayfa isteği).
+   * `SLOTS_MAX_PAGES` emniyet sınırıdır; sınıra dolu sayfayla ulaşılırsa `console.warn` verilir.
+   * `id` ile tekilleştirir. Bir sayfa hata verirse akış `error` ile biter, kısmi sonuç dönmez
    * (tüketici mevcut hata yolunu kullanır). Sonuç bayrakları (`success`, `message`) ilk sayfadan gelir.
    */
   getAllMySlots(): Observable<AvailabilitySlotListResult> {
-    return defer(() =>
-      this.getMySlots(0, SLOTS_PAGE_SIZE).pipe(
-        expand((page, index) =>
-          (page.items?.length ?? 0) >= SLOTS_PAGE_SIZE && index + 1 < SLOTS_MAX_PAGES
-            ? this.getMySlots((index + 1) * SLOTS_PAGE_SIZE, SLOTS_PAGE_SIZE)
-            : EMPTY
-        ),
+    return defer(() => {
+      // Abonelik başına birikimli sayaç: bir sonraki sayfanın `skip` değeri.
+      let fetched = 0;
+      return this.getMySlots(0, SLOTS_PAGE_SIZE).pipe(
+        expand((page, index) => {
+          const count = page.items?.length ?? 0;
+          if (count === 0) {
+            return EMPTY;
+          }
+          if (index + 1 >= SLOTS_MAX_PAGES) {
+            console.warn(`getAllMySlots: ${SLOTS_MAX_PAGES} sayfa sınırına ulaşıldı; slot listesi eksik olabilir.`);
+            return EMPTY;
+          }
+          fetched += count;
+          return this.getMySlots(fetched, SLOTS_PAGE_SIZE);
+        }),
         toArray(),
         map((pages): AvailabilitySlotListResult => {
           const byId = new Map<number, AvailabilitySlot>();
@@ -70,8 +82,8 @@ export class BookingService {
           }
           return { ...pages[0], items: [...byId.values()] };
         })
-      )
-    );
+      );
+    });
   }
 
   deleteSlot(id: number): Observable<void> {

@@ -11,6 +11,12 @@ public class UserProfileDto
     public string Role { get; set; }
     public string Avatar { get; set;}
     /// <summary>
+    /// issue #189: sunucu tarafında (Teacher/Student tablosundan) doğrulanmış okul kimliği.
+    /// null = okulsuz/bağımsız kullanıcı, admin veya servis hesabı. Bkz. ISchoolContextResolver.
+    /// </summary>
+    public int? SchoolId { get; set; }
+
+    /// <summary>
     /// Kullanıcının dil tercihi (issue #181): "tr" | "en". Kaynağı auth-api'deki Users tablosu;
     /// buraya <c>IAuthApiClient.GetUserProfileAsync()</c> yanıtının deserialize'ı ile gelir ve
     /// Redis profil cache'inde saklanır. Cache'te eski (alanı olmayan) bir kayıt varsa bu

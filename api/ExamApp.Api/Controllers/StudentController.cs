@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
@@ -37,6 +38,7 @@ namespace ExamApp.Api.Controllers
         private readonly IBackgroundJobClient _backgroundJobs;
         private readonly StudentResetJob _studentResetJob;
         private readonly ILoginEventService _loginEventService;
+        private readonly ILogger<StudentController> _logger;
 
         // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
     // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'siz kurulan (birim test)
@@ -53,6 +55,7 @@ namespace ExamApp.Api.Controllers
             IBackgroundJobClient backgroundJobs,
             StudentResetJob studentResetJob,
             ILoginEventService loginEventService,
+            ILogger<StudentController> logger,
             IStringLocalizer<Messages>? localizer = null)
             : base()
         {
@@ -64,6 +67,7 @@ namespace ExamApp.Api.Controllers
             _backgroundJobs = backgroundJobs;
             _studentResetJob = studentResetJob;
             _loginEventService = loginEventService;
+            _logger = logger;
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
 
@@ -164,18 +168,9 @@ namespace ExamApp.Api.Controllers
 
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Student);
 
-            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
-            // (Role boş) haliyle Redis'e cache'lemiş olabilir. Cache'i güncel rolle tazele
-            // ki 1 saat boyunca diğer endpoint'ler eski/boş rolü görmesin.
-            user.Role = UserRole.Student.ToString();
-            await _userProfileCacheService.SetAsync(user.KeycloakId, user);
-
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
                 return Unauthorized(_localizer["auth.noRefreshToken"].Value);
-
-            // 2. Keycloak token endpoint'ine isteği hazırla
-            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
 
             // 🔹 Öğrenci zaten var mı?
             var response = await _studentService.Save(user.Id, request);
@@ -189,6 +184,31 @@ namespace ExamApp.Api.Controllers
             {
                 return BadRequest(new { message = response.Message });
             }
+
+            // issue #189: Student.SchoolId değişmiş olabilir — Keycloak "school_id" attribute'unu
+            // (JWT'ye taşınan ipucu) RefreshTokenAsync'ten ÖNCE güncelle ki hemen aşağıda alınan
+            // yeni token bu claim'i güncel haliyle içersin. Keycloak hatası kayıt akışını kırmamalı.
+            try
+            {
+                await _keycloakService.SetSchoolIdAttributeAsync(user.KeycloakId, request.SchoolId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Keycloak school_id attribute update failed for {KeycloakId}", user.KeycloakId);
+            }
+
+            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
+            // (Role boş, SchoolId eski) haliyle Redis'e cache'lemiş olabilir. Tek seferde güncel
+            // Role + SchoolId ile cache'le ki 1 saat boyunca diğer endpoint'ler eski değeri görmesin.
+            // RefreshTokenAsync'ten ÖNCE: refresh token geçersizse fırlatır, ama DB zaten güncellendiği
+            // için cache eski Role/SchoolId ile kalmamalı.
+            user.Role = UserRole.Student.ToString();
+            user.SchoolId = request.SchoolId;
+            await _userProfileCacheService.SetAsync(user.KeycloakId, user);
+
+            // 2. Keycloak token endpoint'ine isteği hazırla
+            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
+
             if (!string.IsNullOrEmpty(tokenData.RefreshToken))
             {
                 Response.Cookies.Append("refresh_token", tokenData.RefreshToken, new CookieOptions

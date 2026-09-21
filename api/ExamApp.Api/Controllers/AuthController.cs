@@ -27,6 +27,8 @@ namespace ExamApp.Api.Controllers
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
+        private readonly IUserProfileProvider _userProfileProvider;
+
         private readonly IKeycloakService _keycloakService;
 
         // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
@@ -36,6 +38,7 @@ namespace ExamApp.Api.Controllers
 
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory, UserProfileCacheService userProfileCacheService,
+             IUserProfileProvider userProfileProvider,
              IKeycloakService keycloakService,
              IStringLocalizer<Messages>? localizer = null)
             : base()
@@ -44,6 +47,7 @@ namespace ExamApp.Api.Controllers
             _context = context;
             _keycloakSettings = options.Value;
             _userProfileCacheService = userProfileCacheService;
+            _userProfileProvider = userProfileProvider;
             _keycloakService = keycloakService;
         }
 
@@ -54,18 +58,12 @@ namespace ExamApp.Api.Controllers
             // 1) Token içindeki Sub claim (user.Id) alınır
             var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            // Bu endpoint'in tek amacı önbelleği tazelemek: önce mevcut kaydı düşür, sonra
-            // auth-api'den taze profili çek ve yeniden yaz. (GetOrSetAsync kullanılırsa cache
-            // hit'te eski profil dönüp aynısı geri yazılır, önbellek hiç tazelenmezdi.)
+            // Bu endpoint'in tek amacı önbelleği tazelemek: önce mevcut kaydı düşür, sonra profili
+            // yeniden yükle. (GetOrSet cache hit'te eski profili döndürürdü, önbellek hiç tazelenmezdi.)
+            // issue #189: yükleme IUserProfileProvider'dan geçer — auth-api'den taze profil çeker,
+            // SchoolId'yi DB'den doldurur ve cache'e yazar (BaseController ile aynı yol).
             await _userProfileCacheService.RemoveAsync(sub);
-
-            var authApiClient = HttpContext.RequestServices.GetRequiredService<IAuthApiClient>();
-            var profile = await authApiClient.GetUserProfileAsync();
-
-            if (profile != null)
-            {
-                await _userProfileCacheService.SetAsync(sub, profile);
-            }
+            var profile = await _userProfileProvider.GetAsync(sub);
 
             if (profile != null)
             {

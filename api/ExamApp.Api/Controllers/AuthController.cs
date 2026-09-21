@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
@@ -52,12 +53,19 @@ namespace ExamApp.Api.Controllers
         {
             // 1) Token içindeki Sub claim (user.Id) alınır
             var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var profile = await _userProfileCacheService.GetOrSetAsync(sub, async () =>
+
+            // Bu endpoint'in tek amacı önbelleği tazelemek: önce mevcut kaydı düşür, sonra
+            // auth-api'den taze profili çek ve yeniden yaz. (GetOrSetAsync kullanılırsa cache
+            // hit'te eski profil dönüp aynısı geri yazılır, önbellek hiç tazelenmezdi.)
+            await _userProfileCacheService.RemoveAsync(sub);
+
+            var authApiClient = HttpContext.RequestServices.GetRequiredService<IAuthApiClient>();
+            var profile = await authApiClient.GetUserProfileAsync();
+
+            if (profile != null)
             {
-                var authApiClient = HttpContext.RequestServices.GetRequiredService<IAuthApiClient>();
-                return await authApiClient.GetUserProfileAsync();
-            });
-            await _userProfileCacheService.SetAsync(sub, profile);
+                await _userProfileCacheService.SetAsync(sub, profile);
+            }
 
             if (profile != null)
             {
@@ -115,8 +123,8 @@ namespace ExamApp.Api.Controllers
         /// Tanı endpoint'i (issue #181): bu istek için çözümlenmiş kültürü ve onu hangi
         /// provider'ın belirlediğini döner. #184'teki mesaj sözlüğü ve ui-tester doğrulaması
         /// bunun üzerine kurulacak.
-        /// Kaynak (source) değerleri: NormalizedAcceptLanguageCultureProvider (Accept-Language
-        /// header'ı), UserPreferredLocaleCultureProvider (kullanıcının kayıtlı tercihi),
+        /// Kaynak (source) değerleri sabit bir sözleşmedir, iç tip adı sızdırılmaz:
+        /// "header" (Accept-Language), "profile" (kullanıcının kayıtlı tercihi),
         /// "default" (hiçbiri eşleşmedi → tr-TR).
         /// </summary>
         [Authorize]
@@ -131,9 +139,19 @@ namespace ExamApp.Api.Controllers
             {
                 culture = requestCulture.Culture.Name,
                 uiCulture = requestCulture.UICulture.Name,
-                source = feature?.Provider?.GetType().Name ?? "default"
+                source = MapCultureSource(feature?.Provider)
             });
         }
+
+        /// <summary>
+        /// Provider tipini istemciye açık sözleşme değerine eşler ("header" | "profile" | "default").
+        /// </summary>
+        private static string MapCultureSource(IRequestCultureProvider? provider) => provider switch
+        {
+            NormalizedAcceptLanguageCultureProvider => "header",
+            UserPreferredLocaleCultureProvider => "profile",
+            _ => "default"
+        };
 
         [Authorize]
         [HttpPost("logout")]

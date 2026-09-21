@@ -40,7 +40,12 @@ public class BookingDecisionConsumerTests : IDisposable
         IHubContext<BadgeNotificationHub> hub,
         IUserLocaleResolver? localeResolver = null,
         INotificationTextFactory? texts = null)
-        => new(_db.NewContext(), hub, NullLogger<BookingDecisionConsumer>.Instance, localeResolver, texts);
+        => new(
+            _db.NewContext(),
+            hub,
+            NullLogger<BookingDecisionConsumer>.Instance,
+            localeResolver ?? FallbackUserLocaleResolver.Instance,
+            texts ?? FallbackNotificationTextFactory.Instance);
 
     private static BookingDecisionEvent Evt(
         int bookingId = 1,

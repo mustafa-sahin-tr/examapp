@@ -45,9 +45,15 @@ public class UserPreferredLocaleCultureProvider : RequestCultureProvider
         {
             profile = await cache.GetAsync(sub);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Redis erişilemiyorsa dil çözümlemesi isteği düşürmemeli — varsayılana düşülür.
+            // Yine de sessiz kalmamalı: yalnızca Keycloak sub'ı loglanır, profil verisi (PII) değil.
+            httpContext.RequestServices
+                .GetService<ILogger<UserPreferredLocaleCultureProvider>>()?
+                .LogWarning(ex,
+                    "Kullanıcı dil tercihi profil önbelleğinden okunamadı, varsayılan kültüre düşülüyor. Sub: {Sub}",
+                    sub);
             return null;
         }
 

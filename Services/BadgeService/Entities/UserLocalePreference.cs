@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 using ExamApp.Foundation.Localization;
 
 namespace BadgeService.Entities;
@@ -19,6 +20,7 @@ public class UserLocalePreference
     public string? KeycloakId { get; set; }
 
     /// <summary>Normalize edilmiş dil kodu (<see cref="SupportedLocales"/>): "tr", "en".</summary>
+    [MaxLength(8)]
     public string Locale { get; set; } = SupportedLocales.Default;
 
     /// <summary>

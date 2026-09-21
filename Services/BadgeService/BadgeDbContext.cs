@@ -89,5 +89,8 @@ public class BadgeDbContext : DbContext
             .ValueGeneratedNever();
         modelBuilder.Entity<UserLocalePreference>()
             .HasIndex(x => x.KeycloakId);
+        modelBuilder.Entity<UserLocalePreference>()
+            .Property(x => x.Locale)
+            .HasMaxLength(8);
     }
 }

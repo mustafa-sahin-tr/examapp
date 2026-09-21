@@ -1,8 +1,5 @@
 {
   "common": {
-    "invalidData": "Invalid data.",
-    "notFound": "Record not found.",
-    "forbidden": "You are not allowed to perform this action.",
-    "unexpectedError": "An unexpected error occurred."
+    "invalidData": "Invalid data."
   }
 }

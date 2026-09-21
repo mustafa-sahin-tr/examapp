@@ -115,7 +115,12 @@ public class ConsumerTests : IDisposable
     }
 
     private WorksheetReminderDueConsumer NewReminderConsumer(IHubContext<BadgeNotificationHub> hub)
-        => new(_db.NewContext(), hub, NullLogger<WorksheetReminderDueConsumer>.Instance);
+        => new(
+            _db.NewContext(),
+            hub,
+            NullLogger<WorksheetReminderDueConsumer>.Instance,
+            FallbackUserLocaleResolver.Instance,
+            FallbackNotificationTextFactory.Instance);
 
     private static WorksheetReminderDueEvent ReminderEvent(int reminderId = 500, string keycloakId = "kc-student")
         => new()

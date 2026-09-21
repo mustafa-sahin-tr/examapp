@@ -32,20 +32,15 @@ public class TeacherApplicationSubmittedConsumer : IConsumer<TeacherApplicationS
     private readonly INotificationTextFactory _texts;
     private readonly ILogger<TeacherApplicationSubmittedConsumer> _logger;
 
-    /// <summary>
-    /// <paramref name="texts"/> opsiyonel: DI dışında oluşturan birim testler
-    /// (<c>new TeacherApplicationSubmittedConsumer(db, hub, logger)</c>) derlenmeye devam etsin
-    /// diye. Üretimde <c>Program.cs</c> DI ile kayıtlı gerçek implementasyonu verir.
-    /// </summary>
     public TeacherApplicationSubmittedConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
         ILogger<TeacherApplicationSubmittedConsumer> logger,
-        INotificationTextFactory? texts = null)
+        INotificationTextFactory texts)
     {
         _db = db;
         _hub = hub;
-        _texts = texts ?? FallbackNotificationTextFactory.Instance;
+        _texts = texts ?? throw new ArgumentNullException(nameof(texts));
         _logger = logger;
     }
 

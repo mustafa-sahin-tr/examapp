@@ -1,5 +1,6 @@
 using BadgeService.Consumers;
 using BadgeService.Hubs;
+using BadgeService.Services;
 using BadgeService.Tests.Support;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
@@ -34,7 +35,12 @@ public class BookingRequestCreatedConsumerTests : IDisposable
     }
 
     private BookingRequestCreatedConsumer NewConsumer(IHubContext<BadgeNotificationHub> hub)
-        => new(_db.NewContext(), hub, NullLogger<BookingRequestCreatedConsumer>.Instance);
+        => new(
+            _db.NewContext(),
+            hub,
+            NullLogger<BookingRequestCreatedConsumer>.Instance,
+            FallbackUserLocaleResolver.Instance,
+            FallbackNotificationTextFactory.Instance);
 
     private static BookingRequestCreatedEvent Evt(
         int bookingId = 1,

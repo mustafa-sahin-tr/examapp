@@ -30,23 +30,18 @@ public class BookingDecisionConsumer : IConsumer<BookingDecisionEvent>
     private readonly INotificationTextFactory _texts;
     private readonly ILogger<BookingDecisionConsumer> _logger;
 
-    /// <summary>
-    /// <paramref name="localeResolver"/>/<paramref name="texts"/> opsiyonel: DI dışında oluşturan
-    /// birim testler (<c>new BookingDecisionConsumer(db, hub, logger)</c>) derlenmeye devam etsin
-    /// diye. Üretimde <c>Program.cs</c> ikisini de DI ile kayıtlı gerçek implementasyonla verir.
-    /// </summary>
     public BookingDecisionConsumer(
         BadgeDbContext db,
         IHubContext<BadgeNotificationHub> hub,
         ILogger<BookingDecisionConsumer> logger,
-        IUserLocaleResolver? localeResolver = null,
-        INotificationTextFactory? texts = null)
+        IUserLocaleResolver localeResolver,
+        INotificationTextFactory texts)
     {
         _db = db;
         _hub = hub;
         _logger = logger;
-        _localeResolver = localeResolver ?? FallbackUserLocaleResolver.Instance;
-        _texts = texts ?? FallbackNotificationTextFactory.Instance;
+        _localeResolver = localeResolver ?? throw new ArgumentNullException(nameof(localeResolver));
+        _texts = texts ?? throw new ArgumentNullException(nameof(texts));
     }
 
     public async Task Consume(ConsumeContext<BookingDecisionEvent> context)

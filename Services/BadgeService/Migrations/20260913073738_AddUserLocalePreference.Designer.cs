@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace BadgeService.Migrations
 {
     [DbContext(typeof(BadgeDbContext))]
-    [Migration("20260913012006_AddUserLocalePreference")]
+    [Migration("20260913073738_AddUserLocalePreference")]
     partial class AddUserLocalePreference
     {
         /// <inheritdoc />
@@ -352,7 +352,8 @@ namespace BadgeService.Migrations
 
                     b.Property<string>("Locale")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");

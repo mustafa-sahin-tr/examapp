@@ -41,6 +41,17 @@ public class UserPreferredLocaleChangedConsumer : IConsumer<UserPreferredLocaleC
 
         var locale = SupportedLocales.Normalize(e.PreferredLocale);
 
+        var now = DateTime.UtcNow;
+        var changedAtUtc = e.ChangedAtUtc;
+        if (changedAtUtc > now.AddMinutes(5))
+        {
+            _logger.LogWarning(
+                "UserPreferredLocaleChanged ileri tarihli event (UserId={UserId}, ChangedAtUtc={ChangedAtUtc}, Now={Now}); " +
+                "UpdatedAtUtc şimdiki zamana kırpılıyor ki kaymış bir event sonraki meşru güncellemeleri kilitlemesin.",
+                e.UserId, changedAtUtc, now);
+            changedAtUtc = now;
+        }
+
         var existing = await _db.UserLocalePreferences.FirstOrDefaultAsync(p => p.UserId == e.UserId, ct);
 
         if (existing is null)
@@ -50,20 +61,20 @@ public class UserPreferredLocaleChangedConsumer : IConsumer<UserPreferredLocaleC
                 UserId = e.UserId,
                 KeycloakId = string.IsNullOrWhiteSpace(e.KeycloakId) ? null : e.KeycloakId,
                 Locale = locale,
-                UpdatedAtUtc = e.ChangedAtUtc
+                UpdatedAtUtc = changedAtUtc
             });
         }
-        else if (e.ChangedAtUtc > existing.UpdatedAtUtc)
+        else if (changedAtUtc > existing.UpdatedAtUtc)
         {
             existing.KeycloakId = string.IsNullOrWhiteSpace(e.KeycloakId) ? existing.KeycloakId : e.KeycloakId;
             existing.Locale = locale;
-            existing.UpdatedAtUtc = e.ChangedAtUtc;
+            existing.UpdatedAtUtc = changedAtUtc;
         }
         else
         {
             _logger.LogInformation(
                 "UserPreferredLocaleChanged eski/duplicate (UserId={UserId}, EventChangedAt={EventChangedAt}, StoredUpdatedAt={StoredUpdatedAt}); atlanıyor.",
-                e.UserId, e.ChangedAtUtc, existing.UpdatedAtUtc);
+                e.UserId, changedAtUtc, existing.UpdatedAtUtc);
             return;
         }
 

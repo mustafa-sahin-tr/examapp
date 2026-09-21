@@ -349,7 +349,8 @@ namespace BadgeService.Migrations
 
                     b.Property<string>("Locale")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");

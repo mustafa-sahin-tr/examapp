@@ -17,7 +17,7 @@ namespace BadgeService.Migrations
                 {
                     UserId = table.Column<int>(type: "integer", nullable: false),
                     KeycloakId = table.Column<string>(type: "text", nullable: true),
-                    Locale = table.Column<string>(type: "text", nullable: false),
+                    Locale = table.Column<string>(type: "character varying(8)", maxLength: 8, nullable: false),
                     UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>

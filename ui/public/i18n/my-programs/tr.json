@@ -94,7 +94,7 @@
     "pagesAdded": "Çalışma sayfaları programa eklendi.",
     "updateFailed": "Program güncellenemedi.",
     "loadFailed": "Program bilgisi yüklenemedi.",
-    "studyPagesLoadFailed": "Çalışma sayfaları yüklenemedi."
+    "typeAria": "Etkinlik tipi: {{type}}"
   },
   "addStudyPages": {
     "titleWithoutDate": "Programa Sayfa Ekle",
@@ -104,10 +104,29 @@
     "noDescription": "Açıklama yok",
     "pageCount": "{{count}} sayfa",
     "startDate": "Başlangıç",
-    "endDate": "Bitiş"
+    "endDate": "Bitiş",
+    "searchLabel": "Etkinlik ara",
+    "filterAria": "Etkinlik tipi filtresi",
+    "filters": {
+      "all": "Tümü",
+      "image": "Görsel",
+      "link": "Link",
+      "book": "Kitap Sayfası"
+    },
+    "loading": "Etkinlikler yükleniyor...",
+    "loadFailed": "Etkinlikler yüklenemedi.",
+    "retry": "Tekrar dene",
+    "noResults": "Filtrenizle eşleşen etkinlik bulunamadı.",
+    "linkUnavailable": "Geçersiz bağlantı",
+    "bookFallback": "Kitap sayfası"
   },
   "scheduleDetail": {
-    "studyPageId": "Çalışma sayfası No: {{id}}",
-    "cover": "Kapak:"
+    "itemNo": "Çalışma sayfası No: {{id}}",
+    "type": "Etkinlik tipi: {{type}}",
+    "cover": "Kapak:",
+    "open": "Aç",
+    "openAria": "{{title}} bağlantısını yeni sekmede aç",
+    "linkUnavailable": "Bu etkinliğin bağlantısı geçersiz olduğu için açılamıyor.",
+    "bookMissing": "Kitap bilgisi girilmemiş."
   }
 }

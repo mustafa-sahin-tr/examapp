@@ -1,3 +1,5 @@
+import { StudyPageContentType, StudyPageLinkPlatform } from './study-page';
+
 export interface CreateProgramRequest {
   programName: string;
   description: string;
@@ -30,7 +32,7 @@ export interface UserProgram {
   totalPageCount: number;
   progressPercentage: number;
   schedules: UserProgramSchedule[];
-  studyPageSchedules: UserProgramStudyPageSchedule[];
+  studyItemSchedules: UserProgramStudyPageSchedule[];
 }
 
 export interface UserProgramSchedule {
@@ -46,14 +48,30 @@ export interface UserProgramSchedule {
   notes?: string;
 }
 
+/**
+ * Programa eklenmiş çalışma etkinliği planı — backend `UserProgramStudyPageScheduleDto` JSON'u
+ * (camelCase, enum'lar sayısal). Tip adı geçmişten kaldı; alanlar `studyItem*`.
+ * Tipe özgü alanlar (url/platform, kitap alanları) yalnızca ilgili `contentType` için dolar.
+ */
 export interface UserProgramStudyPageSchedule {
   id: number;
   userProgramId: number;
-  studyPageId: number;
-  studyPageTitle: string;
-  studyPageCoverImageUrl?: string | null;
+  studyItemId: number;
+  studyItemTitle: string;
+  studyItemCoverImageUrl?: string | null;
   startDate: string;
   endDate: string;
+  isCompleted: boolean;
+  completedDate?: string | null;
+  contentType: StudyPageContentType;
+  // Link
+  url?: string | null;
+  platform?: StudyPageLinkPlatform | null;
+  // BookPageRange
+  bookName?: string | null;
+  bookTestName?: string | null;
+  startPage?: number | null;
+  endPage?: number | null;
 }
 
 export interface ProgramStudyPageScheduleRequest {
@@ -61,7 +79,7 @@ export interface ProgramStudyPageScheduleRequest {
 }
 
 export interface ProgramStudyPageScheduleItem {
-  studyPageId: number;
+  studyItemId: number;
   startDate: string;
   endDate: string;
 }

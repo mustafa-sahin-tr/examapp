@@ -2,7 +2,7 @@
   <div class="schedule-detail-header">
     <div class="color-indicator" [style.background]="data.color"></div>
     <div class="title-group">
-      <h2>{{ data.schedule.studyPageTitle }}</h2>
+      <h2>{{ data.schedule.studyItemTitle }}</h2>
       <div class="date-range">
         <mat-icon>event</mat-icon>
         <span>{{ data.schedule.startDate | date: 'd MMMM y' }} - {{ data.schedule.endDate | date: 'd MMMM y' }}</span>
@@ -13,18 +13,54 @@
   <div class="schedule-detail-body">
     <div class="detail-row">
       <mat-icon>book</mat-icon>
-      <span>{{ t('scheduleDetail.studyPageId', { id: data.schedule.studyPageId }) }}</span>
+      <span>{{ t('scheduleDetail.itemNo', { id: data.schedule.studyItemId }) }}</span>
     </div>
 
-    @if (data.schedule.studyPageCoverImageUrl) {
-      <div class="detail-row">
-        <mat-icon>image</mat-icon>
-        <span>{{ t('scheduleDetail.cover') }}</span>
-      </div>
+    <div class="detail-row detail-type" [attr.data-kind]="display.kind">
+      <mat-icon>{{ display.typeIcon }}</mat-icon>
+      <span>{{ t('scheduleDetail.type', { type: display.typeLabel }) }}</span>
+    </div>
 
-      <div class="cover-image">
-        <img [src]="data.schedule.studyPageCoverImageUrl" [alt]="data.schedule.studyPageTitle" />
-      </div>
+    @switch (display.kind) {
+      @case ('link') {
+        <div class="detail-row">
+          <mat-icon>{{ display.platformIcon }}</mat-icon>
+          <span>{{ display.platformLabel }}@if (display.host) { · {{ display.host }} }</span>
+        </div>
+        @if (display.href) {
+          <a
+            mat-stroked-button
+            class="open-link"
+            [href]="display.href"
+            target="_blank"
+            rel="noopener noreferrer"
+            [attr.aria-label]="t('scheduleDetail.openAria', { title: data.schedule.studyItemTitle })"
+          >
+            <mat-icon>open_in_new</mat-icon>
+            {{ t('scheduleDetail.open') }}
+          </a>
+        } @else {
+          <p class="detail-note">{{ t('scheduleDetail.linkUnavailable') }}</p>
+        }
+      }
+      @case ('book') {
+        <div class="detail-row">
+          <mat-icon>{{ display.typeIcon }}</mat-icon>
+          <span>{{ display.bookLine ?? t('scheduleDetail.bookMissing') }}</span>
+        </div>
+      }
+      @default {
+        @if (data.schedule.studyItemCoverImageUrl) {
+          <div class="detail-row">
+            <mat-icon>image</mat-icon>
+            <span>{{ t('scheduleDetail.cover') }}</span>
+          </div>
+
+          <div class="cover-image">
+            <img [src]="data.schedule.studyItemCoverImageUrl" [alt]="data.schedule.studyItemTitle" />
+          </div>
+        }
+      }
     }
   </div>
 

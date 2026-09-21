@@ -91,8 +91,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
             }));
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, toUtc, CancellationToken.None);
 
@@ -118,8 +118,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
         await SeedBookingAsync(TeacherId, StudentId, slotId, BookingStatus.Pending);
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, toUtc, CancellationToken.None);
 
@@ -137,8 +137,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
         await SeedBookingAsync(TeacherId, StudentId, slotId, BookingStatus.Rejected);
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, toUtc, CancellationToken.None);
 
@@ -163,8 +163,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
             }));
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetTeacherCalendarAsync(TeacherUserId, fromUtc, toUtc, CancellationToken.None);
 
@@ -194,8 +194,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
             }));
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetTeacherCalendarAsync(TeacherUserId, fromUtc, toUtc, CancellationToken.None);
 
@@ -214,8 +214,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
         await SeedBookingAsync(TeacherId, StudentId, slotId, BookingStatus.Pending);
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetTeacherCalendarAsync(TeacherUserId, fromUtc, toUtc, CancellationToken.None);
 
@@ -232,8 +232,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
         await SeedBookingAsync(TeacherId, StudentId, slotId, BookingStatus.Approved);
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1); // Doesn't include day 35
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30); // Doesn't include day 35
 
         var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, toUtc, CancellationToken.None);
 
@@ -264,8 +264,8 @@ public class WorksheetCalendarServiceBookingEventsTests : IDisposable
             }));
 
         await using var ctx = _db.NewContext();
-        var fromUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var toUtc = fromUtc.AddMonths(1);
+        var fromUtc = DateTime.UtcNow.Date; // bugünden itibaren 30 gün: "bugün + N gün" ile seçilen tarihler ay sonundan bağımsız aralıkta kalır
+        var toUtc = fromUtc.AddDays(30);
 
         var result = await NewService(ctx).GetMyCalendarAsync(StudentId, "kc-student", null, null, fromUtc, toUtc, CancellationToken.None);
 

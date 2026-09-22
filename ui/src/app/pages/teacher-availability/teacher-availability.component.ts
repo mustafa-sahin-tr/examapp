@@ -9,7 +9,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, take } from 'rxjs';
-import { AvailabilitySlot, CreateAvailabilitySlotRequest } from '../../models/booking.model';
+import {
+  AvailabilitySlot,
+  CreateAvailabilitySlotRequest,
+  CreateRecurringRuleRequest,
+} from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
 import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
 import { DraftRange } from '../../shared/components/availability-week-grid/availability-draft.util';
@@ -32,6 +36,11 @@ interface SlotRow {
  * API çağrısını bu sayfa yapar. Altta mevcut aralıkların randevu durumuyla salt okunur listesi.
  * Silme yalnızca aktif randevusu olmayan aralıklarda açıktır (grid randevulu slotu seçtirmez; asıl
  * kısıt sunucudadır ve hatası grid'de gösterilir). Gelen randevu talepleri ayrı sayfada (`/booking-requests`).
+ *
+ * Tekrarlayan haftalık aralık (issue #179): grid "Her hafta tekrarla" ile `createRecurringRequested` yayarsa
+ * `POST /booking/recurring-rules` çağrılır; backend ufuktaki slotları üretir, sonraki haftalar `slots/mine`'da
+ * tembel tamamlanır — bu yüzden başarıda `load()` şarttır. Tekrarlayan slotta "Tüm seri" → `deleteRecurringRule`;
+ * randevulu slotlar sunucuda korunur ve sayısı snackbar'da bildirilir.
  *
  * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-availability/<lang>.json` (issue #183).
  * Tarih/saat gösterimi `date` pipe'ı üzerinden aktif `LOCALE_ID`'ye bağlıdır.
@@ -150,6 +159,47 @@ export class TeacherAvailabilityComponent implements OnInit {
       });
   }
 
+  /**
+   * Grid'de "Her hafta tekrarla" işaretliyken Kaydet'e basıldı. Aynı `saving`/`saveError` durumu kullanılır
+   * (tek onay çubuğu). Başarıda üretilen hafta sayısı ve varsa atlanan (dolu) hafta sayısı bildirilir; slotlar
+   * yalnızca `load()` ile gelir (yanıt slot nesnesi değil kimlik listesi döner).
+   */
+  protected createRecurring(request: CreateRecurringRuleRequest): void {
+    if (this.saving()) {
+      return;
+    }
+
+    this.saving.set(true);
+    this.saveError.set(null);
+    this.bookingService
+      .createRecurringRule(request)
+      .pipe(
+        finalize(() => this.saving.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          if (res?.success === false) {
+            this.saveError.set(res.message || this.text('messages.recurringAddFailed'));
+            return;
+          }
+          const created = res?.generatedSlotIds?.length ?? 0;
+          const skipped = res?.skippedDates?.length ?? 0;
+          // Süresiz kuralda yalnızca 90 günlük ufuk üretilir; "N hafta için" demek yanıltıcı olur.
+          const addedKey = request.effectiveUntil ? 'messages.recurringAdded' : 'messages.recurringAddedIndefinite';
+          const parts = [this.text(addedKey, { count: created })];
+          if (skipped > 0) {
+            parts.push(this.text('messages.recurringSkipped', { count: skipped }));
+          }
+          this.snackBar.open(parts.join(' '), this.text('messages.ok'), { duration: 5000 });
+          this.draft.set(null);
+          this.load();
+        },
+        error: (err: HttpErrorResponse) =>
+          this.saveError.set(this.bookingService.extractError(err, this.text('messages.recurringAddFailed'))),
+      });
+  }
+
   /** Seçim değişince (başka slot, vazgeç) eski silme hatası geçersizdir. */
   protected onSelectionChange(id: number | null): void {
     this.selectedSlotId.set(id);
@@ -184,9 +234,47 @@ export class TeacherAvailabilityComponent implements OnInit {
       });
   }
 
+  /**
+   * Grid'de tekrarlayan slotta "Tüm seri"ye basıldı. Silinen/korunan slotlar sunucuda belirlenir; yerel liste
+   * tahmin edilmez, `load()` ile yenilenir (silinenler düşer, randevulular kalır). Hata çubukta, seçim korunur.
+   */
+  protected deleteSeries(ruleId: number): void {
+    if (this.deleting()) {
+      return;
+    }
+
+    this.deleting.set(true);
+    this.deleteError.set(null);
+    this.bookingService
+      .deleteRecurringRule(ruleId)
+      .pipe(
+        finalize(() => this.deleting.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          if (res?.success === false) {
+            this.deleteError.set(res.message || this.text('messages.seriesDeleteFailed'));
+            return;
+          }
+          const deleted = res?.deletedSlotIds?.length ?? 0;
+          const preserved = res?.preservedBookedCount ?? 0;
+          const parts = [this.text('messages.seriesDeleted', { count: deleted })];
+          if (preserved > 0) {
+            parts.push(this.text('messages.seriesPreserved', { count: preserved }));
+          }
+          this.snackBar.open(parts.join(' '), this.text('messages.ok'), { duration: 5000 });
+          this.selectedSlotId.set(null);
+          this.load();
+        },
+        error: (err: HttpErrorResponse) =>
+          this.deleteError.set(this.bookingService.extractError(err, this.text('messages.seriesDeleteFailed'))),
+      });
+  }
+
   /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
-  private text(key: string): string {
-    return this.transloco.translate<string>(`${TEACHER_AVAILABILITY_SCOPE}.${key}`) ?? '';
+  private text(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${TEACHER_AVAILABILITY_SCOPE}.${key}`, params) ?? '';
   }
 
   private toRow(slot: AvailabilitySlot): SlotRow {

@@ -124,6 +124,34 @@ describe('availability-week-grid.util', () => {
       expect(events[0].extendedProps.past).toBeTrue();
     });
 
+    it('toGridEvents_RecurringSlot_AddsRecurringClassAndRuleId (issue #179)', () => {
+      const base: AvailabilitySlot = {
+        id: 1,
+        teacherId: 10,
+        date: '2026-09-20',
+        startTime: '14:00:00',
+        endTime: '15:00:00',
+        createdAt: '2026-09-15T10:00:00Z',
+        startUtc: '2026-09-20T12:00:00Z',
+        endUtc: '2026-09-20T13:00:00Z',
+        isBooked: false,
+      };
+
+      const events = toGridEvents([
+        { ...base, id: 1, recurringAvailabilityRuleId: 7 },
+        { ...base, id: 2, recurringAvailabilityRuleId: null },
+        { ...base, id: 3 },
+      ]);
+
+      expect(events[0].classNames).toContain('is-recurring');
+      expect(events[0].classNames).toContain('is-free'); // durum sınıfı korunur
+      expect(events[0].extendedProps.ruleId).toBe(7);
+      expect(events[1].classNames).not.toContain('is-recurring');
+      expect(events[1].extendedProps.ruleId).toBeNull();
+      expect(events[2].classNames).not.toContain('is-recurring');
+      expect(events[2].extendedProps.ruleId).toBeNull();
+    });
+
     it('toGridEvents_InvalidStartDate_SkipsSlot', () => {
       const slot: AvailabilitySlot = {
         id: 1,

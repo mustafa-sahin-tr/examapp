@@ -35,6 +35,64 @@ export interface AvailabilitySlot {
   bookingId?: number | null;
   bookingStatus?: ActiveBookingStatus | null;
   studentName?: string | null;
+  /**
+   * Slot bir tekrarlayan kuraldan üretildiyse kuralın kimliği (issue #178); tekil slotta null.
+   * Yalnızca öğretmenin kendi listesinde (`slots/mine`) dolu; öğrenci ucunda her zaman null.
+   */
+  recurringAvailabilityRuleId?: number | null;
+}
+
+// ---------------- Tekrarlayan haftalık müsaitlik (issue #178 / #179) ----------------
+
+/** Haftanın günü — backend `System.DayOfWeek`, JSON'da sayı: 0=Pazar .. 6=Cumartesi (JS `getUTCDay()` ile aynı). */
+export type RuleDayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/** Tekrarlayan kural görünümü (`RecurringAvailabilityRuleDto`). Saatler tekil slot gibi UTC duvar saatidir. */
+export interface RecurringAvailabilityRule {
+  id: number;
+  teacherId: number;
+  dayOfWeek: RuleDayOfWeek;
+  /** "14:00:00" */
+  startTime: string;
+  endTime: string;
+  /** Geçerli ilk gün (dahil), "2026-09-28". */
+  effectiveFrom: string;
+  /** Geçerli son gün (dahil); null = süresiz. */
+  effectiveUntil?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+/**
+ * POST /booking/recurring-rules gövdesi (`CreateRecurringAvailabilityRuleDto`).
+ * Saatler "HH:mm:00" (dakika hassasiyeti), gün/tarih tıklanan anın UTC bileşenleridir (bkz. `toRecurringRuleRequest`).
+ */
+export interface CreateRecurringRuleRequest {
+  dayOfWeek: RuleDayOfWeek;
+  startTime: string;
+  endTime: string;
+  /** "YYYY-MM-DD"; UTC bugün .. bugün+90. */
+  effectiveFrom: string;
+  /** "YYYY-MM-DD" ya da null (süresiz); verilirse effectiveFrom'dan sonra ve en fazla 1 yıl ileride. */
+  effectiveUntil: string | null;
+}
+
+/** Kural oluşturma sonucu: kural + ufuk içinde üretilen slotlar + tekil slotla çakıştığı için atlanan tarihler. */
+export interface RecurringRuleResult extends BookingResponseBase {
+  objectId?: number | null;
+  rule?: RecurringAvailabilityRule | null;
+  generatedSlotIds: number[];
+  /** "2026-10-05" — hata değil; öğretmen o haftaları elle düzenler. */
+  skippedDates: string[];
+}
+
+/** DELETE /booking/recurring-rules/{id} ("tüm seri") sonucu: randevusuz gelecek slotlar silinir, randevulular korunur. */
+export interface RecurringRuleDeleteResult extends BookingResponseBase {
+  objectId?: number | null;
+  deletedSlotIds: number[];
+  preservedSlotIds: number[];
+  /** `preservedSlotIds.length` — "K randevulu aralık korundu" mesajı için. */
+  preservedBookedCount: number;
 }
 
 /** Randevu talebi. Aynı şekil hem öğretmen hem öğrenci listelerinde kullanılır. */

@@ -23,8 +23,10 @@
       [deleteError]="deleteError()"
       (draftChange)="onDraftChange($event)"
       (createRequested)="create($event)"
+      (createRecurringRequested)="createRecurring($event)"
       (selectedSlotIdChange)="onSelectionChange($event)"
       (deleteRequested)="deleteSlot($event)"
+      (deleteSeriesRequested)="deleteSeries($event)"
     />
   }
 
@@ -53,6 +55,9 @@
             <span class="avail__row-range">
               <mat-icon>schedule</mat-icon>
               {{ row.slot.startUtc | date: 'shortTime' }} – {{ row.slot.endUtc | date: 'shortTime' }}
+              @if (row.slot.recurringAvailabilityRuleId) {
+                <mat-icon class="avail__row-repeat" [title]="t('grid.recurring.tooltip')" [attr.aria-label]="t('grid.recurring.tooltip')">repeat</mat-icon>
+              }
             </span>
           </div>
 

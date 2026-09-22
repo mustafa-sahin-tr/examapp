@@ -12,6 +12,8 @@ export interface AvailabilityGridEventProps {
   statusKey: string;
   studentName: string | null;
   past: boolean;
+  /** Slotu üreten tekrarlayan kuralın kimliği (issue #179); tekil slotta null. Olay `is-recurring` sınıfı alır. */
+  ruleId: number | null;
   /** "14:00 – 15:00" — listedeki `date` pipe'ıyla aynı yerel saat. */
   timeRange: string;
   /** "20 Eylül 2026 Pazar" */
@@ -56,18 +58,27 @@ export function toGridEvents(slots: readonly AvailabilitySlot[]): AvailabilityGr
 
     const { statusClass, statusKey } = slotStatus(slot);
     const past = isPastSlot(slot.startUtc);
+    const ruleId = slot.recurringAvailabilityRuleId ?? null;
+    const classNames: string[] = [statusClass];
+    if (past) {
+      classNames.push('is-past');
+    }
+    if (ruleId !== null) {
+      classNames.push('is-recurring');
+    }
 
     events.push({
       id: String(slot.id),
       start,
       end,
-      classNames: past ? [statusClass, 'is-past'] : [statusClass],
+      classNames,
       extendedProps: {
         slotId: slot.id,
         statusClass,
         statusKey,
         studentName: slot.isBooked && slot.studentName ? slot.studentName : null,
         past,
+        ruleId,
         timeRange: formatSlotRange(slot.startUtc, slot.endUtc),
         dayLabel: formatSlotDay(slot.startUtc),
       },

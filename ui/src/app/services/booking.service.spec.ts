@@ -6,8 +6,10 @@ import { BookingService } from './booking.service';
 import {
   CreateAvailabilitySlotRequest,
   CreateBookingRequest,
+  CreateRecurringRuleRequest,
   AvailabilitySlot,
   Booking,
+  RecurringAvailabilityRule,
   VideoSession,
 } from '../models/booking.model';
 import { translocoTestingModule } from '../shared/testing/transloco-testing';
@@ -127,6 +129,119 @@ describe('BookingService', () => {
         { success: false, forbidden: true, message: 'Not your slot' },
         { status: 403, statusText: 'Forbidden' }
       );
+    });
+  });
+
+  describe('recurring rules (issue #178/#179)', () => {
+    const ruleRequest: CreateRecurringRuleRequest = {
+      dayOfWeek: 5,
+      startTime: '11:00:00',
+      endTime: '12:30:00',
+      effectiveFrom: '2026-09-25',
+      effectiveUntil: null,
+    };
+    const rule: RecurringAvailabilityRule = {
+      id: 5,
+      teacherId: 10,
+      dayOfWeek: 5,
+      startTime: '11:00:00',
+      endTime: '12:30:00',
+      effectiveFrom: '2026-09-25',
+      effectiveUntil: null,
+      isActive: true,
+      createdAt: '2026-09-22T09:00:00Z',
+    };
+
+    it('createRecurringRule_SendsPostWithBodyAsIs_AndReturnsRuleGeneratedAndSkipped', (done) => {
+      service.createRecurringRule(ruleRequest).subscribe((result) => {
+        expect(result.success).toBeTrue();
+        expect(result.rule).toEqual(rule);
+        expect(result.generatedSlotIds).toEqual([101, 102, 103]);
+        expect(result.skippedDates).toEqual(['2026-10-09']);
+        done();
+      });
+
+      const httpReq = httpMock.expectOne(`${service['baseUrl']}/recurring-rules`);
+      expect(httpReq.request.method).toBe('POST');
+      // Gövde dönüştürülmeden gider: gün/saat/tarih UTC bileşenleri istemcide zaten hesaplanmıştır.
+      expect(httpReq.request.body).toEqual(ruleRequest);
+      httpReq.flush(
+        { success: true, objectId: 5, rule, generatedSlotIds: [101, 102, 103], skippedDates: ['2026-10-09'] },
+        { status: 201, statusText: 'Created' }
+      );
+    });
+
+    it('createRecurringRule_EffectiveUntilGiven_SendsDateString', () => {
+      service.createRecurringRule({ ...ruleRequest, effectiveUntil: '2026-12-25' }).subscribe();
+
+      const httpReq = httpMock.expectOne(`${service['baseUrl']}/recurring-rules`);
+      expect(httpReq.request.body.effectiveUntil).toBe('2026-12-25');
+      httpReq.flush({ success: true, rule, generatedSlotIds: [], skippedDates: [] });
+    });
+
+    it('createRecurringRule_ApiReturns409OverlappingRule_ErrorPropagates', (done) => {
+      service.createRecurringRule(ruleRequest).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(409);
+          expect(error.error.conflict).toBeTrue();
+          done();
+        },
+      });
+
+      httpMock
+        .expectOne(`${service['baseUrl']}/recurring-rules`)
+        .flush({ success: false, conflict: true, message: 'Overlapping rule' }, { status: 409, statusText: 'Conflict' });
+    });
+
+    it('createRecurringRule_ApiReturns400Validation_ErrorPropagatesWithMessage', (done) => {
+      service.createRecurringRule(ruleRequest).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(400);
+          expect(error.error.message).toBe('Rule must be at least 30 minutes');
+          done();
+        },
+      });
+
+      httpMock
+        .expectOne(`${service['baseUrl']}/recurring-rules`)
+        .flush({ success: false, message: 'Rule must be at least 30 minutes' }, { status: 400, statusText: 'Bad Request' });
+    });
+
+    it('deleteRecurringRule_SendsDelete_AndReturnsDeletedPreservedCounts', (done) => {
+      service.deleteRecurringRule(5).subscribe((result) => {
+        expect(result.success).toBeTrue();
+        expect(result.deletedSlotIds).toEqual([101, 103]);
+        expect(result.preservedSlotIds).toEqual([102]);
+        expect(result.preservedBookedCount).toBe(1);
+        done();
+      });
+
+      const httpReq = httpMock.expectOne(`${service['baseUrl']}/recurring-rules/5`);
+      expect(httpReq.request.method).toBe('DELETE');
+      httpReq.flush({
+        success: true,
+        objectId: 5,
+        deletedSlotIds: [101, 103],
+        preservedSlotIds: [102],
+        preservedBookedCount: 1,
+      });
+    });
+
+    it('deleteRecurringRule_ApiReturns404_ErrorPropagates', (done) => {
+      service.deleteRecurringRule(99).subscribe({
+        next: () => fail('hata beklenirken next yayildi'),
+        error: (error: HttpErrorResponse) => {
+          expect(error.status).toBe(404);
+          expect(error.error.notFound).toBeTrue();
+          done();
+        },
+      });
+
+      httpMock
+        .expectOne(`${service['baseUrl']}/recurring-rules/99`)
+        .flush({ success: false, notFound: true, message: 'Rule not found' }, { status: 404, statusText: 'Not Found' });
     });
   });
 

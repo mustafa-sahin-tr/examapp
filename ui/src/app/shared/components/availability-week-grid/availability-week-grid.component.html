@@ -13,10 +13,15 @@
     <h2 class="awg__range" aria-live="polite">{{ rangeTitle() }}</h2>
 
     <ul class="awg__legend" [attr.aria-label]="t('grid.legendLabel')">
-      @for (item of legend; track item.statusClass) {
+      @for (item of legend; track item.swatchClass) {
         <li class="awg__legend-item">
-          <span class="awg__swatch" [class]="item.statusClass" aria-hidden="true"></span>
-          {{ t(item.statusKey) }}
+          @if (item.swatchClass === 'is-recurring') {
+            <!-- Tekrarlayan slot renkle değil ikonla ayrışır (durum rengi korunur). -->
+            <mat-icon class="awg__legend-icon" aria-hidden="true">repeat</mat-icon>
+          } @else {
+            <span class="awg__swatch" [class]="item.swatchClass" aria-hidden="true"></span>
+          }
+          {{ t(item.labelKey) }}
         </li>
       }
     </ul>
@@ -27,11 +32,12 @@
          seçili slot varken "silme modu" (issue #177): aralık + soru + Sil/Vazgeç. Taslak ve seçim aynı anda olmaz.
          Kayıt/silme sürerken butonlar `disabledInteractive`: odak butonda kalır (native disabled odağı body'ye düşürür). -->
     @let selected = selectedEvent();
+    @let selectedRuleId = selected?.extendedProps?.ruleId ?? null;
     <div class="awg__draft" [class.awg__draft--active]="draft()" [class.awg__draft--delete]="selected">
       <p class="awg__draft-text" aria-live="polite">
         @if (selected) {
           <strong class="awg__draft-range">{{ selectedLabel() }}</strong>
-          <span class="awg__delete-prompt">{{ t('grid.delete.prompt') }}</span>
+          <span class="awg__delete-prompt">{{ selectedRuleId !== null ? t('grid.recurring.deletePrompt') : t('grid.delete.prompt') }}</span>
         } @else if (draft()) {
           <strong class="awg__draft-range">{{ draftLabel() }}</strong>
         } @else {
@@ -46,18 +52,59 @@
       </p>
 
       @if (selected) {
+        <!-- Tekrarlayan slotta (issue #179) iki seçenek: "Sadece bu hafta" tekil slot silme yolunu (aynı sınıf/çıkış),
+             "Tüm seri" kural silmeyi kullanır. Tekil slotta yalnızca "Sil". -->
         <div class="awg__draft-actions">
           <button mat-flat-button type="button" class="awg__delete-confirm" [disabled]="deleting()" disabledInteractive (click)="confirmDelete()">
-            {{ deleting() ? t('grid.delete.deleting') : t('grid.delete.confirm') }}
+            @if (selectedRuleId !== null) {
+              {{ deleting() ? t('grid.delete.deleting') : t('grid.recurring.deleteThisWeek') }}
+            } @else {
+              {{ deleting() ? t('grid.delete.deleting') : t('grid.delete.confirm') }}
+            }
           </button>
+          @if (selectedRuleId !== null) {
+            <button mat-stroked-button type="button" class="awg__delete-series" [disabled]="deleting()" disabledInteractive (click)="confirmDeleteSeries()">
+              <mat-icon aria-hidden="true">repeat</mat-icon>
+              {{ deleting() ? t('grid.delete.deleting') : t('grid.recurring.deleteSeries') }}
+            </button>
+          }
           <button mat-button type="button" class="awg__delete-cancel" [disabled]="deleting()" disabledInteractive (click)="cancelDelete()">
             {{ t('grid.delete.cancel') }}
           </button>
         </div>
       } @else if (draft()) {
+        <!-- Tekrar seçeneği (issue #179): kutu işaretliyken opsiyonel bitiş günü; boş = süresiz. -->
+        <div class="awg__repeat">
+          <mat-checkbox class="awg__repeat-toggle" [checked]="repeatWeekly()" [disabled]="saving()" (change)="onRepeatWeeklyChange($event.checked)">
+            {{ t('grid.recurring.toggle') }}
+          </mat-checkbox>
+          @if (repeatWeekly()) {
+            @let bounds = untilBounds();
+            <mat-form-field class="awg__repeat-until" subscriptSizing="dynamic">
+              <mat-label>{{ t('grid.recurring.until') }}</mat-label>
+              <!-- Reactive kontrol: matDatepicker min/max/parse validator'ları bağlanır; geçersiz tarih Kaydet'i kilitler. -->
+              <input
+                matInput
+                [matDatepicker]="untilPicker"
+                [formControl]="untilControl"
+                [errorStateMatcher]="untilErrorMatcher"
+                [min]="bounds?.min ?? null"
+                [max]="bounds?.max ?? null"
+                [placeholder]="t('grid.recurring.untilPlaceholder')"
+              />
+              <mat-datepicker-toggle matIconSuffix [for]="untilPicker" />
+              <mat-datepicker #untilPicker />
+              @if (untilInvalid()) {
+                <mat-error class="awg__repeat-error">{{ t('grid.recurring.untilOutOfRange') }}</mat-error>
+              } @else {
+                <mat-hint>{{ t('grid.recurring.untilHint') }}</mat-hint>
+              }
+            </mat-form-field>
+          }
+        </div>
         <div class="awg__draft-actions">
-          <button mat-flat-button color="primary" type="button" class="awg__draft-save" [disabled]="saving()" disabledInteractive (click)="confirm()">
-            {{ saving() ? t('grid.draft.saving') : t('grid.draft.save') }}
+          <button mat-flat-button color="primary" type="button" class="awg__draft-save" [disabled]="saving() || (repeatWeekly() && untilInvalid())" disabledInteractive (click)="confirm()">
+            {{ saving() ? t('grid.draft.saving') : (repeatWeekly() ? t('grid.recurring.save') : t('grid.draft.save')) }}
           </button>
           <button mat-button type="button" class="awg__draft-cancel" [disabled]="saving()" disabledInteractive (click)="cancel()">
             {{ t('grid.draft.cancel') }}
@@ -81,7 +128,7 @@
               <span class="awg__draft-tag" aria-hidden="true">{{ t('grid.draft.tag') }}</span>
             } @else {
               @let p = props(arg);
-              @let tip = tooltipText(p, t(p.statusKey), p.studentName ? t('grid.tooltip.student', { name: p.studentName }) : '', p.past ? t('grid.tooltip.past') : '');
+              @let tip = tooltipText(p, t(p.statusKey), p.studentName ? t('grid.tooltip.student', { name: p.studentName }) : '', p.ruleId !== null ? t('grid.recurring.tooltip') : '', p.past ? t('grid.tooltip.past') : '');
               @let canDelete = deletable(p);
               <!-- Düzenlenebilir grid'de eylem ipucu: boş slotta "silmek için tıkla", randevulu slotta "silinemez". -->
               @let actionHint = editable() ? (canDelete ? t('grid.delete.hint') : t('actions.lockedHint')) : '';
@@ -100,7 +147,13 @@
                 (keydown.enter)="editable() && onEventKey($event, p)"
                 (keydown.space)="editable() && onEventKey($event, p)"
               >
-                <span class="awg__ev-time">{{ p.timeRange }}</span>
+                <span class="awg__ev-time">
+                  {{ p.timeRange }}
+                  @if (p.ruleId !== null) {
+                    <!-- Görsel işaret; erişilebilir karşılığı aria-label'daki "tekrarlayan" parçasıdır. -->
+                    <mat-icon class="awg__ev-repeat" aria-hidden="true">repeat</mat-icon>
+                  }
+                </span>
                 <span class="awg__ev-note">{{ p.studentName ?? t(p.statusKey) }}</span>
               </div>
             }

@@ -36,9 +36,6 @@ public sealed class TeacherSeedService : ITeacherSeedService
 
     private const string RoleTeacher = "Teacher";
 
-    private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
-    private static readonly StringComparer TrNameComparer = StringComparer.Create(Tr, ignoreCase: false);
-
     private readonly AppDbContext _context;
     private readonly IAuthApiSeedClient _authApi;
     private readonly IConfiguration _configuration;
@@ -175,12 +172,8 @@ public sealed class TeacherSeedService : ITeacherSeedService
             schoolsByProvince.TryGetValue(provinceId, out var schools);
             schools ??= new List<School>();
 
-            // Deterministik sıra: ad (tr-TR) → kurum kodu → id; limit ilk N.
-            var ordered = schools
-                .OrderBy(s => s.Name, TrNameComparer)
-                .ThenBy(s => s.ExternalCode ?? string.Empty, StringComparer.Ordinal)
-                .ThenBy(s => s.Id)
-                .ToList();
+            // Deterministik sıra (TeacherSeedPlan.OrderSchoolsDeterministic); limit ilk N.
+            var ordered = TeacherSeedPlan.OrderSchoolsDeterministic(schools);
 
             if (options.LimitSchoolsPerProvince is { } limit && ordered.Count > limit)
             {

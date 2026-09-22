@@ -707,4 +707,68 @@ public class KeycloakService : IKeycloakService
             root.TryGetProperty("overwritten", out var over) ? over.GetInt32() : 0,
             results);
     }
+
+    // ---- Temizleme (issue #218) ----
+
+    public async Task<IReadOnlyList<KeycloakUserSummary>> SearchUsersAsync(string fragment, KeycloakUserSearchField field, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(fragment))
+            throw new ArgumentException("Arama parçası boş olamaz.", nameof(fragment));
+
+        await AuthorizeAdminAsync(ct);
+
+        const int pageSize = 500;
+        var param = field == KeycloakUserSearchField.Username ? "username" : "email";
+        var all = new List<KeycloakUserSummary>();
+        var first = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            // `search=` prefix eşleştirir (Keycloak 22+); `email=`/`username=` exact=false iken infix ("contains").
+            // Boş sayfa gelene kadar döner (sayfa < max ile durmak, Keycloak'ın max'ı kırptığı sürümlerde eksik bırakır).
+            var response = await _http.GetAsync(BuildKeycloakUri(
+                $"{_keycloakSettings.UserUrl}?{param}={Uri.EscapeDataString(fragment)}&exact=false&briefRepresentation=true&first={first}&max={pageSize}"), ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(ct);
+                throw new KeycloakException($"Failed to search Keycloak users '{fragment}': {error}");
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            var page = 0;
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                page++;
+                var id = element.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+                var username = element.TryGetProperty("username", out var u) ? u.GetString() : null;
+                var email = element.TryGetProperty("email", out var e) ? e.GetString() : null;
+                if (id is null || username is null) continue;
+                all.Add(new KeycloakUserSummary(id, username, email));
+            }
+
+            if (page == 0) break;
+            first += page;
+        }
+
+        return all;
+    }
+
+    public async Task<bool> TryDeleteUserAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new ArgumentException("Keycloak kullanıcı id'si boş olamaz.", nameof(keycloakUserId));
+
+        await AuthorizeAdminAsync(ct);
+
+        var response = await _http.DeleteAsync(BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}"), ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return false;
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            throw new KeycloakException($"Keycloak user deletion failed ({(int)response.StatusCode}): {error}");
+        }
+        return true;
+    }
 }

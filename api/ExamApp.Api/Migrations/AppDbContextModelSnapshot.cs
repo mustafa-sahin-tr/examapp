@@ -1298,6 +1298,67 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("QuestionTransferJobs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.RecurringAvailabilityRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EffectiveUntil")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<int>("TeacherId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeacherId", "DayOfWeek");
+
+                    b.HasIndex("TeacherId", "DayOfWeek", "StartTime", "EndTime", "EffectiveFrom")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" AND NOT \"IsDeleted\"");
+
+                    b.ToTable("RecurringAvailabilityRules");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Reward", b =>
                 {
                     b.Property<int>("Id")
@@ -1972,6 +2033,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("RecurringAvailabilityRuleId")
+                        .HasColumnType("integer");
+
                     b.Property<TimeOnly>("StartTime")
                         .HasColumnType("time without time zone");
 
@@ -1985,6 +2049,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RecurringAvailabilityRuleId", "Date");
 
                     b.HasIndex("TeacherId", "Date", "StartTime");
 
@@ -3308,6 +3374,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("SubTopic");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.RecurringAvailabilityRule", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.Teacher", "Teacher")
+                        .WithMany()
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Teacher");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.School", b =>
                 {
                     b.HasOne("ExamApp.Api.Data.District", "District")
@@ -3467,11 +3544,18 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.TeacherAvailabilitySlot", b =>
                 {
+                    b.HasOne("ExamApp.Api.Data.RecurringAvailabilityRule", "RecurringAvailabilityRule")
+                        .WithMany("GeneratedSlots")
+                        .HasForeignKey("RecurringAvailabilityRuleId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
                     b.HasOne("ExamApp.Api.Data.Teacher", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("RecurringAvailabilityRule");
 
                     b.Navigation("Teacher");
                 });
@@ -3835,6 +3919,11 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("QuestionSubTopics");
 
                     b.Navigation("WorksheetQuestions");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.RecurringAvailabilityRule", b =>
+                {
+                    b.Navigation("GeneratedSlots");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.Reward", b =>

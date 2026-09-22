@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { AvailabilityWeekGridComponent } from './availability-week-grid.component';
-import { AvailabilitySlot, ActiveBookingStatus } from '../../../models/booking.model';
+import { AvailabilitySlot, ActiveBookingStatus, CreateAvailabilitySlotRequest } from '../../../models/booking.model';
+import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
+import { formatDraftLabel, nextUtcDayBoundary } from './availability-draft.util';
+import { activeIntlLocale } from '../../utils/active-locale.util';
+import { hhmm, safeLocalHour, utcRequest } from '../../testing/booking-time-testing';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import taTr from '../../../../../public/i18n/teacher-availability/tr.json';
 import taEn from '../../../../../public/i18n/teacher-availability/en.json';
@@ -277,6 +281,477 @@ describe('AvailabilityWeekGridComponent', () => {
       tick();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelectorAll('.fc-timegrid-event').length).toBe(0);
+    }));
+  });
+
+  describe('tıkla-seç ile taslak aralık (issue #176)', () => {
+    /** "Şimdi" Çarşamba 12:00'ye sabitlenir; Cuma (offset 4) her zaman gelecekte, Pazartesi (0) geçmişte kalır. */
+    const H = safeLocalHour(createWeekTestDate(4, 12));
+
+    function setup(slots: AvailabilitySlot[] = []): void {
+      jasmine.clock().mockDate(createWeekTestDate(2, 12));
+      fixture.componentRef.setInput('editable', true);
+      fixture.componentRef.setInput('slots', slots);
+      render();
+    }
+
+    function render(): void {
+      fixture.detectChanges();
+      tick();
+      fixture.detectChanges();
+    }
+
+    /** FullCalendar işaretçi olaylarını taklit etmek yerine `dateClick` handler'ı çağrılır; sonuç DOM'dan okunur. */
+    function clickCell(dayOffset: number, hour: number, minute = 0): void {
+      component['onDateClick']({ date: createWeekTestDate(dayOffset, hour, minute) });
+      render();
+    }
+
+    function el<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+      return fixture.nativeElement.querySelector(selector) as T | null;
+    }
+
+    function draftEvents(): HTMLElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.fc-bg-event.awg-draft') as NodeListOf<HTMLElement>);
+    }
+
+    function barText(): string {
+      return el('.awg__draft-text')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    }
+
+    it('editable kapalıyken onay çubuğu yoktur ve hücre tıklaması taslak kurmaz', fakeAsync(() => {
+      jasmine.clock().mockDate(createWeekTestDate(2, 12));
+      fixture.detectChanges();
+      tick();
+
+      clickCell(4, H + 1);
+
+      expect(el('.awg__draft')).toBeNull();
+      expect(draftEvents().length).toBe(0);
+      expect(component.draft()).toBeNull();
+    }));
+
+    it('taslak yokken yönerge metni görünür, Kaydet/Vazgeç yoktur', fakeAsync(() => {
+      setup();
+
+      expect(barText()).toBe(taTr.grid.draft.instruction);
+      expect(el('.awg__draft-save')).toBeNull();
+      expect(el('.awg__draft-cancel')).toBeNull();
+      expect(el('.awg__draft-text')?.getAttribute('aria-live')).toBe('polite');
+    }));
+
+    it('boş hücreye tıklama 30 dk taslağı hem grid üzerinde hem onay çubuğunda gösterir', fakeAsync(() => {
+      setup();
+
+      clickCell(4, H + 1);
+
+      expect(draftEvents().length).toBe(1);
+      // Tam etiket (gün + saat): gevşek `toContain(gün numarası)` saat metniyle de eşleşebilirdi.
+      const expected = formatDraftLabel({ start: createWeekTestDate(4, H + 1), end: createWeekTestDate(4, H + 1, 30) });
+      expect(el('.awg__draft-range')?.textContent?.trim()).toBe(expected);
+      expect(expected).toContain(`${hhmm(H + 1)} – ${hhmm(H + 1, 30)}`);
+      expect(barText()).not.toContain(taTr.grid.draft.instruction);
+      expect(el('.awg__draft-save')?.textContent?.trim()).toBe(taTr.grid.draft.save);
+      expect(el('.awg__draft-cancel')?.textContent?.trim()).toBe(taTr.grid.draft.cancel);
+    }));
+
+    it('art arda tıklama taslağı genişletir; grid üzerinde tek taslak olayı kalır', fakeAsync(() => {
+      setup();
+
+      clickCell(4, H + 1);
+      clickCell(4, H + 2);
+
+      expect(barText()).toContain(`${hhmm(H + 1)} – ${hhmm(H + 2, 30)}`);
+      expect(draftEvents().length).toBe(1);
+      expect(component.draft()).toEqual({ start: createWeekTestDate(4, H + 1), end: createWeekTestDate(4, H + 2, 30) });
+    }));
+
+    it('taslak olayı tab durağı eklemez ve slot olaylarının erişilebilirliğini bozmaz', fakeAsync(() => {
+      setup([createSlotInWeek(1, 3, 14, 15)]);
+
+      clickCell(4, H + 1);
+
+      expect(draftEvents().length).toBe(1);
+      expect(draftEvents()[0].querySelector('[tabindex]')).toBeNull();
+      expect(draftEvents()[0].querySelector('.awg__ev')).toBeNull();
+      expect(draftEvents()[0].textContent?.trim()).toBe(taTr.grid.draft.tag);
+      expect(draftEvents()[0].querySelector('.awg__draft-tag')?.getAttribute('aria-hidden')).toBe('true');
+      const wrappers = fixture.nativeElement.querySelectorAll('.awg__ev') as NodeListOf<HTMLElement>;
+      expect(wrappers.length).toBe(1);
+      expect(wrappers[0].getAttribute('tabindex')).toBe('0');
+      expect(wrappers[0].getAttribute('aria-label')).toContain('14:00');
+    }));
+
+    it('Vazgeç taslağı hem grid üzerinden hem çubuktan temizler', fakeAsync(() => {
+      setup();
+      clickCell(4, H + 1);
+
+      el<HTMLButtonElement>('.awg__draft-cancel')!.click();
+      render();
+
+      expect(draftEvents().length).toBe(0);
+      expect(component.draft()).toBeNull();
+      expect(barText()).toBe(taTr.grid.draft.instruction);
+      expect(el('.awg__draft-save')).toBeNull();
+    }));
+
+    it('Kaydet, taslak anlarının UTC gün + saat isteğini yayar ve taslağı kendisi temizlemez', fakeAsync(() => {
+      setup();
+      const emitted: CreateAvailabilitySlotRequest[] = [];
+      component.createRequested.subscribe((req) => emitted.push(req));
+      clickCell(4, H + 1);
+      clickCell(4, H + 2);
+
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      // Yerel saat string'i DEĞİL: tıklanan anların UTC günü/saati.
+      expect(emitted).toEqual([utcRequest(createWeekTestDate(4, H + 1), createWeekTestDate(4, H + 2, 30))]);
+      // Temizleme sayfanın işidir (başarıda); hata olursa taslak düzeltilebilsin.
+      expect(draftEvents().length).toBe(1);
+    }));
+
+    it('saving iken butonlar aria-disabled, Kaydet yaymaz, hücre tıklaması ve Escape taslağı değiştirmez', fakeAsync(() => {
+      setup();
+      const emitted: CreateAvailabilitySlotRequest[] = [];
+      component.createRequested.subscribe((req) => emitted.push(req));
+      clickCell(4, H + 1);
+
+      fixture.componentRef.setInput('saving', true);
+      render();
+
+      const save = el<HTMLButtonElement>('.awg__draft-save')!;
+      const cancel = el<HTMLButtonElement>('.awg__draft-cancel')!;
+      expect(save.getAttribute('aria-disabled')).toBe('true');
+      expect(cancel.getAttribute('aria-disabled')).toBe('true');
+      expect(save.textContent?.trim()).toBe(taTr.grid.draft.saving);
+
+      // `disabledInteractive` buton tıklamayı almaya devam eder; engelleme komponentin kendi korumasındadır.
+      save.click();
+      cancel.click();
+      clickCell(4, H + 3);
+      el('.awg__scroll')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+
+      expect(emitted).toEqual([]);
+      expect(barText()).toContain(`${hhmm(H + 1)} – ${hhmm(H + 1, 30)}`);
+      expect(draftEvents().length).toBe(1);
+    }));
+
+    it('saveError onay çubuğunda role="alert" ile gösterilir ve taslak yerinde kalır', fakeAsync(() => {
+      setup();
+      clickCell(4, H + 1);
+
+      fixture.componentRef.setInput('saveError', 'Bu aralık mevcut bir aralıkla çakışıyor.');
+      render();
+
+      const alert = el('.awg__draft [role="alert"]');
+      expect(alert?.textContent?.trim()).toBe('Bu aralık mevcut bir aralıkla çakışıyor.');
+      expect(draftEvents().length).toBe(1);
+      expect(barText()).toContain(`${hhmm(H + 1)} – ${hhmm(H + 1, 30)}`);
+    }));
+
+    it('hata yokken alert elemanı render edilmez', fakeAsync(() => {
+      setup();
+      clickCell(4, H + 1);
+
+      expect(el('.awg__draft [role="alert"]')).toBeNull();
+    }));
+
+    it('geçmiş hücre taslak kurmaz ve ipucu gösterir; geçerli tıklama ipucunu siler', fakeAsync(() => {
+      setup();
+
+      clickCell(0, 10);
+
+      expect(draftEvents().length).toBe(0);
+      expect(barText()).toContain(taTr.grid.hint.past);
+
+      clickCell(4, H + 1);
+
+      expect(barText()).not.toContain(taTr.grid.hint.past);
+      expect(draftEvents().length).toBe(1);
+    }));
+
+    it('mevcut slotun üzerinden genişletme reddedilir: ipucu görünür, taslak aynı kalır', fakeAsync(() => {
+      setup([createSlotInWeek(1, 4, H + 1, H + 2)]);
+      clickCell(4, H);
+
+      clickCell(4, H + 3);
+
+      expect(barText()).toContain(`${hhmm(H)} – ${hhmm(H, 30)}`);
+      expect(barText()).toContain(taTr.grid.hint.occupied);
+    }));
+
+    it('yerel 23:30 hücresi (bitiş = ertesi yerel gün 00:00) UTC gün sınırını aşmıyorsa taslak olarak çizilir', fakeAsync(() => {
+      setup();
+      const end = createWeekTestDate(5, 0);
+      const endsAtUtcMidnight = end.getTime() % (24 * 60 * 60_000) === 0;
+
+      clickCell(4, 23, 30);
+
+      if (endsAtUtcMidnight) {
+        // Yalnızca yerel gece yarısı = UTC gece yarısı olan dilimde (UTC) reddedilir.
+        expect(draftEvents().length).toBe(0);
+        expect(barText()).toContain(taTr.grid.hint.crossesDayBoundary);
+      } else {
+        // Tek sütunda tek arka plan olayı; ertesi güne taşan ikinci bir parça yok.
+        expect(draftEvents().length).toBe(1);
+        const expected = formatDraftLabel({ start: createWeekTestDate(4, 23, 30), end });
+        expect(el('.awg__draft-range')?.textContent?.trim()).toBe(expected);
+        expect(expected).toContain(`${hhmm(23, 30)} – ${hhmm(0)}`);
+        expect(component.draft()).toEqual({ start: createWeekTestDate(4, 23, 30), end });
+      }
+    }));
+
+    describe('dateClick bağlantısı', () => {
+      it('takvim seçenekleri interaction eklentisini ve dateClick handler\'ını içerir', fakeAsync(() => {
+        setup();
+
+        const options = component['options']();
+
+        expect(options.plugins).toContain(interactionPlugin);
+        expect(typeof options.dateClick).toBe('function');
+      }));
+
+      it('seçeneklerdeki dateClick çağrısı taslağı kurar (handler komponentin mantığına bağlı)', fakeAsync(() => {
+        setup();
+        const start = createWeekTestDate(4, H + 1);
+
+        component['options']().dateClick!({ date: start } as DateClickArg);
+        render();
+
+        expect(component.draft()).toEqual({ start, end: createWeekTestDate(4, H + 1, 30) });
+        expect(draftEvents().length).toBe(1);
+      }));
+
+      it('dateClick handler\'ı taslak değişince yeniden kurulmaz', fakeAsync(() => {
+        setup();
+        const before = component['options']().dateClick;
+
+        clickCell(4, H + 1);
+
+        expect(component['options']().dateClick).toBe(before);
+      }));
+
+      it('editable kapalıyken handler bağlıdır ama taslak kurmaz', fakeAsync(() => {
+        jasmine.clock().mockDate(createWeekTestDate(2, 12));
+        render();
+
+        component['options']().dateClick!({ date: createWeekTestDate(4, H + 1) } as DateClickArg);
+        render();
+
+        expect(component.draft()).toBeNull();
+        expect(draftEvents().length).toBe(0);
+      }));
+
+      // Duman testi: handler'ı çağırmak yerine render edilmiş hücreye GERÇEK fare olayları gönderilir;
+      // `dateClick` satırı ya da interaction eklentisi silinirse bu test düşer. fakeAsync kullanılmaz
+      // (FullCalendar işaretçi takibi `document` düzeyinde gerçek olaylarla çalışır) ve `whenStable` beklenmez
+      // (`nowIndicator` zamanlayıcısı zone'u hiç boşaltmaz); gerçek makro görev beklenir.
+      // Tarihe bağımlı olmamak için bir sonraki haftaya geçilir — oradaki her hücre gelecektedir.
+      it('duman: render edilmiş boş hücreye mousedown/mouseup taslağı kurar', async () => {
+        const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
+        fixture.componentRef.setInput('editable', true);
+        fixture.detectChanges();
+        await settle();
+        (fixture.nativeElement.querySelectorAll('.awg__nav button')[2] as HTMLButtonElement).click();
+        fixture.detectChanges();
+        await settle();
+        fixture.detectChanges();
+
+        const start = createWeekTestDate(7 + 2, H + 1); // gelecek haftanın Çarşambası
+        const pad = (n: number) => `${n}`.padStart(2, '0');
+        const localDate = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+        const column = el(`td.fc-timegrid-col[data-date="${localDate}"]`);
+        const lane = el(`td.fc-timegrid-slot-lane[data-time="${hhmm(H + 1)}:00"]`);
+        expect(column).withContext('gün sütunu render edilmeli').not.toBeNull();
+        expect(lane).withContext('saat satırı render edilmeli').not.toBeNull();
+        if (!column || !lane) {
+          return;
+        }
+
+        // Sentetik MouseEvent'te `pageY` = `clientY` (pencere kaydırması eklenmez); FullCalendar ise hit'i sayfa
+        // koordinatıyla arayıp `elementFromPoint` ile doğrular. Pencere 0'da tutulur, hücre iç kaydırıcıyla getirilir.
+        const scroller = lane.closest('.fc-scroller') as HTMLElement;
+        scroller.scrollTop = lane.offsetTop;
+        window.scrollTo(0, 0);
+        const colRect = column.getBoundingClientRect();
+        const laneRect = lane.getBoundingClientRect();
+        const clientX = colRect.left + colRect.width / 2;
+        const clientY = laneRect.top + laneRect.height / 2;
+        expect(clientY).withContext('hücre görünür alanda olmalı').toBeLessThan(window.innerHeight);
+        const target = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
+        expect(target && fixture.nativeElement.contains(target)).withContext('hedef nokta grid içinde olmalı').toBeTrue();
+        if (!target) {
+          return;
+        }
+
+        const init: MouseEventInit = { bubbles: true, cancelable: true, button: 0, clientX, clientY };
+        target.dispatchEvent(new MouseEvent('mousedown', init));
+        target.dispatchEvent(new MouseEvent('mouseup', init));
+        await settle();
+        fixture.detectChanges();
+
+        expect(component.draft()).toEqual({ start, end: createWeekTestDate(7 + 2, H + 1, 30) });
+        expect(draftEvents().length).toBe(1);
+      });
+    });
+
+    describe('Escape (yalnızca grid içinden)', () => {
+      function pressEscape(target: EventTarget, prevented = false): void {
+        const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        if (prevented) {
+          event.preventDefault();
+        }
+        target.dispatchEvent(event);
+        render();
+      }
+
+      it('grid içinden gelen Escape taslağı iptal eder', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+
+        pressEscape(el('.awg__scroll')!);
+
+        expect(draftEvents().length).toBe(0);
+        expect(barText()).toBe(taTr.grid.draft.instruction);
+      }));
+
+      it('grid dışından (document/body) gelen Escape taslağı SİLMEZ', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+
+        pressEscape(document);
+        pressEscape(document.body);
+
+        expect(draftEvents().length).toBe(1);
+        expect(component.draft()).not.toBeNull();
+      }));
+
+      it('başka bir katmanın tükettiği (defaultPrevented) Escape taslağı silmez', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+
+        pressEscape(el('.awg__scroll')!, true);
+
+        expect(draftEvents().length).toBe(1);
+      }));
+
+      it('editable kapalıyken Escape dışarıdan verilmiş taslağa dokunmaz', fakeAsync(() => {
+        jasmine.clock().mockDate(createWeekTestDate(2, 12));
+        const draft = { start: createWeekTestDate(4, H + 1), end: createWeekTestDate(4, H + 1, 30) };
+        fixture.componentRef.setInput('draft', draft);
+        render();
+
+        pressEscape(el('.awg__scroll')!);
+
+        expect(component.draft()).toEqual(draft);
+      }));
+
+      it('hücre tıklaması odağı grid içine (kaydırma bölgesine) alır; böylece Escape çalışır', fakeAsync(() => {
+        setup();
+        (document.activeElement as HTMLElement | null)?.blur();
+
+        clickCell(4, H + 1);
+
+        expect(document.activeElement).toBe(el('.awg__scroll'));
+      }));
+    });
+
+    describe('odak yönetimi', () => {
+      it('saving iken Kaydet odakta kalır ve aria-disabled olur (native disabled değil)', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+        const save = el<HTMLButtonElement>('.awg__draft-save')!;
+        save.focus();
+
+        fixture.componentRef.setInput('saving', true);
+        render();
+
+        expect(document.activeElement).toBe(save);
+        expect(save.getAttribute('aria-disabled')).toBe('true');
+        expect(save.disabled).toBeFalse();
+        expect(el('.awg__draft-cancel')?.getAttribute('aria-disabled')).toBe('true');
+      }));
+
+      it('Vazgeç sonrası odak kaydırma bölgesine taşınır', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+        const cancel = el<HTMLButtonElement>('.awg__draft-cancel')!;
+        cancel.focus();
+
+        cancel.click();
+        render();
+
+        expect(document.activeElement).toBe(el('.awg__scroll'));
+      }));
+
+      it('kayıt başarısında (sayfa draft=null yazar) odak Kaydet\'ten kaydırma bölgesine taşınır', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+        el<HTMLButtonElement>('.awg__draft-save')!.focus();
+        fixture.componentRef.setInput('saving', true);
+        render();
+
+        fixture.componentRef.setInput('saving', false);
+        fixture.componentRef.setInput('draft', null);
+        render();
+
+        expect(el('.awg__draft-save')).toBeNull();
+        expect(document.activeElement).toBe(el('.awg__scroll'));
+      }));
+
+      it('odak grid dışındayken taslak kalkarsa odak çalınmaz', fakeAsync(() => {
+        setup();
+        clickCell(4, H + 1);
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+        outside.focus();
+
+        fixture.componentRef.setInput('draft', null);
+        render();
+
+        expect(document.activeElement).toBe(outside);
+        outside.remove();
+      }));
+    });
+
+    it('reddedilen tıklamanın ipucu, taslak kalkınca (kayıt başarısı) ekranda kalmaz', fakeAsync(() => {
+      setup();
+      clickCell(4, H);
+      clickCell(4, H + 4);
+      expect(barText()).toContain(taTr.grid.hint.tooLong.replace('{{hours}}', '4'));
+
+      fixture.componentRef.setInput('draft', null);
+      render();
+
+      expect(barText()).toBe(taTr.grid.draft.instruction);
+    }));
+
+    it('gün sınırı ipucu sınırın YEREL saatini gösterir (sabit metin değil)', fakeAsync(() => {
+      setup();
+      const boundary = nextUtcDayBoundary(createWeekTestDate(4, 12));
+      const boundaryTime = new Intl.DateTimeFormat(activeIntlLocale(), { hour: '2-digit', minute: '2-digit' }).format(
+        boundary
+      );
+
+      // Bitişi tam sınıra denk gelen hücre (hizasız dilimlerde de geçerli olsun diye handler doğrudan çağrılır).
+      component['onDateClick']({ date: new Date(boundary.getTime() - 30 * 60_000) });
+      render();
+
+      expect(draftEvents().length).toBe(0);
+      expect(barText()).toContain(taTr.grid.hint.crossesDayBoundary.split('{{time}}').join(boundaryTime));
+      expect(barText()).not.toContain('{{');
+    }));
+
+    it('4 saati aşan genişletmede sınır değeriyle ipucu gösterir', fakeAsync(() => {
+      setup();
+      clickCell(4, H);
+
+      clickCell(4, H + 4);
+
+      expect(barText()).toContain(`${hhmm(H)} – ${hhmm(H, 30)}`);
+      expect(barText()).toContain(taTr.grid.hint.tooLong.replace('{{hours}}', '4'));
     }));
   });
 

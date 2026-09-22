@@ -17,6 +17,11 @@
     opacity: 0.6;
   }
 
+  // Düzenlenebilir grid'de boş hücreler tıklanabilir görünür.
+  &--editable .fc-timegrid-cols {
+    cursor: pointer;
+  }
+
   // ---------------- Başlık / gezinme ----------------
 
   &__toolbar {
@@ -79,6 +84,68 @@
       background: color-mix(in srgb, var(--ms-action-background) var(--awg-event-mix), var(--ms-surface));
       border-color: var(--ms-action-background);
     }
+  }
+
+  // ---------------- Taslak onay çubuğu (issue #176) ----------------
+
+  &__draft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    min-height: 3rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px dashed var(--ms-border-weak);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+
+    &--active {
+      border-color: var(--ms-action-background);
+      background: color-mix(in srgb, var(--ms-action-background) 10%, transparent);
+    }
+  }
+
+  &__draft-text {
+    display: flex;
+    flex: 1 1 14rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    margin: 0;
+  }
+
+  &__draft-range {
+    color: var(--ms-text-strong);
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  &__draft-instruction {
+    color: var(--ms-text-weak);
+  }
+
+  &__draft-hint {
+    color: var(--ms-text-medium);
+    font-style: italic;
+  }
+
+  &__draft-actions {
+    display: inline-flex;
+    gap: 0.5rem;
+  }
+
+  &__draft-error {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--ms-danger-background);
+  }
+
+  &__draft-tag {
+    display: block;
+    padding: 0.15rem 0.35rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--ms-text-strong);
   }
 
   // ---------------- Kaydırma (dar ekranda 7 sütun) ----------------
@@ -162,6 +229,16 @@
           opacity: 1;
         }
       }
+    }
+
+    // Taslak: arka plan olayı; kesikli kenar onu kayıtlı (düz kenarlı) slotlardan renk dışında da ayırır.
+    .fc-bg-event.awg-draft {
+      // Saydamlık renkte verilir; `opacity` kenarlığı ve etiketi de soldururdu.
+      --fc-bg-event-color: color-mix(in srgb, var(--ms-action-background) 22%, transparent);
+      --fc-bg-event-opacity: 1;
+
+      border: 2px dashed var(--ms-action-background);
+      border-radius: 0.375rem;
     }
 
     .fc-event-main {

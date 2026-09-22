@@ -2,17 +2,6 @@
   "title": "My Available Hours",
   "subtitle": "Define the time slots you are available for so students can request appointments.",
   "bookingRequests": "Appointment Requests",
-  "form": {
-    "dateLabel": "Date",
-    "dateRequired": "Please pick a date.",
-    "startLabel": "Start",
-    "startRequired": "Start time is required.",
-    "endLabel": "End",
-    "endRequired": "End time is required.",
-    "submit": "Add Slot",
-    "invalidTimeFormat": "Enter the times in HH:MM format.",
-    "endBeforeStart": "The end time must be after the start time."
-  },
   "state": {
     "loading": "Loading your available slots...",
     "empty": "You have not defined any available slots yet."
@@ -32,6 +21,20 @@
     "tooltip": {
       "student": "Student: {{name}}",
       "past": "Past"
+    },
+    "draft": {
+      "instruction": "Click an empty cell in the calendar to start a new slot; click other cells on the same day to extend it.",
+      "save": "Save",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "tag": "Draft"
+    },
+    "hint": {
+      "past": "You cannot add a slot in the past.",
+      "occupied": "The selection overlaps an existing slot.",
+      "tooLong": "A slot can be at most {{hours}} hours long.",
+      "tooFarAhead": "Slots can be added at most {{days}} days ahead.",
+      "crossesDayBoundary": "A slot cannot run across {{time}}; add the parts before and after {{time}} as two separate slots."
     }
   },
   "actions": {

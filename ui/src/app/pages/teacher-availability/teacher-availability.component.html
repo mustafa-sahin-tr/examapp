@@ -11,48 +11,16 @@
   </header>
 
   @if (!error() || slots().length) {
-    <app-availability-week-grid [slots]="slots()" [loading]="loading()" />
-  }
-
-  <form class="avail__form" [formGroup]="form" (ngSubmit)="submit()">
-    <mat-form-field appearance="outline">
-      <mat-label>{{ t('form.dateLabel') }}</mat-label>
-      <input matInput [matDatepicker]="picker" formControlName="date" [min]="minDate" />
-      <mat-datepicker-toggle matIconSuffix [for]="picker" />
-      <mat-datepicker #picker />
-      @if (form.controls.date.touched && form.controls.date.invalid) {
-        <mat-error>{{ t('form.dateRequired') }}</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>{{ t('form.startLabel') }}</mat-label>
-      <input matInput type="time" formControlName="startTime" />
-      @if (form.controls.startTime.touched && form.controls.startTime.invalid) {
-        <mat-error>{{ t('form.startRequired') }}</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline">
-      <mat-label>{{ t('form.endLabel') }}</mat-label>
-      <input matInput type="time" formControlName="endTime" />
-      @if (form.controls.endTime.touched && form.controls.endTime.invalid) {
-        <mat-error>{{ t('form.endRequired') }}</mat-error>
-      }
-    </mat-form-field>
-
-    <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-      @if (saving()) {
-        <mat-spinner diameter="18" />
-      } @else {
-        <mat-icon>add</mat-icon>
-      }
-      {{ t('form.submit') }}
-    </button>
-  </form>
-
-  @if (timeRangeError()) {
-    <p class="avail__form-error" role="alert">{{ timeRangeError() }}</p>
+    <app-availability-week-grid
+      [slots]="slots()"
+      [loading]="loading()"
+      [editable]="true"
+      [draft]="draft()"
+      [saving]="saving()"
+      [saveError]="saveError()"
+      (draftChange)="onDraftChange($event)"
+      (createRequested)="create($event)"
+    />
   }
 
   @if (loading()) {

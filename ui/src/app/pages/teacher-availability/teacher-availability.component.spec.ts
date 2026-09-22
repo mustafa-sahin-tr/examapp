@@ -1,20 +1,25 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Router, provideRouter } from '@angular/router';
-import { provideNativeDateAdapter } from '@angular/material/core';
+import { provideRouter } from '@angular/router';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { TeacherAvailabilityComponent } from './teacher-availability.component';
 import { BookingService } from '../../services/booking.service';
-import { AvailabilitySlot } from '../../models/booking.model';
+import { AvailabilitySlot, AvailabilitySlotResult } from '../../models/booking.model';
 import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
+import { safeLocalHour, utcRequest } from '../../shared/testing/booking-time-testing';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import taTr from '../../../../public/i18n/teacher-availability/tr.json';
+import taEn from '../../../../public/i18n/teacher-availability/en.json';
 
-const translocoTesting = translocoTestingModule();
+// Scope sözlüğü gerçek dosyadan yüklenir; snackbar/çubuk metinleri ham anahtar yerine gerçek çeviriyle doğrulanır.
+const translocoTesting = translocoTestingModule({
+  langs: { 'teacher-availability/tr': taTr, 'teacher-availability/en': taEn },
+});
 
 describe('TeacherAvailabilityComponent', () => {
   let component: TeacherAvailabilityComponent;
@@ -54,7 +59,6 @@ describe('TeacherAvailabilityComponent', () => {
         { provide: BookingService, useValue: bookingService },
         { provide: MatSnackBar, useValue: snackBar },
         provideRouter([]),
-        provideNativeDateAdapter(),
       ],
     }).compileComponents();
 
@@ -79,14 +83,6 @@ describe('TeacherAvailabilityComponent', () => {
 
     const title = fixture.nativeElement.querySelector('h1');
     expect(title).toBeTruthy();
-  }));
-
-  it('should render form with date input', fakeAsync(() => {
-    fixture.detectChanges();
-    tick();
-
-    const form = fixture.nativeElement.querySelector('.avail__form');
-    expect(form).toBeTruthy();
   }));
 
   it('should render grid component when no error', fakeAsync(() => {
@@ -307,14 +303,6 @@ describe('TeacherAvailabilityComponent', () => {
     expect(deleteButton).toBeTruthy();
   }));
 
-  it('should have submit button in form', fakeAsync(() => {
-    fixture.detectChanges();
-    tick();
-
-    const submitButton = fixture.nativeElement.querySelector('button[type="submit"]');
-    expect(submitButton).toBeTruthy();
-  }));
-
   it('should display booking requests button', fakeAsync(() => {
     fixture.detectChanges();
     tick();
@@ -362,14 +350,203 @@ describe('TeacherAvailabilityComponent', () => {
     expect(snackBar.open).toHaveBeenCalled();
   }));
 
-  it('should keep form and list visible even with error', fakeAsync(() => {
-    const errorResponse = new HttpErrorResponse({ status: 500, statusText: 'Server Error' });
-    bookingService.getAllMySlots.and.returnValue(throwError(() => errorResponse));
+  describe('grid üzerinden aralık oluşturma (issue #176)', () => {
+    const createdSlot: AvailabilitySlot = {
+      id: 7,
+      teacherId: 10,
+      date: '2026-09-25',
+      startTime: '14:00:00',
+      endTime: '15:00:00',
+      createdAt: '2026-09-23T09:00:00Z',
+      startUtc: '2026-09-25T14:00:00Z',
+      endUtc: '2026-09-25T15:00:00Z',
+      isBooked: false,
+    };
+    // Cum 25 Eylül 2026, yerel H:00–(H+1):00; H dilime göre UTC gün sınırından uzak seçilir.
+    const H = safeLocalHour(new Date(2026, 8, 25, 12, 0));
+    const draftStart = new Date(2026, 8, 25, H, 0);
+    const draftEnd = new Date(2026, 8, 25, H + 1, 0);
+    const expectedRequest = utcRequest(draftStart, draftEnd);
 
-    fixture.detectChanges();
-    tick();
+    function render(): void {
+      fixture.detectChanges();
+      tick();
+      fixture.detectChanges();
+    }
 
-    const form = fixture.nativeElement.querySelector('.avail__form');
-    expect(form).toBeTruthy();
-  }));
+    function grid(): AvailabilityWeekGridComponent {
+      return fixture.debugElement.query(By.directive(AvailabilityWeekGridComponent))
+        .componentInstance as AvailabilityWeekGridComponent;
+    }
+
+    function saveButton(): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector('.awg__draft-save') as HTMLButtonElement | null;
+    }
+
+    function alertText(): string | null {
+      const alert = fixture.nativeElement.querySelector('.awg__draft [role="alert"]') as HTMLElement | null;
+      return alert ? (alert.textContent ?? '').trim() : null;
+    }
+
+    /** "Şimdi" 23 Eylül 2026 Çar 12:00 (yerel); Cum 25 Eylül H:00 ve H:30 hücrelerine tıklanır. */
+    function draftFridayOneHour(): void {
+      jasmine.clock().mockDate(new Date(2026, 8, 23, 12, 0));
+      render();
+      grid()['onDateClick']({ date: draftStart });
+      render();
+      grid()['onDateClick']({ date: new Date(2026, 8, 25, H, 30) });
+      render();
+    }
+
+    it('eski form kaldırıldı: sayfada form, tarih/saat girdisi ve submit butonu yok', fakeAsync(() => {
+      render();
+
+      expect(fixture.nativeElement.querySelector('form')).toBeNull();
+      expect(fixture.nativeElement.querySelector('input')).toBeNull();
+      expect(fixture.nativeElement.querySelector('mat-datepicker-toggle')).toBeNull();
+      expect(fixture.nativeElement.querySelector('button[type="submit"]')).toBeNull();
+    }));
+
+    it('grid düzenlenebilir modda bağlanır ve yönerge metnini gösterir', fakeAsync(() => {
+      render();
+
+      expect(grid().editable()).toBeTrue();
+      expect(fixture.nativeElement.querySelector('.awg__draft-text')?.textContent).toContain(
+        taTr.grid.draft.instruction
+      );
+    }));
+
+    it('Kaydet → createSlot taslak anlarının UTC gün + saat isteğiyle bir kez çağrılır', fakeAsync(() => {
+      draftFridayOneHour();
+
+      saveButton()!.click();
+      render();
+
+      expect(bookingService.createSlot).toHaveBeenCalledOnceWith(expectedRequest);
+    }));
+
+    it('başarıda snackbar gösterir, taslağı temizler, listeyi ve grid slotlarını yeniden yükler', fakeAsync(() => {
+      draftFridayOneHour();
+      bookingService.createSlot.and.returnValue(of({ success: true, slot: createdSlot }));
+      bookingService.getAllMySlots.and.returnValue(of({ items: [mockSlot, createdSlot], success: true }));
+
+      saveButton()!.click();
+      render();
+
+      expect(snackBar.open).toHaveBeenCalledOnceWith(taTr.messages.added, taTr.messages.ok, { duration: 3000 });
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(2);
+      expect(grid().slots()).toEqual([mockSlot, createdSlot]);
+      expect(fixture.nativeElement.querySelectorAll('.avail__row').length).toBe(2);
+      expect(grid().draft()).toBeNull();
+      expect(saveButton()).toBeNull();
+      expect(alertText()).toBeNull();
+    }));
+
+    it('409 çakışmada hata grid üzerinde gösterilir, taslak korunur, snackbar ve yeniden yükleme olmaz', fakeAsync(() => {
+      draftFridayOneHour();
+      const conflict = new HttpErrorResponse({
+        status: 409,
+        error: { success: false, conflict: true, message: 'Bu saat aralığı mevcut bir aralıkla çakışıyor.' },
+      });
+      bookingService.createSlot.and.returnValue(throwError(() => conflict));
+      bookingService.extractError.and.returnValue('Bu saat aralığı mevcut bir aralıkla çakışıyor.');
+
+      saveButton()!.click();
+      render();
+
+      expect(bookingService.extractError).toHaveBeenCalledOnceWith(conflict, taTr.messages.addFailed);
+      expect(alertText()).toBe('Bu saat aralığı mevcut bir aralıkla çakışıyor.');
+      expect(grid().draft()).toEqual({ start: draftStart, end: draftEnd });
+      expect(saveButton()?.getAttribute('aria-disabled')).toBeNull();
+      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(1);
+    }));
+
+    it('200 + success:false gövdesinde sunucu mesajı grid üzerinde gösterilir ve taslak korunur', fakeAsync(() => {
+      draftFridayOneHour();
+      bookingService.createSlot.and.returnValue(of({ success: false, message: 'Bir aralık en fazla 4 saat olabilir.' }));
+
+      saveButton()!.click();
+      render();
+
+      expect(alertText()).toBe('Bir aralık en fazla 4 saat olabilir.');
+      expect(grid().draft()).not.toBeNull();
+      expect(snackBar.open).not.toHaveBeenCalled();
+    }));
+
+    it('hata sonrası taslak değişince eski hata temizlenir', fakeAsync(() => {
+      draftFridayOneHour();
+      bookingService.createSlot.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+      saveButton()!.click();
+      render();
+      expect(alertText()).toBe('Error message');
+
+      grid()['onDateClick']({ date: draftEnd });
+      render();
+
+      expect(alertText()).toBeNull();
+      expect(grid().draft()?.end).toEqual(new Date(2026, 8, 25, H + 1, 30));
+    }));
+
+    it('başarı sonrası yeniden yükleme hata verirse yeni slot grid\'de ve listede görünmeye devam eder', fakeAsync(() => {
+      bookingService.getAllMySlots.and.returnValue(of({ items: [], success: true }));
+      draftFridayOneHour();
+      bookingService.createSlot.and.returnValue(of({ success: true, slot: createdSlot }));
+      bookingService.getAllMySlots.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 500, statusText: 'Server Error' }))
+      );
+
+      saveButton()!.click();
+      render();
+
+      // İlk slotta bile grid kaybolmaz: `res.slot` yerel listeye eklenmiştir.
+      expect(fixture.debugElement.query(By.directive(AvailabilityWeekGridComponent))).not.toBeNull();
+      expect(grid().slots()).toEqual([createdSlot]);
+      expect(grid().draft()).toBeNull();
+      expect(fixture.nativeElement.querySelector('.avail__state--error')).not.toBeNull();
+    }));
+
+    it('yeniden yükleme aynı slotu getirdiğinde kopya oluşmaz', fakeAsync(() => {
+      draftFridayOneHour();
+      bookingService.createSlot.and.returnValue(of({ success: true, slot: createdSlot }));
+      const pendingLoad = new Subject<{ items: AvailabilitySlot[]; success: boolean }>();
+      bookingService.getAllMySlots.and.returnValue(pendingLoad.asObservable());
+
+      saveButton()!.click();
+      render();
+
+      // `load()` sürerken grid'in dolu listesi yeni slotu zaten içerir (üstüne taslak kurulamaz).
+      expect(grid().slots()).toEqual([mockSlot, createdSlot]);
+
+      pendingLoad.next({ items: [mockSlot, createdSlot], success: true });
+      pendingLoad.complete();
+      render();
+
+      expect(grid().slots()).toEqual([mockSlot, createdSlot]);
+    }));
+
+    it('kayıt sürerken butonlar aria-disabled olur ve ikinci gönderim yapılmaz', fakeAsync(() => {
+      draftFridayOneHour();
+      const pending = new Subject<AvailabilitySlotResult>();
+      bookingService.createSlot.and.returnValue(pending.asObservable());
+
+      saveButton()!.click();
+      render();
+
+      expect(saveButton()?.getAttribute('aria-disabled')).toBe('true');
+      expect(fixture.nativeElement.querySelector('.awg__draft-cancel')?.getAttribute('aria-disabled')).toBe('true');
+
+      saveButton()!.click();
+      component['create'](expectedRequest);
+      render();
+      expect(bookingService.createSlot).toHaveBeenCalledTimes(1);
+
+      pending.next({ success: true, slot: createdSlot });
+      pending.complete();
+      render();
+
+      expect(saveButton()).toBeNull();
+      expect(grid().saving()).toBeFalse();
+    }));
+  });
 });

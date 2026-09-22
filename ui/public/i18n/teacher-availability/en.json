@@ -35,10 +35,16 @@
       "tooLong": "A slot can be at most {{hours}} hours long.",
       "tooFarAhead": "Slots can be added at most {{days}} days ahead.",
       "crossesDayBoundary": "A slot cannot run across {{time}}; add the parts before and after {{time}} as two separate slots."
+    },
+    "delete": {
+      "prompt": "Delete this slot?",
+      "confirm": "Delete",
+      "deleting": "Deleting...",
+      "cancel": "Cancel",
+      "hint": "Click to delete"
     }
   },
   "actions": {
-    "delete": "Delete availability slot",
     "lockedHint": "A slot with an appointment cannot be deleted"
   },
   "messages": {

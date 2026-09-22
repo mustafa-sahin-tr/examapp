@@ -18,8 +18,13 @@
       [draft]="draft()"
       [saving]="saving()"
       [saveError]="saveError()"
+      [selectedSlotId]="selectedSlotId()"
+      [deleting]="deleting()"
+      [deleteError]="deleteError()"
       (draftChange)="onDraftChange($event)"
       (createRequested)="create($event)"
+      (selectedSlotIdChange)="onSelectionChange($event)"
+      (deleteRequested)="deleteSlot($event)"
     />
   }
 
@@ -53,17 +58,8 @@
 
           <span class="avail__chip" [class]="row.statusClass">{{ t(row.statusKey) }}{{ row.studentSuffix }}</span>
 
-          @if (row.deletable) {
-            <button
-              mat-icon-button
-              type="button"
-              [attr.aria-label]="t('actions.delete')"
-              [disabled]="deletingId() !== null"
-              (click)="remove(row)"
-            >
-              <mat-icon>delete_outline</mat-icon>
-            </button>
-          } @else {
+          <!-- Liste salt okunurdur; silme grid üzerinden yapılır (issue #177). Kilit, randevulu aralığı işaretler. -->
+          @if (row.slot.isBooked) {
             <span class="avail__locked" [title]="t('actions.lockedHint')">
               <mat-icon>lock</mat-icon>
             </span>

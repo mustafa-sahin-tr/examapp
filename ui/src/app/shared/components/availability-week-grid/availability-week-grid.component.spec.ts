@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core
 import { PLATFORM_ID } from '@angular/core';
 import { AvailabilityWeekGridComponent } from './availability-week-grid.component';
 import { AvailabilitySlot, ActiveBookingStatus, CreateAvailabilitySlotRequest } from '../../../models/booking.model';
+import type { EventClickArg } from '@fullcalendar/core';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import { formatDraftLabel, nextUtcDayBoundary } from './availability-draft.util';
 import { activeIntlLocale } from '../../utils/active-locale.util';
@@ -753,6 +754,377 @@ describe('AvailabilityWeekGridComponent', () => {
       expect(barText()).toContain(`${hhmm(H)} – ${hhmm(H, 30)}`);
       expect(barText()).toContain(taTr.grid.hint.tooLong.replace('{{hours}}', '4'));
     }));
+  });
+
+  describe('grid üzerinden silme (issue #177)', () => {
+    const H = safeLocalHour(createWeekTestDate(4, 12));
+    /** Cuma H:00–(H+1):00, boş. */
+    const free = () => createSlotInWeek(11, 4, H, H + 1);
+    /** Cuma (H+2):00–(H+3):00, bekleyen randevulu. */
+    const booked = () => createSlotInWeek(12, 4, H + 2, H + 3, true, 'Pending');
+
+    function setup(slots: AvailabilitySlot[] = [free(), booked()], editable = true): void {
+      jasmine.clock().mockDate(createWeekTestDate(2, 12));
+      fixture.componentRef.setInput('editable', editable);
+      fixture.componentRef.setInput('slots', slots);
+      render();
+    }
+
+    function render(): void {
+      fixture.detectChanges();
+      tick();
+      fixture.detectChanges();
+    }
+
+    function el<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+      return fixture.nativeElement.querySelector(selector) as T | null;
+    }
+
+    /** FullCalendar `eventClick` handler'ı seçeneklerden çağrılır (fare/dokunma yolu); DOM'dan doğrulanır. */
+    function clickEvent(slotId: number): void {
+      component['options']().eventClick!({ event: { id: String(slotId) } } as EventClickArg);
+      render();
+    }
+
+    function clickCell(dayOffset: number, hour: number): void {
+      component['onDateClick']({ date: createWeekTestDate(dayOffset, hour) });
+      render();
+    }
+
+    /** Slotun `.awg__ev` sarmalayıcısı (`data-slot-id` ile). */
+    function wrapperOf(slotId: number): HTMLElement {
+      const hit = el(`.awg__ev[data-slot-id="${slotId}"]`);
+      expect(hit).withContext(`slot ${slotId} render edilmeli`).not.toBeNull();
+      return hit!;
+    }
+
+    function selectedEvents(): HTMLElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.fc-timegrid-event.is-selected') as NodeListOf<HTMLElement>);
+    }
+
+    function barText(): string {
+      return el('.awg__draft-text')?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    }
+
+    function draftEvents(): HTMLElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.fc-bg-event.awg-draft') as NodeListOf<HTMLElement>);
+    }
+
+    it('takvim seçenekleri eventClick handler\'ı içerir ve eventInteractive AÇIKÇA kapalıdır', fakeAsync(() => {
+      setup();
+
+      const options = component['options']();
+      expect(typeof options.eventClick).toBe('function');
+      // `eventClick` bağlıyken FullCalendar `eventInteractive`'i varsayılan açar; `.fc-event` tabindex almamalı.
+      expect(options.eventInteractive).toBeFalse();
+      const fcEvents = fixture.nativeElement.querySelectorAll('.fc-event') as NodeListOf<HTMLElement>;
+      expect(fcEvents.length).toBe(2);
+      for (const event of Array.from(fcEvents)) {
+        expect(event.hasAttribute('tabindex')).toBeFalse();
+      }
+    }));
+
+    it('boş slota tıklama silme modunu açar: çubukta aralık + soru + Sil/Vazgeç, olay is-selected', fakeAsync(() => {
+      setup();
+
+      clickEvent(11);
+
+      expect(component.selectedSlotId()).toBe(11);
+      expect(el('.awg__draft')?.classList).toContain('awg__draft--delete');
+      const expected = formatDraftLabel({ start: createWeekTestDate(4, H), end: createWeekTestDate(4, H + 1) });
+      expect(el('.awg__draft-range')?.textContent?.trim()).toBe(expected);
+      expect(barText()).toContain(taTr.grid.delete.prompt);
+      expect(el('.awg__delete-confirm')?.textContent?.trim()).toBe(taTr.grid.delete.confirm);
+      expect(el('.awg__delete-cancel')?.textContent?.trim()).toBe(taTr.grid.delete.cancel);
+      expect(el('.awg__draft-save')).toBeNull();
+      expect(selectedEvents().length).toBe(1);
+      expect(selectedEvents()[0].classList).toContain('is-free');
+      expect(wrapperOf(11).getAttribute('aria-pressed')).toBe('true');
+    }));
+
+    it('randevulu slota tıklama silme moduna girmez; lockedHint ipucu görünür ve süre sonunda kalkar', fakeAsync(() => {
+      setup();
+
+      clickEvent(12);
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(selectedEvents().length).toBe(0);
+      expect(el('.awg__delete-confirm')).toBeNull();
+      expect(el('.awg__locked-hint')?.textContent?.trim()).toBe(taTr.actions.lockedHint);
+
+      tick(4000);
+      fixture.detectChanges();
+
+      expect(el('.awg__locked-hint')).toBeNull();
+    }));
+
+    it('editable kapalıyken olay tıklaması seçim kurmaz ve sarmalayıcı role="group" kalır', fakeAsync(() => {
+      setup([free()], false);
+
+      clickEvent(11);
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(el('.awg__draft')).toBeNull();
+      expect(el('.awg__ev')?.getAttribute('role')).toBe('group');
+      expect(el('.awg__ev')?.hasAttribute('aria-description')).toBeFalse();
+    }));
+
+    it('editable iken sarmalayıcı role="button"; boş slot aria-description/tooltip ile silme ipucu taşır, randevulu taşımaz', fakeAsync(() => {
+      setup();
+
+      const freeWrapper = wrapperOf(11);
+      const bookedWrapper = wrapperOf(12);
+      expect(freeWrapper.getAttribute('role')).toBe('button');
+      expect(freeWrapper.getAttribute('aria-description')).toBe(taTr.grid.delete.hint);
+      // aria-label değişmez (gün · saat · durum); eylem ipucu ayrı özniteliktedir.
+      expect(freeWrapper.getAttribute('aria-label')).not.toContain(taTr.grid.delete.hint);
+      expect(freeWrapper.getAttribute('aria-pressed')).toBe('false');
+      expect(freeWrapper.hasAttribute('aria-disabled')).toBeFalse();
+      // Randevulu slot: rolü button ama eylemsiz → aria-disabled + "silinemez" ipucu.
+      expect(bookedWrapper.getAttribute('role')).toBe('button');
+      expect(bookedWrapper.getAttribute('aria-disabled')).toBe('true');
+      expect(bookedWrapper.getAttribute('aria-description')).toBe(taTr.actions.lockedHint);
+      expect(bookedWrapper.hasAttribute('aria-pressed')).toBeFalse();
+      expect(fixture.nativeElement.querySelectorAll('.awg__ev[tabindex="0"]').length).toBe(2);
+    }));
+
+    it('editable kapalıyken aria-disabled ve aria-description hiçbir slotta yoktur', fakeAsync(() => {
+      setup([free(), booked()], false);
+
+      for (const w of Array.from(fixture.nativeElement.querySelectorAll('.awg__ev') as NodeListOf<HTMLElement>)) {
+        expect(w.hasAttribute('aria-disabled')).toBeFalse();
+        expect(w.hasAttribute('aria-description')).toBeFalse();
+      }
+    }));
+
+    it('randevulu slota tıklama bayat taslak ipucunu siler; iki ipucu aynı anda görünmez', fakeAsync(() => {
+      setup();
+      clickCell(0, 10);
+      expect(barText()).toContain(taTr.grid.hint.past);
+
+      clickEvent(12);
+
+      expect(barText()).not.toContain(taTr.grid.hint.past);
+      expect(el('.awg__locked-hint')).not.toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('.awg__draft-hint').length).toBe(1);
+    }));
+
+    it('klavye: odaktaki boş slotta Enter seçer, Space seçimi kaldırır; varsayılan engellenir', fakeAsync(() => {
+      setup();
+      const wrapper = wrapperOf(11);
+
+      const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      wrapper.dispatchEvent(enter);
+      render();
+      expect(enter.defaultPrevented).toBeTrue();
+      expect(component.selectedSlotId()).toBe(11);
+      expect(el('.awg__delete-confirm')).not.toBeNull();
+
+      const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+      wrapperOf(11).dispatchEvent(space);
+      render();
+      expect(space.defaultPrevented).toBeTrue();
+      expect(component.selectedSlotId()).toBeNull();
+      expect(el('.awg__delete-confirm')).toBeNull();
+    }));
+
+    it('klavye: randevulu slotta Enter seçim kurmaz, ipucu gösterir', fakeAsync(() => {
+      setup();
+
+      wrapperOf(12).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      render();
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(el('.awg__locked-hint')).not.toBeNull();
+    }));
+
+    it('Sil, seçili slotun kimliğini yayar ve seçimi kendisi temizlemez', fakeAsync(() => {
+      setup();
+      const emitted: number[] = [];
+      component.deleteRequested.subscribe((id) => emitted.push(id));
+      clickEvent(11);
+
+      el<HTMLButtonElement>('.awg__delete-confirm')!.click();
+      render();
+
+      expect(emitted).toEqual([11]);
+      expect(component.selectedSlotId()).toBe(11);
+      expect(selectedEvents().length).toBe(1);
+    }));
+
+    it('Vazgeç seçimi ve vurguyu kaldırır; yönerge metnine dönülür', fakeAsync(() => {
+      setup();
+      clickEvent(11);
+
+      el<HTMLButtonElement>('.awg__delete-cancel')!.click();
+      render();
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(selectedEvents().length).toBe(0);
+      expect(el('.awg__delete-confirm')).toBeNull();
+      expect(barText()).toBe(taTr.grid.draft.instruction);
+    }));
+
+    it('grid içinden Escape seçimi kaldırır; dışarıdan gelen Escape kaldırmaz', fakeAsync(() => {
+      setup();
+      clickEvent(11);
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+      expect(component.selectedSlotId()).toBe(11);
+
+      el('.awg__scroll')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+      expect(component.selectedSlotId()).toBeNull();
+      expect(selectedEvents().length).toBe(0);
+    }));
+
+    it('deleting iken butonlar aria-disabled (odak kaybolmaz), Sil yaymaz, tıklama ve Escape seçimi değiştirmez', fakeAsync(() => {
+      setup();
+      const emitted: number[] = [];
+      component.deleteRequested.subscribe((id) => emitted.push(id));
+      clickEvent(11);
+      const confirmBtn = el<HTMLButtonElement>('.awg__delete-confirm')!;
+      confirmBtn.focus();
+
+      fixture.componentRef.setInput('deleting', true);
+      render();
+
+      expect(confirmBtn.getAttribute('aria-disabled')).toBe('true');
+      expect(confirmBtn.disabled).toBeFalse();
+      expect(confirmBtn.textContent?.trim()).toBe(taTr.grid.delete.deleting);
+      expect(el('.awg__delete-cancel')?.getAttribute('aria-disabled')).toBe('true');
+      expect(document.activeElement).toBe(confirmBtn);
+
+      confirmBtn.click();
+      el<HTMLButtonElement>('.awg__delete-cancel')!.click();
+      clickEvent(12);
+      clickCell(4, H + 4);
+      el('.awg__scroll')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+
+      expect(emitted).toEqual([]);
+      expect(component.selectedSlotId()).toBe(11);
+      expect(component.draft()).toBeNull();
+      expect(el('.awg__locked-hint')).toBeNull();
+    }));
+
+    it('deleteError çubukta role="alert" ile gösterilir ve seçim korunur', fakeAsync(() => {
+      setup();
+      clickEvent(11);
+      expect(el('.awg__draft [role="alert"]')).toBeNull();
+
+      fixture.componentRef.setInput('deleteError', 'Aktif randevusu olan aralık silinemez.');
+      render();
+
+      expect(el('.awg__draft [role="alert"]')?.textContent?.trim()).toBe('Aktif randevusu olan aralık silinemez.');
+      expect(component.selectedSlotId()).toBe(11);
+      expect(selectedEvents().length).toBe(1);
+    }));
+
+    it('sayfa slotu listeden düşürüp seçimi sıfırlayınca çubuk kapanır ve odak kaydırma bölgesine geçer', fakeAsync(() => {
+      setup();
+      clickEvent(11);
+      el<HTMLButtonElement>('.awg__delete-confirm')!.focus();
+
+      fixture.componentRef.setInput('slots', [booked()]);
+      fixture.componentRef.setInput('selectedSlotId', null);
+      render();
+
+      expect(el('.awg__delete-confirm')).toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('.fc-timegrid-event').length).toBe(1);
+      expect(barText()).toBe(taTr.grid.draft.instruction);
+      expect(document.activeElement).toBe(el('.awg__scroll'));
+    }));
+
+    it('seçili kimlik slots\'tan düşerse silme modu kapanır ve model null\'a çekilip selectedSlotIdChange yayılır', fakeAsync(() => {
+      setup();
+      const emitted: (number | null)[] = [];
+      component.selectedSlotId.subscribe((id) => emitted.push(id));
+      clickEvent(11);
+      expect(emitted).toEqual([11]);
+
+      fixture.componentRef.setInput('slots', [booked()]);
+      render();
+
+      expect(el('.awg__delete-confirm')).toBeNull();
+      expect(selectedEvents().length).toBe(0);
+      expect(component.selectedSlotId()).toBeNull();
+      expect(emitted).toEqual([11, null]);
+    }));
+
+    it('taslak varken slota tıklama taslağı siler; seçim varken hücreye tıklama seçimi siler', fakeAsync(() => {
+      setup();
+      clickCell(4, H + 4);
+      expect(draftEvents().length).toBe(1);
+
+      clickEvent(11);
+
+      expect(component.draft()).toBeNull();
+      expect(draftEvents().length).toBe(0);
+      expect(component.selectedSlotId()).toBe(11);
+      expect(el('.awg__draft-save')).toBeNull();
+      expect(el('.awg__delete-confirm')).not.toBeNull();
+
+      clickCell(4, H + 4);
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(selectedEvents().length).toBe(0);
+      expect(component.draft()).not.toBeNull();
+      expect(el('.awg__delete-confirm')).toBeNull();
+      expect(el('.awg__draft-save')).not.toBeNull();
+    }));
+
+    it('taslak reddi ipucu, slot seçilince ekranda kalmaz', fakeAsync(() => {
+      setup();
+      clickCell(0, 10);
+      expect(barText()).toContain(taTr.grid.hint.past);
+
+      clickEvent(11);
+
+      expect(barText()).not.toContain(taTr.grid.hint.past);
+    }));
+
+    it('taslak (arka plan) olayına gelen eventClick yok sayılır', fakeAsync(() => {
+      setup();
+      clickCell(4, H + 4);
+
+      component['options']().eventClick!({ event: { id: 'awg-draft' } } as EventClickArg);
+      render();
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(component.draft()).not.toBeNull();
+    }));
+
+    // Duman testi: handler yerine render edilmiş `.fc-timegrid-event` üzerine GERÇEK click gönderilir;
+    // FullCalendar `EventClicking` (document düzeyinde `.fc-event` seçicili delege click) `eventInteractive`
+    // kapalıyken de `eventClick`'i tetiklemelidir. fakeAsync kullanılmaz (bkz. #176 duman testi notu).
+    it('duman: render edilmiş slot olayına gerçek click silme modunu açar', async () => {
+      const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 20));
+      fixture.componentRef.setInput('editable', true);
+      fixture.componentRef.setInput('slots', [createSlotInWeek(11, 3, 14, 15)]);
+      fixture.detectChanges();
+      await settle();
+      fixture.detectChanges();
+
+      const target = el('.fc-timegrid-event .awg__ev');
+      expect(target).withContext('slot olayı render edilmeli').not.toBeNull();
+      if (!target) {
+        return;
+      }
+
+      const init: MouseEventInit = { bubbles: true, cancelable: true, button: 0 };
+      target.dispatchEvent(new MouseEvent('mousedown', init));
+      target.dispatchEvent(new MouseEvent('mouseup', init));
+      target.dispatchEvent(new MouseEvent('click', init));
+      await settle();
+      fixture.detectChanges();
+
+      expect(component.selectedSlotId()).toBe(11);
+      expect(component.draft()).toBeNull();
+      expect(el('.awg__delete-confirm')).not.toBeNull();
+      expect(el('.fc-timegrid-event.is-selected')).not.toBeNull();
+    });
   });
 
   it('should have tabindex="0" on wrapper element and NOT on .fc-event', fakeAsync(() => {

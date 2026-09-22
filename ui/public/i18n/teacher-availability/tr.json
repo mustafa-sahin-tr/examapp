@@ -35,10 +35,16 @@
       "tooLong": "Bir aralık en fazla {{hours}} saat olabilir.",
       "tooFarAhead": "En fazla {{days}} gün sonrasına aralık eklenebilir.",
       "crossesDayBoundary": "Bir aralık {{time}} saatini aşamaz; {{time}} öncesini ve sonrasını iki ayrı aralık olarak ekle."
+    },
+    "delete": {
+      "prompt": "Bu aralığı sil?",
+      "confirm": "Sil",
+      "deleting": "Siliniyor...",
+      "cancel": "Vazgeç",
+      "hint": "Silmek için tıkla"
     }
   },
   "actions": {
-    "delete": "Müsaitlik aralığını sil",
     "lockedHint": "Randevusu olan aralık silinemez"
   },
   "messages": {

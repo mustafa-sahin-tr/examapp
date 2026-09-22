@@ -1,15 +1,24 @@
-import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { DashboardComponent } from './dashboard.component';
+import { AssignedWorksheet } from '../../models/assignment';
 import { TestService } from '../../services/test.service';
 import { BadgeService, BadgeProgressItem, BadgeProgressResponse } from '../../services/badge.service';
 import { StudentResetService } from '../../services/student-reset.service';
 import { StudentService } from '../../services/student.service';
+import { LocaleService } from '../../services/locale.service';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import trTranslations from '../../../../public/i18n/tr.json';
-import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES, localeDefinitionOf } from '../../models/locale';
+
+/** Tarih biçimi tarayıcı diline bağlı kalmasın: aktif dil sabit 'tr' (issue #188 kompakt kart bitiş etiketi). */
+const localeServiceStub = {
+  locale: signal('tr' as const).asReadonly(),
+  localeDefinition: signal(localeDefinitionOf('tr')).asReadonly(),
+};
 
 /**
  * Testler Turkce metinleri dogrudan assert ettigi icin gercek `public/i18n/tr.json` sozlugu yuklenir
@@ -99,6 +108,7 @@ describe('DashboardComponent', () => {
         { provide: BadgeService, useValue: badgeServiceSpy },
         { provide: StudentResetService, useValue: jasmine.createSpyObj('StudentResetService', ['resetMyData']) },
         { provide: StudentService, useValue: studentServiceSpy },
+        { provide: LocaleService, useValue: localeServiceStub },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
       ],
     });
@@ -282,6 +292,83 @@ describe('DashboardComponent', () => {
       expect(component.earnedBadges()).toEqual([]);
       expect(component.allBadgeProgress()).toEqual([]);
       expect(component.badgeProgressError()).toBeTrue();
+    });
+  });
+
+  describe('assignment compact cards (issue #188)', () => {
+    function assignment(overrides: Partial<AssignedWorksheet>): AssignedWorksheet {
+      return {
+        assignmentId: 1,
+        worksheetId: 100,
+        name: 'Atanan Test',
+        description: '',
+        gradeId: 1,
+        maxDurationSeconds: 600,
+        isPracticeTest: false,
+        questionCount: 10,
+        startAt: '2026-01-01T00:00:00Z',
+        endAt: null,
+        isGradeAssignment: false,
+        assignmentStatus: 'NotStarted',
+        hasStarted: false,
+        isCompleted: false,
+        ...overrides,
+      };
+    }
+
+    function compactCards(fixture: ComponentFixture<DashboardComponent>): HTMLElement[] {
+      const root = fixture.nativeElement as HTMLElement;
+      return Array.from(root.querySelectorAll<HTMLElement>('app-compact-test-card'));
+    }
+
+    it('render_ThreeAssignments_RendersOneCompactCardPerAssignmentWithTitleAndDue', () => {
+      const endAt = '2026-03-12T10:00:00Z';
+      testServiceSpy.getActiveAssignments.and.returnValue(
+        of([
+          assignment({ assignmentId: 1, worksheetId: 100, name: 'Birinci', endAt }),
+          assignment({ assignmentId: 2, worksheetId: 200, name: 'İkinci', imageUrl: 'b.png' }),
+          assignment({ assignmentId: 3, worksheetId: 300, name: 'Üçüncü' }),
+        ])
+      );
+      const fixture = TestBed.createComponent(DashboardComponent);
+
+      fixture.detectChanges();
+
+      const cards = compactCards(fixture);
+      expect(cards.length).toBe(3);
+      expect(cards.map((c) => c.querySelector('.ctc__title')?.textContent?.trim())).toEqual([
+        'Birinci',
+        'İkinci',
+        'Üçüncü',
+      ]);
+      expect(cards[0].querySelector('.ctc__due')?.textContent?.trim()).toBe(
+        `Bitiş: ${new Date(endAt).toLocaleDateString('tr')}`
+      );
+      expect(cards[2].querySelector('.ctc__due')).toBeNull();
+      // Dashboard kartında ilerleme rozeti yok — mevcut görünümle aynı.
+      expect(fixture.nativeElement.querySelector('.ctc__progress')).toBeNull();
+    });
+
+    it('render_NoAssignments_ShowsEmptyMessageWithoutCards', () => {
+      const fixture = TestBed.createComponent(DashboardComponent);
+
+      fixture.detectChanges();
+
+      expect(compactCards(fixture).length).toBe(0);
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain('Aktif atanmış test bulunmuyor.');
+    });
+
+    it('cardActivated_NavigatesToWorksheetRoute', () => {
+      testServiceSpy.getActiveAssignments.and.returnValue(
+        of([assignment({ assignmentId: 9, worksheetId: 456, name: 'Tıklanan' })])
+      );
+      const router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+      const fixture = TestBed.createComponent(DashboardComponent);
+      fixture.detectChanges();
+
+      compactCards(fixture)[0].click();
+
+      expect(router.navigate).toHaveBeenCalledOnceWith(['/test', 456]);
     });
   });
 

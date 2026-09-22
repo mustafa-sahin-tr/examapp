@@ -21,6 +21,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
+import { CompactTestCardComponent } from '../../shared/components/compact-test-card/compact-test-card.component';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AssignedWorksheet } from '../../models/assignment';
@@ -68,6 +69,7 @@ interface GradeOption {
     MatSlideToggleModule,
     PaginationComponent,
     WorksheetListViewCardComponent,
+    CompactTestCardComponent,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(WORKSHEET_LIST_SCOPE)],
@@ -724,6 +726,24 @@ export class WorksheetListComponent implements OnInit {
 
   goToWorksheet(worksheetId: number): void {
     this.router.navigate(['/test', worksheetId]);
+  }
+
+  /**
+   * "Kaldığın yerden devam et" kartındaki ilerleme rozeti (issue #188).
+   * Hesap `worksheet-list-view-card` ile aynı: (doğru + yanlış) / toplam soru.
+   * Instance yoksa null → rozet render edilmez; toplam soru bilinmiyorsa %0.
+   */
+  resumeProgressPercent(test: Test): number | null {
+    const instance = test.instance;
+    if (!instance) {
+      return null;
+    }
+    const total = instance.totalQuestions || test.questionCount || 0;
+    if (!total) {
+      return 0;
+    }
+    const answered = (instance.correctAnswers ?? 0) + (instance.wrongAnswers ?? 0);
+    return Math.min(100, Math.round((answered / total) * 100));
   }
 
   private mapAssignmentToTest(a: AssignedWorksheet): Test {

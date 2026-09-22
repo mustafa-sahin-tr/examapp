@@ -12,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
+import { CompactTestCardComponent } from '../../shared/components/compact-test-card/compact-test-card.component';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TestService } from '../../services/test.service';
 import { AssignedWorksheet } from '../../models/assignment';
@@ -40,7 +40,7 @@ interface UpcomingBadgeViewModel {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SectionHeaderComponent, NgxChartsModule, TranslocoPipe],
+  imports: [CommonModule, CompactTestCardComponent, SectionHeaderComponent, NgxChartsModule, TranslocoPipe],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
@@ -318,16 +318,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onAssignmentScroll(): void {
     this.updateScrollIndicators();
-  }
-
-  getDueLabel(assignment: AssignedWorksheet): string | null {
-    if (!assignment.endAt) {
-      return null;
-    }
-    const dueDate = new Date(assignment.endAt);
-    return this.transloco.translate('dashboard.assignments.due', {
-      date: dueDate.toLocaleDateString(this.intlLocale),
-    });
   }
 
   activityXAxisTickFormatting = (value: string): string => {

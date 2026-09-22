@@ -102,6 +102,10 @@
     }
   },
   "shared": {
+    "compactTestCard": {
+      "due": "Bitiş: {{date}}",
+      "progress": "%{{percent}}"
+    },
     "badgePath": {
       "empty": "Rozet yolu bulunamadı.",
       "step": "Adım {{step}}",
@@ -459,8 +463,7 @@
       "title": "Atanmış Testler",
       "loading": "Atanmış testler yükleniyor...",
       "empty": "Aktif atanmış test bulunmuyor.",
-      "error": "Atanmış testler alınırken bir sorun oluştu.",
-      "due": "Bitiş: {{date}}"
+      "error": "Atanmış testler alınırken bir sorun oluştu."
     },
     "reset": {
       "confirm": "Tüm sınav ilerlemen, atanmış kişisel sınavların, puanların ve rozet/aktivite verilerin sıfırlanacak. Devam edilsin mi?",

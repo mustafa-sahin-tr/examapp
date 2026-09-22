@@ -15,9 +15,7 @@
     "completed": "Completed"
   },
   "resume": {
-    "title": "Pick up where you left off",
-    "questionCount": "{{count}} questions",
-    "continue": "Continue"
+    "title": "Pick up where you left off"
   },
   "filters": {
     "title": "Filters",

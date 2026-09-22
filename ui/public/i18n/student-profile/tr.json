@@ -53,9 +53,7 @@
     "classRank": "Sınıf Sıralaması",
     "yearRank": "Kademe Sıralaması",
     "myBadges": "Rozetlerim",
-    "leaderboards": "Liderlik Tabloları",
-    "classLeaderboard": "Sınıf Liderlik Tablosu",
-    "groupLeaderboard": "Grup Liderlik Tablosu"
+    "leaderboards": "Liderlik Tabloları"
   },
   "goal": {
     "title": "Haftalık Hedef",

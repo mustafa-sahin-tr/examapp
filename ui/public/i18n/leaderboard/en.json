@@ -1,0 +1,19 @@
+{
+  "title": "XP Ranking",
+  "scopeLabel": "Leaderboard scope",
+  "scope": {
+    "global": "Everyone",
+    "school": "My school"
+  },
+  "loading": "Loading ranking...",
+  "error": "Ranking could not be loaded.",
+  "retry": "Retry",
+  "empty": "No points yet",
+  "anonymous": "Student",
+  "you": "You",
+  "level": "Lv. {{level}}",
+  "xp": "{{xp}} XP",
+  "loadMore": "Load more",
+  "loadMoreError": "Could not load more.",
+  "myRank": "Your rank: #{{rank}} · {{xp}} XP"
+}

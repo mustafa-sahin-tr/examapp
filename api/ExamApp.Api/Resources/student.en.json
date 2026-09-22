@@ -15,6 +15,11 @@
     "theme": {
       "updated": "Theme preference updated.",
       "updateFailed": "An error occurred while updating the theme."
+    },
+    "leaderboard": {
+      "schoolScopeUnavailable": "School leaderboard is not applicable: your account is not linked to a school.",
+      "invalidScope": "Invalid scope. Allowed values: global, school.",
+      "invalidPaging": "Invalid paging: skip must be 0 or greater, take must be between 1 and {0}."
     }
   }
 }

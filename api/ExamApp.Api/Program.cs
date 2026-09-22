@@ -156,6 +156,7 @@ builder.Services.AddVideoSessions(builder.Configuration);
 builder.Services.AddScoped<ExamApp.Api.Services.Practice.IPracticeSessionService, ExamApp.Api.Services.Practice.PracticeSessionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.LoginEvents.ILoginEventService, ExamApp.Api.Services.LoginEvents.LoginEventService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Leaderboards.ILeaderboardService, ExamApp.Api.Services.Leaderboards.LeaderboardService>(); // issue #193
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();

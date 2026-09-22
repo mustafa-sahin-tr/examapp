@@ -16,7 +16,7 @@ public enum TeacherApprovalStatus
     Rejected = 2
 }
 
-public class Teacher : BaseEntity
+public class Teacher : BaseEntity, ISchoolScoped
 {
     [Key]
     public int Id { get; set; }

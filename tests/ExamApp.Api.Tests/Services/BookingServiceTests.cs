@@ -39,7 +39,8 @@ public class BookingServiceTests : IDisposable
         var recurring = new RecurringAvailabilityService(ctx, tp,
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<RecurringAvailabilityService>());
         return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
-            new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>());
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>(),
+            new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
     }
 
     private async Task<(int id, int userId)> SeedTeacherAsync(

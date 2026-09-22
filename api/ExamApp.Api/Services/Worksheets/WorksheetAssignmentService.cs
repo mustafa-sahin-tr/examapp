@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Services.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using ExamApp.Foundation.Localization;
 using Microsoft.Extensions.Localization;
@@ -14,14 +15,21 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 {
     private readonly AppDbContext _context;
 
+    // issue #190: öğrenci hedefli atama ve atama görünümünde okul izolasyonu merkezi policy'den gelir.
+    private readonly ISchoolAccessPolicy _schoolAccessPolicy;
+
     // Client'a donen mesajlar (ResponseBaseDto.Message ve istemciye sizan exception metinleri)
     // buradan gelir (issue #184). Log mesajlari cevrilmez. DI her zaman gercek localizer'i
     // verir; parametre yalnizca DI'siz kurulan (birim test) senaryolar icin opsiyonel.
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public WorksheetAssignmentService(AppDbContext context, IStringLocalizer<Messages>? localizer = null)
+    public WorksheetAssignmentService(
+        AppDbContext context,
+        ISchoolAccessPolicy schoolAccessPolicy,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _schoolAccessPolicy = schoolAccessPolicy;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
@@ -90,8 +98,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // Non-owner atama (PublicAssignable) yalnızca atayan öğretmenin kendi okulundaki
         // öğrenci/sınıfları hedefleyebilir. Sahip/admin atamalarında da grade hedefliyse
         // atamayı öğretmenin okuluna daraltıyoruz (admin hariç, admin okula bağlı değil).
+        // issue #190: sahip dahil her admin-olmayan atayan için okul bağlamı DB'den çözülür;
+        // öğrenci hedefinde CanAccess ile doğrulanır (worksheet sahibi de başka okulun öğrencisine atayamaz).
         int? assignmentSchoolId = null;
-        if (!isOwnerOrAdmin || (!isAdmin && request.GradeId.HasValue))
+        var requesterScope = SchoolScope.Unrestricted(userId);
+        if (!isAdmin)
         {
             var assigningTeacher = await _context.Teachers
                 .AsNoTracking()
@@ -102,7 +113,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
             }
 
-            assignmentSchoolId = assigningTeacher?.SchoolId;
+            requesterScope = SchoolScope.For(userId, assigningTeacher?.SchoolId);
+            if (!isOwnerOrAdmin || request.GradeId.HasValue)
+            {
+                assignmentSchoolId = assigningTeacher?.SchoolId;
+            }
         }
 
         Student? student = null;
@@ -120,6 +135,12 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             if (!isOwnerOrAdmin && student.SchoolId != assignmentSchoolId)
             {
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
+            }
+
+            // issue #190: farklı okulun öğrencisi "yok" gibi davranır — success/notFound id oracle'ı kapanır.
+            if (!_schoolAccessPolicy.CanAccess(requesterScope, student.SchoolId))
+            {
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.studentNotFound"] };
             }
 
             // Öğrenci hedefli atamalarda SchoolId set edilmez — zaten öğrenciye özel.
@@ -269,8 +290,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         return result;
     }
 
-    public async Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, int teacherUserId)
+    public async Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, SchoolScope requester)
     {
+        var teacherUserId = requester.UserId;
         var worksheet = await _context.Worksheets
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.Id == worksheetId);
@@ -315,8 +337,8 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             .Distinct()
             .ToList();
 
-        var studentsQuery = _context.Students
-            .AsNoTracking()
+        // issue #190: görünümdeki öğrenciler istek sahibinin okuluyla sınırlı (admin/servis: tümü).
+        var studentsQuery = _schoolAccessPolicy.ApplyScope(_context.Students.AsNoTracking(), requester)
             .Where(s => directStudentIds.Contains(s.Id) || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)));
 
         var students = await studentsQuery.ToListAsync();

@@ -4,6 +4,7 @@ using System.Linq;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -12,18 +13,29 @@ namespace ExamApp.Api.Services;
 
 public class StudentService : IStudentService
 {
+    /// <summary>Lookup listesi üst sınırı — sınırsız liste dönülmez (issue #190).</summary>
+    public const int LookupMaxTake = 500;
+
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
+
+    // issue #190: okul izolasyonu kararı burada değil, merkezi policy'de verilir.
+    private readonly ISchoolAccessPolicy _schoolAccessPolicy;
 
     // Client'a ulaşan ResponseBaseDto.Message metinleri buradan gelir (issue #184).
     // DI her zaman gerçek localizer'ı verir; parametre yalnızca DI'sız kurulan (birim test)
     // senaryolarda varsayılan dile düşebilmek için opsiyonel.
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public StudentService(AppDbContext context, IAuthApiClient authApiClient, IStringLocalizer<Messages>? localizer = null)
+    public StudentService(
+        AppDbContext context,
+        IAuthApiClient authApiClient,
+        ISchoolAccessPolicy schoolAccessPolicy,
+        IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
         _authApiClient = authApiClient;
+        _schoolAccessPolicy = schoolAccessPolicy;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
     public async Task<List<Grade>> GetGradesAsync()
@@ -156,10 +168,17 @@ public class StudentService : IStudentService
     //     return activityData;
     // }
 
-    public async Task<List<StudentLookupDto>> GetStudentLookupsAsync()
+    public async Task<List<StudentLookupDto>> GetStudentLookupsAsync(SchoolScope requester, CancellationToken ct = default)
     {
-        var students = await _context.Students
-            .AsNoTracking()
+        // issue #190: okul filtresi projeksiyondan/sıralamadan ÖNCE, SQL düzeyinde uygulanır.
+        // Soft-delete edilmiş öğrenciler AppDbContext global query filter (!IsDeleted) ile dışarıda.
+        var scoped = _schoolAccessPolicy.ApplyScope(_context.Students.AsNoTracking(), requester);
+
+        // Sınırsız liste dönülmez (admin/servis tüm okulları görür); sıralama deterministik.
+        var students = await scoped
+            .OrderBy(s => s.StudentNumber)
+            .ThenBy(s => s.Id)
+            .Take(LookupMaxTake)
             .Select(s => new StudentLookupDto
             {
                 Id = s.Id,
@@ -169,9 +188,7 @@ public class StudentService : IStudentService
                 SchoolId = s.SchoolId,
                 GradeId = s.GradeId
             })
-            .OrderBy(s => s.StudentNumber)
-            .ThenBy(s => s.Id)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         if (students.Count == 0)
         {
@@ -182,7 +199,7 @@ public class StudentService : IStudentService
 
         try
         {
-            var users = await _authApiClient.GetUsersByIdsAsync(userIds);
+            var users = await _authApiClient.GetUsersByIdsAsync(userIds, ct);
             var userLookup = users.ToDictionary(u => u.Id);
 
             foreach (var student in students)

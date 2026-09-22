@@ -1,7 +1,14 @@
 import { ComponentFixture, TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
+import { provideNativeDateAdapter } from '@angular/material/core';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { AvailabilityWeekGridComponent } from './availability-week-grid.component';
-import { AvailabilitySlot, ActiveBookingStatus, CreateAvailabilitySlotRequest } from '../../../models/booking.model';
+import {
+  AvailabilitySlot,
+  ActiveBookingStatus,
+  CreateAvailabilitySlotRequest,
+  CreateRecurringRuleRequest,
+} from '../../../models/booking.model';
 import type { EventClickArg } from '@fullcalendar/core';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import { formatDraftLabel, nextUtcDayBoundary } from './availability-draft.util';
@@ -76,7 +83,9 @@ describe('AvailabilityWeekGridComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AvailabilityWeekGridComponent, translocoTesting],
+      imports: [AvailabilityWeekGridComponent, translocoTesting, NoopAnimationsModule],
+      // Bitiş günü seçicisi (issue #179) bir DateAdapter ister; uygulamada date-fns adapter'ı app.config sağlar.
+      providers: [provideNativeDateAdapter()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(AvailabilityWeekGridComponent);
@@ -162,12 +171,17 @@ describe('AvailabilityWeekGridComponent', () => {
     expect(events.filter((el) => el.classList.contains('is-past')).length).toBe(1);
   }));
 
-  it('should render legend with three status items', fakeAsync(() => {
+  it('should render legend with three status items plus the recurring marker', fakeAsync(() => {
     fixture.detectChanges();
     tick();
 
     const legendItems = fixture.nativeElement.querySelectorAll('.awg__legend-item');
-    expect(legendItems.length).toBe(3);
+    expect(legendItems.length).toBe(4);
+    const recurring = legendItems[3] as HTMLElement;
+    // Ligatür metni ("repeat") ikonun içinde kalır; görünür etiket çeviridir.
+    expect(recurring.textContent?.replace('repeat', '').trim()).toBe(taTr.grid.recurring.legend);
+    expect(recurring.querySelector('.awg__legend-icon')?.getAttribute('aria-hidden')).toBe('true');
+    expect(recurring.querySelector('.awg__swatch')).toBeNull();
   }));
 
   it('should render legend swatches with correct status classes', fakeAsync(() => {
@@ -1125,6 +1139,533 @@ describe('AvailabilityWeekGridComponent', () => {
       expect(el('.awg__delete-confirm')).not.toBeNull();
       expect(el('.fc-timegrid-event.is-selected')).not.toBeNull();
     });
+  });
+
+  describe('tekrarlayan haftalık aralık (issue #179)', () => {
+    const H = safeLocalHour(createWeekTestDate(4, 12));
+    /** Cuma H:00–(H+1):00, boş, tekil. */
+    const single = () => createSlotInWeek(11, 4, H, H + 1);
+    /** Cuma (H+2):00–(H+3):00, boş, kural 5'ten üretilmiş. */
+    const recurring = (): AvailabilitySlot => ({ ...createSlotInWeek(21, 4, H + 2, H + 3), recurringAvailabilityRuleId: 5 });
+    /** Perşembe 14:00–15:00, bekleyen randevulu, kural 5'ten üretilmiş. */
+    const recurringBooked = (): AvailabilitySlot => ({
+      ...createSlotInWeek(22, 3, 14, 15, true, 'Pending'),
+      recurringAvailabilityRuleId: 5,
+    });
+
+    function setup(slots: AvailabilitySlot[] = [single(), recurring()], editable = true): void {
+      jasmine.clock().mockDate(createWeekTestDate(2, 12));
+      fixture.componentRef.setInput('editable', editable);
+      fixture.componentRef.setInput('slots', slots);
+      render();
+    }
+
+    function render(): void {
+      fixture.detectChanges();
+      tick();
+      fixture.detectChanges();
+    }
+
+    function el<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+      return fixture.nativeElement.querySelector(selector) as T | null;
+    }
+
+    function all(selector: string): HTMLElement[] {
+      return Array.from(fixture.nativeElement.querySelectorAll(selector) as NodeListOf<HTMLElement>);
+    }
+
+    function clickEvent(slotId: number): void {
+      component['options']().eventClick!({ event: { id: String(slotId) } } as EventClickArg);
+      render();
+    }
+
+    function clickCell(dayOffset: number, hour: number, minute = 0): void {
+      component['onDateClick']({ date: createWeekTestDate(dayOffset, hour, minute) });
+      render();
+    }
+
+    function wrapperOf(slotId: number): HTMLElement {
+      const hit = el(`.awg__ev[data-slot-id="${slotId}"]`);
+      expect(hit).withContext(`slot ${slotId} render edilmeli`).not.toBeNull();
+      return hit!;
+    }
+
+    /** Onay çubuğundaki "Her hafta tekrarla" kutusunun native input'u. */
+    function toggleInput(): HTMLInputElement | null {
+      return el<HTMLInputElement>('.awg__repeat-toggle input[type="checkbox"]');
+    }
+
+    function checkRepeat(): void {
+      const input = toggleInput();
+      expect(input).withContext('tekrar kutusu render edilmeli').not.toBeNull();
+      input!.click();
+      render();
+    }
+
+    /** Bitiş gününü datepicker seçimi gibi reactive kontrole yazar (validator'lar çalışır). */
+    function setUntil(value: Date | null): void {
+      component['untilControl'].setValue(value);
+      render();
+    }
+
+    /** NativeDateAdapter.toIso8601 karşılığı: anın UTC günü ("2026-10-01"). */
+    function isoDay(d: Date): string {
+      return d.toISOString().slice(0, 10);
+    }
+
+    // ---- Görsel ayrışma ----
+
+    it('kuraldan üretilen slot is-recurring sınıfı, tekrar ikonu ve aria-label\'da "tekrarlayan" parçası taşır; tekil taşımaz', fakeAsync(() => {
+      setup([single(), recurring()], false);
+
+      const events = all('.fc-timegrid-event');
+      expect(events.length).toBe(2);
+      expect(events.filter((e) => e.classList.contains('is-recurring')).length).toBe(1);
+
+      const rec = wrapperOf(21);
+      expect(rec.closest('.fc-timegrid-event')?.classList).toContain('is-recurring');
+      // Durum rengi korunur: tekrarlayan olay yine is-free'dir.
+      expect(rec.closest('.fc-timegrid-event')?.classList).toContain('is-free');
+      const icon = rec.querySelector('.awg__ev-repeat');
+      expect(icon?.textContent?.trim()).toBe('repeat');
+      expect(icon?.getAttribute('aria-hidden')).toBe('true');
+      expect(rec.getAttribute('aria-label')).toContain(taTr.grid.recurring.tooltip);
+
+      const sgl = wrapperOf(11);
+      expect(sgl.closest('.fc-timegrid-event')?.classList).not.toContain('is-recurring');
+      expect(sgl.querySelector('.awg__ev-repeat')).toBeNull();
+      expect(sgl.getAttribute('aria-label')).not.toContain(taTr.grid.recurring.tooltip);
+    }));
+
+    it('tekrar ikonu tab durağı eklemez: olay başına tek tabindex, .fc-event\'te yok', fakeAsync(() => {
+      setup([recurring()], false);
+
+      expect(all('[tabindex]').filter((e) => e.closest('.fc-timegrid-event')).length).toBe(1);
+      expect(el('.fc-event')?.hasAttribute('tabindex')).toBeFalse();
+    }));
+
+    it('randevulu tekrarlayan slotta aria-label sıra: gün · saat · durum · öğrenci · tekrarlayan; aria-description "silinemez"', fakeAsync(() => {
+      setup([{ ...recurringBooked(), studentName: 'Ayşe' }]);
+
+      const label = wrapperOf(22).getAttribute('aria-label') ?? '';
+      const student = taTr.grid.tooltip.student.replace('{{name}}', 'Ayşe');
+      expect(label.indexOf(taTr.status.pending)).toBeLessThan(label.indexOf(student));
+      expect(label.indexOf(student)).toBeLessThan(label.indexOf(taTr.grid.recurring.tooltip));
+      expect(wrapperOf(22).getAttribute('aria-description')).toBe(taTr.actions.lockedHint);
+    }));
+
+    // ---- Oluşturma ----
+
+    it('taslak yokken tekrar kutusu yoktur; taslak kurulunca işaretsiz gelir ve tarih seçici gizlidir', fakeAsync(() => {
+      setup([]);
+      expect(toggleInput()).toBeNull();
+
+      clickCell(4, H + 4);
+
+      expect(toggleInput()).not.toBeNull();
+      expect(toggleInput()!.checked).toBeFalse();
+      expect(el('.awg__repeat-until')).toBeNull();
+      expect(el('.awg__draft-save')?.textContent?.trim()).toBe(taTr.grid.draft.save);
+    }));
+
+    it('kutu işaretsizken Kaydet tekil isteği yayar, kural isteği yaymaz', fakeAsync(() => {
+      setup([]);
+      const single: CreateAvailabilitySlotRequest[] = [];
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRequested.subscribe((r) => single.push(r));
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      expect(single).toEqual([utcRequest(createWeekTestDate(4, H + 4), createWeekTestDate(4, H + 4, 30))]);
+      expect(rules).toEqual([]);
+    }));
+
+    it('kutu işaretliyken Kaydet kural isteğini yayar: UTC gün/saat, effectiveFrom = taslağın UTC günü, effectiveUntil null; taslak korunur', fakeAsync(() => {
+      setup([]);
+      const single: CreateAvailabilitySlotRequest[] = [];
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRequested.subscribe((r) => single.push(r));
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+      clickCell(4, H + 5);
+      checkRepeat();
+
+      expect(el('.awg__repeat-until')).not.toBeNull();
+      expect(el('.awg__draft-save')?.textContent?.trim()).toBe(taTr.grid.recurring.save);
+
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      const start = createWeekTestDate(4, H + 4);
+      const end = createWeekTestDate(4, H + 5, 30);
+      const expected = utcRequest(start, end);
+      expect(rules).toEqual([
+        {
+          dayOfWeek: start.getUTCDay() as CreateRecurringRuleRequest['dayOfWeek'],
+          startTime: expected.startTime,
+          endTime: expected.endTime,
+          effectiveFrom: expected.date,
+          effectiveUntil: null,
+        },
+      ]);
+      expect(single).toEqual([]);
+      expect(component.draft()).not.toBeNull();
+    }));
+
+    it('bitiş günü seçilince effectiveUntil o günün (taslak saatindeki) UTC günü olur; seçici min/max taslak günü+7 / +1 yıl-1', fakeAsync(() => {
+      setup([]);
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+      checkRepeat();
+
+      const start = createWeekTestDate(4, H + 4);
+      const min = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+      const max = new Date(start.getFullYear() + 1, start.getMonth(), start.getDate() - 1);
+      const input = el<HTMLInputElement>('.awg__repeat-until input')!;
+      // matDatepicker `min`/`max` özniteliklerini `DateAdapter.toIso8601` ile yazar; testteki NativeDateAdapter
+      // UTC bileşenlerini kullanır (yerel gece yarısı → UTC'nin doğusunda bir önceki gün). Değer sınır nesnesinden türer.
+      expect(input.getAttribute('min')).toBe(isoDay(min));
+      expect(input.getAttribute('max')).toBe(isoDay(max));
+      expect(component['untilBounds']()).toEqual({ min, max });
+
+      const until = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 21);
+      setUntil(until);
+      expect(component['untilInvalid']()).toBeFalse();
+      expect(el('.awg__repeat-error')).toBeNull();
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      const untilAtDraftTime = new Date(until.getFullYear(), until.getMonth(), until.getDate(), start.getHours(), start.getMinutes());
+      expect(rules.length).toBe(1);
+      expect(rules[0].effectiveUntil).toBe(untilAtDraftTime.toISOString().slice(0, 10));
+    }));
+
+    it('tam +7 gün (ilk tekrar) sınırın içindedir ve effectiveUntil olarak gönderilir', fakeAsync(() => {
+      setup([]);
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+      checkRepeat();
+      const start = createWeekTestDate(4, H + 4);
+      const until = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+
+      setUntil(until);
+      expect(component['untilInvalid']()).toBeFalse();
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      const untilAtDraftTime = new Date(until.getFullYear(), until.getMonth(), until.getDate(), start.getHours(), start.getMinutes());
+      expect(rules.length).toBe(1);
+      expect(rules[0].effectiveUntil).toBe(untilAtDraftTime.toISOString().slice(0, 10));
+    }));
+
+    it('sınır dışı bitiş günü (taslak günü+7\'den önce) SESSİZCE süresize düşmez: hata görünür, Kaydet kilitli, istek yayılmaz', fakeAsync(() => {
+      setup([]);
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+      checkRepeat();
+      const start = createWeekTestDate(4, H + 4);
+
+      setUntil(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 3));
+
+      expect(component['untilInvalid']()).toBeTrue();
+      expect(component['untilControl'].hasError('matDatepickerMin')).toBeTrue();
+      expect(el('.awg__repeat-error')?.textContent?.trim()).toBe(taTr.grid.recurring.untilOutOfRange);
+      const save = el<HTMLButtonElement>('.awg__draft-save')!;
+      expect(save.getAttribute('aria-disabled')).toBe('true');
+      expect(save.disabled).toBeFalse(); // disabledInteractive: odak kaybolmaz
+      save.click();
+      render();
+      expect(rules).toEqual([]);
+      expect(component.draft()).not.toBeNull();
+
+      // Bir yıldan ileri de aynı yol (matDatepickerMax).
+      setUntil(new Date(start.getFullYear() + 1, start.getMonth(), start.getDate() + 30));
+      expect(component['untilControl'].hasError('matDatepickerMax')).toBeTrue();
+      expect(component['untilInvalid']()).toBeTrue();
+
+      // Geçerli tarihe dönünce kilit açılır.
+      setUntil(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14));
+      expect(component['untilInvalid']()).toBeFalse();
+      expect(el('.awg__repeat-error')).toBeNull();
+      expect(save.getAttribute('aria-disabled')).toBeNull();
+    }));
+
+    it('parse edilemeyen metin (değer null, kontrol geçersiz) de Kaydet\'i kilitler; süresiz olarak gitmez', fakeAsync(() => {
+      setup([]);
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+      checkRepeat();
+
+      const input = el<HTMLInputElement>('.awg__repeat-until input')!;
+      input.value = 'abc';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      render();
+
+      expect(component['repeatUntil']()).toBeNull();
+      expect(component['untilControl'].hasError('matDatepickerParse')).toBeTrue();
+      expect(component['untilInvalid']()).toBeTrue();
+      expect(el('.awg__repeat-error')).not.toBeNull();
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+      expect(rules).toEqual([]);
+    }));
+
+    it('tarih seçildikten sonra taslak başka güne taşınınca tarih min altına düşerse hata görünür ve Kaydet kilitlenir', fakeAsync(() => {
+      setup([]);
+      clickCell(4, H + 4); // Cuma
+      checkRepeat();
+      const friday = createWeekTestDate(4, H + 4);
+      // Cuma+7 geçerli; Cumartesi'ye taşınınca min Cumartesi+7 olur → Cuma+7 artık min altında.
+      setUntil(new Date(friday.getFullYear(), friday.getMonth(), friday.getDate() + 7));
+      expect(component['untilInvalid']()).toBeFalse();
+
+      clickCell(5, H + 4); // Cumartesi (taslak taşınır, kutu ve tarih korunur)
+
+      expect(component.draft()?.start.getDay()).toBe(6);
+      expect(toggleInput()!.checked).toBeTrue();
+      expect(component['untilInvalid']()).toBeTrue();
+      expect(el('.awg__repeat-error')?.textContent?.trim()).toBe(taTr.grid.recurring.untilOutOfRange);
+      expect(el('.awg__draft-save')?.getAttribute('aria-disabled')).toBe('true');
+    }));
+
+    it('bitiş günü alanında Escape taslağı SİLMEZ (yazımı iptal içindir); kaydırma bölgesinde Escape siler', fakeAsync(() => {
+      setup([]);
+      clickCell(4, H + 4);
+      checkRepeat();
+      const input = el<HTMLInputElement>('.awg__repeat-until input')!;
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+
+      expect(component.draft()).not.toBeNull();
+      expect(toggleInput()!.checked).toBeTrue();
+
+      el('.awg__scroll')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+      expect(component.draft()).toBeNull();
+    }));
+
+    it('kutu kaldırılınca bitiş günü sıfırlanır; taslak kalkınca (Vazgeç) kutu ve tarih sıfırlanır', fakeAsync(() => {
+      setup([]);
+      clickCell(4, H + 4);
+      checkRepeat();
+      const start = createWeekTestDate(4, H + 4);
+      setUntil(new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14));
+      expect(component['repeatUntil']()).not.toBeNull();
+
+      toggleInput()!.click();
+      render();
+      expect(component['repeatWeekly']()).toBeFalse();
+      expect(component['repeatUntil']()).toBeNull();
+      expect(el('.awg__repeat-until')).toBeNull();
+
+      checkRepeat();
+      el<HTMLButtonElement>('.awg__draft-cancel')!.click();
+      render();
+      expect(component.draft()).toBeNull();
+      expect(component['repeatWeekly']()).toBeFalse();
+
+      // Yeni taslak yine işaretsiz başlar.
+      clickCell(4, H + 4);
+      expect(toggleInput()!.checked).toBeFalse();
+    }));
+
+    it('sayfa kayıt başarısında draft\'ı null yapınca kutu sıfırlanır (bir sonraki taslağa sızmaz)', fakeAsync(() => {
+      setup([]);
+      clickCell(4, H + 4);
+      checkRepeat();
+
+      fixture.componentRef.setInput('draft', null);
+      render();
+      clickCell(4, H + 5);
+
+      expect(toggleInput()!.checked).toBeFalse();
+      expect(component['repeatWeekly']()).toBeFalse();
+    }));
+
+    it('saving iken kutu ve Kaydet devre dışıdır; Kaydet kural isteği yaymaz', fakeAsync(() => {
+      setup([]);
+      const rules: CreateRecurringRuleRequest[] = [];
+      component.createRecurringRequested.subscribe((r) => rules.push(r));
+      clickCell(4, H + 4);
+      checkRepeat();
+
+      fixture.componentRef.setInput('saving', true);
+      render();
+
+      expect(toggleInput()!.disabled).toBeTrue();
+      expect(el('.awg__draft-save')?.getAttribute('aria-disabled')).toBe('true');
+      el<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+      expect(rules).toEqual([]);
+      expect(component['repeatWeekly']()).toBeTrue();
+    }));
+
+    it('saveError kural modunda da çubukta role="alert" ile görünür; taslak ve kutu korunur', fakeAsync(() => {
+      setup([]);
+      clickCell(4, H + 4);
+      checkRepeat();
+
+      fixture.componentRef.setInput('saveError', 'Aynı gün kesişen bir kural var.');
+      render();
+
+      expect(el('.awg__draft [role="alert"]')?.textContent?.trim()).toBe('Aynı gün kesişen bir kural var.');
+      expect(component.draft()).not.toBeNull();
+      expect(toggleInput()!.checked).toBeTrue();
+    }));
+
+    // ---- Silme ----
+
+    it('tekil slot seçilince tek silme butonu ("Sil") ve "Tüm seri" yoktur', fakeAsync(() => {
+      setup();
+
+      clickEvent(11);
+
+      expect(el('.awg__delete-confirm')?.textContent?.trim()).toBe(taTr.grid.delete.confirm);
+      expect(el('.awg__delete-series')).toBeNull();
+      expect(el('.awg__delete-prompt')?.textContent?.trim()).toBe(taTr.grid.delete.prompt);
+    }));
+
+    it('tekrarlayan slot seçilince iki seçenek: "Sadece bu hafta" + "Tüm seri" + Vazgeç; soru metni seriye özel', fakeAsync(() => {
+      setup();
+
+      clickEvent(21);
+
+      expect(component.selectedSlotId()).toBe(21);
+      expect(el('.awg__delete-confirm')?.textContent?.trim()).toBe(taTr.grid.recurring.deleteThisWeek);
+      expect(el('.awg__delete-series')?.textContent?.trim()).toContain(taTr.grid.recurring.deleteSeries);
+      expect(el('.awg__delete-cancel')?.textContent?.trim()).toBe(taTr.grid.delete.cancel);
+      expect(el('.awg__delete-prompt')?.textContent?.trim()).toBe(taTr.grid.recurring.deletePrompt);
+      expect(all('.awg__draft-actions button').length).toBe(3);
+      expect(el('.fc-timegrid-event.is-selected')?.classList).toContain('is-recurring');
+    }));
+
+    it('"Sadece bu hafta" deleteRequested(slotId) yayar, deleteSeriesRequested yaymaz; seçim korunur', fakeAsync(() => {
+      setup();
+      const slots: number[] = [];
+      const series: number[] = [];
+      component.deleteRequested.subscribe((id) => slots.push(id));
+      component.deleteSeriesRequested.subscribe((id) => series.push(id));
+      clickEvent(21);
+
+      el<HTMLButtonElement>('.awg__delete-confirm')!.click();
+      render();
+
+      expect(slots).toEqual([21]);
+      expect(series).toEqual([]);
+      expect(component.selectedSlotId()).toBe(21);
+    }));
+
+    it('"Tüm seri" deleteSeriesRequested(ruleId) yayar, deleteRequested yaymaz; seçim korunur', fakeAsync(() => {
+      setup();
+      const slots: number[] = [];
+      const series: number[] = [];
+      component.deleteRequested.subscribe((id) => slots.push(id));
+      component.deleteSeriesRequested.subscribe((id) => series.push(id));
+      clickEvent(21);
+
+      el<HTMLButtonElement>('.awg__delete-series')!.click();
+      render();
+
+      expect(series).toEqual([5]);
+      expect(slots).toEqual([]);
+      expect(component.selectedSlotId()).toBe(21);
+    }));
+
+    it('deleting iken "Tüm seri" aria-disabled (odak kalır) ve yaymaz', fakeAsync(() => {
+      setup();
+      const series: number[] = [];
+      component.deleteSeriesRequested.subscribe((id) => series.push(id));
+      clickEvent(21);
+      const btn = el<HTMLButtonElement>('.awg__delete-series')!;
+      btn.focus();
+
+      fixture.componentRef.setInput('deleting', true);
+      render();
+
+      expect(btn.getAttribute('aria-disabled')).toBe('true');
+      expect(btn.disabled).toBeFalse();
+      expect(document.activeElement).toBe(btn);
+      // Her iki silme butonu da "Siliniyor..." gösterir (hangisine basıldığından bağımsız tek `deleting` durumu).
+      expect(btn.textContent?.replace('repeat', '').trim()).toBe(taTr.grid.delete.deleting);
+      expect(el('.awg__delete-confirm')?.textContent?.trim()).toBe(taTr.grid.delete.deleting);
+      btn.click();
+      render();
+      expect(series).toEqual([]);
+
+      // Seri silme sürerken Escape seçimi kapatmaz.
+      el('.awg__scroll')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+      expect(component.selectedSlotId()).toBe(21);
+      expect(el('.awg__delete-series')).not.toBeNull();
+    }));
+
+    it('deleteError seri modunda da çubukta görünür; seçim ve iki buton korunur', fakeAsync(() => {
+      setup();
+      clickEvent(21);
+
+      fixture.componentRef.setInput('deleteError', 'Seri silinemedi.');
+      render();
+
+      expect(el('.awg__draft [role="alert"]')?.textContent?.trim()).toBe('Seri silinemedi.');
+      expect(component.selectedSlotId()).toBe(21);
+      expect(el('.awg__delete-series')).not.toBeNull();
+    }));
+
+    it('"Tüm seri" sonrası sayfa seçimi sıfırlayıp slotları yenileyince çubuk kapanır ve odak kaydırma bölgesine geçer', fakeAsync(() => {
+      setup();
+      clickEvent(21);
+      el<HTMLButtonElement>('.awg__delete-series')!.focus();
+
+      fixture.componentRef.setInput('slots', [single()]);
+      fixture.componentRef.setInput('selectedSlotId', null);
+      render();
+
+      expect(el('.awg__delete-series')).toBeNull();
+      expect(el('.awg__delete-confirm')).toBeNull();
+      expect(document.activeElement).toBe(el('.awg__scroll'));
+    }));
+
+    it('randevulu tekrarlayan slota tıklama seçim kurmaz, "silinemez" ipucu gösterir', fakeAsync(() => {
+      setup([recurringBooked()]);
+
+      clickEvent(22);
+
+      expect(component.selectedSlotId()).toBeNull();
+      expect(el('.awg__delete-series')).toBeNull();
+      expect(el('.awg__locked-hint')).not.toBeNull();
+    }));
+
+    it('klavye: tekrarlayan slotta Enter seçer ve iki silme seçeneği görünür; Escape ikisini de kapatır', fakeAsync(() => {
+      setup();
+
+      wrapperOf(21).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      render();
+      expect(el('.awg__delete-series')).not.toBeNull();
+
+      el('.awg__scroll')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      render();
+      expect(component.selectedSlotId()).toBeNull();
+      expect(el('.awg__delete-series')).toBeNull();
+    }));
+
+    it('confirmDeleteSeries tekil slotta (kural yok) hiçbir şey yaymaz', fakeAsync(() => {
+      setup();
+      const series: number[] = [];
+      component.deleteSeriesRequested.subscribe((id) => series.push(id));
+      clickEvent(11);
+
+      component['confirmDeleteSeries']();
+
+      expect(series).toEqual([]);
+    }));
   });
 
   it('should have tabindex="0" on wrapper element and NOT on .fc-event', fakeAsync(() => {

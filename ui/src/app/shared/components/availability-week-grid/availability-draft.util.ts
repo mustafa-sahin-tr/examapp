@@ -1,4 +1,4 @@
-import { CreateAvailabilitySlotRequest } from '../../../models/booking.model';
+import { CreateAvailabilitySlotRequest, CreateRecurringRuleRequest, RuleDayOfWeek } from '../../../models/booking.model';
 import { activeIntlLocale } from '../../utils/active-locale.util';
 import { formatSlotRange } from '../../utils/booking-format.util';
 
@@ -144,11 +144,67 @@ function pad2(value: number): string {
  * yazılabildiği için hizasız girdi hata vermez; saniye ve milisaniye atılır, saat/dakika olduğu gibi gönderilir.
  */
 export function toSlotRequest(draft: DraftRange): CreateAvailabilitySlotRequest {
-  const utcTime = (d: Date) => `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:00`;
   return {
-    date: `${draft.start.getUTCFullYear()}-${pad2(draft.start.getUTCMonth() + 1)}-${pad2(draft.start.getUTCDate())}`,
-    startTime: utcTime(draft.start),
-    endTime: utcTime(draft.end),
+    date: utcDateOnly(draft.start),
+    startTime: utcTimeOnly(draft.start),
+    endTime: utcTimeOnly(draft.end),
+  };
+}
+
+function utcDateOnly(d: Date): string {
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+
+function utcTimeOnly(d: Date): string {
+  return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:00`;
+}
+
+/** Tekrarlayan kuralda bitiş gününün taslak gününe göre en az kaç gün sonra olabileceği (ilk tekrar). */
+export const RECURRING_UNTIL_MIN_DAYS = 7;
+/** Backend `RecurringAvailabilityService.MaxRuleSpanYears`: bitiş en fazla başlangıç + 1 yıl. */
+export const RECURRING_MAX_SPAN_YEARS = 1;
+
+/** Datepicker sınırları: yerel gece yarısı anları (Material `min`/`max` yerel günle karşılaştırır). */
+export interface RecurringUntilBounds {
+  min: Date;
+  max: Date;
+}
+
+/**
+ * "Şu tarihe kadar tekrarla" seçicisinin sınırları: en erken taslak günü + 7 (ilk tekrar), en geç taslak günü + 1 yıl
+ * eksi 1 gün. Bir gün pay bırakılır çünkü backend sınırı UTC gününe göredir ve yaz saati geçişi UTC gününü bir gün
+ * kaydırabilir; sınırın kendisi zaten sunucuda da doğrulanır.
+ */
+export function recurringUntilBounds(draft: DraftRange): RecurringUntilBounds {
+  const s = draft.start;
+  return {
+    min: new Date(s.getFullYear(), s.getMonth(), s.getDate() + RECURRING_UNTIL_MIN_DAYS),
+    max: new Date(s.getFullYear() + RECURRING_MAX_SPAN_YEARS, s.getMonth(), s.getDate() - 1),
+  };
+}
+
+/**
+ * Taslağı `POST /booking/recurring-rules` gövdesine çevirir (issue #179).
+ *
+ * `toSlotRequest` ile aynı sözleşme: gün, saat ve `effectiveFrom` tıklanan anın UTC bileşenleridir; `dayOfWeek`
+ * de UTC günüdür (`getUTCDay()`, 0=Pazar — backend `System.DayOfWeek` ile aynı). Yerel gün gönderilseydi gece
+ * yarısına yakın bir taslak (TR'de yerel 00:00–03:00) bir gün kayık kurala dönüşürdü.
+ *
+ * `until` datepicker'dan gelen yerel gündür (gece yarısı anı). Kullanıcı "bu haftaya kadar" derken grid'de
+ * gördüğü yerel günü kasteder; bu yüzden bitiş, o yerel günde taslağın kendi saatinde gerçekleşecek tekrarın
+ * UTC günü olarak hesaplanır — böylece seçilen gün her zaman seriye dahildir. Null = süresiz.
+ */
+export function toRecurringRuleRequest(draft: DraftRange, until: Date | null): CreateRecurringRuleRequest {
+  const s = draft.start;
+  const untilAtDraftTime = until
+    ? new Date(until.getFullYear(), until.getMonth(), until.getDate(), s.getHours(), s.getMinutes())
+    : null;
+  return {
+    dayOfWeek: s.getUTCDay() as RuleDayOfWeek,
+    startTime: utcTimeOnly(s),
+    endTime: utcTimeOnly(draft.end),
+    effectiveFrom: utcDateOnly(s),
+    effectiveUntil: untilAtDraftTime ? utcDateOnly(untilAtDraftTime) : null,
   };
 }
 

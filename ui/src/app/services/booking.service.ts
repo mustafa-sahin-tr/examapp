@@ -11,6 +11,9 @@ import {
   BookingResult,
   CreateAvailabilitySlotRequest,
   CreateBookingRequest,
+  CreateRecurringRuleRequest,
+  RecurringRuleDeleteResult,
+  RecurringRuleResult,
   VideoSessionResult,
 } from '../models/booking.model';
 
@@ -88,6 +91,22 @@ export class BookingService {
 
   deleteSlot(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/slots/${id}`);
+  }
+
+  // ---------------- Tekrarlayan haftalık kurallar (öğretmen, issue #178/#179) ----------------
+
+  /**
+   * "Her hafta tekrarla" kuralı tanımlar; backend 90 günlük ufuktaki somut slotları hemen üretir.
+   * 400: süre/tarih sınırları; 409: aynı gün kesişen aktif kural. Sonraki haftalar `slots/mine` çağrısında
+   * tembel olarak tamamlanır — bu yüzden başarıdan sonra liste yeniden yüklenmelidir.
+   */
+  createRecurringRule(body: CreateRecurringRuleRequest): Observable<RecurringRuleResult> {
+    return this.http.post<RecurringRuleResult>(`${this.baseUrl}/recurring-rules`, body);
+  }
+
+  /** "Tüm seri": kural pasifleşir, randevusuz gelecek slotlar silinir; randevulu slotlar korunur (`preservedBookedCount`). */
+  deleteRecurringRule(id: number): Observable<RecurringRuleDeleteResult> {
+    return this.http.delete<RecurringRuleDeleteResult>(`${this.baseUrl}/recurring-rules/${id}`);
   }
 
   // ---------------- Müsaitlik slotları (öğrenci görünümü) ----------------

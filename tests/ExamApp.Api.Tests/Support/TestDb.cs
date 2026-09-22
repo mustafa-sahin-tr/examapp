@@ -32,11 +32,25 @@ public sealed class TestDb : IDisposable
     /// <summary>A new context on the same database — mirrors a fresh request scope.</summary>
     public AppDbContext NewContext() => new(Options(_connection));
 
-    private static DbContextOptions<AppDbContext> Options(SqliteConnection connection) =>
-        new DbContextOptionsBuilder<AppDbContext>()
+    /// <summary>
+    /// A new context with EF interceptors attached — e.g. a <c>SaveChangesInterceptor</c> that simulates a
+    /// concurrent writer between "query" and "save" (race conditions that unit tests can't otherwise reach).
+    /// </summary>
+    public AppDbContext NewContext(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
+        => new(Options(_connection, interceptors));
+
+    private static DbContextOptions<AppDbContext> Options(
+        SqliteConnection connection, params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
+    {
+        var builder = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite(connection)
-            .EnableSensitiveDataLogging()
-            .Options;
+            .EnableSensitiveDataLogging();
+
+        if (interceptors.Length > 0)
+            builder.AddInterceptors(interceptors);
+
+        return builder.Options;
+    }
 
     public void Dispose() => _connection.Dispose();
 }

@@ -20,6 +20,22 @@
       "deleted": "Müsaitlik aralığı silindi."
     },
 
+    "recurringRule": {
+      "invalidDayOfWeek": "Haftanın günü 0 (Pazar) ile 6 (Cumartesi) arasında olmalıdır.",
+      "effectiveFromInPast": "Kuralın başlangıç tarihi geçmişte olamaz.",
+      "effectiveUntilBeforeFrom": "Kuralın bitiş tarihi başlangıç tarihinden sonra olmalıdır.",
+      "duplicate": "Bu gün ve saat aralığı için zaten aktif bir tekrarlayan kural var.",
+      "conflict": "Tekrarlayan kural mevcut bir kayıtla çakıştığı için eklenemedi.",
+      "tooMany": "En fazla {0} aktif tekrarlayan kural tanımlayabilirsiniz.",
+      "tooShort": "Bir tekrarlayan müsaitlik aralığı en az {0} dakika sürmelidir.",
+      "invalidPrecision": "Saatler dakika hassasiyetinde olmalıdır (saniye girilemez).",
+      "untilTooFar": "Kuralın bitiş tarihi başlangıçtan en fazla {0} yıl sonrası olabilir.",
+      "created": "Tekrarlayan müsaitlik kuralı eklendi.",
+      "notFound": "Tekrarlayan müsaitlik kuralı bulunamadı.",
+      "notOwned": "Bu tekrarlayan müsaitlik kuralı size ait değil.",
+      "deleted": "Tekrarlayan müsaitlik kuralı ve randevusuz gelecek aralıklar silindi."
+    },
+
     "request": {
       "slotIdRequired": "Geçerli bir müsaitlik aralığı seçilmelidir.",
       "rejectionReasonTooLong": "Ret gerekçesi en fazla 500 karakter olabilir.",

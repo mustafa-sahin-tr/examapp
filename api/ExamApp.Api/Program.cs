@@ -148,6 +148,8 @@ builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetCalendarSer
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetReminderDispatcher, ExamApp.Api.Services.Worksheets.WorksheetReminderDispatcher>();
 builder.Services.AddScoped<ExamApp.Api.Services.Worksheets.IWorksheetAccessRequestService, ExamApp.Api.Services.Worksheets.WorksheetAccessRequestService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IBookingService, ExamApp.Api.Services.Bookings.BookingService>();
+// Tekrarlayan haftalık müsaitlik kuralları (issue #178) — BookingService top-up için buna bağımlı.
+builder.Services.AddScoped<ExamApp.Api.Services.Bookings.IRecurringAvailabilityService, ExamApp.Api.Services.Bookings.RecurringAvailabilityService>();
 // Video görüşme (issue #97) — "Video" bölümünü bağlar, IVideoSessionProvider'ı kaydeder.
 builder.Services.AddVideoSessions(builder.Configuration);
 builder.Services.AddScoped<ExamApp.Api.Services.Practice.IPracticeSessionService, ExamApp.Api.Services.Practice.PracticeSessionService>();

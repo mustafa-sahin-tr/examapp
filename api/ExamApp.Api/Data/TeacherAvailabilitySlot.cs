@@ -6,8 +6,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ExamApp.Api.Data;
 
 /// <summary>
-/// Ders planlama (issue #96): öğretmenin tek tek tanımladığı, tekrar etmeyen (non-recurring)
-/// müsaitlik aralığı. MVP'de haftalık şablon yok — her aralık ayrı satırdır.
+/// Ders planlama (issue #96): öğretmenin müsaitlik aralığı. Her aralık ayrı satırdır; satır ya
+/// öğretmen tarafından tek tek tanımlanmıştır (<see cref="RecurringAvailabilityRuleId"/> null) ya da
+/// bir <see cref="RecurringAvailabilityRule"/>'dan üretilmiştir (issue #178).
 /// <para>
 /// <see cref="Date"/>/<see cref="StartTime"/>/<see cref="EndTime"/> saat dilimsiz duvar saatidir
 /// (PostgreSQL <c>date</c> + <c>time</c>). Geçmiş kontrolü ve takvim dönüşümü bunları UTC kabul eder;
@@ -34,6 +35,16 @@ public class TeacherAvailabilitySlot : BaseEntity
 
     /// <summary>Slotun oluşturulduğu an (UTC). BaseEntity.CreateTime ile aynı değeri taşır, DTO'ya bu alan gider.</summary>
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Slot bir tekrarlayan kuraldan üretildiyse kuralın kimliği; tekil slotta null. Kural soft-delete
+    /// edilse bile referans kalır — top-up sweep'i "bu kural için bu tarihe satır üretildi mi?"
+    /// sorusunu (soft-delete edilmiş satırlar dahil) bu alanla yanıtlar.
+    /// </summary>
+    public int? RecurringAvailabilityRuleId { get; set; }
+
+    [ForeignKey(nameof(RecurringAvailabilityRuleId))]
+    public RecurringAvailabilityRule? RecurringAvailabilityRule { get; set; }
 
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }

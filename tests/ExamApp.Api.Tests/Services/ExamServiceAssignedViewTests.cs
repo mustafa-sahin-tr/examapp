@@ -11,7 +11,7 @@ namespace ExamApp.Api.Tests.Services;
 public class ExamServiceAssignedViewTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
     private ExamService NewExamService(AppDbContext ctx) => new(ctx, new ImageHelper(), Substitute.For<IMinIoService>(), Substitute.For<IAuthApiClient>());
 
     private sealed record World(int StudentId, int GradeId, int WsForStudent, int WsForGrade);

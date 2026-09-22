@@ -26,7 +26,7 @@ public class BookingServiceOpenSlotsSchoolScopeTests : IDisposable
         var tp = TimeProvider.System;
         var recurring = new RecurringAvailabilityService(ctx, tp, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, Substitute.For<IAuthApiClient>(), Substitute.For<IVideoSessionProvider>(),
-            Options.Create(new VideoOptions()), tp, recurring, NullLogger<BookingService>.Instance, new SchoolAccessPolicy());
+            Options.Create(new VideoOptions()), tp, recurring, NullLogger<BookingService>.Instance, new SchoolAccessPolicy(ctx));
     }
 
     private async Task<(int schoolA, int schoolB, int schoolTeacherId, int tutorId)> SeedAsync()

@@ -22,7 +22,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
     private static readonly DateTime Start = new(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc);
 
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy(ctx));
 
     public void Dispose() => _db.Dispose();
 

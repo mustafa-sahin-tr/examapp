@@ -2,21 +2,18 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { finalize, take } from 'rxjs';
-import { AvailabilitySlot } from '../../models/booking.model';
+import { AvailabilitySlot, CreateAvailabilitySlotRequest } from '../../models/booking.model';
 import { BookingService } from '../../services/booking.service';
 import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
-import { isPastSlot, parseMinutes, toDateOnly, toTimeOnly } from '../../shared/utils/booking-format.util';
+import { DraftRange } from '../../shared/components/availability-week-grid/availability-draft.util';
+import { isPastSlot } from '../../shared/utils/booking-format.util';
 
 /** Listede tek satır — slotun türetilmiş gösterim alanlarıyla. */
 interface SlotRow {
@@ -32,7 +29,8 @@ interface SlotRow {
 }
 
 /**
- * Öğretmenin müsaitlik takvimi (issue #96): yeni aralık tanımlama + mevcut aralıkların
+ * Öğretmenin müsaitlik takvimi (issue #96): haftalık grid üzerinde tıkla-seç ile yeni aralık
+ * tanımlama (issue #176; grid taslağı kurar, API çağrısını bu sayfa yapar) + mevcut aralıkların
  * randevu durumuyla listesi. Silme yalnızca aktif randevusu olmayan aralıklarda açıktır.
  * Gelen randevu talepleri ayrı sayfada (`/booking-requests`).
  *
@@ -47,13 +45,9 @@ const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
   imports: [
     AvailabilityWeekGridComponent,
     DatePipe,
-    ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatProgressSpinnerModule,
     TranslocoDirective,
     TranslocoPipe,
@@ -66,7 +60,6 @@ export class TeacherAvailabilityComponent implements OnInit {
   private readonly bookingService = inject(BookingService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly fb = inject(FormBuilder);
   private readonly transloco = inject(TranslocoService);
 
   protected readonly loading = signal(false);
@@ -75,17 +68,10 @@ export class TeacherAvailabilityComponent implements OnInit {
   protected readonly deletingId = signal<number | null>(null);
   protected readonly slots = signal<AvailabilitySlot[]>([]);
 
-  /** Geçmiş tarih seçilemesin diye datepicker alt sınırı. */
-  protected readonly minDate = new Date();
-
-  protected readonly form = this.fb.nonNullable.group({
-    date: this.fb.control<Date | null>(null, Validators.required),
-    startTime: ['', Validators.required],
-    endTime: ['', Validators.required],
-  });
-
-  /** Saat alanları dolu ama bitiş başlangıçtan sonra değilse gösterilecek uyarı. */
-  protected readonly timeRangeError = signal<string | null>(null);
+  /** Grid'deki taslak aralık; kayıt başarısında temizlenir, hata durumunda yerinde kalır. */
+  protected readonly draft = signal<DraftRange | null>(null);
+  /** Son kayıt denemesinin sunucu hatası; grid'in onay çubuğunda gösterilir. */
+  protected readonly saveError = signal<string | null>(null);
 
   protected readonly rows = computed<SlotRow[]>(() =>
     [...this.slots()]
@@ -119,31 +105,22 @@ export class TeacherAvailabilityComponent implements OnInit {
       });
   }
 
-  protected submit(): void {
-    this.timeRangeError.set(null);
-    if (this.form.invalid || this.saving()) {
-      this.form.markAllAsTouched();
-      return;
-    }
+  /** Taslak değişince (genişletme/daraltma/vazgeç) eski sunucu hatası geçersizdir. */
+  protected onDraftChange(draft: DraftRange | null): void {
+    this.draft.set(draft);
+    this.saveError.set(null);
+  }
 
-    const { date, startTime, endTime } = this.form.getRawValue();
-    const start = parseMinutes(startTime);
-    const end = parseMinutes(endTime);
-    if (start === null || end === null) {
-      this.timeRangeError.set(this.text('form.invalidTimeFormat'));
-      return;
-    }
-    if (end <= start) {
-      this.timeRangeError.set(this.text('form.endBeforeStart'));
-      return;
-    }
-    if (!date) {
+  /** Grid'de Kaydet'e basıldı. Hata snackbar yerine grid üzerinde gösterilir ki taslak düzeltilebilsin. */
+  protected create(request: CreateAvailabilitySlotRequest): void {
+    if (this.saving()) {
       return;
     }
 
     this.saving.set(true);
+    this.saveError.set(null);
     this.bookingService
-      .createSlot({ date: toDateOnly(date), startTime: toTimeOnly(startTime), endTime: toTimeOnly(endTime) })
+      .createSlot(request)
       .pipe(
         finalize(() => this.saving.set(false)),
         takeUntilDestroyed(this.destroyRef)
@@ -151,22 +128,21 @@ export class TeacherAvailabilityComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (res?.success === false) {
-            this.snackBar.open(res.message || this.text('messages.addFailed'), this.text('messages.ok'), {
-              duration: 4000,
-            });
+            this.saveError.set(res.message || this.text('messages.addFailed'));
             return;
           }
           this.snackBar.open(this.text('messages.added'), this.text('messages.ok'), { duration: 3000 });
-          this.form.reset({ date: null, startTime: '', endTime: '' });
+          this.draft.set(null);
+          // Yeni slot hemen eklenir: `load()` sürerken grid'in dolu listesi bayat kalmaz ve `load()` hata
+          // verse bile slot görünür. `load()` yine de sunucudaki kesin durumu getirir.
+          const created = res?.slot;
+          if (created) {
+            this.slots.update((items) => (items.some((s) => s.id === created.id) ? items : [...items, created]));
+          }
           this.load();
         },
-        error: (err: HttpErrorResponse) => {
-          this.snackBar.open(
-            this.bookingService.extractError(err, this.text('messages.addFailed')),
-            this.text('messages.ok'),
-            { duration: 4000 },
-          );
-        },
+        error: (err: HttpErrorResponse) =>
+          this.saveError.set(this.bookingService.extractError(err, this.text('messages.addFailed'))),
       });
   }
 

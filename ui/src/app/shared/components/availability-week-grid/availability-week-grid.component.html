@@ -1,4 +1,4 @@
-<section class="awg" [class.awg--loading]="loading()" [attr.aria-busy]="loading()" *transloco="let t; prefix: 'teacher-availability'">
+<section class="awg" [class.awg--loading]="loading()" [class.awg--editable]="editable()" [attr.aria-busy]="loading()" *transloco="let t; prefix: 'teacher-availability'">
   <div class="awg__toolbar">
     <div class="awg__nav" role="group" [attr.aria-label]="t('grid.navLabel')">
       <button mat-icon-button type="button" [attr.aria-label]="t('grid.previousWeek')" [matTooltip]="t('grid.previousWeek')" (click)="previous()">
@@ -22,18 +22,55 @@
     </ul>
   </div>
 
+  @if (editable()) {
+    <!-- Onay çubuğu (issue #176): taslak yokken yönerge, varken aralık + Kaydet/Vazgeç.
+         Kayıt sürerken butonlar `disabledInteractive`: odak butonda kalır (native disabled odağı body'ye düşürür). -->
+    <div class="awg__draft" [class.awg__draft--active]="draft()">
+      <p class="awg__draft-text" aria-live="polite">
+        @if (draft()) {
+          <strong class="awg__draft-range">{{ draftLabel() }}</strong>
+        } @else {
+          <span class="awg__draft-instruction">{{ t('grid.draft.instruction') }}</span>
+        }
+        @if (hint(); as reason) {
+          <span class="awg__draft-hint">{{ t('grid.hint.' + reason, hintParams()) }}</span>
+        }
+      </p>
+
+      @if (draft()) {
+        <div class="awg__draft-actions">
+          <button mat-flat-button color="primary" type="button" class="awg__draft-save" [disabled]="saving()" disabledInteractive (click)="confirm()">
+            {{ saving() ? t('grid.draft.saving') : t('grid.draft.save') }}
+          </button>
+          <button mat-button type="button" class="awg__draft-cancel" [disabled]="saving()" disabledInteractive (click)="cancel()">
+            {{ t('grid.draft.cancel') }}
+          </button>
+        </div>
+      }
+
+      @if (draft() && saveError(); as message) {
+        <p class="awg__draft-error" role="alert">{{ message }}</p>
+      }
+    </div>
+  }
+
   @if (isBrowser) {
-    <div class="awg__scroll" role="region" [attr.aria-label]="t('grid.ariaLabel')" tabindex="0">
+    <div #scrollRegion class="awg__scroll" role="region" [attr.aria-label]="t('grid.ariaLabel')" tabindex="0">
       <div class="awg__canvas">
         <full-calendar [options]="options()">
           <ng-template #eventContent let-arg>
-            @let p = props(arg);
-            @let tip = tooltipText(p, t(p.statusKey), p.studentName ? t('grid.tooltip.student', { name: p.studentName }) : '', p.past ? t('grid.tooltip.past') : '');
-            <!-- Tek tab durağı bu elemandır (`eventInteractive` kapalı); matTooltip odakta da açılır. -->
-            <div class="awg__ev" role="group" tabindex="0" [matTooltip]="tip" [attr.aria-label]="tip">
-              <span class="awg__ev-time">{{ p.timeRange }}</span>
-              <span class="awg__ev-note">{{ p.studentName ?? t(p.statusKey) }}</span>
-            </div>
+            @if (isDraftEvent(arg)) {
+              <!-- Taslak: erişilebilir karşılığı onay çubuğudur; burada yalnızca görsel etiket. -->
+              <span class="awg__draft-tag" aria-hidden="true">{{ t('grid.draft.tag') }}</span>
+            } @else {
+              @let p = props(arg);
+              @let tip = tooltipText(p, t(p.statusKey), p.studentName ? t('grid.tooltip.student', { name: p.studentName }) : '', p.past ? t('grid.tooltip.past') : '');
+              <!-- Tek tab durağı bu elemandır (`eventInteractive` kapalı); matTooltip odakta da açılır. -->
+              <div class="awg__ev" role="group" tabindex="0" [matTooltip]="tip" [attr.aria-label]="tip">
+                <span class="awg__ev-time">{{ p.timeRange }}</span>
+                <span class="awg__ev-note">{{ p.studentName ?? t(p.statusKey) }}</span>
+              </div>
+            }
           </ng-template>
         </full-calendar>
       </div>

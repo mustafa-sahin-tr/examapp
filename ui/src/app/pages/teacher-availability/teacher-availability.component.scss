@@ -26,26 +26,6 @@
   }
 }
 
-.avail__form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: var(--main-foreground-color);
-
-  mat-form-field {
-    min-width: 11rem;
-  }
-}
-
-.avail__form-error {
-  margin: 0.5rem 0 0;
-  color: var(--ms-danger-background);
-  font-size: 0.875rem;
-}
-
 .avail__state {
   display: flex;
   flex-direction: column;

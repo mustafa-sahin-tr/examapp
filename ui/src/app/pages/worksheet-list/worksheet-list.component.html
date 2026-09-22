@@ -48,13 +48,15 @@
   @if (isStudent && tab() === 'discover' && resumeItems().length) {
     <div class="wl__strip">
       <h2>{{ t('resume.title') }}</h2>
+      <!-- Kompakt kart (issue #188): thumb + başlık + ilerleme rozeti; tüm kart "Devam Et" hedefine gider -->
       <div class="wl__strip-scroll">
         @for (item of resumeItems(); track trackTest($index, item)) {
-          <article class="wl__strip-card">
-            <h3>{{ item.name }}</h3>
-            <p>{{ t('resume.questionCount', { count: item.questionCount || 0 }) }}</p>
-            <button type="button" (click)="goToWorksheet(item.id || 0)">{{ t('resume.continue') }}</button>
-          </article>
+          <app-compact-test-card
+            [title]="item.name"
+            [thumbUrl]="item.imageUrl"
+            [progressPercent]="resumeProgressPercent(item)"
+            (activated)="goToWorksheet(item.id || 0)"
+          ></app-compact-test-card>
         }
       </div>
     </div>
@@ -267,22 +269,15 @@
               <p>{{ t('discover.assignedEmpty') }}</p>
             </div>
           } @else {
-            <div class="wl__grid" [class.wl__grid--list]="viewMode() === 'list'">
+            <!-- Kompakt kart (issue #188): yalnız thumb + başlık + bitiş; grid ve liste görünümünde aynı -->
+            <div class="wl__compact-grid" [class.wl__compact-grid--list]="viewMode() === 'list'">
               @for (test of discoverAssignedTests(); track trackTest($index, test)) {
-                <div class="wl__grid-item">
-                  <app-worksheet-list-view-card
-                    [course]="test"
-                    [viewMode]="viewMode()"
-                    [isTeacher]="isTeacher"
-                    [subjectName]="subjectName(test.subjectId)"
-                    [gradeName]="gradeName(test.gradeId)"
-                    [assignment]="assignmentFor(test.id)"
-                    (deleteWorksheet)="onDeleteWorksheet($event)"
-                    (assignWorksheet)="onAssign()"
-                    [copying]="copyingIds().has(test.id ?? 0)"
-                    (copy)="onCopyWorksheet($event)"
-                  ></app-worksheet-list-view-card>
-                </div>
+                <app-compact-test-card
+                  [title]="test.name"
+                  [thumbUrl]="test.imageUrl"
+                  [dueDate]="assignmentFor(test.id)?.endAt"
+                  (activated)="goToWorksheet(test.id || 0)"
+                ></app-compact-test-card>
               }
             </div>
           }

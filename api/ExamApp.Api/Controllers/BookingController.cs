@@ -19,13 +19,18 @@ namespace ExamApp.Api.Controllers;
 public class BookingController : BaseController
 {
     private readonly IBookingService _bookingService;
+    private readonly IRecurringAvailabilityService _recurringAvailability;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public BookingController(IBookingService bookingService, IStringLocalizer<Messages> localizer) : base()
+    public BookingController(
+        IBookingService bookingService,
+        IRecurringAvailabilityService recurringAvailability,
+        IStringLocalizer<Messages> localizer) : base()
     {
         _bookingService = bookingService;
+        _recurringAvailability = recurringAvailability;
         _localizer = localizer;
     }
 
@@ -71,6 +76,58 @@ public class BookingController : BaseController
 
         var result = await _bookingService.DeleteSlotAsync(user.Id, id, ct);
         return result.Success ? NoContent() : MapFailure(result);
+    }
+
+    // ---------------- Tekrarlayan haftalık kurallar (issue #178) ----------------
+
+    /// <summary>
+    /// Öğretmen "her hafta tekrarla" kuralı tanımlar; 90 günlük ufka kadar somut slotlar üretilir.
+    /// Çakışan haftalar atlanır ve yanıtta <c>skippedDates</c> olarak döner.
+    /// </summary>
+    [HttpPost("recurring-rules")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<IActionResult> CreateRecurringRule(
+        [FromBody] CreateRecurringAvailabilityRuleDto request, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
+
+        var result = await _recurringAvailability.CreateRuleAsync(user.Id, request, ct);
+        if (!result.Success)
+            return MapFailure(result);
+
+        return CreatedAtAction(nameof(GetMyRecurringRules), new { }, result);
+    }
+
+    /// <summary>Öğretmenin aktif tekrarlayan kuralları.</summary>
+    [HttpGet("recurring-rules/mine")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<IActionResult> GetMyRecurringRules([FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
+
+        var result = await _recurringAvailability.GetMyRulesAsync(user.Id, skip, take, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
+    }
+
+    /// <summary>
+    /// "Tüm seri": kuralı kapatır ve bugünden itibaren aktif randevusu olmayan üretilmiş slotları siler.
+    /// Randevulu slotlar korunur; yanıt hangilerinin korunduğunu döner. "Sadece bu hafta" için
+    /// mevcut <c>DELETE slots/{id}</c> kullanılır.
+    /// </summary>
+    [HttpDelete("recurring-rules/{id:int}")]
+    [Authorize(Roles = "Teacher")]
+    public async Task<IActionResult> DeleteRecurringRule(int id, CancellationToken ct)
+    {
+        var user = await GetAuthenticatedUserAsync();
+        if (user == null)
+            return Unauthorized(_localizer["booking.unauthorized"].Value);
+
+        var result = await _recurringAvailability.DeleteRuleAsync(user.Id, id, ct);
+        return result.Success ? Ok(result) : MapFailure(result);
     }
 
     // ---------------- Müsaitlik slotları (öğrenci görünümü) ----------------

@@ -20,6 +20,22 @@
       "deleted": "Availability slot deleted."
     },
 
+    "recurringRule": {
+      "invalidDayOfWeek": "The day of week must be between 0 (Sunday) and 6 (Saturday).",
+      "effectiveFromInPast": "The rule start date cannot be in the past.",
+      "effectiveUntilBeforeFrom": "The rule end date must be later than the start date.",
+      "duplicate": "There is already an active recurring rule for this day and time range.",
+      "conflict": "The recurring rule could not be added because it conflicts with an existing record.",
+      "tooMany": "You can define at most {0} active recurring rules.",
+      "tooShort": "A recurring availability slot must last at least {0} minutes.",
+      "invalidPrecision": "Times must be specified in whole minutes (no seconds).",
+      "untilTooFar": "The rule end date can be at most {0} year(s) after the start date.",
+      "created": "Recurring availability rule added.",
+      "notFound": "Recurring availability rule not found.",
+      "notOwned": "This recurring availability rule does not belong to you.",
+      "deleted": "Recurring availability rule and its unbooked future slots were deleted."
+    },
+
     "request": {
       "slotIdRequired": "A valid availability slot must be selected.",
       "rejectionReasonTooLong": "The rejection reason can be at most 500 characters.",

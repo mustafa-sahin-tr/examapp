@@ -32,10 +32,15 @@ public class BookingServiceTests : IDisposable
     private readonly IVideoSessionProvider _videoProvider = Substitute.For<IVideoSessionProvider>();
 
     /// <summary>Issue #97'de eklenen video bağımlılıkları; TimeProvider ile deterministik "now" kontrol ederiz.</summary>
-    private BookingService NewService(AppDbContext ctx, TimeProvider? timeProvider = null) =>
-        new(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()),
-            timeProvider ?? TimeProvider.System,
+    private BookingService NewService(AppDbContext ctx, TimeProvider? timeProvider = null)
+    {
+        var tp = timeProvider ?? TimeProvider.System;
+        // Issue #178: GetMySlotsAsync tekrarlayan kural top-up'ını tetikler; gerçek servisle bağlanır.
+        var recurring = new RecurringAvailabilityService(ctx, tp,
+            new Microsoft.Extensions.Logging.Abstractions.NullLogger<RecurringAvailabilityService>());
+        return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>());
+    }
 
     private async Task<(int id, int userId)> SeedTeacherAsync(
         int teacherId, int userId, TeacherApprovalStatus status = TeacherApprovalStatus.Approved)

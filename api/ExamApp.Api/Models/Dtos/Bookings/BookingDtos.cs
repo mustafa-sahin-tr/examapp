@@ -49,6 +49,91 @@ public class AvailabilitySlotDto
 
     /// <summary>Aktif booking'i oluşturan öğrencinin adı (yalnızca öğretmenin kendi listesinde dolu).</summary>
     public string? StudentName { get; set; }
+
+    /// <summary>
+    /// Slot bir tekrarlayan kuraldan üretildiyse kuralın kimliği (issue #178); tekil slotta null.
+    /// Yalnızca öğretmenin kendi listesinde (slots/mine) dolar; öğrenciye dönen listede her zaman null.
+    /// UI "tekrarlayan" ikonunu ve silme diyalogundaki "sadece bu hafta / tüm seri" seçimini buna göre gösterir.
+    /// </summary>
+    public int? RecurringAvailabilityRuleId { get; set; }
+}
+
+/// <summary>
+/// POST /api/booking/recurring-rules — öğretmen "her hafta tekrarla" kuralı tanımlar (issue #178).
+/// Saatler tekil slotlarla aynı şekilde saat dilimsiz duvar saatidir ve UTC kabul edilir.
+/// </summary>
+public class CreateRecurringAvailabilityRuleDto
+{
+    /// <summary>0=Pazar .. 6=Cumartesi (System.DayOfWeek). JSON'da sayı olarak gönderilir.</summary>
+    [Required]
+    [EnumDataType(typeof(DayOfWeek), ErrorMessage = "booking.recurringRule.invalidDayOfWeek")]
+    public DayOfWeek DayOfWeek { get; set; }
+
+    /// <summary>Başlangıç saati. JSON'da "14:00:00" formatında; dakika hassasiyeti (saniye 0). Süre 30 dk – 4 saat.</summary>
+    [Required]
+    public TimeOnly StartTime { get; set; }
+
+    [Required]
+    public TimeOnly EndTime { get; set; }
+
+    /// <summary>Kuralın geçerli olduğu ilk gün (dahil). JSON'da "2026-09-28". UTC bugün .. bugün+90 gün.</summary>
+    [Required]
+    public DateOnly EffectiveFrom { get; set; }
+
+    /// <summary>Kuralın geçerli olduğu son gün (dahil). Null = süresiz; verilirse EffectiveFrom'dan sonra ve en fazla 1 yıl ileride.</summary>
+    public DateOnly? EffectiveUntil { get; set; }
+}
+
+/// <summary>Tekrarlayan kural görünümü.</summary>
+public class RecurringAvailabilityRuleDto
+{
+    public int Id { get; set; }
+    public int TeacherId { get; set; }
+
+    /// <summary>0=Pazar .. 6=Cumartesi.</summary>
+    public DayOfWeek DayOfWeek { get; set; }
+
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+    public DateOnly EffectiveFrom { get; set; }
+    public DateOnly? EffectiveUntil { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Kural oluşturma sonucu: kural + ufuk (90 gün) içinde üretilen somut slot id'leri + çakışma
+/// nedeniyle atlanan tarihler (hata değil; öğretmen o haftaları elle düzenler).
+/// </summary>
+public class RecurringAvailabilityRuleResultDto : ResponseBaseDto
+{
+    public RecurringAvailabilityRuleDto? Rule { get; set; }
+
+    public List<int> GeneratedSlotIds { get; set; } = new();
+
+    public List<DateOnly> SkippedDates { get; set; } = new();
+}
+
+/// <summary>GET /api/booking/recurring-rules/mine sonucu.</summary>
+public class RecurringAvailabilityRuleListResultDto : ResponseBaseDto
+{
+    public List<RecurringAvailabilityRuleDto> Items { get; set; } = new();
+}
+
+/// <summary>
+/// DELETE /api/booking/recurring-rules/{id} sonucu ("tüm seri"): kural pasifleşti; aktif randevusu
+/// olmayan gelecek slotlar silindi, randevulu olanlar korundu.
+/// </summary>
+public class RecurringAvailabilityRuleDeleteResultDto : ResponseBaseDto
+{
+    /// <summary>Soft-delete edilen gelecek slot id'leri.</summary>
+    public List<int> DeletedSlotIds { get; set; } = new();
+
+    /// <summary>Aktif (Pending/Approved) randevusu olduğu için dokunulmayan slot id'leri.</summary>
+    public List<int> PreservedSlotIds { get; set; } = new();
+
+    /// <summary><see cref="PreservedSlotIds"/> sayısı — UI'ın "N randevulu slot korundu" mesajı için.</summary>
+    public int PreservedBookedCount { get; set; }
 }
 
 /// <summary>POST /api/booking/requests — öğrenci bir slot için randevu talebi oluşturur.</summary>

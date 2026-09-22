@@ -112,6 +112,9 @@ public class AppDbContext : DbContext
     public DbSet<TeacherAvailabilitySlot> TeacherAvailabilitySlots { get; set; }
     public DbSet<Booking> Bookings { get; set; }
 
+    // Tekrarlayan haftalık müsaitlik kuralı (issue #178)
+    public DbSet<RecurringAvailabilityRule> RecurringAvailabilityRules { get; set; }
+
     public DbSet<School> Schools { get; set; }
 
     // İl / ilçe referans tabloları (issue #91) — ReferenceDataSeed ile doldurulur.
@@ -448,6 +451,42 @@ public class AppDbContext : DbContext
             .HasIndex(s => new { s.TeacherId, s.Date, s.StartTime, s.EndTime })
             .IsUnique()
             .HasFilter("NOT \"IsDeleted\"");
+
+        // ---- Tekrarlayan haftalık müsaitlik kuralı (issue #178) ----
+
+        modelBuilder.Entity<RecurringAvailabilityRule>()
+            .HasOne(r => r.Teacher)
+            .WithMany()
+            .HasForeignKey(r => r.TeacherId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Top-up sweep'i öğretmenin aktif kurallarını gün bazında çeker.
+        modelBuilder.Entity<RecurringAvailabilityRule>()
+            .HasIndex(r => new { r.TeacherId, r.DayOfWeek });
+
+        // Birebir aynı kural (gün+saat+başlangıç tarihi) iki kez açılamaz — eşzamanlı yarışın DB dayanağı.
+        // Tarih aralıkları kesişmeyen aynı gün+saat kuralları (örn. dönem dönem) geçerli olduğundan
+        // EffectiveFrom index'e dahil; kesişen aralıkların reddi servis katmanındadır (issue #178 inceleme).
+        modelBuilder.Entity<RecurringAvailabilityRule>()
+            .HasIndex(r => new { r.TeacherId, r.DayOfWeek, r.StartTime, r.EndTime, r.EffectiveFrom })
+            .IsUnique()
+            .HasFilter("\"IsActive\" AND NOT \"IsDeleted\"");
+
+        // Kural soft-delete edildiğinde somut slotlar referansı korur (raporlama + sweep doğruluğu).
+        // ClientNoAction: EF istemci tarafında cascade/set-null YAPMAZ — SetNull/Cascade seçilseydi
+        // kural Remove() edilirken change tracker'daki slotların FK'sı null'a çekilirdi (soft delete
+        // deseninde Remove aslında UPDATE'tir). DB tarafı NO ACTION: fiziksel silme olmaz; Teacher
+        // cascade'i tek statement içinde hem kuralı hem slotu sildiği için NO ACTION (RESTRICT'in
+        // aksine statement sonunda kontrol edilir) onunla çakışmaz.
+        modelBuilder.Entity<TeacherAvailabilitySlot>()
+            .HasOne(s => s.RecurringAvailabilityRule)
+            .WithMany(r => r.GeneratedSlots)
+            .HasForeignKey(s => s.RecurringAvailabilityRuleId)
+            .OnDelete(DeleteBehavior.ClientNoAction);
+
+        // Sweep sorgusu: "bu kural için bu tarihe satır üretilmiş mi?" (soft-delete edilmişler dahil).
+        modelBuilder.Entity<TeacherAvailabilitySlot>()
+            .HasIndex(s => new { s.RecurringAvailabilityRuleId, s.Date });
 
         modelBuilder.Entity<Booking>()
             .HasOne(b => b.AvailabilitySlot)

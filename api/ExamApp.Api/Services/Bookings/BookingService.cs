@@ -27,7 +27,8 @@ namespace ExamApp.Api.Services.Bookings;
 /// Slot tarih-saatleri saat dilimsiz duvar saatidir; geçmiş kontrolü ve takvim dönüşümü bunları
 /// UTC kabul eder (<see cref="TeacherAvailabilitySlot"/> notuna bakın).
 /// </para>
-/// Kapsam dışı: iptal/erteleme, no-show, recurring slot, ödeme.
+/// Kapsam dışı: iptal/erteleme, no-show, ödeme. Tekrarlayan kurallar
+/// <see cref="RecurringAvailabilityService"/>'te (issue #178).
 /// </summary>
 public class BookingService : IBookingService
 {
@@ -41,20 +42,22 @@ public class BookingService : IBookingService
     /// <c>MaxRangeDays</c> (180 gün) üst sınırıyla aynı büyüklük mertebesinde tutulur; amaç
     /// 9999 gibi uçuk tarihlerle veri hijyenini ve takvim sorgu maliyetini bozmayı engellemek.
     /// </summary>
-    private const int MaxAdvanceDays = 90;
+    internal const int MaxAdvanceDays = 90;
 
     /// <summary>Tek bir müsaitlik aralığının azami süresi (saat).</summary>
-    private const int MaxSlotDurationHours = 4;
+    internal const int MaxSlotDurationHours = 4;
 
-    private static readonly TimeSpan MaxSlotDuration = TimeSpan.FromHours(MaxSlotDurationHours);
+    internal static readonly TimeSpan MaxSlotDuration = TimeSpan.FromHours(MaxSlotDurationHours);
 
-    private static readonly BookingStatus[] ActiveStatuses =
+    // Sabitler internal: tekrarlayan kural servisi (issue #178) aynı sınırları paylaşır.
+    internal static readonly BookingStatus[] ActiveStatuses =
         { BookingStatus.Pending, BookingStatus.Approved };
 
     private readonly AppDbContext _context;
     private readonly IAuthApiClient _authApiClient;
     private readonly IVideoSessionProvider _videoSessionProvider;
     private readonly IOptions<VideoOptions> _videoOptions;
+    private readonly IRecurringAvailabilityService _recurringAvailability;
 
     /// <summary>
     /// Şimdilik yalnızca görüşme katılım penceresi (issue #97) bu saat kaynağını kullanır;
@@ -74,6 +77,7 @@ public class BookingService : IBookingService
         IVideoSessionProvider videoSessionProvider,
         IOptions<VideoOptions> videoOptions,
         TimeProvider timeProvider,
+        IRecurringAvailabilityService recurringAvailability,
         ILogger<BookingService> logger,
         IStringLocalizer<Messages>? localizer = null)
     {
@@ -82,6 +86,7 @@ public class BookingService : IBookingService
         _videoSessionProvider = videoSessionProvider;
         _videoOptions = videoOptions;
         _timeProvider = timeProvider;
+        _recurringAvailability = recurringAvailability;
         _logger = logger;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
@@ -176,7 +181,7 @@ public class BookingService : IBookingService
             Success = true,
             ObjectId = slot.Id,
             Message = _localizer["booking.slot.created"],
-            Slot = MapSlot(slot.Id, teacher.Id, slot.Date, slot.StartTime, slot.EndTime, slot.CreatedAt, null, null, null)
+            Slot = MapSlot(slot.Id, teacher.Id, slot.Date, slot.StartTime, slot.EndTime, slot.CreatedAt, null, null, null, null)
         };
     }
 
@@ -191,6 +196,10 @@ public class BookingService : IBookingService
 
         if (teacherId == null)
             return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherRecordNotFound"] };
+
+        // Tekrarlayan kuralların 90 günlük penceresi burada lazy ileri kaydırılır (issue #178):
+        // arka plan job yok; kuralı olmayan öğretmen için maliyet tek indeksli sorgudur.
+        await _recurringAvailability.TopUpAsync(teacherId.Value, teacherUserId, ct);
 
         var rows = await _context.TeacherAvailabilitySlots
             .AsNoTracking()
@@ -207,6 +216,7 @@ public class BookingService : IBookingService
                 StartTime = s.StartTime,
                 EndTime = s.EndTime,
                 CreatedAt = s.CreatedAt,
+                RecurringAvailabilityRuleId = s.RecurringAvailabilityRuleId,
                 BookingId = s.Bookings
                     .Where(b => ActiveStatuses.Contains(b.Status))
                     .Select(b => (int?)b.Id)
@@ -231,7 +241,8 @@ public class BookingService : IBookingService
             Items = rows.Select(r => MapSlot(
                 r.Id, r.TeacherId, r.Date, r.StartTime, r.EndTime, r.CreatedAt,
                 r.BookingId, r.BookingStatus,
-                r.StudentUserId.HasValue && names.TryGetValue(r.StudentUserId.Value, out var n) ? n : null)).ToList()
+                r.StudentUserId.HasValue && names.TryGetValue(r.StudentUserId.Value, out var n) ? n : null,
+                r.RecurringAvailabilityRuleId)).ToList()
         };
     }
 
@@ -313,11 +324,12 @@ public class BookingService : IBookingService
             })
             .ToListAsync(ct);
 
+        // Öğrenciye kural kimliği sızdırılmaz (öğretmenin iç planlama bilgisi) → recurringRuleId null.
         return new AvailabilitySlotListResultDto
         {
             Success = true,
             Items = rows
-                .Select(r => MapSlot(r.Id, r.TeacherId, r.Date, r.StartTime, r.EndTime, r.CreatedAt, null, null, null))
+                .Select(r => MapSlot(r.Id, r.TeacherId, r.Date, r.StartTime, r.EndTime, r.CreatedAt, null, null, null, null))
                 .ToList()
         };
     }
@@ -779,7 +791,7 @@ public class BookingService : IBookingService
 
     private static AvailabilitySlotDto MapSlot(
         int id, int teacherId, DateOnly date, TimeOnly start, TimeOnly end, DateTime createdAt,
-        int? bookingId, BookingStatus? bookingStatus, string? studentName) => new()
+        int? bookingId, BookingStatus? bookingStatus, string? studentName, int? recurringRuleId) => new()
         {
             Id = id,
             TeacherId = teacherId,
@@ -792,7 +804,8 @@ public class BookingService : IBookingService
             IsBooked = bookingId.HasValue,
             BookingId = bookingId,
             BookingStatus = bookingStatus?.ToString(),
-            StudentName = studentName
+            StudentName = studentName,
+            RecurringAvailabilityRuleId = recurringRuleId
         };
 
     private static AvailabilitySlotResultDto SlotFail(string message)
@@ -831,6 +844,7 @@ public class BookingService : IBookingService
         public TimeOnly StartTime { get; init; }
         public TimeOnly EndTime { get; init; }
         public DateTime CreatedAt { get; init; }
+        public int? RecurringAvailabilityRuleId { get; init; }
         public int? BookingId { get; init; }
         public BookingStatus? BookingStatus { get; init; }
         public int? StudentUserId { get; init; }

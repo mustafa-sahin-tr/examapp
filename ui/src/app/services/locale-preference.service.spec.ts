@@ -32,8 +32,17 @@ describe('LocalePreferenceService', () => {
     calls = [];
     localStorage.removeItem('user');
 
-    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['hasToken', 'refresh']);
+    authServiceSpy = jasmine.createSpyObj<AuthService>('AuthService', ['hasToken', 'refresh', 'setUser']);
     localeServiceSpy = jasmine.createSpyObj<LocaleService>('LocaleService', ['setLocale']);
+
+    // Gerçek setUser gibi localStorage'a yazar; aşağıdaki testler depolanan profili okur (issue #191).
+    authServiceSpy.setUser.and.callFake((profile: UserProfile | null) => {
+      if (profile) {
+        localStorage.setItem('user', JSON.stringify(profile));
+      } else {
+        localStorage.removeItem('user');
+      }
+    });
 
     authServiceSpy.refresh.and.callFake(() => {
       calls.push('refresh');

@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { BehaviorSubject, catchError, map, Observable, of, tap, throwError, timeout } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
@@ -19,6 +19,14 @@ export interface UserProfile {
   role: string;
   /** Kullanıcının kayıtlı dil tercihi (issue #181): "tr" | "en". Eski token yanıtlarında olmayabilir. */
   preferredLocale?: string;
+  /**
+   * Sunucu tarafında doğrulanmış okul kimliği (issue #189, `UserProfileDto.SchoolId`).
+   * null/undefined = okulsuz/bağımsız kullanıcı veya admin.
+   * DİKKAT: login/exchange yanıtı (auth-api) bu alanı taşımaz; yalnızca exam-api
+   * `POST /api/exam/auth/refresh` doldurur (`enhanced-layout` asenkron tetikler). Bu gelene kadar
+   * `teacher?.schoolId` yedeği kullanılır — bkz. `AuthService.getSchoolId()`.
+   */
+  schoolId?: number | null;
   student?: Student; // Opsiyonel olarak öğrenci bilgisi
   teacher?: Teacher; // Opsiyonel olarak öğretmen bilgisi
 }
@@ -42,6 +50,27 @@ export class AuthService {
   isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable(); // 🟢 Diğer bileşenler bunu subscribe edebilir
 
+  /**
+   * Önbellekteki kullanıcı profili — reaktif kaynak (issue #191). `localStorage['user']`'a yazan her yer
+   * `setUser()` üzerinden geçer; böylece profil sonradan (örn. refresh ile `schoolId`) güncellenince
+   * bileşenler `computed` ile yeniden hesaplanır. Doğrudan `localStorage.setItem('user', …)` yazma.
+   */
+  readonly user = signal<UserProfile | null>(this.getUser());
+
+  /** Profili hem localStorage'a hem `user` signal'ına yazar; null → önbellek temizlenir. */
+  setUser(profile: UserProfile | null): void {
+    try {
+      if (profile) {
+        localStorage.setItem('user', JSON.stringify(profile));
+      } else {
+        localStorage.removeItem('user');
+      }
+    } catch (error) {
+      console.warn('Kullanıcı profili localStorage a yazılamadı', error);
+    }
+    this.user.set(profile);
+  }
+
   register(userData: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/register`, userData);
   }
@@ -60,7 +89,7 @@ export class AuthService {
         localStorage.setItem(this.tokenKey, res.token);
         localStorage.setItem(this.roleKey, res.profile.role);
         localStorage.setItem(this.avatarKey, res.profile.avatar);
-        localStorage.setItem('user', JSON.stringify(res.profile));
+        this.setUser(res.profile);
         this.isAuthenticatedSubject.next(true);
         // Profildeki dil tercihi aktif dilden farklıysa uygulanır (issue #181).
         // Aynıysa no-op olduğu için reload döngüsü oluşmaz.
@@ -106,8 +135,8 @@ export class AuthService {
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.roleKey);
     localStorage.removeItem(this.avatarKey);
-    localStorage.removeItem('user');
     localStorage.removeItem('student');
+    this.setUser(null);
     this.isAuthenticatedSubject.next(false);
   }
 
@@ -185,6 +214,21 @@ export class AuthService {
   }
 
   /**
+   * Önbellekteki profilden kullanıcının okul kimliğini döner (issue #191).
+   * Önce `schoolId` (yalnızca exam-api refresh ile gelir), yoksa `teacher.schoolId` (login yanıtında da var).
+   * Kayıt yoksa, alan yoksa veya geçersizse null (= okulsuz kullanıcı). Reaktif kullanım için `user` signal'ı.
+   */
+  getSchoolId(): number | null {
+    return AuthService.schoolIdOf(this.getUser());
+  }
+
+  /** Profilden okul kimliğini çözer; `user` signal'ı ile `computed` içinde kullanılabilir. */
+  static schoolIdOf(profile: UserProfile | null | undefined): number | null {
+    const schoolId = Number(profile?.schoolId ?? profile?.teacher?.schoolId);
+    return Number.isFinite(schoolId) && schoolId > 0 ? schoolId : null;
+  }
+
+  /**
    * Önbellekteki `user` kaydının, elimizdeki access token ile aynı kullanıcıya ait olup
    * olmadığını söyler. Token'ın `sub` claim'i ile kayıttaki `keycloakId` karşılaştırılır.
    * Token yoksa, kayıt yoksa, JSON bozuksa veya kimlikler farklıysa `false` döner.
@@ -212,9 +256,9 @@ export class AuthService {
 
   /** Sadece kullanıcıya ait önbellek anahtarlarını siler; token'a dokunmaz, yönlendirme yapmaz. */
   clearCachedUser(): void {
-    localStorage.removeItem('user');
     localStorage.removeItem(this.avatarKey);
     localStorage.removeItem('student');
+    this.setUser(null);
   }
 
   hasToken(): boolean {
@@ -227,7 +271,7 @@ export class AuthService {
         localStorage.setItem(this.tokenKey, res.token);
         localStorage.setItem(this.roleKey, res.profile.role);
         localStorage.setItem(this.avatarKey, res.profile.avatar);
-        localStorage.setItem('user', JSON.stringify(res.profile));
+        this.setUser(res.profile);
         this.isAuthenticatedSubject.next(true);
         // Profildeki dil tercihi aktif dilden farklıysa uygulanır (issue #181).
         // Aynıysa no-op olduğu için reload döngüsü oluşmaz.

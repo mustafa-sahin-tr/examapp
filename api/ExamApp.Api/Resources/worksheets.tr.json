@@ -55,6 +55,7 @@
       "deleted": "Worksheet başarıyla silindi.",
       "visibilityForbidden": "Bu worksheet'in görünürlüğünü değiştirme yetkiniz yok.",
       "visibilityUpdated": "Worksheet görünürlüğü güncellendi.",
+      "schoolOnlyRequiresSchool": "\"Sadece okulum\" paylaşımı için sınav sahibinin bir okula bağlı olması gerekir.",
       "deleteForbidden": "Bu worksheet'i silme yetkiniz yok.",
       "bulkCompleted": "Toplu sınav oluşturma tamamlandı",
       "copied": "Sınav kopyalandı.",

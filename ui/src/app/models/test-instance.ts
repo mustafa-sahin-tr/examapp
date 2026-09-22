@@ -14,6 +14,8 @@ export enum WorksheetTeacherSharing {
   Private = 0,
   PublicView = 1,
   PublicAssignable = 2,
+  /** issue #191: yalnızca sahibin okulundaki öğretmenler görür ve atar; aynı okulda PublicAssignable gibi davranır. */
+  SchoolOnly = 3,
 }
 
 export enum WorksheetStudentVisibility {

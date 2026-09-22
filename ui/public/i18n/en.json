@@ -239,6 +239,7 @@
     "sharingBadge": {
       "publicAssignable": "Public · Assignable",
       "publicView": "Public · View only",
+      "schoolOnly": "My school",
       "sharedBy": "Shared by {{owner}}"
     },
     "spinWheel": {
@@ -278,6 +279,11 @@
         "publicAssignable": {
           "label": "Public (assignable)",
           "description": "All teachers can view it and assign it to their own students without approval."
+        },
+        "schoolOnly": {
+          "label": "My school only",
+          "description": "Only teachers at your school can view and assign it.",
+          "unavailable": "This option is no longer available because you are not linked to a school; pick another option."
         }
       },
       "studentVisibility": {
@@ -288,7 +294,8 @@
       "summaryTeacher": {
         "private": "Only you and an admin can view, edit or assign it.",
         "publicView": "All teachers can view it, assigning requires your approval.",
-        "publicAssignable": "All teachers can view and assign it without approval."
+        "publicAssignable": "All teachers can view and assign it without approval.",
+        "schoolOnly": "Only teachers at your school can view and assign it without approval."
       },
       "summaryStudent": {
         "restricted": "Students can only see it when it is assigned to them.",

@@ -32,6 +32,17 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         _minioService = minioService;
     }
 
+    /// <summary>
+    /// Authoring uçlarındaki "hiç görünmüyorsa NotFound" kapısı: WorksheetAccess.CanView + issue #191 okul
+    /// çifti (SchoolOnly için Teachers'tan çözülür; diğer durumlarda sorgu atılmaz).
+    /// </summary>
+    private async Task<bool> CanViewAsync(Worksheet worksheet, int userId, bool isAdmin, CancellationToken ct = default)
+    {
+        var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct);
+        return WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
+            requesterSchoolId, ownerSchoolId);
+    }
+
     // Allow-list: SVG deliberately excluded (inline-served SVG = stored XSS vector).
     private const long MaxBackgroundImageBytes = 2 * 1024 * 1024; // 2 MB
 
@@ -80,7 +91,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         // diye NotFound; görünüyor (Public* paylaşım) ama düzenleme yetkisi yoksa Forbidden (403).
         var worksheet = await _context.Worksheets
             .FirstOrDefaultAsync(w => w.Id == worksheetId && !w.IsDeleted);
-        if (worksheet == null || !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
+        if (worksheet == null || !await CanViewAsync(worksheet, userId, isAdmin))
         {
             return new UpdateWorksheetBackgroundImageDto
             {
@@ -300,7 +311,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                 // Yetki modeli: "sahibi VEYA admin". Legacy kayıtlar owner sayılmaz.
                 // issue #11: hiç görünmüyorsa (Private/legacy, başkasının) NotFound; görünüyor
                 // (Public* paylaşım) ama düzenleme yetkisi yoksa Forbidden (403) — read-only açılır.
-                if (!WorksheetAccess.CanView(examination.CreateUserId, userId, isAdmin, examination.TeacherSharing, examination.StudentVisibility))
+                if (!await CanViewAsync(examination, userId, isAdmin))
                 {
                     return new ExamSavedDto
                     {
@@ -364,7 +375,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
                     // dönüşüyor — yabancı bir kaydı ezmemek için burada da yetki kapısı koy.
                     // issue #11: hiç görünmüyorsa NotFound; görünüyor (Public* paylaşım) ama düzenleme
                     // yetkisi yoksa Forbidden.
-                    if (!WorksheetAccess.CanView(existingExam.CreateUserId, userId, isAdmin, existingExam.TeacherSharing, existingExam.StudentVisibility))
+                    if (!await CanViewAsync(existingExam, userId, isAdmin))
                     {
                         return new ExamSavedDto
                         {
@@ -541,8 +552,7 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
         // Yetki modeli: "sahibi VEYA admin". Legacy (CreateUserId 0/null) kayıtlar owner sayılmaz.
         // issue #11: yok/silinmiş/hiç görünmeyen (Private, başkasının) → NotFound (varlık sızmasın).
         // Görünen (Public* paylaşım) ama sahibi/admin değilse → Forbidden (403).
-        if (worksheet == null || worksheet.IsDeleted ||
-            !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
+        if (worksheet == null || worksheet.IsDeleted || !await CanViewAsync(worksheet, userId, isAdmin))
         {
             response.Success = false;
             response.NotFound = true;
@@ -595,6 +605,24 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
             return response;
         }
 
+        // issue #191: SchoolOnly, sahibin bir okulu olmasını gerektirir — okul, worksheet SAHİBİNİN
+        // Teachers.SchoolId'sinden (sunucu tarafı) çözülür; istekçinin (admin olabilir) okulu değil.
+        // Okulsuz/bağımsız sahip veya legacy (owner'sız) worksheet için 400: aksi halde admin dışında
+        // kimsenin göremeyeceği bir sınav oluşurdu.
+        int? ownerSchoolId = null;
+        if (dto.TeacherSharing == WorksheetTeacherSharing.SchoolOnly)
+        {
+            ownerSchoolId = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0
+                ? await _context.ResolveTeacherSchoolIdAsync(worksheet.CreateUserId.Value)
+                : null;
+            if (!ownerSchoolId.HasValue)
+            {
+                response.Success = false;
+                response.Message = _localizer["worksheets.authoring.schoolOnlyRequiresSchool"];
+                return response;
+            }
+        }
+
         // PublicView/PublicAssignable -> Private geçişinde mevcut WorksheetAssignment kayıtları
         // (başka öğretmenler tarafından yapılmış olsa dahi) bilinçli olarak iptal edilmiyor.
         worksheet.TeacherSharing = dto.TeacherSharing;
@@ -602,21 +630,34 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
 
         // issue #13: sınav Private'a çekilince atama izni akışındaki tüm aktif grant'lar ve
         // bekleyen talepler sessizce iptal edilir (outbox event üretilmez — issue bildirim demiyor).
-        if (dto.TeacherSharing == WorksheetTeacherSharing.Private)
+        // issue #191: SchoolOnly'ye çekilince aynı iptal yalnızca sahibin okulu DIŞINDAKİ (farklı okul
+        // veya okulsuz) öğretmenlerin grant/talepleri için uygulanır — aynı okul zaten atayabildiği için
+        // grant'i zararsızdır ve korunur (Teachers alt sorgusu; sonradan süzme değil).
+        if (dto.TeacherSharing is WorksheetTeacherSharing.Private or WorksheetTeacherSharing.SchoolOnly)
         {
             var now = DateTime.UtcNow;
 
-            var activeGrants = await _context.WorksheetAccessGrants
-                .Where(g => g.WorksheetId == worksheetId && g.RevokedAt == null)
-                .ToListAsync();
+            var grantQuery = _context.WorksheetAccessGrants
+                .Where(g => g.WorksheetId == worksheetId && g.RevokedAt == null);
+            var requestQuery = _context.WorksheetAccessRequests
+                .Where(r => r.WorksheetId == worksheetId && r.Status == WorksheetAccessRequestStatus.Pending);
+
+            if (dto.TeacherSharing == WorksheetTeacherSharing.SchoolOnly)
+            {
+                var schoolId = ownerSchoolId!.Value;
+                grantQuery = grantQuery.Where(g =>
+                    !_context.Teachers.Any(te => te.UserId == g.TeacherUserId && te.SchoolId == schoolId));
+                requestQuery = requestQuery.Where(r =>
+                    !_context.Teachers.Any(te => te.UserId == r.RequesterUserId && te.SchoolId == schoolId));
+            }
+
+            var activeGrants = await grantQuery.ToListAsync();
             foreach (var grant in activeGrants)
             {
                 grant.RevokedAt = now;
             }
 
-            var pendingRequests = await _context.WorksheetAccessRequests
-                .Where(r => r.WorksheetId == worksheetId && r.Status == WorksheetAccessRequestStatus.Pending)
-                .ToListAsync();
+            var pendingRequests = await requestQuery.ToListAsync();
             foreach (var pending in pendingRequests)
             {
                 pending.Status = WorksheetAccessRequestStatus.Rejected;
@@ -644,8 +685,13 @@ public class WorksheetAuthoringService : IWorksheetAuthoringService
 
         // issue #16: kopyalama yetkisi CanView ile aynı semantikte (CanCopy -> CanView).
         // Kaynak caller'a hiç görünmüyorsa varlık sızmasın diye NotFound.
+        // issue #191: SchoolOnly kaynak yalnızca aynı okuldan kopyalanabilir (okul çifti DB'den).
+        var (sourceOwnerSchoolId, copierSchoolId) = source != null
+            ? await _context.ResolveSchoolContextAsync(source, userId, isAdmin, ct)
+            : (null, null);
         if (source == null ||
-            !WorksheetAccess.CanCopy(source.CreateUserId, userId, isAdmin, source.TeacherSharing, source.StudentVisibility))
+            !WorksheetAccess.CanCopy(source.CreateUserId, userId, isAdmin, source.TeacherSharing, source.StudentVisibility,
+                copierSchoolId, sourceOwnerSchoolId))
         {
             result.Success = false;
             result.NotFound = true;

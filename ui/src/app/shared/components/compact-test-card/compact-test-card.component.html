@@ -1,0 +1,15 @@
+<!-- Thumb dekoratif: görsel yoksa placeholder ikon. Başlık ekran okuyucuya host aria-label ile gider. -->
+<div class="ctc__thumb" [style.background-image]="thumbStyle()" aria-hidden="true">
+  @if (!thumbUrl()) {
+    <mat-icon>description</mat-icon>
+  }
+</div>
+<div class="ctc__info">
+  <span class="ctc__title" [title]="title()">{{ title() }}</span>
+  @if (dueLabel(); as due) {
+    <span class="ctc__due">{{ due }}</span>
+  }
+</div>
+@if (progressLabel(); as progress) {
+  <span class="ctc__progress">{{ progress }}</span>
+}

@@ -15,9 +15,7 @@
     "completed": "Tamamlananlar"
   },
   "resume": {
-    "title": "Kaldığın yerden devam et",
-    "questionCount": "{{count}} soru",
-    "continue": "Devam Et"
+    "title": "Kaldığın yerden devam et"
   },
   "filters": {
     "title": "Filtreler",

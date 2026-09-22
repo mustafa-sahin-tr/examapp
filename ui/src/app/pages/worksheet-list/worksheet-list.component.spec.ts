@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,7 +9,10 @@ import { TestService } from '../../services/test.service';
 import { SubjectService } from '../../services/subject.service';
 import { GradesService } from '../../services/grades.service';
 import { AuthService } from '../../services/auth.service';
+import { LocaleService } from '../../services/locale.service';
+import { AssignedWorksheet } from '../../models/assignment';
 import { Paged, Test } from '../../models/test-instance';
+import { localeDefinitionOf } from '../../models/locale';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -28,6 +32,12 @@ const translocoTesting = TranslocoTestingModule.forRoot({
   },
   preloadLangs: true,
 });
+
+/** Tarih biçimi tarayıcı diline bağlı kalmasın: aktif dil sabit 'tr' (issue #188 kompakt kart bitiş etiketi). */
+const localeServiceStub = {
+  locale: signal('tr' as const).asReadonly(),
+  localeDefinition: signal(localeDefinitionOf('tr')).asReadonly(),
+};
 
 describe('WorksheetListComponent', () => {
   let component: WorksheetListComponent;
@@ -63,6 +73,7 @@ describe('WorksheetListComponent', () => {
         { provide: SubjectService, useValue: subjectService },
         { provide: GradesService, useValue: gradesService },
         { provide: AuthService, useValue: authService },
+        { provide: LocaleService, useValue: localeServiceStub },
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
         {
           provide: ActivatedRoute,
@@ -147,6 +158,146 @@ describe('WorksheetListComponent', () => {
 
       expect(component.discoverAssignedTests()).toEqual([]);
       expect(component.discoverExploreTests()).toEqual([]);
+    });
+  });
+
+  describe('compact cards (issue #188)', () => {
+    let router: jasmine.SpyObj<Router>;
+
+    const assignedTest: Partial<Test> = { id: 11, name: 'Atanan Sınav', isAssigned: true, imageUrl: 'a.png' };
+    const exploreTest: Partial<Test> = { id: 22, name: 'Keşfet Sınavı', isAssigned: false };
+
+    function setPaged(items: Partial<Test>[]): void {
+      component.paged.set({ items: items as Test[], totalCount: items.length, pageNumber: 1, pageSize: 12 });
+    }
+
+    function compactCards(root: HTMLElement = fixture.nativeElement): HTMLElement[] {
+      return Array.from(root.querySelectorAll<HTMLElement>('app-compact-test-card'));
+    }
+
+    function richCards(root: HTMLElement = fixture.nativeElement): HTMLElement[] {
+      return Array.from(root.querySelectorAll<HTMLElement>('app-worksheet-list-view-card'));
+    }
+
+    function section(index: number): HTMLElement {
+      const root = fixture.nativeElement as HTMLElement;
+      return root.querySelectorAll<HTMLElement>('.wl__section')[index];
+    }
+
+    beforeEach(() => {
+      router = TestBed.inject(Router) as jasmine.SpyObj<Router>;
+      router.navigate.calls.reset();
+    });
+
+    it('resumeStrip_InProgressTests_RendersCompactCardsWithProgressBadge', () => {
+      component.inProgressTests.set([
+        {
+          id: 5,
+          name: 'Devam Eden',
+          questionCount: 10,
+          instance: { correctAnswers: 2, wrongAnswers: 2, totalQuestions: 10, status: 0 },
+        } as Test,
+      ]);
+      fixture.detectChanges();
+
+      const strip = fixture.nativeElement.querySelector('.wl__strip') as HTMLElement;
+      const cards = compactCards(strip);
+
+      expect(cards.length).toBe(1);
+      expect(cards[0].querySelector('.ctc__title')?.textContent?.trim()).toBe('Devam Eden');
+      expect(cards[0].querySelector('.ctc__progress')?.textContent?.trim()).toBe('%40');
+      expect(strip.querySelector('.wl__strip-card')).toBeNull();
+    });
+
+    it('resumeStrip_CardActivated_NavigatesToWorksheet', () => {
+      component.inProgressTests.set([{ id: 5, name: 'Devam Eden', instance: { status: 0 } } as Test]);
+      fixture.detectChanges();
+
+      compactCards(fixture.nativeElement.querySelector('.wl__strip'))[0].click();
+
+      expect(router.navigate).toHaveBeenCalledOnceWith(['/test', 5]);
+    });
+
+    it('resumeProgressPercent_NoInstance_ReturnsNull', () => {
+      expect(component.resumeProgressPercent({ id: 1, name: 'x' } as Test)).toBeNull();
+    });
+
+    it('resumeProgressPercent_InstanceWithoutTotal_ReturnsZero', () => {
+      expect(component.resumeProgressPercent({ id: 1, name: 'x', instance: { status: 0 } } as Test)).toBe(0);
+    });
+
+    it('discoverAssigned_RendersCompactCardsWithDueDateOnly_ExploreKeepsRichCards', () => {
+      component.assignments.set([
+        { assignmentId: 1, worksheetId: 11, name: 'Atanan Sınav', endAt: '2026-03-12T10:00:00Z' } as AssignedWorksheet,
+      ]);
+      setPaged([assignedTest, exploreTest]);
+      fixture.detectChanges();
+
+      const assignedSection = section(0);
+      const exploreSection = section(1);
+      const cards = compactCards(assignedSection);
+
+      expect(cards.length).toBe(1);
+      expect(richCards(assignedSection).length).toBe(0);
+      expect(cards[0].querySelector('.ctc__title')?.textContent?.trim()).toBe('Atanan Sınav');
+      expect(cards[0].querySelector('.ctc__due')?.textContent?.trim()).toBe(
+        `Bitiş: ${new Date('2026-03-12T10:00:00Z').toLocaleDateString('tr')}`
+      );
+      expect(cards[0].querySelector('.ctc__progress')).toBeNull();
+      expect(compactCards(exploreSection).length).toBe(0);
+      expect(richCards(exploreSection).length).toBe(1);
+    });
+
+    it('discoverAssigned_NoAssignmentRecord_RendersCompactCardWithoutDue', () => {
+      setPaged([assignedTest]);
+      fixture.detectChanges();
+
+      const card = compactCards(section(0))[0];
+
+      expect(card).toBeTruthy();
+      expect(card.querySelector('.ctc__due')).toBeNull();
+    });
+
+    it('discoverAssigned_CardActivated_NavigatesToWorksheet', () => {
+      setPaged([assignedTest]);
+      fixture.detectChanges();
+
+      compactCards(section(0))[0].click();
+
+      expect(router.navigate).toHaveBeenCalledOnceWith(['/test', 11]);
+    });
+
+    it('discoverAssigned_ListViewMode_StillRendersCompactCards', () => {
+      setPaged([assignedTest, exploreTest]);
+      component.viewMode.set('list');
+      fixture.detectChanges();
+
+      const grid = section(0).querySelector('.wl__compact-grid') as HTMLElement;
+
+      expect(grid.classList).toContain('wl__compact-grid--list');
+      expect(compactCards(section(0)).length).toBe(1);
+      expect(richCards(section(1)).length).toBe(1);
+    });
+
+    it('discoverAssigned_Empty_KeepsEmptyMessage', () => {
+      setPaged([exploreTest]);
+      fixture.detectChanges();
+
+      expect(section(0).querySelector('.wl__empty--section p')?.textContent?.trim()).toBe(
+        'Sana atanmış aktif bir sınav yok.'
+      );
+      expect(compactCards(section(0)).length).toBe(0);
+    });
+
+    it('otherTabs_RenderRichCardsNotCompact', () => {
+      // setTab bucket'ları yeniden yükler (spy boş döner); liste bu yüzden sekme değişiminden sonra set edilir.
+      component.setTab('inprogress');
+      component.inProgressTests.set([{ id: 7, name: 'Devam', instance: { status: 0 } } as Test]);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.wl__strip')).toBeNull();
+      expect(compactCards().length).toBe(0);
+      expect(richCards().length).toBe(1);
     });
   });
 

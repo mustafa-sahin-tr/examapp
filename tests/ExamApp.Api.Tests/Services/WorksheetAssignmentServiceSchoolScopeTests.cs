@@ -11,11 +11,12 @@ namespace ExamApp.Api.Tests.Services;
 /// issue #190 (güvenlik incelemesi): worksheet SAHİBİ de başka okulun öğrencisine atama yapamaz;
 /// red mesajı "öğrenci bulunamadı" ile aynıdır (var/yok oracle'ı kapalı). Aynı okul ve admin serbest.
 /// assignments/overview: öğrenci listesi istek sahibinin okuluyla sınırlı.
+/// issue #192: bağımsız (okulsuz) sahip yalnızca kendi Approved Booking'i olan öğrenciye atar / overview'da onları görür.
 /// </summary>
 public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy(ctx));
 
     private const int OwnerUserId = 1;
     private static readonly DateTime Start = new(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc);
@@ -111,6 +112,111 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var overview = await NewService(ctx).GetWorksheetAssignmentsForTeacherAsync(ws, SchoolScope.For(OwnerUserId, schoolA));
+
+        var assignment = overview.Assignments.ShouldHaveSingleItem();
+        assignment.Students.Select(s => s.StudentId).ShouldBe(new[] { studentA });
+    }
+
+    // ---- issue #192: bağımsız (okulsuz) worksheet sahibi ----
+
+    private const int TutorUserId = 2;
+    private const int OtherTutorUserId = 3;
+
+    /// <summary>
+    /// Bağımsız sahip (TutorUserId) kendi worksheet'i "T" ile: studentA Approved, studentB Pending, studentNone booking yok.
+    /// studentNone'a başka bir tutor'un Approved booking'i var (yalnızca kendi booking'i sayılmalı).
+    /// </summary>
+    private async Task<(int wsId, int gradeId, int studentA, int studentB, int studentNone)> SeedIndependentAsync()
+    {
+        var (_, gradeId, _, _, studentA, studentB, studentNone) = await SeedAsync();
+        await using var ctx = _db.NewContext();
+        ctx.SetCurrentUser(TutorUserId);
+
+        var tutor = new Teacher { UserId = TutorUserId, SchoolId = null, IsIndependentTutor = true };
+        var other = new Teacher { UserId = OtherTutorUserId, SchoolId = null, IsIndependentTutor = true };
+        var ws = new Worksheet { Name = "T", Description = "", GradeId = gradeId };
+        ctx.AddRange(tutor, other, ws);
+        await ctx.SaveChangesAsync();
+
+        BookingSeed.Add(ctx, tutor.Id, studentA, BookingStatus.Approved, 8);
+        BookingSeed.Add(ctx, tutor.Id, studentB, BookingStatus.Pending, 9);
+        BookingSeed.Add(ctx, other.Id, studentNone, BookingStatus.Approved, 8);
+        await ctx.SaveChangesAsync();
+
+        return (ws.Id, gradeId, studentA, studentB, studentNone);
+    }
+
+    [Fact]
+    public async Task IndependentOwner_CanAssignToStudentWithApprovedBooking_EvenIfStudentIsSchoolBound()
+    {
+        var (ws, _, studentA, _, _) = await SeedIndependentAsync();
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), TutorUserId, isAdmin: false);
+
+        r.Success.ShouldBeTrue();
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task IndependentOwner_CannotAssignToPendingBookingStudent_LooksLikeNotFound()
+    {
+        var (ws, _, _, studentB, _) = await SeedIndependentAsync();
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), TutorUserId, isAdmin: false);
+        var missing = await NewService(ctx).AssignWorksheetAsync(Req(ws, 99999), TutorUserId, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        r.Message.ShouldBe(missing.Message);
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task IndependentOwner_CannotAssignToIndependentStudentWithoutOwnBooking()
+    {
+        // #190'da okulsuz→okulsuz izinliydi; #192: başka tutor'un Approved booking'i de yetmez.
+        var (ws, _, _, _, studentNone) = await SeedIndependentAsync();
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentNone), TutorUserId, isAdmin: false);
+
+        r.Success.ShouldBeFalse();
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task IndependentOwner_GradeAssignment_CurrentBehaviour_IsAllowedWithNullSchoolId_See222()
+    {
+        // Mevcut davranışı SABİTLER (bilinçli olarak #192'de değiştirilmedi, bkz. issue #222): bağımsız sahip sınıfa
+        // atama yapabiliyor ve WorksheetAssignment.SchoolId=null yazılıyor → o sınıftaki TÜM öğrencilere (okul fark etmez)
+        // görünür. #222 bu davranışı değiştirdiğinde bu test kırılmalı ve güncellenmelidir.
+        var (ws, gradeId, _, _, _) = await SeedIndependentAsync();
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx).AssignWorksheetAsync(
+            new WorksheetAssignmentRequestDto { WorksheetId = ws, GradeId = gradeId, StartAt = Start }, TutorUserId, isAdmin: false);
+
+        r.Success.ShouldBeTrue();
+        var assignment = await ctx.WorksheetAssignments.SingleAsync();
+        assignment.GradeId.ShouldBe(gradeId);
+        assignment.StudentId.ShouldBeNull();
+        assignment.SchoolId.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Overview_IndependentRequester_GradeAssignment_ListsOnlyApprovedBookingStudents()
+    {
+        var (ws, gradeId, studentA, _, _) = await SeedIndependentAsync();
+        await using (var setup = _db.NewContext())
+        {
+            setup.SetCurrentUser(TutorUserId);
+            setup.WorksheetAssignments.Add(new WorksheetAssignment { WorksheetId = ws, GradeId = gradeId, StartAt = Start });
+            await setup.SaveChangesAsync();
+        }
+
+        await using var ctx = _db.NewContext();
+        var overview = await NewService(ctx).GetWorksheetAssignmentsForTeacherAsync(ws, SchoolScope.For(TutorUserId, null));
 
         var assignment = overview.Assignments.ShouldHaveSingleItem();
         assignment.Students.Select(s => s.StudentId).ShouldBe(new[] { studentA });

@@ -40,7 +40,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
         var tp = new FakeTimeProvider(now ?? FixedNow);
         var recurring = new RecurringAvailabilityService(ctx, tp, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
-            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
+            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
     }
 
     private static CreateRecurringAvailabilityRuleDto WednesdayRule(DateOnly? effectiveFrom = null, DateOnly? effectiveUntil = null) => new()

@@ -130,8 +130,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         Student? student = null;
         if (request.StudentId.HasValue)
         {
-            student = await _context.Students
-                .AsNoTracking()
+            // issue #190: farklı okulun öğrencisi "yok" gibi davranır — success/notFound id oracle'ı kapanır.
+            // issue #192: bağımsız (okulsuz) öğretmen yalnızca Approved Booking'i olan öğrenciye atayabilir.
+            // Kapsam filtresi ve var/yok tek sorguda (policy ApplyScope: okullu → okul eşitliği, bağımsız → Approved
+            // Booking EXISTS, admin → filtre yok); kapsam dışı öğrenci de "bulunamadı" döner.
+            student = await _schoolAccessPolicy.ApplyScope(_context.Students.AsNoTracking(), requesterScope)
                 .FirstOrDefaultAsync(s => s.Id == request.StudentId.Value);
 
             if (student == null)
@@ -139,15 +142,11 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.studentNotFound"] };
             }
 
+            // Savunma amaçlı: okullu non-owner için ApplyScope zaten SchoolId eşitliğini garanti eder (farklı okul
+            // yukarıda "bulunamadı"), bu dal yalnızca kapsam ile assignmentSchoolId ayrışırsa devreye girer.
             if (!isOwnerOrAdmin && student.SchoolId != assignmentSchoolId)
             {
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
-            }
-
-            // issue #190: farklı okulun öğrencisi "yok" gibi davranır — success/notFound id oracle'ı kapanır.
-            if (!_schoolAccessPolicy.CanAccess(requesterScope, student.SchoolId))
-            {
-                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.studentNotFound"] };
             }
 
             // Öğrenci hedefli atamalarda SchoolId set edilmez — zaten öğrenciye özel.

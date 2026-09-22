@@ -58,6 +58,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsSeedData")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("KeycloakId")
                         .IsRequired()
                         .HasMaxLength(50)

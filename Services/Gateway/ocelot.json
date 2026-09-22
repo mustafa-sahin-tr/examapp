@@ -31,6 +31,18 @@
       "UpstreamPathTemplate": "/question-detector-dev/{everything}"
     },
     {
+      "DownstreamPathTemplate": "/__blocked/api/auth/dev/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/dev/{everything}",
+      "Priority": 2
+    },
+    {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

@@ -90,7 +90,12 @@ public class WorksheetDetailService : IWorksheetDetailService
         // Öğretmen yalnızca kendi worksheet'inin detayını görür; admin hepsini. Öğrenci akışı değişmez.
         // Legacy (CreateUserId null/0) kayıtlar Public* işaretli olsa bile admin dışında kimseye
         // görünmez — bu kural WorksheetAccess.CanView içinde merkezi olarak uygulanır (issue #11 AC).
-        if (isTeacher && !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
+        // issue #191: SchoolOnly için okul çifti DB'den (yalnızca gerekiyorsa sorgu atar).
+        var (ownerSchoolId, requesterSchoolId) = isTeacher
+            ? await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct)
+            : (null, null);
+        if (isTeacher && !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
+                requesterSchoolId, ownerSchoolId))
             return null;
 
         // Base worksheet bilgisi authenticated Student/Teacher'a açık (eski GET {id} ile aynı açıklık).
@@ -188,7 +193,8 @@ public class WorksheetDetailService : IWorksheetDetailService
                 IsOwner = isWorksheetOwner,
                 OwnerName = ownerName,
                 CanEdit = isTeacher && WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin),
-                CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasApprovedGrant)
+                CanAssign = isTeacher && WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasApprovedGrant,
+                    requesterSchoolId, ownerSchoolId)
             },
             RewardBadgeText = worksheet.BadgeText,
             Stats = new WorksheetStatsDto

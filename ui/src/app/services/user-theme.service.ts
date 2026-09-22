@@ -145,7 +145,7 @@ export class UserThemeService {
           user.teacher.themePreset = themePreset;
           user.teacher.themeCustomConfig = themeCustomConfig;
         }
-        localStorage.setItem('user', JSON.stringify(user));
+        this.authService.setUser(user);
       } catch (error) {
         console.warn('Failed to update user profile in storage:', error);
       }

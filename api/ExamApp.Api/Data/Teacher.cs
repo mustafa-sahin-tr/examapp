@@ -67,4 +67,11 @@ public class Teacher : BaseEntity, ISchoolScoped
 
     /// <summary>Verdiği dersler (curriculum Subject tablosu ile many-to-many).</summary>
     public ICollection<TeacherSubject> TeacherSubjects { get; set; } = new List<TeacherSubject>();
+
+    /// <summary>
+    /// Kayıt test verisi aracı (<c>seed-teachers</c>, issue #217) tarafından mı oluşturuldu?
+    /// Gerçek öğretmenlerden ayırt etmek ve toplu temizlemek (issue #218) için. Normal register
+    /// akışıyla açılan kayıtlarda false.
+    /// </summary>
+    public bool IsSeedData { get; set; }
 }

@@ -58,7 +58,7 @@ public sealed class SchoolSeedService : ISchoolSeedService
     }
 
     public static bool IsAllowedEnvironment(IHostEnvironment environment)
-        => environment.IsDevelopment() || environment.IsStaging();
+        => ExamApp.Api.Services.Seed.SeedCommands.IsAllowedEnvironment(environment);
 
     public async Task<SchoolSeedResult> RunAsync(SchoolSeedOptions options, CancellationToken ct = default)
     {

@@ -58,7 +58,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+var serviceClients = builder.Configuration.GetSection("Keycloak:ServiceClients").Get<string[]>();
+builder.Services.AddAuthorization(options =>
+{
+    // Service-to-service only (issue #217: exam API'nin seed-teachers komutu) — BadgeService/exam API
+    // ile aynı ortak karar noktası (ExamApp.Foundation.Security.ServicePrincipal).
+    options.AddPolicy("Service", policy =>
+        policy.RequireAssertion(context =>
+            ExamApp.Foundation.Security.ServicePrincipal.IsService(context.User, serviceClients)));
+});
 
 // Login/exchange brute-force koruması (bkz. Helpers/AuthRateLimiting.cs). Forwarded-headers
 // kaydı da burada: gateway arkasında limiter anahtarı gerçek istemci IP'si olmalı.
@@ -87,6 +95,12 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
+// Dev-only toplu kullanıcı oluşturma (issue #217). YALNIZCA Development/Staging'de kayıt olur;
+// Production'da DevSeedController servisi null çözümler ve 404 döner (ortam guard'ının ilk katmanı).
+if (DevUserSeedService.IsAllowedEnvironment(builder.Environment))
+{
+    builder.Services.AddScoped<IDevUserSeedService, DevUserSeedService>();
+}
 builder.Services.AddScoped<IClaimsTransformation, KeycloakRoleTransformer>();
 builder.Services.AddSingleton<ImageHelper>();
 

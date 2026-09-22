@@ -104,3 +104,75 @@ kayıtlarda `IsSeedData = true` — elle açılan okullardan ayırt etmek ve ger
 - Kolon sınırlarını aşan kayıt yok (en uzun ad 87, kurum kodu 6 karakter).
 - Özel okul dizinde pratikte yok. `okul_turu` ad'dan türetilmiş (upstream README).
 - "Bakanlık / Merkeze Bağlı Taşra" satırları il değildir; il filtresinde zaten dışarıda kalır.
+
+## `seed-teachers` — okula bağlı öğretmen hesapları (issue #217)
+
+`seed-schools` ile açılmış (`Schools.IsSeedData = true`) okullar için öğretmen hesabı üretir. Her hesap üç
+yerde doğar: Keycloak kullanıcısı (rol `Teacher`, `school_id` attribute'u), identity DB `Users`
+(`IsSeedData = true`), exam DB `Teachers` (`SchoolId`, `ApprovalStatus = Approved`, `IsSeedData = true`,
+branş `TeacherSubjects`). Ortaokul: 2 Türkçe, 2 Matematik, 2 Fen Bilimleri, 2 Sosyal Bilgiler, 1 İngilizce,
+1 Din Kültürü (10). İlkokul: 1'er Türkçe/Matematik/Fen/Sosyal/İngilizce (5). Tür okul adından çıkarılır
+(`…Ortaokulu` / `…İlkokulu`; İmam Hatip Ortaokulu = Ortaokul), çıkarılamayan okul raporlanıp atlanır.
+
+```bash
+cd api/ExamApp.Api
+SeedData__Password='<parola>' dotnet run -- seed-teachers --provinces Kars --limit-schools-per-province 2 --dry-run
+SeedData__Password='<parola>' dotnet run -- seed-teachers --provinces Kars --limit-schools-per-province 2
+```
+
+### Ön koşullar
+
+| Gereksinim | Neden |
+|---|---|
+| Ortam `Development` ya da `Staging` | Program.cs host kurulmadan reddeder (exit 2); servisler Production'da DI'a bile kaydedilmez |
+| **auth-api ayakta ve bu sürümü içeriyor** (`POST /api/auth/dev/seed-users`) | Keycloak + identity yazımını auth-api yapar; eski build 404 döner |
+| `AuthApiBaseUrl` → **doğrudan auth-api** (örn. `http://localhost:6079`), gateway DEĞİL | Gateway `/api/auth/dev/*` yolunu bilerek engeller (aşağıya bakınız) |
+| `Keycloak:AdminClientId/Secret` (exam API) → client_credentials servis token'ı | auth-api ucu yalnızca `Service` policy ile (`exam-service` rolü ya da auth-api `Keycloak:ServiceClients` listesi; varsayılan `exam-admin`) |
+| `SeedData:Password` | Ortak parola; **yalnızca** ortam değişkeni `SeedData__Password` ya da `dotnet user-secrets set "SeedData:Password" "<parola>"` (api/ExamApp.Api dizininde). `.env` dosyası bu komut için okunmaz. Koda/commit'e girmez. |
+| `Subjects` tablosunda 6 branş adı (TopicSeed) | Yoksa komut hangi branşların eksik olduğunu söyleyip durur |
+
+E-posta deseni (deterministik, idempotency ve #218 temizliği için anahtar):
+`seed.t.<kurumKodu>.<brans>.<n>@seed.examapp.local` (`brans ∈ turkce|matematik|fen|sosyal|ingilizce|din`).
+Ad/soyad uydurma havuzdan e-postanın SHA-256'sı ile seçilir; tekrar koşu aynı adı verir. auth-api yalnızca
+`seed.*@seed.examapp.local` e-postalarını kabul eder (`ExamApp.Foundation.Security.SeedDataConventions`);
+gerçek bir kullanıcı e-postası 400 ile reddedilir, hiçbir yazma yapılmaz. Keycloak'ta zaten var olan ama
+identity'de seed kaydı olmayan hesaplara dokunulmaz (`SkippedForeign`, raporda hata sayılır).
+
+### Seçenekler
+
+| Seçenek | Açıklama |
+|---|---|
+| `--provinces a,b` | Hangi illerin seed okulları (varsayılan: 10 il) |
+| `--limit-schools-per-province N` | İl başına ada göre (tr-TR) sıralı ilk N okul |
+| `--dry-run` | auth-api çağrılmaz, yazılmaz; plan ve hesap listesi raporlanır (parola gerekmez) |
+| `--keycloak-mode admin-api\|partial-import` | Aşağıdaki ölçüme göre seçin (varsayılan `admin-api`) |
+| `--batch-size N` | auth-api'ye istek başına hesap (varsayılan 100, en fazla 500) |
+| `--no-events` | `UserPreferredLocaleChangedEvent` outbox satırlarını yazma (BadgeService dil tercihi varsayılana düşer; hacim için) |
+| `--no-migrate`, `--connection` | `seed-schools` ile aynı |
+
+Çıkış kodları: 0 tamam, 1 kullanım, 2 ortam reddi, 3 hata **(kısmi başarı dahil — bir hesap bile başarısızsa 3;
+tamamlanan partiler kalıcıdır, tekrar koşu eksikleri tamamlar)**.
+
+### Keycloak yazma yolu ve ölçüm (yerel Aspire, Keycloak 26.7, 2026-09-22)
+
+| Mod | İstek / hesap | Ölçülen | ≈ ms/hesap | 86k hesap (10 il tam kapsam) tahmini |
+|---|---|---|---|---|
+| `admin-api` | `POST /users` + `POST role-mappings` (admin token parti başına cache) | 15 hesap → 2 743 ms | **≈180** | ≈ 4,3 saat yalnız Keycloak |
+| `partial-import` | parti başına tek `POST /partialImport` (SKIP), önceden hash'lenmiş `pbkdf2-sha512` parola, `realmRoles` = `Teacher` + realm default rolü | 20 hesap → 442 ms | **≈20–30** | ≈ 35–45 dk Keycloak; identity/exam DB ile toplam ≈ 1–1,5 saat |
+
+Küçük örneklem için `admin-api` yeterli; tam kapsam için `--keycloak-mode partial-import --batch-size 500`
+(gerekirse `--no-events`). Partial import'ta Keycloak parolayı verildiği hash ile saklar ve ilk başarılı
+login'de realm politikasına (argon2) yeniden hash'ler — beklenen davranış. İkisi de idempotenttir; tekrar
+koşu Keycloak/identity/exam'de mevcut kaydı bulur ve kopya açmaz.
+
+### Gateway
+
+`Services/Gateway/ocelot*.json` içinde `/api/auth/dev/{everything}` yolu `/api/auth/{everything}` route'undan
+önce (Priority 2) tanımlıdır ve auth-api'de var olmayan `/__blocked/...` yoluna gider → gateway üzerinden
+her zaman **404**. Dev ucu dışarıdan erişilemez; komut `AuthApiBaseUrl` ile auth-api'ye doğrudan gider.
+
+### Bilinen yerel ortam notu
+
+Yerel Keycloak volume'u `deploy/keycloak/import/realm-export.json`'dan sapmışsa (`school_id` protocol
+mapper'ı / user-profile attribute'u yoksa) Keycloak `school_id` attribute'unu sessizce düşürür ve JWT'de
+`school_id` claim'i çıkmaz — bu, normal register akışı için de geçerlidir; çözüm realm'i yeniden import etmektir.

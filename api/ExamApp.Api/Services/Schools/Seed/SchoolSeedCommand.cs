@@ -20,13 +20,20 @@ namespace ExamApp.Api.Services.Schools.Seed;
 /// servis DI'a hiç kaydedilmez (<see cref="SchoolSeedServiceCollectionExtensions"/>).</para>
 /// </summary>
 public sealed record SchoolSeedCommand(SchoolSeedOptions Options, string? ConnectionString, bool ShowHelp, bool NoMigrate = false)
+    : ExamApp.Api.Services.Seed.ISeedCommand
 {
     public const string Name = "seed-schools";
 
-    public const int ExitOk = 0;
-    public const int ExitUsage = 1;
-    public const int ExitEnvironmentRefused = 2;
-    public const int ExitFailed = 3;
+    public const int ExitOk = ExamApp.Api.Services.Seed.SeedCommands.ExitOk;
+    public const int ExitUsage = ExamApp.Api.Services.Seed.SeedCommands.ExitUsage;
+    public const int ExitEnvironmentRefused = ExamApp.Api.Services.Seed.SeedCommands.ExitEnvironmentRefused;
+    public const int ExitFailed = ExamApp.Api.Services.Seed.SeedCommands.ExitFailed;
+
+    public string CommandName => Name;
+    public string UsageText => Usage;
+
+    Task<int> ExamApp.Api.Services.Seed.ISeedCommand.RunAsync(IServiceProvider services, IHostEnvironment environment)
+        => RunAsync(services, environment, this);
 
     public static string Usage => """
         Kullanım: dotnet run -- seed-schools [seçenekler]

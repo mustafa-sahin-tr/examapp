@@ -87,22 +87,53 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
         profile!.GradeId.ShouldBe(g2);
     }
 
+    /// <summary>
+    /// issue #192: profilinde okul olmayan (bağımsız) öğretmen yalnızca kendi Approved Booking'i olan öğrencileri görür.
+    /// (#190'da bu test okulsuz öğretmenin okulsuz öğrenciyi booking'siz gördüğünü doğruluyordu — bilinçli değişti.)
+    /// </summary>
     [Fact]
-    public async Task Student_lookup_is_teacher_only()
+    public async Task Student_lookup_is_teacher_only_and_independent_teacher_sees_only_approved_booking_students()
     {
         var gradeId = await SeedGradeAsync();
-        await WithDbAsync(async db =>
+        var (approvedStudentId, pendingStudentId, teacherId) = await WithDbAsync(async db =>
         {
-            db.Students.Add(new Student { UserId = 20, StudentNumber = "200", SchoolName = "S", GradeId = gradeId });
+            var approved = new Student { UserId = 20, StudentNumber = "200", SchoolName = "S", GradeId = gradeId };
+            var pending = new Student { UserId = 22, StudentNumber = "220", SchoolName = "S", GradeId = gradeId };
+            var tutor = new Teacher { UserId = 21, SchoolId = null, IsIndependentTutor = true };
+            db.AddRange(approved, pending, tutor);
             await db.SaveChangesAsync();
+            return (approved.Id, pending.Id, tutor.Id);
         });
 
         var student = await ClientAsAsync(20, "Student", "kc-20", "Student");
         (await student.GetAsync("/api/student/lookup")).StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         var teacher = await ClientAsAsync(21, "Teacher", "kc-21", "Teacher");
-        var list = await teacher.GetFromJsonAsync<List<StudentLookupDto>>("/api/student/lookup", Json);
-        list!.ShouldContain(s => s.StudentNumber == "200");
+
+        // Booking yok → bağımsız öğretmen kimseyi görmez.
+        var before = await teacher.GetFromJsonAsync<List<StudentLookupDto>>("/api/student/lookup", Json);
+        before!.ShouldBeEmpty();
+
+        await WithDbAsync(async db =>
+        {
+            var slot1 = new TeacherAvailabilitySlot
+            {
+                TeacherId = teacherId, Date = new DateOnly(2026, 10, 1), StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(9, 0), CreatedAt = DateTime.UtcNow,
+            };
+            var slot2 = new TeacherAvailabilitySlot
+            {
+                TeacherId = teacherId, Date = new DateOnly(2026, 10, 1), StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(10, 0), CreatedAt = DateTime.UtcNow,
+            };
+            db.AddRange(slot1, slot2);
+            await db.SaveChangesAsync();
+            db.Bookings.AddRange(
+                new Booking { TeacherId = teacherId, StudentId = approvedStudentId, AvailabilitySlotId = slot1.Id, Status = BookingStatus.Approved, CreatedAt = DateTime.UtcNow },
+                new Booking { TeacherId = teacherId, StudentId = pendingStudentId, AvailabilitySlotId = slot2.Id, Status = BookingStatus.Pending, CreatedAt = DateTime.UtcNow });
+            await db.SaveChangesAsync();
+        });
+
+        var after = await teacher.GetFromJsonAsync<List<StudentLookupDto>>("/api/student/lookup", Json);
+        after!.Select(s => s.StudentNumber).ShouldBe(new[] { "200" });
     }
 
     [Fact]

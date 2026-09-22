@@ -3,6 +3,7 @@ using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.QuestionTransfer;
+using ExamApp.Api.Services.Schools.Seed;
 using ExamApp.Api.Services.StudentReset;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Video;
@@ -19,7 +20,49 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
 
-var builder = WebApplication.CreateBuilder(args);
+// Komut modu (issue #216): `dotnet run -- seed-schools [...]` — host kurulur ama Kestrel açılmaz;
+// komut çalışıp süreç çıkar. Hatalı kullanım burada yakalanır ki host hiç kurulmasın.
+SchoolSeedCommand? seedSchoolsCommand = null;
+if (SchoolSeedCommand.IsRequested(args))
+{
+    try
+    {
+        seedSchoolsCommand = SchoolSeedCommand.Parse(args);
+    }
+    catch (ArgumentException ex)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return SchoolSeedCommand.ExitUsage;
+    }
+}
+
+// Komut modunda komut arg'ları IConfiguration'a sızmasın (`--limit 5` → config "limit" gibi).
+var builder = WebApplication.CreateBuilder(seedSchoolsCommand is null ? args : []);
+
+if (seedSchoolsCommand is not null)
+{
+    // Ortam guard'ı — host BUILD EDİLMEDEN, Migrate()/ReferenceDataSeed çalışmadan, --connection
+    // override'ı uygulanmadan. Production'da hedef DB'ye hiç dokunulmaz.
+    if (!SchoolSeedService.IsAllowedEnvironment(builder.Environment))
+    {
+        Console.Error.WriteLine(
+            $"seed-schools yalnızca Development/Staging ortamında çalışır; mevcut ortam: {builder.Environment.EnvironmentName}.");
+        return SchoolSeedCommand.ExitEnvironmentRefused;
+    }
+
+    if (seedSchoolsCommand.ShowHelp)
+    {
+        Console.WriteLine(SchoolSeedCommand.Usage);
+        return SchoolSeedCommand.ExitOk;
+    }
+
+    // --connection: Aspire'ın ürettiği yerel Postgres'e appsettings'teki docker-compose adresiyle
+    // ulaşılamadığında bağlantıyı komut satırından geçmek için. Yalnızca bu süreç için geçerli.
+    if (seedSchoolsCommand.ConnectionString is { Length: > 0 } seedConnection)
+    {
+        builder.Configuration["ConnectionStrings:DefaultConnection"] = seedConnection;
+    }
+}
 
 builder.AddServiceDefaults();
 
@@ -177,6 +220,8 @@ builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(
     builder.Configuration.GetSection(ExamApp.Api.Services.Classifier.GeminiCacheOptions.SectionName));
 builder.Services.AddScoped<ExamApp.Api.Services.Taxonomy.ITaxonomyService, ExamApp.Api.Services.Taxonomy.TaxonomyService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Schools.ISchoolService, ExamApp.Api.Services.Schools.SchoolService>();
+// Test verisi: MEB türevi okul listesi içe aktarma (issue #216). Yalnızca Development/Staging'de kayıt olur.
+builder.Services.AddSchoolSeed(builder.Environment);
 builder.Services.AddScoped<ExamApp.Api.Services.Locations.ILocationService, ExamApp.Api.Services.Locations.LocationService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Classifier.IClassifierCacheService, ExamApp.Api.Services.Classifier.ClassifierCacheService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Dashboard.IDashboardService, ExamApp.Api.Services.Dashboard.DashboardService>();
@@ -249,12 +294,16 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
+// Komut modunda --no-migrate: bekleyen migration'lar ve il/ilçe referans seed'i atlanır.
+var runStartupDatabaseSteps = seedSchoolsCommand is null || !seedSchoolsCommand.NoMigrate;
+
 // Database migration (prod-safe default for single-instance deployments).
 // Fail fast: a failed migration means the schema is wrong — the app must not
 // start and serve requests against it. EF's EnableRetryOnFailure already
 // covers transient "DB not ready yet" blips.
-using (var scope = app.Services.CreateScope())
+if (runStartupDatabaseSteps)
 {
+    using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
     try
     {
@@ -271,8 +320,9 @@ using (var scope = app.Services.CreateScope())
 
 // İl / ilçe referans verisi (issue #91). İdempotent: tablolar doluysa atlar.
 // Seed başarısızlığı uygulamayı durdurmaz — okul adres formu il listesi boş kalır, diğer akışlar çalışır.
-using (var scope = app.Services.CreateScope())
+if (runStartupDatabaseSteps)
 {
+    using var scope = app.Services.CreateScope();
     var services = scope.ServiceProvider;
     try
     {
@@ -282,6 +332,15 @@ using (var scope = app.Services.CreateScope())
     {
         services.GetRequiredService<ILogger<Program>>()
             .LogError(ex, "Province/District reference data seed failed.");
+    }
+}
+
+// Komut modu (issue #216): host kuruldu, şema ve il/ilçe referansı hazır — Kestrel açılmadan çalış ve çık.
+if (seedSchoolsCommand is not null)
+{
+    await using (app)
+    {
+        return await SchoolSeedCommand.RunAsync(app.Services, app.Environment, seedSchoolsCommand);
     }
 }
 
@@ -342,4 +401,5 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Classifier.IClassifierCacheService
     app.Configuration.GetValue<string>("Classifier:ReconcileCron") ?? "0 * * * *");
 
 app.Run();
+return 0;
 

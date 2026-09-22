@@ -1430,7 +1430,14 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("DistrictId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ExternalCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSeedData")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -1450,6 +1457,10 @@ namespace ExamApp.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DistrictId");
+
+                    b.HasIndex("ExternalCode")
+                        .IsUnique()
+                        .HasFilter("\"ExternalCode\" IS NOT NULL");
 
                     b.HasIndex("ProvinceId");
 

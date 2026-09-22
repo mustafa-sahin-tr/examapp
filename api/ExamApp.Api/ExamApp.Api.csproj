@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Test kancaları (örn. GitHubSchoolSeedSourceProvider'ın URL/hash ctor'u) — issue #216 -->
+    <InternalsVisibleTo Include="ExamApp.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.5.0" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.14" />

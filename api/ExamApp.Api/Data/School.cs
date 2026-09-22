@@ -21,4 +21,18 @@ public class School : BaseEntity
 
     [MaxLength(500)]
     public string? AddressLine { get; set; }
+
+    /// <summary>
+    /// Dış sistemdeki kimlik — MEB kurum kodu (issue #216). Yalnızca içe aktarılan okullarda dolu;
+    /// elle açılan okullarda null. Dolu olduğunda benzersizdir (filtreli unique index) ve
+    /// tekrar çalıştırılan içe aktarmanın kopya üretmemesini sağlayan anahtardır.
+    /// </summary>
+    [MaxLength(32)]
+    public string? ExternalCode { get; set; }
+
+    /// <summary>
+    /// Kayıt test verisi aracı (<c>seed-schools</c>) tarafından mı oluşturuldu? Elle açılan
+    /// okullardan ayırt etmek ve gerekirse toplu temizlemek için (issue #216).
+    /// </summary>
+    public bool IsSeedData { get; set; }
 }

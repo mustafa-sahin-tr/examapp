@@ -59,6 +59,20 @@ public static class TeacherSeedPlan
 
     public static int TotalFor(SchoolSeedKind kind) => Branches.Sum(b => CountFor(kind, b.Branch));
 
+    private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
+    private static readonly StringComparer TrNameComparer = StringComparer.Create(Tr, ignoreCase: false);
+
+    /// <summary>
+    /// Deterministik okul sırası (seed-teachers, seed-tutors ve il başına limit aynı sırayı kullanır):
+    /// ad (tr-TR) → kurum kodu (ordinal) → id. Aynı limitle koşulan komutlar aynı okul kümesini görür.
+    /// </summary>
+    public static List<ExamApp.Api.Data.School> OrderSchoolsDeterministic(IEnumerable<ExamApp.Api.Data.School> schools)
+        => schools
+            .OrderBy(s => s.Name, TrNameComparer)
+            .ThenBy(s => s.ExternalCode ?? string.Empty, StringComparer.Ordinal)
+            .ThenBy(s => s.Id)
+            .ToList();
+
     private static readonly string KeyOrtaokul = SchoolSeedService.FoldKey("ortaokul");
     private static readonly string KeyIlkokul = SchoolSeedService.FoldKey("ilkokul");
 

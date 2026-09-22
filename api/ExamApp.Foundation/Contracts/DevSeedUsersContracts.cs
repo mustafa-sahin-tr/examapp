@@ -81,3 +81,70 @@ public sealed class DevSeedUserResult
     public string IdentityStatus { get; set; } = string.Empty;
     public string? Error { get; set; }
 }
+
+// ---------------------------------------------------------------------------------------------------
+// Temizleme (issue #218): POST /api/auth/dev/seed-users/cleanup
+// ---------------------------------------------------------------------------------------------------
+
+/// <summary>
+/// auth-api dev-only <c>POST /api/auth/dev/seed-users/cleanup</c> sözleşmesi (issue #218). Üretici: exam API
+/// <c>seed-cleanup</c> komutu. Kapsam SABİTTİR ve istekle genişletilemez: yalnızca
+/// <see cref="ExamApp.Foundation.Security.SeedDataConventions.EmailDomain"/> alanındaki Keycloak kullanıcıları
+/// ve identity'de <c>IsSeedData=true</c> olan satırlar. İstek yalnızca kapsamı DARALTABİLİR
+/// (<see cref="ExcludeUserIds"/>: exam tarafında bağımlı verisi olduğu için atlanan öğretmenlerin identity id'leri).
+/// </summary>
+public sealed class DevSeedCleanupRequest
+{
+    /// <summary>true (varsayılan): hiçbir şey silinmez, yalnızca plan raporlanır.</summary>
+    public bool DryRun { get; set; } = true;
+
+    /// <summary>Silinmeyecek identity <c>User.Id</c> listesi (exam'de atlanan seed öğretmenler). Keycloak'ta da korunur.</summary>
+    public List<int> ExcludeUserIds { get; set; } = new();
+}
+
+public sealed class DevSeedCleanupResponse
+{
+    public const string StatusDeleted = "Deleted";
+    /// <summary>Dry-run: silinecekti.</summary>
+    public const string StatusPlanned = "Planned";
+    /// <summary>Keycloak'ta zaten yok (önceki kısmi koşu) — identity yine silinir.</summary>
+    public const string StatusMissing = "Missing";
+    /// <summary><see cref="DevSeedCleanupRequest.ExcludeUserIds"/> ile korundu.</summary>
+    public const string StatusExcluded = "Excluded";
+    /// <summary>Seed alanında ama identity'de <c>IsSeedData=false</c> (ya da hiç yok, Keycloak'ta var) — yabancı, dokunulmadı.</summary>
+    public const string StatusSkippedForeign = "SkippedForeign";
+    public const string StatusFailed = "Failed";
+
+    public bool DryRun { get; set; }
+
+    public int KeycloakDeleted { get; set; }
+    public int KeycloakMissing { get; set; }
+    public int KeycloakExcluded { get; set; }
+    public int KeycloakSkippedForeign { get; set; }
+    public int KeycloakFailed { get; set; }
+
+    public int IdentityDeleted { get; set; }
+    public int IdentityExcluded { get; set; }
+    public int IdentityFailed { get; set; }
+
+    public long KeycloakElapsedMs { get; set; }
+    public long IdentityDbElapsedMs { get; set; }
+
+    /// <summary>Kapsamdaki tüm hesaplar (identity ∪ Keycloak) — exam tarafı e-posta ↔ UserId eşlemesi için kullanır.</summary>
+    public List<DevSeedCleanupUser> Users { get; set; } = new();
+}
+
+public sealed class DevSeedCleanupUser
+{
+    public string Email { get; set; } = string.Empty;
+    /// <summary>Identity <c>User.Id</c> (aktif satır; yoksa ilk kalıntı); yalnızca Keycloak'ta bulunduysa null.</summary>
+    public int? UserId { get; set; }
+    /// <summary>Aynı e-postadaki TÜM identity satırları (soft-delete kalıntıları dahil) — hepsi birlikte silinir ya da korunur.</summary>
+    public List<int> IdentityIds { get; set; } = new();
+    public string? KeycloakId { get; set; }
+    /// <summary>Deleted | Planned | Missing | Excluded | SkippedForeign | Failed</summary>
+    public string KeycloakStatus { get; set; } = string.Empty;
+    /// <summary>Deleted | Planned | Missing | Excluded | SkippedForeign | Failed</summary>
+    public string IdentityStatus { get; set; } = string.Empty;
+    public string? Error { get; set; }
+}

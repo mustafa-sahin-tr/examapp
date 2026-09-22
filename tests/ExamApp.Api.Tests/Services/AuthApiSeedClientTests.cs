@@ -62,6 +62,40 @@ public class AuthApiSeedClientTests
     };
 
     [Fact]
+    public async Task Cleanup_posts_to_cleanup_url_with_dry_run_and_exclude_ids_in_body()
+    {
+        var responseBody = JsonSerializer.Serialize(new DevSeedCleanupResponse
+        {
+            DryRun = true, KeycloakMissing = 1,
+            Users = [new DevSeedCleanupUser { Email = "seed.i.kars.matematik.1@seed.examapp.local", UserId = 42, IdentityIds = [42], KeycloakStatus = "Planned", IdentityStatus = "Planned" }]
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var (client, handler) = Build((_, _) => Task.FromResult(Json(HttpStatusCode.OK, responseBody)));
+
+        var result = await client.CleanupSeedUsersAsync(new DevSeedCleanupRequest { DryRun = true, ExcludeUserIds = [7, 9] });
+
+        result.DryRun.ShouldBeTrue();
+        result.Users.Single().UserId.ShouldBe(42);
+        handler.LastRequest!.Method.ShouldBe(HttpMethod.Post);
+        handler.LastRequest.RequestUri!.ToString().ShouldBe("http://auth-api.test/api/auth/dev/seed-users/cleanup");
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe("svc-token-example");
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        body.RootElement.GetProperty("dryRun").GetBoolean().ShouldBeTrue();
+        body.RootElement.GetProperty("excludeUserIds").EnumerateArray().Select(e => e.GetInt32()).ShouldBe([7, 9]);
+    }
+
+    [Fact]
+    public async Task Cleanup_timeout_hint_talks_about_rerun_not_batch_size()
+    {
+        var (client, _) = Build(async (_, ct) => { await Task.Delay(Timeout.Infinite, ct); throw new InvalidOperationException(); }, timeout: TimeSpan.FromMilliseconds(50));
+
+        var ex = await Should.ThrowAsync<TeacherSeedAuthApiException>(() => client.CleanupSeedUsersAsync(new DevSeedCleanupRequest { DryRun = false }));
+
+        ex.Message.ShouldContain("zaman aşımı");
+        ex.Message.ShouldContain("tekrar koşu");
+        ex.Message.ShouldNotContain("--batch-size");
+    }
+
+    [Fact]
     public async Task Posts_json_with_bearer_service_token_and_parses_response()
     {
         var responseBody = JsonSerializer.Serialize(new DevSeedUsersResponse

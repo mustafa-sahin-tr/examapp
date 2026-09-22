@@ -31,3 +31,13 @@ public sealed record KeycloakPartialImportResult(
     IReadOnlyDictionary<string, KeycloakPartialImportEntry> Results);
 
 public sealed record KeycloakPartialImportEntry(string Action, string? Id);
+
+/// <summary>Kullanıcı arama sonucu (issue #218 temizliği): id + kullanıcı adı + e-posta (brief representation).</summary>
+public sealed record KeycloakUserSummary(string Id, string Username, string? Email);
+
+/// <summary>Kullanıcı aramasında hangi alan içinde (infix) aranacağı.</summary>
+public enum KeycloakUserSearchField
+{
+    Email,
+    Username
+}

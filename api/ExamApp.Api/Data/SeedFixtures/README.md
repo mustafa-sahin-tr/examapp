@@ -176,3 +176,79 @@ her zaman **404**. Dev ucu dışarıdan erişilemez; komut `AuthApiBaseUrl` ile 
 Yerel Keycloak volume'u `deploy/keycloak/import/realm-export.json`'dan sapmışsa (`school_id` protocol
 mapper'ı / user-profile attribute'u yoksa) Keycloak `school_id` attribute'unu sessizce düşürür ve JWT'de
 `school_id` claim'i çıkmaz — bu, normal register akışı için de geçerlidir; çözüm realm'i yeniden import etmektir.
+
+## `seed-tutors` — bağımsız öğretmen hesapları (issue #218)
+
+`seed-teachers` bittikten SONRA koşar. İl + branş bazında, seçilen illerin seed okullarındaki seed öğretmen
+sayısının **yarısı** (`floor(n/2)`: 400 → 200, 5 → 2, 1 → 0) kadar bağımsız öğretmen üretir:
+`IsIndependentTutor = true`, `SchoolId = null`, `ApprovalStatus = Approved` (normal Pending akışını atlayan
+bilinçli seed kararı — öğrenci aramasında çıksınlar diye), `IsSeedData = true`, tek branş `TeacherSubject`, ve
+`teacher/search` filtrelerinde görünmek için deterministik tutor profili: saatlik ücret 250–900 ₺ (50 adım),
+`TeachesOnline = true`, `TeachesInPerson` ≈ %50, kısa `Bio`. Aynı üç sistem, aynı auth-api ucu (`SchoolId = null`
+→ Keycloak'ta `school_id` attribute'u yazılmaz), aynı `SeedData:Password`.
+
+```bash
+cd api/ExamApp.Api
+dotnet run -- seed-tutors --provinces Kars --limit-schools-per-province 3 --dry-run
+SeedData__Password='<parola>' dotnet run -- seed-tutors --provinces Kars --limit-schools-per-province 3
+SeedData__Password='<parola>' dotnet run -- seed-tutors --pending-ratio 0.2     # her il+branş grubunda floor(%20) Pending kalır
+```
+
+`--pending-ratio` verilmezse ortam varsayılanı: **Development 0** (hepsi Approved — aramada görünsün), **Staging 1**
+(hepsi Pending — paylaşılan ortamda onaysız tutor öğrenci aramasında çıkmasın; admin onay akışıyla açılır). Açık değer
+ortamı ezer.
+
+| Seçenek | Açıklama |
+|---|---|
+| `--provinces a,b` | Hangi iller (varsayılan: 10 il) |
+| `--limit-schools-per-province N` | Tabana il başına ada göre sıralı ilk N seed okulun öğretmenleri sayılır — `seed-teachers` ile aynı limitle koşulduğunda tutarlı sayılar |
+| `--pending-ratio 0..1` | Her il+branş grubunda tutor'ların bu oranı (`floor`, sıra numarası en yüksek olanlar) `Pending` kalır; varsayılan ortama göre (Dev 0 / Staging 1) |
+| `--dry-run`, `--no-events`, `--keycloak-mode`, `--batch-size`, `--no-migrate`, `--connection` | `seed-teachers` ile aynı |
+
+E-posta deseni: `seed.i.<ilSlug>.<brans>.<n>@seed.examapp.local` (`ilSlug` ASCII: `istanbul`, `sanliurfa`;
+`i` = independent, okul öğretmenleri `seed.t.`). Ad/soyad ve profil e-postanın SHA-256'sından; tekrar koşu
+aynı değerleri üretir, kopya açmaz (`Existing`), yalnızca eksik ders eşlemesini tamamlar — onay durumu ve profil
+elle değiştirilmişse dokunulmaz. Soft-delete edilmiş bir seed tutor (`IsDeleted=true`) `Existing` sayılmaz: global
+filtre dışında kaldığı için yeniden açılır (`seed-teachers` ile aynı davranış); kalıntıyı `seed-cleanup` hard-delete
+eder. İl etiketi/slug/Bio için `Province` tablosundaki ad kullanılır (`--provinces kars` → `Kars`, `seed.i.kars.`).
+Çıkış kodları `seed-teachers` ile aynı.
+
+## `seed-cleanup` — test verisini üç sistemden geri alma + özet rapor (issue #218)
+
+Ayrı bir `seed-report` komutu yoktur: **`seed-cleanup` seçeneksiz = dry-run = özet rapor.** Envanter (okul il/tür,
+okul öğretmeni ve bağımsız öğretmen il/branş — tutor ili e-postadaki slug'dan Province adına çözülür) ve neyin
+silinip neyin atlanacağı raporlanır, hiçbir şey yazılmaz. Silme yalnızca `--apply` ile.
+
+```bash
+cd api/ExamApp.Api
+dotnet run -- seed-cleanup                    # rapor (dry-run; --dry-run ile aynı)
+dotnet run -- seed-cleanup --apply            # sil (Staging'de --yes zorunlu)
+dotnet run -- seed-cleanup --apply --force    # müsaitlik verisi (slot/kural) olan seed öğretmenleri de sil
+```
+
+`--apply` başında hedef yazdırılır: `Ortam=<name> DB=<host:port/db> auth-api=<url>` (parola yazılmaz). Yanlış hedefe
+karşı: `--apply` ile `--connection` **birlikte kabul edilmez** (exit 1) — farklı bir hedef için
+`ConnectionStrings__DefaultConnection` ortam değişkenini verin; Staging'de `--yes` zorunludur (exit 1); `--apply --dry-run`
+çelişkidir (exit 1).
+
+Kapsam ve kurallar (**seed dışı hiçbir satıra dokunulmaz**):
+
+| Sistem | Silinen | Atlanan (raporlanır) |
+|---|---|---|
+| exam `Teachers` (+`TeacherSubjects`) | `IsSeedData = true` — soft-delete kalıntıları dahil, **hard delete** (`ExecuteDelete`, soft-delete interceptor'ından geçmez) | **Gerçek öğrenci randevusu (`Bookings`) olan öğretmen — `--force` ile de silinmez** (Booking seed-dışı satırdır; ayrı sayaç "gerçek öğrenci randevusu N"). Müsaitlik verisi (`TeacherAvailabilitySlots`, `RecurringAvailabilityRules`) ya da yazdığı worksheet/soru (`CreateUserId`) olan öğretmen: `--force` yoksa atlanır; `--force` müsaitlik satırlarını öğretmenle birlikte siler, **worksheet/soru asla silinmez** (sahipsiz kalır, sayısı raporlanır) |
+| exam `Schools` | `IsSeedData = true` | Bağlı seed-dışı öğretmen, öğrenci, worksheet ataması ya da korunan (atlanan) seed öğretmen varsa |
+| identity `Users` | `IsSeedData = true` VE seed alanı e-postası — hard delete | `ExcludeUserIds` (exam'de atlanan öğretmenler); seed alanında ama `IsSeedData = false` (elle açılmış) → yabancı |
+| Keycloak | Kullanıcı adı `seed.*@seed.examapp.local` VE identity'de seed kaydı olanlar; arama `email=` + `username=` infix (`search=` prefix eşleştirdiği için kullanılmaz), boş sayfaya kadar sayfalı; aramada çıkmayan ama identity `KeycloakId`'si bilinen hesap id ile silinir (404 → `Missing`) | Identity'de seed kaydı yoksa (yabancı, `seed-users` ile aynı kural) ya da exclude edilmişse. Aynı e-postadaki tüm identity satırları (soft-delete kalıntıları) tek grup: biri exclude ise hiçbiri silinmez |
+
+Neden hard delete: seed satırları benzersiz indekslerde (`Schools.ExternalCode`, identity e-posta) yer tutar;
+soft-delete kalıntısı yeniden koşuda "Existing" sayılırdı. Sıra: exam öğretmen → exam okul → auth-api
+(`POST /api/auth/dev/seed-users/cleanup`: Keycloak → identity; identity satırı yalnızca Keycloak silme başarılı ya da
+kullanıcı zaten yoksa silinir, böylece identity satırı = yeniden deneme listesi). Kısmi hatada **tekrar koşu kalanı
+temizler** — her sistem kendi işaretinden okur. auth-api'ye ulaşılamazsa exam tarafı geri alınmaz, hata raporlanır,
+çıkış 3; sonraki koşu yalnızca auth-api tarafını temizler. `--skip-auth-api` yalnızca exam DB.
+
+Ön koşullar `seed-teachers` ile aynı (auth-api güncel build + `AuthApiBaseUrl` doğrudan, servis token'ı). Cleanup ucu
+da `Service` policy + ortam guard'ı + DI guard + gateway `/api/auth/dev/*` engeli arkasındadır; kapsamı istekle
+GENİŞLETİLEMEZ (yalnızca `ExcludeUserIds` ile daraltılır). Silinmeyen kalıntılar: exam API Redis kullanıcı profili
+cache'i (TTL ile düşer), `LoginEvents` (Keycloak sub ile; rapor/analitik satırı), BadgeService/identity outbox
+kayıtları. Çıkış: 0 tamam, 2 ortam reddi, 3 hata/kısmi.

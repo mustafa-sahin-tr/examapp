@@ -26,8 +26,14 @@ public sealed class TeacherSeedResult
 
     public int KeycloakCreated { get; set; }
     public int KeycloakExisting { get; set; }
+    /// <summary>Keycloak'ta vardı, identity'de yoktu → sahiplenildi (yetim onarımı); identity + Teacher bu koşuda açıldı.</summary>
+    public int KeycloakAdopted { get; set; }
     public int IdentityCreated { get; set; }
     public int IdentityExisting { get; set; }
+    /// <summary><c>--reset-password</c> ile parolası sıfırlanan mevcut/adopt edilen Keycloak hesapları.</summary>
+    public int PasswordsReset { get; set; }
+    /// <summary>Koşu <c>--reset-password</c> ile mi yapıldı (rapor uyarısı için).</summary>
+    public bool ResetPassword { get; set; }
 
     public long KeycloakElapsedMs { get; set; }
     public long IdentityDbElapsedMs { get; set; }
@@ -82,6 +88,6 @@ public sealed class TeacherSeedAccount
     public int SchoolId { get; set; }
     public string Province { get; set; } = string.Empty;
     public TeacherSeedBranch Branch { get; set; }
-    /// <summary>Planned (dry-run) | Created | Existing | Failed</summary>
+    /// <summary>Planned (dry-run) | Created | Existing | Adopted | Failed</summary>
     public string Status { get; set; } = string.Empty;
 }

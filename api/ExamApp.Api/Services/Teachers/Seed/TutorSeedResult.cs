@@ -22,8 +22,12 @@ public sealed class TutorSeedResult
 
     public int KeycloakCreated { get; set; }
     public int KeycloakExisting { get; set; }
+    /// <summary>Keycloak'ta vardı, identity'de yoktu → sahiplenildi (yetim onarımı).</summary>
+    public int KeycloakAdopted { get; set; }
     public int IdentityCreated { get; set; }
     public int IdentityExisting { get; set; }
+    public int PasswordsReset { get; set; }
+    public bool ResetPassword { get; set; }
 
     public long KeycloakElapsedMs { get; set; }
     public long IdentityDbElapsedMs { get; set; }

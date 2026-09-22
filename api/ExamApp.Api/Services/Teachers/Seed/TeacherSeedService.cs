@@ -24,7 +24,9 @@ namespace ExamApp.Api.Services.Teachers.Seed;
 ///
 /// <para>İdempotency: e-posta deterministik; auth-api mevcut Keycloak/identity kaydını döner, burada
 /// <c>Teacher.UserId</c> ile varlık kontrolü yapılır. Kısmi durum (Keycloak'ta var, identity/exam'de yok)
-/// her koşuda tamamlanır. Bir hesabın hatası diğerlerini durdurmaz; rapora yazılır.</para>
+/// her koşuda tamamlanır: auth-api plandaki e-postayı <c>Adopted</c> ile sahiplenir (roller/school_id onarılır,
+/// identity satırı açılır), burada Teacher açılır. Parola yalnızca <c>--reset-password</c> ile sıfırlanır.
+/// Bir hesabın hatası diğerlerini durdurmaz; rapora yazılır.</para>
 /// </summary>
 public sealed class TeacherSeedService : ITeacherSeedService
 {
@@ -100,7 +102,7 @@ public sealed class TeacherSeedService : ITeacherSeedService
         var pwd = options.DryRun ? null : RequirePassword(_configuration);
 
         var total = Stopwatch.StartNew();
-        var result = new TeacherSeedResult { DryRun = options.DryRun, KeycloakMode = options.KeycloakMode };
+        var result = new TeacherSeedResult { DryRun = options.DryRun, KeycloakMode = options.KeycloakMode, ResetPassword = options.ResetPassword };
 
         // ---- Referans: iller, dersler ----
         var dbProvinces = await _context.Provinces.AsNoTracking().Select(p => new { p.Id, p.Name }).ToListAsync(ct);
@@ -250,6 +252,8 @@ public sealed class TeacherSeedService : ITeacherSeedService
                 Role = RoleTeacher,
                 EmitLocaleEvents = options.EmitEvents,
                 Mode = options.KeycloakMode,
+                ResetPassword = options.ResetPassword,
+                AdoptUnmarked = options.AdoptUnmarked,
                 Users = batch.Select(p => new DevSeedUserItem
                 {
                     Email = p.Email,
@@ -267,7 +271,7 @@ public sealed class TeacherSeedService : ITeacherSeedService
                 .GroupBy(r => r.Email, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var ready = new List<(PlannedTeacher Planned, int UserId)>();
+            var ready = new List<(PlannedTeacher Planned, int UserId, bool Adopted)>();
             foreach (var p in batch)
             {
                 if (!byEmail.TryGetValue(p.Email, out var r) || r.UserId is null)
@@ -277,12 +281,15 @@ public sealed class TeacherSeedService : ITeacherSeedService
                     continue;
                 }
 
+                var adopted = r.KeycloakStatus == DevSeedUsersResponse.StatusAdopted;
                 if (r.KeycloakStatus == DevSeedUsersResponse.StatusCreated) result.KeycloakCreated++;
                 else if (r.KeycloakStatus == DevSeedUsersResponse.StatusExisting) result.KeycloakExisting++;
+                else if (adopted) result.KeycloakAdopted++;
                 if (r.IdentityStatus == DevSeedUsersResponse.StatusCreated) result.IdentityCreated++;
                 else if (r.IdentityStatus == DevSeedUsersResponse.StatusExisting) result.IdentityExisting++;
+                if (r.PasswordReset) result.PasswordsReset++;
 
-                ready.Add((p, r.UserId.Value));
+                ready.Add((p, r.UserId.Value, adopted));
             }
 
             if (ready.Count == 0) continue;
@@ -297,7 +304,7 @@ public sealed class TeacherSeedService : ITeacherSeedService
                 .GroupBy(t => t.UserId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            foreach (var (p, userId) in ready)
+            foreach (var (p, userId, adopted) in ready)
             {
                 if (existingByUserId.TryGetValue(userId, out var teacher))
                 {
@@ -327,7 +334,7 @@ public sealed class TeacherSeedService : ITeacherSeedService
                 result.TeachersCreated++;
                 provinceSummary[p.ProvinceName].Created++;
                 branchSummary[p.Branch.Branch].Created++;
-                AddAccount(result, p, DevSeedUsersResponse.StatusCreated);
+                AddAccount(result, p, adopted ? DevSeedUsersResponse.StatusAdopted : DevSeedUsersResponse.StatusCreated);
             }
 
             await _context.SaveChangesAsync(ct);
@@ -376,10 +383,10 @@ public sealed class TeacherSeedService : ITeacherSeedService
     {
         _logger.LogInformation(
             "seed-teachers {Mode}: okul={Schools} (ilk={Ilk} orta={Orta} bilinmeyen={Unknown} limitDışı={Limit}) plan={Planned} " +
-            "teacher+={Created} teacher={Existing} hata={Failed} kc+={KcCreated} kc={KcExisting} id+={IdCreated} id={IdExisting} " +
+            "teacher+={Created} teacher={Existing} hata={Failed} kc+={KcCreated} kc={KcExisting} kcAdopt={KcAdopted} pwReset={PwReset} id+={IdCreated} id={IdExisting} " +
             "süre: keycloak={KcMs}ms identity={IdMs}ms exam={ExMs}ms toplam={TotalMs}ms parti={Batches}",
             r.DryRun ? "DRY-RUN" : "WRITE", r.SchoolsSelected, r.SchoolsIlkokul, r.SchoolsOrtaokul, r.SchoolsUnknownKind, r.SchoolsSkippedByLimit,
-            r.Planned, r.TeachersCreated, r.TeachersExisting, r.Failed, r.KeycloakCreated, r.KeycloakExisting, r.IdentityCreated, r.IdentityExisting,
-            r.KeycloakElapsedMs, r.IdentityDbElapsedMs, r.ExamDbElapsedMs, r.TotalElapsedMs, r.Batches);
+            r.Planned, r.TeachersCreated, r.TeachersExisting, r.Failed, r.KeycloakCreated, r.KeycloakExisting, r.KeycloakAdopted, r.PasswordsReset,
+            r.IdentityCreated, r.IdentityExisting, r.KeycloakElapsedMs, r.IdentityDbElapsedMs, r.ExamDbElapsedMs, r.TotalElapsedMs, r.Batches);
     }
 }

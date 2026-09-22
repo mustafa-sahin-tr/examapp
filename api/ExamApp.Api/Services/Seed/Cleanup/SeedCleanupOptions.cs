@@ -19,4 +19,11 @@ public sealed record SeedCleanupOptions
 
     /// <summary>auth-api'yi (Keycloak + identity) hiç çağırma — yalnızca exam DB. Rapor tutor il kırılımını e-postadan çıkaramaz.</summary>
     public bool SkipAuthApi { get; init; }
+
+    /// <summary>
+    /// Keycloak'ta seed desenli (<c>seed.*@seed.examapp.local</c>) ama identity'de HİÇ satırı olmayan yetim hesapları da sil
+    /// (kesilmiş seed koşusu kalıntısı). Gerçek alan adlarına ve identity'de <c>IsSeedData=false</c> satırı olan hesaplara
+    /// yine dokunulmaz. Varsayılan false: yetimler raporda "yabancı" olarak sayılır.
+    /// </summary>
+    public bool IncludeOrphans { get; init; }
 }

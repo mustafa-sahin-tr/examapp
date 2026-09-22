@@ -14,12 +14,24 @@ namespace ExamApp.Api.Services;
 
 public class KeycloakService : IKeycloakService
 {
+    /// <summary>
+    /// Toplu admin işlemleri (partial import, sayfalı arama, seed onarımı — issue #217/#218) için named client.
+    /// Program.cs'te ServiceDefaults'un standart resilience handler'ından MUAF tutulur: standart handler her denemeyi
+    /// 10 sn'de iptal edip 3 kez yeniler; 500'lük partialImport bunu aşınca aynı parti ikinci kez gönderilir ve
+    /// Keycloak 409 "Duplicate resource error" döner (import idempotent değil). Bu client'ta yeniden deneme yok,
+    /// zaman aşımı uzun (<see cref="AdminHttpClientTimeout"/>).
+    /// </summary>
+    public const string AdminHttpClientName = "KeycloakAdmin";
+    public static readonly TimeSpan AdminHttpClientTimeout = TimeSpan.FromMinutes(30);
+
     private readonly HttpClient _http;
+    private readonly HttpClient _adminHttp;
     private readonly KeycloakSettings _keycloakSettings;
 
     public KeycloakService(IHttpClientFactory factory, IOptions<KeycloakSettings> options)
     {
         _http = factory.CreateClient();
+        _adminHttp = factory.CreateClient(AdminHttpClientName);
         _keycloakSettings = options.Value;
     }
 
@@ -482,7 +494,7 @@ public class KeycloakService : IKeycloakService
     private async Task AuthorizeAdminAsync(CancellationToken ct)
     {
         var adminToken = await GetKeycloakAdminTokenAsync(ct);
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        _adminHttp.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
     }
 
     /// <summary>UserUrl = admin/realms/{realm}/users → aynı realm'in admin kökü (admin/realms/{realm}).</summary>
@@ -502,7 +514,7 @@ public class KeycloakService : IKeycloakService
         await AuthorizeAdminAsync(ct);
 
         // GET /roles/{role-name} tek istekte tam temsili döner.
-        var response = await _http.GetAsync(BuildKeycloakUri($"{_keycloakSettings.RealmRolesUrl}/{Uri.EscapeDataString(roleName)}"), ct);
+        var response = await _adminHttp.GetAsync(BuildKeycloakUri($"{_keycloakSettings.RealmRolesUrl}/{Uri.EscapeDataString(roleName)}"), ct);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             throw new KeycloakException($"Realm role '{roleName}' was not found in Keycloak.");
@@ -522,7 +534,7 @@ public class KeycloakService : IKeycloakService
     {
         await AuthorizeAdminAsync(ct);
 
-        var response = await _http.GetAsync(BuildKeycloakUri(
+        var response = await _adminHttp.GetAsync(BuildKeycloakUri(
             $"{_keycloakSettings.UserUrl}?username={Uri.EscapeDataString(username)}&exact=true&briefRepresentation=true&max=2"), ct);
         if (!response.IsSuccessStatusCode)
         {
@@ -562,7 +574,7 @@ public class KeycloakService : IKeycloakService
         var content = new StringContent(JsonSerializer.Serialize(representation, IgnoreNulls), Encoding.UTF8, "application/json");
 
         await AuthorizeAdminAsync(ct);
-        var response = await _http.PostAsync(BuildKeycloakUri(_keycloakSettings.UserUrl), content, ct);
+        var response = await _adminHttp.PostAsync(BuildKeycloakUri(_keycloakSettings.UserUrl), content, ct);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
@@ -590,7 +602,7 @@ public class KeycloakService : IKeycloakService
         await AuthorizeAdminAsync(ct);
 
         var body = new StringContent(JsonSerializer.Serialize(new[] { role }), Encoding.UTF8, "application/json");
-        var response = await _http.PostAsync(
+        var response = await _adminHttp.PostAsync(
             BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"), body, ct);
         if (!response.IsSuccessStatusCode)
         {
@@ -603,7 +615,7 @@ public class KeycloakService : IKeycloakService
     {
         await AuthorizeAdminAsync(ct);
 
-        var response = await _http.GetAsync(
+        var response = await _adminHttp.GetAsync(
             BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{keycloakUserId}/role-mappings/realm"), ct);
         if (!response.IsSuccessStatusCode)
         {
@@ -620,7 +632,7 @@ public class KeycloakService : IKeycloakService
     {
         await AuthorizeAdminAsync(ct);
 
-        var response = await _http.GetAsync(BuildKeycloakUri(RealmAdminPath()), ct);
+        var response = await _adminHttp.GetAsync(BuildKeycloakUri(RealmAdminPath()), ct);
         var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
@@ -676,7 +688,7 @@ public class KeycloakService : IKeycloakService
 
         await AuthorizeAdminAsync(ct);
 
-        var response = await _http.PostAsync(BuildKeycloakUri($"{RealmAdminPath()}/partialImport"), content, ct);
+        var response = await _adminHttp.PostAsync(BuildKeycloakUri($"{RealmAdminPath()}/partialImport"), content, ct);
 
         var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
@@ -726,8 +738,8 @@ public class KeycloakService : IKeycloakService
             ct.ThrowIfCancellationRequested();
             // `search=` prefix eşleştirir (Keycloak 22+); `email=`/`username=` exact=false iken infix ("contains").
             // Boş sayfa gelene kadar döner (sayfa < max ile durmak, Keycloak'ın max'ı kırptığı sürümlerde eksik bırakır).
-            var response = await _http.GetAsync(BuildKeycloakUri(
-                $"{_keycloakSettings.UserUrl}?{param}={Uri.EscapeDataString(fragment)}&exact=false&briefRepresentation=true&first={first}&max={pageSize}"), ct);
+            var response = await _adminHttp.GetAsync(BuildKeycloakUri(
+                $"{_keycloakSettings.UserUrl}?{param}={Uri.EscapeDataString(fragment)}&exact=false&briefRepresentation=false&first={first}&max={pageSize}"), ct);
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync(ct);
@@ -744,7 +756,7 @@ public class KeycloakService : IKeycloakService
                 var username = element.TryGetProperty("username", out var u) ? u.GetString() : null;
                 var email = element.TryGetProperty("email", out var e) ? e.GetString() : null;
                 if (id is null || username is null) continue;
-                all.Add(new KeycloakUserSummary(id, username, email));
+                all.Add(new KeycloakUserSummary(id, username, email, ReadSingleValuedAttributes(element)));
             }
 
             if (page == 0) break;
@@ -761,7 +773,7 @@ public class KeycloakService : IKeycloakService
 
         await AuthorizeAdminAsync(ct);
 
-        var response = await _http.DeleteAsync(BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}"), ct);
+        var response = await _adminHttp.DeleteAsync(BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}"), ct);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return false;
         if (!response.IsSuccessStatusCode)
@@ -770,5 +782,117 @@ public class KeycloakService : IKeycloakService
             throw new KeycloakException($"Keycloak user deletion failed ({(int)response.StatusCode}): {error}");
         }
         return true;
+    }
+
+    // ---- Yetim adoptasyonu / parola onarımı (seed-teachers --reset-password) ----
+
+    private static Dictionary<string, string> ReadSingleValuedAttributes(JsonElement element)
+    {
+        var attributes = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (element.TryGetProperty("attributes", out var attrEl) && attrEl.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in attrEl.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.Array && prop.Value.GetArrayLength() > 0)
+                    attributes[prop.Name] = prop.Value[0].GetString() ?? string.Empty;
+                else if (prop.Value.ValueKind == JsonValueKind.String)
+                    attributes[prop.Name] = prop.Value.GetString() ?? string.Empty;
+            }
+        }
+        return attributes;
+    }
+
+    private async Task<(Dictionary<string, JsonElement> Representation, Dictionary<string, string[]> Attributes)> GetUserRepresentationAsync(string keycloakUserId, CancellationToken ct)
+    {
+        await AuthorizeAdminAsync(ct);
+
+        var userUri = BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}");
+        var getResponse = await _adminHttp.GetAsync(userUri, ct);
+        var json = await getResponse.Content.ReadAsStringAsync(ct);
+        if (!getResponse.IsSuccessStatusCode)
+        {
+            throw new KeycloakException($"Failed to read Keycloak user '{keycloakUserId}' ({(int)getResponse.StatusCode}): {json}");
+        }
+
+        // Tam temsili sözlük olarak al: PUT'ta bilinmeyen alanlar olduğu gibi geri gider, yalnızca attributes değişir.
+        var rep = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)
+            ?? throw new KeycloakException($"Keycloak user '{keycloakUserId}' representation could not be parsed.");
+
+        var attributes = new Dictionary<string, string[]>(StringComparer.Ordinal);
+        if (rep.TryGetValue("attributes", out var attrEl) && attrEl.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in attrEl.EnumerateObject())
+            {
+                if (prop.Value.ValueKind == JsonValueKind.Array)
+                    attributes[prop.Name] = prop.Value.EnumerateArray().Select(v => v.GetString() ?? string.Empty).ToArray();
+            }
+        }
+        return (rep, attributes);
+    }
+
+    public async Task<IReadOnlyDictionary<string, string>> GetUserAttributesAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new ArgumentException("Keycloak kullanıcı id'si boş olamaz.", nameof(keycloakUserId));
+
+        var (_, attributes) = await GetUserRepresentationAsync(keycloakUserId, ct);
+        return attributes.Where(kv => kv.Value.Length > 0).ToDictionary(kv => kv.Key, kv => kv.Value[0], StringComparer.Ordinal);
+    }
+
+    public async Task<bool> EnsureUserAttributesAsync(string keycloakUserId, IReadOnlyDictionary<string, string> desired, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new ArgumentException("Keycloak kullanıcı id'si boş olamaz.", nameof(keycloakUserId));
+        ArgumentNullException.ThrowIfNull(desired);
+        if (desired.Count == 0) return false;
+
+        var (rep, attributes) = await GetUserRepresentationAsync(keycloakUserId, ct);
+
+        var changed = false;
+        foreach (var (name, value) in desired)
+        {
+            if (attributes.TryGetValue(name, out var current) && current.Length == 1 && string.Equals(current[0], value, StringComparison.Ordinal))
+                continue;
+            attributes[name] = new[] { value };
+            changed = true;
+        }
+        if (!changed) return false;
+
+        // Salt okunur alanlar PUT'ta reddedilebilir; temsilden düşür.
+        rep.Remove("userProfileMetadata");
+        rep.Remove("access");
+        var body = new Dictionary<string, object?>();
+        foreach (var kv in rep) body[kv.Key] = kv.Value;
+        body["attributes"] = attributes;
+
+        var userUri = BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}");
+        var content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+        var putResponse = await _adminHttp.PutAsync(userUri, content, ct);
+        if (!putResponse.IsSuccessStatusCode)
+        {
+            var error = await putResponse.Content.ReadAsStringAsync(ct);
+            throw new KeycloakException($"Failed to update attributes on Keycloak user '{keycloakUserId}' ({(int)putResponse.StatusCode}): {error}");
+        }
+        return true;
+    }
+
+    public async Task ResetPasswordAsync(string keycloakUserId, string password, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new ArgumentException("Keycloak kullanıcı id'si boş olamaz.", nameof(keycloakUserId));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentException("Parola boş olamaz.", nameof(password));
+
+        await AuthorizeAdminAsync(ct);
+
+        var content = new StringContent(
+            JsonSerializer.Serialize(new { type = "password", value = password, temporary = false }), Encoding.UTF8, "application/json");
+        var response = await _adminHttp.PutAsync(
+            BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}/reset-password"), content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            throw new KeycloakException($"Keycloak password reset failed for user '{keycloakUserId}' ({(int)response.StatusCode}): {error}");
+        }
     }
 }

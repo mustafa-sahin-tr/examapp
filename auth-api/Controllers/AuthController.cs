@@ -70,6 +70,13 @@ namespace ExamApp.Api.Controllers
             var keycloakUserId = string.Empty;
             try
             {
+                // İkinci savunma (seed sahiplik kilidi): seed alanı e-postası yalnızca dev seed ucundan açılabilir;
+                // register ile seed desenli bir hesap açılıp sonradan seed aracı tarafından sahiplenilemez/silinemez.
+                if (ExamApp.Foundation.Security.SeedDataConventions.IsSeedEmail(request.Email?.Trim().ToLowerInvariant()))
+                {
+                    return BadRequest("Bu e-posta alanı kayıt için kullanılamaz.");
+                }
+
                 if (_context.Users.Any(u => u.Email == request.Email))
                 {
                     return BadRequest("Email already exists.");

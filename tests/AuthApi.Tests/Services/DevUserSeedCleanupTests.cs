@@ -37,14 +37,18 @@ public class DevUserSeedCleanupTests : IDisposable
         => new(ctx, keycloak, Env(environment), NullLogger<DevUserSeedService>.Instance);
 
     /// <summary>Keycloak taklidi: <paramref name="users"/> username → id; arama seed alanı sonekini içerenleri döner; silme store'dan düşer.</summary>
-    private static IKeycloakService FakeKeycloak(Dictionary<string, string> users, HashSet<string>? failDeleteIds = null)
+    private static readonly IReadOnlyDictionary<string, string> Marked =
+        new Dictionary<string, string> { [SeedDataConventions.KeycloakOriginAttribute] = SeedDataConventions.KeycloakOriginValue };
+
+    /// <param name="unmarkedIds">seed_origin işareti taşımayan Keycloak kullanıcıları (varsayılan: hepsi işaretli).</param>
+    private static IKeycloakService FakeKeycloak(Dictionary<string, string> users, HashSet<string>? failDeleteIds = null, HashSet<string>? unmarkedIds = null)
     {
         var kc = Substitute.For<IKeycloakService>();
         kc.SearchUsersAsync(Arg.Any<string>(), Arg.Any<KeycloakUserSearchField>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             var fragment = call.Arg<string>();
             return users.Where(kv => kv.Key.Contains(fragment, StringComparison.OrdinalIgnoreCase))
-                .Select(kv => new KeycloakUserSummary(kv.Value, kv.Key, kv.Key)).ToList();
+                .Select(kv => new KeycloakUserSummary(kv.Value, kv.Key, kv.Key, unmarkedIds?.Contains(kv.Value) == true ? null : Marked)).ToList();
         });
         kc.TryDeleteUserAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -171,6 +175,96 @@ public class DevUserSeedCleanupTests : IDisposable
         await kc.DidNotReceive().TryDeleteUserAsync("kc-ceo", Arg.Any<CancellationToken>());
         await kc.DidNotReceive().TryDeleteUserAsync("kc-manual", Arg.Any<CancellationToken>());
         await kc.DidNotReceive().TryDeleteUserAsync("kc-kconly", Arg.Any<CancellationToken>());
+    }
+
+    // ---- --include-orphans ----
+
+    [Fact]
+    public async Task Include_orphans_dry_run_plans_keycloak_only_seed_users_but_keeps_real_and_manual_ones_foreign()
+    {
+        var (kcStore, _, _, _, _, _, _) = await FixtureAsync();
+        var kc = FakeKeycloak(kcStore);
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx, kc).CleanupAsync(new DevSeedCleanupRequest { DryRun = true, IncludeOrphans = true });
+
+        var orphan = r.Users.Single(u => u.Email == Seed("kconly"));
+        orphan.Orphan.ShouldBeTrue();
+        orphan.KeycloakStatus.ShouldBe(DevSeedCleanupResponse.StatusPlanned);
+        orphan.IdentityStatus.ShouldBe(DevSeedCleanupResponse.StatusMissing);
+        orphan.UserId.ShouldBeNull();
+        r.KeycloakOrphans.ShouldBe(1);
+        r.KeycloakSkippedForeign.ShouldBe(1); // yalnızca manual (identity'de IsSeedData=false)
+        r.Users.Single(u => u.Email == Seed("manual")).KeycloakStatus.ShouldBe(DevSeedCleanupResponse.StatusSkippedForeign);
+        r.Users.ShouldNotContain(u => u.Email == "ceo@x.com");
+
+        await kc.DidNotReceiveWithAnyArgs().TryDeleteUserAsync(default!, default);
+        kcStore.Count.ShouldBe(6);
+        (await IdentityEmailsAsync()).Count.ShouldBe(6);
+    }
+
+    [Fact]
+    public async Task Include_orphans_apply_deletes_keycloak_only_seed_users_only_from_keycloak_and_never_widens_scope()
+    {
+        var (kcStore, _, _, _, _, _, _) = await FixtureAsync();
+        var kc = FakeKeycloak(kcStore);
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx, kc).CleanupAsync(new DevSeedCleanupRequest { DryRun = false, IncludeOrphans = true });
+
+        r.KeycloakDeleted.ShouldBe(4);   // a, b, c + kconly (yetim)
+        r.KeycloakOrphans.ShouldBe(1);
+        r.KeycloakSkippedForeign.ShouldBe(1);
+        r.IdentityDeleted.ShouldBe(4);   // yetimin identity satırı yok — identity sayısı değişmez
+        r.IdentityFailed.ShouldBe(0);
+        r.Users.Single(u => u.Email == Seed("kconly")).KeycloakStatus.ShouldBe(DevSeedCleanupResponse.StatusDeleted);
+
+        await kc.Received(1).TryDeleteUserAsync("kc-kconly", Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().TryDeleteUserAsync("kc-ceo", Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().TryDeleteUserAsync("kc-manual", Arg.Any<CancellationToken>());
+        kcStore.Keys.ShouldBe(["ceo@x.com", Seed("manual")], ignoreOrder: true);
+        (await IdentityEmailsAsync()).ShouldBe(["ceo@x.com", Seed("manual")]);
+    }
+
+    [Fact]
+    public async Task Include_orphans_never_deletes_an_unmarked_orphan_or_a_case_different_manual_identity_row()
+    {
+        // kconly işaretsiz (self-registration gibi) → --include-orphans ile de silinmez; "Seed.T.Manual@Seed.Examapp.Local"
+        // (IsSeedData=false, farklı harf) identity'de yüklenir ve hesabı korur.
+        var (kcStore, _, _, _, _, _, _) = await FixtureAsync();
+        kcStore[Seed("mixed")] = "kc-mixed";
+        await AddIdentityUserAsync("Seed.T.Mixed@Seed.Examapp.Local", "kc-mixed", isSeed: false);
+        var kc = FakeKeycloak(kcStore, unmarkedIds: ["kc-kconly"]);
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx, kc).CleanupAsync(new DevSeedCleanupRequest { DryRun = false, IncludeOrphans = true });
+
+        r.KeycloakOrphans.ShouldBe(0);
+        r.KeycloakSkippedForeign.ShouldBe(3); // manual + mixed (identity IsSeedData=false) + kconly (işaretsiz yetim)
+        var unmarked = r.Users.Single(u => u.Email == Seed("kconly"));
+        unmarked.KeycloakStatus.ShouldBe(DevSeedCleanupResponse.StatusSkippedForeign);
+        unmarked.Error.ShouldContain("seed_origin");
+        r.Users.Single(u => string.Equals(u.Email, Seed("mixed"), StringComparison.OrdinalIgnoreCase)).KeycloakStatus.ShouldBe(DevSeedCleanupResponse.StatusSkippedForeign);
+        await kc.DidNotReceive().TryDeleteUserAsync("kc-kconly", Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().TryDeleteUserAsync("kc-mixed", Arg.Any<CancellationToken>());
+        kcStore.Keys.ShouldBe(["ceo@x.com", Seed("manual"), Seed("kconly"), Seed("mixed")], ignoreOrder: true);
+        (await IdentityEmailsAsync()).ShouldContain("Seed.T.Mixed@Seed.Examapp.Local");
+    }
+
+    [Fact]
+    public async Task Include_orphans_keycloak_delete_failure_counts_keycloak_failed_only_not_identity()
+    {
+        var (kcStore, _, _, _, _, _, _) = await FixtureAsync();
+        var kc = FakeKeycloak(kcStore, failDeleteIds: ["kc-kconly"]);
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx, kc).CleanupAsync(new DevSeedCleanupRequest { DryRun = false, IncludeOrphans = true });
+
+        r.KeycloakFailed.ShouldBe(1);
+        r.IdentityFailed.ShouldBe(0);
+        r.Users.Single(u => u.Email == Seed("kconly")).KeycloakStatus.ShouldBe(DevSeedCleanupResponse.StatusFailed);
+        r.Users.Single(u => u.Email == Seed("kconly")).IdentityStatus.ShouldBe(DevSeedCleanupResponse.StatusMissing);
+        kcStore.ContainsKey(Seed("kconly")).ShouldBeTrue(); // tekrar koşu yeniden dener
     }
 
     [Fact]

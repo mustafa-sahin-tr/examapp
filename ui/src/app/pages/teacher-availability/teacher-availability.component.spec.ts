@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -8,7 +9,14 @@ import { Subject, of, throwError } from 'rxjs';
 
 import { TeacherAvailabilityComponent } from './teacher-availability.component';
 import { BookingService } from '../../services/booking.service';
-import { AvailabilitySlot, AvailabilitySlotResult } from '../../models/booking.model';
+import {
+  AvailabilitySlot,
+  AvailabilitySlotResult,
+  CreateRecurringRuleRequest,
+  RecurringRuleDeleteResult,
+  RecurringRuleResult,
+} from '../../models/booking.model';
+import { TranslocoService } from '@jsverse/transloco';
 import { AvailabilityWeekGridComponent } from '../../shared/components/availability-week-grid/availability-week-grid.component';
 import { safeLocalHour, utcRequest } from '../../shared/testing/booking-time-testing';
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
@@ -44,11 +52,17 @@ describe('TeacherAvailabilityComponent', () => {
       'getAllMySlots',
       'createSlot',
       'deleteSlot',
+      'createRecurringRule',
+      'deleteRecurringRule',
       'extractError',
     ]);
     bookingService.getAllMySlots.and.returnValue(of({ items: [mockSlot], success: true }));
     bookingService.createSlot.and.returnValue(of({ success: true, slot: mockSlot }));
     bookingService.deleteSlot.and.returnValue(of(undefined));
+    bookingService.createRecurringRule.and.returnValue(of({ success: true, generatedSlotIds: [], skippedDates: [] }));
+    bookingService.deleteRecurringRule.and.returnValue(
+      of({ success: true, deletedSlotIds: [], preservedSlotIds: [], preservedBookedCount: 0 })
+    );
     bookingService.extractError.and.returnValue('Error message');
 
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
@@ -59,6 +73,8 @@ describe('TeacherAvailabilityComponent', () => {
         { provide: BookingService, useValue: bookingService },
         { provide: MatSnackBar, useValue: snackBar },
         provideRouter([]),
+        // Grid'deki bitiş günü seçicisi (issue #179) DateAdapter ister.
+        provideNativeDateAdapter(),
       ],
     }).compileComponents();
 
@@ -652,6 +668,358 @@ describe('TeacherAvailabilityComponent', () => {
 
       expect(saveButton()).toBeNull();
       expect(grid().saving()).toBeFalse();
+    }));
+  });
+
+  describe('tekrarlayan haftalık aralık (issue #179)', () => {
+    // Cum 25 Eylül 2026, yerel H:00–(H+1):00; "şimdi" Çar 23 Eylül 12:00.
+    const H = safeLocalHour(new Date(2026, 8, 25, 12, 0));
+    const draftStart = new Date(2026, 8, 25, H, 0);
+    const draftEnd = new Date(2026, 8, 25, H + 1, 0);
+    const utc = utcRequest(draftStart, draftEnd);
+    const expectedRule: CreateRecurringRuleRequest = {
+      dayOfWeek: draftStart.getUTCDay() as CreateRecurringRuleRequest['dayOfWeek'],
+      startTime: utc.startTime,
+      endTime: utc.endTime,
+      effectiveFrom: utc.date,
+      effectiveUntil: null,
+    };
+    const okText = (key: string, params?: Record<string, unknown>) =>
+      TestBed.inject(TranslocoService).translate<string>(`teacher-availability.${key}`, params);
+
+    /** Görünen haftada (dilimden bağımsız saatte) kural 5'ten üretilmiş boş slot ve tekil boş slot. */
+    const friday = (hour: number) => {
+      const now = new Date();
+      const day = now.getDay();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+      monday.setHours(0, 0, 0, 0);
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + 4);
+      d.setHours(hour, 0, 0, 0);
+      return d;
+    };
+    const WH = safeLocalHour(friday(12));
+    const slotAt = (id: number, startHour: number, ruleId: number | null): AvailabilitySlot => ({
+      id,
+      teacherId: 10,
+      date: friday(startHour).toISOString().slice(0, 10),
+      startTime: friday(startHour).toISOString().slice(11, 19),
+      endTime: friday(startHour + 1).toISOString().slice(11, 19),
+      createdAt: '2026-09-15T10:00:00Z',
+      startUtc: friday(startHour).toISOString(),
+      endUtc: friday(startHour + 1).toISOString(),
+      isBooked: false,
+      recurringAvailabilityRuleId: ruleId,
+    });
+    const singleSlot = slotAt(11, WH, null);
+    const recurringSlot = slotAt(21, WH + 2, 5);
+
+    function render(): void {
+      fixture.detectChanges();
+      tick();
+      fixture.detectChanges();
+    }
+
+    function grid(): AvailabilityWeekGridComponent {
+      return fixture.debugElement.query(By.directive(AvailabilityWeekGridComponent))
+        .componentInstance as AvailabilityWeekGridComponent;
+    }
+
+    function q<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+      return fixture.nativeElement.querySelector(selector) as T | null;
+    }
+
+    function alertText(): string | null {
+      const alert = q('.awg__draft [role="alert"]');
+      return alert ? (alert.textContent ?? '').trim() : null;
+    }
+
+    /** Taslak kurulur ve "Her hafta tekrarla" işaretlenir. */
+    function draftRecurring(): void {
+      jasmine.clock().mockDate(new Date(2026, 8, 23, 12, 0));
+      render();
+      grid()['onDateClick']({ date: draftStart });
+      render();
+      grid()['onDateClick']({ date: new Date(2026, 8, 25, H, 30) });
+      render();
+      q<HTMLInputElement>('.awg__repeat-toggle input[type="checkbox"]')!.click();
+      render();
+    }
+
+    /** Sayfa yüklenir, grid'de tekrarlayan slota (21) tıklanır → seri silme modu. */
+    function selectRecurringSlot(): void {
+      bookingService.getAllMySlots.and.returnValue(of({ items: [singleSlot, recurringSlot], success: true }));
+      render();
+      grid()['onEventClick']('21');
+      render();
+    }
+
+    it('Kaydet → createRecurringRule taslağın UTC gün/saat kural isteğiyle bir kez çağrılır; createSlot çağrılmaz', fakeAsync(() => {
+      draftRecurring();
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      expect(bookingService.createRecurringRule).toHaveBeenCalledOnceWith(expectedRule);
+      expect(bookingService.createSlot).not.toHaveBeenCalled();
+    }));
+
+    it('süresiz kuralda başarı: snackbar "İlk N hafta ... süresiz devam eder", taslak temizlenir ve liste yeniden yüklenir', fakeAsync(() => {
+      draftRecurring();
+      const generated = [slotAt(31, WH + 4, 9), slotAt(32, WH + 6, 9)];
+      bookingService.createRecurringRule.and.returnValue(
+        of({ success: true, generatedSlotIds: [31, 32, 33, 34, 35, 36], skippedDates: [] })
+      );
+      bookingService.getAllMySlots.and.returnValue(of({ items: [mockSlot, ...generated], success: true }));
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      // effectiveUntil null → 90 günlük ufuk üretildi; "N hafta için" DEĞİL, süresiz metni.
+      expect(snackBar.open).toHaveBeenCalledOnceWith(
+        okText('messages.recurringAddedIndefinite', { count: 6 }),
+        taTr.messages.ok,
+        { duration: 5000 }
+      );
+      expect(snackBar.open.calls.mostRecent().args[0]).toContain('6 ');
+      expect(snackBar.open.calls.mostRecent().args[0]).not.toContain('{{');
+      expect(snackBar.open.calls.mostRecent().args[0]).not.toBe(okText('messages.recurringAdded', { count: 6 }));
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(2);
+      expect(grid().slots()).toEqual([mockSlot, ...generated]);
+      expect(grid().draft()).toBeNull();
+      expect(q('.awg__draft-save')).toBeNull();
+      expect(alertText()).toBeNull();
+    }));
+
+    it('atlanan hafta varsa snackbar metnine "K hafta dolu olduğu için atlandı" eklenir', fakeAsync(() => {
+      draftRecurring();
+      bookingService.createRecurringRule.and.returnValue(
+        of({ success: true, generatedSlotIds: [31, 32, 33], skippedDates: ['2026-10-09', '2026-10-23'] })
+      );
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      const message = snackBar.open.calls.mostRecent().args[0];
+      expect(message).toBe(
+        `${okText('messages.recurringAddedIndefinite', { count: 3 })} ${okText('messages.recurringSkipped', { count: 2 })}`
+      );
+      expect(message).toContain(taTr.messages.recurringSkipped.replace('{{count}}', '2'));
+    }));
+
+    it('bitiş günü verilmişse effectiveUntil gönderilir ve başarı metni "N hafta için" olur', fakeAsync(() => {
+      draftRecurring();
+      const until = new Date(2026, 8, 25 + 28); // 4 hafta sonraki Cuma (yerel)
+      grid()['untilControl'].setValue(until);
+      render();
+      bookingService.createRecurringRule.and.returnValue(
+        of({ success: true, generatedSlotIds: [31, 32, 33, 34, 35], skippedDates: [] })
+      );
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      const untilAtDraftTime = new Date(until.getFullYear(), until.getMonth(), until.getDate(), H, 0);
+      expect(bookingService.createRecurringRule).toHaveBeenCalledOnceWith({
+        ...expectedRule,
+        effectiveUntil: untilAtDraftTime.toISOString().slice(0, 10),
+      });
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe(okText('messages.recurringAdded', { count: 5 }));
+    }));
+
+    it('tarih seçili + 409: hata çubukta, taslak, kutu ve seçili tarih korunur', fakeAsync(() => {
+      draftRecurring();
+      const until = new Date(2026, 8, 25 + 14);
+      grid()['untilControl'].setValue(until);
+      render();
+      bookingService.createRecurringRule.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 409, error: { success: false, conflict: true } }))
+      );
+      bookingService.extractError.and.returnValue('Kesişen kural.');
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      expect(alertText()).toBe('Kesişen kural.');
+      expect(grid().draft()).not.toBeNull();
+      expect(q<HTMLInputElement>('.awg__repeat-toggle input[type="checkbox"]')?.checked).toBeTrue();
+      expect(grid()['untilControl'].value).toEqual(until);
+      expect(grid()['untilControl'].enabled).toBeTrue(); // saving bitti, alan yeniden açık
+      expect(q<HTMLInputElement>('.awg__repeat-until input')?.value).not.toBe('');
+    }));
+
+    it('409 (kesişen kural) hata grid çubuğunda gösterilir; taslak ve kutu korunur, snackbar/yeniden yükleme yok', fakeAsync(() => {
+      draftRecurring();
+      const conflict = new HttpErrorResponse({
+        status: 409,
+        error: { success: false, conflict: true, message: 'Aynı gün kesişen bir kural var.' },
+      });
+      bookingService.createRecurringRule.and.returnValue(throwError(() => conflict));
+      bookingService.extractError.and.returnValue('Aynı gün kesişen bir kural var.');
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      expect(bookingService.extractError).toHaveBeenCalledOnceWith(conflict, taTr.messages.recurringAddFailed);
+      expect(alertText()).toBe('Aynı gün kesişen bir kural var.');
+      expect(grid().draft()).not.toBeNull();
+      expect(q<HTMLInputElement>('.awg__repeat-toggle input[type="checkbox"]')?.checked).toBeTrue();
+      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(1);
+    }));
+
+    it('200 + success:false gövdesinde sunucu mesajı çubukta gösterilir, taslak korunur', fakeAsync(() => {
+      draftRecurring();
+      bookingService.createRecurringRule.and.returnValue(
+        of({ success: false, message: 'En fazla 50 aktif kural.', generatedSlotIds: [], skippedDates: [] })
+      );
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+
+      expect(alertText()).toBe('En fazla 50 aktif kural.');
+      expect(grid().draft()).not.toBeNull();
+      expect(snackBar.open).not.toHaveBeenCalled();
+    }));
+
+    it('kayıt sürerken ikinci gönderim yapılmaz; tamamlanınca taslak kapanır', fakeAsync(() => {
+      draftRecurring();
+      const pending = new Subject<RecurringRuleResult>();
+      bookingService.createRecurringRule.and.returnValue(pending.asObservable());
+
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      render();
+      expect(grid().saving()).toBeTrue();
+      q<HTMLButtonElement>('.awg__draft-save')!.click();
+      component['createRecurring'](expectedRule);
+      render();
+      expect(bookingService.createRecurringRule).toHaveBeenCalledTimes(1);
+
+      pending.next({ success: true, generatedSlotIds: [1], skippedDates: [] });
+      pending.complete();
+      render();
+
+      expect(grid().saving()).toBeFalse();
+      expect(q('.awg__draft-save')).toBeNull();
+    }));
+
+    it('tekrarlayan slotta "Tüm seri" → deleteRecurringRule(ruleId) bir kez; deleteSlot çağrılmaz', fakeAsync(() => {
+      selectRecurringSlot();
+      expect(q('.awg__delete-series')).not.toBeNull();
+
+      q<HTMLButtonElement>('.awg__delete-series')!.click();
+      render();
+
+      expect(bookingService.deleteRecurringRule).toHaveBeenCalledOnceWith(5);
+      expect(bookingService.deleteSlot).not.toHaveBeenCalled();
+    }));
+
+    it('tekrarlayan slotta "Sadece bu hafta" → deleteSlot(slotId); deleteRecurringRule çağrılmaz', fakeAsync(() => {
+      selectRecurringSlot();
+
+      q<HTMLButtonElement>('.awg__delete-confirm')!.click();
+      render();
+
+      expect(bookingService.deleteSlot).toHaveBeenCalledOnceWith(21);
+      expect(bookingService.deleteRecurringRule).not.toHaveBeenCalled();
+    }));
+
+    it('seri silme başarısında snackbar "N aralık silindi", seçim kapanır, liste yeniden yüklenir', fakeAsync(() => {
+      selectRecurringSlot();
+      bookingService.deleteRecurringRule.and.returnValue(
+        of({ success: true, deletedSlotIds: [21, 41, 42], preservedSlotIds: [], preservedBookedCount: 0 })
+      );
+      bookingService.getAllMySlots.and.returnValue(of({ items: [singleSlot], success: true }));
+
+      q<HTMLButtonElement>('.awg__delete-series')!.click();
+      render();
+
+      expect(snackBar.open).toHaveBeenCalledOnceWith(okText('messages.seriesDeleted', { count: 3 }), taTr.messages.ok, {
+        duration: 5000,
+      });
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(2);
+      expect(grid().slots().map((s) => s.id)).toEqual([11]);
+      expect(grid().selectedSlotId()).toBeNull();
+      expect(q('.awg__delete-series')).toBeNull();
+      expect(alertText()).toBeNull();
+    }));
+
+    it('randevulu aralık korunduysa snackbar "K randevulu aralık korundu" ekler', fakeAsync(() => {
+      selectRecurringSlot();
+      bookingService.deleteRecurringRule.and.returnValue(
+        of({ success: true, deletedSlotIds: [21, 41], preservedSlotIds: [42], preservedBookedCount: 1 })
+      );
+
+      q<HTMLButtonElement>('.awg__delete-series')!.click();
+      render();
+
+      expect(snackBar.open.calls.mostRecent().args[0]).toBe(
+        `${okText('messages.seriesDeleted', { count: 2 })} ${okText('messages.seriesPreserved', { count: 1 })}`
+      );
+    }));
+
+    it('seri silme hatası grid çubuğunda gösterilir; seçim ve slotlar korunur, snackbar yok', fakeAsync(() => {
+      selectRecurringSlot();
+      const err = new HttpErrorResponse({ status: 404, error: { success: false, notFound: true, message: 'Kural bulunamadı.' } });
+      bookingService.deleteRecurringRule.and.returnValue(throwError(() => err));
+      bookingService.extractError.and.returnValue('Kural bulunamadı.');
+
+      q<HTMLButtonElement>('.awg__delete-series')!.click();
+      render();
+
+      expect(bookingService.extractError).toHaveBeenCalledOnceWith(err, taTr.messages.seriesDeleteFailed);
+      expect(alertText()).toBe('Kural bulunamadı.');
+      expect(grid().selectedSlotId()).toBe(21);
+      expect(component['slots']().length).toBe(2);
+      expect(q('.awg__delete-series')).not.toBeNull();
+      expect(snackBar.open).not.toHaveBeenCalled();
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(1);
+    }));
+
+    it('seri silme sürerken butonlar aria-disabled ve ikinci gönderim yapılmaz', fakeAsync(() => {
+      selectRecurringSlot();
+      const pending = new Subject<RecurringRuleDeleteResult>();
+      bookingService.deleteRecurringRule.and.returnValue(pending.asObservable());
+
+      q<HTMLButtonElement>('.awg__delete-series')!.click();
+      render();
+
+      expect(q('.awg__delete-series')?.getAttribute('aria-disabled')).toBe('true');
+      expect(q('.awg__delete-confirm')?.getAttribute('aria-disabled')).toBe('true');
+      q<HTMLButtonElement>('.awg__delete-series')!.click();
+      q<HTMLButtonElement>('.awg__delete-confirm')!.click();
+      component['deleteSeries'](5);
+      render();
+      expect(bookingService.deleteRecurringRule).toHaveBeenCalledTimes(1);
+      expect(bookingService.deleteSlot).not.toHaveBeenCalled();
+
+      pending.next({ success: true, deletedSlotIds: [21], preservedSlotIds: [], preservedBookedCount: 0 });
+      pending.complete();
+      render();
+
+      expect(grid().deleting()).toBeFalse();
+      expect(q('.awg__delete-series')).toBeNull();
+    }));
+
+    it('tekil slotta "Tüm seri" butonu yoktur', fakeAsync(() => {
+      bookingService.getAllMySlots.and.returnValue(of({ items: [singleSlot, recurringSlot], success: true }));
+      render();
+
+      grid()['onEventClick']('11');
+      render();
+
+      expect(q('.awg__delete-confirm')).not.toBeNull();
+      expect(q('.awg__delete-series')).toBeNull();
+    }));
+
+    it('listede tekrarlayan slot satırı tekrar ikonu taşır, tekil satır taşımaz', fakeAsync(() => {
+      bookingService.getAllMySlots.and.returnValue(of({ items: [singleSlot, recurringSlot], success: true }));
+      render();
+
+      const rows = Array.from(fixture.nativeElement.querySelectorAll('.avail__row') as NodeListOf<HTMLElement>);
+      expect(rows.length).toBe(2);
+      expect(rows.filter((r) => r.querySelector('.avail__row-repeat')).length).toBe(1);
     }));
   });
 });

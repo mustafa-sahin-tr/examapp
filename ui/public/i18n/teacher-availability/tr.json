@@ -42,6 +42,19 @@
       "deleting": "Siliniyor...",
       "cancel": "Vazgeç",
       "hint": "Silmek için tıkla"
+    },
+    "recurring": {
+      "toggle": "Her hafta tekrarla",
+      "until": "Şu tarihe kadar",
+      "untilPlaceholder": "Süresiz",
+      "untilHint": "Boş bırakırsan süresiz tekrarlar.",
+      "untilOutOfRange": "Bitiş günü ilk tekrardan sonra ve en fazla bir yıl ileride olmalı.",
+      "save": "Seriyi kaydet",
+      "legend": "Tekrarlayan",
+      "tooltip": "Her hafta tekrarlayan",
+      "deletePrompt": "Bu tekrarlayan aralığı sil?",
+      "deleteThisWeek": "Sadece bu hafta",
+      "deleteSeries": "Tüm seri"
     }
   },
   "actions": {
@@ -53,6 +66,13 @@
     "addFailed": "Aralık eklenemedi.",
     "deleted": "Müsaitlik aralığı silindi.",
     "deleteFailed": "Aralık silinemedi.",
+    "recurringAdded": "{{count}} hafta için aralık oluşturuldu.",
+    "recurringAddedIndefinite": "İlk {{count}} hafta oluşturuldu; seri süresiz devam eder.",
+    "recurringSkipped": "{{count}} hafta dolu olduğu için atlandı.",
+    "recurringAddFailed": "Tekrarlayan aralık oluşturulamadı.",
+    "seriesDeleted": "{{count}} aralık silindi.",
+    "seriesPreserved": "{{count}} randevulu aralık korundu.",
+    "seriesDeleteFailed": "Seri silinemedi.",
     "ok": "Tamam"
   }
 }

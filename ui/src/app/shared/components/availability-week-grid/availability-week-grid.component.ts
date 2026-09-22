@@ -16,8 +16,15 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
 import type { CalendarOptions, DatesSetArg, EventClickArg, EventContentArg, EventInput } from '@fullcalendar/core';
@@ -25,16 +32,23 @@ import trLocale from '@fullcalendar/core/locales/tr';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
-import { AvailabilitySlot, CreateAvailabilitySlotRequest } from '../../../models/booking.model';
+import {
+  AvailabilitySlot,
+  CreateAvailabilitySlotRequest,
+  CreateRecurringRuleRequest,
+} from '../../../models/booking.model';
 import { activeAppLocale, activeIntlLocale } from '../../utils/active-locale.util';
 import {
   DRAFT_MAX_ADVANCE_DAYS,
   DRAFT_MAX_MINUTES,
   DraftRange,
   DraftRejection,
+  RecurringUntilBounds,
   applyCellClick,
   formatDraftLabel,
   nextUtcDayBoundary,
+  recurringUntilBounds,
+  toRecurringRuleRequest,
   toSlotRequest,
 } from './availability-draft.util';
 import { AvailabilityGridEvent, AvailabilityGridEventProps, SlotStatusClass, toGridEvents } from './availability-week-grid.util';
@@ -47,10 +61,11 @@ const DRAFT_EVENT_ID = 'awg-draft';
 /** Randevulu slota tıklamada "silinemez" ipucunun ekranda kalma süresi. */
 const LOCKED_HINT_MS = 4000;
 
-/** Açıklama satırında gösterilen durumlar (sıra: boş, bekleyen, onaylı). */
+/** Açıklama satırında gösterilen girdiler (sıra: boş, bekleyen, onaylı, tekrarlayan). */
 interface LegendItem {
-  statusClass: SlotStatusClass;
-  statusKey: string;
+  /** Renk kutusunun sınıfı; `is-recurring` renk yerine ikon taşır. */
+  swatchClass: SlotStatusClass | 'is-recurring';
+  labelKey: string;
 }
 
 /**
@@ -79,13 +94,31 @@ interface LegendItem {
  * tıklama seçim kurmaz, kısa süreli "silinemez" ipucu gösterir; asıl kısıt yine sunucudadır (hata
  * `deleteError` ile çubukta görünür, seçim korunur). Taslak ve seçim aynı anda olmaz: birine geçiş diğerini siler.
  *
+ * Tekrarlayan haftalık aralık (issue #179): taslak varken onay çubuğunda "Her hafta tekrarla" kutusu ve opsiyonel
+ * "şu tarihe kadar" seçicisi vardır; işaretliyse Kaydet `createRequested` yerine `createRecurringRequested`
+ * (`POST /booking/recurring-rules` gövdesi, bkz. `toRecurringRuleRequest`) yayar. Kutunun ve tarihin durumu grid'e
+ * aittir ve taslakla birlikte sıfırlanır. Kuraldan üretilen slotlar (`recurringAvailabilityRuleId`) `is-recurring`
+ * sınıfı + tekrar ikonu alır; böyle bir slot seçildiğinde silme modu iki seçenek sunar: "Sadece bu hafta"
+ * (`deleteRequested`, tekil slot silme) ve "Tüm seri" (`deleteSeriesRequested` ile kural kimliği).
+ *
  * Stil `ViewEncapsulation.None` ile yazılır çünkü FullCalendar DOM'unu kendisi üretir; tüm kurallar
  * `.awg` kök sınıfına kapsanır ve renkler yalnızca proje token'larından türer.
  */
 @Component({
   selector: 'app-availability-week-grid',
   standalone: true,
-  imports: [FullCalendarModule, MatButtonModule, MatIconModule, MatTooltipModule, TranslocoDirective],
+  imports: [
+    FullCalendarModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatDatepickerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatTooltipModule,
+    ReactiveFormsModule,
+    TranslocoDirective,
+  ],
   providers: [provideTranslocoScope(TEACHER_AVAILABILITY_SCOPE)],
   templateUrl: './availability-week-grid.component.html',
   styleUrls: ['./availability-week-grid.component.scss'],
@@ -109,6 +142,8 @@ export class AvailabilityWeekGridComponent {
   readonly saveError = input<string | null>(null);
   /** Kaydet'e basıldı: taslağın `POST /booking/slots` gövdesi (tıklanan anın UTC günü + saati, bkz. `toSlotRequest`). */
   readonly createRequested = output<CreateAvailabilitySlotRequest>();
+  /** "Her hafta tekrarla" işaretliyken Kaydet: `POST /booking/recurring-rules` gövdesi (issue #179). */
+  readonly createRecurringRequested = output<CreateRecurringRuleRequest>();
 
   /** Silinmek üzere seçilen slot (issue #177). İki yönlü: grid tıklamayla yazar, sayfa silme başarısında `null` yapar. */
   readonly selectedSlotId = model<number | null>(null);
@@ -116,8 +151,10 @@ export class AvailabilityWeekGridComponent {
   readonly deleting = input(false);
   /** Silme hatası (ör. sunucunun "randevusu var" reddi); çubukta `role="alert"` ile gösterilir, seçim yerinde kalır. */
   readonly deleteError = input<string | null>(null);
-  /** Sil'e basıldı: seçili slotun kimliği (`DELETE /booking/slots/{id}`). */
+  /** Sil / "Sadece bu hafta"ya basıldı: seçili slotun kimliği (`DELETE /booking/slots/{id}`). */
   readonly deleteRequested = output<number>();
+  /** Tekrarlayan slotta "Tüm seri"ye basıldı: kural kimliği (`DELETE /booking/recurring-rules/{id}`, issue #179). */
+  readonly deleteSeriesRequested = output<number>();
 
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -144,6 +181,38 @@ export class AvailabilityWeekGridComponent {
     const draft = this.draft();
     return draft ? formatDraftLabel(draft) : '';
   });
+
+  /** "Her hafta tekrarla" kutusu (issue #179); taslakla birlikte sıfırlanır. */
+  protected readonly repeatWeekly = signal(false);
+  /**
+   * Tekrarın son günü (yerel gece yarısı); null = süresiz. Reactive kontrol: `matDatepicker`'ın
+   * min/max/parse validator'ları buna bağlanır, böylece ekranda görünen ama geçersiz bir tarih hiçbir zaman
+   * sessizce "süresiz" olarak gönderilmez (Kaydet kilitlenir, `mat-error` görünür).
+   */
+  protected readonly untilControl = new FormControl<Date | null>(null);
+  /** Datepicker'daki değer (parse edilemeyen metinde null'a düşer; hata `untilStatus`'tan okunur). */
+  protected readonly repeatUntil = toSignal(this.untilControl.valueChanges, { initialValue: null });
+  private readonly untilStatus = toSignal(this.untilControl.statusChanges, { initialValue: this.untilControl.status });
+  /** Hata, dokunulmadan da görünsün: taslak başka güne taşınınca tarih sınır dışına düşebilir. */
+  protected readonly untilErrorMatcher: ErrorStateMatcher = { isErrorState: (control) => !!control && control.invalid };
+  /** Datepicker sınırları: taslak günü + 7 .. + 1 yıl; taslak yokken anlamsız (null). */
+  protected readonly untilBounds = computed<RecurringUntilBounds | null>(() => {
+    const draft = this.draft();
+    return draft ? recurringUntilBounds(draft) : null;
+  });
+  /** Sınırların içindeki bitiş günü; dışındaysa ya da geçersizse null. */
+  private readonly effectiveUntil = computed<Date | null>(() => {
+    const until = this.repeatUntil();
+    const bounds = this.untilBounds();
+    if (!until || !bounds || Number.isNaN(until.getTime())) {
+      return null;
+    }
+    return until.getTime() >= bounds.min.getTime() && until.getTime() <= bounds.max.getTime() ? until : null;
+  });
+  /** Tarih girildi ama gönderilemez (sınır dışı / parse edilemedi): Kaydet kilitli, hata görünür. */
+  protected readonly untilInvalid = computed(
+    () => this.untilStatus() === 'INVALID' || (this.repeatUntil() !== null && this.effectiveUntil() === null)
+  );
 
   private readonly slotEvents = computed(() => toGridEvents(this.slots()));
 
@@ -180,10 +249,24 @@ export class AvailabilityWeekGridComponent {
       if (hadDraft && !hasDraft) {
         untracked(() => {
           this.hint.set(null);
+          this.repeatWeekly.set(false);
+          this.untilControl.setValue(null);
           this.focusScrollRegionIfInside();
         });
       }
       hadDraft = hasDraft;
+    });
+
+    // Kayıt sürerken tarih girişi de kapanır (reactive kontrolde `[disabled]` bağlanmaz, kontrol üzerinden yapılır).
+    effect(() => {
+      const saving = this.saving();
+      untracked(() => {
+        if (saving && this.untilControl.enabled) {
+          this.untilControl.disable();
+        } else if (!saving && this.untilControl.disabled) {
+          this.untilControl.enable();
+        }
+      });
     });
 
     // Seçim kalktığında (Vazgeç, Escape, silme başarısı, seçili slotun `slots`'tan düşmesi) aynı toparlama:
@@ -211,9 +294,10 @@ export class AvailabilityWeekGridComponent {
   protected readonly rangeTitle = signal('');
 
   protected readonly legend: readonly LegendItem[] = [
-    { statusClass: 'is-free', statusKey: 'status.free' },
-    { statusClass: 'is-pending', statusKey: 'status.pending' },
-    { statusClass: 'is-approved', statusKey: 'status.approved' },
+    { swatchClass: 'is-free', labelKey: 'status.free' },
+    { swatchClass: 'is-pending', labelKey: 'status.pending' },
+    { swatchClass: 'is-approved', labelKey: 'status.approved' },
+    { swatchClass: 'is-recurring', labelKey: 'grid.recurring.legend' },
   ];
 
   /** Değişmeyen seçenekler bir kez kurulur; böylece FullCalendar yalnızca `events` farkını uygular. */
@@ -323,12 +407,28 @@ export class AvailabilityWeekGridComponent {
     this.onEventClick(String(p.slotId));
   }
 
+  /** Kaydet: kutu işaretliyse kural isteği (bitiş günü dahil), değilse tekil slot isteği yayar. */
   protected confirm(): void {
     const draft = this.draft();
     if (!draft || this.saving()) {
       return;
     }
+    if (this.repeatWeekly()) {
+      if (this.untilInvalid()) {
+        return;
+      }
+      this.createRecurringRequested.emit(toRecurringRuleRequest(draft, this.effectiveUntil()));
+      return;
+    }
     this.createRequested.emit(toSlotRequest(draft));
+  }
+
+  protected onRepeatWeeklyChange(checked: boolean): void {
+    this.repeatWeekly.set(checked);
+    if (!checked) {
+      // Alan DOM'dan kalkmadan önce sıfırlanır ki datepicker'ın parse hatası da temizlensin.
+      this.untilControl.setValue(null);
+    }
   }
 
   /** Vazgeç: taslağı siler; ipucu ve odak, taslağın kalkmasını izleyen effect'te toparlanır. */
@@ -339,13 +439,23 @@ export class AvailabilityWeekGridComponent {
     this.draft.set(null);
   }
 
-  /** Sil: seçili slotun kimliğini yayar; seçimin temizlenmesi sayfanın (başarıda) işidir. */
+  /** Sil / "Sadece bu hafta": seçili slotun kimliğini yayar; seçimin temizlenmesi sayfanın (başarıda) işidir. */
   protected confirmDelete(): void {
     const ev = this.selectedEvent();
     if (!ev || this.deleting()) {
       return;
     }
     this.deleteRequested.emit(ev.extendedProps.slotId);
+  }
+
+  /** "Tüm seri": seçili tekrarlayan slotun kural kimliğini yayar; tekil slotta (kural yok) hiçbir şey yapmaz. */
+  protected confirmDeleteSeries(): void {
+    const ev = this.selectedEvent();
+    const ruleId = ev?.extendedProps.ruleId ?? null;
+    if (ruleId === null || this.deleting()) {
+      return;
+    }
+    this.deleteSeriesRequested.emit(ruleId);
   }
 
   /** Silmekten vazgeç: seçimi kaldırır; odak, seçimin kalkmasını izleyen effect'te toparlanır. */
@@ -359,6 +469,10 @@ export class AvailabilityWeekGridComponent {
   /** Başka bir katman (menü, select, dialog) Escape'i zaten tükettiyse (`defaultPrevented`) taslağa/seçime dokunulmaz. */
   protected onEscape(event: Event): void {
     if (event.defaultPrevented || !this.editable() || this.saving() || this.deleting()) {
+      return;
+    }
+    // Bitiş günü alanında yazarken Escape yazımı iptal etmek içindir; tüm taslağı silmemeli.
+    if ((event.target as HTMLElement | null)?.closest?.('.awg__repeat-until')) {
       return;
     }
     this.cancel();
@@ -416,9 +530,15 @@ export class AvailabilityWeekGridComponent {
     this.calendar()?.getApi().today();
   }
 
-  /** Tooltip / aria-label: gün · saat aralığı · durum [· öğrenci] [· geçmiş]; boş parçalar atlanır. */
-  protected tooltipText(p: AvailabilityGridEventProps, status: string, student: string, past: string): string {
-    return [p.dayLabel, p.timeRange, status, student, past].filter((part) => part).join(' · ');
+  /** Tooltip / aria-label: gün · saat aralığı · durum [· öğrenci] [· tekrarlayan] [· geçmiş]; boş parçalar atlanır. */
+  protected tooltipText(
+    p: AvailabilityGridEventProps,
+    status: string,
+    student: string,
+    recurring: string,
+    past: string
+  ): string {
+    return [p.dayLabel, p.timeRange, status, student, recurring, past].filter((part) => part).join(' · ');
   }
 
   /** Düzenlenebilir grid'de boş slot silinebilir: tooltip ve `aria-description` eylem ipucunu alır. */

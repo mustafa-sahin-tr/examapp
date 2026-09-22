@@ -42,6 +42,19 @@
       "deleting": "Deleting...",
       "cancel": "Cancel",
       "hint": "Click to delete"
+    },
+    "recurring": {
+      "toggle": "Repeat every week",
+      "until": "Until",
+      "untilPlaceholder": "No end date",
+      "untilHint": "Leave empty to repeat indefinitely.",
+      "untilOutOfRange": "The end date must be after the first repeat and at most one year ahead.",
+      "save": "Save series",
+      "legend": "Recurring",
+      "tooltip": "Repeats weekly",
+      "deletePrompt": "Delete this recurring slot?",
+      "deleteThisWeek": "This week only",
+      "deleteSeries": "Whole series"
     }
   },
   "actions": {
@@ -53,6 +66,13 @@
     "addFailed": "The slot could not be added.",
     "deleted": "Availability slot deleted.",
     "deleteFailed": "The slot could not be deleted.",
+    "recurringAdded": "Slots created for {{count}} weeks.",
+    "recurringAddedIndefinite": "The first {{count}} weeks were created; the series continues indefinitely.",
+    "recurringSkipped": "{{count}} weeks were skipped because they were already taken.",
+    "recurringAddFailed": "The recurring slot could not be created.",
+    "seriesDeleted": "{{count}} slots deleted.",
+    "seriesPreserved": "{{count}} slots with appointments were kept.",
+    "seriesDeleteFailed": "The series could not be deleted.",
     "ok": "OK"
   }
 }

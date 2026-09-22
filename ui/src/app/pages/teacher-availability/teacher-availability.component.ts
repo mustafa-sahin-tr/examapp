@@ -24,15 +24,14 @@ interface SlotRow {
   /** " · Ayşe" gibi dile bağlı olmayan öğrenci eki; boşsa gösterilmez. */
   studentSuffix: string;
   statusClass: 'is-free' | 'is-pending' | 'is-approved';
-  /** Aktif randevusu olan slot silinemez (backend de engeller). */
-  deletable: boolean;
 }
 
 /**
  * Öğretmenin müsaitlik takvimi (issue #96): haftalık grid üzerinde tıkla-seç ile yeni aralık
- * tanımlama (issue #176; grid taslağı kurar, API çağrısını bu sayfa yapar) + mevcut aralıkların
- * randevu durumuyla listesi. Silme yalnızca aktif randevusu olmayan aralıklarda açıktır.
- * Gelen randevu talepleri ayrı sayfada (`/booking-requests`).
+ * tanımlama (issue #176) ve kayıtlı aralığa tıklayıp silme (issue #177) — grid taslağı/seçimi kurar,
+ * API çağrısını bu sayfa yapar. Altta mevcut aralıkların randevu durumuyla salt okunur listesi.
+ * Silme yalnızca aktif randevusu olmayan aralıklarda açıktır (grid randevulu slotu seçtirmez; asıl
+ * kısıt sunucudadır ve hatası grid'de gösterilir). Gelen randevu talepleri ayrı sayfada (`/booking-requests`).
  *
  * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-availability/<lang>.json` (issue #183).
  * Tarih/saat gösterimi `date` pipe'ı üzerinden aktif `LOCALE_ID`'ye bağlıdır.
@@ -65,13 +64,18 @@ export class TeacherAvailabilityComponent implements OnInit {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly saving = signal(false);
-  protected readonly deletingId = signal<number | null>(null);
   protected readonly slots = signal<AvailabilitySlot[]>([]);
 
   /** Grid'deki taslak aralık; kayıt başarısında temizlenir, hata durumunda yerinde kalır. */
   protected readonly draft = signal<DraftRange | null>(null);
   /** Son kayıt denemesinin sunucu hatası; grid'in onay çubuğunda gösterilir. */
   protected readonly saveError = signal<string | null>(null);
+
+  /** Grid'de silinmek üzere seçili slot; silme başarısında temizlenir, hata durumunda yerinde kalır. */
+  protected readonly selectedSlotId = signal<number | null>(null);
+  protected readonly deleting = signal(false);
+  /** Son silme denemesinin sunucu hatası (ör. "randevusu var"); grid'in onay çubuğunda gösterilir. */
+  protected readonly deleteError = signal<string | null>(null);
 
   protected readonly rows = computed<SlotRow[]>(() =>
     [...this.slots()]
@@ -146,29 +150,37 @@ export class TeacherAvailabilityComponent implements OnInit {
       });
   }
 
-  protected remove(row: SlotRow): void {
-    if (this.deletingId() !== null) {
+  /** Seçim değişince (başka slot, vazgeç) eski silme hatası geçersizdir. */
+  protected onSelectionChange(id: number | null): void {
+    this.selectedSlotId.set(id);
+    this.deleteError.set(null);
+  }
+
+  /**
+   * Grid'de Sil'e basıldı. Başarıda slot yerelden düşer (grid anında güncellenir, `load()` gerekmez);
+   * hata snackbar yerine grid üzerinde gösterilir ki seçim korunup mesaj bağlamında okunsun.
+   */
+  protected deleteSlot(id: number): void {
+    if (this.deleting()) {
       return;
     }
-    this.deletingId.set(row.slot.id);
+
+    this.deleting.set(true);
+    this.deleteError.set(null);
     this.bookingService
-      .deleteSlot(row.slot.id)
+      .deleteSlot(id)
       .pipe(
-        finalize(() => this.deletingId.set(null)),
+        finalize(() => this.deleting.set(false)),
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe({
         next: () => {
           this.snackBar.open(this.text('messages.deleted'), this.text('messages.ok'), { duration: 3000 });
-          this.slots.update((items) => items.filter((s) => s.id !== row.slot.id));
+          this.slots.update((items) => items.filter((s) => s.id !== id));
+          this.selectedSlotId.set(null);
         },
-        error: (err: HttpErrorResponse) => {
-          this.snackBar.open(
-            this.bookingService.extractError(err, this.text('messages.deleteFailed')),
-            this.text('messages.ok'),
-            { duration: 4000 },
-          );
-        },
+        error: (err: HttpErrorResponse) =>
+          this.deleteError.set(this.bookingService.extractError(err, this.text('messages.deleteFailed'))),
       });
   }
 
@@ -198,7 +210,6 @@ export class TeacherAvailabilityComponent implements OnInit {
       statusKey,
       studentSuffix: slot.isBooked ? studentSuffix : '',
       statusClass,
-      deletable: !slot.isBooked,
     };
   }
 

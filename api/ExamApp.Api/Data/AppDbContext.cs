@@ -217,6 +217,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(s => s.DistrictId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // MEB kurum kodu (issue #216): dolu olduğunda benzersiz. Soft-delete edilmiş satırlar da
+        // dahil — aynı kodla ikinci kayıt açılmasın; içe aktarma aracı IgnoreQueryFilters ile bakar.
+        modelBuilder.Entity<School>()
+            .HasIndex(s => s.ExternalCode)
+            .IsUnique()
+            .HasFilter("\"ExternalCode\" IS NOT NULL");
+
         // 📌 Grade - Subject İlişkisi
         modelBuilder.Entity<GradeSubject>()
             .HasOne(gs => gs.Grade)

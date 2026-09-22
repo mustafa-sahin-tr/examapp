@@ -1,8 +1,11 @@
 import {
   DRAFT_MAX_ADVANCE_DAYS,
   DraftRange,
+  RECURRING_UNTIL_MIN_DAYS,
   applyCellClick,
   nextUtcDayBoundary,
+  recurringUntilBounds,
+  toRecurringRuleRequest,
   toSlotRequest,
 } from './availability-draft.util';
 
@@ -330,6 +333,88 @@ describe('availability-draft.util', () => {
         startTime: start.toISOString().slice(11, 19),
         endTime: end.toISOString().slice(11, 19),
       });
+    });
+  });
+
+  describe('toRecurringRuleRequest (issue #179)', () => {
+    it('gün, saat ve effectiveFrom taslak anının UTC bileşenleridir; bitiş yoksa effectiveUntil null', () => {
+      // 24 Eylül 2026 Perşembe (UTC) → dayOfWeek 4.
+      expect(toRecurringRuleRequest(range(utc(24, 11, 0), utc(24, 12, 30)), null)).toEqual({
+        dayOfWeek: 4,
+        startTime: '11:00:00',
+        endTime: '12:30:00',
+        effectiveFrom: '2026-09-24',
+        effectiveUntil: null,
+      });
+    });
+
+    it('dayOfWeek UTC günüdür, yerel gün değil (0=Pazar); UTC gece yarısı civarında yerel günden ayrışabilir', () => {
+      // 27 Eylül 2026 Pazar 00:30Z: UTC'nin batısındaki dilimlerde yerel gün hâlâ Cumartesi'dir.
+      const early = toRecurringRuleRequest(range(utc(27, 0, 30), utc(27, 1, 0)), null);
+      expect(early.dayOfWeek).toBe(0);
+      expect(early.effectiveFrom).toBe('2026-09-27');
+      // 26 Eylül Cumartesi 23:00Z: doğudaki dilimlerde yerel gün Pazar'dır; yine UTC günü (6) gönderilir.
+      const late = toRecurringRuleRequest(range(utc(26, 23, 0), utc(26, 23, 30)), null);
+      expect(late.dayOfWeek).toBe(6);
+      expect(late.effectiveFrom).toBe('2026-09-26');
+    });
+
+    it('saatler dakika hassasiyetinde "HH:mm:00" gönderilir (backend saniyeli saati reddeder)', () => {
+      const req = toRecurringRuleRequest(
+        range(new Date(Date.UTC(2026, 8, 24, 8, 7, 45, 500)), new Date(Date.UTC(2026, 8, 24, 9, 22, 10))),
+        null
+      );
+      expect(req.startTime).toBe('08:07:00');
+      expect(req.endTime).toBe('09:22:00');
+    });
+
+    it('effectiveUntil: seçilen YEREL günde taslağın kendi saatindeki tekrarın UTC günüdür (seçilen gün seriye dahil)', () => {
+      // Taslak yerel 25 Eyl 2026 BASE+2sa (yaz saati geçişi UTC gününü kaydırmasın diye sınırdan uzak); bitiş 4 hafta sonraki yerel gün (datepicker yerel gece yarısı verir).
+      const start = at(120);
+      const end = at(180);
+      const untilLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 28);
+      const untilAtDraftTime = new Date(
+        untilLocal.getFullYear(),
+        untilLocal.getMonth(),
+        untilLocal.getDate(),
+        start.getHours(),
+        start.getMinutes()
+      );
+
+      const req = toRecurringRuleRequest(range(start, end), untilLocal);
+
+      expect(req.effectiveFrom).toBe(start.toISOString().slice(0, 10));
+      expect(req.effectiveUntil).toBe(untilAtDraftTime.toISOString().slice(0, 10));
+      // Seçilen günün gece yarısı DEĞİL: batı dilimlerinde gece yarısının UTC günü bir gün önce kalırdı.
+      expect(req.effectiveUntil).not.toBeNull();
+    });
+
+    it('effectiveUntil, effectiveFrom ile aynı UTC-gün kaymasını taşır: fark tam 7 gün katıdır', () => {
+      const start = at(120);
+      const untilLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 14);
+      const req = toRecurringRuleRequest(range(start, at(150)), untilLocal);
+
+      const from = new Date(`${req.effectiveFrom}T00:00:00Z`).getTime();
+      const until = new Date(`${req.effectiveUntil}T00:00:00Z`).getTime();
+      expect((until - from) / DAY_MS).toBe(14);
+    });
+  });
+
+  describe('recurringUntilBounds (issue #179)', () => {
+    it('min taslak gününden 7 gün sonra, max bir yıl sonrasının bir gün öncesidir (yerel gece yarısı)', () => {
+      const start = at(120);
+      const { min, max } = recurringUntilBounds(range(start, at(150)));
+
+      expect(min).toEqual(new Date(start.getFullYear(), start.getMonth(), start.getDate() + RECURRING_UNTIL_MIN_DAYS));
+      expect(max).toEqual(new Date(start.getFullYear() + 1, start.getMonth(), start.getDate() - 1));
+      expect(min.getHours()).toBe(0);
+      expect(max.getHours()).toBe(0);
+    });
+
+    it('ay sonu taşması doğru güne yuvarlanır (28 Şubat + 7 → 7 Mart)', () => {
+      const start = new Date(2027, 1, 28, 10, 0);
+      const { min } = recurringUntilBounds(range(start, new Date(2027, 1, 28, 11, 0)));
+      expect(min).toEqual(new Date(2027, 2, 7));
     });
   });
 });

@@ -90,6 +90,15 @@
     }
   }
 
+  // Açıklama satırındaki "Tekrarlayan" girdisi: renk kutusu yerine olaydaki ikonun aynısı.
+  &__legend-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    font-size: 0.875rem;
+    line-height: 1;
+    color: var(--ms-text-medium);
+  }
+
   // ---------------- Taslak onay çubuğu (issue #176) ----------------
 
   &__draft {
@@ -152,7 +161,29 @@
 
   &__draft-actions {
     display: inline-flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  // "Tüm seri" (issue #179): çerçeveli buton tehlike tonunda; "Sadece bu hafta" dolgulu tehlike butonu olarak kalır.
+  &__delete-series {
+    --mdc-outlined-button-label-text-color: var(--ms-danger-background);
+    --mdc-outlined-button-outline-color: var(--ms-danger-background);
+    --mat-outlined-button-state-layer-color: var(--ms-danger-background);
+  }
+
+  // ---------------- Tekrar seçeneği (issue #179) ----------------
+
+  &__repeat {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+  }
+
+  &__repeat-until {
+    width: 13rem;
+    font-size: 0.875rem;
   }
 
   &__draft-error {
@@ -242,6 +273,12 @@
         --fc-event-border-color: var(--ms-action-background);
       }
 
+      // Tekrarlayan slot (issue #179): durum rengi aynı kalır; sol kenar çift çizgi + içerikte tekrar ikonu.
+      &.is-recurring {
+        border-left-width: 6px;
+        border-left-style: double;
+      }
+
       &.is-past {
         opacity: 0.55;
 
@@ -299,8 +336,21 @@
   }
 
   &__ev-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
     font-weight: 600;
     white-space: nowrap;
+  }
+
+  // Tekrarlayan slot işareti (issue #179): durum rengi korunur, saat yanına küçük tekrar ikonu gelir.
+  &__ev-repeat {
+    flex-shrink: 0;
+    width: 0.8125rem;
+    height: 0.8125rem;
+    font-size: 0.8125rem;
+    line-height: 1;
+    color: var(--ms-text-medium);
   }
 
   &__ev-note {

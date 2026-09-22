@@ -97,6 +97,11 @@
   }
 }
 
+// Tekrarlayan kuraldan üretilen aralık (issue #179) — grid'deki ikonla aynı işaret.
+.avail__row-repeat {
+  color: var(--ms-text-medium);
+}
+
 .avail__locked {
   display: inline-flex;
   opacity: 0.45;

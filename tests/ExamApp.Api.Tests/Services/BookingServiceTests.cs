@@ -40,7 +40,7 @@ public class BookingServiceTests : IDisposable
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<RecurringAvailabilityService>());
         return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
             new Microsoft.Extensions.Logging.Abstractions.NullLogger<BookingService>(),
-            new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
+            new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
     }
 
     private async Task<(int id, int userId)> SeedTeacherAsync(

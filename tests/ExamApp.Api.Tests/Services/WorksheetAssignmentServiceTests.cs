@@ -12,7 +12,7 @@ namespace ExamApp.Api.Tests.Services;
 public class WorksheetAssignmentServiceTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
 
     private static readonly DateTime Start = new(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc);
 
@@ -25,11 +25,15 @@ public class WorksheetAssignmentServiceTests : IDisposable
         // Öğretmen yalnızca kendi worksheet'ini atayabilir: fixture'ı atayan kullanıcı (userId 1) sahipliğinde seed et.
         ctx.SetCurrentUser(OwnerUserId);
         var grade = new Grade { Name = "8" };
-        ctx.Grades.Add(grade);
+        // issue #192: okulsuz sahip artık yalnızca Approved Booking'li öğrenciye atayabilir; bu fixture tenancy'yi
+        // değil genel atama davranışını test ettiğinden sahip ve öğrenci aynı okulda seed edilir (#190 kuralı: aynı okul serbest).
+        var school = new School { Name = "Okul" };
+        ctx.AddRange(grade, school);
         await ctx.SaveChangesAsync();
         var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id, TeacherSharing = sharing };
-        var student = new Student { UserId = 1, StudentNumber = "n", SchoolName = "s", GradeId = grade.Id };
-        ctx.AddRange(ws, student);
+        var student = new Student { UserId = 1, StudentNumber = "n", SchoolName = "s", SchoolId = school.Id, GradeId = grade.Id };
+        var owner = new Teacher { UserId = OwnerUserId, SchoolId = school.Id };
+        ctx.AddRange(ws, student, owner);
         await ctx.SaveChangesAsync();
         return (ws.Id, student.Id, grade.Id);
     }
@@ -281,9 +285,14 @@ public class WorksheetAssignmentServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var r = await NewService(ctx).AssignWorksheetAsync(
             Req(ws, studentId: studentInSchoolB), userId: nonOwnerTeacherUserId, isAdmin: false);
+        var missing = await NewService(ctx).AssignWorksheetAsync(
+            Req(ws, studentId: 99999), userId: nonOwnerTeacherUserId, isAdmin: false);
 
         r.Success.ShouldBeFalse();
-        r.Message.ShouldBe("Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz.");
+        // issue #192 (inceleme): öğrenci artık okul kapsamı uygulanmış tek sorguyla okunuyor; farklı okulun öğrencisi
+        // sahip için olduğu gibi non-owner için de "bulunamadı" görünür (id oracle kapalı) — eski mesaj
+        // "yalnızca kendi öğrencilerinizi atayabilirsiniz" yerine.
+        r.Message.ShouldBe(missing.Message);
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
     }
 

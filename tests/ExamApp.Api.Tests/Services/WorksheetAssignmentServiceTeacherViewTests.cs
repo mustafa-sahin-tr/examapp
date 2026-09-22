@@ -11,7 +11,7 @@ namespace ExamApp.Api.Tests.Services;
 public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy());
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy(ctx));
 
     private const int TeacherUserId = 500;
 
@@ -52,21 +52,25 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
     [Fact]
     public async Task Aggregates_student_status_for_a_grade_assignment()
     {
-        int wsId, gradeId;
+        int wsId, gradeId, schoolId;
         await using (var ctx = _db.NewContext())
         {
             var g = new Grade { Name = "6" };
-            ctx.Grades.Add(g);
+            // issue #192: okulsuz istek sahibi için öğrenci kapsamı Approved Booking'dir; bu test tenancy'yi değil
+            // durum toplamayı doğruladığından öğretmen ve öğrenciler aynı okulda seed edilir (#190 kuralı).
+            var school = new School { Name = "Okul" };
+            ctx.AddRange(g, school);
             await ctx.SaveChangesAsync();
             gradeId = g.Id;
+            schoolId = school.Id;
 
             var ws = new Worksheet { Name = "W", Description = "", GradeId = g.Id };
             ctx.Worksheets.Add(ws);
             await ctx.SaveChangesAsync();
             wsId = ws.Id;
 
-            var s1 = new Student { UserId = 1, StudentNumber = "1", SchoolName = "s", GradeId = g.Id };
-            var s2 = new Student { UserId = 2, StudentNumber = "2", SchoolName = "s", GradeId = g.Id };
+            var s1 = new Student { UserId = 1, StudentNumber = "1", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
+            var s2 = new Student { UserId = 2, StudentNumber = "2", SchoolName = "s", SchoolId = school.Id, GradeId = g.Id };
             ctx.AddRange(s1, s2);
             await ctx.SaveChangesAsync();
 
@@ -85,7 +89,7 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, null));
+        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, schoolId));
 
         var assignment = result.Assignments.ShouldHaveSingleItem();
         assignment.TargetType.ShouldBe("Grade");

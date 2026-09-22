@@ -421,7 +421,7 @@ public class SimpleServiceTests : IDisposable
     // ---------------- StudentService ----------------
 
     private StudentService NewStudentService(AppDbContext ctx)
-        => new(ctx, Substitute.For<IAuthApiClient>(), new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
+        => new(ctx, Substitute.For<IAuthApiClient>(), new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy(ctx));
 
     [Fact]
     public async Task Student_Save_creates_the_student()

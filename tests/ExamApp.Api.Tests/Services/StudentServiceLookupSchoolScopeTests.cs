@@ -12,6 +12,8 @@ namespace ExamApp.Api.Tests.Services;
 /// issue #190: GET /api/student/lookup (StudentService.GetStudentLookupsAsync) okul izolasyonu.
 /// Matris: aynı okul (görür), farklı okul (listede yok), okulsuz→okullu (listede yok),
 /// admin (tüm okullar). Filtre sorgu düzeyinde; auth-api ad çözümü listeyi değiştirmez.
+/// issue #192: bağımsız (okulsuz) öğretmen yalnızca kendi Approved Booking'i olan öğrencileri görür
+/// (Pending/Rejected/başka tutor sayılmaz); #190'daki "okulsuz → tüm okulsuz öğrenciler" ara davranışı kaldırıldı.
 /// </summary>
 public class StudentServiceLookupSchoolScopeTests : IDisposable
 {
@@ -20,7 +22,7 @@ public class StudentServiceLookupSchoolScopeTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
-    private StudentService NewService(AppDbContext ctx) => new(ctx, _authApi, new SchoolAccessPolicy());
+    private StudentService NewService(AppDbContext ctx) => new(ctx, _authApi, new SchoolAccessPolicy(ctx));
 
     private async Task<(int SchoolA, int SchoolB)> SeedAsync()
     {
@@ -68,16 +70,92 @@ public class StudentServiceLookupSchoolScopeTests : IDisposable
         list.Select(s => s.StudentNumber).ShouldBe(new[] { "B1" });
     }
 
+    /// <summary>Bağımsız öğretmen (UserId=TutorUserId) için booking'ler: A1 Approved, B1 Pending, N1 Rejected; A2'ye başka tutor'un Approved'ı.</summary>
+    private const int TutorUserId = 50;
+    private const int OtherTutorUserId = 51;
+
+    private async Task SeedBookingsAsync()
+    {
+        await using var ctx = _db.NewContext();
+        var tutor = new Teacher { UserId = TutorUserId, SchoolId = null, IsIndependentTutor = true };
+        var other = new Teacher { UserId = OtherTutorUserId, SchoolId = null, IsIndependentTutor = true };
+        ctx.Teachers.AddRange(tutor, other);
+        await ctx.SaveChangesAsync();
+
+        var byNumber = await ctx.Students.ToDictionaryAsync(s => s.StudentNumber);
+        BookingSeed.Add(ctx, tutor.Id, byNumber["A1"].Id, BookingStatus.Approved, 8);
+        BookingSeed.Add(ctx, tutor.Id, byNumber["B1"].Id, BookingStatus.Pending, 9);
+        BookingSeed.Add(ctx, tutor.Id, byNumber["N1"].Id, BookingStatus.Rejected, 10);
+        BookingSeed.Add(ctx, other.Id, byNumber["A2"].Id, BookingStatus.Approved, 8);
+        await ctx.SaveChangesAsync();
+    }
+
     [Fact]
-    public async Task IndependentTeacher_DoesNotSeeSchoolBoundStudents()
+    public async Task IndependentTeacher_SeesOnlyStudentsWithOwnApprovedBooking()
+    {
+        // #190'da bu test "okulsuz → yalnızca okulsuz öğrenciler (N1)" idi; #192 ile kural Approved Booking oldu:
+        // öğrencinin okulu önemsiz (A1 okullu ama görünür), okulsuz N1 Rejected olduğu için görünmez.
+        await SeedAsync();
+        await SeedBookingsAsync();
+        await using var ctx = _db.NewContext();
+
+        var list = await NewService(ctx).GetStudentLookupsAsync(SchoolScope.For(userId: TutorUserId, schoolId: null));
+
+        list.Select(s => s.StudentNumber).ShouldBe(new[] { "A1" });
+    }
+
+    [Fact]
+    public async Task IndependentTeacher_PendingRejectedOrOtherTutorsBookings_AreNotInList()
+    {
+        await SeedAsync();
+        await SeedBookingsAsync();
+        await using var ctx = _db.NewContext();
+
+        var list = await NewService(ctx).GetStudentLookupsAsync(SchoolScope.For(userId: TutorUserId, schoolId: null));
+
+        var numbers = list.Select(s => s.StudentNumber).ToList();
+        numbers.ShouldNotContain("B1"); // Pending
+        numbers.ShouldNotContain("N1"); // Rejected
+        numbers.ShouldNotContain("A2"); // başka tutor'un Approved'ı
+    }
+
+    [Fact]
+    public async Task IndependentTeacher_WithoutBookings_GetsEmptyListWithoutCallingAuthApi()
     {
         await SeedAsync();
         await using var ctx = _db.NewContext();
 
-        var list = await NewService(ctx).GetStudentLookupsAsync(SchoolScope.For(userId: 50, schoolId: null));
+        var list = await NewService(ctx).GetStudentLookupsAsync(SchoolScope.For(userId: 777, schoolId: null));
 
-        // Okulsuz → yalnızca okulsuz öğrenciler. Approved Booking daraltması #192'nin konusu.
-        list.Select(s => s.StudentNumber).ShouldBe(new[] { "N1" });
+        list.ShouldBeEmpty();
+        await _authApi.DidNotReceive().GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task IndependentTeacher_AuthApiIsAskedOnlyForApprovedBookingStudents()
+    {
+        await SeedAsync();
+        await SeedBookingsAsync();
+        await using var ctx = _db.NewContext();
+
+        await NewService(ctx).GetStudentLookupsAsync(SchoolScope.For(userId: TutorUserId, schoolId: null));
+
+        await _authApi.Received(1).GetUsersByIdsAsync(
+            Arg.Is<IEnumerable<int>>(ids => ids.SequenceEqual(new[] { 1 })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SchoolBoundTeacher_ListIsUnchangedByBookings()
+    {
+        // Regresyon (#190): okullu öğretmen için kural okul eşitliği kalır; booking'ler listeyi değiştirmez.
+        var (a, _) = await SeedAsync();
+        await SeedBookingsAsync();
+        await using var ctx = _db.NewContext();
+
+        var list = await NewService(ctx).GetStudentLookupsAsync(SchoolScope.For(userId: 60, schoolId: a));
+
+        list.Select(s => s.StudentNumber).ShouldBe(new[] { "A1", "A2" });
     }
 
     [Fact]

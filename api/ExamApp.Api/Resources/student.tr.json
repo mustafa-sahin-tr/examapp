@@ -15,6 +15,11 @@
     "theme": {
       "updated": "Theme tercihi güncellendi.",
       "updateFailed": "Theme güncellenirken hata oluştu."
+    },
+    "leaderboard": {
+      "schoolScopeUnavailable": "Okul liderlik tablosu uygulanamaz: hesabınız bir okula bağlı değil.",
+      "invalidScope": "Geçersiz kapsam. Geçerli değerler: global, school.",
+      "invalidPaging": "Geçersiz sayfalama: skip 0 veya daha büyük, take 1-{0} arasında olmalı."
     }
   }
 }

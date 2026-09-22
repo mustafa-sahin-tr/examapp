@@ -53,9 +53,7 @@
     "classRank": "Class Rank",
     "yearRank": "Year Rank",
     "myBadges": "My Badges",
-    "leaderboards": "Leaderboards",
-    "classLeaderboard": "Class Leaderboard",
-    "groupLeaderboard": "Group Level Leaderboard"
+    "leaderboards": "Leaderboards"
   },
   "goal": {
     "title": "Weekly Goal",

@@ -1,14 +1,77 @@
-<mat-card class="leaderboard">
-    <mat-card-title class="leaderboard-title">{{ leaderboardTitle }}</mat-card-title>
-    <mat-card-content>
-      <div *ngFor="let user of leaderboardData; let i = index" class="leaderboard-item"
-           [class.highlight]="i === 3"> 
-        <span class="rank">{{ i + 1 }}</span>
-        <img [src]="user.icon" class="user-icon" *ngIf="user.icon">
-        <span class="user-name">{{ user.name }}</span>
-        <span *ngIf="showDetails" class="user-grade">{{ user.grade }}</span>
-        <span class="user-score">{{ user.score  }}</span>
-      </div>
-    </mat-card-content>
-  </mat-card>
-  
+<section class="lb" *transloco="let t; prefix: 'leaderboard'" [attr.aria-busy]="loading() ? 'true' : null">
+  <header class="lb__header">
+    <h3 class="lb__title">{{ t('title') }}</h3>
+
+    @if (showScopeToggle()) {
+    <mat-button-toggle-group
+      class="lb__scope"
+      hideSingleSelectionIndicator
+      [value]="scope()"
+      (change)="setScope($event.value)"
+      [attr.aria-label]="t('scopeLabel')"
+    >
+      <mat-button-toggle value="school">{{ t('scope.school') }}</mat-button-toggle>
+      <mat-button-toggle value="global">{{ t('scope.global') }}</mat-button-toggle>
+    </mat-button-toggle-group>
+    }
+  </header>
+
+  @if (loading()) {
+  <div class="lb__state lb__state--loading" role="status">
+    <mat-spinner diameter="28"></mat-spinner>
+    <span>{{ t('loading') }}</span>
+  </div>
+  } @else if (failed()) {
+  <div class="lb__state lb__state--error" role="alert">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ errorMessage() || t('error') }}</span>
+    <button mat-stroked-button type="button" (click)="retry()">{{ t('retry') }}</button>
+  </div>
+  } @else if (isEmpty()) {
+  <p class="lb__state lb__state--empty">{{ t('empty') }}</p>
+  } @else {
+  <ol class="lb__list">
+    @for (entry of entries(); track entry.rank) {
+    <li class="lb__row" [class.lb__row--me]="entry.isMe" [attr.aria-current]="entry.isMe ? 'true' : null">
+      <span class="lb__rank">{{ entry.rank }}</span>
+      @if (entry.avatarUrl) {
+      <img class="lb__avatar" [src]="entry.avatarUrl" alt="" />
+      } @else {
+      <span class="lb__avatar lb__avatar--placeholder" aria-hidden="true"><mat-icon>person</mat-icon></span>
+      }
+      <span class="lb__name">
+        {{ entry.fullName || t('anonymous') }}
+        @if (entry.isMe) {
+        <span class="lb__me-tag">{{ t('you') }}</span>
+        }
+      </span>
+      <span class="lb__level">{{ t('level', { level: entry.level }) }}</span>
+      <span class="lb__xp">{{ t('xp', { xp: entry.xp }) }}</span>
+    </li>
+    }
+  </ol>
+
+  @if (hasMore()) {
+  <div class="lb__more">
+    @if (moreFailed()) {
+    <p class="lb__more-error" role="alert">{{ moreErrorMessage() || t('loadMoreError') }}</p>
+    <button mat-stroked-button type="button" (click)="retryMore()">{{ t('retry') }}</button>
+    } @else {
+    <button mat-stroked-button type="button" [disabled]="loadingMore()" (click)="loadMore()">
+      @if (loadingMore()) {
+      <mat-spinner diameter="16"></mat-spinner>
+      }
+      {{ t('loadMore') }}
+    </button>
+    }
+  </div>
+  }
+  }
+
+  @if (showMyRank()) {
+  <footer class="lb__mine">
+    <mat-icon>emoji_events</mat-icon>
+    <span>{{ t('myRank', { rank: myRank(), xp: myXp() ?? 0 }) }}</span>
+  </footer>
+  }
+</section>

@@ -46,6 +46,13 @@ public abstract class BaseEntity
     /// </summary>
     [Required, MaxLength(8)]
     public string PreferredLocale { get; set; } = SupportedLocales.Default;
+
+    /// <summary>
+    /// Kayıt test verisi aracı (<c>seed-teachers</c>, issue #217) tarafından mı oluşturuldu?
+    /// Gerçek kullanıcılardan ayırt etmek ve toplu temizlemek (issue #218) için. Normal register
+    /// akışıyla açılan hesaplarda false.
+    /// </summary>
+    public bool IsSeedData { get; set; }
 }
 
 public enum UserRole

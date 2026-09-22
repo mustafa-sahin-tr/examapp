@@ -19,5 +19,38 @@ public interface IKeycloakService
     Task<TokenResponseDto> RefreshTokenAsync(string refreshToken);
     Task<List<KeycloakRoleDto>> GetRealmRolesAsync();
 
+    // ---- Toplu test verisi (issue #217) — yalnızca DevUserSeedService kullanır ----
 
+    /// <summary>Realm rolünü adına göre çözer (role-mappings API tam temsili ister). Yoksa <see cref="KeycloakException"/>.</summary>
+    Task<KeycloakRoleDto> GetRealmRoleAsync(string roleName, CancellationToken ct = default);
+
+    /// <summary>Kullanıcı adı ile (exact) arar; yoksa null.</summary>
+    Task<string?> FindUserIdByUsernameAsync(string username, CancellationToken ct = default);
+
+    /// <summary>
+    /// Kullanıcıyı attribute'larıyla oluşturur. 409 (zaten var) durumunda kullanıcı adıyla bulup
+    /// <c>AlreadyExisted=true</c> döner — idempotent yeniden koşu için.
+    /// </summary>
+    Task<KeycloakUserCreateResult> CreateSeedUserAsync(KeycloakSeedUser user, string password, CancellationToken ct = default);
+
+    /// <summary>
+    /// Verilen realm rolünü kullanıcıya ekler (mevcut mapping'ler kontrol edilmez, kaldırılmaz —
+    /// yeni oluşturulmuş kullanıcı için tek istek). Rolü tekrar eklemek Keycloak'ta no-op'tur.
+    /// </summary>
+    Task AddRealmRoleMappingAsync(string keycloakUserId, KeycloakRoleDto role, CancellationToken ct = default);
+
+    /// <summary>Kullanıcının mevcut realm rol adları.</summary>
+    Task<IReadOnlyList<string>> GetUserRealmRoleNamesAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary>Realm'in varsayılan rol kompoziti (<c>default-roles-&lt;realm&gt;</c>) — account rolleri/aud bunun içindedir.</summary>
+    Task<string> GetRealmDefaultRoleNameAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Realm partial import: tek istekte çok kullanıcı, <c>ifResourceExists=SKIP</c>, verilen realm rolleri ve
+    /// önceden hash'lenmiş parola ile. <c>manage-realm</c> yetkisi gerekir. DİKKAT: import'ta <c>realmRoles</c>
+    /// varsayılan rolü otomatik eklemez — çağıran <see cref="GetRealmDefaultRoleNameAsync"/> sonucunu listeye koymalı.
+    /// </summary>
+    Task<KeycloakPartialImportResult> PartialImportUsersAsync(
+        IReadOnlyList<KeycloakSeedUser> users, IReadOnlyList<string> realmRoleNames, KeycloakHashedCredential credential,
+        CancellationToken ct = default);
 }

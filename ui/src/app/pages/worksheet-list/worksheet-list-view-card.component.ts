@@ -83,14 +83,18 @@ export class WorksheetListViewCardComponent {
     return this.course.teacherSharing ?? WorksheetTeacherSharing.PublicView;
   }
 
-  /** Başkasının public sınavı — kendi hesabına kopyalanabilir (issue #16). */
+  /**
+   * Başkasının paylaşılan sınavı — kendi hesabına kopyalanabilir (issue #16).
+   * SchoolOnly satırlar listeye yalnızca aynı okuldaki öğretmene gelir (issue #191); geldiyse kopyalanabilir.
+   */
   get canCopy(): boolean {
     return (
       this.isTeacher &&
       this.course.canEdit === false &&
       this.course.isOwner === false &&
       (this.teacherSharing === WorksheetTeacherSharing.PublicView ||
-        this.teacherSharing === WorksheetTeacherSharing.PublicAssignable)
+        this.teacherSharing === WorksheetTeacherSharing.PublicAssignable ||
+        this.teacherSharing === WorksheetTeacherSharing.SchoolOnly)
     );
   }
 

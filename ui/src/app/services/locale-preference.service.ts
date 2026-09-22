@@ -67,10 +67,7 @@ export class LocalePreferenceService {
       return;
     }
 
-    try {
-      localStorage.setItem('user', JSON.stringify(profile));
-    } catch (error) {
-      console.warn('Kullanıcı profili localStorage a yazılamadı', error);
-    }
+    // localStorage yazımı + reaktif `user` signal'ı tek yerden (issue #191).
+    this.authService.setUser(profile);
   }
 }

@@ -55,6 +55,7 @@
       "deleted": "The worksheet was deleted successfully.",
       "visibilityForbidden": "You do not have permission to change this worksheet's visibility.",
       "visibilityUpdated": "Worksheet visibility updated.",
+      "schoolOnlyRequiresSchool": "\"My school only\" sharing requires the worksheet owner to belong to a school.",
       "deleteForbidden": "You do not have permission to delete this worksheet.",
       "bulkCompleted": "Bulk exam creation completed",
       "copied": "The test was copied.",

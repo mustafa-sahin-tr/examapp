@@ -53,8 +53,14 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
             .FirstOrDefaultAsync(w => w.Id == worksheetId, ct);
 
         // Görünmüyorsa varlığı sızdırma — atama akışındaki diğer metotlarla aynı "bulunamadı" deseni.
+        // issue #191: SchoolOnly için okul çifti DB'den; farklı okul/okulsuz istekçi → "bulunamadı",
+        // aynı okul → zaten atanabilir (PublicAssignable gibi) → talep açılmaz.
+        var (ownerSchoolId, requesterSchoolId) = worksheet != null
+            ? await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct)
+            : (null, null);
         if (worksheet == null ||
-            !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
+            !WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
+                requesterSchoolId, ownerSchoolId))
         {
             return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["worksheets.accessRequest.worksheetNotFound"] };
         }
@@ -67,7 +73,8 @@ public class WorksheetAccessRequestService : IWorksheetAccessRequestService
         var hasGrant = await _context.WorksheetAccessGrants
             .AnyAsync(g => g.WorksheetId == worksheetId && g.TeacherUserId == userId && g.RevokedAt == null, ct);
 
-        if (WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant))
+        if (WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant,
+                requesterSchoolId, ownerSchoolId))
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.accessRequest.alreadyAssignable"] };
         }

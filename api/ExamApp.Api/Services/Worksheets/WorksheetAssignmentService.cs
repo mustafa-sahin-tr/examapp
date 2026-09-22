@@ -68,25 +68,32 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // mesajları, CanView'e göre zaten görünmez olan (ör. başkasının Private worksheet'i) bir
         // kaydın varlığını/paylaşım durumunu sızdırmasın. CanView=false ise CanAssign'e hiç bakmadan
         // aynı "bulunamadı" mesajıyla çık — ExamService/WorksheetDetailService ile aynı desen.
-        if (!WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
+        // issue #191: SchoolOnly için sahibin/istekçinin okulu DB'den (yalnızca gerekiyorsa sorgu atar);
+        // farklı okul veya okulsuz istekçi için de "bulunamadı".
+        var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin);
+        if (!WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
+                requesterSchoolId, ownerSchoolId))
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.worksheetNotFound"] };
         }
 
         // Öğretmen kendi worksheet'ini her zaman atayabilir; admin hepsini; ayrıca
-        // TeacherSharing=PublicAssignable ise sahibi olmayan öğretmenler de onaysız atayabilir (issue #12).
+        // TeacherSharing=PublicAssignable ise sahibi olmayan öğretmenler de onaysız atayabilir (issue #12);
+        // SchoolOnly + aynı okul da PublicAssignable ile aynı (issue #191).
         var isOwnerOrAdmin = WorksheetAccess.CanModify(worksheet.CreateUserId, userId, isAdmin);
 
         // issue #13: sahibinden alınmış onaylı (aktif) atama izni de non-owner atamaya yeter.
         // Sahibi/admin veya PublicAssignable zaten izin veriyorsa grant sorgusunu atla.
         var hasGrant = false;
-        if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing))
+        if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing,
+                requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId))
         {
             hasGrant = await _context.WorksheetAccessGrants
                 .AnyAsync(g => g.WorksheetId == worksheet.Id && g.TeacherUserId == userId && g.RevokedAt == null);
         }
 
-        if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant))
+        if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant,
+                requesterSchoolId, ownerSchoolId))
         {
             var hasOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0;
             var message = hasOwner

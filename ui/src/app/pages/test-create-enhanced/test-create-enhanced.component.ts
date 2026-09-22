@@ -417,6 +417,11 @@ export class TestCreateEnhancedComponent implements OnInit {
     }
     const previousTeacherSharing = this.teacherSharing();
     const previousStudentVisibility = this.studentVisibility();
+    // İyimser güncelleme: alt bileşenin gösterdiği değer parent signal'a hemen yansır; hata dalındaki
+    // `set(previous)` böylece gerçekten bir değişiklik olur ve input üzerinden alt bileşene akar
+    // (aksi hâlde no-op kalır, radio "Sadece okulum"da takılırken sunucu eski değerde olur).
+    this.teacherSharing.set(change.teacherSharing);
+    this.studentVisibility.set(change.studentVisibility);
     this.isSavingVisibility.set(true);
     this.testService
       .updateVisibility(this.id, change)
@@ -438,6 +443,9 @@ export class TestCreateEnhancedComponent implements OnInit {
             });
           } else if (err?.status === 404) {
             this.snackBar.open(this.tr('snackbar.testNotFound'), this.tr('snackbar.close'), { duration: 3000 });
+          } else if (err?.status === 400 && typeof err.error?.message === 'string' && err.error.message) {
+            // issue #191: backend doğrulama mesajı (örn. okulsuz sahip "Sadece okulum" seçti) localize gelir.
+            this.snackBar.open(err.error.message, this.tr('snackbar.close'), { duration: 4000 });
           } else {
             this.snackBar.open(this.tr('snackbar.visibilityFailed'), this.tr('snackbar.close'), { duration: 3000 });
           }

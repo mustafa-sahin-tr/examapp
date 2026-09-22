@@ -92,6 +92,11 @@ nuget-packages/
 nuget-packages/*.db*
 rabbitmq/data/
 
+### Seed fixtures (issue #216): MEB türevi okul listesi repoya girmez, araç indirip önbellekler.
+# README.md (kaynak/lisans/SHA) izlenir, CSV ve indirme kalıntıları izlenmez.
+api/ExamApp.Api/Data/SeedFixtures/*
+!api/ExamApp.Api/Data/SeedFixtures/README.md
+
 ### ML / detector artifacts (generated)
 runs/
 question-detector/runs/

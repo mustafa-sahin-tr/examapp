@@ -41,13 +41,20 @@ export class SharingBadgeComponent {
   /** `Private` (veya henüz set edilmemiş) durumda rozet gösterilmez — bu bileşen yalnız paylaşılan satırlar için anlamlıdır. */
   readonly visible = computed(() => {
     const value = this.sharingSignal();
-    return value === WorksheetTeacherSharing.PublicView || value === WorksheetTeacherSharing.PublicAssignable;
+    return (
+      value === WorksheetTeacherSharing.PublicView ||
+      value === WorksheetTeacherSharing.PublicAssignable ||
+      value === WorksheetTeacherSharing.SchoolOnly
+    );
   });
 
   readonly icon = computed(() => {
     switch (this.sharingSignal()) {
       case WorksheetTeacherSharing.PublicAssignable:
         return 'assignment_turned_in';
+      // issue #191: okul içi paylaşım
+      case WorksheetTeacherSharing.SchoolOnly:
+        return 'school';
       case WorksheetTeacherSharing.PublicView:
         return 'visibility';
       default:
@@ -59,6 +66,8 @@ export class SharingBadgeComponent {
     switch (this.sharingSignal()) {
       case WorksheetTeacherSharing.PublicAssignable:
         return this.translate('shared.sharingBadge.publicAssignable');
+      case WorksheetTeacherSharing.SchoolOnly:
+        return this.translate('shared.sharingBadge.schoolOnly');
       case WorksheetTeacherSharing.PublicView:
         return this.translate('shared.sharingBadge.publicView');
       case WorksheetTeacherSharing.Private:

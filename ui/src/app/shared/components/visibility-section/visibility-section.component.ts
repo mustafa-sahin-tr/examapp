@@ -1,4 +1,14 @@
-import { Component, EventEmitter, Input, OnDestroy, Output, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  Output,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { MatRadioModule } from '@angular/material/radio';
@@ -9,10 +19,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { Subscription } from 'rxjs';
 import { WorksheetStudentVisibility, WorksheetTeacherSharing } from '../../../models/test-instance';
+import { AuthService } from '../../../services/auth.service';
 
 export interface VisibilityChange {
   teacherSharing: WorksheetTeacherSharing;
   studentVisibility: WorksheetStudentVisibility;
+}
+
+interface TeacherSharingOption {
+  value: WorksheetTeacherSharing;
+  key: string;
 }
 
 @Component({
@@ -20,6 +36,8 @@ export interface VisibilityChange {
   standalone: true,
   templateUrl: './visibility-section.component.html',
   styleUrl: './visibility-section.component.scss',
+  // Tüm durum signal/input üzerinden; OnPush güvenli.
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     MatRadioModule,
@@ -57,15 +75,54 @@ export class VisibilitySectionComponent implements OnDestroy {
 
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly transloco = inject(TranslocoService);
+  private readonly authService = inject(AuthService);
   readonly isMobile = signal(false);
   private readonly breakpointSub: Subscription;
 
+  /**
+   * Oturumdaki kullanıcının okulu (issue #191). Okulsuz kullanıcı "Sadece okulum" seçemez;
+   * backend de 400 ile reddeder. `AuthService.user` signal'ından türetilir: `schoolId` yalnızca
+   * exam-api refresh ile (asenkron) geldiği için sonradan dolarsa seçenek kendiliğinden belirir.
+   */
+  readonly userSchoolId = computed(() => AuthService.schoolIdOf(this.authService.user()));
+  readonly hasSchool = computed(() => this.userSchoolId() !== null);
+
+  /**
+   * Admin muafiyeti: backend kararı SAHİBİN okuluna göre verir; admin (okulsuz) okullu bir öğretmenin
+   * sınavını düzenlerken seçenek gizlenmez. Yetkiyi backend belirler, 400 gelirse snackbar gösterilir.
+   */
+  readonly isAdmin = this.authService.hasRole('Admin');
+  readonly canChooseSchoolOnly = computed(() => this.isAdmin || this.hasSchool());
+
   /** Etiket/açıklama metinleri `shared.visibilitySection.*` altından çözülür (issue #183). */
-  readonly teacherSharingOptions: { value: WorksheetTeacherSharing; key: string }[] = [
+  readonly teacherSharingOptions: TeacherSharingOption[] = [
     { value: WorksheetTeacherSharing.Private, key: 'private' },
     { value: WorksheetTeacherSharing.PublicView, key: 'publicView' },
     { value: WorksheetTeacherSharing.PublicAssignable, key: 'publicAssignable' },
+    { value: WorksheetTeacherSharing.SchoolOnly, key: 'schoolOnly' },
   ];
+
+  /**
+   * Gösterilecek seçenekler: SchoolOnly yalnızca okulu olan kullanıcıya (veya admine) sunulur.
+   * Kenar durumu: değer zaten SchoolOnly iken sahip okulsuz kaldıysa seçenek görünür ama devre dışıdır,
+   * böylece mevcut durum gizlenmez ve kullanıcı başka bir seçeneğe geçebilir.
+   */
+  readonly visibleTeacherSharingOptions = computed(() =>
+    this.teacherSharingOptions.filter(
+      (option) =>
+        option.value !== WorksheetTeacherSharing.SchoolOnly ||
+        this.canChooseSchoolOnly() ||
+        this._teacherSharing() === WorksheetTeacherSharing.SchoolOnly
+    )
+  );
+
+  /** Okulsuz sahibin elindeki SchoolOnly değeri: seçenek devre dışı, altında kısa not gösterilir. */
+  readonly schoolOnlyUnavailable = computed(
+    () => !this.canChooseSchoolOnly() && this._teacherSharing() === WorksheetTeacherSharing.SchoolOnly
+  );
+
+  /** "unavailable" notunun id'si — radio'ya `aria-describedby` ile bağlanır. */
+  readonly schoolOnlyNoteId = 'vs-school-only-note';
 
   readonly selectedTeacherSharingOption = computed(
     () => this.teacherSharingOptions.find((option) => option.value === this._teacherSharing())
@@ -98,6 +155,11 @@ export class VisibilitySectionComponent implements OnDestroy {
     this.emitChange();
   }
 
+  /** SchoolOnly seçeneği yalnızca okulu olmayan (admin olmayan) kullanıcı için devre dışıdır. */
+  isOptionDisabled(value: WorksheetTeacherSharing): boolean {
+    return value === WorksheetTeacherSharing.SchoolOnly && !this.canChooseSchoolOnly();
+  }
+
   private emitChange(): void {
     this.visibilityChange.emit({
       teacherSharing: this._teacherSharing(),
@@ -126,6 +188,8 @@ export class VisibilitySectionComponent implements OnDestroy {
         return this.t('shared.visibilitySection.summaryTeacher.publicView');
       case WorksheetTeacherSharing.PublicAssignable:
         return this.t('shared.visibilitySection.summaryTeacher.publicAssignable');
+      case WorksheetTeacherSharing.SchoolOnly:
+        return this.t('shared.visibilitySection.summaryTeacher.schoolOnly');
       case WorksheetTeacherSharing.Private:
       default:
         return this.t('shared.visibilitySection.summaryTeacher.private');

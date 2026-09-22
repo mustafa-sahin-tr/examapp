@@ -295,7 +295,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       this.authService.refresh().subscribe({
         next: (res) => {
           if (res) {
-            localStorage.setItem('user', JSON.stringify(res));
+            // Reaktif profil kaynağı (issue #191): schoolId yalnızca bu refresh ile gelir.
+            this.authService.setUser(res);
             this.setUserInfo();
           }
           if (!res) {
@@ -498,8 +499,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
           userObj.teacher.themeCustomConfig = themeCustomConfig;
         }
 
-        // LocalStorage'ı güncelle
-        localStorage.setItem('user', JSON.stringify(userObj));
+        // LocalStorage'ı ve `user` signal'ını güncelle
+        this.authService.setUser(userObj);
       } catch (error) {
         console.warn('Failed to update user profile in localStorage:', error);
       }

@@ -54,6 +54,13 @@ describe('WorksheetListViewCardComponent', () => {
       expect(component.canCopy).toBeTrue();
     });
 
+    it('canCopy_TeacherOnForeignSchoolOnlyWorksheet_ReturnsTrue', () => {
+      component.isTeacher = true;
+      setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.SchoolOnly });
+
+      expect(component.canCopy).toBeTrue();
+    });
+
     it('canCopy_NotTeacher_ReturnsFalse', () => {
       component.isTeacher = false;
       setCourse({ canEdit: false, isOwner: false, teacherSharing: WorksheetTeacherSharing.PublicView });

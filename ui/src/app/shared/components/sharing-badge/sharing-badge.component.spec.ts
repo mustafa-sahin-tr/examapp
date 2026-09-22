@@ -4,6 +4,8 @@ import { WorksheetTeacherSharing } from '../../../models/test-instance';
 import { SharingBadgeComponent } from './sharing-badge.component';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 
+import rootTr from '../../../../../public/i18n/tr.json';
+
 describe('SharingBadgeComponent', () => {
   let component: SharingBadgeComponent;
   let fixture: ComponentFixture<SharingBadgeComponent>;
@@ -35,6 +37,14 @@ describe('SharingBadgeComponent', () => {
     fixture.detectChanges();
     expect(component.label()).toBe('Herkese Açık · Görüntüleme');
     expect(component.visible()).toBe(true);
+  });
+
+  it('should show school icon and label for SchoolOnly (issue #191)', () => {
+    component.teacherSharing = WorksheetTeacherSharing.SchoolOnly;
+    fixture.detectChanges();
+    expect(component.visible()).toBe(true);
+    expect(component.icon()).toBe('school');
+    expect(component.label()).toBe(rootTr.shared.sharingBadge.schoolOnly);
   });
 
   it('should hide the badge for Private and not mislabel it as public', () => {

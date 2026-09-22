@@ -239,6 +239,7 @@
     "sharingBadge": {
       "publicAssignable": "Herkese Açık · Atanabilir",
       "publicView": "Herkese Açık · Görüntüleme",
+      "schoolOnly": "Okulum",
       "sharedBy": "{{owner}} tarafından paylaşıldı"
     },
     "spinWheel": {
@@ -278,6 +279,11 @@
         "publicAssignable": {
           "label": "Herkese Açık (Atanabilir)",
           "description": "Tüm öğretmenler görüntüler ve onaysız kendi öğrencilerine atayabilir."
+        },
+        "schoolOnly": {
+          "label": "Sadece okulum",
+          "description": "Yalnızca okulunuzdaki öğretmenler görür ve atayabilir.",
+          "unavailable": "Bir okula bağlı olmadığınız için bu seçenek artık kullanılamıyor; başka bir seçenek seçin."
         }
       },
       "studentVisibility": {
@@ -288,7 +294,8 @@
       "summaryTeacher": {
         "private": "Yalnızca siz ve admin görebilir/düzenleyebilir/atayabilirsiniz.",
         "publicView": "Tüm öğretmenler görüntüleyebilir, atamak için onayınız gerekir.",
-        "publicAssignable": "Tüm öğretmenler görüntüleyebilir ve onaysız atayabilir."
+        "publicAssignable": "Tüm öğretmenler görüntüleyebilir ve onaysız atayabilir.",
+        "schoolOnly": "Yalnızca okulunuzdaki öğretmenler görüntüleyebilir ve onaysız atayabilir."
       },
       "summaryStudent": {
         "restricted": "Öğrenciler yalnızca atandığında görebilir.",

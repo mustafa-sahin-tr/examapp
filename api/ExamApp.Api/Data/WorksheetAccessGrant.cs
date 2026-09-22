@@ -6,7 +6,8 @@ namespace ExamApp.Api.Data;
 /// <summary>
 /// Atama izni akışı (issue #13): sınav+öğretmen çiftine bağlı kalıcı atama yetkisi.
 /// Bir talep onaylanınca oluşturulur; sahibi sonradan geri alabilir (<see cref="RevokedAt"/>),
-/// ayrıca sınav Private'a çekilince tüm aktif grant'lar iptal edilir.
+/// ayrıca sınav Private'a çekilince tüm aktif grant'lar, SchoolOnly'ye çekilince (issue #191) sahibin
+/// okulu dışındaki öğretmenlerin grant'ları iptal edilir.
 /// "Aktif grant" = <see cref="RevokedAt"/> == null. Yalnızca atama izni verir; düzenleme izni vermez.
 /// </summary>
 public class WorksheetAccessGrant : BaseEntity

@@ -51,6 +51,15 @@
   line-height: 1.5;
 }
 
+// Okulsuz sahibin elindeki SchoolOnly değeri için uyarı notu (issue #191)
+.vs-option-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-warning-text-weak);
+  line-height: 1.5;
+}
+
 .vs-select {
   width: 100%;
 }

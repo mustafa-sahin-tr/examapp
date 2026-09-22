@@ -84,9 +84,12 @@ public class ExamService : IExamService
     /// false geçilmeli — aksi halde TeacherSharing=PublicAssignable olan bir worksheet, atama
     /// yapamayacak bir çağıran için CanAssign=true sızdırır (issue #12 review bulgusu).
     /// </param>
+    /// <param name="requesterSchoolId">issue #191: istekçinin okulu (SchoolOnly kararı için); öğrenci akışında null.</param>
+    /// <param name="ownerSchoolId">issue #191: sahibin okulu; SchoolOnly dışında null geçilebilir.</param>
     private static void ApplyOwnershipAndVisibility(
         WorksheetDto dto, Worksheet w, int? requesterUserId, bool isAdmin, string? ownerName = null,
-        bool populateOwnerName = false, bool isTeacher = true, bool hasApprovedGrant = false)
+        bool populateOwnerName = false, bool isTeacher = true, bool hasApprovedGrant = false,
+        int? requesterSchoolId = null, int? ownerSchoolId = null)
     {
         dto.TeacherSharing = w.TeacherSharing;
         dto.StudentVisibility = w.StudentVisibility;
@@ -97,7 +100,8 @@ public class ExamService : IExamService
         dto.OwnerName = (isAdmin || isOwner || populateOwnerName) ? ownerName : null;
         // TODO(#13): CanAssign StudentVisibility=Restricted dalını da dikkate alacak.
         dto.CanAssign = isTeacher
-            && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing, hasApprovedGrant);
+            && WorksheetAccess.CanAssign(w.CreateUserId, requesterUserId ?? 0, isAdmin, w.TeacherSharing, hasApprovedGrant,
+                requesterSchoolId, ownerSchoolId);
     }
 
     private static IQueryable<Worksheet> ApplyCommonFilters(IQueryable<Worksheet> query, ExamFilterDto dto)
@@ -186,16 +190,20 @@ public class ExamService : IExamService
         // Legacy (CreateUserId null/0) kayıtlar yalnızca admin'e görünür.
         // dto.id > 0 dalı da buna tabidir — başkasının id'siyle çekilemez.
         // includeShared=true ise (issue #11) sahiplik kapısına ek olarak başka öğretmenlerin
-        // PublicView/PublicAssignable worksheet'leri de dahil edilir.
+        // PublicView/PublicAssignable worksheet'leri de dahil edilir; issue #191: SchoolOnly olanlar
+        // yalnızca sahibi istekçiyle aynı okuldaysa (SQL alt sorgusu — WorksheetAccess.VisibleToTeacherPredicate).
+        int? requesterSchoolId = null;
         if (!isAdmin)
         {
             if (dto.includeShared)
             {
-                query = query.Where(t =>
-                    (t.CreateUserId != null && t.CreateUserId > 0 && t.CreateUserId == userProfile.Id)
-                    || (t.CreateUserId != null && t.CreateUserId > 0
-                        && (t.TeacherSharing == WorksheetTeacherSharing.PublicView
-                            || t.TeacherSharing == WorksheetTeacherSharing.PublicAssignable)));
+                // İstekçinin okulu DB'den (Teachers.SchoolId) çözülür; okulsuz öğretmen için SchoolOnly dalı üretilmez.
+                // userProfile.SchoolId (Redis'te cache'li, #189) bilinçli olarak KULLANILMIYOR: detay/atama/kopya
+                // kapıları (WorksheetSchoolContext) okulu DB'den okur; liste cache'ten okusaydı okul transferi
+                // sonrası stale cache penceresinde liste bir satırı gösterip detay 404 verebilirdi. Maliyet:
+                // yalnız includeShared=true iken, Teachers.UserId üzerinde tek nokta sorgusu.
+                requesterSchoolId = await _context.ResolveTeacherSchoolIdAsync(userProfile.Id);
+                query = query.Where(WorksheetAccess.VisibleToTeacherPredicate(_context, userProfile.Id, requesterSchoolId));
             }
             else
             {
@@ -265,8 +273,15 @@ public class ExamService : IExamService
                     ? name
                     : null
             };
+            // issue #191: sahibi olmadığı bir SchoolOnly satırı sayfaya yalnızca VisibleToTeacherPredicate'in
+            // okul eşleşmesi alt sorgusundan geçtiği için gelmiştir → sahibin okulu = istekçinin okulu; satır
+            // başına Teachers sorgusu atmadan aynı bilgiyi CanAssign'e taşıyoruz (PublicAssignable ile aynı).
+            var ownerSchoolId = isSharedRow && t.TeacherSharing == WorksheetTeacherSharing.SchoolOnly
+                ? requesterSchoolId
+                : null;
             ApplyOwnershipAndVisibility(d, t, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow,
-                hasApprovedGrant: grantedWorksheetIds.Contains(t.Id));
+                hasApprovedGrant: grantedWorksheetIds.Contains(t.Id),
+                requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId);
             return d;
         }).ToList();
 
@@ -595,7 +610,12 @@ public class ExamService : IExamService
         var isStudent = string.Equals(userProfile.Role, UserRole.Student.ToString(), StringComparison.OrdinalIgnoreCase);
         // Legacy (CreateUserId null/0) kayıtlar Public* işaretli olsa bile admin dışında kimseye
         // görünmez — bu kural WorksheetAccess.CanView içinde merkezi olarak uygulanır (issue #11 AC).
-        if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility))
+        // issue #191: SchoolOnly için sahibin/istekçinin okulu DB'den çözülür (yalnızca gerekiyorsa sorgu atar).
+        var (ownerSchoolId, requesterSchoolId) = isStudent
+            ? (null, null)
+            : await _context.ResolveSchoolContextAsync(worksheet, userProfile.Id, isAdmin);
+        if (!isStudent && !WorksheetAccess.CanView(worksheet.CreateUserId, userProfile.Id, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
+                requesterSchoolId, ownerSchoolId))
             return null;
 
         var isOwner = worksheet.CreateUserId.HasValue && worksheet.CreateUserId.Value > 0
@@ -634,7 +654,8 @@ public class ExamService : IExamService
             CreatedByName = createdByName
         };
         // Tekil detay: OwnerName admin, sahip, veya Public* paylaşım sayesinde görülen satır için doldurulur.
-        ApplyOwnershipAndVisibility(result, worksheet, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow);
+        ApplyOwnershipAndVisibility(result, worksheet, userProfile.Id, isAdmin, ownerName, populateOwnerName: isSharedRow,
+            requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId);
         return result;
     }
 

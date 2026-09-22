@@ -1,5 +1,6 @@
 using System;
 using ExamApp.Api.Services.Seed;
+using ExamApp.Api.Services.Seed.Cleanup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -8,19 +9,21 @@ namespace ExamApp.Api.Services.Teachers.Seed;
 public static class TeacherSeedServiceCollectionExtensions
 {
     /// <summary>
-    /// <c>seed-teachers</c> aracını kaydeder (issue #217). YALNIZCA Development/Staging'de kayıt yapar;
-    /// Production'da servis DI'da hiç yer almaz — ortam guard'ının ilk katmanı budur.
-    /// <see cref="ExamApp.Api.Services.StudentReset.IServiceTokenProvider"/> Program.cs'te zaten kayıtlıdır.
+    /// <c>seed-teachers</c> (issue #217), <c>seed-tutors</c> ve <c>seed-cleanup</c> (issue #218) araçlarını kaydeder.
+    /// YALNIZCA Development/Staging'de kayıt yapar; Production'da servisler DI'da hiç yer almaz — ortam guard'ının
+    /// ilk katmanı budur. <see cref="ExamApp.Api.Services.StudentReset.IServiceTokenProvider"/> Program.cs'te zaten kayıtlıdır.
     /// </summary>
     public static IServiceCollection AddTeacherSeed(this IServiceCollection services, IHostEnvironment environment)
     {
         if (!SeedCommands.IsAllowedEnvironment(environment))
             return services;
 
-        // Partial import'ta 500 hesap tek istek + Keycloak; varsayılan 100 sn yetmeyebilir.
-        services.AddHttpClient(AuthApiSeedClient.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(10));
+        // Partial import'ta 500 hesap tek istek + Keycloak; temizlikte on binlerce Keycloak silme — varsayılan 100 sn yetmez.
+        services.AddHttpClient(AuthApiSeedClient.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(30));
         services.AddScoped<IAuthApiSeedClient, AuthApiSeedClient>();
         services.AddScoped<ITeacherSeedService, TeacherSeedService>();
+        services.AddScoped<ITutorSeedService, TutorSeedService>();
+        services.AddScoped<ISeedCleanupService, SeedCleanupService>();
         return services;
     }
 }

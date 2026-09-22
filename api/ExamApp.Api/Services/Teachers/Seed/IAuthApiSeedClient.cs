@@ -15,6 +15,9 @@ namespace ExamApp.Api.Services.Teachers.Seed;
 public interface IAuthApiSeedClient
 {
     Task<DevSeedUsersResponse> SeedUsersAsync(DevSeedUsersRequest request, CancellationToken ct = default);
+
+    /// <summary><c>POST /api/auth/dev/seed-users/cleanup</c> (issue #218): Keycloak + identity seed hesaplarını kaldırır (ya da dry-run planı).</summary>
+    Task<DevSeedCleanupResponse> CleanupSeedUsersAsync(DevSeedCleanupRequest request, CancellationToken ct = default);
 }
 
 /// <summary>auth-api ucuna ulaşılamadı / reddetti (404 = ortam guard'ı ya da eski sürüm, 401/403 = servis token'ı, zaman aşımı).</summary>

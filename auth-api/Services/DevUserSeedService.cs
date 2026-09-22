@@ -111,6 +111,212 @@ public sealed class DevUserSeedService : IDevUserSeedService
         return response;
     }
 
+    // ------------------------------------------------------------------------------------------
+    // Temizleme (issue #218)
+    // ------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Kapsam: Keycloak'ta kullanıcı adı seed desenine uyan (<see cref="SeedDataConventions.IsSeedEmail"/>) VE
+    /// identity'de <c>IsSeedData=true</c> satırı olan hesaplar. Identity'de aynı e-postayla seed olmayan bir satır
+    /// varsa (ya da hiç yoksa) hesap yabancı sayılır ve iki sistemde de dokunulmaz — seed-users ile aynı kural.
+    /// Sıra: Keycloak → identity; identity satırı yalnızca Keycloak silme başarılı ya da kullanıcı zaten yoksa
+    /// silinir. Böylece kısmi hata sonrası ikinci koşu kalanı bulur (identity satırı = yeniden deneme listesi).
+    /// </summary>
+    public async Task<DevSeedCleanupResponse> CleanupAsync(DevSeedCleanupRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!IsAllowedEnvironment(_environment))
+        {
+            throw new DevSeedEnvironmentException(
+                $"Seed temizliği yalnızca Development/Staging ortamında çalışır; mevcut ortam: '{_environment.EnvironmentName}'.");
+        }
+
+        var excluded = new HashSet<int>(request.ExcludeUserIds ?? new List<int>());
+        var response = new DevSeedCleanupResponse { DryRun = request.DryRun };
+        var entries = new Dictionary<string, DevSeedCleanupUser>(StringComparer.OrdinalIgnoreCase);
+
+        DevSeedCleanupUser Entry(string email)
+        {
+            if (!entries.TryGetValue(email, out var e))
+                entries[email] = e = new DevSeedCleanupUser { Email = email };
+            return e;
+        }
+
+        // ---- 0) Identity: seed alanındaki TÜM satırlar (soft-delete dahil) — yabancı kararı için IsSeedData=false olanlar da ----
+        var domainSuffix = "@" + SeedDataConventions.EmailDomain;
+        var identityRows = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.Email.EndsWith(domainSuffix))
+            .Select(u => new { u.Id, u.Email, u.KeycloakId, u.IsSeedData, u.IsDeleted })
+            .ToListAsync(ct);
+
+        // Aynı e-postada birden fazla satır olabilir (soft-delete kalıntısı). Tek bir seed olmayan satır bile hesabı
+        // yabancı yapar; aksi halde tüm satırlar bir entry'de toplanır ve birlikte silinir ya da (biri excluded ise) korunur.
+        var foreignEmails = identityRows.Where(r => !r.IsSeedData).Select(r => r.Email).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var email in foreignEmails)
+        {
+            var e = Entry(email);
+            e.KeycloakStatus = DevSeedCleanupResponse.StatusSkippedForeign;
+            e.IdentityStatus = DevSeedCleanupResponse.StatusSkippedForeign;
+            e.Error = "identity'de aynı e-postalı seed olmayan kayıt var — dokunulmadı.";
+            response.KeycloakSkippedForeign++;
+        }
+
+        var seedGroups = identityRows
+            .Where(r => r.IsSeedData && SeedDataConventions.IsSeedEmail(r.Email) && !foreignEmails.Contains(r.Email))
+            .GroupBy(r => r.Email, StringComparer.OrdinalIgnoreCase);
+        foreach (var g in seedGroups)
+        {
+            var rows = g.OrderBy(r => r.IsDeleted).ThenBy(r => r.Id).ToList(); // aktif satır önce
+            var e = Entry(g.Key);
+            e.UserId = rows[0].Id;
+            e.KeycloakId = rows.Select(r => r.KeycloakId).FirstOrDefault(k => !string.IsNullOrEmpty(k));
+            e.IdentityIds = rows.Select(r => r.Id).ToList();
+            e.IdentityStatus = rows.Any(r => excluded.Contains(r.Id))
+                ? DevSeedCleanupResponse.StatusExcluded
+                : DevSeedCleanupResponse.StatusPlanned;
+        }
+
+        // ---- 1) Keycloak: seed alanı araması (e-posta + kullanıcı adı; username≠email vakası için) ----
+        var sw = Stopwatch.StartNew();
+        var keycloakUsers = new List<KeycloakUserSummary>();
+        var searchFailed = false;
+        try
+        {
+            keycloakUsers.AddRange(await _keycloak.SearchUsersAsync(domainSuffix, KeycloakUserSearchField.Email, ct));
+            keycloakUsers.AddRange(await _keycloak.SearchUsersAsync(domainSuffix, KeycloakUserSearchField.Username, ct));
+        }
+        catch (KeycloakException ex)
+        {
+            searchFailed = true;
+            _logger.LogWarning(ex, "dev seed-cleanup: Keycloak araması başarısız");
+            foreach (var e in entries.Values.Where(e => e.IdentityStatus == DevSeedCleanupResponse.StatusPlanned))
+            {
+                e.KeycloakStatus = DevSeedCleanupResponse.StatusFailed;
+                e.IdentityStatus = DevSeedCleanupResponse.StatusFailed;
+                e.Error = $"Keycloak araması başarısız: {ex.Message}";
+                response.KeycloakFailed++;
+                response.IdentityFailed++;
+            }
+        }
+
+        var keycloakByUsername = keycloakUsers
+            .Where(u => SeedDataConventions.IsSeedEmail(u.Username))
+            .GroupBy(u => u.Username, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var kc in keycloakByUsername.Values)
+        {
+            var e = Entry(kc.Username);
+            if (e.KeycloakStatus == DevSeedCleanupResponse.StatusSkippedForeign) continue;
+            e.KeycloakId = kc.Id;
+
+            if (e.UserId is null)
+            {
+                // Keycloak'ta var, identity'de seed kaydı yok: seed-users ile aynı kural — yabancı, dokunulmaz.
+                e.KeycloakStatus = DevSeedCleanupResponse.StatusSkippedForeign;
+                e.IdentityStatus = DevSeedCleanupResponse.StatusSkippedForeign;
+                e.Error = "Keycloak'ta var ama identity'de seed kaydı yok — yabancı hesap, dokunulmadı.";
+                response.KeycloakSkippedForeign++;
+                continue;
+            }
+
+            if (e.IdentityStatus == DevSeedCleanupResponse.StatusExcluded)
+                e.KeycloakStatus = DevSeedCleanupResponse.StatusExcluded;
+            else if (e.IdentityStatus == DevSeedCleanupResponse.StatusPlanned)
+                e.KeycloakStatus = DevSeedCleanupResponse.StatusPlanned;
+        }
+
+        // Aramada çıkmayan identity kayıtları: KeycloakId biliniyorsa id ile silme denenir (self-heal; 404 → Missing),
+        // bilinmiyorsa Missing. Excluded olanlar Keycloak'ta da korunur.
+        foreach (var e in entries.Values.Where(e => string.IsNullOrEmpty(e.KeycloakStatus)))
+        {
+            if (e.IdentityStatus == DevSeedCleanupResponse.StatusExcluded)
+                e.KeycloakStatus = DevSeedCleanupResponse.StatusExcluded;
+            else if (e.IdentityStatus == DevSeedCleanupResponse.StatusPlanned && !searchFailed)
+            {
+                if (!string.IsNullOrEmpty(e.KeycloakId))
+                    e.KeycloakStatus = DevSeedCleanupResponse.StatusPlanned; // aramada yok ama id var → id ile denenecek
+                else
+                {
+                    e.KeycloakStatus = DevSeedCleanupResponse.StatusMissing;
+                    response.KeycloakMissing++;
+                }
+            }
+        }
+
+        response.KeycloakExcluded = entries.Values.Count(e => e.KeycloakStatus == DevSeedCleanupResponse.StatusExcluded);
+        response.IdentityExcluded = entries.Values.Count(e => e.IdentityStatus == DevSeedCleanupResponse.StatusExcluded);
+
+        if (!request.DryRun)
+        {
+            // ---- 2) Keycloak silme (kullanıcı başına; bir hata diğerlerini durdurmaz) ----
+            foreach (var e in entries.Values.Where(e => e.KeycloakStatus == DevSeedCleanupResponse.StatusPlanned))
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var deleted = await _keycloak.TryDeleteUserAsync(e.KeycloakId!, ct);
+                    e.KeycloakStatus = deleted ? DevSeedCleanupResponse.StatusDeleted : DevSeedCleanupResponse.StatusMissing;
+                    if (deleted) response.KeycloakDeleted++; else response.KeycloakMissing++;
+                }
+                catch (KeycloakException ex)
+                {
+                    e.KeycloakStatus = DevSeedCleanupResponse.StatusFailed;
+                    e.IdentityStatus = DevSeedCleanupResponse.StatusFailed;
+                    e.Error = ex.Message;
+                    response.KeycloakFailed++;
+                    response.IdentityFailed++;
+                    _logger.LogWarning(ex, "dev seed-cleanup: Keycloak silme hatası ({Email})", e.Email);
+                }
+            }
+        }
+        response.KeycloakElapsedMs = sw.ElapsedMilliseconds;
+
+        // ---- 3) Identity hard delete (yalnızca Keycloak tarafı Deleted/Missing olanlar; entry'nin TÜM satırları) ----
+        sw.Restart();
+        var identityIds = entries.Values
+            .Where(e => e.IdentityStatus == DevSeedCleanupResponse.StatusPlanned
+                        && e.KeycloakStatus is DevSeedCleanupResponse.StatusDeleted or DevSeedCleanupResponse.StatusMissing or DevSeedCleanupResponse.StatusPlanned)
+            .SelectMany(e => e.IdentityIds)
+            .ToList();
+
+        if (!request.DryRun && identityIds.Count > 0)
+        {
+            // ExecuteDelete: SaveChanges/soft-delete interceptor'ından geçmez → gerçek DELETE. Seed satırı
+            // benzersiz e-posta/KeycloakId için yeniden koşuda yer açar. Son sigorta: IsSeedData filtresi SQL'de de var.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            var deleted = 0;
+            await strategy.ExecuteAsync(async () =>
+            {
+                deleted = 0;
+                foreach (var chunk in identityIds.Chunk(1000))
+                {
+                    deleted += await _context.Users
+                        .IgnoreQueryFilters()
+                        .Where(u => u.IsSeedData && u.Email.EndsWith(domainSuffix) && chunk.Contains(u.Id))
+                        .ExecuteDeleteAsync(ct);
+                }
+            });
+            response.IdentityDeleted = deleted;
+            var deletedIds = identityIds.ToHashSet();
+            foreach (var e in entries.Values.Where(e => e.IdentityIds.Any(deletedIds.Contains)))
+                e.IdentityStatus = DevSeedCleanupResponse.StatusDeleted;
+        }
+        response.IdentityDbElapsedMs = sw.ElapsedMilliseconds;
+
+        response.Users = entries.Values.OrderBy(e => e.Email, StringComparer.Ordinal).ToList();
+
+        _logger.LogInformation(
+            "dev seed-cleanup: dryRun={DryRun} kcDeleted={KcDeleted} kcMissing={KcMissing} kcExcluded={KcExcluded} kcForeign={KcForeign} kcFailed={KcFailed} " +
+            "idDeleted={IdDeleted} idExcluded={IdExcluded} idFailed={IdFailed} kcMs={KcMs} dbMs={DbMs}",
+            response.DryRun, response.KeycloakDeleted, response.KeycloakMissing, response.KeycloakExcluded, response.KeycloakSkippedForeign, response.KeycloakFailed,
+            response.IdentityDeleted, response.IdentityExcluded, response.IdentityFailed, response.KeycloakElapsedMs, response.IdentityDbElapsedMs);
+
+        return response;
+    }
+
     /// <summary>Hiçbir dış sisteme dokunmadan önce tüm istek doğrulanır; tek geçersiz öğe tüm isteği reddeder (400).</summary>
     private static void Validate(DevSeedUsersRequest request)
     {

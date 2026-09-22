@@ -55,4 +55,34 @@ public class DevSeedController : ControllerBase
             return NotFound();
         }
     }
+
+    /// <summary>
+    /// Seed hesaplarını Keycloak + identity'den kaldırır (issue #218). Kapsam sabittir (seed alanı +
+    /// <c>IsSeedData=true</c>); istek yalnızca <c>ExcludeUserIds</c> ile daraltır. <c>DryRun=true</c> varsayılan.
+    /// Aynı koruma katmanları: DI guard, ortam guard'ı, <c>Service</c> policy, gateway engeli.
+    /// </summary>
+    [HttpPost("seed-users/cleanup")]
+    [ProducesResponseType(typeof(DevSeedCleanupResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CleanupSeedUsers([FromBody] DevSeedCleanupRequest request, CancellationToken ct)
+    {
+        if (_seedService is null || !DevUserSeedService.IsAllowedEnvironment(_environment))
+            return NotFound();
+
+        try
+        {
+            var result = await _seedService.CleanupAsync(request, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DevSeedEnvironmentException ex)
+        {
+            _logger.LogWarning(ex, "dev seed-cleanup reddedildi");
+            return NotFound();
+        }
+    }
 }

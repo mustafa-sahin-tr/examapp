@@ -15,12 +15,16 @@ namespace ExamApp.Api.Services.Teachers.Seed;
 /// <summary>
 /// Bkz. <see cref="IAuthApiSeedClient"/>. <c>AuthApiBaseUrl</c> + <see cref="IServiceTokenProvider"/>
 /// (BadgeResetApiClient ile aynı desen). Zaman aşımı uzun (named client): partial import'ta 500 kullanıcı
-/// tek istek. Tüm hata yolları <see cref="TeacherSeedAuthApiException"/> ile açıklayıcı mesaja çevrilir.
+/// tek istek; temizlikte on binlerce Keycloak silme. Tüm hata yolları <see cref="TeacherSeedAuthApiException"/>
+/// ile açıklayıcı mesaja çevrilir.
 /// </summary>
 public sealed class AuthApiSeedClient : IAuthApiSeedClient
 {
     public const string HttpClientName = nameof(AuthApiSeedClient);
     public const string BaseUrlConfigKey = "AuthApiBaseUrl";
+
+    private const string SeedUsersPath = "/api/auth/dev/seed-users";
+    private const string CleanupPath = "/api/auth/dev/seed-users/cleanup";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -35,10 +39,22 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
         _tokenProvider = tokenProvider;
     }
 
-    public async Task<DevSeedUsersResponse> SeedUsersAsync(DevSeedUsersRequest request, CancellationToken ct = default)
+    public Task<DevSeedUsersResponse> SeedUsersAsync(DevSeedUsersRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return PostAsync<DevSeedUsersRequest, DevSeedUsersResponse>(SeedUsersPath, "seed-users", request,
+            $"{request.Users.Count} hesap", "Keycloak yavaş olabilir; --batch-size küçültün ya da --keycloak-mode partial-import deneyin.", ct);
+    }
 
+    public Task<DevSeedCleanupResponse> CleanupSeedUsersAsync(DevSeedCleanupRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return PostAsync<DevSeedCleanupRequest, DevSeedCleanupResponse>(CleanupPath, "seed-users/cleanup", request,
+            request.DryRun ? "dry-run" : "apply", "Keycloak'ta çok kullanıcı silinmiş olabilir; tekrar koşu kalanı temizler (idempotent).", ct);
+    }
+
+    private async Task<TResponse> PostAsync<TRequest, TResponse>(string path, string label, TRequest request, string sizeHint, string timeoutHint, CancellationToken ct)
+    {
         var baseUrl = _configuration[BaseUrlConfigKey]?.TrimEnd('/');
         if (string.IsNullOrWhiteSpace(baseUrl))
             throw new TeacherSeedAuthApiException($"{BaseUrlConfigKey} yapılandırılmamış (örn. http://localhost:6079).");
@@ -54,7 +70,7 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
         }
 
         var client = _httpClientFactory.CreateClient(HttpClientName);
-        var url = $"{baseUrl}/api/auth/dev/seed-users";
+        var url = baseUrl + path;
         using var message = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(JsonSerializer.Serialize(request, Json), Encoding.UTF8, "application/json")
@@ -74,8 +90,7 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
         {
             // HttpClient zaman aşımı (kullanıcı iptali değil): Keycloak/auth-api yavaş — parti küçültülebilir.
             throw new TeacherSeedAuthApiException(
-                $"auth-api zaman aşımı ({url}, {request.Users.Count} hesap, sınır {client.Timeout.TotalSeconds:F0} sn). " +
-                "Keycloak yavaş olabilir; --batch-size küçültün ya da --keycloak-mode partial-import deneyin.", ex);
+                $"auth-api zaman aşımı ({url}, {sizeHint}, sınır {client.Timeout.TotalSeconds:F0} sn). {timeoutHint}", ex);
         }
 
         using (response)
@@ -94,12 +109,12 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
             if (!response.IsSuccessStatusCode)
             {
                 throw new TeacherSeedAuthApiException(
-                    $"auth-api seed-users başarısız: {(int)response.StatusCode} {response.ReasonPhrase}. {Truncate(body)}");
+                    $"auth-api {label} başarısız: {(int)response.StatusCode} {response.ReasonPhrase}. {Truncate(body)}");
             }
 
             try
             {
-                return JsonSerializer.Deserialize<DevSeedUsersResponse>(body, Json)
+                return JsonSerializer.Deserialize<TResponse>(body, Json)
                     ?? throw new TeacherSeedAuthApiException("auth-api boş yanıt döndü.");
             }
             catch (JsonException ex)

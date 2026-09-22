@@ -214,12 +214,13 @@ describe('TeacherAvailabilityComponent', () => {
     expect(listItems.length).toBe(2);
   }));
 
-  it('should show delete button for free slots', fakeAsync(() => {
+  it('liste salt okunur: satırlarda silme butonu yok (issue #177 silmeyi grid\'e taşıdı)', fakeAsync(() => {
     fixture.detectChanges();
     tick();
 
-    const deleteButton = fixture.nativeElement.querySelector('.avail__row button');
-    expect(deleteButton).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.avail__row').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('.avail__row button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.avail__locked')).toBeNull();
   }));
 
   it('should show locked icon for booked slots', fakeAsync(() => {
@@ -242,65 +243,6 @@ describe('TeacherAvailabilityComponent', () => {
 
     const lockedIcon = fixture.nativeElement.querySelector('.avail__locked');
     expect(lockedIcon).toBeTruthy();
-  }));
-
-  it('should call deleteSlot when delete button clicked', fakeAsync(() => {
-    fixture.detectChanges();
-    tick();
-
-    const deleteButton = fixture.nativeElement.querySelector('.avail__row button') as HTMLButtonElement;
-    deleteButton?.click();
-    tick();
-
-    expect(bookingService.deleteSlot).toHaveBeenCalledWith(1);
-  }));
-
-  it('should show snackbar and remove slot after delete success', fakeAsync(() => {
-    const slots = [
-      mockSlot,
-      {
-        id: 2,
-        teacherId: 10,
-        date: '2026-09-21',
-        startTime: '15:00:00',
-        endTime: '16:00:00',
-        createdAt: '2026-09-15T10:00:00Z',
-        startUtc: '2026-09-21T13:00:00Z',
-        endUtc: '2026-09-21T14:00:00Z',
-        isBooked: false,
-      },
-    ];
-    bookingService.getAllMySlots.and.returnValue(of({ items: slots, success: true }));
-
-    fixture.detectChanges();
-    tick();
-
-    let rows = fixture.nativeElement.querySelectorAll('.avail__row');
-    expect(rows.length).toBe(2);
-
-    const deleteButton = fixture.nativeElement.querySelector('.avail__row button') as HTMLButtonElement;
-    bookingService.deleteSlot.and.returnValue(of(undefined));
-    deleteButton?.click();
-    tick();
-
-    // Verify snackbar was called with success message
-    expect(snackBar.open).toHaveBeenCalledWith(
-      jasmine.any(String),
-      jasmine.any(String),
-      jasmine.any(Object)
-    );
-
-    // Verify slot was removed from component state
-    expect(component['slots']().length).toBe(1);
-    expect(component['slots']()[0].id).toBe(2);
-  }));
-
-  it('should have visible delete button for free slots', fakeAsync(() => {
-    fixture.detectChanges();
-    tick();
-
-    const deleteButton = fixture.nativeElement.querySelector('.avail__row button');
-    expect(deleteButton).toBeTruthy();
   }));
 
   it('should display booking requests button', fakeAsync(() => {
@@ -335,20 +277,183 @@ describe('TeacherAvailabilityComponent', () => {
     expect(chip).toBeTruthy();
   }));
 
-  it('should handle error on slot delete', fakeAsync(() => {
-    const deleteError = new HttpErrorResponse({ status: 403, statusText: 'Forbidden' });
-    bookingService.deleteSlot.and.returnValue(throwError(() => deleteError));
-    bookingService.extractError.and.returnValue('Not your slot');
+  describe('grid üzerinden aralık silme (issue #177)', () => {
+    // Görünen haftada, dilimden bağımsız saatte: Cuma H:00–(H+1):00 boş; Cuma (H+2)–(H+3) bekleyen randevulu.
+    const friday = (hour: number) => {
+      const now = new Date();
+      const day = now.getDay();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+      monday.setHours(0, 0, 0, 0);
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + 4);
+      d.setHours(hour, 0, 0, 0);
+      return d;
+    };
+    const H = safeLocalHour(friday(12));
+    const slotAt = (id: number, startHour: number, isBooked = false): AvailabilitySlot => ({
+      id,
+      teacherId: 10,
+      date: friday(startHour).toISOString().slice(0, 10),
+      startTime: friday(startHour).toISOString().slice(11, 19),
+      endTime: friday(startHour + 1).toISOString().slice(11, 19),
+      createdAt: '2026-09-15T10:00:00Z',
+      startUtc: friday(startHour).toISOString(),
+      endUtc: friday(startHour + 1).toISOString(),
+      isBooked,
+      bookingStatus: isBooked ? 'Pending' : null,
+    });
+    const freeSlot = slotAt(11, H);
+    const bookedSlot = slotAt(12, H + 2, true);
 
-    fixture.detectChanges();
-    tick();
+    function render(): void {
+      fixture.detectChanges();
+      tick();
+      fixture.detectChanges();
+    }
 
-    const deleteButton = fixture.nativeElement.querySelector('.avail__row button') as HTMLButtonElement;
-    deleteButton?.click();
-    tick();
+    function grid(): AvailabilityWeekGridComponent {
+      return fixture.debugElement.query(By.directive(AvailabilityWeekGridComponent))
+        .componentInstance as AvailabilityWeekGridComponent;
+    }
 
-    expect(snackBar.open).toHaveBeenCalled();
-  }));
+    function confirmButton(): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector('.awg__delete-confirm') as HTMLButtonElement | null;
+    }
+
+    function alertText(): string | null {
+      const alert = fixture.nativeElement.querySelector('.awg__draft [role="alert"]') as HTMLElement | null;
+      return alert ? (alert.textContent ?? '').trim() : null;
+    }
+
+    /** Sayfa yüklenir, grid'de boş slota (11) tıklanır → silme modu. */
+    function selectFreeSlot(): void {
+      bookingService.getAllMySlots.and.returnValue(of({ items: [freeSlot, bookedSlot], success: true }));
+      render();
+      grid()['onEventClick']('11');
+      render();
+    }
+
+    it('slota tıklama grid\'i silme moduna alır; Sil → deleteSlot(id) bir kez çağrılır', fakeAsync(() => {
+      selectFreeSlot();
+      expect(confirmButton()).not.toBeNull();
+      expect(grid().selectedSlotId()).toBe(11);
+
+      confirmButton()!.click();
+      render();
+
+      expect(bookingService.deleteSlot).toHaveBeenCalledOnceWith(11);
+    }));
+
+    it('başarıda snackbar, slot listeden ve grid\'den düşer, seçim kapanır, yeniden yükleme yapılmaz', fakeAsync(() => {
+      selectFreeSlot();
+      expect(fixture.nativeElement.querySelectorAll('.avail__row').length).toBe(2);
+
+      confirmButton()!.click();
+      render();
+
+      expect(snackBar.open).toHaveBeenCalledOnceWith(taTr.messages.deleted, taTr.messages.ok, { duration: 3000 });
+      expect(component['slots']().map((s) => s.id)).toEqual([12]);
+      expect(grid().slots().map((s) => s.id)).toEqual([12]);
+      expect(fixture.nativeElement.querySelectorAll('.avail__row').length).toBe(1);
+      expect(fixture.nativeElement.querySelectorAll('.fc-timegrid-event').length).toBe(1);
+      expect(grid().selectedSlotId()).toBeNull();
+      expect(confirmButton()).toBeNull();
+      expect(alertText()).toBeNull();
+      expect(bookingService.getAllMySlots).toHaveBeenCalledTimes(1);
+    }));
+
+    it('sunucu reddi (randevusu var) grid çubuğunda gösterilir; seçim ve slot korunur, snackbar yok', fakeAsync(() => {
+      selectFreeSlot();
+      const rejected = new HttpErrorResponse({
+        status: 400,
+        error: { success: false, message: 'Aktif randevusu olan aralık silinemez.' },
+      });
+      bookingService.deleteSlot.and.returnValue(throwError(() => rejected));
+      bookingService.extractError.and.returnValue('Aktif randevusu olan aralık silinemez.');
+
+      confirmButton()!.click();
+      render();
+
+      expect(bookingService.extractError).toHaveBeenCalledOnceWith(rejected, taTr.messages.deleteFailed);
+      expect(alertText()).toBe('Aktif randevusu olan aralık silinemez.');
+      expect(grid().selectedSlotId()).toBe(11);
+      expect(component['slots']().length).toBe(2);
+      expect(confirmButton()?.getAttribute('aria-disabled')).toBeNull();
+      expect(snackBar.open).not.toHaveBeenCalled();
+    }));
+
+    it('409 çakışmada da hata grid\'e düşer ve seçim değişince temizlenir', fakeAsync(() => {
+      selectFreeSlot();
+      bookingService.deleteSlot.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+      confirmButton()!.click();
+      render();
+      expect(alertText()).toBe('Error message');
+
+      // Vazgeç → seçim null → sayfa hatayı temizler.
+      (fixture.nativeElement.querySelector('.awg__delete-cancel') as HTMLButtonElement).click();
+      render();
+
+      expect(alertText()).toBeNull();
+      expect(grid().selectedSlotId()).toBeNull();
+      expect(component['deleteError']()).toBeNull();
+    }));
+
+    it('seçili slot yeniden yüklemede listeden düşerse grid seçimi null yayar ve sayfa deleteError\'ı temizler', fakeAsync(() => {
+      selectFreeSlot();
+      bookingService.deleteSlot.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
+      confirmButton()!.click();
+      render();
+      expect(alertText()).toBe('Error message');
+
+      bookingService.getAllMySlots.and.returnValue(of({ items: [bookedSlot], success: true }));
+      component['load']();
+      render();
+
+      expect(component['selectedSlotId']()).toBeNull();
+      expect(component['deleteError']()).toBeNull();
+      expect(alertText()).toBeNull();
+      expect(confirmButton()).toBeNull();
+    }));
+
+    it('randevulu slota tıklama silme moduna girmez ve deleteSlot çağrılmaz', fakeAsync(() => {
+      bookingService.getAllMySlots.and.returnValue(of({ items: [freeSlot, bookedSlot], success: true }));
+      render();
+
+      grid()['onEventClick']('12');
+      render();
+
+      expect(confirmButton()).toBeNull();
+      expect(fixture.nativeElement.querySelector('.awg__locked-hint')?.textContent?.trim()).toBe(taTr.actions.lockedHint);
+      expect(bookingService.deleteSlot).not.toHaveBeenCalled();
+    }));
+
+    it('silme sürerken butonlar aria-disabled olur ve ikinci gönderim yapılmaz', fakeAsync(() => {
+      selectFreeSlot();
+      const pending = new Subject<void>();
+      bookingService.deleteSlot.and.returnValue(pending.asObservable());
+
+      confirmButton()!.click();
+      render();
+
+      expect(confirmButton()?.getAttribute('aria-disabled')).toBe('true');
+      expect(fixture.nativeElement.querySelector('.awg__delete-cancel')?.getAttribute('aria-disabled')).toBe('true');
+      expect(grid().deleting()).toBeTrue();
+
+      confirmButton()!.click();
+      component['deleteSlot'](11);
+      render();
+      expect(bookingService.deleteSlot).toHaveBeenCalledTimes(1);
+
+      pending.next();
+      pending.complete();
+      render();
+
+      expect(confirmButton()).toBeNull();
+      expect(grid().deleting()).toBeFalse();
+      expect(component['slots']().map((s) => s.id)).toEqual([12]);
+    }));
+  });
 
   describe('grid üzerinden aralık oluşturma (issue #176)', () => {
     const createdSlot: AvailabilitySlot = {

@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Worksheets;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
@@ -10,7 +11,7 @@ namespace ExamApp.Api.Tests.Services;
 public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx);
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new SchoolAccessPolicy());
 
     private const int TeacherUserId = 500;
 
@@ -18,7 +19,7 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
     public async Task Returns_an_empty_name_when_the_worksheet_does_not_exist()
     {
         await using var ctx = _db.NewContext();
-        var result = await NewService(ctx).GetWorksheetAssignmentsForTeacherAsync(404, TeacherUserId);
+        var result = await NewService(ctx).GetWorksheetAssignmentsForTeacherAsync(404, SchoolScope.For(TeacherUserId, null));
         result.WorksheetId.ShouldBe(404);
         result.WorksheetName.ShouldBe("");
     }
@@ -43,7 +44,7 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, TeacherUserId);
+        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, null));
         result.WorksheetName.ShouldBe("Deneme");
         result.Assignments.ShouldBeEmpty();
     }
@@ -84,7 +85,7 @@ public class WorksheetAssignmentServiceTeacherViewTests : IDisposable
         }
 
         await using var read = _db.NewContext();
-        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, TeacherUserId);
+        var result = await NewService(read).GetWorksheetAssignmentsForTeacherAsync(wsId, SchoolScope.For(TeacherUserId, null));
 
         var assignment = result.Assignments.ShouldHaveSingleItem();
         assignment.TargetType.ShouldBe("Grade");

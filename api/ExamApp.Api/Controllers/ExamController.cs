@@ -302,10 +302,11 @@ public class ExamController : BaseController
 
     [Authorize(Roles = "Teacher")]
     [HttpGet("{id}/assignments/overview")]
-    public async Task<IActionResult> GetAssignmentsOverview(int id)
+    public async Task<IActionResult> GetAssignmentsOverview(int id, CancellationToken ct)
     {
-        var user = await GetAuthenticatedUserAsync();
-        var overview = await _assignmentService.GetWorksheetAssignmentsForTeacherAsync(id, user.Id);
+        // issue #190: öğrenci listesi istek sahibinin okuluyla sınırlı; okul sunucu tarafında çözülür.
+        var scope = await GetSchoolScopeAsync(ct);
+        var overview = await _assignmentService.GetWorksheetAssignmentsForTeacherAsync(id, scope);
         return Ok(overview);
     }
 

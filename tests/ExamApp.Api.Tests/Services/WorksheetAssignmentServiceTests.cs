@@ -12,7 +12,7 @@ namespace ExamApp.Api.Tests.Services;
 public class WorksheetAssignmentServiceTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
-    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx);
+    private WorksheetAssignmentService NewService(AppDbContext ctx) => new(ctx, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
 
     private static readonly DateTime Start = new(2026, 3, 1, 8, 0, 0, DateTimeKind.Utc);
 

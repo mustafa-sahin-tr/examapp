@@ -5,7 +5,7 @@ namespace ExamApp.Api.Data;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-public class Student : BaseEntity
+public class Student : BaseEntity, ISchoolScoped
 {
     [Key]
     public int Id { get; set; }

@@ -4,6 +4,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Models.Constants;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Tenancy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -91,11 +92,45 @@ public class BaseController : ControllerBase
         if (IsServiceAccount || IsAdmin)
             return null;
 
+        var user = await ResolveVerifiedProfileAsync(ct);
+        return VerifiedSchoolId(user);
+    }
+
+    /// <summary>
+    /// issue #190: okul izolasyonu kararları için istek sahibinin tenant bağlamı. Admin ve servis hesabı
+    /// <see cref="SchoolScope.Unrestricted"/> (filtre yok); diğerleri için SchoolId DB'den doğrulanır.
+    /// Profil TEK seferde çözülür (tek Redis okuması) ve fail-closed'dur: <see cref="GetAuthenticatedUserAsync"/>'in
+    /// provider hatasında döndürdüğü sahte (Id=0/Role=Service) DTO'suna güvenilmez — profil çözülemezse fırlatır.
+    /// Servis metotlarına bu değer geçilir; servisler <see cref="ISchoolAccessPolicy"/> ile kararı verir.
+    /// </summary>
+    protected async Task<SchoolScope> GetSchoolScopeAsync(CancellationToken ct = default)
+    {
+        if (IsServiceAccount)
+            return SchoolScope.Unrestricted(0);
+
+        var user = await ResolveVerifiedProfileAsync(ct);
+
+        if (IsAdmin)
+            return SchoolScope.Unrestricted(user.Id);
+
+        return SchoolScope.For(user.Id, VerifiedSchoolId(user));
+    }
+
+    /// <summary>
+    /// Profili provider'dan doğrudan çözer; null/çözülemezse fırlatır (fail-closed). Redis/auth-api
+    /// kesintisinde sessizce "okulsuz" sayılıp okul filtrelerinin bypass edilmesini engeller.
+    /// </summary>
+    private async Task<UserProfileDto> ResolveVerifiedProfileAsync(CancellationToken ct)
+    {
         var userProfileProvider = HttpContext.RequestServices.GetRequiredService<IUserProfileProvider>();
-        var user = await userProfileProvider.GetAsync(KeyCloakId, ct)
+        return await userProfileProvider.GetAsync(KeyCloakId, ct)
             ?? throw new InvalidOperationException(
                 $"User profile could not be resolved for KeycloakId={KeyCloakId}; cannot determine school context.");
+    }
 
+    /// <summary>DB'den doğrulanmış SchoolId; JWT claim'i ile uyuşmazsa DB kazanır ve uyuşmazlık loglanır.</summary>
+    private int? VerifiedSchoolId(UserProfileDto user)
+    {
         var dbSchoolId = user.SchoolId;
 
         var claimHint = SchoolIdClaimHint;

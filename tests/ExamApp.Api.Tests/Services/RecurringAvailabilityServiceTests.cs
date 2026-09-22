@@ -40,7 +40,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
         var tp = new FakeTimeProvider(now ?? FixedNow);
         var recurring = new RecurringAvailabilityService(ctx, tp, NullLogger<RecurringAvailabilityService>.Instance);
         return new BookingService(ctx, _authApi, _videoProvider, Options.Create(new VideoOptions()), tp, recurring,
-            NullLogger<BookingService>.Instance);
+            NullLogger<BookingService>.Instance, new ExamApp.Api.Services.Tenancy.SchoolAccessPolicy());
     }
 
     private static CreateRecurringAvailabilityRuleDto WednesdayRule(DateOnly? effectiveFrom = null, DateOnly? effectiveUntil = null) => new()
@@ -603,7 +603,7 @@ public class RecurringAvailabilityServiceTests : IDisposable
         }
 
         await using var ctx = _db.NewContext();
-        var result = await NewBookingService(ctx).GetTeacherOpenSlotsAsync(TeacherId, 0, 200);
+        var result = await NewBookingService(ctx).GetTeacherOpenSlotsAsync(TeacherId, ExamApp.Api.Services.Tenancy.SchoolScope.For(StudentUserId, null), 0, 200);
 
         result.Success.ShouldBeTrue();
         result.Items.Count.ShouldBeGreaterThan(0);

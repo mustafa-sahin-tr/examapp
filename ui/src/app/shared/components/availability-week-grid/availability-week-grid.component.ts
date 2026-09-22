@@ -2,6 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   PLATFORM_ID,
   ViewEncapsulation,
@@ -19,7 +20,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FullCalendarComponent, FullCalendarModule } from '@fullcalendar/angular';
-import type { CalendarOptions, DatesSetArg, EventContentArg, EventInput } from '@fullcalendar/core';
+import type { CalendarOptions, DatesSetArg, EventClickArg, EventContentArg, EventInput } from '@fullcalendar/core';
 import trLocale from '@fullcalendar/core/locales/tr';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -36,12 +37,15 @@ import {
   nextUtcDayBoundary,
   toSlotRequest,
 } from './availability-draft.util';
-import { AvailabilityGridEventProps, SlotStatusClass, toGridEvents } from './availability-week-grid.util';
+import { AvailabilityGridEvent, AvailabilityGridEventProps, SlotStatusClass, toGridEvents } from './availability-week-grid.util';
 
 const TEACHER_AVAILABILITY_SCOPE = 'teacher-availability';
 
 /** Taslağın FullCalendar olay kimliği; gerçek slot kimlikleri sayısaldır, çakışmaz. */
 const DRAFT_EVENT_ID = 'awg-draft';
+
+/** Randevulu slota tıklamada "silinemez" ipucunun ekranda kalma süresi. */
+const LOCKED_HINT_MS = 4000;
 
 /** Açıklama satırında gösterilen durumlar (sıra: boş, bekleyen, onaylı). */
 interface LegendItem {
@@ -58,14 +62,22 @@ interface LegendItem {
  * Olay içeriği metin olarak (`eventContent` şablonu) basılır; HTML enjekte edilmez.
  *
  * Klavye erişimi (issue #208): tab durağı şablondaki `.awg__ev` elemanıdır — çevirili `aria-label` ve
- * `matTooltip` aynı elemanda durur. FullCalendar'ın `eventInteractive` seçeneği bilinçli olarak kapalıdır;
- * açılırsa olay başına iç içe iki tab durağı oluşur.
+ * `matTooltip` aynı elemanda durur. FullCalendar'ın `eventInteractive` seçeneği bilinçli olarak KAPALI
+ * yazılır: `eventClick` handler'ı bağlıyken FullCalendar bu seçeneği varsayılan olarak açar ve `.fc-event`'e
+ * de `tabindex` ekler (olay başına iç içe iki tab durağı). `eventClick` ise `eventInteractive`'den bağımsız,
+ * `.fc-event` üzerindeki delege `click` ile tetiklenir; klavye (Enter/Space) `.awg__ev`'de bizde dinlenir.
  *
  * Tıkla-seç ile aralık oluşturma (issue #176, `editable`): boş hücreye tıklama 30 dk'lık TASLAK kurar,
  * sonraki tıklamalar genişletir/daraltır (kurallar `applyCellClick`). Sürükleme yoktur; `dateClick`
  * fare ve dokunmatik dokunuşta aynı çalışır (`@fullcalendar/interaction`). Taslak arka plan olayı olarak
  * çizilir — böylece üstüne yapılan tıklama da `dateClick` üretir. Onay çubuğu Kaydet'te
  * `createRequested` yayar; API çağrısı, `saving`/`saveError` durumu ve taslağın temizlenmesi sayfanın işidir.
+ *
+ * Grid üzerinden silme (issue #177, `editable`): kayıtlı BOŞ slota tıklama onu seçer (`selectedSlotId`) ve
+ * aynı onay çubuğu "silme modu"na geçer (aralık + "Bu aralığı sil?" + Sil/Vazgeç). Sil `deleteRequested`
+ * yayar; API çağrısı, `deleting`/`deleteError` ve slotun listeden düşmesi sayfanın işidir. Randevulu slota
+ * tıklama seçim kurmaz, kısa süreli "silinemez" ipucu gösterir; asıl kısıt yine sunucudadır (hata
+ * `deleteError` ile çubukta görünür, seçim korunur). Taslak ve seçim aynı anda olmaz: birine geçiş diğerini siler.
  *
  * Stil `ViewEncapsulation.None` ile yazılır çünkü FullCalendar DOM'unu kendisi üretir; tüm kurallar
  * `.awg` kök sınıfına kapsanır ve renkler yalnızca proje token'larından türer.
@@ -79,7 +91,7 @@ interface LegendItem {
   styleUrls: ['./availability-week-grid.component.scss'],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  // Escape yalnızca odak grid'in içindeyken dinlenir; sayfadaki menü/dialog'un Escape'i taslağı silmez.
+  // Escape yalnızca odak grid'in içindeyken dinlenir; sayfadaki menü/dialog'un Escape'i taslağı/seçimi silmez.
   host: { '(keydown.escape)': 'onEscape($event)' },
 })
 export class AvailabilityWeekGridComponent {
@@ -87,7 +99,7 @@ export class AvailabilityWeekGridComponent {
   /** Yenileme sürerken grid soluklaşır ve `aria-busy` olur; mevcut olaylar yerinde kalır. */
   readonly loading = input(false);
 
-  /** Tıkla-seç ile taslak kurmayı açar; kapalıyken grid salt okunurdur. */
+  /** Tıkla-seç ile taslak kurmayı ve slot seçerek silmeyi açar; kapalıyken grid salt okunurdur. */
   readonly editable = input(false);
   /** Taslak aralık (mutlak anlar; grid yerel saatte çizer). İki yönlü: grid tıklamayla yazar, sayfa kayıt başarısında `null` yapar. */
   readonly draft = model<DraftRange | null>(null);
@@ -98,13 +110,26 @@ export class AvailabilityWeekGridComponent {
   /** Kaydet'e basıldı: taslağın `POST /booking/slots` gövdesi (tıklanan anın UTC günü + saati, bkz. `toSlotRequest`). */
   readonly createRequested = output<CreateAvailabilitySlotRequest>();
 
+  /** Silinmek üzere seçilen slot (issue #177). İki yönlü: grid tıklamayla yazar, sayfa silme başarısında `null` yapar. */
+  readonly selectedSlotId = model<number | null>(null);
+  /** Silme sürerken Sil/Vazgeç ve tıklamalar kapalıdır (çift gönderim olmaz). */
+  readonly deleting = input(false);
+  /** Silme hatası (ör. sunucunun "randevusu var" reddi); çubukta `role="alert"` ile gösterilir, seçim yerinde kalır. */
+  readonly deleteError = input<string | null>(null);
+  /** Sil'e basıldı: seçili slotun kimliği (`DELETE /booking/slots/{id}`). */
+  readonly deleteRequested = output<number>();
+
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly calendar = viewChild(FullCalendarComponent);
   private readonly scrollRegion = viewChild<ElementRef<HTMLElement>>('scrollRegion');
 
   /** Son tıklamanın neden uygulanmadığı (geçmiş, dolu, süre sınırı ...); geçerli tıklamada temizlenir. */
   protected readonly hint = signal<DraftRejection | null>(null);
+  /** Randevulu slota tıklandı: "silinemez" ipucu; kısa süre sonra ya da sonraki tıklamada kalkar. */
+  protected readonly lockedHint = signal(false);
+  private lockedHintTimer: ReturnType<typeof setTimeout> | null = null;
   /** Gün sınırının (UTC 00:00) son tıklanan güne göre YEREL saati, ör. TR'de "03:00"; ipucu metninde kullanılır. */
   private readonly boundaryTime = signal('');
   /** İpucu metinlerindeki sınır değerleri. */
@@ -118,6 +143,31 @@ export class AvailabilityWeekGridComponent {
   protected readonly draftLabel = computed(() => {
     const draft = this.draft();
     return draft ? formatDraftLabel(draft) : '';
+  });
+
+  private readonly slotEvents = computed(() => toGridEvents(this.slots()));
+
+  /**
+   * Seçili slotun grid olayı. Kimlik `slots`'ta artık yoksa (silindi ya da yeniden yüklemede düştü)
+   * seçim yok sayılır; böylece sayfa slotu listeden çıkardığında çubuk kendiliğinden kapanır.
+   */
+  protected readonly selectedEvent = computed<AvailabilityGridEvent | null>(() => {
+    const id = this.selectedSlotId();
+    return id === null ? null : (this.slotEvents().find((ev) => ev.extendedProps.slotId === id) ?? null);
+  });
+
+  /** Silme çubuğu metni: "Cum 25 Eyl · 14:00 – 15:00". */
+  protected readonly selectedLabel = computed(() => {
+    const ev = this.selectedEvent();
+    return ev ? formatDraftLabel({ start: ev.start, end: ev.end }) : '';
+  });
+
+  /** Çubuktaki hata: silme modunda `deleteError`, taslak modunda `saveError`; modsuz durumda hiçbiri. */
+  protected readonly barError = computed<string | null>(() => {
+    if (this.selectedEvent()) {
+      return this.deleteError();
+    }
+    return this.draft() ? this.saveError() : null;
   });
 
   constructor() {
@@ -135,6 +185,26 @@ export class AvailabilityWeekGridComponent {
       }
       hadDraft = hasDraft;
     });
+
+    // Seçim kalktığında (Vazgeç, Escape, silme başarısı, seçili slotun `slots`'tan düşmesi) aynı toparlama:
+    // odak Sil/Vazgeç butonundan kaydırma bölgesine taşınır (buton ve slot olayı DOM'dan silinmeden önce).
+    // Kimlik `slots`'ta yokken model'de kalmışsa null'a çekilir ki sayfa `selectedSlotIdChange` ile hatayı temizlesin.
+    let hadSelection = false;
+    effect(() => {
+      const hasSelection = this.selectedEvent() !== null;
+      if (hadSelection && !hasSelection) {
+        untracked(() => {
+          this.clearLockedHint();
+          this.focusScrollRegionIfInside();
+          if (this.selectedSlotId() !== null) {
+            this.selectedSlotId.set(null);
+          }
+        });
+      }
+      hadSelection = hasSelection;
+    });
+
+    this.destroyRef.onDestroy(() => this.clearLockedHint());
   }
 
   /** FullCalendar'ın yerelleştirilmiş görünüm başlığı ("15 – 21 Eylül 2026"); `datesSet` ile güncellenir. */
@@ -161,8 +231,12 @@ export class AvailabilityWeekGridComponent {
     nowIndicator: true,
     height: '38rem',
     dayHeaderFormat: { weekday: 'short', day: 'numeric' },
+    // `eventClick` bağlıyken FullCalendar `eventInteractive`'i varsayılan açar ve `.fc-event`'e tabindex koyar;
+    // tab durağı bizim `.awg__ev`'dedir (issue #208), bu yüzden açıkça kapatılır.
+    eventInteractive: false,
     // Bir kez bağlanır (seçenek nesnesi taslak değiştikçe yeniden kurulmasın); `editable`/`saving` kontrolü handler'dadır.
     dateClick: (arg: DateClickArg) => this.onDateClick(arg),
+    eventClick: (arg: EventClickArg) => this.onEventClick(arg.event.id),
     datesSet: (arg: DatesSetArg) => {
       // İlk `datesSet` render sırasında (change detection içinde) tetiklenir; sinyal yazımını ertele.
       const title = arg.view.title;
@@ -170,11 +244,12 @@ export class AvailabilityWeekGridComponent {
     },
   };
 
-  private readonly slotEvents = computed(() => toGridEvents(this.slots()));
-
   protected readonly options = computed<CalendarOptions>(() => {
     const draft = this.draft();
-    const events: EventInput[] = [...this.slotEvents()];
+    const selectedId = this.selectedEvent()?.id ?? null;
+    const events: EventInput[] = this.slotEvents().map((ev) =>
+      ev.id === selectedId ? { ...ev, classNames: [...ev.classNames, 'is-selected'] } : ev
+    );
     if (draft) {
       events.push({
         id: DRAFT_EVENT_ID,
@@ -187,10 +262,14 @@ export class AvailabilityWeekGridComponent {
     return { ...this.baseOptions, events };
   });
 
-  /** Hücre tıklaması → taslak. Salt okunur grid'de ve kayıt sürerken yok sayılır. */
+  /** Hücre tıklaması → taslak. Salt okunur grid'de ve kayıt/silme sürerken yok sayılır; açık seçimi kapatır. */
   protected onDateClick(arg: Pick<DateClickArg, 'date'>): void {
-    if (!this.editable() || this.saving()) {
+    if (!this.editable() || this.saving() || this.deleting()) {
       return;
+    }
+    this.clearLockedHint();
+    if (this.selectedSlotId() !== null) {
+      this.selectedSlotId.set(null);
     }
     const current = this.draft();
     const result = applyCellClick(current, arg.date, this.slotEvents(), new Date());
@@ -203,13 +282,45 @@ export class AvailabilityWeekGridComponent {
       );
     }
     this.hint.set(result.rejection);
-    // Host'taki Escape dinleyicisi için odak grid'in içinde olmalı (dokunuşta tarayıcı odağı taşımayabilir).
-    if (!this.host.nativeElement.contains(document.activeElement)) {
-      this.scrollRegion()?.nativeElement.focus({ preventScroll: true });
-    }
+    this.focusScrollRegionIfOutside();
     if (result.draft !== this.draft()) {
       this.draft.set(result.draft);
     }
+  }
+
+  /**
+   * Kayıtlı slota tıklama (fare/dokunma: FullCalendar `eventClick`; klavye: `.awg__ev` Enter/Space) → seçim.
+   * Taslak (arka plan) olayı da `eventClick` üretir; o yok sayılır. Randevulu slot seçilmez, ipucu gösterir.
+   * Seçili slota yeniden tıklama seçimi kaldırır.
+   */
+  protected onEventClick(eventId: string): void {
+    if (!this.editable() || this.saving() || this.deleting() || eventId === DRAFT_EVENT_ID) {
+      return;
+    }
+    const ev = this.slotEvents().find((item) => item.id === eventId);
+    if (!ev) {
+      return;
+    }
+    this.focusScrollRegionIfOutside();
+    if (ev.extendedProps.statusClass !== 'is-free') {
+      // Bayat taslak ipucu ile "silinemez" ipucu aynı anda görünmesin.
+      this.hint.set(null);
+      this.showLockedHint();
+      return;
+    }
+    this.clearLockedHint();
+    this.hint.set(null);
+    if (this.draft() !== null) {
+      this.draft.set(null);
+    }
+    const slotId = ev.extendedProps.slotId;
+    this.selectedSlotId.set(this.selectedSlotId() === slotId ? null : slotId);
+  }
+
+  /** `.awg__ev` odaktayken Enter/Space; varsayılan (Space'te kaydırma) engellenir. */
+  protected onEventKey(event: Event, p: AvailabilityGridEventProps): void {
+    event.preventDefault();
+    this.onEventClick(String(p.slotId));
   }
 
   protected confirm(): void {
@@ -228,12 +339,56 @@ export class AvailabilityWeekGridComponent {
     this.draft.set(null);
   }
 
-  /** Başka bir katman (menü, select, dialog) Escape'i zaten tükettiyse (`defaultPrevented`) taslağa dokunulmaz. */
+  /** Sil: seçili slotun kimliğini yayar; seçimin temizlenmesi sayfanın (başarıda) işidir. */
+  protected confirmDelete(): void {
+    const ev = this.selectedEvent();
+    if (!ev || this.deleting()) {
+      return;
+    }
+    this.deleteRequested.emit(ev.extendedProps.slotId);
+  }
+
+  /** Silmekten vazgeç: seçimi kaldırır; odak, seçimin kalkmasını izleyen effect'te toparlanır. */
+  protected cancelDelete(): void {
+    if (!this.selectedEvent() || this.deleting()) {
+      return;
+    }
+    this.selectedSlotId.set(null);
+  }
+
+  /** Başka bir katman (menü, select, dialog) Escape'i zaten tükettiyse (`defaultPrevented`) taslağa/seçime dokunulmaz. */
   protected onEscape(event: Event): void {
-    if (event.defaultPrevented || !this.editable() || this.saving()) {
+    if (event.defaultPrevented || !this.editable() || this.saving() || this.deleting()) {
       return;
     }
     this.cancel();
+    this.cancelDelete();
+  }
+
+  private showLockedHint(): void {
+    this.clearLockedHint();
+    this.lockedHint.set(true);
+    this.lockedHintTimer = setTimeout(() => {
+      this.lockedHintTimer = null;
+      this.lockedHint.set(false);
+    }, LOCKED_HINT_MS);
+  }
+
+  private clearLockedHint(): void {
+    if (this.lockedHintTimer !== null) {
+      clearTimeout(this.lockedHintTimer);
+      this.lockedHintTimer = null;
+    }
+    if (this.lockedHint()) {
+      this.lockedHint.set(false);
+    }
+  }
+
+  /** Host'taki Escape dinleyicisi için odak grid'in içinde olmalı (dokunuşta tarayıcı odağı taşımayabilir). */
+  private focusScrollRegionIfOutside(): void {
+    if (!this.host.nativeElement.contains(document.activeElement)) {
+      this.scrollRegion()?.nativeElement.focus({ preventScroll: true });
+    }
   }
 
   /** Odak grid'in içindeyse kaybolmasın diye kaydırma bölgesine taşınır; sayfanın başka yerindeyse dokunulmaz. */
@@ -264,6 +419,11 @@ export class AvailabilityWeekGridComponent {
   /** Tooltip / aria-label: gün · saat aralığı · durum [· öğrenci] [· geçmiş]; boş parçalar atlanır. */
   protected tooltipText(p: AvailabilityGridEventProps, status: string, student: string, past: string): string {
     return [p.dayLabel, p.timeRange, status, student, past].filter((part) => part).join(' · ');
+  }
+
+  /** Düzenlenebilir grid'de boş slot silinebilir: tooltip ve `aria-description` eylem ipucunu alır. */
+  protected deletable(p: AvailabilityGridEventProps): boolean {
+    return this.editable() && p.statusClass === 'is-free';
   }
 
   /** `eventContent` şablonunda tipli erişim için `extendedProps` dönüşümü. */

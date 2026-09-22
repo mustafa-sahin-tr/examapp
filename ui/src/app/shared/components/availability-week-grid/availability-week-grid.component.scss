@@ -17,9 +17,13 @@
     opacity: 0.6;
   }
 
-  // Düzenlenebilir grid'de boş hücreler tıklanabilir görünür.
+  // Düzenlenebilir grid'de boş hücreler ve silinebilir (boş) slotlar tıklanabilir görünür; randevulu slot değil.
   &--editable .fc-timegrid-cols {
     cursor: pointer;
+  }
+
+  &--editable .fc-timegrid-event:not(.is-free) .awg__ev {
+    cursor: not-allowed;
   }
 
   // ---------------- Başlık / gezinme ----------------
@@ -104,6 +108,23 @@
       border-color: var(--ms-action-background);
       background: color-mix(in srgb, var(--ms-action-background) 10%, transparent);
     }
+
+    // Silme modu (issue #177): tehlike tonu; taslak tonunun üstüne yazar.
+    &--delete {
+      border-color: var(--ms-danger-background);
+      background: color-mix(in srgb, var(--ms-danger-background) 10%, transparent);
+    }
+  }
+
+  &__delete-prompt {
+    color: var(--ms-text-strong);
+  }
+
+  // Sil butonu: Material filled button token'ları tehlike rengine bağlanır.
+  &__delete-confirm {
+    --mdc-filled-button-container-color: var(--ms-danger-background);
+    --mdc-filled-button-label-text-color: var(--ms-danger-text-inverse);
+    --mat-filled-button-state-layer-color: var(--ms-danger-text-inverse);
   }
 
   &__draft-text {
@@ -224,12 +245,21 @@
       &.is-past {
         opacity: 0.55;
 
-        // Odak halkası ata opaklığıyla solmasın (WCAG 1.4.11).
-        &:has(.awg__ev:focus-visible) {
+        // Odak halkası / seçim vurgusu ata opaklığıyla solmasın (WCAG 1.4.11).
+        &:has(.awg__ev:focus-visible),
+        &.is-selected {
           opacity: 1;
         }
       }
+
+      // Silinmek üzere seçili slot (issue #177): tehlike tonunda kalın çerçeve.
+      &.is-selected {
+        outline: 2px solid var(--ms-danger-background);
+        outline-offset: -2px;
+        --fc-event-border-color: var(--ms-danger-background);
+      }
     }
+
 
     // Taslak: arka plan olayı; kesikli kenar onu kayıtlı (düz kenarlı) slotlardan renk dışında da ayırır.
     .fc-bg-event.awg-draft {

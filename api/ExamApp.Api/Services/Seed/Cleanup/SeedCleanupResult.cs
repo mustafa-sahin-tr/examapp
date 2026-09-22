@@ -7,6 +7,7 @@ public sealed class SeedCleanupResult
 {
     public bool Applied { get; set; }
     public bool Force { get; set; }
+    public bool IncludeOrphans { get; set; }
 
     // ---- Envanter (dry-run = özet rapor) ----
     public int SeedSchools { get; set; }
@@ -54,6 +55,8 @@ public sealed class SeedCleanupResult
     public int KeycloakExcluded { get; set; }
     public int KeycloakSkippedForeign { get; set; }
     public int KeycloakFailed { get; set; }
+    /// <summary>Keycloak'ta seed desenli, identity'de satırı olmayan yetimler — yalnızca <c>--include-orphans</c> ile kapsamda (dry-run'da silinecek, apply'da silinen/hata).</summary>
+    public int KeycloakOrphans { get; set; }
     public int IdentityDeleted { get; set; }
     public int IdentityExcluded { get; set; }
     public int IdentityFailed { get; set; }

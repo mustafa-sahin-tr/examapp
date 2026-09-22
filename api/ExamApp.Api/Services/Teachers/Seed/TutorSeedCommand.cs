@@ -38,6 +38,8 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
           --no-events                          UserPreferredLocaleChangedEvent outbox satırlarını yazma
           --keycloak-mode <admin-api|partial-import>
           --batch-size <N>                     auth-api'ye istek başına hesap (varsayılan 100, en fazla 500)
+          --reset-password                     Keycloak'ta zaten var olan seed hesaplarının parolasını bu koşununkiyle sıfırla
+          --adopt-unmarked                     TEK SEFERLİK incident temizliği: seed_origin işaretsiz yetimleri de sahiplen
           --connection <conn-str>              ConnectionStrings:DefaultConnection yerine kullanılacak bağlantı
           --no-migrate                         Bekleyen migration'ları ve referans seed'ini atla
           --help                               Bu metin
@@ -65,6 +67,8 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
         var mode = TeacherSeedOptions.KeycloakModeAdminApi;
         var batchSize = TeacherSeedOptions.DefaultBatchSize;
         double? pendingRatio = null;
+        var resetPw = false;
+        var adoptUnmarked = false;
         string? connection = null;
         var help = false;
         var noMigrate = false;
@@ -105,6 +109,8 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
                     break;
                 case "--dry-run": dryRun = true; break;
                 case "--no-events": emitEvents = false; break;
+                case "--reset-password": resetPw = true; break;
+                case "--adopt-unmarked": adoptUnmarked = true; break;
                 case "--no-migrate": noMigrate = true; break;
                 case "--connection": connection = TakeValue(args, ref i, arg); break;
                 case "--help":
@@ -125,7 +131,9 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
             PendingRatio = pendingRatio,
             EmitEvents = emitEvents,
             KeycloakMode = mode,
-            BatchSize = batchSize
+            BatchSize = batchSize,
+            ResetPassword = resetPw,
+            AdoptUnmarked = adoptUnmarked
         };
         return new TutorSeedCommand(options, connection, help, noMigrate);
     }
@@ -213,7 +221,7 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
         var sb = new StringBuilder();
         sb.AppendLine(r.DryRun ? "== seed-tutors DRY-RUN (hiçbir şey yazılmadı) ==" : "== seed-tutors ==");
         sb.AppendLine($"Parametreler: iller={string.Join(",", options.Provinces)} limit={options.LimitSchoolsPerProvince?.ToString(CultureInfo.InvariantCulture) ?? "sınırsız"} " +
-                      $"pendingRatio={r.PendingRatio.ToString(CultureInfo.InvariantCulture)}{(options.PendingRatio is null ? " (ortam varsayılanı)" : "")} keycloak={r.KeycloakMode} parti={options.BatchSize} events={(options.EmitEvents ? "açık" : "kapalı")}");
+                      $"pendingRatio={r.PendingRatio.ToString(CultureInfo.InvariantCulture)}{(options.PendingRatio is null ? " (ortam varsayılanı)" : "")} keycloak={r.KeycloakMode} parti={options.BatchSize} events={(options.EmitEvents ? "açık" : "kapalı")} resetPassword={(options.ResetPassword ? "açık" : "kapalı")} adoptUnmarked={(options.AdoptUnmarked ? "AÇIK" : "kapalı")}");
         sb.AppendLine($"Taban: seed okul={r.SchoolsCounted} (limitDışı={r.SchoolsSkippedByLimit}) seed okul öğretmeni={r.SchoolTeachersCounted}");
         sb.AppendLine();
         sb.AppendLine($"{"İl",-12} {"Branş",-30} {"Okul öğr.",9} {"Plan",6} {"Pend.",6} {"Yeni",6} {"Mevcut",7} {"Hata",5}");
@@ -223,8 +231,9 @@ public sealed record TutorSeedCommand(TutorSeedOptions Options, string? Connecti
         sb.AppendLine($"Toplam: plan={r.Planned} pending={r.PlannedPending} {(r.DryRun ? "(dry-run)" : $"tutorYeni={r.TutorsCreated} tutorMevcut={r.TutorsExisting} hata={r.Failed}")}");
         if (!r.DryRun)
         {
-            sb.AppendLine($"Keycloak: yeni={r.KeycloakCreated} mevcut={r.KeycloakExisting}  Identity: yeni={r.IdentityCreated} mevcut={r.IdentityExisting}");
+            sb.AppendLine($"Keycloak: yeni={r.KeycloakCreated} mevcut={r.KeycloakExisting} adopt={r.KeycloakAdopted} parolaSıfırlandı={r.PasswordsReset}  Identity: yeni={r.IdentityCreated} mevcut={r.IdentityExisting}");
             sb.AppendLine($"Süre: keycloak={r.KeycloakElapsedMs} ms, identity={r.IdentityDbElapsedMs} ms, exam={r.ExamDbElapsedMs} ms, toplam={r.TotalElapsedMs} ms, parti={r.Batches}");
+            TeacherSeedCommand.AppendPasswordWarning(sb, r.ResetPassword, r.KeycloakExisting + r.KeycloakAdopted);
         }
         if (r.UnmatchedProvinces.Count > 0)
             sb.AppendLine($"EŞLEŞMEYEN İL (Province tablosunda yok): {string.Join(", ", r.UnmatchedProvinces)}");

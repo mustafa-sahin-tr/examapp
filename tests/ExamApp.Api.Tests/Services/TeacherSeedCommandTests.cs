@@ -35,7 +35,7 @@ public class TeacherSeedCommandTests
     public void All_options_parse()
     {
         var cmd = Cmd("--provinces", "Kars, Antalya", "--limit-schools-per-province", "2", "--dry-run", "--no-events",
-            "--keycloak-mode", "partial-import", "--batch-size", "250", "--no-migrate", "--connection", "Host=x;Password='a{b}c'");
+            "--keycloak-mode", "partial-import", "--batch-size", "250", "--reset-password", "--adopt-unmarked", "--no-migrate", "--connection", "Host=x;Password='a{b}c'");
 
         cmd.Options.Provinces.ShouldBe(["Kars", "Antalya"]);
         cmd.Options.LimitSchoolsPerProvince.ShouldBe(2);
@@ -43,8 +43,28 @@ public class TeacherSeedCommandTests
         cmd.Options.EmitEvents.ShouldBeFalse();
         cmd.Options.KeycloakMode.ShouldBe(TeacherSeedOptions.KeycloakModePartialImport);
         cmd.Options.BatchSize.ShouldBe(250);
+        cmd.Options.ResetPassword.ShouldBeTrue();
+        cmd.Options.AdoptUnmarked.ShouldBeTrue();
         cmd.NoMigrate.ShouldBeTrue();
         cmd.ConnectionString.ShouldBe("Host=x;Password='a{b}c'");
+        Cmd().Options.ResetPassword.ShouldBeFalse(); // varsayılan: mevcut parolaya dokunma
+        Cmd().Options.AdoptUnmarked.ShouldBeFalse(); // varsayılan: işaretsiz yetim dokunulmaz
+    }
+
+    [Fact]
+    public void Format_warns_about_unreset_passwords_only_when_existing_or_adopted_and_flag_off()
+    {
+        var withExisting = new TeacherSeedResult { KeycloakExisting = 20, KeycloakAdopted = 5, ResetPassword = false };
+        TeacherSeedCommand.Format(withExisting, new TeacherSeedOptions()).ShouldContain("25 hesabın parolası sıfırlanmadı");
+        TeacherSeedCommand.Format(withExisting, new TeacherSeedOptions()).ShouldContain("--reset-password");
+
+        var reset = new TeacherSeedResult { KeycloakExisting = 20, KeycloakAdopted = 5, ResetPassword = true, PasswordsReset = 25 };
+        var text = TeacherSeedCommand.Format(reset, new TeacherSeedOptions { ResetPassword = true });
+        text.ShouldNotContain("sıfırlanmadı");
+        text.ShouldContain("adopt=5");
+        text.ShouldContain("parolaSıfırlandı=25");
+
+        TeacherSeedCommand.Format(new TeacherSeedResult { KeycloakCreated = 10 }, new TeacherSeedOptions()).ShouldNotContain("sıfırlanmadı");
     }
 
     [Theory]

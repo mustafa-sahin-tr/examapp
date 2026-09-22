@@ -111,6 +111,7 @@ public class TeacherSeedServiceTests : IDisposable
                     r.UserId = id;
                     r.KeycloakStatus = DevSeedUsersResponse.StatusExisting;
                     r.IdentityStatus = DevSeedUsersResponse.StatusExisting;
+                    r.PasswordReset = request.ResetPassword;
                 }
                 else
                 {
@@ -118,8 +119,11 @@ public class TeacherSeedServiceTests : IDisposable
                     _users[u.Email] = id;
                     r.KeycloakId = "kc-" + id;
                     r.UserId = id;
-                    r.KeycloakStatus = KeycloakOnlyEmails.Contains(u.Email) ? DevSeedUsersResponse.StatusExisting : DevSeedUsersResponse.StatusCreated;
+                    // Keycloak'ta var / identity'de yok → auth-api artık sahiplenir (Adopted), identity Created.
+                    var adopted = KeycloakOnlyEmails.Contains(u.Email);
+                    r.KeycloakStatus = adopted ? DevSeedUsersResponse.StatusAdopted : DevSeedUsersResponse.StatusCreated;
                     r.IdentityStatus = DevSeedUsersResponse.StatusCreated;
+                    r.PasswordReset = adopted && request.ResetPassword;
                 }
                 response.Results.Add(r);
             }
@@ -357,11 +361,57 @@ public class TeacherSeedServiceTests : IDisposable
 
         var result = await NewService(ctx, authApi).RunAsync(Opts("Kars"));
 
-        result.KeycloakExisting.ShouldBe(1);
+        result.KeycloakAdopted.ShouldBe(1);
+        result.KeycloakExisting.ShouldBe(0);
         result.KeycloakCreated.ShouldBe(14);
         result.IdentityCreated.ShouldBe(15);
         result.TeachersCreated.ShouldBe(15);
         result.Failed.ShouldBe(0);
+        result.PasswordsReset.ShouldBe(0);
+        result.ResetPassword.ShouldBeFalse();
+        result.Accounts.Single(a => a.Email == "seed.t.100002.turkce.1@seed.examapp.local").Status.ShouldBe(DevSeedUsersResponse.StatusAdopted);
+        authApi.Requests.ShouldAllBe(r => !r.ResetPassword);
+
+        await using var check = _db.NewContext();
+        var adoptedTeacher = await check.Teachers.Include(t => t.TeacherSubjects)
+            .SingleAsync(t => t.UserId == authApi.UserIdOf("seed.t.100002.turkce.1@seed.examapp.local"));
+        adoptedTeacher.IsSeedData.ShouldBeTrue();
+        adoptedTeacher.SchoolId.ShouldBe(_ilkokulId);
+        adoptedTeacher.TeacherSubjects.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Adopt_unmarked_option_is_forwarded_to_auth_api()
+    {
+        await SeedReferenceAsync();
+        var authApi = new FakeAuthApi();
+        await using var ctx = _db.NewContext();
+
+        await NewService(ctx, authApi).RunAsync(new TeacherSeedOptions { Provinces = ["Kars"], AdoptUnmarked = true });
+
+        authApi.Requests.ShouldAllBe(r => r.AdoptUnmarked);
+    }
+
+    [Fact]
+    public async Task Reset_password_option_is_forwarded_and_reset_counts_are_reported()
+    {
+        await SeedReferenceAsync();
+        var authApi = new FakeAuthApi();
+        authApi.KeycloakOnlyEmails.Add("seed.t.100002.turkce.1@seed.examapp.local");
+
+        TeacherSeedResult first, second;
+        await using (var ctx = _db.NewContext())
+            first = await NewService(ctx, authApi).RunAsync(new TeacherSeedOptions { Provinces = ["Kars"], ResetPassword = true });
+        await using (var ctx = _db.NewContext())
+            second = await NewService(ctx, authApi).RunAsync(new TeacherSeedOptions { Provinces = ["Kars"], ResetPassword = true });
+
+        authApi.Requests.ShouldAllBe(r => r.ResetPassword && !r.AdoptUnmarked);
+        first.ResetPassword.ShouldBeTrue();
+        first.PasswordsReset.ShouldBe(1);   // yalnızca adopt edilen; yeni açılanlar zaten bu parolayla doğar
+        first.KeycloakAdopted.ShouldBe(1);
+        second.PasswordsReset.ShouldBe(15); // ikinci koşuda hepsi mevcut → hepsi sıfırlanır
+        second.KeycloakExisting.ShouldBe(15);
+        second.TeachersCreated.ShouldBe(0);
     }
 
     [Fact]

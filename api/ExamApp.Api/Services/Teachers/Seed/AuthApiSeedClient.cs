@@ -23,6 +23,9 @@ public sealed class AuthApiSeedClient : IAuthApiSeedClient
     public const string HttpClientName = nameof(AuthApiSeedClient);
     public const string BaseUrlConfigKey = "AuthApiBaseUrl";
 
+    /// <summary>Named client'ın tek zaman sınırı (resilience handler yok, yeniden deneme yok — bkz. TeacherSeedServiceCollectionExtensions).</summary>
+    public static readonly TimeSpan Timeout = TimeSpan.FromMinutes(30);
+
     private const string SeedUsersPath = "/api/auth/dev/seed-users";
     private const string CleanupPath = "/api/auth/dev/seed-users/cleanup";
 

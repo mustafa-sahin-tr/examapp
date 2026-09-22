@@ -93,6 +93,8 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
+// Keycloak admin toplu işlemleri: standart resilience handler'dan muaf named client (gerekçe extension'da).
+builder.Services.AddKeycloakAdminHttpClient();
 
 builder.Services.AddScoped<IKeycloakService, KeycloakService>();
 // Dev-only toplu kullanıcı oluşturma (issue #217). YALNIZCA Development/Staging'de kayıt olur;

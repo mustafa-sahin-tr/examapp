@@ -19,7 +19,16 @@ public static class TeacherSeedServiceCollectionExtensions
             return services;
 
         // Partial import'ta 500 hesap tek istek + Keycloak; temizlikte on binlerce Keycloak silme — varsayılan 100 sn yetmez.
-        services.AddHttpClient(AuthApiSeedClient.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(30));
+        // RemoveAllResilienceHandlers: AddServiceDefaults() tüm HttpClient'lara standart resilience handler'ı
+        // (attempt timeout 10 sn + 3 retry) ekler ve client.Timeout bunu EZMEZ. 500'lük partial-import isteği 10 sn'yi
+        // aşınca istek iptal edilip aynı parti yeniden gönderiliyor, Keycloak ilk transaction'ı bitirdiği için ikinci
+        // istek 409 alıyor ve identity/exam yazılmadan binlerce yetim Keycloak kullanıcısı kalıyordu (2026-09-22 koşusu).
+        // Seed uçları idempotent değil → yeniden deneme YOK; tek sınır client.Timeout.
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers "evaluation" işaretli; ConfigureHttpClientDefaults'u geri almanın tek resmi yolu.
+        services
+            .AddHttpClient(AuthApiSeedClient.HttpClientName, client => client.Timeout = AuthApiSeedClient.Timeout)
+            .RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
         services.AddScoped<IAuthApiSeedClient, AuthApiSeedClient>();
         services.AddScoped<ITeacherSeedService, TeacherSeedService>();
         services.AddScoped<ITutorSeedService, TutorSeedService>();

@@ -83,19 +83,6 @@ export class StudentProfileComponent implements OnInit {
   activeTab = 0; // Varsayılan olarak ilk sekme açık
   activeTab2 = 1;
 
-  classLeaderboard = [
-    { name: 'Safi Abu-Rashed', score: 1024, icon: 'assets/icons/gold.png' },
-    { name: 'Ahmad Abed Al Rahman', score: 950, icon: 'assets/icons/silver.png' },
-    { name: 'Hanan Saad', score: 912, icon: 'assets/icons/bronze.png' },
-    { name: 'Omar Saleem', score: 880, icon: '' },
-  ];
-
-  groupLeaderboard = [
-    { name: 'Safi Abu-Rashed', score: 740, grade: 'Grade 1 - Blue', icon: 'assets/icons/gold.png' },
-    { name: 'Ahmad Abed Al Rahman', score: 695, grade: 'Grade 1 - Blue', icon: 'assets/icons/silver.png' },
-    { name: 'Hanan Saad', score: 690, grade: 'Grade 1 - Blue', icon: 'assets/icons/bronze.png' },
-  ];
-
   colorScheme: Color = {
     name: 'heatmapScheme',
     selectable: false,

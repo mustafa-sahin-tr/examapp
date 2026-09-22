@@ -123,15 +123,7 @@
     <app-section-header [title]="t('points.leaderboards')" icon="assets/icons/leaderboard.png"></app-section-header>
 
     <div class="leaderboards-container">
-      <app-leaderboard [leaderboardTitle]="t('points.classLeaderboard')" [leaderboardData]="classLeaderboard">
-      </app-leaderboard>
-
-      <app-leaderboard
-        [leaderboardTitle]="t('points.groupLeaderboard')"
-        [leaderboardData]="groupLeaderboard"
-        [showDetails]="true"
-      >
-      </app-leaderboard>
+      <app-leaderboard></app-leaderboard>
     </div>
   </mat-tab>
   <!-- Info Tab (Gelecekte Kullanılabilir) -->

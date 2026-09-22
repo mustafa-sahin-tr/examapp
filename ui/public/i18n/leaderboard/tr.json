@@ -1,0 +1,19 @@
+{
+  "title": "XP Sıralaması",
+  "scopeLabel": "Liderlik kapsamı",
+  "scope": {
+    "global": "Herkes",
+    "school": "Okulum"
+  },
+  "loading": "Sıralama yükleniyor...",
+  "error": "Sıralama yüklenemedi.",
+  "retry": "Tekrar dene",
+  "empty": "Henüz puan yok",
+  "anonymous": "Öğrenci",
+  "you": "Sen",
+  "level": "Sv. {{level}}",
+  "xp": "{{xp}} XP",
+  "loadMore": "Daha fazla yükle",
+  "loadMoreError": "Devamı yüklenemedi.",
+  "myRank": "Senin sıran: #{{rank}} · {{xp}} XP"
+}

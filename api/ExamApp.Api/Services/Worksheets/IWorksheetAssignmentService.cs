@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Models.Dtos;
 
 namespace ExamApp.Api.Services.Worksheets;
@@ -12,5 +13,6 @@ public interface IWorksheetAssignmentService
 
     Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student);
 
-    Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, int teacherUserId);
+    /// <summary>issue #190: requester.UserId atamaları yapan öğretmen; öğrenci listesi requester okuluyla sınırlı.</summary>
+    Task<TeacherWorksheetAssignmentsDto> GetWorksheetAssignmentsForTeacherAsync(int worksheetId, SchoolScope requester);
 }

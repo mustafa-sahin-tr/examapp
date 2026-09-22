@@ -4,6 +4,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Services.StudentReset;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Video;
 using Hangfire;
 using Hangfire.PostgreSql;
@@ -166,6 +167,7 @@ builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<ISchoolContextResolver, SchoolContextResolver>(); // issue #189
 builder.Services.AddScoped<IUserProfileProvider, UserProfileProvider>(); // issue #189
+builder.Services.AddScoped<ISchoolAccessPolicy, SchoolAccessPolicy>(); // issue #190
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 builder.Services.AddScoped<IStudyItemService, StudyItemService>();
 

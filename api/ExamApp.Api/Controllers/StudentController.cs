@@ -288,11 +288,16 @@ namespace ExamApp.Api.Controllers
             return Ok(student);
         }
 
+        /// <summary>
+        /// issue #190: liste istek sahibinin okuluyla sınırlıdır — okul kimliği sunucu tarafında çözülür
+        /// (GetSchoolScopeAsync), client parametresi yoktur. Admin/servis tüm okulları görür.
+        /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("lookup")]
-        public async Task<IActionResult> GetStudentLookup()
+        public async Task<IActionResult> GetStudentLookup(CancellationToken ct)
         {
-            var students = await _studentService.GetStudentLookupsAsync();
+            var scope = await GetSchoolScopeAsync(ct);
+            var students = await _studentService.GetStudentLookupsAsync(scope, ct);
             return Ok(students);
         }
 

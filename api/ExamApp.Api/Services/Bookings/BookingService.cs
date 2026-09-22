@@ -10,6 +10,7 @@ using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Bookings;
 using ExamApp.Api.Models.Dtos.Video;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Video;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
@@ -59,6 +60,9 @@ public class BookingService : IBookingService
     private readonly IOptions<VideoOptions> _videoOptions;
     private readonly IRecurringAvailabilityService _recurringAvailability;
 
+    // issue #190: okula bağlı öğretmenin takvimi yalnızca kendi okulundan görünür.
+    private readonly ISchoolAccessPolicy _schoolAccessPolicy;
+
     /// <summary>
     /// Şimdilik yalnızca görüşme katılım penceresi (issue #97) bu saat kaynağını kullanır;
     /// diğer metotlardaki <c>DateTime.UtcNow</c> çağrıları issue #96'dan olduğu gibi bırakıldı.
@@ -79,8 +83,10 @@ public class BookingService : IBookingService
         TimeProvider timeProvider,
         IRecurringAvailabilityService recurringAvailability,
         ILogger<BookingService> logger,
+        ISchoolAccessPolicy schoolAccessPolicy,
         IStringLocalizer<Messages>? localizer = null)
     {
+        _schoolAccessPolicy = schoolAccessPolicy;
         _context = context;
         _authApiClient = authApiClient;
         _videoSessionProvider = videoSessionProvider;
@@ -290,14 +296,18 @@ public class BookingService : IBookingService
     // ------------------------------------------------------------------
 
     public async Task<AvailabilitySlotListResultDto> GetTeacherOpenSlotsAsync(
-        int teacherId, int skip, int take, CancellationToken ct = default)
+        int teacherId, SchoolScope requester, int skip, int take, CancellationToken ct = default)
     {
-        var isApproved = await _context.Teachers
+        var teacher = await _context.Teachers
             .AsNoTracking()
-            .AnyAsync(t => t.Id == teacherId && t.ApprovalStatus == TeacherApprovalStatus.Approved, ct);
+            .Where(t => t.Id == teacherId && t.ApprovalStatus == TeacherApprovalStatus.Approved)
+            .Select(t => new { t.IsIndependentTutor, t.SchoolId })
+            .FirstOrDefaultAsync(ct);
 
         // Onaysız/olmayan öğretmen ayrımı sızdırılmaz (tutor public-profile ile aynı desen).
-        if (!isApproved)
+        // issue #190: tutor pazar yeri istisnası yalnızca bağımsız tutor içindir; okula bağlı
+        // öğretmenin takvimi yalnızca aynı okuldan (veya admin/servis) görünür — aksi halde aynı 404.
+        if (teacher == null || (!teacher.IsIndependentTutor && !_schoolAccessPolicy.CanAccess(requester, teacher.SchoolId)))
             return new AvailabilitySlotListResultDto { Success = false, NotFound = true, Message = _localizer["booking.teacherNotFound"] };
 
         var now = DateTime.UtcNow;

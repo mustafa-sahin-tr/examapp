@@ -2,17 +2,6 @@
   "title": "Müsait Saatlerim",
   "subtitle": "Öğrencilerin randevu talep edebilmesi için müsait olduğun zaman aralıklarını tanımla.",
   "bookingRequests": "Randevu Talepleri",
-  "form": {
-    "dateLabel": "Tarih",
-    "dateRequired": "Tarih seçilmeli.",
-    "startLabel": "Başlangıç",
-    "startRequired": "Başlangıç saati gerekli.",
-    "endLabel": "Bitiş",
-    "endRequired": "Bitiş saati gerekli.",
-    "submit": "Aralık Ekle",
-    "invalidTimeFormat": "Saatleri SS:DD biçiminde girin.",
-    "endBeforeStart": "Bitiş saati başlangıçtan sonra olmalı."
-  },
   "state": {
     "loading": "Müsaitlik aralıkların yükleniyor...",
     "empty": "Henüz müsaitlik aralığı tanımlamadın."
@@ -32,6 +21,20 @@
     "tooltip": {
       "student": "Öğrenci: {{name}}",
       "past": "Geçmiş"
+    },
+    "draft": {
+      "instruction": "Yeni aralık için takvimde boş bir hücreye tıkla; aynı günde başka hücrelere tıklayarak aralığı genişlet.",
+      "save": "Kaydet",
+      "saving": "Kaydediliyor...",
+      "cancel": "Vazgeç",
+      "tag": "Taslak"
+    },
+    "hint": {
+      "past": "Geçmiş bir saate aralık eklenemez.",
+      "occupied": "Seçim mevcut bir aralıkla çakışıyor.",
+      "tooLong": "Bir aralık en fazla {{hours}} saat olabilir.",
+      "tooFarAhead": "En fazla {{days}} gün sonrasına aralık eklenebilir.",
+      "crossesDayBoundary": "Bir aralık {{time}} saatini aşamaz; {{time}} öncesini ve sonrasını iki ayrı aralık olarak ekle."
     }
   },
   "actions": {

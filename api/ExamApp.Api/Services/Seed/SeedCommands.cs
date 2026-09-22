@@ -24,6 +24,10 @@ public static class SeedCommands
             return Schools.Seed.SchoolSeedCommand.Parse(args);
         if (Teachers.Seed.TeacherSeedCommand.IsRequested(args))
             return Teachers.Seed.TeacherSeedCommand.Parse(args);
+        if (Teachers.Seed.TutorSeedCommand.IsRequested(args))
+            return Teachers.Seed.TutorSeedCommand.Parse(args);
+        if (Cleanup.SeedCleanupCommand.IsRequested(args))
+            return Cleanup.SeedCleanupCommand.Parse(args);
         return null;
     }
 

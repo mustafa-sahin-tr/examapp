@@ -53,4 +53,16 @@ public interface IKeycloakService
     Task<KeycloakPartialImportResult> PartialImportUsersAsync(
         IReadOnlyList<KeycloakSeedUser> users, IReadOnlyList<string> realmRoleNames, KeycloakHashedCredential credential,
         CancellationToken ct = default);
+
+    // ---- Temizleme (issue #218) — yalnızca DevUserSeedService.CleanupAsync kullanır ----
+
+    /// <summary>
+    /// <c>GET /users?{email|username}=&lt;fragment&gt;&amp;exact=false</c> ile alan içinde (infix) arar; boş sayfa gelene
+    /// kadar sayfalayarak tümünü döner (<c>search=</c> prefix eşleştirdiği için kullanılmaz). Çağıran sonucu kendi
+    /// kuralıyla (örn. seed alanı regex'i, kullanıcı adı üzerinden) yeniden süzmelidir.
+    /// </summary>
+    Task<IReadOnlyList<KeycloakUserSummary>> SearchUsersAsync(string fragment, KeycloakUserSearchField field, CancellationToken ct = default);
+
+    /// <summary>Kullanıcıyı siler; 404 (zaten yok) durumunda false döner, hata fırlatmaz. Diğer hatalar <see cref="KeycloakException"/>.</summary>
+    Task<bool> TryDeleteUserAsync(string keycloakUserId, CancellationToken ct = default);
 }

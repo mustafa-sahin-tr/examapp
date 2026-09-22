@@ -83,6 +83,9 @@ public class TeacherSeedServiceTests : IDisposable
 
         public int UserIdOf(string email) => _users[email];
 
+        public Task<DevSeedCleanupResponse> CleanupSeedUsersAsync(DevSeedCleanupRequest request, CancellationToken ct = default)
+            => throw new NotSupportedException("seed-teachers temizlik ucunu çağırmaz.");
+
         public Task<DevSeedUsersResponse> SeedUsersAsync(DevSeedUsersRequest request, CancellationToken ct = default)
         {
             Requests.Add(request);

@@ -42,6 +42,19 @@ public interface IKeycloakService
     /// <summary>Kullanıcının mevcut realm rol adları.</summary>
     Task<IReadOnlyList<string>> GetUserRealmRoleNamesAsync(string keycloakUserId, CancellationToken ct = default);
 
+    /// <summary>Kullanıcının tek değerli attribute'ları (GET tam temsil). Yoksa boş sözlük.</summary>
+    Task<IReadOnlyDictionary<string, string>> GetUserAttributesAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Verilen attribute'ları (tek değer) ister; hepsi zaten aynıysa PUT atmaz ve false döner. Diğer attribute'lara
+    /// dokunulmaz (GET + PUT tam temsil). Realm user-profile/unmanaged policy attribute'a izin vermiyorsa Keycloak değeri
+    /// sessizce düşürebilir — çağıran bunu hata saymaz.
+    /// </summary>
+    Task<bool> EnsureUserAttributesAsync(string keycloakUserId, IReadOnlyDictionary<string, string> desired, CancellationToken ct = default);
+
+    /// <summary><c>PUT /users/{id}/reset-password</c> — kalıcı (temporary=false) parola. Yalnızca seed onarımı kullanır.</summary>
+    Task ResetPasswordAsync(string keycloakUserId, string password, CancellationToken ct = default);
+
     /// <summary>Realm'in varsayılan rol kompoziti (<c>default-roles-&lt;realm&gt;</c>) — account rolleri/aud bunun içindedir.</summary>
     Task<string> GetRealmDefaultRoleNameAsync(CancellationToken ct = default);
 

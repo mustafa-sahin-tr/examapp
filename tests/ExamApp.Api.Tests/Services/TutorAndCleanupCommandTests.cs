@@ -61,7 +61,7 @@ public class TutorAndCleanupCommandTests
     public void Tutors_all_options_parse()
     {
         var cmd = Tutors("--provinces", "Kars,Antalya", "--limit-schools-per-province", "3", "--pending-ratio", "0.25", "--dry-run",
-            "--no-events", "--keycloak-mode", "partial-import", "--batch-size", "50", "--no-migrate", "--connection", "Host=x");
+            "--no-events", "--keycloak-mode", "partial-import", "--batch-size", "50", "--reset-password", "--adopt-unmarked", "--no-migrate", "--connection", "Host=x");
         cmd.Options.Provinces.ShouldBe(["Kars", "Antalya"]);
         cmd.Options.LimitSchoolsPerProvince.ShouldBe(3);
         cmd.Options.PendingRatio.ShouldBe(0.25);
@@ -69,8 +69,12 @@ public class TutorAndCleanupCommandTests
         cmd.Options.EmitEvents.ShouldBeFalse();
         cmd.Options.KeycloakMode.ShouldBe(TeacherSeedOptions.KeycloakModePartialImport);
         cmd.Options.BatchSize.ShouldBe(50);
+        cmd.Options.ResetPassword.ShouldBeTrue();
+        cmd.Options.AdoptUnmarked.ShouldBeTrue();
         cmd.NoMigrate.ShouldBeTrue();
         cmd.ConnectionString.ShouldBe("Host=x");
+        Tutors().Options.ResetPassword.ShouldBeFalse();
+        Tutors().Options.AdoptUnmarked.ShouldBeFalse();
     }
 
     [Theory]
@@ -99,12 +103,16 @@ public class TutorAndCleanupCommandTests
     [Fact]
     public void Cleanup_options_parse()
     {
-        var cmd = Cleanup("--apply", "--yes", "--force", "--skip-auth-api", "--no-migrate");
+        var cmd = Cleanup("--apply", "--yes", "--force", "--skip-auth-api", "--include-orphans", "--no-migrate");
         cmd.Options.Apply.ShouldBeTrue();
         cmd.Options.Yes.ShouldBeTrue();
         cmd.Options.Force.ShouldBeTrue();
         cmd.Options.SkipAuthApi.ShouldBeTrue();
+        cmd.Options.IncludeOrphans.ShouldBeTrue();
         cmd.NoMigrate.ShouldBeTrue();
+        Cleanup().Options.IncludeOrphans.ShouldBeFalse(); // varsayılan: yetimler yabancı sayılır
+        SeedCleanupCommand.Format(new SeedCleanupResult { AuthApiCalled = true, KeycloakSkippedForeign = 3 }).ShouldContain("--include-orphans");
+        SeedCleanupCommand.Format(new SeedCleanupResult { AuthApiCalled = true, IncludeOrphans = true, KeycloakOrphans = 3 }).ShouldContain("keycloakYetim=3 (silinecek)");
         Cleanup("--connection", "Host=y").ConnectionString.ShouldBe("Host=y"); // dry-run ile serbest
         Should.Throw<ArgumentException>(() => Cleanup("--delete-everything"));
         Should.Throw<ArgumentException>(() => Cleanup("--connection"));

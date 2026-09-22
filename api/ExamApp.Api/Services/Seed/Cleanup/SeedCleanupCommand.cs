@@ -38,6 +38,9 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
                                worksheet/soru olan seed öğretmenleri atlamak yerine müsaitlik satırlarıyla birlikte sil.
                                Worksheet/soru hiçbir zaman silinmez (sahipsiz kalır, raporlanır). Gerçek öğrenci randevusu
                                (Booking) olan öğretmen --force ile de silinmez.
+          --include-orphans    Keycloak'ta seed.*@seed.examapp.local desenli ama identity'de hiç satırı olmayan yetim
+                               hesapları da sil (kesilmiş seed koşusu kalıntısı). Gerçek alan adlarına ve identity'de
+                               IsSeedData=false satırı olan hesaplara yine dokunulmaz.
           --skip-auth-api      auth-api'yi çağırma (yalnızca exam DB)
           --connection <str>   ConnectionStrings:DefaultConnection yerine kullanılacak bağlantı (yalnızca dry-run)
           --no-migrate         Bekleyen migration'ları ve referans seed'ini atla
@@ -62,6 +65,7 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
         var yes = false;
         var force = false;
         var skipAuth = false;
+        var includeOrphans = false;
         string? connection = null;
         var help = false;
         var noMigrate = false;
@@ -76,6 +80,7 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
                 case "--yes": yes = true; break;
                 case "--force": force = true; break;
                 case "--skip-auth-api": skipAuth = true; break;
+                case "--include-orphans": includeOrphans = true; break;
                 case "--no-migrate": noMigrate = true; break;
                 case "--connection":
                     if (i + 1 >= args.Length || args[i + 1].StartsWith("--", StringComparison.Ordinal))
@@ -101,7 +106,9 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
                 "Farklı bir hedef için ConnectionStrings__DefaultConnection ortam değişkenini verin ve --yes ekleyin.");
         }
 
-        return new SeedCleanupCommand(new SeedCleanupOptions { Apply = apply, Force = force, SkipAuthApi = skipAuth, Yes = yes }, connection, help, noMigrate);
+        return new SeedCleanupCommand(
+            new SeedCleanupOptions { Apply = apply, Force = force, SkipAuthApi = skipAuth, Yes = yes, IncludeOrphans = includeOrphans },
+            connection, help, noMigrate);
     }
 
     public Task<int> RunAsync(IServiceProvider services, IHostEnvironment environment) => RunAsync(services, environment, this);
@@ -207,7 +214,8 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
     public static string Format(SeedCleanupResult r)
     {
         var sb = new StringBuilder();
-        sb.AppendLine(r.Applied ? $"== seed-cleanup APPLY{(r.Force ? " --force" : "")} ==" : "== seed-cleanup DRY-RUN (hiçbir şey silinmedi) ==");
+        var flags = (r.Force ? " --force" : "") + (r.IncludeOrphans ? " --include-orphans" : "");
+        sb.AppendLine(r.Applied ? $"== seed-cleanup APPLY{flags} ==" : $"== seed-cleanup DRY-RUN{flags} (hiçbir şey silinmedi) ==");
         sb.AppendLine();
         sb.AppendLine("Seed envanteri");
         sb.AppendLine($"  Okul: {r.SeedSchools}   Okul öğretmeni: {r.SeedSchoolTeachers}   Bağımsız öğretmen: {r.SeedTutors} (pending {r.SeedTutorsPending})");
@@ -239,10 +247,13 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
         if (!r.AuthApiCalled)
             sb.AppendLine($"  çağrılmadı{(r.AuthApiError is null ? " (--skip-auth-api)" : ": " + r.AuthApiError)}");
         else if (!r.Applied)
-            sb.AppendLine($"  silinecek={r.AuthPlanned} korunan(exam'de atlanan)={r.IdentityExcluded} yabancı={r.KeycloakSkippedForeign} keycloakEksik={r.KeycloakMissing}");
+            sb.AppendLine($"  silinecek={r.AuthPlanned} korunan(exam'de atlanan)={r.IdentityExcluded} yabancı={r.KeycloakSkippedForeign} keycloakEksik={r.KeycloakMissing} " +
+                          $"keycloakYetim={r.KeycloakOrphans}{(r.IncludeOrphans ? " (silinecek)" : "")}");
         else
-            sb.AppendLine($"  Keycloak silindi={r.KeycloakDeleted} eksik={r.KeycloakMissing} korunan={r.KeycloakExcluded} yabancı={r.KeycloakSkippedForeign} hata={r.KeycloakFailed}   " +
+            sb.AppendLine($"  Keycloak silindi={r.KeycloakDeleted} (yetim {r.KeycloakOrphans}) eksik={r.KeycloakMissing} korunan={r.KeycloakExcluded} yabancı={r.KeycloakSkippedForeign} hata={r.KeycloakFailed}   " +
                           $"Identity silindi={r.IdentityDeleted} korunan={r.IdentityExcluded} hata={r.IdentityFailed}");
+        if (r.AuthApiCalled && !r.IncludeOrphans && r.KeycloakSkippedForeign > 0)
+            sb.AppendLine("  not: 'yabancı' sayısı identity'de hiç satırı olmayan yetim Keycloak hesaplarını da içerir; bunlar için --include-orphans.");
 
         sb.AppendLine();
         sb.AppendLine($"Süre: exam={r.ExamDbElapsedMs} ms auth-api={r.AuthApiElapsedMs} ms toplam={r.TotalElapsedMs} ms");
@@ -260,7 +271,7 @@ public sealed record SeedCleanupCommand(SeedCleanupOptions Options, string? Conn
             foreach (var e in r.Errors) sb.AppendLine("  " + e);
         }
         if (!r.Applied)
-            sb.AppendLine().Append("Silmek için: dotnet run -- seed-cleanup --apply [--force]");
+            sb.AppendLine().Append("Silmek için: dotnet run -- seed-cleanup --apply [--force] [--include-orphans]");
         return sb.ToString();
     }
 }

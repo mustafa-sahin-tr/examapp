@@ -37,6 +37,10 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
                                                Keycloak'a yazma yolu (varsayılan: admin-api — kullanıcı başına 2 istek;
                                                partial-import: parti başına tek istek, önceden hash'lenmiş parola)
           --batch-size <N>                     auth-api'ye istek başına hesap (varsayılan 100, en fazla 500)
+          --reset-password                     Keycloak'ta zaten var olan (mevcut/adopt edilen) seed hesaplarının parolasını
+                                               bu koşunun SeedData:Password değeriyle sıfırla (varsayılan: dokunma)
+          --adopt-unmarked                     TEK SEFERLİK incident temizliği: seed_origin işareti taşımayan yetim Keycloak
+                                               hesaplarını da sahiplen ve işaretle (varsayılan: işaretsiz yetim dokunulmaz)
           --connection <conn-str>              ConnectionStrings:DefaultConnection yerine kullanılacak bağlantı
                                                (tercih edilen yol: ConnectionStrings__DefaultConnection ortam değişkeni)
           --no-migrate                         Bekleyen migration'ları ve il/ilçe referans seed'ini atla
@@ -48,7 +52,8 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
           user-secrets:     dotnet user-secrets set "SeedData:Password" "<parola>"   (api/ExamApp.Api dizininde)
         Hesaplar
         seed.t.<kurumKodu>.<brans>.<n>@seed.examapp.local deseniyle üretilir; Keycloak kullanıcısı + identity
-        User + exam Teacher (SchoolId, Approved, IsSeedData=true). Tekrar koşu kopya açmaz.
+        User + exam Teacher (SchoolId, Approved, IsSeedData=true). Tekrar koşu kopya açmaz; Keycloak'ta var ama
+        identity'de olmayan plandaki hesaplar sahiplenilir (Adopted: roller/school_id onarılır, identity+Teacher açılır).
         Ortaokul: 2 Türkçe, 2 Matematik, 2 Fen, 2 Sosyal, 1 İngilizce, 1 Din Kültürü. İlkokul: 1'er Türkçe/
         Matematik/Fen/Sosyal/İngilizce. auth-api'nin ayakta olması gerekir (AuthApiBaseUrl).
         """;
@@ -67,6 +72,8 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
         var emitEvents = true;
         var mode = TeacherSeedOptions.KeycloakModeAdminApi;
         var batchSize = TeacherSeedOptions.DefaultBatchSize;
+        var resetPw = false;
+        var adoptUnmarked = false;
         string? connection = null;
         var help = false;
         var noMigrate = false;
@@ -105,6 +112,12 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
                 case "--no-events":
                     emitEvents = false;
                     break;
+                case "--reset-password":
+                    resetPw = true;
+                    break;
+                case "--adopt-unmarked":
+                    adoptUnmarked = true;
+                    break;
                 case "--no-migrate":
                     noMigrate = true;
                     break;
@@ -128,7 +141,9 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
             DryRun = dryRun,
             EmitEvents = emitEvents,
             KeycloakMode = mode,
-            BatchSize = batchSize
+            BatchSize = batchSize,
+            ResetPassword = resetPw,
+            AdoptUnmarked = adoptUnmarked
         };
         return new TeacherSeedCommand(options, connection, help, noMigrate);
     }
@@ -225,7 +240,7 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
         var sb = new StringBuilder();
         sb.AppendLine(r.DryRun ? "== seed-teachers DRY-RUN (hiçbir şey yazılmadı) ==" : "== seed-teachers ==");
         sb.AppendLine($"Parametreler: iller={string.Join(",", options.Provinces)} limit={options.LimitSchoolsPerProvince?.ToString(CultureInfo.InvariantCulture) ?? "sınırsız"} " +
-                      $"keycloak={r.KeycloakMode} parti={options.BatchSize} events={(options.EmitEvents ? "açık" : "kapalı")}");
+                      $"keycloak={r.KeycloakMode} parti={options.BatchSize} events={(options.EmitEvents ? "açık" : "kapalı")} resetPassword={(options.ResetPassword ? "açık" : "kapalı")} adoptUnmarked={(options.AdoptUnmarked ? "AÇIK" : "kapalı")}");
         sb.AppendLine($"Okullar: seçilen={r.SchoolsSelected} (ilkokul={r.SchoolsIlkokul} ortaokul={r.SchoolsOrtaokul}) türüBilinmeyen={r.SchoolsUnknownKind} limitDışı={r.SchoolsSkippedByLimit}");
         sb.AppendLine();
         sb.AppendLine($"{"İl",-12} {"Eşleşti",-8} {"İlk",5} {"Orta",5} {"Plan",6} {"Yeni",6} {"Mevcut",7} {"Hata",5} {"Limit",6}");
@@ -241,10 +256,11 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
         sb.AppendLine($"Toplam: plan={r.Planned} {(r.DryRun ? "(dry-run)" : $"teacherYeni={r.TeachersCreated} teacherMevcut={r.TeachersExisting} hata={r.Failed}")}");
         if (!r.DryRun)
         {
-            sb.AppendLine($"Keycloak: yeni={r.KeycloakCreated} mevcut={r.KeycloakExisting}  Identity: yeni={r.IdentityCreated} mevcut={r.IdentityExisting}");
+            sb.AppendLine($"Keycloak: yeni={r.KeycloakCreated} mevcut={r.KeycloakExisting} adopt={r.KeycloakAdopted} parolaSıfırlandı={r.PasswordsReset}  Identity: yeni={r.IdentityCreated} mevcut={r.IdentityExisting}");
             sb.AppendLine($"Süre: keycloak={r.KeycloakElapsedMs} ms, identity={r.IdentityDbElapsedMs} ms, exam={r.ExamDbElapsedMs} ms, toplam={r.TotalElapsedMs} ms, parti={r.Batches}");
-            if (r.KeycloakCreated > 0)
-                sb.AppendLine($"Keycloak ortalama: {(double)r.KeycloakElapsedMs / Math.Max(1, r.KeycloakCreated + r.KeycloakExisting):F1} ms/hesap");
+            if (r.KeycloakCreated + r.KeycloakExisting + r.KeycloakAdopted > 0)
+                sb.AppendLine($"Keycloak ortalama: {(double)r.KeycloakElapsedMs / Math.Max(1, r.KeycloakCreated + r.KeycloakExisting + r.KeycloakAdopted):F1} ms/hesap");
+            AppendPasswordWarning(sb, r.ResetPassword, r.KeycloakExisting + r.KeycloakAdopted);
         }
 
         if (r.UnmatchedProvinces.Count > 0)
@@ -266,6 +282,14 @@ public sealed record TeacherSeedCommand(TeacherSeedOptions Options, string? Conn
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>Mevcut/adopt edilen Keycloak hesaplarının parolası bu koşununkiyle aynı olmayabilir — --reset-password yoksa uyar.</summary>
+    public static void AppendPasswordWarning(StringBuilder sb, bool resetPw, int existingOrAdopted)
+    {
+        if (resetPw || existingOrAdopted <= 0) return;
+        sb.AppendLine($"UYARI: Keycloak'ta zaten var olan {existingOrAdopted} hesabın parolası sıfırlanmadı; önceki koşu farklı parolayla açtıysa " +
+                      "bu hesaplar bugünkü SeedData:Password ile giremez. Eşitlemek için --reset-password ile yeniden koşun.");
     }
 
     private static int ParsePositive(string raw, string option)

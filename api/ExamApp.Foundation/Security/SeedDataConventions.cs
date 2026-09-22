@@ -16,6 +16,14 @@ public static partial class SeedDataConventions
     /// <summary>Yerel kısım <c>seed.</c> ile başlar; ör. <c>seed.t.&lt;kurumKodu&gt;.&lt;brans&gt;.&lt;n&gt;</c>.</summary>
     public const string EmailLocalPrefix = "seed.";
 
+    /// <summary>
+    /// Sahiplik kilidi: seed aracının açtığı her Keycloak kullanıcısına yazılan attribute. Identity satırı olmayan
+    /// (yetim) bir Keycloak hesabı yalnızca bu attribute'u taşıyorsa sahiplenilir/silinir — seed desenli e-postayla
+    /// Keycloak self-registration'dan açılmış bir hesaba dokunulmaz.
+    /// </summary>
+    public const string KeycloakOriginAttribute = "seed_origin";
+    public const string KeycloakOriginValue = "examapp-seed";
+
     [GeneratedRegex(@"^seed\.[a-z0-9.\-]+@seed\.examapp\.local$", RegexOptions.CultureInvariant)]
     private static partial Regex SeedEmailRegex();
 

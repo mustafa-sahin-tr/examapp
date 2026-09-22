@@ -55,7 +55,7 @@ public sealed class SeedCleanupService : ISeedCleanupService
         }
 
         var total = Stopwatch.StartNew();
-        var result = new SeedCleanupResult { Applied = options.Apply, Force = options.Force };
+        var result = new SeedCleanupResult { Applied = options.Apply, Force = options.Force, IncludeOrphans = options.IncludeOrphans };
 
         // ================= 1) Envanter (yalnızca okuma; soft-delete kalıntıları dahil) =================
         var teachers = (await _context.Teachers
@@ -222,7 +222,8 @@ public sealed class SeedCleanupService : ISeedCleanupService
                 var response = await _authApi.CleanupSeedUsersAsync(new DevSeedCleanupRequest
                 {
                     DryRun = !options.Apply,
-                    ExcludeUserIds = skipUserIds
+                    ExcludeUserIds = skipUserIds,
+                    IncludeOrphans = options.IncludeOrphans
                 }, ct);
 
                 result.AuthApiCalled = true;
@@ -231,6 +232,7 @@ public sealed class SeedCleanupService : ISeedCleanupService
                 result.KeycloakExcluded = response.KeycloakExcluded;
                 result.KeycloakSkippedForeign = response.KeycloakSkippedForeign;
                 result.KeycloakFailed = response.KeycloakFailed;
+                result.KeycloakOrphans = response.KeycloakOrphans;
                 result.IdentityDeleted = response.IdentityDeleted;
                 result.IdentityExcluded = response.IdentityExcluded;
                 result.IdentityFailed = response.IdentityFailed;

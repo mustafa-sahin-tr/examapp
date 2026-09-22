@@ -33,4 +33,10 @@ public sealed record TutorSeedOptions
     public string KeycloakMode { get; init; } = TeacherSeedOptions.KeycloakModeAdminApi;
 
     public int BatchSize { get; init; } = TeacherSeedOptions.DefaultBatchSize;
+
+    /// <summary>Bkz. <see cref="TeacherSeedOptions.ResetPassword"/>.</summary>
+    public bool ResetPassword { get; init; }
+
+    /// <summary>Bkz. <see cref="TeacherSeedOptions.AdoptUnmarked"/>.</summary>
+    public bool AdoptUnmarked { get; init; }
 }

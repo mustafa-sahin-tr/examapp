@@ -494,5 +494,26 @@ public class AuthControllerTests : IDisposable
         profile.PreferredLocale.ShouldBe("en");
     }
 
+    // ---- seed alanı kilidi: register ile seed desenli hesap açılamaz (ikinci savunma) ----
+
+    [Theory]
+    [InlineData("seed.t.713965.turkce.1@seed.examapp.local")]
+    [InlineData("Seed.T.713965.Turkce.1@Seed.Examapp.Local")]
+    [InlineData(" seed.i.kars.matematik.1@seed.examapp.local ")]
+    public async Task Register_rejects_seed_domain_email_with_400_before_touching_keycloak_or_db(string email)
+    {
+        var keycloak = Substitute.For<IKeycloakService>();
+        await using var ctx = _db.NewContext();
+        var controller = NewController(keycloak, ctx);
+        var dto = new RegisterDto { FirstName = "A", LastName = "B", Email = email, Role = "Teacher", Password = TestPassword }; // example
+
+        var result = await controller.Register(dto);
+
+        result.ShouldBeOfType<BadRequestObjectResult>();
+        await keycloak.DidNotReceiveWithAnyArgs().CreateUserAsync(default!, default!, default!, default!, default!);
+        await keycloak.DidNotReceiveWithAnyArgs().SetRoleAsync(default!, default!);
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(0);
+    }
+
     public void Dispose() => _db.Dispose();
 }

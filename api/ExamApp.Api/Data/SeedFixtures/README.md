@@ -135,8 +135,33 @@ E-posta deseni (deterministik, idempotency ve #218 temizliği için anahtar):
 `seed.t.<kurumKodu>.<brans>.<n>@seed.examapp.local` (`brans ∈ turkce|matematik|fen|sosyal|ingilizce|din`).
 Ad/soyad uydurma havuzdan e-postanın SHA-256'sı ile seçilir; tekrar koşu aynı adı verir. auth-api yalnızca
 `seed.*@seed.examapp.local` e-postalarını kabul eder (`ExamApp.Foundation.Security.SeedDataConventions`);
-gerçek bir kullanıcı e-postası 400 ile reddedilir, hiçbir yazma yapılmaz. Keycloak'ta zaten var olan ama
-identity'de seed kaydı olmayan hesaplara dokunulmaz (`SkippedForeign`, raporda hata sayılır).
+gerçek bir kullanıcı e-postası 400 ile reddedilir, hiçbir yazma yapılmaz. Keycloak'ta zaten var olan bir hesap için üç durum:
+
+| Identity'de | Sonuç | Ne yapılır |
+|---|---|---|
+| `IsSeedData = true` satır | `Existing` | Eksik roller ve `school_id` onarılır; parola yalnızca `--reset-password` ile |
+| Hiç satır yok (**yetim** — önceki koşu Keycloak'tan sonra kesilmiş) VE Keycloak hesabı `seed_origin=examapp-seed` attribute'unu taşıyor | `Adopted` | E-posta bu koşunun deterministik planında olduğu için sahiplenilir: roller/`school_id`/`seed_origin` onarılır, identity `User` (IsSeedData) ve exam `Teacher` açılır. Parola yalnızca `--reset-password` ile |
+| Hiç satır yok ama `seed_origin` işareti YOK | `SkippedForeign` | Seed aracı açmamış olabilir (bkz. sahiplik kilidi); yalnızca tek seferlik `--adopt-unmarked` ile sahiplenilir |
+| `IsSeedData = false` satır (elle açılmış) | `SkippedForeign` | Hiçbir sisteme dokunulmaz; raporda hata sayılır (#217 güvenlik kararı) |
+
+Plan dışı (bu koşunun e-posta listesinde olmayan) seed-domain Keycloak hesapları `seed-teachers` tarafından hiç
+görülmez; onlar için `seed-cleanup --include-orphans`.
+
+**Sahiplik kilidi (`seed_origin`):** seed aracı açtığı her Keycloak kullanıcısına `seed_origin=examapp-seed` attribute'unu
+yazar (`SeedDataConventions.KeycloakOriginAttribute`; tutor'lar dahil). Identity'si olmayan seed-desenli bir Keycloak hesabı
+başka yoldan da açılmış olabilir (Keycloak self-registration / admin konsolu; auth-api `register` ucu seed alanını 400 ile
+reddeder ama Keycloak'ın kendi kayıt formu reddetmez). Bu yüzden adoptasyon (`seed-teachers`/`seed-tutors`) ve yetim silme
+(`seed-cleanup --include-orphans`) **yalnızca işaretli** hesaplara uygulanır; işaretsiz yetim her iki araçta da
+`SkippedForeign`. `Existing` hesaplarda eksik işaret her koşuda tamamlanır. `--adopt-unmarked`: işaret eklenmeden önce
+açılmış yetimleri (2026-09-22 incident'ı) sahiplenip işaretlemek için **tek seferlik, yalnızca incident temizliği** bayrağı;
+normal koşularda kullanılmaz. Realm'in user-profile'ı bilinmeyen attribute'a izin vermeli (`realm-export.json`:
+`unmanagedAttributePolicy: ADMIN_EDIT`); yerel volume bundan sapmışsa Keycloak `seed_origin`'i (ve `school_id`'yi) sessizce
+düşürür ve kilit hiçbir hesabı işaretli görmez — önce realm'i export'la hizalayın.
+
+**Parola uyarısı:** `Existing`/`Adopted` hesapların Keycloak parolası, önceki koşu farklı bir `SeedData:Password` ile
+yapıldıysa bugünkü değerden farklıdır — komut değiştirmez, raporun sonunda uyarır. Eşitlemek için `--reset-password`
+(Keycloak `PUT /users/{id}/reset-password`, kalıcı parola; yalnızca mevcut/adopt edilenlere uygulanır, yeni açılanlar
+zaten bu parolayla doğar).
 
 ### Seçenekler
 
@@ -146,7 +171,9 @@ identity'de seed kaydı olmayan hesaplara dokunulmaz (`SkippedForeign`, raporda 
 | `--limit-schools-per-province N` | İl başına ada göre (tr-TR) sıralı ilk N okul |
 | `--dry-run` | auth-api çağrılmaz, yazılmaz; plan ve hesap listesi raporlanır (parola gerekmez) |
 | `--keycloak-mode admin-api\|partial-import` | Aşağıdaki ölçüme göre seçin (varsayılan `admin-api`) |
-| `--batch-size N` | auth-api'ye istek başına hesap (varsayılan 100, en fazla 500) |
+| `--batch-size N` | auth-api'ye istek başına hesap (varsayılan 100, en fazla 500). Ölçüm notu aşağıda |
+| `--reset-password` | Keycloak'ta zaten var olan (`Existing`/`Adopted`) seed hesaplarının parolasını bu koşunun `SeedData:Password` değeriyle sıfırla (varsayılan kapalı) |
+| `--adopt-unmarked` | TEK SEFERLİK incident temizliği: `seed_origin` işareti taşımayan yetimleri de sahiplen ve işaretle (varsayılan kapalı; normal koşuda kullanma) |
 | `--no-events` | `UserPreferredLocaleChangedEvent` outbox satırlarını yazma (BadgeService dil tercihi varsayılana düşer; hacim için) |
 | `--no-migrate`, `--connection` | `seed-schools` ile aynı |
 
@@ -164,6 +191,28 @@ Küçük örneklem için `admin-api` yeterli; tam kapsam için `--keycloak-mode 
 (gerekirse `--no-events`). Partial import'ta Keycloak parolayı verildiği hash ile saklar ve ilk başarılı
 login'de realm politikasına (argon2) yeniden hash'ler — beklenen davranış. İkisi de idempotenttir; tekrar
 koşu Keycloak/identity/exam'de mevcut kaydı bulur ve kopya açmaz.
+
+### HTTP zaman aşımı / yeniden deneme (resilience) — neden özel ayar var
+
+`ServiceDefaults.AddServiceDefaults()` **tüm** `HttpClient`'lara Aspire'ın standart resilience handler'ını ekler:
+deneme başına 10 sn zaman aşımı + 3 yeniden deneme, toplam 30 sn. `client.Timeout` bunu **ezmez**. 500'lük bir
+partial-import isteği 10 sn'yi aşınca exam API isteği iptal edip aynı partiyi yeniden gönderiyordu; Keycloak ilk
+transaction'ı bitirdiği için ikinci istek 409 "Duplicate resource error" aldı ve identity/exam yazılmadan binlerce
+yetim Keycloak kullanıcısı kaldı (2026-09-22 Kars+Erzincan koşusu: 4.480 yetim). Seed uçları idempotent değildir,
+bu yüzden iki client standart handler'dan **muaf** tutulur (`RemoveAllResilienceHandlers()`, yeniden deneme yok,
+tek sınır 30 dk `Timeout`):
+
+| Client | Nerede | Kapsam |
+|---|---|---|
+| `AuthApiSeedClient` (exam API → auth-api) | `TeacherSeedServiceCollectionExtensions` | seed-users / cleanup uçları |
+| `KeycloakAdmin` (auth-api → Keycloak) | auth-api `Program.cs` + `KeycloakService.AdminHttpClientName` | partialImport, sayfalı arama, rol/attribute/parola onarımı, silme. Login/token akışları varsayılan client'ta kalır (resilience açık) |
+
+`--batch-size` ölçüm notu: parti boyutu artık zaman aşımıyla sınırlı değil; Keycloak `partialImport` 500 kullanıcıda
+tek transaction'dır ve yerel Aspire'da ≈ 10–20 sn sürer (yukarıdaki ≈ 20–30 ms/hesap). Daha küçük parti = daha çok
+istek, daha küçük transaction; 100–500 arası fark yalnızca toplam sürede görülür. Testler
+(`TeacherSeedHttpClientResilienceTests`, auth-api'de `KeycloakAdminHttpClientTests`): named client'ın pipeline'ında
+`ResilienceHandler` yok; testin kendi kısa süreli standart handler'ıyla (attempt 1 sn) 1,5 sn süren tek istek iptal
+edilmeden ve tekrarlanmadan tamamlanır, kontrol client'ında aynı istek iptal edilip yenilenir.
 
 ### Gateway
 
@@ -203,7 +252,7 @@ ortamı ezer.
 | `--provinces a,b` | Hangi iller (varsayılan: 10 il) |
 | `--limit-schools-per-province N` | Tabana il başına ada göre sıralı ilk N seed okulun öğretmenleri sayılır — `seed-teachers` ile aynı limitle koşulduğunda tutarlı sayılar |
 | `--pending-ratio 0..1` | Her il+branş grubunda tutor'ların bu oranı (`floor`, sıra numarası en yüksek olanlar) `Pending` kalır; varsayılan ortama göre (Dev 0 / Staging 1) |
-| `--dry-run`, `--no-events`, `--keycloak-mode`, `--batch-size`, `--no-migrate`, `--connection` | `seed-teachers` ile aynı |
+| `--dry-run`, `--no-events`, `--keycloak-mode`, `--batch-size`, `--reset-password`, `--adopt-unmarked`, `--no-migrate`, `--connection` | `seed-teachers` ile aynı (yetim adoptasyonu, `seed_origin` kilidi ve parola uyarısı dahil) |
 
 E-posta deseni: `seed.i.<ilSlug>.<brans>.<n>@seed.examapp.local` (`ilSlug` ASCII: `istanbul`, `sanliurfa`;
 `i` = independent, okul öğretmenleri `seed.t.`). Ad/soyad ve profil e-postanın SHA-256'sından; tekrar koşu
@@ -224,7 +273,16 @@ cd api/ExamApp.Api
 dotnet run -- seed-cleanup                    # rapor (dry-run; --dry-run ile aynı)
 dotnet run -- seed-cleanup --apply            # sil (Staging'de --yes zorunlu)
 dotnet run -- seed-cleanup --apply --force    # müsaitlik verisi (slot/kural) olan seed öğretmenleri de sil
+dotnet run -- seed-cleanup --apply --include-orphans   # Keycloak'ta seed desenli ama identity'de hiç satırı olmayan yetimleri de sil
 ```
+
+`--include-orphans`: kesilmiş bir seed koşusu Keycloak'ta kullanıcı açıp identity'ye yazamadan durduysa bu hesaplar
+identity'de yoktur; varsayılan kapsam onları "yabancı" sayıp dokunmaz (dry-run raporunda `yabancı=` bunları da içerir,
+not satırı uyarır). Bayrakla yalnızca **kullanıcı adı `seed.*@seed.examapp.local` desenine uyan, identity'de hiç
+satırı olmayan VE `seed_origin=examapp-seed` işaretini taşıyan** Keycloak kullanıcıları silinir (`keycloakYetim=`); gerçek
+alan adları, identity'de `IsSeedData=false` satırı olan hesaplar (harf duyarsız) ve işaretsiz yetimler bu bayrakla da
+silinmez. `ExcludeUserIds` yetimlere uygulanamaz (identity id'leri yoktur). Plandaki yetimleri silmek yerine tamamlamak için
+`seed-teachers` / `seed-tutors` (adoptasyon) tercih edilir; `--include-orphans` plan dışı kalıntılar içindir.
 
 `--apply` başında hedef yazdırılır: `Ortam=<name> DB=<host:port/db> auth-api=<url>` (parola yazılmaz). Yanlış hedefe
 karşı: `--apply` ile `--connection` **birlikte kabul edilmez** (exit 1) — farklı bir hedef için
@@ -238,7 +296,7 @@ Kapsam ve kurallar (**seed dışı hiçbir satıra dokunulmaz**):
 | exam `Teachers` (+`TeacherSubjects`) | `IsSeedData = true` — soft-delete kalıntıları dahil, **hard delete** (`ExecuteDelete`, soft-delete interceptor'ından geçmez) | **Gerçek öğrenci randevusu (`Bookings`) olan öğretmen — `--force` ile de silinmez** (Booking seed-dışı satırdır; ayrı sayaç "gerçek öğrenci randevusu N"). Müsaitlik verisi (`TeacherAvailabilitySlots`, `RecurringAvailabilityRules`) ya da yazdığı worksheet/soru (`CreateUserId`) olan öğretmen: `--force` yoksa atlanır; `--force` müsaitlik satırlarını öğretmenle birlikte siler, **worksheet/soru asla silinmez** (sahipsiz kalır, sayısı raporlanır) |
 | exam `Schools` | `IsSeedData = true` | Bağlı seed-dışı öğretmen, öğrenci, worksheet ataması ya da korunan (atlanan) seed öğretmen varsa |
 | identity `Users` | `IsSeedData = true` VE seed alanı e-postası — hard delete | `ExcludeUserIds` (exam'de atlanan öğretmenler); seed alanında ama `IsSeedData = false` (elle açılmış) → yabancı |
-| Keycloak | Kullanıcı adı `seed.*@seed.examapp.local` VE identity'de seed kaydı olanlar; arama `email=` + `username=` infix (`search=` prefix eşleştirdiği için kullanılmaz), boş sayfaya kadar sayfalı; aramada çıkmayan ama identity `KeycloakId`'si bilinen hesap id ile silinir (404 → `Missing`) | Identity'de seed kaydı yoksa (yabancı, `seed-users` ile aynı kural) ya da exclude edilmişse. Aynı e-postadaki tüm identity satırları (soft-delete kalıntıları) tek grup: biri exclude ise hiçbiri silinmez |
+| Keycloak | Kullanıcı adı `seed.*@seed.examapp.local` VE identity'de seed kaydı olanlar; `--include-orphans` ile identity'de hiç satırı olmayanlar da; arama `email=` + `username=` infix (`search=` prefix eşleştirdiği için kullanılmaz), boş sayfaya kadar sayfalı; aramada çıkmayan ama identity `KeycloakId`'si bilinen hesap id ile silinir (404 → `Missing`) | Identity'de `IsSeedData=false` satırı varsa (yabancı — her modda), identity'de hiç satır yoksa ve `--include-orphans` verilmediyse (yetim), ya da exclude edilmişse. Aynı e-postadaki tüm identity satırları (soft-delete kalıntıları) tek grup: biri exclude ise hiçbiri silinmez |
 
 Neden hard delete: seed satırları benzersiz indekslerde (`Schools.ExternalCode`, identity e-posta) yer tutar;
 soft-delete kalıntısı yeniden koşuda "Existing" sayılırdı. Sıra: exam öğretmen → exam okul → auth-api

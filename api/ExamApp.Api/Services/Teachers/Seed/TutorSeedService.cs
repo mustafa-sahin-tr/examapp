@@ -78,7 +78,7 @@ public sealed class TutorSeedService : ITutorSeedService
         var pwd = options.DryRun ? null : TeacherSeedService.RequirePassword(_configuration);
 
         var total = Stopwatch.StartNew();
-        var result = new TutorSeedResult { DryRun = options.DryRun, KeycloakMode = options.KeycloakMode, PendingRatio = pendingRatio };
+        var result = new TutorSeedResult { DryRun = options.DryRun, KeycloakMode = options.KeycloakMode, PendingRatio = pendingRatio, ResetPassword = options.ResetPassword };
 
         // ---- Referans ----
         var dbProvinces = await _context.Provinces.AsNoTracking().Select(p => new { p.Id, p.Name }).ToListAsync(ct);
@@ -223,6 +223,8 @@ public sealed class TutorSeedService : ITutorSeedService
                 Role = RoleTeacher,
                 EmitLocaleEvents = options.EmitEvents,
                 Mode = options.KeycloakMode,
+                ResetPassword = options.ResetPassword,
+                AdoptUnmarked = options.AdoptUnmarked,
                 Users = batch.Select(p => new DevSeedUserItem
                 {
                     Email = p.Email, FirstName = p.FirstName, LastName = p.LastName, SchoolId = null
@@ -237,7 +239,7 @@ public sealed class TutorSeedService : ITutorSeedService
                 .GroupBy(r => r.Email, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var ready = new List<(PlannedTutor Planned, int UserId)>();
+            var ready = new List<(PlannedTutor Planned, int UserId, bool Adopted)>();
             foreach (var p in batch)
             {
                 if (!byEmail.TryGetValue(p.Email, out var r) || r.UserId is null)
@@ -247,12 +249,15 @@ public sealed class TutorSeedService : ITutorSeedService
                     continue;
                 }
 
+                var adopted = r.KeycloakStatus == DevSeedUsersResponse.StatusAdopted;
                 if (r.KeycloakStatus == DevSeedUsersResponse.StatusCreated) result.KeycloakCreated++;
                 else if (r.KeycloakStatus == DevSeedUsersResponse.StatusExisting) result.KeycloakExisting++;
+                else if (adopted) result.KeycloakAdopted++;
                 if (r.IdentityStatus == DevSeedUsersResponse.StatusCreated) result.IdentityCreated++;
                 else if (r.IdentityStatus == DevSeedUsersResponse.StatusExisting) result.IdentityExisting++;
+                if (r.PasswordReset) result.PasswordsReset++;
 
-                ready.Add((p, r.UserId.Value));
+                ready.Add((p, r.UserId.Value, adopted));
             }
 
             if (ready.Count == 0) continue;
@@ -266,7 +271,7 @@ public sealed class TutorSeedService : ITutorSeedService
                 .GroupBy(t => t.UserId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            foreach (var (p, userId) in ready)
+            foreach (var (p, userId, adopted) in ready)
             {
                 var key = (p.ProvinceName, p.Branch.Branch);
                 if (existingByUserId.TryGetValue(userId, out var teacher))
@@ -298,7 +303,7 @@ public sealed class TutorSeedService : ITutorSeedService
 
                 result.TutorsCreated++;
                 groupSummary[key].Created++;
-                AddAccount(result, p, DevSeedUsersResponse.StatusCreated);
+                AddAccount(result, p, adopted ? DevSeedUsersResponse.StatusAdopted : DevSeedUsersResponse.StatusCreated);
             }
 
             await _context.SaveChangesAsync(ct);
@@ -343,9 +348,9 @@ public sealed class TutorSeedService : ITutorSeedService
     {
         _logger.LogInformation(
             "seed-tutors {Mode}: taban={Base} (okul={Schools}) plan={Planned} pending={Pending} tutor+={Created} tutor={Existing} hata={Failed} " +
-            "kc+={KcCreated} kc={KcExisting} id+={IdCreated} id={IdExisting} süre: keycloak={KcMs}ms identity={IdMs}ms exam={ExMs}ms toplam={TotalMs}ms parti={Batches}",
+            "kc+={KcCreated} kc={KcExisting} kcAdopt={KcAdopted} pwReset={PwReset} id+={IdCreated} id={IdExisting} süre: keycloak={KcMs}ms identity={IdMs}ms exam={ExMs}ms toplam={TotalMs}ms parti={Batches}",
             r.DryRun ? "DRY-RUN" : "WRITE", r.SchoolTeachersCounted, r.SchoolsCounted, r.Planned, r.PlannedPending, r.TutorsCreated, r.TutorsExisting, r.Failed,
-            r.KeycloakCreated, r.KeycloakExisting, r.IdentityCreated, r.IdentityExisting,
+            r.KeycloakCreated, r.KeycloakExisting, r.KeycloakAdopted, r.PasswordsReset, r.IdentityCreated, r.IdentityExisting,
             r.KeycloakElapsedMs, r.IdentityDbElapsedMs, r.ExamDbElapsedMs, r.TotalElapsedMs, r.Batches);
     }
 }

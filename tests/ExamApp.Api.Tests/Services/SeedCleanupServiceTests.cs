@@ -216,6 +216,37 @@ public class SeedCleanupServiceTests : IDisposable
         r.IdentityExcluded.ShouldBe(3);
 
         (await CountsAsync()).ShouldBe(before);
+        req.IncludeOrphans.ShouldBeFalse(); // varsayılan: yetimlere dokunulmaz
+        r.IncludeOrphans.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Include_orphans_is_forwarded_to_auth_api_and_orphan_count_is_reported()
+    {
+        await SeedFixtureAsync();
+        var authApi = new FakeAuthApi
+        {
+            Handler = r =>
+            {
+                var resp = FakeAuthApi.DefaultResponse(r);
+                resp.KeycloakOrphans = 4480;
+                resp.Users.Add(new DevSeedCleanupUser
+                {
+                    Email = "seed.t.999999.turkce.1@seed.examapp.local", Orphan = true, KeycloakId = "kc-orphan",
+                    KeycloakStatus = DevSeedCleanupResponse.StatusPlanned, IdentityStatus = DevSeedCleanupResponse.StatusMissing
+                });
+                return resp;
+            }
+        };
+        await using var ctx = _db.NewContext();
+
+        var r = await NewService(ctx, authApi).RunAsync(new SeedCleanupOptions { IncludeOrphans = true });
+
+        authApi.Requests.ShouldHaveSingleItem().IncludeOrphans.ShouldBeTrue();
+        r.IncludeOrphans.ShouldBeTrue();
+        r.KeycloakOrphans.ShouldBe(4480);
+        r.AuthPlanned.ShouldBe(3); // yetim identity Planned değil; AuthPlanned identity tarafını sayar
+        r.Errors.ShouldBeEmpty();
     }
 
     // ---- apply ----

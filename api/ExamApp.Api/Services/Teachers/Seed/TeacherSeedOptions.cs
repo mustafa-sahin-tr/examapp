@@ -34,4 +34,16 @@ public sealed record TeacherSeedOptions
 
     /// <summary>auth-api'ye istek başına kaç hesap (1..500).</summary>
     public int BatchSize { get; init; } = DefaultBatchSize;
+
+    /// <summary>
+    /// Keycloak'ta zaten var olan (Existing / Adopted) seed hesaplarının parolasını bu koşunun <c>SeedData:Password</c>
+    /// değeriyle sıfırla. Varsayılan false: önceki koşu farklı parolayla açtıysa o hesaplar bu parolayla giremez (rapor uyarır).
+    /// </summary>
+    public bool ResetPassword { get; init; }
+
+    /// <summary>
+    /// Tek seferlik geçiş (yalnızca incident temizliği): Keycloak'ta var, identity'de yok ve <c>seed_origin</c> işareti
+    /// taşımayan yetimleri de sahiplen (işaret yazılır). Varsayılan false: işaretsiz yetim SkippedForeign.
+    /// </summary>
+    public bool AdoptUnmarked { get; init; }
 }

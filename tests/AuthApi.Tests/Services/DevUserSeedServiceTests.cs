@@ -45,11 +45,40 @@ public class DevUserSeedServiceTests : IDisposable
         Users = emails.Select(e => new DevSeedUserItem { Email = e, FirstName = "Ad", LastName = "Soyad", SchoolId = 42 }).ToList()
     };
 
-    /// <summary>Keycloak taklidi: username → id; ilk create Created, sonra AlreadyExisted.</summary>
-    private static IKeycloakService FakeKeycloak(Dictionary<string, string>? store = null)
+    private const string Origin = SeedDataConventions.KeycloakOriginAttribute;
+    private const string OriginValue = SeedDataConventions.KeycloakOriginValue;
+
+    /// <summary>
+    /// Keycloak taklidi: username → id; ilk create Created (attribute'ları kaydeder), sonra AlreadyExisted.
+    /// <paramref name="unmarkedIds"/>: seed_origin işareti TAŞIMAYAN mevcut kullanıcılar (varsayılan: mevcutlar işaretli).
+    /// Attribute yazımları <paramref name="attributes"/> sözlüğüne düşer.
+    /// </summary>
+    private static IKeycloakService FakeKeycloak(
+        Dictionary<string, string>? store = null, HashSet<string>? unmarkedIds = null, Dictionary<string, Dictionary<string, string>>? attributes = null)
     {
         store ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        attributes ??= new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+        foreach (var id in store.Values)
+        {
+            if (!attributes.ContainsKey(id))
+                attributes[id] = unmarkedIds?.Contains(id) == true ? new Dictionary<string, string>() : new Dictionary<string, string> { [Origin] = OriginValue };
+        }
         var kc = Substitute.For<IKeycloakService>();
+        kc.GetUserAttributesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => (IReadOnlyDictionary<string, string>)(attributes.TryGetValue(call.Arg<string>(), out var a) ? a : new Dictionary<string, string>()));
+        kc.EnsureUserAttributesAsync(Arg.Any<string>(), Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var id = call.Arg<string>();
+                if (!attributes.TryGetValue(id, out var a)) attributes[id] = a = new Dictionary<string, string>();
+                var changed = false;
+                foreach (var kv in call.Arg<IReadOnlyDictionary<string, string>>())
+                {
+                    if (a.TryGetValue(kv.Key, out var cur) && cur == kv.Value) continue;
+                    a[kv.Key] = kv.Value; changed = true;
+                }
+                return changed;
+            });
         kc.GetRealmRoleAsync("Teacher", Arg.Any<CancellationToken>()).Returns(new KeycloakRoleDto { id = "role-teacher", name = "Teacher" });
         kc.GetRealmRoleAsync(DefaultRole, Arg.Any<CancellationToken>()).Returns(new KeycloakRoleDto { id = "role-default", name = DefaultRole });
         kc.GetRealmDefaultRoleNameAsync(Arg.Any<CancellationToken>()).Returns(DefaultRole);
@@ -60,6 +89,7 @@ public class DevUserSeedServiceTests : IDisposable
                 return new KeycloakUserCreateResult(existing, AlreadyExisted: true);
             var id = "kc-" + (store.Count + 1);
             store[user.Username] = id;
+            attributes[id] = user.Attributes is null ? new Dictionary<string, string>() : new Dictionary<string, string>(user.Attributes);
             return new KeycloakUserCreateResult(id, AlreadyExisted: false);
         });
         kc.GetUserRealmRoleNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(new List<string> { DefaultRole, "Teacher" });
@@ -179,7 +209,7 @@ public class DevUserSeedServiceTests : IDisposable
         response.Mode.ShouldBe(DevSeedUsersRequest.ModeAdminApi);
 
         await kc.Received(2).CreateSeedUserAsync(
-            Arg.Is<KeycloakSeedUser>(u => u.Attributes!.Count == 1 && u.Attributes["school_id"] == "42" && u.Username == u.Email),
+            Arg.Is<KeycloakSeedUser>(u => u.Attributes!.Count == 2 && u.Attributes["school_id"] == "42" && u.Attributes[Origin] == OriginValue && u.Username == u.Email),
             Pw, Arg.Any<CancellationToken>());
         await kc.Received(2).AddRealmRoleMappingAsync(Arg.Any<string>(), Arg.Is<KeycloakRoleDto>(r => r.name == "Teacher"), Arg.Any<CancellationToken>());
 
@@ -199,7 +229,7 @@ public class DevUserSeedServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Null_school_id_sends_no_attributes()
+    public async Task Null_school_id_still_sends_the_seed_origin_lock_attribute()
     {
         var kc = FakeKeycloak();
         await using var ctx = _db.NewContext();
@@ -208,7 +238,8 @@ public class DevUserSeedServiceTests : IDisposable
 
         await NewService(ctx, kc).SeedAsync(request);
 
-        await kc.Received(1).CreateSeedUserAsync(Arg.Is<KeycloakSeedUser>(u => u.Attributes == null), Pw, Arg.Any<CancellationToken>());
+        await kc.Received(1).CreateSeedUserAsync(
+            Arg.Is<KeycloakSeedUser>(u => u.Attributes!.Count == 1 && u.Attributes[Origin] == OriginValue), Pw, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -265,25 +296,191 @@ public class DevUserSeedServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Existing_keycloak_user_without_seed_identity_row_is_skipped_as_foreign_and_untouched()
+    public async Task Orphan_keycloak_user_in_plan_without_any_identity_row_is_adopted_roles_and_school_id_repaired_identity_created()
     {
+        // Kesilmiş koşu kalıntısı: Keycloak'ta var, identity'de HİÇ satır yok, e-posta bu isteğin planında.
         var email = Seed("t1");
-        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [email] = "kc-foreign" });
-        kc.GetUserRealmRoleNamesAsync("kc-foreign", Arg.Any<CancellationToken>()).Returns(new List<string>());
+        var attrs = new Dictionary<string, Dictionary<string, string>>();
+        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [email] = "kc-orphan" }, attributes: attrs); // işaretli yetim
+        kc.GetUserRealmRoleNamesAsync("kc-orphan", Arg.Any<CancellationToken>()).Returns(new List<string>());
         await using var ctx = _db.NewContext();
 
         var response = await NewService(ctx, kc).SeedAsync(Request(email, Seed("t2")));
 
-        var foreign = response.Results.Single(r => r.Email == email);
-        foreign.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
-        foreign.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
-        foreign.UserId.ShouldBeNull();
-        foreign.KeycloakId.ShouldBeNull();
-        await kc.DidNotReceive().GetUserRealmRoleNamesAsync("kc-foreign", Arg.Any<CancellationToken>());
-        await kc.DidNotReceive().AddRealmRoleMappingAsync("kc-foreign", Arg.Any<KeycloakRoleDto>(), Arg.Any<CancellationToken>());
+        var adopted = response.Results.Single(r => r.Email == email);
+        adopted.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusAdopted);
+        adopted.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
+        adopted.KeycloakId.ShouldBe("kc-orphan");
+        adopted.UserId.ShouldNotBeNull();
+        adopted.PasswordReset.ShouldBeFalse();
+        await kc.Received(1).AddRealmRoleMappingAsync("kc-orphan", Arg.Is<KeycloakRoleDto>(x => x.name == "Teacher"), Arg.Any<CancellationToken>());
+        await kc.Received(1).AddRealmRoleMappingAsync("kc-orphan", Arg.Is<KeycloakRoleDto>(x => x.name == DefaultRole), Arg.Any<CancellationToken>());
+        await kc.Received(1).EnsureUserAttributesAsync("kc-orphan", Arg.Is<IReadOnlyDictionary<string, string>>(d => d["school_id"] == "42" && d[Origin] == OriginValue), Arg.Any<CancellationToken>());
+        attrs["kc-orphan"]["school_id"].ShouldBe("42");
+        await kc.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default); // bayrak yok → parola dokunulmaz
 
-        response.Results.Single(r => r.Email == Seed("t2")).IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
-        (await _db.NewContext().Users.CountAsync()).ShouldBe(1); // yabancı için identity satırı açılmadı
+        response.Results.Single(r => r.Email == Seed("t2")).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
+
+        await using var check = _db.NewContext();
+        var users = await check.Users.OrderBy(u => u.Id).ToListAsync();
+        users.Count.ShouldBe(2);
+        var row = users.Single(u => u.Email == email);
+        row.IsSeedData.ShouldBeTrue();
+        row.KeycloakId.ShouldBe("kc-orphan");
+        row.Role.ShouldBe("Teacher");
+        (await check.OutboxMessages.CountAsync()).ShouldBe(2); // adopt edilen de yeni identity satırı → event
+    }
+
+    [Fact]
+    public async Task Existing_keycloak_user_with_non_seed_identity_row_is_still_foreign_no_keycloak_repair()
+    {
+        // #217 güvenlik bulgusu korunur: identity'de IsSeedData=false satırı varsa (elle açılmış) rol/parola/attribute dokunulmaz.
+        var email = Seed("t1");
+        await AddIdentityUserAsync(email, "kc-manual", isSeed: false);
+        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [email] = "kc-manual" });
+        await using var ctx = _db.NewContext();
+        var request = Request(email);
+        request.ResetPassword = true;
+
+        var response = await NewService(ctx, kc).SeedAsync(request);
+
+        var r = response.Results.Single();
+        r.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
+        r.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
+        r.KeycloakId.ShouldBeNull();
+        r.UserId.ShouldBeNull();
+        r.PasswordReset.ShouldBeFalse();
+        await kc.DidNotReceiveWithAnyArgs().GetUserRealmRoleNamesAsync(default!, default);
+        await kc.DidNotReceiveWithAnyArgs().AddRealmRoleMappingAsync(default!, default!, default);
+        await kc.DidNotReceiveWithAnyArgs().EnsureUserAttributesAsync(default!, default!, default);
+        await kc.DidNotReceiveWithAnyArgs().GetUserAttributesAsync(default!, default);
+        await kc.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Existing_keycloak_user_with_case_different_non_seed_identity_row_is_foreign()
+    {
+        // Harf duyarsız yabancı kararı: identity'de "Seed.T.T1@Seed.Examapp.Local" (IsSeedData=false), istek küçük harf.
+        var email = Seed("t1");
+        await AddIdentityUserAsync("Seed.T.T1@Seed.Examapp.Local", "kc-manual", isSeed: false);
+        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [email] = "kc-manual" });
+        await using var ctx = _db.NewContext();
+
+        var response = await NewService(ctx, kc).SeedAsync(Request(email));
+
+        var r = response.Results.Single();
+        r.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
+        r.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
+        await kc.DidNotReceiveWithAnyArgs().GetUserRealmRoleNamesAsync(default!, default);
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Unmarked_orphan_is_skipped_as_foreign_unless_adopt_unmarked_which_adopts_and_marks_it()
+    {
+        // Keycloak'ta var, identity'de yok, seed_origin YOK (self-registration ya da işaret öncesi koşu).
+        var email = Seed("t1");
+        var store = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [email] = "kc-unmarked" };
+        var attrs = new Dictionary<string, Dictionary<string, string>>();
+        var kc = FakeKeycloak(store, unmarkedIds: ["kc-unmarked"], attributes: attrs);
+        kc.GetUserRealmRoleNamesAsync("kc-unmarked", Arg.Any<CancellationToken>()).Returns(new List<string> { "Teacher", DefaultRole });
+
+        DevSeedUsersResponse locked;
+        await using (var ctx = _db.NewContext())
+        {
+            var request = Request(email);
+            request.ResetPassword = true;
+            locked = await NewService(ctx, kc).SeedAsync(request);
+        }
+
+        var r = locked.Results.Single();
+        r.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
+        r.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
+        r.Error.ShouldContain("seed_origin");
+        r.PasswordReset.ShouldBeFalse();
+        await kc.Received(1).GetUserAttributesAsync("kc-unmarked", Arg.Any<CancellationToken>());
+        await kc.DidNotReceiveWithAnyArgs().GetUserRealmRoleNamesAsync(default!, default);
+        await kc.DidNotReceiveWithAnyArgs().EnsureUserAttributesAsync(default!, default!, default);
+        await kc.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(0);
+        attrs["kc-unmarked"].ShouldNotContainKey(Origin);
+
+        // Tek seferlik geçiş: --adopt-unmarked → Adopted + işaret yazıldı.
+        DevSeedUsersResponse adopted;
+        await using (var ctx = _db.NewContext())
+        {
+            var request = Request(email);
+            request.AdoptUnmarked = true;
+            adopted = await NewService(ctx, kc).SeedAsync(request);
+        }
+
+        adopted.Results.Single().KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusAdopted);
+        adopted.Results.Single().IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
+        attrs["kc-unmarked"][Origin].ShouldBe(OriginValue);
+        attrs["kc-unmarked"]["school_id"].ShouldBe("42");
+        (await _db.NewContext().Users.SingleAsync()).IsSeedData.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Existing_seed_user_missing_the_origin_mark_gets_it_written()
+    {
+        var email = Seed("t1");
+        await AddIdentityUserAsync(email, "kc-old", isSeed: true);
+        var attrs = new Dictionary<string, Dictionary<string, string>>();
+        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [email] = "kc-old" }, unmarkedIds: ["kc-old"], attributes: attrs);
+        await using var ctx = _db.NewContext();
+
+        var response = await NewService(ctx, kc).SeedAsync(Request(email));
+
+        response.Results.Single().KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusExisting);
+        attrs["kc-old"][Origin].ShouldBe(OriginValue);
+        await kc.DidNotReceiveWithAnyArgs().GetUserAttributesAsync(default!, default); // Existing'de kilit sorgusu gerekmez
+    }
+
+    [Fact]
+    public async Task Reset_password_flag_resets_existing_and_adopted_keycloak_users_but_not_newly_created()
+    {
+        var existing = Seed("old");
+        var orphan = Seed("orphan");
+        var fresh = Seed("new");
+        await AddIdentityUserAsync(existing, "kc-old", isSeed: true);
+        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [existing] = "kc-old", [orphan] = "kc-orphan" });
+        await using var ctx = _db.NewContext();
+        var request = Request(existing, orphan, fresh);
+        request.ResetPassword = true;
+
+        var response = await NewService(ctx, kc).SeedAsync(request);
+
+        response.Results.Single(r => r.Email == existing).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusExisting);
+        response.Results.Single(r => r.Email == existing).PasswordReset.ShouldBeTrue();
+        response.Results.Single(r => r.Email == orphan).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusAdopted);
+        response.Results.Single(r => r.Email == orphan).PasswordReset.ShouldBeTrue();
+        response.Results.Single(r => r.Email == fresh).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
+        response.Results.Single(r => r.Email == fresh).PasswordReset.ShouldBeFalse();
+
+        await kc.Received(1).ResetPasswordAsync("kc-old", Pw, Arg.Any<CancellationToken>());
+        await kc.Received(1).ResetPasswordAsync("kc-orphan", Pw, Arg.Any<CancellationToken>());
+        await kc.Received(2).ResetPasswordAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task Keycloak_failure_during_adoption_marks_row_failed_and_writes_no_identity()
+    {
+        var orphan = Seed("orphan");
+        var kc = FakeKeycloak(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { [orphan] = "kc-orphan" });
+        kc.GetUserRealmRoleNamesAsync("kc-orphan", Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<string>>(_ => throw new KeycloakException("role lookup boom"));
+        await using var ctx = _db.NewContext();
+
+        var response = await NewService(ctx, kc).SeedAsync(Request(orphan));
+
+        var r = response.Results.Single();
+        r.KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusFailed);
+        r.IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusFailed);
+        r.Error.ShouldContain("boom");
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(0);
     }
 
     [Fact]
@@ -377,18 +574,24 @@ public class DevUserSeedServiceTests : IDisposable
             entries.ToDictionary(e => e.Email, e => new KeycloakPartialImportEntry(e.Action, e.Id), StringComparer.OrdinalIgnoreCase));
 
     [Fact]
-    public async Task Partial_import_sends_default_role_and_prehashed_credential_and_repairs_skipped_seed_users_only()
+    public async Task Partial_import_sends_default_role_and_prehashed_credential_repairs_skipped_seed_users_adopts_orphans_skips_foreign()
     {
         var newEmail = Seed("new");
         var oldSeed = Seed("oldseed");
-        var foreign = Seed("foreign");
+        var orphan = Seed("orphan");   // Keycloak'ta var (SKIPPED), identity'de hiç yok → Adopted
+        var foreign = Seed("foreign"); // Keycloak'ta var, identity'de IsSeedData=false → SkippedForeign
         await AddIdentityUserAsync(oldSeed, "kc-oldseed", isSeed: true);
+        await AddIdentityUserAsync(foreign, "kc-foreign", isSeed: false);
 
-        var kc = FakePartialImportKeycloak(ImportResult((newEmail, "ADDED", "kc-new"), (oldSeed, "SKIPPED", null), (foreign, "SKIPPED", "kc-foreign")));
+        var kc = FakePartialImportKeycloak(ImportResult(
+            (newEmail, "ADDED", "kc-new"), (oldSeed, "SKIPPED", null), (orphan, "SKIPPED", "kc-orphan"), (foreign, "SKIPPED", "kc-foreign")));
         kc.FindUserIdByUsernameAsync(oldSeed, Arg.Any<CancellationToken>()).Returns("kc-oldseed");
         kc.GetUserRealmRoleNamesAsync("kc-oldseed", Arg.Any<CancellationToken>()).Returns(new List<string> { "Teacher" });
+        kc.GetUserRealmRoleNamesAsync("kc-orphan", Arg.Any<CancellationToken>()).Returns(new List<string> { "Teacher", DefaultRole });
+        kc.GetUserAttributesAsync("kc-orphan", Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, string> { [Origin] = OriginValue }); // işaretli yetim
         await using var ctx = _db.NewContext();
-        var request = Request(newEmail, oldSeed, foreign);
+        var request = Request(newEmail, oldSeed, orphan, foreign);
         request.Mode = DevSeedUsersRequest.ModePartialImport;
 
         var response = await NewService(ctx, kc).SeedAsync(request);
@@ -398,19 +601,29 @@ public class DevUserSeedServiceTests : IDisposable
         response.Results.Single(r => r.Email == newEmail).IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
         response.Results.Single(r => r.Email == oldSeed).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusExisting);
         response.Results.Single(r => r.Email == oldSeed).KeycloakId.ShouldBe("kc-oldseed");
+        response.Results.Single(r => r.Email == orphan).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusAdopted);
+        response.Results.Single(r => r.Email == orphan).IdentityStatus.ShouldBe(DevSeedUsersResponse.StatusCreated);
+        response.Results.Single(r => r.Email == orphan).KeycloakId.ShouldBe("kc-orphan");
         response.Results.Single(r => r.Email == foreign).KeycloakStatus.ShouldBe(DevSeedUsersResponse.StatusSkippedForeign);
         response.Results.Single(r => r.Email == foreign).UserId.ShouldBeNull();
 
         await kc.Received(1).PartialImportUsersAsync(
-            Arg.Is<IReadOnlyList<KeycloakSeedUser>>(l => l.Count == 3),
+            Arg.Is<IReadOnlyList<KeycloakSeedUser>>(l => l.Count == 4),
             Arg.Is<IReadOnlyList<string>>(roles => roles.Contains("Teacher") && roles.Contains(DefaultRole)),
             Arg.Is<KeycloakHashedCredential>(c => c.CredentialData.Contains("pbkdf2-sha512") && !c.SecretData.Contains(Pw)),
             Arg.Any<CancellationToken>());
         await kc.Received(1).AddRealmRoleMappingAsync("kc-oldseed", Arg.Is<KeycloakRoleDto>(r => r.name == DefaultRole), Arg.Any<CancellationToken>());
         await kc.DidNotReceive().AddRealmRoleMappingAsync("kc-oldseed", Arg.Is<KeycloakRoleDto>(r => r.name == "Teacher"), Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().AddRealmRoleMappingAsync("kc-orphan", Arg.Any<KeycloakRoleDto>(), Arg.Any<CancellationToken>()); // rolleri tamdı
+        await kc.Received(1).EnsureUserAttributesAsync("kc-orphan", Arg.Is<IReadOnlyDictionary<string, string>>(d => d["school_id"] == "42" && d[Origin] == OriginValue), Arg.Any<CancellationToken>());
         await kc.DidNotReceive().GetUserRealmRoleNamesAsync("kc-foreign", Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().GetUserAttributesAsync("kc-foreign", Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().EnsureUserAttributesAsync("kc-foreign", Arg.Any<IReadOnlyDictionary<string, string>>(), Arg.Any<CancellationToken>());
+        await kc.DidNotReceive().FindUserIdByUsernameAsync(foreign, Arg.Any<CancellationToken>()); // yabancı için id araması dahil hiçbir çağrı yok
         await kc.DidNotReceiveWithAnyArgs().CreateSeedUserAsync(default!, default!, default);
-        (await _db.NewContext().Users.CountAsync()).ShouldBe(2); // new + oldseed; foreign yok
+        await kc.DidNotReceiveWithAnyArgs().ResetPasswordAsync(default!, default!, default);
+        (await _db.NewContext().Users.CountAsync()).ShouldBe(4); // new + oldseed + orphan(adopt) + foreign(önceden vardı, dokunulmadı)
+        (await _db.NewContext().Users.SingleAsync(u => u.Email == foreign)).IsSeedData.ShouldBeFalse();
     }
 
     [Fact]

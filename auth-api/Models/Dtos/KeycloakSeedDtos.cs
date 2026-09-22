@@ -32,8 +32,15 @@ public sealed record KeycloakPartialImportResult(
 
 public sealed record KeycloakPartialImportEntry(string Action, string? Id);
 
-/// <summary>Kullanıcı arama sonucu (issue #218 temizliği): id + kullanıcı adı + e-posta (brief representation).</summary>
-public sealed record KeycloakUserSummary(string Id, string Username, string? Email);
+/// <summary>
+/// Kullanıcı arama sonucu (issue #218 temizliği): id + kullanıcı adı + e-posta + tek değerli attribute'lar
+/// (tam temsil; <c>seed_origin</c> sahiplik kilidi yetim kararında okunur).
+/// </summary>
+public sealed record KeycloakUserSummary(string Id, string Username, string? Email, IReadOnlyDictionary<string, string>? Attributes = null)
+{
+    public string? Attribute(string name)
+        => Attributes is not null && Attributes.TryGetValue(name, out var v) ? v : null;
+}
 
 /// <summary>Kullanıcı aramasında hangi alan içinde (infix) aranacağı.</summary>
 public enum KeycloakUserSearchField

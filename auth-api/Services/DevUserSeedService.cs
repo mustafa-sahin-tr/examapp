@@ -18,9 +18,13 @@ namespace ExamApp.Api.Services;
 /// import) → identity <c>User</c> upsert (tek transaction) → isteğe bağlı outbox event.
 ///
 /// <para>Güvenlik: e-posta <see cref="SeedDataConventions.IsSeedEmail"/> ile sınırlı — gerçek bir kullanıcının
-/// hesabı bu uçtan geçemez. Keycloak'ta zaten var olan bir kullanıcıya rol onarımı YALNIZCA identity'de
-/// <c>IsSeedData=true</c> satırı varsa yapılır; yoksa öğe <c>SkippedForeign</c> ile atlanır (identity'ye de
-/// yazılmaz). Soft-delete edilmiş seed kullanıcısı geri açılır, ikinci satır oluşmaz.</para>
+/// hesabı bu uçtan geçemez. Keycloak'ta zaten var olan bir kullanıcı için üç durum:
+/// identity'de <c>IsSeedData=true</c> satırı var → <c>Existing</c> (rol/<c>school_id</c> onarımı);
+/// identity'de HİÇ satır yok → <c>Adopted</c> (yetim: önceki koşu Keycloak'tan sonra kesilmiş; e-posta bu isteğin
+/// deterministik seed e-postası olduğu için sahiplenilir — roller/<c>school_id</c> onarılır, identity satırı açılır);
+/// identity'de <c>IsSeedData=false</c> satırı var → <c>SkippedForeign</c> (elle açılmış; hiçbir sisteme yazılmaz).
+/// Parola yalnızca <see cref="DevSeedUsersRequest.ResetPassword"/> ile sıfırlanır. Soft-delete edilmiş seed
+/// kullanıcısı geri açılır, ikinci satır oluşmaz.</para>
 /// </summary>
 public sealed class DevUserSeedService : IDevUserSeedService
 {
@@ -72,23 +76,27 @@ public sealed class DevUserSeedService : IDevUserSeedService
         response.Results = results;
 
         // ---- 0) Identity ön yükleme (soft-delete dahil): rol onarımı ve geri açma kararı için ----
-        var emails = results.Select(r => r.Email).ToList();
+        // Harf duyarsız: identity'de "Seed.T.X@…" gibi elle açılmış bir satır da yabancı kararını tetiklemeli.
+        // İstek e-postaları Validate'te zaten küçük harf (IsSeedEmail); DB tarafı LOWER() ile karşılaştırılır.
+        var emails = results.Select(r => r.Email.ToLowerInvariant()).ToList();
         var existingUsers = await _context.Users
             .IgnoreQueryFilters()
-            .Where(u => emails.Contains(u.Email))
+            .Where(u => emails.Contains(u.Email.ToLower()))
             .ToListAsync(ct);
         var existingByEmail = existingUsers
             .GroupBy(u => u.Email, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(u => u.IsSeedData).ThenBy(u => u.IsDeleted).First(), StringComparer.OrdinalIgnoreCase);
 
-        bool IsSeedIdentity(string email) => existingByEmail.TryGetValue(email, out var u) && u.IsSeedData;
+        IdentityState StateOf(string email) => existingByEmail.TryGetValue(email, out var u)
+            ? (u.IsSeedData ? IdentityState.Seed : IdentityState.Foreign)
+            : IdentityState.None;
 
         // ---- 1) Keycloak ----
         var sw = Stopwatch.StartNew();
         if (mode == DevSeedUsersRequest.ModePartialImport)
-            await SeedKeycloakPartialImportAsync(request, role, results, IsSeedIdentity, ct);
+            await SeedKeycloakPartialImportAsync(request, role, results, StateOf, ct);
         else
-            await SeedKeycloakAdminApiAsync(request, role, results, IsSeedIdentity, ct);
+            await SeedKeycloakAdminApiAsync(request, role, results, StateOf, ct);
         response.KeycloakElapsedMs = sw.ElapsedMilliseconds;
 
         // ---- 2) Identity DB ----
@@ -97,13 +105,15 @@ public sealed class DevUserSeedService : IDevUserSeedService
         response.IdentityDbElapsedMs = sw.ElapsedMilliseconds;
 
         _logger.LogInformation(
-            "dev seed-users: mode={Mode} istek={Count} kcCreated={KcCreated} kcExisting={KcExisting} kcFailed={KcFailed} kcForeign={KcForeign} " +
-            "idCreated={IdCreated} idExisting={IdExisting} kcMs={KcMs} dbMs={DbMs}",
+            "dev seed-users: mode={Mode} istek={Count} kcCreated={KcCreated} kcExisting={KcExisting} kcAdopted={KcAdopted} kcFailed={KcFailed} kcForeign={KcForeign} " +
+            "pwReset={PwReset} idCreated={IdCreated} idExisting={IdExisting} kcMs={KcMs} dbMs={DbMs}",
             mode, results.Count,
             results.Count(r => r.KeycloakStatus == DevSeedUsersResponse.StatusCreated),
             results.Count(r => r.KeycloakStatus == DevSeedUsersResponse.StatusExisting),
+            results.Count(r => r.KeycloakStatus == DevSeedUsersResponse.StatusAdopted),
             results.Count(r => r.KeycloakStatus == DevSeedUsersResponse.StatusFailed),
             results.Count(r => r.KeycloakStatus == DevSeedUsersResponse.StatusSkippedForeign),
+            results.Count(r => r.PasswordReset),
             results.Count(r => r.IdentityStatus == DevSeedUsersResponse.StatusCreated),
             results.Count(r => r.IdentityStatus == DevSeedUsersResponse.StatusExisting),
             response.KeycloakElapsedMs, response.IdentityDbElapsedMs);
@@ -118,7 +128,8 @@ public sealed class DevUserSeedService : IDevUserSeedService
     /// <summary>
     /// Kapsam: Keycloak'ta kullanıcı adı seed desenine uyan (<see cref="SeedDataConventions.IsSeedEmail"/>) VE
     /// identity'de <c>IsSeedData=true</c> satırı olan hesaplar. Identity'de aynı e-postayla seed olmayan bir satır
-    /// varsa (ya da hiç yoksa) hesap yabancı sayılır ve iki sistemde de dokunulmaz — seed-users ile aynı kural.
+    /// varsa hesap yabancı sayılır ve iki sistemde de dokunulmaz. Identity'de hiç satır yoksa (yetim) varsayılan
+    /// yine dokunulmaz; <see cref="DevSeedCleanupRequest.IncludeOrphans"/> ile yalnızca Keycloak'tan silinir.
     /// Sıra: Keycloak → identity; identity satırı yalnızca Keycloak silme başarılı ya da kullanıcı zaten yoksa
     /// silinir. Böylece kısmi hata sonrası ikinci koşu kalanı bulur (identity satırı = yeniden deneme listesi).
     /// </summary>
@@ -145,9 +156,10 @@ public sealed class DevUserSeedService : IDevUserSeedService
 
         // ---- 0) Identity: seed alanındaki TÜM satırlar (soft-delete dahil) — yabancı kararı için IsSeedData=false olanlar da ----
         var domainSuffix = "@" + SeedDataConventions.EmailDomain;
+        // Harf duyarsız (LOWER): "@Seed.Examapp.Local" ile elle açılmış satır da yüklenmeli ki yabancı kararı verilsin.
         var identityRows = await _context.Users
             .IgnoreQueryFilters()
-            .Where(u => u.Email.EndsWith(domainSuffix))
+            .Where(u => u.Email.ToLower().EndsWith(domainSuffix))
             .Select(u => new { u.Id, u.Email, u.KeycloakId, u.IsSeedData, u.IsDeleted })
             .ToListAsync(ct);
 
@@ -214,10 +226,24 @@ public sealed class DevUserSeedService : IDevUserSeedService
 
             if (e.UserId is null)
             {
-                // Keycloak'ta var, identity'de seed kaydı yok: seed-users ile aynı kural — yabancı, dokunulmaz.
+                // Keycloak'ta var, identity'de HİÇ satır yok (yetim: kesilmiş seed koşusu). Varsayılan: dokunulmaz.
+                // IncludeOrphans ile Keycloak'tan silinir — kapsam yine seed deseni (username) ile sınırlı; identity'de
+                // seed olmayan satırı olanlar foreignEmails üzerinden yukarıda zaten SkippedForeign oldu.
+                var marked = string.Equals(kc.Attribute(SeedDataConventions.KeycloakOriginAttribute), SeedDataConventions.KeycloakOriginValue, StringComparison.Ordinal);
+                if (request.IncludeOrphans && marked)
+                {
+                    e.Orphan = true;
+                    e.KeycloakStatus = DevSeedCleanupResponse.StatusPlanned;
+                    e.IdentityStatus = DevSeedCleanupResponse.StatusMissing;
+                    response.KeycloakOrphans++;
+                    continue;
+                }
+
                 e.KeycloakStatus = DevSeedCleanupResponse.StatusSkippedForeign;
                 e.IdentityStatus = DevSeedCleanupResponse.StatusSkippedForeign;
-                e.Error = "Keycloak'ta var ama identity'de seed kaydı yok — yabancı hesap, dokunulmadı.";
+                e.Error = marked
+                    ? "Keycloak'ta var ama identity'de satırı yok — yetim hesap, dokunulmadı (--include-orphans ile silinir)."
+                    : "Keycloak'ta var, identity'de yok ve seed_origin işareti taşımıyor — seed aracı açmamış olabilir, --include-orphans ile de silinmez.";
                 response.KeycloakSkippedForeign++;
                 continue;
             }
@@ -264,10 +290,13 @@ public sealed class DevUserSeedService : IDevUserSeedService
                 catch (KeycloakException ex)
                 {
                     e.KeycloakStatus = DevSeedCleanupResponse.StatusFailed;
-                    e.IdentityStatus = DevSeedCleanupResponse.StatusFailed;
                     e.Error = ex.Message;
                     response.KeycloakFailed++;
-                    response.IdentityFailed++;
+                    if (!e.Orphan)
+                    {
+                        e.IdentityStatus = DevSeedCleanupResponse.StatusFailed;
+                        response.IdentityFailed++;
+                    }
                     _logger.LogWarning(ex, "dev seed-cleanup: Keycloak silme hatası ({Email})", e.Email);
                 }
             }
@@ -295,7 +324,7 @@ public sealed class DevUserSeedService : IDevUserSeedService
                 {
                     deleted += await _context.Users
                         .IgnoreQueryFilters()
-                        .Where(u => u.IsSeedData && u.Email.EndsWith(domainSuffix) && chunk.Contains(u.Id))
+                        .Where(u => u.IsSeedData && u.Email.ToLower().EndsWith(domainSuffix) && chunk.Contains(u.Id))
                         .ExecuteDeleteAsync(ct);
                 }
             });
@@ -309,9 +338,9 @@ public sealed class DevUserSeedService : IDevUserSeedService
         response.Users = entries.Values.OrderBy(e => e.Email, StringComparer.Ordinal).ToList();
 
         _logger.LogInformation(
-            "dev seed-cleanup: dryRun={DryRun} kcDeleted={KcDeleted} kcMissing={KcMissing} kcExcluded={KcExcluded} kcForeign={KcForeign} kcFailed={KcFailed} " +
+            "dev seed-cleanup: dryRun={DryRun} kcDeleted={KcDeleted} kcMissing={KcMissing} kcExcluded={KcExcluded} kcForeign={KcForeign} kcOrphans={KcOrphans} kcFailed={KcFailed} " +
             "idDeleted={IdDeleted} idExcluded={IdExcluded} idFailed={IdFailed} kcMs={KcMs} dbMs={DbMs}",
-            response.DryRun, response.KeycloakDeleted, response.KeycloakMissing, response.KeycloakExcluded, response.KeycloakSkippedForeign, response.KeycloakFailed,
+            response.DryRun, response.KeycloakDeleted, response.KeycloakMissing, response.KeycloakExcluded, response.KeycloakSkippedForeign, response.KeycloakOrphans, response.KeycloakFailed,
             response.IdentityDeleted, response.IdentityExcluded, response.IdentityFailed, response.KeycloakElapsedMs, response.IdentityDbElapsedMs);
 
         return response;
@@ -356,31 +385,99 @@ public sealed class DevUserSeedService : IDevUserSeedService
         }
     }
 
+    /// <summary>Seed hesabının Keycloak'ta taşıması gereken attribute'lar: her zaman sahiplik kilidi, okul varsa school_id.</summary>
+    private static Dictionary<string, string> DesiredAttributes(DevSeedUserItem item)
+    {
+        var attributes = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [SeedDataConventions.KeycloakOriginAttribute] = SeedDataConventions.KeycloakOriginValue
+        };
+        if (item.SchoolId is { } schoolId)
+            attributes[SchoolIdAttribute] = schoolId.ToString(CultureInfo.InvariantCulture);
+        return attributes;
+    }
+
     private static KeycloakSeedUser ToSeedUser(DevSeedUserItem item)
     {
         var email = item.Email.Trim();
-        var attributes = item.SchoolId is { } schoolId
-            ? new Dictionary<string, string> { [SchoolIdAttribute] = schoolId.ToString(CultureInfo.InvariantCulture) }
-            : null;
-        return new KeycloakSeedUser(email, email, item.FirstName.Trim(), item.LastName.Trim(), attributes);
+        return new KeycloakSeedUser(email, email, item.FirstName.Trim(), item.LastName.Trim(), DesiredAttributes(item));
+    }
+
+    private static bool HasSeedOrigin(IReadOnlyDictionary<string, string> attributes)
+        => attributes.TryGetValue(SeedDataConventions.KeycloakOriginAttribute, out var v)
+           && string.Equals(v, SeedDataConventions.KeycloakOriginValue, StringComparison.Ordinal);
+
+    /// <summary>Identity'deki durum: satır yok / seed satırı / seed olmayan satır (yabancı).</summary>
+    private enum IdentityState { None, Seed, Foreign }
+
+    private const string ForeignError = "identity'de aynı e-postalı seed olmayan kayıt var — yabancı hesap, dokunulmadı.";
+    private const string UnmarkedOrphanError =
+        "Keycloak'ta var, identity'de yok ve seed_origin işareti taşımıyor (seed aracı açmamış olabilir) — dokunulmadı; " +
+        "yalnızca incident temizliği için --adopt-unmarked.";
+
+    private static void MarkForeign(DevSeedUserResult result, string error)
+    {
+        result.KeycloakId = null;
+        result.KeycloakStatus = DevSeedUsersResponse.StatusSkippedForeign;
+        result.Error = error;
     }
 
     /// <summary>
-    /// Mevcut Keycloak kullanıcısında eksik rolleri tamamlar — yalnızca identity'de seed kaydı varsa.
-    /// Aksi halde false: yabancı hesap, dokunulmaz.
+    /// Keycloak'ta zaten var olan kullanıcı için onarım: eksik roller, attribute'lar (<c>seed_origin</c> kilidi + varsa
+    /// <c>school_id</c>), isteğe bağlı parola sıfırlama. Identity durumu <see cref="IdentityState.Seed"/> → <c>Existing</c>;
+    /// <see cref="IdentityState.None"/> → yalnızca Keycloak hesabı <c>seed_origin</c> işaretini taşıyorsa (ya da tek seferlik
+    /// <see cref="DevSeedUsersRequest.AdoptUnmarked"/> ile) <c>Adopted</c>, aksi halde <c>SkippedForeign</c> — seed desenli
+    /// e-postayla Keycloak'ta başka yoldan açılmış bir hesap sahiplenilmez. <see cref="IdentityState.Foreign"/> → hiçbir
+    /// Keycloak çağrısı yapılmaz, <c>SkippedForeign</c>. false = dokunulmadı.
     /// </summary>
-    private async Task<bool> TryRepairRolesAsync(
-        string keycloakId, string email, string role, string defaultRole,
-        Func<string, bool> isSeedIdentity, RoleCache roles, CancellationToken ct)
+    private async Task<bool> TryRepairExistingAsync(
+        string keycloakId, DevSeedUserItem item, DevSeedUserResult result, string role, string defaultRole,
+        IdentityState state, RoleCache roles, DevSeedUsersRequest request, CancellationToken ct)
     {
-        if (!isSeedIdentity(email))
+        if (state == IdentityState.Foreign)
+        {
+            MarkForeign(result, ForeignError);
             return false;
+        }
+
+        if (state == IdentityState.None && !request.AdoptUnmarked)
+        {
+            // Sahiplik kilidi: yetim yalnızca seed aracının açtığı (işaretli) hesapsa sahiplenilir.
+            var attributes = await _keycloak.GetUserAttributesAsync(keycloakId, ct);
+            if (!HasSeedOrigin(attributes))
+            {
+                MarkForeign(result, UnmarkedOrphanError);
+                return false;
+            }
+        }
 
         var current = await _keycloak.GetUserRealmRoleNamesAsync(keycloakId, ct);
         if (!current.Contains(role, StringComparer.OrdinalIgnoreCase))
             await _keycloak.AddRealmRoleMappingAsync(keycloakId, await roles.GetAsync(role, ct), ct);
         if (!current.Contains(defaultRole, StringComparer.OrdinalIgnoreCase))
             await _keycloak.AddRealmRoleMappingAsync(keycloakId, await roles.GetAsync(defaultRole, ct), ct);
+
+        // Existing hesaplarda da işaret eksikse tamamlanır (işaret eklenmeden önce açılmış yerel hesaplar böylece işaretlenir).
+        await _keycloak.EnsureUserAttributesAsync(keycloakId, DesiredAttributes(item), ct);
+
+        if (request.ResetPassword)
+        {
+            await _keycloak.ResetPasswordAsync(keycloakId, request.Password, ct);
+            result.PasswordReset = true;
+            _logger.LogWarning("dev seed-users: parola sıfırlandı — {Email} (keycloak {KeycloakId})", result.Email, keycloakId);
+        }
+
+        result.KeycloakId = keycloakId;
+        if (state == IdentityState.Seed)
+        {
+            result.KeycloakStatus = DevSeedUsersResponse.StatusExisting;
+        }
+        else
+        {
+            result.KeycloakStatus = DevSeedUsersResponse.StatusAdopted;
+            _logger.LogWarning("dev seed-users: yetim Keycloak hesabı sahiplenildi — {Email} (keycloak {KeycloakId}, adoptUnmarked={AdoptUnmarked})",
+                result.Email, keycloakId, request.AdoptUnmarked);
+        }
         return true;
     }
 
@@ -400,7 +497,7 @@ public sealed class DevUserSeedService : IDevUserSeedService
 
     /// <summary>Kullanıcı başına: POST users (+409 → username ile bul) + POST role-mapping.</summary>
     private async Task SeedKeycloakAdminApiAsync(
-        DevSeedUsersRequest request, string role, List<DevSeedUserResult> results, Func<string, bool> isSeedIdentity, CancellationToken ct)
+        DevSeedUsersRequest request, string role, List<DevSeedUserResult> results, Func<string, IdentityState> stateOf, CancellationToken ct)
     {
         var roles = new RoleCache(_keycloak);
         var roleRep = await roles.GetAsync(role, ct);
@@ -419,14 +516,8 @@ public sealed class DevUserSeedService : IDevUserSeedService
 
                 if (created.AlreadyExisted)
                 {
-                    // Kısmi durum: önceki koşu kullanıcıyı açıp rolü atayamadan kesilmiş olabilir.
-                    var repaired = await TryRepairRolesAsync(created.Id, result.Email, role, defaultRole, isSeedIdentity, roles, ct);
-                    result.KeycloakStatus = repaired ? DevSeedUsersResponse.StatusExisting : DevSeedUsersResponse.StatusSkippedForeign;
-                    if (!repaired)
-                    {
-                        result.KeycloakId = null;
-                        result.Error = "Keycloak'ta var ama identity'de seed kaydı yok — yabancı hesap, dokunulmadı.";
-                    }
+                    // Kısmi durum: önceki koşu kullanıcıyı açıp rolü atayamadan / identity'yi yazamadan kesilmiş olabilir.
+                    await TryRepairExistingAsync(created.Id, item, result, role, defaultRole, stateOf(result.Email), roles, request, ct);
                 }
                 else
                 {
@@ -436,6 +527,8 @@ public sealed class DevUserSeedService : IDevUserSeedService
             }
             catch (KeycloakException ex)
             {
+                // Onarım adımında patlamış olabilir (id zaten atanmıştı): identity'ye yazılmasın diye id düşürülür.
+                result.KeycloakId = null;
                 result.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
                 result.Error = ex.Message;
                 _logger.LogWarning(ex, "dev seed-users: Keycloak hatası ({Email})", result.Email);
@@ -450,7 +543,7 @@ public sealed class DevUserSeedService : IDevUserSeedService
     /// (yalnızca seed kaydı varsa) eksik roller tamamlanır.
     /// </summary>
     private async Task SeedKeycloakPartialImportAsync(
-        DevSeedUsersRequest request, string role, List<DevSeedUserResult> results, Func<string, bool> isSeedIdentity, CancellationToken ct)
+        DevSeedUsersRequest request, string role, List<DevSeedUserResult> results, Func<string, IdentityState> stateOf, CancellationToken ct)
     {
         var credential = KeycloakPasswordHasher.HashPbkdf2Sha512(request.Password);
         var users = request.Users.Select(ToSeedUser).ToList();
@@ -488,6 +581,14 @@ public sealed class DevUserSeedService : IDevUserSeedService
                 }
 
                 var isAdded = entry.Action.Equals("ADDED", StringComparison.OrdinalIgnoreCase);
+                var state = stateOf(result.Email);
+                if (!isAdded && state == IdentityState.Foreign)
+                {
+                    // Yabancı: id araması dahil hiçbir Keycloak çağrısı yapılmaz.
+                    MarkForeign(result, ForeignError);
+                    continue;
+                }
+
                 var keycloakId = entry.Id ?? await _keycloak.FindUserIdByUsernameAsync(users[i].Username, ct);
                 if (keycloakId is null)
                 {
@@ -503,20 +604,11 @@ public sealed class DevUserSeedService : IDevUserSeedService
                     continue;
                 }
 
-                var repaired = await TryRepairRolesAsync(keycloakId, result.Email, role, defaultRole, isSeedIdentity, roles, ct);
-                if (repaired)
-                {
-                    result.KeycloakId = keycloakId;
-                    result.KeycloakStatus = DevSeedUsersResponse.StatusExisting;
-                }
-                else
-                {
-                    result.KeycloakStatus = DevSeedUsersResponse.StatusSkippedForeign;
-                    result.Error = "Keycloak'ta var ama identity'de seed kaydı yok — yabancı hesap, dokunulmadı.";
-                }
+                await TryRepairExistingAsync(keycloakId, request.Users[i], result, role, defaultRole, state, roles, request, ct);
             }
             catch (KeycloakException ex)
             {
+                result.KeycloakId = null;
                 result.KeycloakStatus = DevSeedUsersResponse.StatusFailed;
                 result.Error = ex.Message;
             }

@@ -102,6 +102,10 @@
     }
   },
   "shared": {
+    "compactTestCard": {
+      "due": "Due: {{date}}",
+      "progress": "{{percent}}%"
+    },
     "badgePath": {
       "empty": "No badge path found.",
       "step": "Step {{step}}",
@@ -459,8 +463,7 @@
       "title": "Assigned Tests",
       "loading": "Loading assigned tests...",
       "empty": "No active assigned tests.",
-      "error": "Assigned tests could not be loaded.",
-      "due": "Due: {{date}}"
+      "error": "Assigned tests could not be loaded."
     },
     "reset": {
       "confirm": "All of your exam progress, assigned personal exams, points and badge/activity data will be reset. Do you want to continue?",

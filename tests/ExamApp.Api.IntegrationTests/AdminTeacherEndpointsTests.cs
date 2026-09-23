@@ -77,6 +77,18 @@ public class AdminTeacherEndpointsTests(IntegrationApiFactory factory) : Integra
     }
 
     [Fact]
+    public async Task Teachers_list_is_not_cacheable()
+    {
+        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+
+        var response = await admin.GetAsync("/api/admin/teachers");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Headers.CacheControl.ShouldNotBeNull();
+        response.Headers.CacheControl!.NoStore.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Huge_page_number_returns_200_with_an_empty_page_not_500()
     {
         await WithDbAsync(async db =>

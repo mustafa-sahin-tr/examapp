@@ -1,5 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MatSelect } from '@angular/material/select';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { Observable, Subject, of } from 'rxjs';
 
 import { SchoolFilterComponent } from './school-filter.component';
@@ -24,7 +27,11 @@ describe('SchoolFilterComponent', () => {
     addressLine: null,
   });
 
-  function create(value: SchoolFilterValue, schools$: Observable<School[]> = of([school(5, 'Ankara Lisesi')])): void {
+  function create(
+    value: SchoolFilterValue,
+    schools$: Observable<School[]> = of([school(5, 'Ankara Lisesi')]),
+    unassignedLabel?: 'unassigned' | 'unassignedStudent',
+  ): void {
     adminService = jasmine.createSpyObj<AdminService>('AdminService', ['getSchools']);
     adminService.getSchools.and.returnValue(schools$);
     TestBed.configureTestingModule({
@@ -36,6 +43,7 @@ describe('SchoolFilterComponent', () => {
     });
     fixture = TestBed.createComponent(SchoolFilterComponent);
     fixture.componentRef.setInput('value', value);
+    if (unassignedLabel) fixture.componentRef.setInput('unassignedLabel', unassignedLabel);
     emitted = [];
     fixture.componentInstance.value.subscribe((v) => emitted.push(v));
     fixture.detectChanges();
@@ -74,5 +82,22 @@ describe('SchoolFilterComponent', () => {
     expect(schoolFilterFromParams('-3', null)).toBe('all');
     expect(schoolFilterFromParams('5', null)).toBe(5);
     expect(schoolFilterFromParams('5', 'true')).toBe('unassigned');
+  });
+
+  function optionTexts(): string[] {
+    (fixture.debugElement.query(By.directive(MatSelect)).componentInstance as MatSelect).open();
+    fixture.detectChanges();
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    return Array.from(container.querySelectorAll('mat-option')).map((o) => (o.textContent ?? '').trim());
+  }
+
+  it('unassignedLabel_Default_ShowsIndependentOrNoSchool', () => {
+    create('all');
+    expect(optionTexts()).toEqual([adminTr.schoolFilter.all, adminTr.schoolFilter.unassigned, 'Ankara Lisesi']);
+  });
+
+  it('unassignedLabel_Student_ShowsNoSchool', () => {
+    create('all', undefined, 'unassignedStudent');
+    expect(optionTexts()).toEqual([adminTr.schoolFilter.all, adminTr.schoolFilter.unassignedStudent, 'Ankara Lisesi']);
   });
 });

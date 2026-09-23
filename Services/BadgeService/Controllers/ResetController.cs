@@ -1,9 +1,8 @@
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using BadgeService.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace BadgeService.Controllers;
 
@@ -12,11 +11,11 @@ namespace BadgeService.Controllers;
 [Authorize(Policy = "Service")]
 public class ResetController : ControllerBase
 {
-    private readonly BadgeDbContext _db;
+    private readonly UserResetService _resetService;
 
-    public ResetController(BadgeDbContext db)
+    public ResetController(UserResetService resetService)
     {
-        _db = db;
+        _resetService = resetService;
     }
 
     [HttpDelete("users/{userId:int}")]
@@ -27,32 +26,7 @@ public class ResetController : ControllerBase
             return BadRequest(new { message = "Invalid userId" });
         }
 
-        var daily = await _db.StudentDailyActivities
-            .Where(x => x.UserId == userId)
-            .ToListAsync(cancellationToken);
-        if (daily.Count > 0) _db.StudentDailyActivities.RemoveRange(daily);
-
-        var progress = await _db.StudentBadgeProgresses
-            .Where(x => x.UserId == userId)
-            .ToListAsync(cancellationToken);
-        if (progress.Count > 0) _db.StudentBadgeProgresses.RemoveRange(progress);
-
-        var earned = await _db.BadgeEarned
-            .Where(x => x.UserId == userId)
-            .ToListAsync(cancellationToken);
-        if (earned.Count > 0) _db.BadgeEarned.RemoveRange(earned);
-
-        var questionAgg = await _db.StudentQuestionAggregates
-            .Where(x => x.UserId == userId)
-            .ToListAsync(cancellationToken);
-        if (questionAgg.Count > 0) _db.StudentQuestionAggregates.RemoveRange(questionAgg);
-
-        var subjectAgg = await _db.StudentSubjectAggregates
-            .Where(x => x.UserId == userId)
-            .ToListAsync(cancellationToken);
-        if (subjectAgg.Count > 0) _db.StudentSubjectAggregates.RemoveRange(subjectAgg);
-
-        await _db.SaveChangesAsync(cancellationToken);
+        await _resetService.ResetAsync(userId, cancellationToken);
 
         return Ok(new { message = "User badge/activity data reset." });
     }

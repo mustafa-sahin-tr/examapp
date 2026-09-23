@@ -4,7 +4,7 @@ alwaysApply: true
 ---
 
 - Yeni async iş akışları **outbox pattern** ile yapılır; direkt servis-to-servis çağrı yapılmaz.
-- **BadgeService**'e yeni event handler eklerken ismi yanıltıcı olsa da oraya eklenir (henüz refactor edilmedi).
+- **BadgeService**'e yeni event handler eklerken ismi yanıltıcı olsa da oraya eklenir (henüz refactor edilmedi). İstisna: event'in yazdığı veri başka servisin DB'sindeyse consumer o serviste olur (bkz. architecture.md, #225).
 - EF migration komutları — `api/ExamApp.Api/` dizininden çalıştırılır:
   ```bash
   cd api/ExamApp.Api

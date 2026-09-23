@@ -71,6 +71,11 @@ fi
 if should_deploy "exam-outbox-publisher"; then
   set_image exam-outbox-publisher exam-outbox-publisher "$GAR_REPO/exam-outbox-publisher:$IMAGE_TAG"
 fi
+# Issue #225: badge-outbox-publisher runs the same image as exam-outbox-publisher
+# (badge DB instance), so it is rolled whenever either name is selected.
+if should_deploy "exam-outbox-publisher" || should_deploy "badge-outbox-publisher"; then
+  set_image badge-outbox-publisher badge-outbox-publisher "$GAR_REPO/exam-outbox-publisher:$IMAGE_TAG"
+fi
 if should_deploy "question-detector"; then
   set_image question-detector question-detector "$GAR_REPO/exam-question-detector:$IMAGE_TAG"
 fi
@@ -84,7 +89,7 @@ if should_deploy "ocelot-gateway"; then
   set_image ocelot-gateway ocelot-gateway "$GAR_REPO/ocelot-gateway:$IMAGE_TAG"
 fi
 
-for d in exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher question-detector angular-app auth-ui ocelot-gateway; do
+for d in exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher badge-outbox-publisher question-detector angular-app auth-ui ocelot-gateway; do
   kubectl -n "$NAMESPACE" rollout status deployment/"$d" --timeout=300s || true
 done
 

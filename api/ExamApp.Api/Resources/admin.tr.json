@@ -18,8 +18,9 @@
       "notFound": "Başvuru bulunamadı.",
       "approved": "Başvuru onaylandı.",
       "rejected": "Başvuru reddedildi.",
-      "notIndependent": "Bu öğretmen bağımsız öğretmen başvurusu değil.",
+      "noPendingApplication": "Bu öğretmen için bekleyen bir bağımsız öğretmen ya da okul bağlantısı başvurusu yok.",
       "alreadyDecided": "Bu başvuru için zaten karar verilmiş.",
+      "requestedSchoolNotFound": "Talep edilen okul artık mevcut değil; başvuru onaylanamaz.",
       "rejectReasonRequired": "Red nedeni boş olamaz.",
       "rejectReasonTooLong": "Red nedeni en fazla {0} karakter olabilir.",
       "rejectReasonMaxLength": "Red nedeni en fazla 500 karakter olabilir."

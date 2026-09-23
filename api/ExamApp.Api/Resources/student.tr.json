@@ -6,6 +6,7 @@
     "registrationFailed": "Öğrenci kaydı başarısız.",
     "registered": "Öğrenci başarıyla kaydedildi.",
     "schoolNotFound": "Seçilen okul bulunamadı.",
+    "teacherRecordExists": "Öğretmen kaydı olan bir hesap öğrenci olarak kaydolamaz.",
     "gradeUpdated": "Öğrenci sınıfı başarıyla güncellendi.",
     "invalidFile": "Geçersiz dosya.",
     "reset": {

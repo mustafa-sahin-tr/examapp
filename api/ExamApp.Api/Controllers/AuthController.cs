@@ -89,6 +89,7 @@ namespace ExamApp.Api.Controllers
                 {
                     // Teacher için ek bilgiler eklenebilir
                     var teacher = await _context.Teachers
+                    .OrderBy(t => t.Id) // UserId unique değil — Save/SchoolContextResolver ile aynı deterministik seçim
                     .FirstOrDefaultAsync(t => t.UserId == profile.Id);
                     if (teacher == null)
                         return Ok(profile);

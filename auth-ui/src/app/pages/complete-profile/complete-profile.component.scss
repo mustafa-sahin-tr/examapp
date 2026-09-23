@@ -207,6 +207,34 @@
 }
 
 /* ===========================
+   Notice (issue #234: okul onayı bekliyor / 409 mesajı)
+   =========================== */
+.notice {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface);
+  color: var(--ms-info-text);
+  font-size: 14px;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.notice-error {
+  border-color: var(--ms-danger-border);
+  background: var(--ms-danger-surface);
+  color: var(--ms-danger-text);
+}
+
+/* ===========================
    Submit Button
    =========================== */
 .auth-submit {

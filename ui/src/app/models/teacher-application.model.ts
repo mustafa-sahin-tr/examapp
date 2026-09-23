@@ -1,5 +1,6 @@
 /**
- * Issue #94 — GET /api/exam/admin/teacher-applications yanıt elemanı (PendingTeacherApplicationDto).
+ * Issue #94 / #234 — GET /api/exam/admin/teacher-applications yanıt elemanı (PendingTeacherApplicationDto).
+ * Başvuru ya bağımsız öğretmen başvurusudur (#94) ya da okul bağlantısı talebidir (#234); onay/red aynı uçlardan.
  * fullName / email auth-api'den çözümlenir; erişilemezse boş string gelir, UI fallback gösterir.
  */
 export interface PendingTeacherApplication {
@@ -9,6 +10,12 @@ export interface PendingTeacherApplication {
   email: string;
   /** ISO tarih (Teacher.CreateTime). */
   appliedAt: string;
+  /** Issue #234: true → bağımsız öğretmen başvurusu; false → okul bağlantısı talebi. */
+  isIndependentTutor: boolean;
+  /** Issue #234: talep edilen okul; bağımsız başvuruda null. */
+  requestedSchoolId: number | null;
+  /** Issue #234: talep edilen okulun adı; bağımsız başvuruda null. */
+  requestedSchoolName: string | null;
 }
 
 /**

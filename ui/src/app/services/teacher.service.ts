@@ -13,6 +13,7 @@ import {
   TutorSearchResult,
   UpdateTutorProfileRequest,
 } from '../models/tutor.model';
+import { TeacherRegistrationResult } from '../models/teacher-registration.model';
 
 @Injectable({
   providedIn: 'root',
@@ -21,9 +22,13 @@ export class TeacherService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/exam/teacher';
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mevcut imza, çağıranlar val.accessToken kullanıyor (kapsam dışı)
-  register(teacher: any): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/register`, teacher);
+  /**
+   * Issue #234: yanıt `schoolApprovalPending` taşır — okul talebi admin onayına kadar bağ kurmaz.
+   * Mevcut kaydın okulunu/bağımsızlığını değiştirme denemesi 409 `{ message }` döner.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mevcut gövde imzası (form değeri), kapsam dışı
+  register(teacher: any): Observable<TeacherRegistrationResult> {
+    return this.http.post<TeacherRegistrationResult>(`${this.baseUrl}/register`, teacher);
   }
 
   /**

@@ -5,7 +5,8 @@
     "back": "Back",
     "save": "Save",
     "saving": "Saving…",
-    "complete": "Complete Registration"
+    "complete": "Complete Registration",
+    "continue": "Continue"
   },
   "roles": {
     "student": "Student",
@@ -50,7 +51,9 @@
     "parentTitle": "Parent Registration",
     "parentHint": "You are about to complete your account as a parent. You can add your children later from your profile.",
     "success": "Registration completed!",
-    "error": "Registration failed. Please try again."
+    "error": "Registration failed. Please try again.",
+    "schoolApprovalPendingTitle": "Your school membership is awaiting administrator approval",
+    "schoolApprovalPendingBody": "Your account has been created. Until an administrator approves your school membership, you cannot see the school’s students or classes."
   },
   "student": {
     "title": "Student Registration",

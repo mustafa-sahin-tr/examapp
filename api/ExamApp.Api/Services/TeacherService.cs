@@ -81,24 +81,39 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync();
     }
 
-    public async Task<ResponseBaseDto> Save(int userId, RegisterTeacherDto dto)
+    public async Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto)
     {
         if (dto.SchoolId.HasValue &&
             !await _context.Schools.AnyAsync(s => s.Id == dto.SchoolId.Value))
         {
-            return new ResponseBaseDto
+            return new TeacherRegistrationResultDto
             {
                 Success = false,
                 Message = _localizer["teacher.schoolNotFound"]
             };
         }
 
-        // Bağımsız öğretmen (issue #92): admin onayı bekler; okula bağlı öğretmen doğrudan onaylı.
-        var approvalStatus = dto.IsIndependentTutor
-            ? TeacherApprovalStatus.Pending
-            : TeacherApprovalStatus.Approved;
+        // issue #234: okul üyeliği kullanıcı tarafından KURULAMAZ. İstekteki okul yalnızca bir talep olarak
+        // RequestedSchoolId'ye yazılır; Teacher.SchoolId admin onayına kadar null kalır (okulsuz sayılır).
+        // Bağımsız öğretmen kaydında okul talebi anlamsızdır — gönderilse de yok sayılır.
+        var requestedSchoolId = dto.IsIndependentTutor ? null : dto.SchoolId;
 
-        var existingTeacher = await _context.Teachers.FirstOrDefaultAsync(s => s.UserId == userId);
+        // issue #234 (security): öğretmen ve öğrenci kaydı birbirini dışlar (bkz. StudentService.Save). Öğrenci kaydı
+        // olan kullanıcı Teacher rolü alıp öğrenci okul bağını öğretmen kapsamına taşıyamaz.
+        if (await _context.Students.AnyAsync(s => s.UserId == userId))
+        {
+            return new TeacherRegistrationResultDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["teacher.studentRecordExists"]
+            };
+        }
+
+        // Teachers.UserId unique değil — deterministik kayıt (ResolveTeacherRecordAsync ile aynı sıra).
+        var existingTeacher = await _context.Teachers
+            .OrderBy(t => t.Id)
+            .FirstOrDefaultAsync(s => s.UserId == userId);
         var isUpdate = existingTeacher != null;
 
         // Karar mantığı execution strategy lambda'sının DIŞINDA: retry'da lambda yeniden çalışır ve
@@ -107,42 +122,87 @@ public class TeacherService : ITeacherService
         Teacher teacher;
         var shouldPublishIndependentTeacherEvent = false;
         var shouldPublishApplicationSubmittedEvent = false;
+        var schoolApprovalPending = false;
 
         if (existingTeacher != null)
         {
             teacher = existingTeacher;
 
-            // ApprovalStatus yalnızca IsIndependentTutor gerçekten değişince yeniden hesaplanır.
-            // Aksi halde admin'in verdiği Approved/Rejected kararı tekrar register çağrısıyla
-            // sessizce Pending'e dönebilir ya da Pending kayıt IsIndependentTutor=false göndererek
-            // kendini Approved'a yükseltebilirdi.
-            var wasIndependent = teacher.IsIndependentTutor;
-            var independenceChanged = dto.IsIndependentTutor != wasIndependent;
+            // issue #234: mevcut kaydın onaylı okul bağı (SchoolId) bu uçla DEĞİŞTİRİLEMEZ.
+            //  - Bağımsız (Pending/Approved/Rejected) → okula bağlı geçiş: 409 (okul bağı + kendini onaylama yolu).
+            //  - Onaylı SchoolId varken farklı okul: 409. Aynı okul: idempotent.
+            //  - Bekleyen (Pending) okul talebi varken farklı okul: 409. Aynı okul: idempotent.
+            //  - Okulsuz ve bekleyen talebi yok (talebi reddedilmiş ya da eski Approved okulsuz kayıt): yeni okul
+            //    talebi açılır → RequestedSchoolId=yeni, Pending, RejectionReason=null; SchoolId null kalır.
+            var leavesIndependence = teacher.IsIndependentTutor && !dto.IsIndependentTutor;
+            var hasPendingSchoolRequest = teacher.RequestedSchoolId.HasValue
+                && teacher.ApprovalStatus == TeacherApprovalStatus.Pending;
 
-            teacher.SchoolId = dto.SchoolId;
-            teacher.IsIndependentTutor = dto.IsIndependentTutor;
+            var requestsDifferentSchool = !teacher.IsIndependentTutor && requestedSchoolId.HasValue && (
+                teacher.SchoolId.HasValue
+                    ? requestedSchoolId != teacher.SchoolId
+                    : hasPendingSchoolRequest && requestedSchoolId != teacher.RequestedSchoolId);
 
-            if (independenceChanged)
+            var opensSchoolRequest = !teacher.IsIndependentTutor && !dto.IsIndependentTutor
+                && requestedSchoolId.HasValue && !teacher.SchoolId.HasValue && !hasPendingSchoolRequest;
+
+            if (requestsDifferentSchool || leavesIndependence)
             {
-                teacher.ApprovalStatus = approvalStatus;
+                return new TeacherRegistrationResultDto
+                {
+                    Success = false,
+                    Conflict = true,
+                    Message = _localizer["teacher.registrationChangeNotAllowed"],
+                    ObjectId = teacher.Id,
+                    SchoolId = teacher.SchoolId,
+                    RequestedSchoolId = teacher.RequestedSchoolId,
+                    ApprovalStatus = teacher.ApprovalStatus
+                };
+            }
+
+            // Tek izin verilen geçiş: okula bağlı → bağımsız (issue #92). ApprovalStatus yalnızca bu geçişte
+            // Pending'e çekilir; aksi halde admin'in verdiği karar tekrar register çağrısıyla değişmez.
+            // Bekleyen okul talebi varsa geri çekilir (bağımsız başvuruda okul talebi anlamsız). Onaylı
+            // SchoolId'ye dokunulmaz (issue #234: bu uç SchoolId'yi değiştirmez).
+            var becomesIndependent = !teacher.IsIndependentTutor && dto.IsIndependentTutor;
+            if (becomesIndependent)
+            {
+                teacher.IsIndependentTutor = true;
+                teacher.ApprovalStatus = TeacherApprovalStatus.Pending;
+                teacher.RequestedSchoolId = null;
+            }
+            else if (opensSchoolRequest)
+            {
+                teacher.RequestedSchoolId = requestedSchoolId;
+                teacher.ApprovalStatus = TeacherApprovalStatus.Pending;
+                teacher.RejectionReason = null;
+                schoolApprovalPending = true;
             }
 
             // Yalnızca bağımsız geçişlerde aynı transaction içinde ilgili outbox event'leri yazılır.
-            // Aynı değerle tekrar submit (idempotent) ya da bağımsız → okula bağlı geçişte event atılmaz.
-            shouldPublishIndependentTeacherEvent = dto.IsIndependentTutor && independenceChanged;
-            shouldPublishApplicationSubmittedEvent = dto.IsIndependentTutor && independenceChanged && approvalStatus == TeacherApprovalStatus.Pending;
+            // Aynı değerle tekrar submit (idempotent) event üretmez.
+            shouldPublishIndependentTeacherEvent = becomesIndependent;
+            shouldPublishApplicationSubmittedEvent = becomesIndependent;
         }
         else
         {
+            // Bağımsız öğretmen (issue #92) ve okul talebi olan öğretmen (issue #234) admin onayı bekler.
+            // Okul talebi olmayan, bağımsız da olmayan kayıt (geçiş dönemi) okulsuz ve onaylı başlar.
+            schoolApprovalPending = requestedSchoolId.HasValue;
             teacher = new Teacher
             {
                 UserId = userId,
-                SchoolId = dto.SchoolId,
+                SchoolId = null,
+                RequestedSchoolId = requestedSchoolId,
                 IsIndependentTutor = dto.IsIndependentTutor,
-                ApprovalStatus = approvalStatus
+                ApprovalStatus = dto.IsIndependentTutor || schoolApprovalPending
+                    ? TeacherApprovalStatus.Pending
+                    : TeacherApprovalStatus.Approved
             };
 
             // Yeni bağımsız öğretmen kaydı hem yeni bağımsız kayıt event'ini hem Pending başvuru event'ini üretir.
+            // Okul bağlantısı talebi için event YAZILMAZ: TeacherApplicationSubmittedEvent'in tüketicisi bildirim
+            // metnini "bağımsız öğretmen başvurusu" olarak üretir; talep admin başvuru listesinde görünür.
             shouldPublishIndependentTeacherEvent = dto.IsIndependentTutor;
             shouldPublishApplicationSubmittedEvent = dto.IsIndependentTutor;
         }
@@ -198,11 +258,16 @@ public class TeacherService : ITeacherService
             teacherId = teacher.Id;
         });
 
-        return new ResponseBaseDto
+        return new TeacherRegistrationResultDto
         {
             Success = true,
-            Message = isUpdate ? _localizer["teacher.updated"] : _localizer["teacher.saved"],
-            ObjectId = teacherId
+            Message = schoolApprovalPending
+                ? _localizer["teacher.savedSchoolApprovalPending"]
+                : isUpdate ? _localizer["teacher.updated"] : _localizer["teacher.saved"],
+            ObjectId = teacherId,
+            SchoolId = teacher.SchoolId,
+            RequestedSchoolId = teacher.RequestedSchoolId,
+            ApprovalStatus = teacher.ApprovalStatus
         };
     }
 

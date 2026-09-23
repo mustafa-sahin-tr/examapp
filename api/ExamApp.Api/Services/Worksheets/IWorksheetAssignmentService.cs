@@ -9,7 +9,13 @@ namespace ExamApp.Api.Services.Worksheets;
 /// </summary>
 public interface IWorksheetAssignmentService
 {
-    Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId, bool isAdmin = false);
+    /// <summary>
+    /// issue #222: istek sahibinin sunucu tarafında çözülmüş tenant bağlamıyla (<c>GetSchoolScopeAsync</c>) atama.
+    /// Unrestricted = admin; bağımsız (okulsuz) öğretmen yalnızca öğrenci bazlı (Approved Booking) atayabilir.
+    /// Admin olmayan istek sahibinin okulu öğretmen kaydından doğrulanır (kayıt yok/uyuşmazlık → red).
+    /// </summary>
+    Task<ResponseBaseDto> AssignWorksheetAsync(
+        WorksheetAssignmentRequestDto request, SchoolScope requester, CancellationToken ct = default);
 
     Task<List<AssignedWorksheetDto>> GetActiveAssignmentsForStudentAsync(StudentProfileDto student);
 

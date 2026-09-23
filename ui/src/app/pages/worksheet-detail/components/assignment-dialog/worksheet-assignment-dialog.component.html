@@ -2,10 +2,14 @@
 <h2 mat-dialog-title>{{ t('assignDialog.title') }}</h2>
 <section mat-dialog-content>
   <form [formGroup]="form" class="assignment-form">
-    <mat-radio-group formControlName="scope" class="scope-selector">
-      <mat-radio-button value="grade">{{ t('assignDialog.scopeGrade') }}</mat-radio-button>
-      <mat-radio-button value="student">{{ t('assignDialog.scopeStudent') }}</mat-radio-button>
-    </mat-radio-group>
+    @if (isIndependentTutor) {
+      <p class="independent-note" data-testid="independent-tutor-note">{{ t('assignDialog.independentTutorNote') }}</p>
+    } @else {
+      <mat-radio-group formControlName="scope" class="scope-selector">
+        <mat-radio-button value="grade" data-testid="scope-grade">{{ t('assignDialog.scopeGrade') }}</mat-radio-button>
+        <mat-radio-button value="student" data-testid="scope-student">{{ t('assignDialog.scopeStudent') }}</mat-radio-button>
+      </mat-radio-group>
+    }
 
     <div class="field-pair" *ngIf="isGradeScope(); else studentScope">
       <mat-form-field appearance="outline" class="wide">
@@ -36,7 +40,13 @@
         </mat-select>
         <mat-error>{{ t('assignDialog.studentRequired') }}</mat-error>
       </mat-form-field>
-      <div class="helper-text">{{ t('assignDialog.studentHelper') }}</div>
+      @if (filteredStudents().length === 0) {
+        <div class="helper-text empty" data-testid="no-students">{{ t('assignDialog.noStudents') }}</div>
+      } @else {
+        <div class="helper-text">
+          {{ isIndependentTutor ? t('assignDialog.independentStudentHelper') : t('assignDialog.studentHelper') }}
+        </div>
+      }
     </ng-template>
 
     <div class="datetime-grid">

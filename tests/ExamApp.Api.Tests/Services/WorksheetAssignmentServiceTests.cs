@@ -83,8 +83,8 @@ public class WorksheetAssignmentServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var svc = NewService(ctx);
 
-        (await svc.AssignWorksheetAsync(Req(ws), 1)).Message.ShouldContain("En az bir hedef");
-        (await svc.AssignWorksheetAsync(Req(ws, studentId: student, gradeId: 1), 1)).Message.ShouldContain("birlikte seçilemez");
+        (await svc.AssignAsUserAsync(ctx, Req(ws), 1)).Message.ShouldContain("En az bir hedef");
+        (await svc.AssignAsUserAsync(ctx, Req(ws, studentId: student, gradeId: 1), 1)).Message.ShouldContain("birlikte seçilemez");
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
     {
         var (ws, student, _) = await SeedAsync();
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(
+        var r = await NewService(ctx).AssignAsUserAsync(ctx,
             Req(ws, studentId: student, end: Start.AddHours(-1)), 1);
         r.Success.ShouldBeFalse();
         r.Message.ShouldContain("Bitiş zamanı");
@@ -105,9 +105,9 @@ public class WorksheetAssignmentServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var svc = NewService(ctx);
 
-        (await svc.AssignWorksheetAsync(Req(99999, studentId: student), 1)).Message.ShouldContain("Worksheet bulunamadı");
-        (await svc.AssignWorksheetAsync(Req(ws, studentId: 99999), 1)).Message.ShouldContain("Öğrenci bulunamadı");
-        (await svc.AssignWorksheetAsync(Req(ws, gradeId: 99999), 1)).Message.ShouldContain("Sınıf bulunamadı");
+        (await svc.AssignAsUserAsync(ctx, Req(99999, studentId: student), 1)).Message.ShouldContain("Worksheet bulunamadı");
+        (await svc.AssignAsUserAsync(ctx, Req(ws, studentId: 99999), 1)).Message.ShouldContain("Öğrenci bulunamadı");
+        (await svc.AssignAsUserAsync(ctx, Req(ws, gradeId: 99999), 1)).Message.ShouldContain("Sınıf bulunamadı");
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             // userId 55 sahibi değil; atayabilmesi için admin. Amaç: atayan kullanıcının kaydedilmesi.
-            var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 55, isAdmin: true);
+            var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: 55, isAdmin: true);
             r.Success.ShouldBeTrue();
         }
 
@@ -133,7 +133,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
     {
         var (ws, _, grade) = await SeedAsync();
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(Req(ws, gradeId: grade), 1)).Success.ShouldBeTrue();
+            (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, gradeId: grade), 1)).Success.ShouldBeTrue();
 
         await using var check = _db.NewContext();
         (await check.WorksheetAssignments.SingleAsync()).GradeId.ShouldBe(grade);
@@ -144,11 +144,11 @@ public class WorksheetAssignmentServiceTests : IDisposable
     {
         var (ws, student, _) = await SeedAsync();
         await using (var ctx = _db.NewContext())
-            await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student, end: Start.AddDays(7)), 1);
+            await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student, end: Start.AddDays(7)), 1);
 
         await using (var ctx = _db.NewContext())
         {
-            var r = await NewService(ctx).AssignWorksheetAsync(
+            var r = await NewService(ctx).AssignAsUserAsync(ctx,
                 Req(ws, studentId: student, start: Start.AddDays(3), end: Start.AddDays(10)), 1);
             r.Success.ShouldBeFalse();
             r.Message.ShouldContain("mevcut bir atama");
@@ -160,10 +160,10 @@ public class WorksheetAssignmentServiceTests : IDisposable
     {
         var (ws, student, _) = await SeedAsync();
         await using (var ctx = _db.NewContext())
-            await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student, end: Start.AddDays(2)), 1);
+            await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student, end: Start.AddDays(2)), 1);
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(
+            (await NewService(ctx).AssignAsUserAsync(ctx,
                 Req(ws, studentId: student, start: Start.AddDays(5), end: Start.AddDays(9)), 1)).Success.ShouldBeTrue();
 
         await using var check = _db.NewContext();
@@ -178,7 +178,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync(); // worksheet sahibi userId 1
 
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: 999, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         // issue #12 (security review): seed varsayılanı Private — CanView'e göre sahibi olmayan
@@ -194,7 +194,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync();
 
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
             .Success.ShouldBeTrue();
     }
 
@@ -204,7 +204,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync();
 
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: true))
+        (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: 999, isAdmin: true))
             .Success.ShouldBeTrue();
     }
 
@@ -225,11 +225,11 @@ public class WorksheetAssignmentServiceTests : IDisposable
         }
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(Req(wsId, studentId: studentId), userId: 1, isAdmin: false))
+            (await NewService(ctx).AssignAsUserAsync(ctx, Req(wsId, studentId: studentId), userId: 1, isAdmin: false))
                 .Success.ShouldBeFalse();
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(Req(wsId, studentId: studentId), userId: 1, isAdmin: true))
+            (await NewService(ctx).AssignAsUserAsync(ctx, Req(wsId, studentId: studentId), userId: 1, isAdmin: true))
                 .Success.ShouldBeTrue();
     }
 
@@ -242,7 +242,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
             await SeedWithSchoolsAsync(WorksheetTeacherSharing.PublicAssignable);
 
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(
+        var r = await NewService(ctx).AssignAsUserAsync(ctx,
             Req(ws, studentId: studentInSchoolA), userId: nonOwnerTeacherUserId, isAdmin: false);
 
         r.Success.ShouldBeTrue();
@@ -255,7 +255,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync(WorksheetTeacherSharing.PublicView);
 
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: 999, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         r.Message.ShouldBe("Bu testi atamak için sahibinden atama izni istemeniz gerekir.");
@@ -268,7 +268,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync(WorksheetTeacherSharing.Private);
 
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: 999, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: 999, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         // issue #12 (security review): Private paylaşım CanView=false → varlığı sızdırmadan "bulunamadı".
@@ -283,9 +283,9 @@ public class WorksheetAssignmentServiceTests : IDisposable
             await SeedWithSchoolsAsync(WorksheetTeacherSharing.PublicAssignable);
 
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(
+        var r = await NewService(ctx).AssignAsUserAsync(ctx,
             Req(ws, studentId: studentInSchoolB), userId: nonOwnerTeacherUserId, isAdmin: false);
-        var missing = await NewService(ctx).AssignWorksheetAsync(
+        var missing = await NewService(ctx).AssignAsUserAsync(ctx,
             Req(ws, studentId: 99999), userId: nonOwnerTeacherUserId, isAdmin: false);
 
         r.Success.ShouldBeFalse();
@@ -303,7 +303,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
 
         await using var ctx = _db.NewContext();
         // 888 kullanıcısı için Teacher kaydı yok (legacy/eksik profil) — SchoolId çözülemez.
-        var r = await NewService(ctx).AssignWorksheetAsync(
+        var r = await NewService(ctx).AssignAsUserAsync(ctx,
             Req(ws, studentId: student), userId: 888, isAdmin: false);
 
         r.Success.ShouldBeFalse();
@@ -320,12 +320,12 @@ public class WorksheetAssignmentServiceTests : IDisposable
         var (ws, student, _) = await SeedAsync(sharing);
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
+            (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentId: student), userId: OwnerUserId, isAdmin: false))
                 .Success.ShouldBeTrue();
 
         var (ws2, student2, _) = await SeedAsync(sharing);
         await using var ctx2 = _db.NewContext();
-        (await NewService(ctx2).AssignWorksheetAsync(Req(ws2, studentId: student2), userId: 12345, isAdmin: true))
+        (await NewService(ctx2).AssignAsUserAsync(ctx2, Req(ws2, studentId: student2), userId: 12345, isAdmin: true))
             .Success.ShouldBeTrue();
     }
 
@@ -345,7 +345,7 @@ public class WorksheetAssignmentServiceTests : IDisposable
         ctx.AddRange(ws, ownerTeacher);
         await ctx.SaveChangesAsync();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws.Id, gradeId: grade.Id), userId: OwnerUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws.Id, gradeId: grade.Id), userId: OwnerUserId, isAdmin: false);
         r.Success.ShouldBeTrue();
 
         await using var check = _db.NewContext();

@@ -33,6 +33,7 @@
       "grantRequired": "To assign this test you need to request permission from its owner.",
       "assignForbidden": "You do not have permission to assign this test.",
       "onlyOwnStudents": "You can only assign this test to your own students.",
+      "independentGradeForbidden": "Independent teachers cannot assign to a whole class; you can only assign by selecting students who have a booking with you.",
       "studentNotFound": "Student not found.",
       "gradeNotFound": "Class not found.",
       "overlappingAssignment": "There is already an assignment in the selected range.",

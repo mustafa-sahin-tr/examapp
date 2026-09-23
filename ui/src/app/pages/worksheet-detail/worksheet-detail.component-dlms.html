@@ -484,10 +484,14 @@
                     <span>{{ t('teacher.noAssignments') }}</span>
                     @if (canAssignWorksheet()) {
                       <div class="a-btns">
-                        <button class="btn btn-primary btn-sm" (click)="openAssignmentDialog('grade')">
-                          <mat-icon>groups</mat-icon>{{ t('teacher.assignToGrade') }}
-                        </button>
-                        <button class="btn btn-ghost btn-sm" (click)="openAssignmentDialog('student')">
+                        <!-- Issue #222: bağımsız öğretmen sınıf bazlı atama yapamaz; buton hiç render edilmez. -->
+                        @if (!isIndependentTutor()) {
+                          <button class="btn btn-primary btn-sm" data-testid="assign-grade-btn" (click)="openAssignmentDialog('grade')">
+                            <mat-icon>groups</mat-icon>{{ t('teacher.assignToGrade') }}
+                          </button>
+                        }
+                        <button class="btn btn-sm" [class.btn-primary]="isIndependentTutor()" [class.btn-ghost]="!isIndependentTutor()"
+                          data-testid="assign-student-btn" (click)="openAssignmentDialog('student')">
                           <mat-icon>person_add</mat-icon>{{ t('teacher.pickStudent') }}
                         </button>
                       </div>
@@ -579,10 +583,14 @@
               <h3><span class="dot"></span>{{ t('teacher.assignmentTitle') }}</h3>
               @if (canAssignWorksheet()) {
                 <div class="a-btns">
-                  <button class="btn btn-primary btn-sm full" (click)="openAssignmentDialog('grade')">
-                    <mat-icon>groups</mat-icon>{{ t('teacher.assignToGrade') }}
-                  </button>
-                  <button class="btn btn-ghost btn-sm full" (click)="openAssignmentDialog('student')">
+                  <!-- Issue #222: bağımsız öğretmen sınıf bazlı atama yapamaz; buton hiç render edilmez. -->
+                  @if (!isIndependentTutor()) {
+                    <button class="btn btn-primary btn-sm full" data-testid="assign-grade-btn" (click)="openAssignmentDialog('grade')">
+                      <mat-icon>groups</mat-icon>{{ t('teacher.assignToGrade') }}
+                    </button>
+                  }
+                  <button class="btn btn-sm full" [class.btn-primary]="isIndependentTutor()" [class.btn-ghost]="!isIndependentTutor()"
+                    data-testid="assign-student-btn" (click)="openAssignmentDialog('student')">
                     <mat-icon>person_add</mat-icon>{{ t('teacher.pickStudent') }}
                   </button>
                 </div>

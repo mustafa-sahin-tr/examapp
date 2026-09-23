@@ -1,6 +1,6 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { BehaviorSubject, catchError, map, Observable, of, tap, throwError, timeout } from 'rxjs';
+import { BehaviorSubject, catchError, finalize, map, Observable, of, shareReplay, tap, throwError, timeout } from 'rxjs';
 import { CheckStudentResponse } from '../models/check-student-response';
 import { Router } from '@angular/router';
 import { CheckkTeacherResponse } from '../models/check-teacher-response';
@@ -296,20 +296,39 @@ export class AuthService {
     return this.http.post<UserProfile | null>('/api/exam/auth/refresh', {}, { withCredentials: true });
   }
 
+  /** Devam eden token yenilemesi; eşzamanlı çağıranlar aynı isteği paylaşır (issue #241). */
+  private refreshInFlight$: Observable<string> | null = null;
+
+  /**
+   * Access token'ı yeniler. Aynı anda birden fazla 401/expiring-soon tetiklemesi olursa tek bir
+   * `/api/auth/refresh-token` isteği atılır (refresh token rotasyonunda paralel istekler birbirini
+   * geçersiz kılabilir). Hata durumunda oturum temizlenip login'e yönlendirilir.
+   */
   refreshToken(): Observable<string> {
-    return this.http.post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true }).pipe(
-      map((res) => {
-        return res.accessToken;
-      }),
-      catchError((error) => {
-        console.error('Token yenileme hatası:', error);
-        localStorage.clear();
-        this.isAuthenticatedSubject.next(false);
-        this.clearLocalStorage();
-        return throwError(() => new Error('Refresh failed'));
-      }) // Hata durumunda null döndür
-      // tap((res) => {
-    );
+    if (!this.refreshInFlight$) {
+      this.refreshInFlight$ = this.http
+        .post<{ accessToken: string }>('/api/auth/refresh-token', {}, { withCredentials: true })
+        .pipe(
+          map((res) => {
+            // Boş token da başarısızlıktır: temizlik aşağıdaki catchError'da, paylaşılan akışta bir kez yapılır.
+            if (!res?.accessToken) {
+              throw new Error('Refresh response has no accessToken');
+            }
+            return res.accessToken;
+          }),
+          // Asılı kalan refresh tüm bekleyen istekleri dondurmasın; zaman aşımı da temizlik yoluna düşer.
+          timeout(10_000),
+          catchError((error) => {
+            console.error('Token yenileme hatası:', error);
+            // clearSession isAuthenticatedSubject'i de kapatır; dil tercihi gibi oturum dışı anahtarlar korunur.
+            this.clearLocalStorage();
+            return throwError(() => new Error('Refresh failed'));
+          }),
+          finalize(() => (this.refreshInFlight$ = null)),
+          shareReplay({ bufferSize: 1, refCount: false })
+        );
+    }
+    return this.refreshInFlight$;
   }
 }
 

@@ -272,10 +272,17 @@ public class ExamController : BaseController
 
     [Authorize(Roles = "Teacher")]
     [HttpPost("assignments")]
-    public async Task<IActionResult> AssignWorksheet([FromBody] WorksheetAssignmentRequestDto request)
+    public async Task<IActionResult> AssignWorksheet([FromBody] WorksheetAssignmentRequestDto request, CancellationToken ct)
     {
-        var user = await GetAuthenticatedUserAsync();
-        var response = await _assignmentService.AssignWorksheetAsync(request, user.Id, User.IsInRole("Admin"));
+        // issue #222 (D2): servis hesabı adına atama yapılmaz (CreateUserId=0 kayıt üretirdi).
+        if (IsServiceAccount)
+        {
+            return Forbid();
+        }
+
+        // issue #222: tenant bağlamı tek yoldan (#190 GetSchoolScopeAsync: admin → Unrestricted, SchoolId DB'den, fail-closed).
+        var scope = await GetSchoolScopeAsync(ct);
+        var response = await _assignmentService.AssignWorksheetAsync(request, scope, ct);
 
         if (!response.Success)
         {

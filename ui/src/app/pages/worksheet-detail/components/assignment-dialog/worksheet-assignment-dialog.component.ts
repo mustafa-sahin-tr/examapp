@@ -21,6 +21,11 @@ export interface WorksheetAssignmentDialogData {
   scope: 'grade' | 'student';
   grades: Grade[];
   students: StudentLookup[];
+  /**
+   * Issue #222: okulsuz (bağımsız) öğretmen sınıf bazlı atama yapamaz; yalnızca öğrenci seçer.
+   * Açan sayfa `AuthService.schoolIdOf(user) === null` ile türetir. Verilmezse okullu kabul edilir.
+   */
+  isIndependentTutor?: boolean;
 }
 
 export interface WorksheetAssignmentDialogResult {
@@ -59,10 +64,16 @@ export class WorksheetAssignmentDialogComponent {
   protected readonly grades = this.data.grades;
   protected readonly students = this.data.students;
 
+  /** Issue #222: bağımsız öğretmende "Sınıfa ata" seçeneği hiç render edilmez, scope 'student'a sabitlenir. */
+  protected readonly isIndependentTutor = this.data.isIndependentTutor === true;
+  private readonly initialScope: 'grade' | 'student' = this.isIndependentTutor
+    ? 'student'
+    : this.data.scope ?? 'grade';
+
   protected readonly form = this.fb.nonNullable.group({
-    scope: [this.data.scope ?? 'grade', Validators.required],
-    gradeId: [this.data.scope === 'grade' ? this.data.grades[0]?.id ?? null : null],
-    studentId: [this.data.scope === 'student' ? null : null],
+    scope: [this.initialScope, Validators.required],
+    gradeId: [this.initialScope === 'grade' ? this.data.grades[0]?.id ?? null : null],
+    studentId: [null as number | null],
     startDate: [new Date(), Validators.required],
     startTime: ['09:00', [Validators.required, Validators.pattern(/^\d{2}:\d{2}$/)]],
     hasEndDate: [false],

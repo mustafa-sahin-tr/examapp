@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,28 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
     private const int OtherTeacherId = 2;
     private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
 
+    // issue #222: okullu öğretmen = önceki davranış. Servis scope okulunu öğretmen kaydıyla doğruladığı için
+    // TeacherId/OtherTeacherId aynı okulda öğretmen kaydıyla seed edilir (lazy, ilk çağrıda).
+    private int? _teacherSchoolId;
+
+    private SchoolScope SchoolTeacher(int userId)
+    {
+        if (_teacherSchoolId is null)
+        {
+            using var ctx = _db.NewContext();
+            var school = new School { Name = "Öğretmen Okulu" };
+            ctx.Schools.Add(school);
+            ctx.SaveChanges();
+            ctx.Teachers.AddRange(
+                new Teacher { UserId = TeacherId, SchoolId = school.Id },
+                new Teacher { UserId = OtherTeacherId, SchoolId = school.Id });
+            ctx.SaveChanges();
+            _teacherSchoolId = school.Id;
+        }
+
+        return SchoolScope.For(userId, _teacherSchoolId);
+    }
+
     private TeacherService NewService(AppDbContext ctx) => new(ctx, _authApi);
 
     [Fact]
@@ -23,7 +46,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
     {
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(ctx).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -43,7 +66,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].Name.ShouldBe("No assignments");
@@ -66,7 +89,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -108,7 +131,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].WorksheetId.ShouldBe(worksheetId);
@@ -141,7 +164,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].AssignedStudentCount.ShouldBe(1);
@@ -187,7 +210,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].AssignedStudentCount.ShouldBe(2);
@@ -235,7 +258,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].AssignedStudentCount.ShouldBe(4);
@@ -278,7 +301,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetWorksheetsOverviewAsync(TeacherId);
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].AssignedStudentCount.ShouldBe(1);

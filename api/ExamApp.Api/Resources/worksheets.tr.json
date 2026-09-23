@@ -33,6 +33,7 @@
       "grantRequired": "Bu testi atamak için sahibinden atama izni istemeniz gerekir.",
       "assignForbidden": "Bu testi atama yetkiniz yok.",
       "onlyOwnStudents": "Bu sınava yalnızca kendi öğrencilerinizi atayabilirsiniz.",
+      "independentGradeForbidden": "Bağımsız öğretmenler sınıf bazlı atama yapamaz; yalnızca randevusu olan öğrencilerinizi seçerek atayabilirsiniz.",
       "studentNotFound": "Öğrenci bulunamadı.",
       "gradeNotFound": "Sınıf bulunamadı.",
       "overlappingAssignment": "Seçilen aralıkta mevcut bir atama bulunuyor.",

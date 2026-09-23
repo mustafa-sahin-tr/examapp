@@ -1,6 +1,7 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,28 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             .Returns(new List<UserLookupResultDto>());
     }
 
+    // issue #222: okullu öğretmen = önceki davranış. Servis scope okulunu öğretmen kaydıyla doğruladığı için
+    // TeacherId/OtherTeacherId aynı okulda öğretmen kaydıyla seed edilir (lazy, ilk çağrıda).
+    private int? _teacherSchoolId;
+
+    private SchoolScope SchoolTeacher(int userId)
+    {
+        if (_teacherSchoolId is null)
+        {
+            using var ctx = _db.NewContext();
+            var school = new School { Name = "Öğretmen Okulu" };
+            ctx.Schools.Add(school);
+            ctx.SaveChanges();
+            ctx.Teachers.AddRange(
+                new Teacher { UserId = TeacherId, SchoolId = school.Id },
+                new Teacher { UserId = OtherTeacherId, SchoolId = school.Id });
+            ctx.SaveChanges();
+            _teacherSchoolId = school.Id;
+        }
+
+        return SchoolScope.For(userId, _teacherSchoolId);
+    }
+
     private TeacherService NewService(AppDbContext ctx) => new(ctx, _authApi);
 
     private static async Task<int> SeedGradeAsync(AppDbContext ctx, string name = "8")
@@ -39,7 +62,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
     {
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(ctx).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -56,7 +79,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -87,7 +110,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -112,7 +135,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -148,7 +171,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -183,7 +206,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.ShouldBeEmpty();
     }
@@ -210,7 +233,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].IsLowCompletion.ShouldBeTrue();
@@ -240,7 +263,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].IsLowCompletion.ShouldBeTrue();
@@ -279,7 +302,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].IsLowCompletion.ShouldBeTrue();
@@ -319,7 +342,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].IsLowCompletion.ShouldBeTrue();
@@ -349,7 +372,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].StudentName.ShouldBe("Öğrenci #S-42");
@@ -381,7 +404,7 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
             });
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetLaggingStudentsAsync(TeacherId);
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
         result[0].StudentName.ShouldBe("Ayşe Yılmaz");

@@ -56,8 +56,8 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, _, _, _, studentB, _) = await SeedAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), OwnerUserId, isAdmin: false);
-        var missing = await NewService(ctx).AssignWorksheetAsync(Req(ws, 99999), OwnerUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), OwnerUserId, isAdmin: false);
+        var missing = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, 99999), OwnerUserId, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         r.Message.ShouldBe(missing.Message); // oracle kapalı: farklı okul == olmayan öğrenci
@@ -70,7 +70,7 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, _, _, _, _, studentNone) = await SeedAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentNone), OwnerUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentNone), OwnerUserId, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
@@ -82,7 +82,7 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, _, _, studentA, _, _) = await SeedAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), OwnerUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), OwnerUserId, isAdmin: false);
 
         r.Success.ShouldBeTrue();
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(1);
@@ -94,7 +94,7 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, _, _, _, studentB, _) = await SeedAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), userId: 555, isAdmin: true);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), userId: 555, isAdmin: true);
 
         r.Success.ShouldBeTrue();
     }
@@ -152,7 +152,7 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, studentA, _, _) = await SeedIndependentAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), TutorUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), TutorUserId, isAdmin: false);
 
         r.Success.ShouldBeTrue();
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(1);
@@ -164,8 +164,8 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, _, studentB, _) = await SeedIndependentAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), TutorUserId, isAdmin: false);
-        var missing = await NewService(ctx).AssignWorksheetAsync(Req(ws, 99999), TutorUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), TutorUserId, isAdmin: false);
+        var missing = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, 99999), TutorUserId, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         r.Message.ShouldBe(missing.Message);
@@ -179,35 +179,34 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var (ws, _, _, _, studentNone) = await SeedIndependentAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentNone), TutorUserId, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentNone), TutorUserId, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
     }
 
     [Fact]
-    public async Task IndependentOwner_GradeAssignment_CurrentBehaviour_IsAllowedWithNullSchoolId_See222()
+    public async Task IndependentOwner_GradeAssignment_IsRejected_See222()
     {
-        // Mevcut davranışı SABİTLER (bilinçli olarak #192'de değiştirilmedi, bkz. issue #222): bağımsız sahip sınıfa
-        // atama yapabiliyor ve WorksheetAssignment.SchoolId=null yazılıyor → o sınıftaki TÜM öğrencilere (okul fark etmez)
-        // görünür. #222 bu davranışı değiştirdiğinde bu test kırılmalı ve güncellenmelidir.
+        // issue #222 (ürün kararı A): #192'de sabitlenen "SchoolId=null grade ataması" davranışı kapatıldı — bağımsız
+        // sahip sınıf bazlı atama yapamaz (tüm okulların o sınıfına genişliyordu). Hiç kayıt yazılmaz.
         var (ws, gradeId, _, _, _) = await SeedIndependentAsync();
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(
+        var r = await NewService(ctx).AssignAsUserAsync(ctx,
             new WorksheetAssignmentRequestDto { WorksheetId = ws, GradeId = gradeId, StartAt = Start }, TutorUserId, isAdmin: false);
 
-        r.Success.ShouldBeTrue();
-        var assignment = await ctx.WorksheetAssignments.SingleAsync();
-        assignment.GradeId.ShouldBe(gradeId);
-        assignment.StudentId.ShouldBeNull();
-        assignment.SchoolId.ShouldBeNull();
+        r.Success.ShouldBeFalse();
+        r.Message.ShouldContain("Bağımsız öğretmenler sınıf bazlı atama yapamaz");
+        (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);
     }
 
     [Fact]
-    public async Task Overview_IndependentRequester_GradeAssignment_ListsOnlyApprovedBookingStudents()
+    public async Task Overview_IndependentRequester_LegacyGradeAssignment_IsNotExpandedToStudents()
     {
-        var (ws, gradeId, studentA, _, _) = await SeedIndependentAsync();
+        // issue #222: karar A öncesi yazılmış (SchoolId=null) grade ataması bağımsız istek sahibi için öğrencilere
+        // genişletilmez — Approved Booking'li studentA dahi grade yoluyla listelenmez; yalnızca direkt atama görünür.
+        var (ws, gradeId, _, _, _) = await SeedIndependentAsync();
         await using (var setup = _db.NewContext())
         {
             setup.SetCurrentUser(TutorUserId);
@@ -219,7 +218,8 @@ public class WorksheetAssignmentServiceSchoolScopeTests : IDisposable
         var overview = await NewService(ctx).GetWorksheetAssignmentsForTeacherAsync(ws, SchoolScope.For(TutorUserId, null));
 
         var assignment = overview.Assignments.ShouldHaveSingleItem();
-        assignment.Students.Select(s => s.StudentId).ShouldBe(new[] { studentA });
+        assignment.Students.ShouldBeEmpty();
+        overview.Summary.TotalStudents.ShouldBe(0);
     }
 
     [Fact]

@@ -10,6 +10,17 @@
   padding: 0.5rem 0;
 }
 
+.independent-note {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-family: var(--paragraphFontFamily);
+  font-size: 0.85rem;
+  color: var(--ms-info-text);
+  background: var(--ms-info-surface-weak);
+  border-left: 3px solid var(--ms-info-border);
+}
+
 .field-pair {
   display: flex;
   flex-direction: column;
@@ -24,6 +35,10 @@
   font-size: 0.75rem;
   color: var(--ms-text-medium);
   margin-left: 0.25rem;
+
+  &.empty {
+    color: var(--ms-danger-text-weak);
+  }
 }
 
 .datetime-grid {

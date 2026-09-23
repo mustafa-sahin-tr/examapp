@@ -2,9 +2,11 @@ using System;
 using System.Net.Http;
 using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
@@ -22,12 +24,54 @@ public class TeacherService : ITeacherService
     // olusturulan (birim test) ornekler varsayilan dile kilitli fallback'e duser.
     private readonly IStringLocalizer<Messages> _localizer;
 
+    // issue #222: bağımsız (okulsuz) öğretmenin dashboard/overview/lagging görünümlerinde direkt öğrenci hedefleri
+    // Approved Booking kapsamına daraltılır. DI her zaman kayıtlı policy'yi verir; parametre yalnızca DI'siz kurulan
+    // (birim test) senaryolar için opsiyonel — varsayılan aynı kuralı uygulayan gerçek policy'dir.
+    private readonly ISchoolAccessPolicy _schoolAccessPolicy;
+
     public TeacherService(AppDbContext context, IAuthApiClient authApiClient,
-        IStringLocalizer<Messages>? localizer = null)
+        IStringLocalizer<Messages>? localizer = null,
+        ISchoolAccessPolicy? schoolAccessPolicy = null)
     {
         _context = context;
         _authApiClient = authApiClient;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
+        _schoolAccessPolicy = schoolAccessPolicy ?? new SchoolAccessPolicy(context);
+    }
+
+    /// <summary>
+    /// issue #222: dashboard/overview/lagging uçlarında atama hedeflerinin öğrenciye nasıl genişletileceği.
+    /// <see cref="ExpandGradeAssignments"/>=false ise sınıf (grade-only) atamaları hiç dikkate alınmaz;
+    /// <see cref="DirectStudentScope"/> doluysa direkt öğrenciler o scope ile (<see cref="ISchoolAccessPolicy.ApplyScope{T}"/>) daraltılır.
+    /// </summary>
+    private readonly record struct StudentTargetScope(bool ExpandGradeAssignments, SchoolScope? DirectStudentScope)
+    {
+        /// <summary>Admin ve doğrulanmış okullu öğretmen: önceki davranış (grade genişletmesi atamanın SchoolId'siyle sınırlı).</summary>
+        public static StudentTargetScope Unchanged => new(true, null);
+    }
+
+    /// <summary>
+    /// issue #222: tek karar noktası. Unrestricted → değişmez. Aksi halde okul ÖĞRETMEN kaydından (deterministik) doğrulanır
+    /// (security Ö2: çok rollü hesapta scope okulu Students'tan gelebilir): okullu ve scope ile uyumlu → değişmez;
+    /// bağımsız, öğretmen kaydı yok veya uyuşmazlık → en dar davranış (grade genişletmesi yok, direkt öğrenciler
+    /// Approved Booking'e daraltılır).
+    /// </summary>
+    private async Task<StudentTargetScope> ResolveStudentTargetScopeAsync(SchoolScope requester, CancellationToken ct)
+    {
+        if (requester.IsUnrestricted)
+            return StudentTargetScope.Unchanged;
+
+        var teacher = await _context.ResolveTeacherRecordAsync(requester.UserId, ct);
+        if (teacher.Exists && teacher.SchoolId.HasValue && teacher.SchoolId == requester.SchoolId)
+            return StudentTargetScope.Unchanged;
+
+        return new StudentTargetScope(false, SchoolScope.For(requester.UserId, null));
+    }
+
+    private IQueryable<Student> TargetStudents(StudentTargetScope target)
+    {
+        var students = _context.Students.AsNoTracking();
+        return target.DirectStudentScope is { } scope ? _schoolAccessPolicy.ApplyScope(students, scope) : students;
     }
 
     public async Task<Teacher?> GetTeacher(int userId)
@@ -230,8 +274,10 @@ public class TeacherService : ITeacherService
         };
     }
 
-    public async Task<TeacherDashboardSummaryDto> GetDashboardSummaryAsync(int teacherId, CancellationToken ct = default)
+    public async Task<TeacherDashboardSummaryDto> GetDashboardSummaryAsync(SchoolScope requester, CancellationToken ct = default)
     {
+        var teacherId = requester.UserId;
+
         // Sahiplik: sadece CreateUserId == teacherId olan worksheet'ler; paylaşılanlar hariç.
         // Soft-delete edilmiş kayıtlar AppDbContext global query filter ile zaten dışarıda.
         var ownedWorksheets = _context.Worksheets
@@ -246,9 +292,13 @@ public class TeacherService : ITeacherService
         }
 
         // Sahip olunan worksheet'lerin atamaları; sadece hedefleme alanları projeksiyonlanır.
+        // issue #222: kapsam daraltılmışsa sınıf atamaları hiç çekilmez (grade→öğrenci genişletmesi yok).
+        var target = await ResolveStudentTargetScopeAsync(requester, ct);
+        var expandGrades = target.ExpandGradeAssignments;
         var assignmentTargets = await _context.WorksheetAssignments
             .AsNoTracking()
             .Where(wa => ownedWorksheets.Any(w => w.Id == wa.WorksheetId))
+            .Where(wa => expandGrades || wa.StudentId != null)
             .Select(wa => new { wa.StudentId, wa.GradeId, wa.SchoolId })
             .ToListAsync(ct);
 
@@ -277,8 +327,7 @@ public class TeacherService : ITeacherService
         // Direkt StudentId atamaları da Students tablosu üzerinden doğrulanır ki
         // soft-delete edilmiş öğrenciler sınıf-bazlı yolla tutarlı biçimde dışlansın.
         var existingDirectStudentIds = directStudentIds.Count > 0
-            ? await _context.Students
-                .AsNoTracking()
+            ? await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id))
                 .Select(s => s.Id)
                 .ToListAsync(ct)
@@ -314,8 +363,10 @@ public class TeacherService : ITeacherService
         };
     }
 
-    public async Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(int teacherId, CancellationToken ct = default)
+    public async Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(SchoolScope requester, CancellationToken ct = default)
     {
+        var teacherId = requester.UserId;
+
         // 1) Sahip olunan worksheet'ler (GetDashboardSummaryAsync ile aynı sahiplik kuralı).
         var ownedWorksheets = await _context.Worksheets
             .AsNoTracking()
@@ -332,9 +383,13 @@ public class TeacherService : ITeacherService
         var worksheetIds = ownedWorksheets.Select(w => w.Id).ToList();
 
         // 2) Bu worksheet'lere ait TÜM atamalar tek sorguda (N+1 yok).
+        //    issue #222: kapsam daraltılmışsa sınıf atamaları hiç çekilmez (grade→öğrenci genişletmesi yok).
+        var target = await ResolveStudentTargetScopeAsync(requester, ct);
+        var expandGrades = target.ExpandGradeAssignments;
         var assignments = await _context.WorksheetAssignments
             .AsNoTracking()
             .Where(wa => worksheetIds.Contains(wa.WorksheetId))
+            .Where(wa => expandGrades || wa.StudentId != null)
             .Select(wa => new
             {
                 wa.WorksheetId,
@@ -361,8 +416,7 @@ public class TeacherService : ITeacherService
 
         var students = (directStudentIds.Count == 0 && gradeIds.Count == 0)
             ? new List<StudentTarget>()
-            : await _context.Students
-                .AsNoTracking()
+            : await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id)
                             || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
                 .Select(s => new StudentTarget(s.Id, s.GradeId, s.SchoolId))
@@ -464,8 +518,9 @@ public class TeacherService : ITeacherService
         return result;
     }
 
-    public async Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(int teacherId, CancellationToken ct = default)
+    public async Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, CancellationToken ct = default)
     {
+        var teacherId = requester.UserId;
         var now = DateTime.UtcNow;
 
         // 1) Sahip olunan worksheet'ler (GetWorksheetsOverviewAsync ile aynı sahiplik kuralı).
@@ -484,9 +539,13 @@ public class TeacherService : ITeacherService
         var worksheetIds = ownedWorksheets.Select(w => w.Id).ToList();
 
         // 2) Bu worksheet'lere ait TÜM atamalar tek sorguda (N+1 yok).
+        //    issue #222: kapsam daraltılmışsa sınıf atamaları hiç çekilmez (grade→öğrenci genişletmesi yok).
+        var target = await ResolveStudentTargetScopeAsync(requester, ct);
+        var expandGrades = target.ExpandGradeAssignments;
         var assignments = await _context.WorksheetAssignments
             .AsNoTracking()
             .Where(wa => worksheetIds.Contains(wa.WorksheetId))
+            .Where(wa => expandGrades || wa.StudentId != null)
             .Select(wa => new
             {
                 wa.WorksheetId,
@@ -518,8 +577,7 @@ public class TeacherService : ITeacherService
 
         var students = (directStudentIds.Count == 0 && gradeIds.Count == 0)
             ? new List<LaggingStudentTarget>()
-            : await _context.Students
-                .AsNoTracking()
+            : await TargetStudents(target)
                 .Where(s => directStudentIds.Contains(s.Id)
                             || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
                 .Select(s => new LaggingStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolId))

@@ -61,7 +61,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), PeerA, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), PeerA, isAdmin: false);
 
         r.Success.ShouldBeTrue(r.Message);
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(1);
@@ -75,8 +75,8 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         var (ws, _, studentB) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), requester, isAdmin: false);
-        var missing = await NewService(ctx).AssignWorksheetAsync(Req(999999, studentB), requester, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), requester, isAdmin: false);
+        var missing = await NewService(ctx).AssignAsUserAsync(ctx, Req(999999, studentB), requester, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         r.Message.ShouldBe(missing.Message); // oracle kapalı: farklı okul == olmayan worksheet
@@ -89,7 +89,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         var (ws, _, studentB) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), Admin, isAdmin: true);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), Admin, isAdmin: true);
 
         r.Success.ShouldBeTrue(r.Message);
     }
@@ -100,7 +100,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), OwnerA, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), OwnerA, isAdmin: false);
 
         r.Success.ShouldBeTrue(r.Message);
     }
@@ -111,7 +111,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         var (ws, _, studentB) = await SeedAsync(WorksheetTeacherSharing.PublicAssignable);
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), OtherB, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), OtherB, isAdmin: false);
 
         r.Success.ShouldBeTrue(r.Message);
     }
@@ -130,8 +130,8 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         }
 
         await using var ctx = _db.NewContext();
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentB), OtherB, isAdmin: false);
-        var missing = await NewService(ctx).AssignWorksheetAsync(Req(999999, studentB), OtherB, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentB), OtherB, isAdmin: false);
+        var missing = await NewService(ctx).AssignAsUserAsync(ctx, Req(999999, studentB), OtherB, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         r.Message.ShouldBe(missing.Message);
@@ -145,7 +145,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
     {
         var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), PeerA, isAdmin: false)).Success.ShouldBeTrue();
+            (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), PeerA, isAdmin: false)).Success.ShouldBeTrue();
 
         await using var read = _db.NewContext();
         var studentRow = await read.Students.SingleAsync(s => s.Id == studentA);
@@ -160,7 +160,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
     {
         var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.SchoolOnly);
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), PeerA, isAdmin: false)).Success.ShouldBeTrue();
+            (await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), PeerA, isAdmin: false)).Success.ShouldBeTrue();
 
         await using var read = _db.NewContext();
         var studentRow = await read.Students.SingleAsync(s => s.Id == studentA);
@@ -177,7 +177,7 @@ public class WorksheetAssignmentServiceSchoolOnlyTests : IDisposable
         var (ws, studentA, _) = await SeedAsync(WorksheetTeacherSharing.PublicView);
         await using var ctx = _db.NewContext();
 
-        var r = await NewService(ctx).AssignWorksheetAsync(Req(ws, studentA), PeerA, isAdmin: false);
+        var r = await NewService(ctx).AssignAsUserAsync(ctx, Req(ws, studentA), PeerA, isAdmin: false);
 
         r.Success.ShouldBeFalse();
         (await ctx.WorksheetAssignments.CountAsync()).ShouldBe(0);

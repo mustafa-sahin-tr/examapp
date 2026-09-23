@@ -152,8 +152,9 @@ namespace ExamApp.Api.Controllers
         [HttpGet("dashboard-summary")]
         public async Task<ActionResult<TeacherDashboardSummaryDto>> GetDashboardSummary(CancellationToken ct)
         {
-            var user = await GetAuthenticatedUserAsync();
-            var summary = await _teacherService.GetDashboardSummaryAsync(user.Id, ct);
+            // issue #222: bağımsız öğretmen kapsamı için tenant bağlamı #190 yolundan (fail-closed).
+            var scope = await GetSchoolScopeAsync(ct);
+            var summary = await _teacherService.GetDashboardSummaryAsync(scope, ct);
             return Ok(summary);
         }
 
@@ -165,8 +166,8 @@ namespace ExamApp.Api.Controllers
         [HttpGet("worksheets-overview")]
         public async Task<ActionResult<List<TeacherWorksheetOverviewDto>>> GetWorksheetsOverview(CancellationToken ct)
         {
-            var user = await GetAuthenticatedUserAsync();
-            var overview = await _teacherService.GetWorksheetsOverviewAsync(user.Id, ct);
+            var scope = await GetSchoolScopeAsync(ct);
+            var overview = await _teacherService.GetWorksheetsOverviewAsync(scope, ct);
             return Ok(overview);
         }
 
@@ -179,8 +180,8 @@ namespace ExamApp.Api.Controllers
         [HttpGet("lagging-students")]
         public async Task<ActionResult<List<TeacherLaggingStudentDto>>> GetLaggingStudents(CancellationToken ct)
         {
-            var user = await GetAuthenticatedUserAsync();
-            var lagging = await _teacherService.GetLaggingStudentsAsync(user.Id, ct);
+            var scope = await GetSchoolScopeAsync(ct);
+            var lagging = await _teacherService.GetLaggingStudentsAsync(scope, ct);
             return Ok(lagging);
         }
 

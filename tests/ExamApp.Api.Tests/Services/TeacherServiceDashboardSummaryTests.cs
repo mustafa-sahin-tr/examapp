@@ -1,5 +1,6 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,28 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
     private const int OtherTeacherId = 2;
     private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
 
+    // issue #222: okullu öğretmen = önceki davranış. Servis scope okulunu öğretmen kaydıyla doğruladığı için
+    // TeacherId/OtherTeacherId aynı okulda öğretmen kaydıyla seed edilir (lazy, ilk çağrıda).
+    private int? _teacherSchoolId;
+
+    private SchoolScope SchoolTeacher(int userId)
+    {
+        if (_teacherSchoolId is null)
+        {
+            using var ctx = _db.NewContext();
+            var school = new School { Name = "Öğretmen Okulu" };
+            ctx.Schools.Add(school);
+            ctx.SaveChanges();
+            ctx.Teachers.AddRange(
+                new Teacher { UserId = TeacherId, SchoolId = school.Id },
+                new Teacher { UserId = OtherTeacherId, SchoolId = school.Id });
+            ctx.SaveChanges();
+            _teacherSchoolId = school.Id;
+        }
+
+        return SchoolScope.For(userId, _teacherSchoolId);
+    }
+
     private TeacherService NewService(AppDbContext ctx) => new(ctx, _authApi);
 
     [Fact]
@@ -23,7 +46,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
     {
         await using var ctx = _db.NewContext();
 
-        var result = await NewService(ctx).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(ctx).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(0);
         result.TotalUniqueStudents.ShouldBe(0);
@@ -49,7 +72,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(2);
     }
@@ -75,7 +98,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(0);
         result.TotalUniqueStudents.ShouldBe(0);
@@ -111,7 +134,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(2);
         result.TotalUniqueStudents.ShouldBe(1);
@@ -141,7 +164,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalUniqueStudents.ShouldBe(2);
     }
@@ -172,7 +195,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalUniqueStudents.ShouldBe(1);
     }
@@ -207,7 +230,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(2);
         result.TotalUniqueStudents.ShouldBe(2); // overlapping + gradeOnly, not double-counted
@@ -241,7 +264,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(1);
         result.TotalUniqueStudents.ShouldBe(1); // sadece silinmemiş direkt atanan öğrenci sayılır
@@ -262,7 +285,7 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetDashboardSummaryAsync(TeacherId);
+        var result = await NewService(check).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
 
         result.TotalWorksheets.ShouldBe(1);
         result.TotalUniqueStudents.ShouldBe(0);
@@ -290,12 +313,12 @@ public class TeacherServiceDashboardSummaryTests : IDisposable
         }
 
         await using var ctx1 = _db.NewContext();
-        var resultForOwner = await NewService(ctx1).GetDashboardSummaryAsync(TeacherId);
+        var resultForOwner = await NewService(ctx1).GetDashboardSummaryAsync(SchoolTeacher(TeacherId));
         resultForOwner.TotalWorksheets.ShouldBe(1);
         resultForOwner.TotalUniqueStudents.ShouldBe(1);
 
         await using var ctx2 = _db.NewContext();
-        var resultForOtherTeacher = await NewService(ctx2).GetDashboardSummaryAsync(OtherTeacherId);
+        var resultForOtherTeacher = await NewService(ctx2).GetDashboardSummaryAsync(SchoolTeacher(OtherTeacherId));
         resultForOtherTeacher.TotalWorksheets.ShouldBe(0);
         resultForOtherTeacher.TotalUniqueStudents.ShouldBe(0);
     }

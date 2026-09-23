@@ -104,14 +104,15 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             ctx.SetCurrentUser(TeacherId);
             var grade = new Grade { Name = "8" };
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var overlapping = new Student { UserId = 400, StudentNumber = "a", SchoolName = "s", GradeId = grade.Id };
-            var gradeOnly = new Student { UserId = 401, StudentNumber = "b", SchoolName = "s", GradeId = grade.Id };
+            var overlapping = new Student { UserId = 400, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
+            var gradeOnly = new Student { UserId = 401, StudentNumber = "b", SchoolId = _teacherSchoolId, GradeId = grade.Id };
             ctx.AddRange(ws, overlapping, gradeOnly);
             await ctx.SaveChangesAsync();
 
@@ -139,8 +140,10 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
     }
 
     [Fact]
-    public async Task GetWorksheetsOverviewAsync_GradeAssignmentWithSchoolId_OnlyIncludesStudentsInThatSchool()
+    public async Task GetWorksheetsOverviewAsync_GradeAssignmentFromOtherSchool_TeacherCannotSeeStudents()
     {
+        // Issue #235: even if an assignment targets a specific school (A), a teacher from a different school
+        // cannot see those students. Teacher school scope is applied first.
         await using (var ctx = _db.NewContext())
         {
             ctx.SetCurrentUser(TeacherId);
@@ -167,7 +170,7 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
 
         result.Count.ShouldBe(1);
-        result[0].AssignedStudentCount.ShouldBe(1);
+        result[0].AssignedStudentCount.ShouldBe(0); // Teacher is in "Öğretmen Okulu", students are in A and B
     }
 
     [Fact]
@@ -176,14 +179,15 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         // 1 of 2 assigned students completed -> 50%.
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             ctx.SetCurrentUser(TeacherId);
             var grade = new Grade { Name = "8" };
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var completedStudent = new Student { UserId = 700, StudentNumber = "a", SchoolName = "s" };
-            var pendingStudent = new Student { UserId = 701, StudentNumber = "b", SchoolName = "s" };
+            var completedStudent = new Student { UserId = 700, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var pendingStudent = new Student { UserId = 701, StudentNumber = "b", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, completedStudent, pendingStudent);
             await ctx.SaveChangesAsync();
 
@@ -223,16 +227,17 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         // 1 of 4 assigned students completed -> 25%.
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             ctx.SetCurrentUser(TeacherId);
             var grade = new Grade { Name = "8" };
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var completedStudent = new Student { UserId = 800, StudentNumber = "a", SchoolName = "s" };
-            var s2 = new Student { UserId = 801, StudentNumber = "b", SchoolName = "s" };
-            var s3 = new Student { UserId = 802, StudentNumber = "c", SchoolName = "s" };
-            var s4 = new Student { UserId = 803, StudentNumber = "d", SchoolName = "s" };
+            var completedStudent = new Student { UserId = 800, StudentNumber = "a", SchoolId = _teacherSchoolId };
+            var s2 = new Student { UserId = 801, StudentNumber = "b", SchoolId = _teacherSchoolId };
+            var s3 = new Student { UserId = 802, StudentNumber = "c", SchoolId = _teacherSchoolId };
+            var s4 = new Student { UserId = 803, StudentNumber = "d", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, completedStudent, s2, s3, s4);
             await ctx.SaveChangesAsync();
 
@@ -270,13 +275,14 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
     {
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             ctx.SetCurrentUser(TeacherId);
             var grade = new Grade { Name = "8" };
             ctx.Grades.Add(grade);
             await ctx.SaveChangesAsync();
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
-            var student = new Student { UserId = 900, StudentNumber = "a", SchoolName = "s" };
+            var student = new Student { UserId = 900, StudentNumber = "a", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -306,6 +312,40 @@ public class TeacherServiceWorksheetsOverviewTests : IDisposable
         result.Count.ShouldBe(1);
         result[0].AssignedStudentCount.ShouldBe(1);
         result[0].CompletionPercentage.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetWorksheetsOverviewAsync_SchoolTeacherWithCrossSchoolAssignment_OnlySeesTheirSchool()
+    {
+        // Issue #235: a school-scoped teacher assigned to a cross-school grade worksheet
+        // only sees students from their own school, not from other schools in the assignment.
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId); // Ensure teacher school exists
+            var grade = new Grade { Name = "8" };
+            var otherSchool = new School { Name = "Diğer Okul" };
+            ctx.AddRange(grade, otherSchool);
+            await ctx.SaveChangesAsync();
+
+            ctx.SetCurrentUser(TeacherId);
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = grade.Id };
+            var studentInTeacherSchool = new Student { UserId = 1007, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = grade.Id };
+            var studentInOtherSchool = new Student { UserId = 1008, StudentNumber = "b", SchoolId = otherSchool.Id, GradeId = grade.Id };
+            ctx.AddRange(ws, studentInTeacherSchool, studentInOtherSchool);
+            await ctx.SaveChangesAsync();
+
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, GradeId = grade.Id, StartAt = DateTime.UtcNow.AddDays(-1)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetWorksheetsOverviewAsync(SchoolTeacher(TeacherId));
+
+        result.Count.ShouldBe(1);
+        result[0].AssignedStudentCount.ShouldBe(1); // Only teacher's school student
     }
 
     public void Dispose() => _db.Dispose();

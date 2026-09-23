@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
-import { NEVER, of } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
 import { CallbackComponent } from './callback.component';
 import { AuthService } from '../../services/auth.service';
@@ -96,6 +97,46 @@ describe('CallbackComponent', () => {
       expect(authServiceSpy.exchangeCodeForToken).toHaveBeenCalledWith('auth-code');
       // exchangeCodeForToken() returns NEVER above, so no further timers are
       // pending here — nothing left to flush, nothing can reach the redirect line.
+    })
+  );
+
+  // Issue #231: exchange 401/503 `{ message }` — bileşenin kendi hata yolu (snackbar + 2 sn sonra /login)
+  // korunur ve backend mesajı gösterilir; yoksa sabit metne düşülür.
+  it(
+    'ngOnInit_Exchange401WithMessage_ShowsBackendMessageThenNavigatesToLoginAfterDelay',
+    fakeAsync(() => {
+      const fixture = createComponent({ code: 'expired-code', state: '' });
+      authServiceSpy.exchangeCodeForToken.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 401, error: { message: 'Oturum kodu geçersiz.' } }))
+      );
+      fixture.detectChanges();
+      tick(150);
+
+      expect(snackBarSpy.open).toHaveBeenCalledOnceWith('Oturum kodu geçersiz.', 'Kapat', { duration: 3000 });
+      expect(routerSpy.navigate).not.toHaveBeenCalled();
+
+      tick(2000);
+      expect(routerSpy.navigate).toHaveBeenCalledOnceWith(['/login']);
+    })
+  );
+
+  it(
+    'ngOnInit_Exchange503WithoutBody_FallsBackToStaticMessage',
+    fakeAsync(() => {
+      const fixture = createComponent({ code: 'auth-code', state: '' });
+      authServiceSpy.exchangeCodeForToken.and.returnValue(
+        throwError(() => new HttpErrorResponse({ status: 503, error: null }))
+      );
+      fixture.detectChanges();
+      tick(150);
+
+      expect(snackBarSpy.open).toHaveBeenCalledOnceWith(
+        'Giriş başarısız! Lütfen bilgilerinizi kontrol edin.',
+        'Kapat',
+        { duration: 3000 }
+      );
+      tick(2000);
+      expect(routerSpy.navigate).toHaveBeenCalledOnceWith(['/login']);
     })
   );
 

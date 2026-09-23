@@ -7,13 +7,13 @@
     <div class="state-box state-box--error" role="alert">
       <mat-icon>error_outline</mat-icon>
       <p class="state-text">{{ error() }}</p>
-      <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
+      <button mat-stroked-button type="button" (click)="retry()" [disabled]="loading()">
         {{ 'common.retry' | transloco }}
       </button>
     </div>
   }
 
-  <!-- Grade filter (Issue #119) -->
+  <!-- Grade filter (Issue #119, #151: yalnız belirli sınıflar; "tümü"/"atanmamış" yok) -->
   <div class="grade-filter">
     <span class="grade-filter-label">
       <mat-icon>school</mat-icon>
@@ -25,17 +25,12 @@
       [attr.aria-label]="t('gradeFilter.aria')"
       hideSingleSelectionIndicator
       [value]="selectedGradeFilter()"
-      [disabled]="loading()"
+      [disabled]="loading() || busy()"
       (change)="setGradeFilter($event.value)"
     >
-      <mat-button-toggle value="all">{{ t('gradeFilter.all') }}</mat-button-toggle>
       @for (g of grades(); track g.id) {
         <mat-button-toggle [value]="g.id">{{ g.name }}</mat-button-toggle>
       }
-      <mat-button-toggle value="unassigned" class="unassigned-toggle">
-        <mat-icon>warning_amber</mat-icon>
-        {{ t('gradeFilter.unassigned') }}
-      </mat-button-toggle>
     </mat-button-toggle-group>
   </div>
 
@@ -45,134 +40,130 @@
       <header class="column-header">
         <h3>
           {{ t('subjects.title') }}
-          @if (selectedGradeFilter() !== 'all') {
-            <span class="crumb">
-              —
-              {{
-                selectedGradeFilter() === 'unassigned'
-                  ? t('gradeFilter.unassigned')
-                  : gradeName(+selectedGradeFilter())
-              }}
-            </span>
+          @if (selectedGradeFilter(); as gradeId) {
+            <span class="crumb"> — {{ gradeName(gradeId) }}</span>
           }
         </h3>
-        <span class="count">{{ visibleSubjects().length }}</span>
+        @if (selectedGradeFilter() != null) {
+          <span class="count">{{ subjects().length }}</span>
+        }
       </header>
 
-      <div class="add-row">
-        <mat-form-field appearance="outline" class="dense">
-          <input
-            matInput
-            [placeholder]="t('subjects.newPlaceholder')"
-            [(ngModel)]="newSubjectName"
-            (keyup.enter)="addSubject()"
-          />
-        </mat-form-field>
-        <button
-          mat-icon-button
-          color="primary"
-          type="button"
-          [attr.aria-label]="t('subjects.add')"
-          (click)="addSubject()"
-          [disabled]="busy()"
-        >
-          <mat-icon>add</mat-icon>
-        </button>
-      </div>
-
-      @if (!loading() && !error() && visibleSubjects().length === 0) {
-        <div class="empty-state">
-          <mat-icon>menu_book</mat-icon>
-          <p class="empty-title">{{ subjectsEmptyText().title }}</p>
-          <p class="empty-hint">{{ subjectsEmptyText().hint }}</p>
+      @if (selectedGradeFilter() == null) {
+        <div class="empty-state select-grade-state">
+          <mat-icon>school</mat-icon>
+          <p class="empty-title">{{ t('gradeFilter.selectGradeTitle') }}</p>
+          <p class="empty-hint">{{ t('gradeFilter.selectGradeHint') }}</p>
         </div>
       } @else {
-        <ul class="list">
-          @for (s of visibleSubjects(); track s.id) {
-            <li
-              class="item"
-              role="button"
-              tabindex="0"
-              [class.selected]="s.id === selectedSubjectId()"
-              [attr.aria-pressed]="s.id === selectedSubjectId()"
-              (click)="selectSubject(s.id)"
-              (keydown.enter)="selectSubject(s.id)"
-              (keydown.space)="selectSubject(s.id); $event.preventDefault()"
-            >
-              @if (!isEditing('subject', s.id)) {
-                <span class="name-block">
-                  <span class="name">{{ s.name }}</span>
-                  <span class="grade-chips" [attr.aria-label]="t('subjects.gradeChipsAria')">
-                    @if (s.gradeIds.length === 0) {
-                      <span class="grade-chip grade-chip--warn">
-                        <mat-icon>warning_amber</mat-icon>
-                        {{ t('subjects.unassignedChip') }}
-                      </span>
-                    } @else {
+        <div class="add-row">
+          <mat-form-field appearance="outline" class="dense">
+            <input
+              matInput
+              [placeholder]="t('subjects.newPlaceholder')"
+              [(ngModel)]="newSubjectName"
+              (keyup.enter)="addSubject()"
+            />
+          </mat-form-field>
+          <button
+            mat-icon-button
+            color="primary"
+            type="button"
+            [attr.aria-label]="t('subjects.add')"
+            (click)="addSubject()"
+            [disabled]="busy()"
+          >
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        @if (!loading() && !error() && subjects().length === 0) {
+          <div class="empty-state">
+            <mat-icon>menu_book</mat-icon>
+            <p class="empty-title">{{ t('subjects.emptyGradeTitle') }}</p>
+            <p class="empty-hint">{{ t('subjects.emptyGradeHint') }}</p>
+          </div>
+        } @else {
+          <ul class="list">
+            @for (s of subjects(); track s.id) {
+              <li
+                class="item"
+                role="button"
+                tabindex="0"
+                [class.selected]="s.id === selectedSubjectId()"
+                [attr.aria-pressed]="s.id === selectedSubjectId()"
+                (click)="selectSubject(s.id)"
+                (keydown.enter)="selectSubject(s.id)"
+                (keydown.space)="selectSubject(s.id); $event.preventDefault()"
+              >
+                @if (!isEditing('subject', s.id)) {
+                  <span class="name-block">
+                    <span class="name">{{ s.name }}</span>
+                    <span class="grade-chips" [attr.aria-label]="t('subjects.gradeChipsAria')">
                       @for (gn of subjectGradeNames(s); track gn) {
                         <span class="grade-chip">{{ gn }}</span>
                       }
-                    }
+                    </span>
                   </span>
-                </span>
-                <span class="meta">{{ t('subjects.topicCount', { count: s.topics.length }) }}</span>
-                <span class="actions" (keydown)="$event.stopPropagation()">
-                  <button
-                    mat-icon-button
-                    type="button"
-                    [attr.aria-label]="t('subjects.manageGrades')"
-                    [title]="t('subjects.manageGrades')"
-                    (click)="manageGrades(s); $event.stopPropagation()"
+                  <span class="meta">{{ t('subjects.topicCount', { count: gradeTopics(s).length }) }}</span>
+                  <span class="actions" (keydown)="$event.stopPropagation()">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="t('subjects.manageGrades')"
+                      [title]="t('subjects.manageGrades')"
+                      (click)="manageGrades(s); $event.stopPropagation()"
+                    >
+                      <mat-icon>school</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="t('subjects.edit')"
+                      (click)="startEdit('subject', s); $event.stopPropagation()"
+                    >
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="danger"
+                      [attr.aria-label]="t('subjects.delete')"
+                      (click)="remove('subject', s); $event.stopPropagation()"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </span>
+                } @else {
+                  <span
+                    class="edit-row"
+                    (click)="$event.stopPropagation()"
+                    (keydown)="$event.stopPropagation()"
                   >
-                    <mat-icon>school</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    type="button"
-                    [attr.aria-label]="t('subjects.edit')"
-                    (click)="startEdit('subject', s); $event.stopPropagation()"
-                  >
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    type="button"
-                    class="danger"
-                    [attr.aria-label]="t('subjects.delete')"
-                    (click)="remove('subject', s); $event.stopPropagation()"
-                  >
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </span>
-              } @else {
-                <span
-                  class="edit-row"
-                  (click)="$event.stopPropagation()"
-                  (keydown)="$event.stopPropagation()"
-                >
-                  <input
-                    class="inline-edit"
-                    [attr.aria-label]="t('subjects.nameAria')"
-                    [(ngModel)]="editName"
-                    (keyup.enter)="saveEdit('subject', s)"
-                  />
-                  <button
-                    mat-icon-button
-                    color="primary"
-                    type="button"
-                    [attr.aria-label]="t('actions.save')"
-                    (click)="saveEdit('subject', s)"
-                  >
-                    <mat-icon>check</mat-icon>
-                  </button>
-                  <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </span>
-              }
-            </li>
-          }
-        </ul>
+                    <input
+                      class="inline-edit"
+                      [attr.aria-label]="t('subjects.nameAria')"
+                      [(ngModel)]="editName"
+                      (keyup.enter)="saveEdit('subject', s)"
+                    />
+                    <button
+                      mat-icon-button
+                      color="primary"
+                      type="button"
+                      [attr.aria-label]="t('actions.save')"
+                      (click)="saveEdit('subject', s)"
+                    >
+                      <mat-icon>check</mat-icon>
+                    </button>
+                    <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        }
       }
     </mat-card>
 
@@ -191,7 +182,7 @@
       </header>
 
       @if (selectedSubject()) {
-        <div class="add-row stacked">
+        <div class="add-row">
           <mat-form-field appearance="outline" class="dense">
             <input
               matInput
@@ -199,13 +190,6 @@
               [(ngModel)]="newTopicName"
               (keyup.enter)="addTopic()"
             />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="dense">
-            <mat-select [placeholder]="t('topics.gradePlaceholder')" [(ngModel)]="newTopicGradeId">
-              @for (g of grades(); track g.id) {
-                <mat-option [value]="g.id">{{ g.name }}</mat-option>
-              }
-            </mat-select>
           </mat-form-field>
           <button
             mat-icon-button
@@ -240,10 +224,7 @@
               >
                 @if (!isEditing('topic', row.id)) {
                   <span class="name">{{ row.name }}</span>
-                  <span class="meta">
-                    {{ row.gradeName || gradeName(row.gradeId) }} ·
-                    {{ t('topics.subTopicCount', { count: row.subTopics.length }) }}
-                  </span>
+                  <span class="meta">{{ t('topics.subTopicCount', { count: row.subTopics.length }) }}</span>
                   <span class="actions" (keydown)="$event.stopPropagation()">
                     <button
                       mat-icon-button
@@ -275,13 +256,6 @@
                       [(ngModel)]="editName"
                       (keyup.enter)="saveEdit('topic', row)"
                     />
-                    <mat-form-field appearance="outline" class="dense inline-grade">
-                      <mat-select [(ngModel)]="editGradeId" [attr.aria-label]="t('topics.gradePlaceholder')">
-                        @for (g of grades(); track g.id) {
-                          <mat-option [value]="g.id">{{ g.name }}</mat-option>
-                        }
-                      </mat-select>
-                    </mat-form-field>
                     <button
                       mat-icon-button
                       color="primary"

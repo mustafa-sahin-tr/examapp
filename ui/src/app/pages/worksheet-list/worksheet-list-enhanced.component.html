@@ -195,7 +195,7 @@
                 [label]="grade.name"
                 [checked]="selectedGradeIds().includes(grade.id)"
                 [value]="grade"
-                (checkedChange)="toggleGradeFilter(grade)"
+                (checkedChange)="toggleGradeFilter(grade.id)"
               ></app-custom-checkbox>
             </div>
           </div>

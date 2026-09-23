@@ -42,19 +42,19 @@ public class AdminPasswordResetService : IAdminPasswordResetService
         switch (target.Status)
         {
             case AdminAccountTargetStatus.TargetNotFound:
-                await TryRecordAsync(record, AdminUserActionOutcome.NotFound);
+                await _audit.TryRecordAsync(record, AdminUserActionOutcome.NotFound);
                 return new(AdminPasswordResetStatus.TargetNotFound);
             case AdminAccountTargetStatus.AccountNotFound:
-                await TryRecordAsync(record, AdminUserActionOutcome.NotFound);
+                await _audit.TryRecordAsync(record, AdminUserActionOutcome.NotFound);
                 return new(AdminPasswordResetStatus.AccountNotFound);
             case AdminAccountTargetStatus.ForbiddenSelf:
                 _logger.LogWarning("[AdminPasswordReset] Admin kendi şifresini sıfırlamaya çalıştı: actor={Actor}", actorKeycloakId);
-                await TryRecordAsync(record, AdminUserActionOutcome.Denied);
+                await _audit.TryRecordAsync(record, AdminUserActionOutcome.Denied);
                 return new(AdminPasswordResetStatus.ForbiddenSelf);
             case AdminAccountTargetStatus.ForbiddenProtectedRole:
                 _logger.LogWarning("[AdminPasswordReset] Korumalı hedef reddedildi: {TargetType}#{TargetId} actor={Actor}",
                     targetType, targetId, actorKeycloakId);
-                await TryRecordAsync(record, AdminUserActionOutcome.Denied);
+                await _audit.TryRecordAsync(record, AdminUserActionOutcome.Denied);
                 return new(AdminPasswordResetStatus.ForbiddenProtectedRole);
             case AdminAccountTargetStatus.UpstreamFailure:
                 // Yan etki yok; aksiyon talep aşamasına gelmedi (log resolver'da).
@@ -75,14 +75,14 @@ public class AdminPasswordResetService : IAdminPasswordResetService
         catch (KeycloakException ex) when (ex.StatusCode == 404)
         {
             _logger.LogWarning("[AdminPasswordReset] Keycloak'ta kullanıcı yok (404): {TargetType}#{TargetId}", targetType, targetId);
-            await TryUpdateAsync(auditId, AdminUserActionOutcome.NotFound);
+            await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.NotFound);
             return new(AdminPasswordResetStatus.AccountNotFound);
         }
         catch (Exception ex) when (ex is KeycloakException || AdminAccountTargetResolver.IsUpstreamFailure(ex, CancellationToken.None))
         {
             // ex.Message yalnızca durum kodu içerir (KeycloakService); şifre içermez.
             _logger.LogWarning(ex, "[AdminPasswordReset] Keycloak şifre set edemedi: {TargetType}#{TargetId}", targetType, targetId);
-            await TryUpdateAsync(auditId, AdminUserActionOutcome.ResetFailed);
+            await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.ResetFailed);
             return new(AdminPasswordResetStatus.UpstreamFailure);
         }
 
@@ -94,40 +94,13 @@ public class AdminPasswordResetService : IAdminPasswordResetService
         {
             // Şifre değişti ama oturumlar açık: şifre GÖSTERİLMEZ ("şifre gösterildi ⇒ oturumlar kapandı" garantisi).
             _logger.LogError(ex, "[AdminPasswordReset] Şifre değişti ama oturumlar kapatılamadı: {TargetType}#{TargetId}", targetType, targetId);
-            await TryUpdateAsync(auditId, AdminUserActionOutcome.SessionRevokeFailed);
+            await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.SessionRevokeFailed);
             return new(AdminPasswordResetStatus.SessionRevokeFailed);
         }
 
-        await TryUpdateAsync(auditId, AdminUserActionOutcome.Succeeded);
+        await _audit.TryUpdateOutcomeAsync(auditId, AdminUserActionOutcome.Succeeded);
         _logger.LogInformation("[AdminPasswordReset] Şifre sıfırlandı: {TargetType}#{TargetId} actor={Actor}",
             targetType, targetId, actorKeycloakId);
         return new(AdminPasswordResetStatus.Success, temporaryPassword);
-    }
-
-    /// <summary>Yan etkisiz sonuçların izi — best-effort: yazılamazsa yanıtı değiştirmez, loglanır.</summary>
-    private async Task TryRecordAsync(AdminUserActionRecord record, AdminUserActionOutcome outcome)
-    {
-        try
-        {
-            await _audit.RecordAsync(record, outcome, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[AdminPasswordReset] Audit yazılamadı: {TargetType}#{TargetId} outcome={Outcome}",
-                record.TargetType, record.TargetId, outcome);
-        }
-    }
-
-    /// <summary>Requested satırının nihai sonucu — best-effort (satır zaten var; güncellenemezse Requested kalır).</summary>
-    private async Task TryUpdateAsync(long auditId, AdminUserActionOutcome outcome)
-    {
-        try
-        {
-            await _audit.UpdateOutcomeAsync(auditId, outcome, CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "[AdminPasswordReset] Audit sonucu güncellenemedi: id={AuditId} outcome={Outcome}", auditId, outcome);
-        }
     }
 }

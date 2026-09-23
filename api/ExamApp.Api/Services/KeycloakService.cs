@@ -480,6 +480,33 @@ public class KeycloakService : IKeycloakService
         EnsureSuccess(response, "Keycloak session logout failed");
     }
 
+    // GET → alan değiştir → PUT deseninde geri gönderilmeyen salt okunur / hesaplanan alanlar.
+    private static readonly string[] ReadOnlyUserRepresentationFields = ["userProfileMetadata", "access"];
+
+    public async Task SetEnabledAsync(string keycloakUserId, bool enabled, CancellationToken ct = default)
+    {
+        var url = AdminUserUrl(keycloakUserId);
+
+        // SetSchoolIdAttributeAsync ile aynı desen: TAM UserRepresentation çekilir, yalnızca "enabled" değiştirilir ve
+        // geri gönderilir. Kısmi gövde, realm'in declarative user-profile ayarına göre diğer alanları (email, attribute'lar)
+        // boşaltabilir / 400 döndürebilir. Gövdeler loglanmaz (yalnızca durum kodu).
+        JsonObject user;
+        using (var getResponse = await SendAsAdminAsync(HttpMethod.Get, url, content: null, ct))
+        {
+            EnsureSuccess(getResponse, "Keycloak account status lookup failed");
+            user = JsonNode.Parse(await getResponse.Content.ReadAsStringAsync(ct))?.AsObject()
+                ?? throw new KeycloakException("Keycloak account status lookup failed: empty representation", 502);
+        }
+
+        foreach (var field in ReadOnlyUserRepresentationFields)
+            user.Remove(field);
+        user["enabled"] = enabled;
+
+        using var content = new StringContent(user.ToJsonString(), Encoding.UTF8, "application/json");
+        using var response = await SendAsAdminAsync(HttpMethod.Put, url, content, ct);
+        EnsureSuccess(response, "Keycloak account status update failed");
+    }
+
     private async Task<IReadOnlyList<string>> GetRoleNamesAsync(string url, CancellationToken ct)
     {
         using var response = await SendAsAdminAsync(HttpMethod.Get, url, content: null, ct);

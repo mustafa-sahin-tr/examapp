@@ -17,6 +17,7 @@ import { PAGE_SIZE_OPTIONS } from '../../../shared/utils/paging.util';
 import { provideTranslatedPaginatorIntl } from '../../../shared/utils/paginator-intl.util';
 import { SchoolPagedList, adminListErrorMessage } from '../../../shared/utils/school-paged-list';
 import { openAdminResetPasswordDialog } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
+import { openAdminAccountStatusDialog } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -125,6 +126,37 @@ export class AdminStudentsComponent {
     })
       .afterClosed()
       .subscribe(() => this.resetDialogOpen.set(false));
+  }
+
+  /** Hesap durumu dialog'u açıkken ikinci bir dialog açılmaz (çift tıklama). */
+  readonly statusDialogOpen = signal(false);
+
+  /**
+   * Issue #155 — hesabı devre dışı bırak / etkinleştir. Onay + istek dialog'dadır; başarıda satır sunucunun döndürdüğü
+   * yeni durumla listede anında güncellenir (yeniden yükleme yok); hata görülüp vazgeçilirse liste yeniden yüklenir.
+   * Durumu bilinmeyen satırda aksiyon gösterilmez.
+   */
+  toggleAccountStatus(row: AdminStudentRow): void {
+    if (this.statusDialogOpen() || row.accountStatus === 'unknown') return;
+    this.statusDialogOpen.set(true);
+    openAdminAccountStatusDialog(this.dialog, {
+      target: 'student',
+      id: row.id,
+      displayName: this.rowDisplayName(row),
+      enable: row.accountStatus === 'inactive',
+    })
+      .afterClosed()
+      .subscribe((result) => {
+        this.statusDialogOpen.set(false);
+        if (!result) return;
+        // Hata sonrası vazgeçildi (ör. 502 sessionRevokeFailed: hesap kapanmış olabilir) → satır bayat kalmasın.
+        if ('refresh' in result) this.list.load();
+        else this.applyAccountStatus(row.id, result.enabled);
+      });
+  }
+
+  private applyAccountStatus(id: number, enabled: boolean): void {
+    this.list.items.update((items) => items.map((item) => (item.id === id ? { ...item, isEnabled: enabled } : item)));
   }
 
   rowDisplayName(row: AdminStudentRow): string {

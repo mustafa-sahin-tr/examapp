@@ -9,6 +9,7 @@ import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { AdminResetPasswordDialogComponent } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
+import { AdminAccountStatusDialogComponent } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
 
 import { AdminTeachersComponent } from './admin-teachers.component';
 import { AdminService } from '../../../services/admin.service';
@@ -60,7 +61,12 @@ describe('AdminTeachersComponent', () => {
 
   /** TestBed'i kurar; komponent `create()` ile oluşturulur (constructor URL aboneliğiyle hemen istek atar). */
   function configure(initialParams: Params = {}): void {
-    adminService = jasmine.createSpyObj<AdminService>('AdminService', ['getTeachers', 'getSchools', 'resetPassword']);
+    adminService = jasmine.createSpyObj<AdminService>('AdminService', [
+      'getTeachers',
+      'getSchools',
+      'resetPassword',
+      'setAccountStatus',
+    ]);
     adminService.getSchools.and.returnValue(of(schools));
     adminService.getTeachers.and.returnValue(of(paged([teacher()], 45)));
     queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(initialParams));
@@ -484,5 +490,141 @@ describe('AdminTeachersComponent', () => {
     component.resetPassword(row);
 
     expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+
+  // ── Hesap durumu: devre dışı bırak / etkinleştir (issue #155) ─────────────
+
+  function statusButtons(): HTMLButtonElement[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="account-status"]'));
+  }
+
+  function overlayButton(testId: string): HTMLButtonElement {
+    return TestBed.inject(OverlayContainer).getContainerElement().querySelector(`button[data-testid="${testId}"]`)!;
+  }
+
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('accountStatus_ActiveRow_OpensDisableDialogWithSessionsNoteAndSendsNoRequestYet', async () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    expect(statusButtons().length).toBe(1);
+    expect(statusButtons()[0].getAttribute('aria-label')).toContain('devre dışı bırak');
+    statusButtons()[0].click();
+    await settle();
+
+    expect(openSpy.calls.mostRecent().args[0]).toBe(AdminAccountStatusDialogComponent);
+    const config = openSpy.calls.mostRecent().args[1];
+    expect(config?.data).toEqual({ target: 'teacher', id: 12, displayName: 'Ayşe Yılmaz', enable: false });
+    expect(config?.disableClose).toBeTrue();
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    expect(container.textContent).toContain(adminTr.accountStatus.disable.confirmTitle);
+    expect(container.textContent).toContain(adminTr.accountStatus.disable.confirmSessions);
+    expect(adminService.setAccountStatus).not.toHaveBeenCalled();
+  });
+
+  it('accountStatus_ConfirmDisable_UpdatesRowChipInstantlyWithoutReload', async () => {
+    configure();
+    adminService.setAccountStatus.and.returnValue(of({ enabled: false }));
+    create();
+    expect(cellTexts('accountStatus')).toEqual([adminTr.teachers.account.active]);
+    adminService.getTeachers.calls.reset();
+
+    statusButtons()[0].click();
+    await settle();
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.setAccountStatus).toHaveBeenCalledOnceWith('teacher', 12, false);
+    expect(cellTexts('accountStatus')).toEqual([adminTr.teachers.account.inactive]);
+    expect(component.rows()[0].accountStatus).toBe('inactive');
+    expect(adminService.getTeachers).not.toHaveBeenCalled();
+    expect(component.statusDialogOpen()).toBeFalse();
+    // Aksiyon artık "Etkinleştir".
+    expect(statusButtons()[0].getAttribute('aria-label')).toContain('etkinleştir');
+  });
+
+  it('accountStatus_InactiveRow_EnablesAndRowBecomesActive', async () => {
+    configure();
+    adminService.getTeachers.and.returnValue(of(paged([teacher({ isEnabled: false })])));
+    adminService.setAccountStatus.and.returnValue(of({ enabled: true }));
+    create();
+
+    statusButtons()[0].click();
+    await settle();
+    expect(TestBed.inject(OverlayContainer).getContainerElement().textContent).toContain(
+      adminTr.accountStatus.enable.confirmTitle,
+    );
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.setAccountStatus).toHaveBeenCalledOnceWith('teacher', 12, true);
+    expect(cellTexts('accountStatus')).toEqual([adminTr.teachers.account.active]);
+  });
+
+  it('accountStatus_Cancel_SendsNoRequestAndKeepsRow', async () => {
+    configure();
+    create();
+
+    statusButtons()[0].click();
+    await settle();
+    expect(component.statusDialogOpen()).toBeTrue();
+    overlayButton('cancel').click();
+    await settle();
+
+    expect(adminService.setAccountStatus).not.toHaveBeenCalled();
+    expect(component.statusDialogOpen()).toBeFalse();
+    expect(cellTexts('accountStatus')).toEqual([adminTr.teachers.account.active]);
+  });
+
+  it('accountStatus_UnknownStatus_HasNoAction', () => {
+    configure();
+    adminService.getTeachers.and.returnValue(of(paged([teacher({ isEnabled: null })])));
+    create();
+
+    expect(statusButtons().length).toBe(0);
+    component.toggleAccountStatus(component.rows()[0]);
+    expect(component.statusDialogOpen()).toBeFalse();
+  });
+
+  it('accountStatus_DoubleClick_OpensSingleDialog', () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    const row = component.rows()[0];
+    component.toggleAccountStatus(row);
+    component.toggleAccountStatus(row);
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('accountStatus_ErrorThenCancel_ReloadsListSoRowIsNotStale', async () => {
+    configure();
+    adminService.setAccountStatus.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 502, error: { message: 'oturumlar kapatılamadı' } })),
+    );
+    create();
+    adminService.getTeachers.calls.reset();
+    adminService.getTeachers.and.returnValue(of(paged([teacher({ isEnabled: false })])));
+
+    statusButtons()[0].click();
+    await settle();
+    overlayButton('confirm').click();
+    await settle();
+    expect(adminService.getTeachers).not.toHaveBeenCalled();
+    overlayButton('cancel').click();
+    await settle();
+
+    expect(adminService.setAccountStatus).toHaveBeenCalledOnceWith('teacher', 12, false);
+    expect(adminService.getTeachers).toHaveBeenCalledTimes(1);
+    expect(cellTexts('accountStatus')).toEqual([adminTr.teachers.account.inactive]);
   });
 });

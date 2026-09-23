@@ -19,6 +19,17 @@
       "sessionRevokeFailed": "Şifre değiştirildi ancak kullanıcının açık oturumları kapatılamadı; yeni şifre gösterilmedi. Lütfen işlemi tekrar deneyin.",
       "rateLimited": "Kısa sürede çok fazla şifre sıfırlama isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
+    "accountStatus": {
+      "teacherNotFound": "Öğretmen bulunamadı.",
+      "studentNotFound": "Öğrenci bulunamadı.",
+      "accountNotFound": "Bu kullanıcıya bağlı bir oturum açma hesabı bulunamadı.",
+      "self": "Kendi hesabınızın durumunu bu ekrandan değiştiremezsiniz.",
+      "protectedRole": "Yönetici veya servis hesaplarının durumu bu ekrandan değiştirilemez.",
+      "upstreamFailed": "Hesap durumu şu anda değiştirilemedi. Lütfen biraz sonra tekrar deneyin.",
+      "sessionRevokeFailed": "Hesap devre dışı bırakıldı ancak kullanıcının açık oturumları kapatılamadı. Lütfen işlemi tekrar deneyin.",
+      "enabledRequired": "enabled alanı zorunludur (true veya false).",
+      "rateLimited": "Kısa sürede çok fazla hesap durumu değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
     "userList": {
       "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },

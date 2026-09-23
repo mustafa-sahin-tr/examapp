@@ -30,7 +30,7 @@ public class AdminControllerStudentsTests
     private AdminController NewController() => new(
         Substitute.For<ITaxonomyService>(), Substitute.For<IClassifierCacheService>(), Substitute.For<ISchoolService>(),
         Substitute.For<IDashboardService>(), Substitute.For<ILocationService>(), Substitute.For<ITeacherApprovalService>(),
-        Substitute.For<IAdminTeacherService>(), _adminStudents, _audit, Substitute.For<IAdminPasswordResetService>())
+        Substitute.For<IAdminTeacherService>(), _adminStudents, _audit, Substitute.For<IAdminPasswordResetService>(), Substitute.For<IAdminAccountStatusService>())
     {
         ControllerContext = new ControllerContext
         {

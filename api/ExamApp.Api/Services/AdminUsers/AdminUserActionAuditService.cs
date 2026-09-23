@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ExamApp.Api.Services.AdminUsers;
 
@@ -12,10 +14,12 @@ namespace ExamApp.Api.Services.AdminUsers;
 public class AdminUserActionAuditService : IAdminUserActionAuditService
 {
     private readonly AppDbContext _context;
+    private readonly ILogger<AdminUserActionAuditService> _logger;
 
-    public AdminUserActionAuditService(AppDbContext context)
+    public AdminUserActionAuditService(AppDbContext context, ILogger<AdminUserActionAuditService>? logger = null)
     {
         _context = context;
+        _logger = logger ?? NullLogger<AdminUserActionAuditService>.Instance;
     }
 
     public async Task<long> RecordAsync(AdminUserActionRecord record, AdminUserActionOutcome outcome, CancellationToken ct = default)
@@ -47,5 +51,30 @@ public class AdminUserActionAuditService : IAdminUserActionAuditService
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.Outcome, outcome), CancellationToken.None);
         if (updated != 1)
             throw new InvalidOperationException($"Admin user action audit row {id} not found.");
+    }
+
+    public async Task TryRecordAsync(AdminUserActionRecord record, AdminUserActionOutcome outcome)
+    {
+        try
+        {
+            await RecordAsync(record, outcome, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminUserAction] Audit yazılamadı: {Action} {TargetType}#{TargetId} outcome={Outcome}",
+                record.Action, record.TargetType, record.TargetId, outcome);
+        }
+    }
+
+    public async Task TryUpdateOutcomeAsync(long id, AdminUserActionOutcome outcome)
+    {
+        try
+        {
+            await UpdateOutcomeAsync(id, outcome, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AdminUserAction] Audit sonucu güncellenemedi: id={AuditId} outcome={Outcome}", id, outcome);
+        }
     }
 }

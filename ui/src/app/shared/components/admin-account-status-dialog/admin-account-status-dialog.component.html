@@ -1,0 +1,51 @@
+<div class="as-dialog" *transloco="let t; prefix: 'admin.accountStatus'">
+  <header class="as-header">
+    <mat-icon class="as-icon" [class.as-icon--enable]="data.enable">{{ data.enable ? 'check_circle' : 'block' }}</mat-icon>
+    <div class="as-header__text">
+      <h2 mat-dialog-title>{{ t(mode() + '.confirmTitle') }}</h2>
+      <p class="as-subtitle">{{ data.displayName }}</p>
+    </div>
+  </header>
+
+  <mat-dialog-content class="as-content">
+    <p class="as-description">{{ t(mode() + '.confirmIntro', { name: data.displayName }) }}</p>
+    <ul class="as-consequences">
+      @if (data.enable) {
+        <li><mat-icon>login</mat-icon><span>{{ t('enable.confirmLogin') }}</span></li>
+      } @else {
+        <li data-testid="sessions-note"><mat-icon>logout</mat-icon><span>{{ t('disable.confirmSessions') }}</span></li>
+        <li><mat-icon>no_accounts</mat-icon><span>{{ t('disable.confirmLogin') }}</span></li>
+      }
+    </ul>
+
+    @if (error()) {
+      <div class="as-error" role="alert" data-testid="status-error">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="as-actions">
+    <button mat-stroked-button type="button" (click)="cancel()" [disabled]="submitting()" data-testid="cancel">
+      {{ t('cancel') }}
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      [class.as-danger]="!data.enable"
+      [class.as-primary]="data.enable"
+      (click)="confirm()"
+      [disabled]="submitting()"
+      [attr.aria-busy]="submitting()"
+      data-testid="confirm"
+    >
+      @if (submitting()) {
+        <mat-spinner diameter="18" class="as-spinner"></mat-spinner>
+        {{ t('submitting') }}
+      } @else {
+        {{ error() ? t('retry') : t(mode() + '.confirm') }}
+      }
+    </button>
+  </mat-dialog-actions>
+</div>

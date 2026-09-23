@@ -1,0 +1,147 @@
+.as-dialog {
+  min-width: 380px;
+  max-width: 520px;
+  padding: 20px 24px 16px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+
+  @media (max-width: 600px) {
+    min-width: 0;
+    max-width: 92vw;
+  }
+}
+
+.as-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  h2 {
+    margin: 0;
+    padding: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+}
+
+.as-header__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.as-icon {
+  flex-shrink: 0;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  color: var(--ms-danger-text-medium);
+
+  &--enable {
+    color: var(--ms-success-text);
+  }
+}
+
+.as-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.as-content {
+  padding: 0;
+  margin: 0;
+}
+
+.as-description {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ms-text-medium);
+}
+
+.as-consequences {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ms-text);
+  }
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--ms-text-medium);
+  }
+}
+
+.as-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 13px;
+  line-height: 1.5;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.as-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 0 0;
+  margin: 0;
+  border-top: 1px solid var(--ms-border-weak);
+}
+
+.as-danger {
+  background: var(--ms-danger-background);
+  color: var(--ms-danger-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-danger-background-hover);
+  }
+}
+
+.as-primary {
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-action-background-hover);
+  }
+}
+
+.as-spinner {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}

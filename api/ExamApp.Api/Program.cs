@@ -260,6 +260,8 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountTargetRe
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserActionAuditService, ExamApp.Api.Services.AdminUsers.AdminUserActionAuditService>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminPasswordResetService, ExamApp.Api.Services.AdminUsers.AdminPasswordResetService>();
 builder.Services.AddAdminPasswordResetRateLimiting();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountStatusService, ExamApp.Api.Services.AdminUsers.AdminAccountStatusService>();
+builder.Services.AddAdminAccountStatusRateLimiting();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

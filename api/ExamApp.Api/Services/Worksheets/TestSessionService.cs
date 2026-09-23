@@ -99,7 +99,7 @@ public class TestSessionService : ITestSessionService
 
         var now = DateTime.UtcNow;
 
-        var hasActiveAssignment = await _context.ActiveAssignmentsFor(student.Id, student.GradeId, now)
+        var hasActiveAssignment = await _context.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now)
             .AnyAsync(a => a.WorksheetId == testId);
 
         var isGradeMatch = student.GradeId.HasValue && worksheet.GradeId == student.GradeId.Value;

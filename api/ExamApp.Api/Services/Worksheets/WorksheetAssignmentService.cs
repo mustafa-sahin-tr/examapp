@@ -235,19 +235,14 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         ArgumentNullException.ThrowIfNull(student);
 
         var now = DateTime.UtcNow;
-        var gradeId = student.GradeId;
 
-        var assignmentsQuery = _context.WorksheetAssignments
+        // issue #236: aktif atama + hedef/okul koşulu tek tanımdan (WorksheetAccess.ActiveAssignmentsFor →
+        // WorksheetStudentAccess.AssignmentVisibleTo); test başlatma kapısıyla aynı küme, ayrı kopya mantık yok.
+        var assignmentsQuery = _context.ActiveAssignmentsFor(student.Id, student.GradeId, student.SchoolId, now)
             .Include(wa => wa.Worksheet)
                 .ThenInclude(w => w.WorksheetQuestions)
             .Include(wa => wa.Worksheet)
-                .ThenInclude(w => w.BookTest)
-            .Where(wa => wa.StartAt <= now && (wa.EndAt == null || wa.EndAt > now));
-
-        assignmentsQuery = assignmentsQuery.Where(wa =>
-            (wa.StudentId.HasValue && wa.StudentId == student.Id) ||
-            (gradeId.HasValue && wa.GradeId.HasValue && wa.GradeId == gradeId
-                && (!wa.SchoolId.HasValue || wa.SchoolId == student.SchoolId)));
+                .ThenInclude(w => w.BookTest);
 
         var assignments = await assignmentsQuery
             .OrderBy(wa => wa.StartAt)

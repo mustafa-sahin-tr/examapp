@@ -12,6 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { CompactTestCardComponent } from '../../shared/components/compact-test-card/compact-test-card.component';
 import { SectionHeaderComponent } from '../../shared/components/section-header/section-header.component';
 import { TestService } from '../../services/test.service';
@@ -30,6 +31,14 @@ interface AssignmentCardViewModel {
   test: Test;
 }
 
+/** Issue #197 — aktivite özet kartı (soru/doğru/dakika/skor); ngx-charts number-card yerine yerel grid kartı. */
+export interface ActivityStatCard {
+  key: 'questions' | 'correct' | 'minutes' | 'activityScore';
+  icon: string;
+  name: string;
+  value: number;
+}
+
 /** "Sıradaki Rozetler" listesi için görünüm modeli — ilerleme yüzdesi şablonda hesaplanmasın diye burada türetilir. */
 interface UpcomingBadgeViewModel {
   badge: BadgeProgressItem;
@@ -40,7 +49,7 @@ interface UpcomingBadgeViewModel {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, CompactTestCardComponent, SectionHeaderComponent, NgxChartsModule, TranslocoPipe],
+  imports: [CommonModule, MatIconModule, CompactTestCardComponent, SectionHeaderComponent, NgxChartsModule, TranslocoPipe],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
 })
@@ -66,7 +75,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   >([]);
   readonly activityApiLoading = signal(false);
   readonly activityApiError = signal(false);
-  readonly activityNumberCardData = signal<Array<{ name: string; value: number }>>([]);
+  readonly activityNumberCardData = signal<ActivityStatCard[]>([]);
   readonly badgeProgressLoading = signal(false);
   readonly badgeProgressError = signal(false);
   readonly earnedBadges = signal<BadgeProgressItem[]>([]);
@@ -104,14 +113,33 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly canScrollRight = signal(false);
   readonly viewportWidth = signal(typeof window !== 'undefined' ? window.innerWidth : 1280);
   readonly isMobileViewport = computed(() => this.viewportWidth() < 768);
-  readonly mobileHeatmapWeeks = 17;
-  readonly activityHeatmapData = computed(() => {
-    const data = this.activityDataFromApi();
-    if (!this.isMobileViewport()) {
-      return data;
+  /**
+   * Issue #197 — heat map sabit piksel yerine kapsayıcısının gerçek genişliğine göre çizilir.
+   * 0 = henüz ölçülmedi; şablon bu durumda grafiği hiç çizmez.
+   */
+  readonly heatmapContainerWidth = signal(0);
+  /**
+   * Bir hafta sütununun en küçük genişliği (px). ngx-charts hücreler arasında 8px iç boşluk bırakır;
+   * 22px ile hücre ~14px kalır (eski masaüstü yoğunluğu); daha dar değerde hücreler çizgiye döner.
+   */
+  private readonly heatmapMinCellPx = 22;
+  /** Y ekseni gün etiketleri + kenar boşluğu için ayrılan pay (px). */
+  private readonly heatmapAxisAllowancePx = 48;
+  private readonly heatmapMinWeeks = 12;
+  /** Kapsayıcıya sığan hafta sayısı; dar ekranda en yeni haftalar gösterilir, eski haftalar düşer. */
+  readonly visibleHeatmapWeeks = computed(() => {
+    const width = this.heatmapContainerWidth();
+    if (width <= 0) {
+      return Number.POSITIVE_INFINITY;
     }
 
-    return data.slice(-this.mobileHeatmapWeeks);
+    const fit = Math.floor((width - this.heatmapAxisAllowancePx) / this.heatmapMinCellPx);
+    return Math.max(this.heatmapMinWeeks, fit);
+  });
+  readonly activityHeatmapData = computed(() => {
+    const data = this.activityDataFromApi();
+    const weeks = this.visibleHeatmapWeeks();
+    return data.length > weeks ? data.slice(-weeks) : data;
   });
   readonly showActivitySummary = computed(
     () =>
@@ -120,30 +148,53 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       this.badgeProgressError() ||
       this.earnedBadges().length > 0
   );
+  /** Kapsayıcıyı doldurur; en az hafta sayısı bile sığmıyorsa yalnızca kendi kapsayıcısında (.heatmap-scroll) kayar. */
   readonly activityHeatmapView = computed<[number, number]>(() => {
-    const weeks = Math.max(this.activityHeatmapData().length, this.isMobileViewport() ? 14 : 24);
-
-    if (this.isMobileViewport()) {
-      return [Math.max(weeks * 20, Math.max(this.viewportWidth() - 24, 320)), 190];
-    }
-
-    return [Math.max(weeks * 22, 1200), 210];
+    const height = this.isMobileViewport() ? 190 : 210;
+    const minWidth = this.heatmapMinWeeks * this.heatmapMinCellPx + this.heatmapAxisAllowancePx;
+    return [Math.max(Math.floor(this.heatmapContainerWidth()), minWidth), height];
   });
   readonly showHeatmapYAxis = computed(() => true);
   readonly showHeatmapAxisLabels = computed(() => !this.isMobileViewport());
-  readonly activityNumberCardView = computed<[number, number]>(() => {
-    if (this.isMobileViewport()) {
-      return [Math.max(this.viewportWidth() - 24, 300), 220];
-    }
-
-    return [900, 200];
-  });
 
   readonly scrollDistance = 600;
   private readonly demoActivityUserId = 16;
   private activityLastMonthDisplayed = '';
   private resizeObserver?: ResizeObserver;
   private assignmentContainerRef?: ElementRef<HTMLDivElement>;
+  private heatmapResizeObserver?: ResizeObserver;
+  private heatmapScrollEl?: HTMLDivElement;
+
+  /** Heat map kapsayıcısı veri gelince render edilir; her yeni element için genişliği izlenir. */
+  @ViewChild('heatmapScroll', { static: false })
+  set heatmapScroll(ref: ElementRef<HTMLDivElement> | undefined) {
+    const element = ref?.nativeElement;
+    if (element === this.heatmapScrollEl) {
+      return;
+    }
+
+    if (this.heatmapScrollEl) {
+      this.heatmapResizeObserver?.unobserve(this.heatmapScrollEl);
+    }
+    this.heatmapScrollEl = element;
+
+    if (!element) {
+      return;
+    }
+
+    this.heatmapContainerWidth.set(element.clientWidth ?? 0);
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    this.heatmapResizeObserver ??= new ResizeObserver((entries) => {
+      const width = entries[entries.length - 1]?.contentRect.width ?? 0;
+      if (Math.floor(width) !== Math.floor(this.heatmapContainerWidth())) {
+        this.heatmapContainerWidth.set(width);
+      }
+    });
+    this.heatmapResizeObserver.observe(element);
+  }
 
   @ViewChild('assignmentContainer', { static: false })
   set assignmentContainer(ref: ElementRef<HTMLDivElement> | undefined) {
@@ -170,15 +221,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     group: ScaleType.Linear,
     domain: ['#38346fff', '#5a5a5aff', '#808080ff', '#b3b3b3ff', '#e6e6e6ff', '#ffffff'],
   };
-
-  readonly activityNumberCardScheme: Color = {
-    name: 'activityNumberCards',
-    selectable: false,
-    group: ScaleType.Linear,
-    domain: ['#4d4892ff', '#E44D25', '#CFC0BB', '#7aa3e5', '#a8385d', '#aae3f5'],
-  };
-
-  readonly activityNumberCardColor = '#232837';
 
   ngOnInit(): void {
     this.updateViewportWidth();
@@ -274,6 +316,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.resizeObserver?.disconnect();
+    this.heatmapResizeObserver?.disconnect();
   }
 
   @HostListener('window:resize')
@@ -288,6 +331,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   trackBadge(index: number, badge: BadgeProgressItem): string {
     return badge.badgeDefinitionId;
+  }
+
+  trackStatCard(index: number, card: ActivityStatCard): string {
+    return card.key;
   }
 
   trackUpcomingBadge(index: number, item: UpcomingBadgeViewModel): string {
@@ -560,7 +607,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     return heatmap;
   }
 
-  private buildNumberCardData(response: UserActivityResponse): Array<{ name: string; value: number }> {
+  private buildNumberCardData(response: UserActivityResponse): ActivityStatCard[] {
     const totals = (response?.days ?? []).reduce(
       (acc, day) => {
         const questionCount = day?.questionCount ?? 0;
@@ -580,10 +627,30 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const totalMinutes = totals.timeSeconds > 0 ? Math.max(1, Math.round(totals.timeSeconds / 60)) : 0;
 
     return [
-      { name: this.transloco.translate('dashboard.activity.totalQuestions'), value: totals.questions },
-      { name: this.transloco.translate('dashboard.activity.correctAnswers'), value: totals.correct },
-      { name: this.transloco.translate('dashboard.activity.studyMinutes'), value: totalMinutes },
-      { name: this.transloco.translate('dashboard.activity.activityScore'), value: totals.activityScore },
+      {
+        key: 'questions',
+        icon: 'quiz',
+        name: this.transloco.translate('dashboard.activity.totalQuestions'),
+        value: totals.questions,
+      },
+      {
+        key: 'correct',
+        icon: 'check_circle',
+        name: this.transloco.translate('dashboard.activity.correctAnswers'),
+        value: totals.correct,
+      },
+      {
+        key: 'minutes',
+        icon: 'schedule',
+        name: this.transloco.translate('dashboard.activity.studyMinutes'),
+        value: totalMinutes,
+      },
+      {
+        key: 'activityScore',
+        icon: 'bolt',
+        name: this.transloco.translate('dashboard.activity.activityScore'),
+        value: totals.activityScore,
+      },
     ];
   }
 

@@ -143,7 +143,7 @@ const MS_PER_DAY = 86_400_000;
 /** Trend penceresi (gün): 52 tam hafta. Backend `days` 1..365 kabul eder. */
 const TREND_DAYS = TOTAL_WEEKS * DAYS_PER_WEEK;
 
-/** Mobilde gösterilen son hafta sayısı (dashboard.component `mobileHeatmapWeeks` ile aynı). */
+/** Admin dashboard'unda mobilde gösterilen son hafta sayısı. */
 const MOBILE_HEATMAP_WEEKS = 17;
 
 /**

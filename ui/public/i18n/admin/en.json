@@ -4,7 +4,8 @@
     "tabs": {
       "taxonomy": "Taxonomy",
       "classifierCache": "Classification Cache",
-      "teacherApplications": "Teacher Applications"
+      "teacherApplications": "Teacher Applications",
+      "schools": "Schools"
     }
   },
   "dashboard": {
@@ -105,25 +106,6 @@
       "noTopicTitle": "Pick a topic first",
       "noTopicHint": "The subtopics of the selected topic are listed here"
     },
-    "schools": {
-      "title": "Schools",
-      "newPlaceholder": "New school name",
-      "provincePlaceholder": "Province (optional)",
-      "provinceAria": "Province",
-      "provinceNone": "— No province —",
-      "districtPlaceholder": "District (optional)",
-      "districtAria": "District",
-      "districtNone": "— No district —",
-      "addressPlaceholder": "Street address (optional)",
-      "addressAria": "Street address",
-      "addressEditPlaceholder": "Street address",
-      "add": "Add school",
-      "edit": "Edit school",
-      "delete": "Delete school",
-      "nameAria": "School name",
-      "emptyTitle": "No schools added yet",
-      "emptyHint": "Enter a school name and optional province / district / address, then add it"
-    },
     "actions": {
       "save": "Save",
       "cancel": "Cancel"
@@ -135,17 +117,49 @@
       "topicMessage": "Are you sure you want to delete the topic \"{{name}}\"?",
       "subtopicTitle": "delete subtopic",
       "subtopicMessage": "Are you sure you want to delete the subtopic \"{{name}}\"?",
-      "schoolTitle": "delete school",
-      "schoolMessage": "Are you sure you want to delete the school \"{{name}}\"?",
       "confirm": "Delete"
     },
     "messages": {
       "taxonomyLoadFailed": "The taxonomy could not be loaded",
+      "actionFailed": "The action failed",
+      "close": "Close"
+    }
+  },
+  "schools": {
+    "pageTitle": "School Management",
+    "subtitle": "Add, edit and delete schools on the platform.",
+    "title": "Schools",
+    "newPlaceholder": "New school name",
+    "provincePlaceholder": "Province (optional)",
+    "provinceAria": "Province",
+    "provinceNone": "— No province —",
+    "districtPlaceholder": "District (optional)",
+    "districtAria": "District",
+    "districtNone": "— No district —",
+    "addressPlaceholder": "Street address (optional)",
+    "addressAria": "Street address",
+    "addressEditPlaceholder": "Street address",
+    "add": "Add school",
+    "edit": "Edit school",
+    "delete": "Delete school",
+    "nameAria": "School name",
+    "emptyTitle": "No schools added yet",
+    "emptyHint": "Enter a school name and optional province / district / address, then add it",
+    "actions": {
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "messages": {
       "schoolsLoadFailed": "Schools could not be loaded",
       "provincesLoadFailed": "Provinces could not be loaded",
       "districtsLoadFailed": "Districts could not be loaded",
       "actionFailed": "The action failed",
       "close": "Close"
+    },
+    "deleteDialog": {
+      "title": "delete school",
+      "message": "Are you sure you want to delete the school \"{{name}}\"?",
+      "confirm": "Delete"
     }
   },
   "subjectGrades": {

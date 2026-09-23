@@ -256,4 +256,133 @@ describe('AuthService (ui)', () => {
       expect(service.getUser()).toEqual(profile);
     });
   });
+
+  describe('refreshToken', () => {
+    it('refreshToken_SuccessfulResponse_ReturnsAccessToken', (done) => {
+      service.refreshToken().subscribe({
+        next: (token) => {
+          expect(token).toBe('example.jwt.token');
+          done();
+        },
+        error: () => fail('should succeed'),
+      });
+
+      const req = httpMock.expectOne('/api/auth/refresh-token');
+      const payload = { accessToken: 'example.jwt.token' }; // example test data
+      req.flush(payload);
+    });
+
+    it('refreshToken_EmptyAccessToken_ThrowsErrorAndClearsStorage', (done) => {
+      localStorage.setItem('auth_token', 'example.old.token');
+
+      service.refreshToken().subscribe({
+        next: () => fail('should error'),
+        error: () => {
+          expect(localStorage.getItem('auth_token')).toBeNull();
+          expect(routerSpy).toHaveBeenCalled();
+          done();
+        },
+      });
+
+      const req = httpMock.expectOne('/api/auth/refresh-token');
+      const payload = { accessToken: '' }; // example empty token
+      req.flush(payload);
+    });
+
+    it('refreshToken_HttpError_ThrowsErrorAndClearsStorage', (done) => {
+      localStorage.setItem('auth_token', 'example.old.token');
+
+      service.refreshToken().subscribe({
+        next: () => fail('should error'),
+        error: () => {
+          expect(localStorage.getItem('auth_token')).toBeNull();
+          expect(routerSpy).toHaveBeenCalled();
+          done();
+        },
+      });
+
+      const req = httpMock.expectOne('/api/auth/refresh-token');
+      req.error(new ProgressEvent('error'), { status: 401 });
+    });
+
+    it('refreshToken_TwoConcurrentCalls_OnlyMakesOneHttpRequest', (done) => {
+      let successCount = 0;
+
+      service.refreshToken().subscribe({
+        next: (token) => {
+          successCount++;
+          expect(token).toBe('example.shared.token');
+          if (successCount === 2) {
+            done();
+          }
+        },
+        error: () => fail('should succeed'),
+      });
+
+      service.refreshToken().subscribe({
+        next: (token) => {
+          successCount++;
+          expect(token).toBe('example.shared.token');
+          if (successCount === 2) {
+            done();
+          }
+        },
+        error: () => fail('should succeed'),
+      });
+
+      // Only one request should be made (single-flight pattern)
+      const requests = httpMock.match('/api/auth/refresh-token');
+      expect(requests.length).toBe(1);
+      const payload = { accessToken: 'example.shared.token' }; // example test data
+      requests[0].flush(payload);
+    });
+
+    it('refreshToken_TimeoutAfter10Seconds_ThrowsErrorAndClearsStorage', fakeAsync(() => {
+      localStorage.setItem('auth_token', 'example.old.token');
+
+      service.refreshToken().subscribe({
+        next: () => fail('should error'),
+        error: () => {
+          expect(localStorage.getItem('auth_token')).toBeNull();
+          expect(routerSpy).toHaveBeenCalled();
+        },
+      });
+
+      const req = httpMock.expectOne('/api/auth/refresh-token');
+
+      // Trigger timeout after 10 seconds
+      tick(10_000);
+
+      expect(localStorage.getItem('auth_token')).toBeNull();
+    }));
+
+    it('refreshToken_AfterError_NewCallMakesNewRequest', (done) => {
+      let requestCount = 0;
+
+      // First call fails
+      service.refreshToken().subscribe({
+        next: () => fail('should error'),
+        error: () => {
+          // Second call (cache should be cleared)
+          service.refreshToken().subscribe({
+            next: (token) => {
+              expect(token).toBe('example.new.token');
+              expect(requestCount).toBe(2);
+              done();
+            },
+            error: () => fail('should succeed on second call'),
+          });
+
+          const secondReq = httpMock.expectOne('/api/auth/refresh-token');
+          requestCount++;
+          const payload = { accessToken: 'example.new.token' }; // example test data
+          secondReq.flush(payload);
+        },
+      });
+
+      const firstReq = httpMock.expectOne('/api/auth/refresh-token');
+      requestCount++;
+      firstReq.error(new ProgressEvent('error'), { status: 401 });
+    });
+  });
 });

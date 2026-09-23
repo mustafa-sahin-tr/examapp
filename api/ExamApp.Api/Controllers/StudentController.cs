@@ -92,10 +92,12 @@ namespace ExamApp.Api.Controllers
         [HttpPost("me/reset")]
         public async Task<IActionResult> ResetMyStudentData(CancellationToken cancellationToken)
         {
-            var user = await _userProfileCacheService.GetAsync(KeyCloakId);
+            // issue #255: yalnız cache'e bakmak (TTL dolunca null) geçerli oturumu 401 ile düşürüyordu;
+            // profil provider üzerinden çözülür, çözülemezse 404 (sub yoksa 401).
+            var user = await GetAuthenticatedUserAsync(cancellationToken);
             if (user == null)
             {
-                return Unauthorized(_localizer["auth.authenticationFailed"].Value);
+                return UserNotResolved(_localizer["auth.authenticationFailed"].Value);
             }
 
             var student = await _studentService.GetStudentProfile(user.Id);

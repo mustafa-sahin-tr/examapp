@@ -15,6 +15,13 @@
     },
     "completeProfile": {
       "roleAssignmentFailed": "The role could not be assigned, please try again later."
+    },
+    "register": {
+      "accepted": "Your registration request has been received. If your account was created, you can sign in with your email and password.",
+      "invalidRole": "Role must be one of: Student, Teacher, Parent.",
+      "emailDomainNotAllowed": "This email domain cannot be used for registration.",
+      "invalidEmail": "Please enter a valid email address.",
+      "failed": "Registration could not be completed right now, please try again later."
     }
   }
 }

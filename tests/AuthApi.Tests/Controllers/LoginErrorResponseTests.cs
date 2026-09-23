@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using AuthApi.Tests.Support;
 using ExamApp.Api.Controllers;
@@ -7,6 +9,7 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace AuthApi.Tests.Controllers;
@@ -34,6 +38,29 @@ public sealed class LoginErrorResponseTests : IAsyncDisposable
     private readonly IKeycloakService _keycloak = Substitute.For<IKeycloakService>();
     private IHost? _host;
 
+    /// <summary>
+    /// Issue #240: <c>GET /api/auth/roles</c> artık <c>[Authorize(Roles = "Admin")]</c>; hata gövdesi testleri
+    /// Admin kimliğiyle çağırır (<see cref="AdminHeader"/> varsa Admin, yoksa anonim).
+    /// </summary>
+    private const string AdminHeader = "X-Test-Admin";
+
+    private sealed class AdminHeaderAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+    {
+        public const string SchemeName = "Test";
+
+        public AdminHeaderAuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+            : base(options, logger, encoder) { }
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            if (!Request.Headers.ContainsKey(AdminHeader))
+                return Task.FromResult(AuthenticateResult.NoResult());
+
+            var identity = new ClaimsIdentity([new Claim("sub", "kc-admin"), new Claim(ClaimTypes.Role, "Admin")], SchemeName);
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
+        }
+    }
+
     private async Task<HttpClient> StartAsync()
     {
         _host = await new HostBuilder()
@@ -52,6 +79,9 @@ public sealed class LoginErrorResponseTests : IAsyncDisposable
                     // Program.cs ile aynı kayıtlar; sözlük test çıktı klasöründen okunur.
                     services.AddAuthLocalization(o => o.FileProvider = new PhysicalFileProvider(AppContext.BaseDirectory));
                     services.AddAuthErrorHandling();
+                    services.AddAuthentication(AdminHeaderAuthHandler.SchemeName)
+                        .AddScheme<AuthenticationSchemeOptions, AdminHeaderAuthHandler>(AdminHeaderAuthHandler.SchemeName, _ => { });
+                    services.AddAuthorization();
 
                     services.AddControllers().AddApplicationPart(typeof(AuthController).Assembly);
                 });
@@ -63,6 +93,8 @@ public sealed class LoginErrorResponseTests : IAsyncDisposable
                     app.UseAuthErrorHandling();
                     app.UseRequestLocalization();
                     app.UseRouting();
+                    app.UseAuthentication();
+                    app.UseAuthorization();
                     app.UseEndpoints(endpoints => endpoints.MapControllers());
                 });
             })
@@ -317,7 +349,10 @@ public sealed class LoginErrorResponseTests : IAsyncDisposable
                 kind == KeycloakFailureKind.ProviderUnavailable ? 503 : 500, kind));
         var client = await StartAsync();
 
-        var response = await client.GetAsync("/api/auth/roles");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/roles");
+        request.Headers.Add(AdminHeader, "1");
+
+        var response = await client.SendAsync(request);
 
         response.StatusCode.ShouldBe(expected);
         var body = await response.Content.ReadAsStringAsync();

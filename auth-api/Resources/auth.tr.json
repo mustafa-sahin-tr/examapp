@@ -15,6 +15,13 @@
     },
     "completeProfile": {
       "roleAssignmentFailed": "Rol atanamadı, lütfen daha sonra tekrar deneyin."
+    },
+    "register": {
+      "accepted": "Kayıt talebiniz alındı. Hesabınız oluşturulduysa e-posta adresiniz ve şifrenizle giriş yapabilirsiniz.",
+      "invalidRole": "Rol yalnızca Student, Teacher veya Parent olabilir.",
+      "emailDomainNotAllowed": "Bu e-posta alanı kayıt için kullanılamaz.",
+      "invalidEmail": "Geçerli bir e-posta adresi girin.",
+      "failed": "Kayıt şu anda tamamlanamadı, lütfen daha sonra tekrar deneyin."
     }
   }
 }

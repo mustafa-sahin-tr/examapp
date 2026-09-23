@@ -11,6 +11,7 @@ using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Services.Video;
 using Hangfire;
 using Hangfire.PostgreSql;
+using MassTransit;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -198,6 +199,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.Practice.IPracticeSessionService
 builder.Services.AddScoped<ExamApp.Api.Services.LoginEvents.ILoginEventService, ExamApp.Api.Services.LoginEvents.LoginEventService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Leaderboards.ILeaderboardService, ExamApp.Api.Services.Leaderboards.LeaderboardService>(); // issue #193
+builder.Services.AddScoped<ExamApp.Api.Services.StudentPoints.IStudentPointsSyncService, ExamApp.Api.Services.StudentPoints.StudentPointsSyncService>(); // issue #225
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
@@ -260,6 +262,53 @@ builder.Services.AddHangfireServer(options =>
 {
     options.Queues = new[] { "default", "question-transfer" };
 });
+
+// RabbitMQ consumer'ları (issue #225): exam API'nin sahibi olduğu veriye yazan event'ler burada tüketilir.
+// İlk (ve şimdilik tek) consumer: BadgeService outbox'ından gelen StudentPointsChangedEvent → StudentPoints.
+// Kendi kuyruğu "exam-api" (BadgeService'in "badge-service" kuyruğundan bağımsız; dead-letter: exam-api_error).
+// RabbitMQ:Host yoksa bus kurulmaz (entegrasyon testleri / RabbitMQ'suz lokal çalıştırma) — başlangıçta uyarı loglanır.
+// Production'da RabbitMQ:Host zorunlu (consumer'sız sessizce açılmak liderliği fark edilmeden dondurur);
+// Host tanımlıysa Username/Password da zorunlu, "guest" fallback'i yok (fail-fast). EF design-time
+// ("dotnet ef", ortam varsayılanı Production) bu kontrolden muaf.
+var rabbitMqHost = builder.Configuration["RabbitMQ:Host"];
+var rabbitMqEnabled = !string.IsNullOrWhiteSpace(rabbitMqHost);
+if (!rabbitMqEnabled && builder.Environment.IsProduction() && !EF.IsDesignTime)
+{
+    throw new InvalidOperationException(
+        "RabbitMQ:Host tanımlı değil. Production'da exam API consumer'ları (StudentPointsChangedEvent, issue #225) zorunlu.");
+}
+builder.Services.AddOptions<ExamApp.Api.Services.StudentPoints.StudentPointsSyncOptions>()
+    .Bind(builder.Configuration.GetSection(ExamApp.Api.Services.StudentPoints.StudentPointsSyncOptions.SectionName))
+    .Validate(o => o.MaxTotalPoints > 0, "StudentPoints:Sync:MaxTotalPoints pozitif olmalı.")
+    .ValidateOnStart();
+if (rabbitMqEnabled)
+{
+    var rabbitMqUsername = builder.Configuration["RabbitMQ:Username"];
+    var rabbitMqPassword = builder.Configuration["RabbitMQ:Password"];
+    if (string.IsNullOrWhiteSpace(rabbitMqUsername) || string.IsNullOrWhiteSpace(rabbitMqPassword))
+    {
+        throw new InvalidOperationException("RabbitMQ:Host tanımlı ama RabbitMQ:Username/RabbitMQ:Password eksik.");
+    }
+
+    builder.Services.AddMassTransit(x =>
+    {
+        x.AddConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer, ExamApp.Api.Consumers.StudentPointsChangedConsumerDefinition>();
+
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(rabbitMqHost, "/", h =>
+            {
+                h.Username(rabbitMqUsername);
+                h.Password(rabbitMqPassword);
+            });
+
+            cfg.ReceiveEndpoint("exam-api", e =>
+            {
+                e.ConfigureConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer>(context);
+            });
+        });
+    });
+}
 
 // Question export/import
 builder.Services.AddScoped<IQuestionTransferService, QuestionTransferService>();
@@ -392,6 +441,12 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 
 app.MapControllers();
 app.MapDefaultEndpoints();
+
+if (!rabbitMqEnabled)
+{
+    app.Logger.LogWarning(
+        "RabbitMQ:Host tanımlı değil — exam API consumer'ları (StudentPointsChangedEvent, issue #225) çalışmıyor; liderlik puanı senkronlanmaz.");
+}
 
 // Safety net: hourly reconcile in case a per-change job was lost. No-ops
 // unless the classifier cache is actually stale vs. the live taxonomy.

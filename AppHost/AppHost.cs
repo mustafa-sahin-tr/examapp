@@ -355,6 +355,16 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     .WithEnvironment("Video__Jitsi__AppId", jitsiJwtAppId)
     .WithEnvironment("Video__Jitsi__AppSecret", jitsiJwtAppSecret)
     .WithEnvironment("Video__Jitsi__RoomSecret", jitsiRoomSecret)
+    // Issue #225: exam API hosts a MassTransit consumer (queue "exam-api",
+    // StudentPointsChangedEvent from BadgeService's outbox). Same RabbitMQ:*
+    // keys/wiring as BadgeService below; without RabbitMQ__Host the bus is
+    // not registered and a startup warning is logged.
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", rabbitUser)
+    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
     .WaitFor(postgres)
     .WaitFor(redis)
     .WaitFor(rabbitmq)
@@ -441,6 +451,29 @@ var identityOutboxPublisher = builder.AddProject<Projects.OutboxPublisherService
     .WithEnvironment("RabbitMQ__Password", rabbitPassword)
     .WaitFor(postgres)
     .WaitFor(rabbitmq);
+
+// ---------------------------------------------------------------------------
+// BadgeOutboxPublisher (Services/OutboxPublisher) — third instance of the
+// same generic OutboxPublisherService, pointed at badgeDb (issue #225):
+// BadgeService writes StudentPointsChangedEvent to its own OutboxMessages
+// table in the same SaveChanges as the points aggregate; this relays it to
+// RabbitMQ where exam-dotnet-api's "exam-api" endpoint consumes it.
+// ---------------------------------------------------------------------------
+
+var badgeOutboxPublisher = builder.AddProject<Projects.OutboxPublisherService>("badge-outbox-publisher")
+    .WithReference(badgeDb, connectionName: "DefaultConnection")
+    .WithReference(rabbitmq)
+    .WithEnvironment(context =>
+    {
+        context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
+    })
+    .WithEnvironment("RabbitMQ__Username", rabbitUser)
+    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    .WaitFor(postgres)
+    .WaitFor(rabbitmq)
+    // BadgeService applies its own migrations at startup (creates OutboxMessages);
+    // polling before that would just log "relation does not exist" every cycle.
+    .WaitFor(badgeService);
 
 // ---------------------------------------------------------------------------
 // auth-api — same-named ExamApp.Api.csproj as api/ExamApp.Api, disambiguated

@@ -22,11 +22,18 @@ services:
       - Video__Jitsi__AppId=${JITSI_JWT_APP_ID}
       - Video__Jitsi__AppSecret=${JITSI_JWT_APP_SECRET:?JITSI_JWT_APP_SECRET .env icinde tanimli olmali}
       - Video__Jitsi__RoomSecret=${JITSI_ROOM_SECRET:?JITSI_ROOM_SECRET .env icinde tanimli olmali}
+      # Issue #225: exam API artık RabbitMQ consumer'ı barındırıyor (kuyruk "exam-api":
+      # BadgeService'in StudentPointsChangedEvent'i → StudentPoints). Host yoksa bus kurulmaz.
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
     volumes:
       - ./api:/app
     depends_on:
       exam-pg-container:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     networks:
       - mynetwork
 
@@ -127,6 +134,38 @@ services:
       exam-pg-container:
         condition: service_healthy
       rabbitmq:
+        condition: service_started
+    networks:
+      - mynetwork
+
+  # Third instance of the same OutboxPublisher code (issue #225), pointed at
+  # BadgeService's "badge" DB: BadgeService writes StudentPointsChangedEvent to
+  # its own OutboxMessages table in the same SaveChanges as the aggregate, and
+  # this relay publishes it to RabbitMQ for exam-dotnet-api's "exam-api" queue.
+  badge-outbox-publisher:
+    container_name: badge-outbox-publisher
+    build:
+      context: ./dockerfiles/outboxpub
+      dockerfile: Dockerfile.outboxpub
+    ports:
+      - '8009:8009'
+      - '5083:5083'
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8009
+      - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - ./Services/OutboxPublisher:/app
+      - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
+    depends_on:
+      exam-pg-container:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      exam-badge-api:
         condition: service_started
     networks:
       - mynetwork

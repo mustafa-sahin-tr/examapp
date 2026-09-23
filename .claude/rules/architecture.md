@@ -10,3 +10,4 @@ alwaysApply: true
 - **auth-api + auth-ui**: Keycloak entegrasyonu; auth-ui Angular, Keycloak login akışını yönetir
 - **Python servisi**: YOLO tabanlı — yaprak test/soru bankası görsellerinden soru ve şık sınırlarını tespit edip crop eder
 - **Soru sınıflandırma**: öğretmen soru oluşturunca `QuestionCreatedEvent` → BadgeService `QuestionCreatedConsumer` → `GeminiQuestionClassifier` soru görselini Gemini'ye verip ders/konu/alt konu/zorluğu belirler ve exam API'ye geri yazar (`ClassificationSource=AI`). (Eskiden n8n yapıyordu; kaldırıldı.)
+- **İstisna — exam API consumer'ı**: `StudentPointsChangedEvent` (#225) BadgeService yerine exam API'de `StudentPointsChangedConsumer` ile tüketilir; yazılan `StudentPoints` tablosu exam DB'de ve servisler arası HTTP/DB paylaşımı yasak. Kural: event'in yazdığı veri hangi serviste ise consumer orada olur; diğer tüm outbox event'leri BadgeService'e eklenir. BadgeService'in kendi outbox'ı `badge-outbox-publisher` ile yayınlanır.

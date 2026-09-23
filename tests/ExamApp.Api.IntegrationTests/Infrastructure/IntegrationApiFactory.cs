@@ -38,6 +38,12 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("Keycloak__Host", "http://localhost");
         Environment.SetEnvironmentVariable("Keycloak__Realm", "exam-realm");
         Environment.SetEnvironmentVariable("Keycloak__ServiceClients__0", "exam-admin");
+        // Issue #238: Program.cs artık Development dışında (Testing dahil) boş/dev-only
+        // Keycloak:ClientSecret|AdminClientSecret ile açılışta fail-fast oluyor — bu testler
+        // gerçek Keycloak'a hiç gitmez (TestAuthHandler auth'u devre dışı bırakır), değer
+        // sadece açılış kontrolünü geçmek için.
+        Environment.SetEnvironmentVariable("Keycloak__ClientSecret", "test-only-client-secret");
+        Environment.SetEnvironmentVariable("Keycloak__AdminClientSecret", "test-only-admin-client-secret");
         Environment.SetEnvironmentVariable("Gemini__ApiKey", "");
         Environment.SetEnvironmentVariable("MinioConfig__BucketName", "test");
         Environment.SetEnvironmentVariable("MinioConfig__BaseUrl", "http://fake-minio");

@@ -59,10 +59,17 @@ secrets.json
 !.env.example
 
 ### Keycloak realm exports
-# Keep the directory mostly ignored because exports can contain secrets.
-# We explicitly allow the sanitized baseline realm used for bootstrapping.
+# Issue #238: deploy/keycloak/import/ is the PROD import path (mounted by
+# deploy/docker-compose.prod.yml and synced by .github/workflows/
+# azure-vm-acr-deploy.yml) — ops drop their own real realm export here on the
+# VM; it must never contain a committed file (previously realm-export.json —
+# with a public dev client secret and admin/admin — lived here and was picked
+# up by prod's --import-realm too). Fully ignored except the placeholder.
+# The dev-only baseline realm now lives in deploy/keycloak/dev-import/
+# (tracked normally, no ignore rule), used only by docker-compose.override.yml
+# and AppHost.cs.
 deploy/keycloak/import/*
-!deploy/keycloak/import/realm-export.json
+!deploy/keycloak/import/.gitkeep
 
 ### Appsettings (keep base appsettings.json tracked)
 **/appsettings.Development.json

@@ -55,7 +55,7 @@ export class AuthService {
     //   .set('client_id', 'exam-client')
     //   .set('username', credentials.email)
     //   .set('password', credentials.password)
-    //   .set('client_secret', 'yD3joUPCJesjf2Z4NnW1GJqc5wMGJtlg'); // sadece gerekiyorsa
+    //   .set('client_secret', '<KEYCLOAK_CLIENT_SECRET>'); // sadece gerekiyorsa — appsettings/.env'den, asla sabit değer
 
     // return this.http
     //   .post<TokenResponse>('http://localhost:8081/realms/exam-realm/protocol/openid-connect/token', body.toString(), {

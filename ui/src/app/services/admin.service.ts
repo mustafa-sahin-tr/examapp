@@ -18,6 +18,8 @@ import {
   TeacherRejectRequest,
 } from '../models/teacher-application.model';
 import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-teacher.model';
+import { AdminStudentListItem, AdminStudentListQuery } from '../models/admin-student.model';
+import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { Paged } from '../models/test-instance';
 
 interface UpsertSubject {
@@ -157,10 +159,20 @@ export class AdminService {
    * ikisi birden verilirse `unassigned` önceliklidir.
    */
   getTeachers(query: AdminTeacherListQuery): Observable<Paged<AdminTeacherListItem>> {
-    let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
-    if (query.unassigned) params = params.set('unassigned', 'true');
-    else if (query.schoolId != null) params = params.set('schoolId', query.schoolId);
-    return this.http.get<Paged<AdminTeacherListItem>>(`${this.baseUrl}/teachers`, { params });
+    return this.http.get<Paged<AdminTeacherListItem>>(`${this.baseUrl}/teachers`, {
+      params: schoolPagedParams(query),
+    });
+  }
+
+  // ---- öğrenci listesi (Issue #153) ----
+  /**
+   * Sayfalı öğrenci listesi. `schoolId` ve `unassigned` birlikte gönderilmez (backend 400);
+   * ikisi birden verilirse `unassigned` önceliklidir.
+   */
+  getStudents(query: AdminStudentListQuery): Observable<Paged<AdminStudentListItem>> {
+    return this.http.get<Paged<AdminStudentListItem>>(`${this.baseUrl}/students`, {
+      params: schoolPagedParams(query),
+    });
   }
 
   // ---- classifier cache ----
@@ -170,4 +182,12 @@ export class AdminService {
   refreshClassifierCache(): Observable<ClassifierCacheRefreshResult> {
     return this.http.post<ClassifierCacheRefreshResult>(`${this.baseUrl}/classifier-cache/refresh`, {});
   }
+}
+
+/** Okul filtreli admin listeleri için query param'ları; `unassigned` varsa `schoolId` gönderilmez. */
+function schoolPagedParams(query: AdminSchoolPagedQuery): HttpParams {
+  let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
+  if (query.unassigned) params = params.set('unassigned', 'true');
+  else if (query.schoolId != null) params = params.set('schoolId', query.schoolId);
+  return params;
 }

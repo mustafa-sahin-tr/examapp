@@ -12,9 +12,6 @@ namespace ExamApp.Api.Services.AdminUsers;
 
 public class AdminTeacherService : IAdminTeacherService
 {
-    public const int DefaultPageSize = 20;
-    public const int MaxPageSize = 100;
-
     private readonly AppDbContext _context;
     private readonly IAdminUserDirectory _userDirectory;
 
@@ -26,8 +23,7 @@ public class AdminTeacherService : IAdminTeacherService
 
     public async Task<Paged<AdminTeacherListItemDto>> ListAsync(int page, int pageSize, int? schoolId, bool unassigned, CancellationToken ct = default)
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
 
         var query = _context.Teachers.AsNoTracking();
         if (schoolId.HasValue)
@@ -37,24 +33,14 @@ public class AdminTeacherService : IAdminTeacherService
 
         var totalCount = await query.CountAsync(ct);
 
-        // (page - 1) * pageSize int'te taşabilir (page=int.MaxValue → negatif Skip → 500). long'da hesapla;
-        // toplamı aşan sayfa boş döner (DB'ye ikinci sorgu ve auth-api çağrısı yok). Aksi halde offset < totalCount ≤ int.MaxValue.
-        var offset = (long)(page - 1) * pageSize;
-        if (offset >= totalCount)
-        {
-            return new Paged<AdminTeacherListItemDto>
-            {
-                PageNumber = page,
-                PageSize = pageSize,
-                TotalCount = totalCount,
-                Items = new List<AdminTeacherListItemDto>()
-            };
-        }
+        // Toplamı aşan sayfa boş döner (taşma-güvenli; DB'ye ikinci sorgu ve auth-api çağrısı yok).
+        if (!AdminListPaging.TryGetOffset(page, pageSize, totalCount, out var offset))
+            return AdminListPaging.EmptyPage<AdminTeacherListItemDto>(page, pageSize, totalCount);
 
         // Filtre + sayfalama SQL'de; ad/e-posta/hesap durumu yalnızca bu sayfanın kullanıcıları için tek çağrıyla çözülür.
         var rows = await query
             .OrderBy(t => t.Id)
-            .Skip((int)offset)
+            .Skip(offset)
             .Take(pageSize)
             .Select(t => new
             {

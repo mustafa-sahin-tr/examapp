@@ -221,7 +221,8 @@
     "all": "Tümü",
     "unassigned": "Bağımsız / okulsuz",
     "loading": "Okullar yükleniyor...",
-    "loadFailed": "Okul listesi alınamadı."
+    "loadFailed": "Okul listesi alınamadı.",
+    "unassignedStudent": "Okulsuz"
   },
   "paginator": {
     "itemsPerPage": "Sayfa başına",
@@ -253,6 +254,29 @@
       "pending": "Beklemede",
       "approved": "Onaylı",
       "rejected": "Reddedildi"
+    },
+    "account": {
+      "active": "Aktif",
+      "inactive": "Pasif",
+      "unknown": "Bilinmiyor"
+    }
+  },
+  "students": {
+    "title": "Öğrenciler",
+    "subtitle": "Platformdaki tüm öğrenciler; okula göre filtrelenebilir.",
+    "refresh": "Yenile",
+    "loading": "Öğrenciler yükleniyor...",
+    "empty": "Öğrenci bulunamadı",
+    "emptyFilteredHint": "Farklı bir okul filtresi deneyin.",
+    "loadFailed": "Öğrenci listesi alınırken bir sorun oluştu.",
+    "forbidden": "Bu listeyi görüntüleme yetkiniz yok.",
+    "studentNumber": "No: {{number}}",
+    "columns": {
+      "fullName": "Ad Soyad",
+      "email": "E-posta",
+      "school": "Okul",
+      "grade": "Sınıf",
+      "accountStatus": "Hesap Durumu"
     },
     "account": {
       "active": "Aktif",

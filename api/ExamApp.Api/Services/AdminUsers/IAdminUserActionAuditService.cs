@@ -19,4 +19,15 @@ public interface IAdminUserActionAuditService
 
     /// <summary>Var olan satırın sonucunu günceller. Hata yutulmaz; çağıran best-effort ise kendisi yakalar.</summary>
     Task UpdateOutcomeAsync(long id, AdminUserActionOutcome outcome, CancellationToken ct = default);
+
+    /// <summary>
+    /// Yan etkisiz sonuçların (Denied / NotFound) izi — best-effort: hata yutulur ve loglanır, yanıtı değiştirmez.
+    /// İptal edilemez (istemci bağlantıyı kesse de iz yazılır).
+    /// </summary>
+    Task TryRecordAsync(AdminUserActionRecord record, AdminUserActionOutcome outcome);
+
+    /// <summary>
+    /// Requested satırının nihai sonucu — best-effort: güncellenemezse satır Requested kalır, hata loglanır. İptal edilemez.
+    /// </summary>
+    Task TryUpdateOutcomeAsync(long id, AdminUserActionOutcome outcome);
 }

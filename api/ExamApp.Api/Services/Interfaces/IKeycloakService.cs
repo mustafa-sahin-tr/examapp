@@ -49,4 +49,13 @@ public interface IKeycloakService
     /// Hata → <see cref="Helpers.KeycloakException"/>.
     /// </summary>
     Task LogoutUserSessionsAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// issue #155: hesabı etkinleştirir / devre dışı bırakır: <c>GET users/{id}</c> tam temsil → yalnızca <c>enabled</c>
+    /// değiştirilir (salt okunur <c>userProfileMetadata</c>/<c>access</c> düşürülür) → <c>PUT users/{id}</c>. Diğer alanlar
+    /// ve attribute'lar korunur; zaten aynı durumdaysa da başarılıdır (idempotent).
+    /// Devre dışı kullanıcıya Keycloak yeni token (login/refresh) vermez. Hata → <see cref="Helpers.KeycloakException"/>
+    /// (yalnızca durum kodu; kullanıcı yoksa 404).
+    /// </summary>
+    Task SetEnabledAsync(string keycloakUserId, bool enabled, CancellationToken ct = default);
 }

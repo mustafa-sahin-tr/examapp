@@ -36,7 +36,8 @@ public sealed class FakeUserDirectory
 /// İstenen id'lerin TAMAMI <see cref="FakeUserDirectory"/>'de kayıtlıysa oradan döner; aksi halde gerçek
 /// <c>AuthApiClient</c>'a devreder (test ortamında erişilemez → mevcut fail-soft davranış).
 /// </summary>
-public sealed class FakeUserDirectoryAuthApiClient(IAuthApiClient inner, FakeUserDirectory directory) : IAuthApiClient
+public sealed class FakeUserDirectoryAuthApiClient(
+    IAuthApiClient inner, FakeUserDirectory directory, FakeKeycloakAccounts? accounts = null) : IAuthApiClient
 {
     public Task<UserProfileDto> GetUserProfileAsync() => inner.GetUserProfileAsync();
 
@@ -55,6 +56,20 @@ public sealed class FakeUserDirectoryAuthApiClient(IAuthApiClient inner, FakeUse
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
     {
         var ids = userIds.ToList();
-        return directory.TryResolveAll(ids, out var users) ? Task.FromResult(users) : inner.GetUsersWithAccountStatusByIdsAsync(ids, ct);
+        if (!directory.TryResolveAll(ids, out var users))
+            return inner.GetUsersWithAccountStatusByIdsAsync(ids, ct);
+        if (accounts is null)
+            return Task.FromResult(users);
+
+        // issue #155: gerçek auth-api hesap durumunu Keycloak'tan canlı okur; burada sahte Keycloak hesabının durumu yansıtılır.
+        IReadOnlyList<UserLookupResultDto> overlaid = users.Select(u =>
+            u.KeycloakId is { } sub && accounts.Enabled.TryGetValue(sub, out var enabled)
+                ? new UserLookupResultDto
+                {
+                    Id = u.Id, KeycloakId = u.KeycloakId, FullName = u.FullName, Email = u.Email,
+                    Avatar = u.Avatar, Role = u.Role, Enabled = enabled
+                }
+                : u).ToList();
+        return Task.FromResult(overlaid);
     }
 }

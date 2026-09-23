@@ -21,6 +21,7 @@ import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-tea
 import { AdminStudentListItem, AdminStudentListQuery } from '../models/admin-student.model';
 import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
+import { AdminAccountStatusResponse, AdminAccountTarget } from '../models/admin-account-status.model';
 import { Paged } from '../models/test-instance';
 
 interface UpsertSubject {
@@ -187,6 +188,16 @@ export class AdminService {
   resetPassword(target: AdminPasswordResetTarget, id: number): Observable<AdminPasswordResetResponse> {
     const segment = target === 'teacher' ? 'teachers' : 'students';
     return this.http.post<AdminPasswordResetResponse>(`${this.baseUrl}/${segment}/${id}/reset-password`, null);
+  }
+
+  /**
+   * Issue #155 — hesabı etkinleştirir / devre dışı bırakır (Keycloak). Devre dışı bırakmada kullanıcının tüm açık
+   * oturumları da kapatılır. Yanıt: yeni durum `{ enabled }`. Hatalar `{ message }`: 403 (kendisi / yönetici-servis
+   * hesabı), 404, 429 (`Retry-After`), 502 (kimlik sunucusu; hesap kapanıp oturumlar kapatılamadıysa da 502).
+   */
+  setAccountStatus(target: AdminAccountTarget, id: number, enabled: boolean): Observable<AdminAccountStatusResponse> {
+    const segment = target === 'teacher' ? 'teachers' : 'students';
+    return this.http.patch<AdminAccountStatusResponse>(`${this.baseUrl}/${segment}/${id}/account-status`, { enabled });
   }
 
   // ---- classifier cache ----

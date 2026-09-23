@@ -67,7 +67,7 @@ public class AdminPasswordResetServiceTests : IDisposable
                 AdminUserActionOutcome.Requested, Arg.Any<CancellationToken>());
             _keycloak.ResetPasswordAsync(TargetSub, CancellationToken.None);
             _keycloak.LogoutUserSessionsAsync(TargetSub, CancellationToken.None);
-            audit.UpdateOutcomeAsync(77L, AdminUserActionOutcome.Succeeded, Arg.Any<CancellationToken>());
+            audit.TryUpdateOutcomeAsync(77L, AdminUserActionOutcome.Succeeded);
         });
     }
 
@@ -120,14 +120,17 @@ public class AdminPasswordResetServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Rejection_audit_is_best_effort()
+    public async Task Rejection_audit_goes_through_best_effort_TryRecord()
     {
         Target(AdminAccountTargetStatus.ForbiddenProtectedRole);
         var audit = Substitute.For<IAdminUserActionAuditService>();
-        audit.RecordAsync(Arg.Any<AdminUserActionRecord>(), Arg.Any<AdminUserActionOutcome>(), Arg.Any<CancellationToken>())
-            .Returns<long>(_ => throw new DbUpdateException("db down"));
 
         (await RunAsync(audit)).Status.ShouldBe(AdminPasswordResetStatus.ForbiddenProtectedRole);
+
+        await audit.Received(1).TryRecordAsync(
+            new AdminUserActionRecord(ActorSub, AdminUserAction.PasswordReset, AdminUserTargetType.Teacher, TargetId),
+            AdminUserActionOutcome.Denied);
+        await audit.DidNotReceiveWithAnyArgs().RecordAsync(default!, default, default);
     }
 
     [Fact]
@@ -183,15 +186,19 @@ public class AdminPasswordResetServiceTests : IDisposable
     [Fact]
     public async Task Outcome_update_failure_does_not_change_the_response()
     {
-        var audit = Substitute.For<IAdminUserActionAuditService>();
-        audit.RecordAsync(Arg.Any<AdminUserActionRecord>(), Arg.Any<AdminUserActionOutcome>(), Arg.Any<CancellationToken>()).Returns(1L);
-        audit.UpdateOutcomeAsync(Arg.Any<long>(), Arg.Any<AdminUserActionOutcome>(), Arg.Any<CancellationToken>())
-            .Returns(_ => throw new DbUpdateException("db down"));
+        // Gerçek audit servisi; nihai sonuç güncellemesi başarısız olsun (satır arada silinir) → yanıt değişmez.
+        await using var ctx = _db.NewContext();
+        var audit = new AdminUserActionAuditService(ctx);
+        _keycloak.ResetPasswordAsync(TargetSub, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            await using var del = _db.NewContext();
+            await del.AdminUserActionLogs.ExecuteDeleteAsync();
+            return Issued;
+        });
 
         var result = await RunAsync(audit);
 
         result.Status.ShouldBe(AdminPasswordResetStatus.Success);
-        _logger.Entries.ShouldContain(e => e.Contains("Audit sonucu güncellenemedi"));
-        _logger.Entries.ShouldAllBe(e => !e.Contains(Issued));
+        (await RowsAsync()).ShouldBeEmpty();
     }
 }

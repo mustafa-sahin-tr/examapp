@@ -119,6 +119,64 @@ public class KeycloakServicePasswordResetTests
         (await Should.ThrowAsync<KeycloakException>(() => Service(http).LogoutUserSessionsAsync(Sub))).StatusCode.ShouldBe(500);
     }
 
+    // ---- issue #155: SetEnabledAsync (GET tam temsil → enabled → PUT) ----
+
+    private const string UserJson =
+        "{\"id\":\"" + Sub + "\",\"username\":\"ayse\",\"email\":\"ayse@example.test\",\"firstName\":\"Ayşe\"," +
+        "\"lastName\":\"Yılmaz\",\"enabled\":true,\"emailVerified\":true,\"attributes\":{\"school_id\":[\"5\"]}," +
+        "\"userProfileMetadata\":{\"attributes\":[]},\"access\":{\"manage\":true}}";
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SetEnabled_gets_full_representation_and_puts_it_back_with_only_enabled_changed(bool enabled)
+    {
+        var http = Stub(r => r.Method == HttpMethod.Get ? Ok(UserJson) : new HttpResponseMessage(HttpStatusCode.NoContent));
+
+        await Service(http).SetEnabledAsync(Sub, enabled);
+
+        var get = http.Requests.Single(r => r.Method == HttpMethod.Get);
+        get.RequestUri!.ToString().ShouldBe($"{UsersUrl}/{Sub}");
+        var put = http.Requests.Single(r => r.Method == HttpMethod.Put);
+        put.RequestUri!.ToString().ShouldBe($"{UsersUrl}/{Sub}");
+        put.Headers.Authorization!.Scheme.ShouldBe("Bearer");
+
+        using var body = JsonDocument.Parse(_requestBodies[http.Requests.IndexOf(put)]);
+        var root = body.RootElement;
+        root.GetProperty("enabled").GetBoolean().ShouldBe(enabled);
+        root.GetProperty("email").GetString().ShouldBe("ayse@example.test");
+        root.GetProperty("firstName").GetString().ShouldBe("Ayşe");
+        root.GetProperty("lastName").GetString().ShouldBe("Yılmaz");
+        root.GetProperty("emailVerified").GetBoolean().ShouldBeTrue();
+        root.GetProperty("attributes").GetProperty("school_id")[0].GetString().ShouldBe("5");
+        root.TryGetProperty("userProfileMetadata", out _).ShouldBeFalse();
+        root.TryGetProperty("access", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SetEnabled_user_missing_on_get_throws_404_and_does_not_put()
+    {
+        var http = Stub(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+
+        (await Should.ThrowAsync<KeycloakException>(() => Service(http).SetEnabledAsync(Sub, false))).StatusCode.ShouldBe(404);
+        http.Requests.ShouldNotContain(r => r.Method == HttpMethod.Put);
+    }
+
+    [Fact]
+    public async Task SetEnabled_put_failure_throws_status_only_without_body()
+    {
+        var http = Stub(r => r.Method == HttpMethod.Get
+            ? Ok(UserJson)
+            : new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent("{\"echo\":\"SENSITIVE-BODY\"}") });
+        var logger = new CapturingLogger<KeycloakService>();
+
+        var ex = await Should.ThrowAsync<KeycloakException>(() => Service(http, logger).SetEnabledAsync(Sub, false));
+
+        ex.StatusCode.ShouldBe(400);
+        ex.Message.ShouldNotContain("SENSITIVE-BODY");
+        logger.Entries.ShouldAllBe(e => !e.Contains("SENSITIVE-BODY"));
+    }
+
     [Fact]
     public async Task GetUserRoles_reads_realm_composite_and_realm_management_composite_via_service_account_uuid()
     {

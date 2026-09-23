@@ -97,6 +97,25 @@
             >
               <mat-icon>lock_reset</mat-icon>
             </button>
+            @if (row.accountStatus !== 'unknown') {
+              @let enable = row.accountStatus === 'inactive';
+              <button
+                mat-icon-button
+                type="button"
+                class="al__status-action"
+                data-testid="account-status"
+                [class.al__status-action--enable]="enable"
+                [matTooltip]="(enable ? 'admin.accountStatus.enableAction' : 'admin.accountStatus.disableAction') | transloco"
+                [attr.aria-label]="
+                  (enable ? 'admin.accountStatus.enableActionFor' : 'admin.accountStatus.disableActionFor')
+                    | transloco: { name: rowDisplayName(row) }
+                "
+                [disabled]="statusDialogOpen()"
+                (click)="toggleAccountStatus(row)"
+              >
+                <mat-icon>{{ enable ? 'check_circle' : 'block' }}</mat-icon>
+              </button>
+            }
           </td>
         </ng-container>
 

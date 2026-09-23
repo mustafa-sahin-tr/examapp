@@ -14,9 +14,20 @@ public class LoginEvent : BaseEntity
 {
     public int Id { get; set; }
 
-    /// <summary>Keycloak <c>sub</c> claim'i.</summary>
+    /// <summary>
+    /// Keycloak <c>sub</c> claim'i. Başarılı girişte zorunlu; başarısız denemede henüz doğrulanmış bir
+    /// kimlik olmadığından <c>null</c> (issue #100).
+    /// </summary>
     [MaxLength(64)]
-    public string KeycloakUserId { get; set; } = string.Empty;
+    public string? KeycloakUserId { get; set; }
+
+    /// <summary>
+    /// Başarısız denemede login formuna girilen, DOĞRULANMAMIŞ tanımlayıcı (e-posta) — PII (issue #100).
+    /// Gerçek kullanıcı kimliği DEĞİLDİR (başkasının e-postası da yazılmış olabilir). Hiçbir okuma
+    /// ucunun DTO'suna eklenmez; ileride gösterilecekse rol-gate + encode + erişim denetimi şart.
+    /// </summary>
+    [MaxLength(256)]
+    public string? AttemptedIdentifier { get; set; }
 
     /// <summary>Login anındaki realm rolü (Student / Teacher / Admin ...).</summary>
     [MaxLength(50)]

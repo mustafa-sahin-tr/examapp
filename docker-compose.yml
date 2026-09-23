@@ -49,12 +49,18 @@ services:
     build:
       context: ./dockerfiles/auth-api
       dockerfile: Dockerfile.auth-api
+    # Issue #100: host portu yalnızca 127.0.0.1'e publish edilir — LAN'dan gateway'i atlayıp
+    # sahte X-Forwarded-For ile IP rate limit'ini delmek mümkün olmasın. Container içi erişim
+    # (gateway/exam-api/badge → auth-api:5079) etkilenmez. Eski '9005:8005' HTTPS mapping'i
+    # kaldırıldı: Program.cs ConfigureKestrel ile yalnızca Kestrel:Port'u (5079) dinliyor,
+    # 8005'te hiçbir şey yoktu.
     ports:
-      - '9005:8005'
-      - '6079:5079'
+      - '127.0.0.1:6079:5079'
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8005
+      # XFF yalnızca gateway'den gelirse uygulansın: ocelot-gateway'e sabit IP verildiğinde
+      # (aşağıdaki networks/ipam ve ocelot-gateway ipv4_address örneği) açın:
+      # - ForwardedHeaders__KnownProxies__0=172.28.0.10
       # Issue #238: appsettings.json artık Postgres/MinIO/Keycloak secret'larını
       # düz metin tutmuyor — hepsi .env'den gelir.
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
@@ -606,3 +612,12 @@ services:
 networks:
   mynetwork:
     driver: bridge
+    # Issue #100: auth-api'nin ForwardedHeaders:KnownProxies'i gateway IP'siyle pinlenebilsin diye
+    # ağa sabit subnet, ocelot-gateway'e sabit IP verilebilir. Mevcut ağın yeniden yaratılmasını
+    # gerektirdiği (docker-compose down) ve yerel ağlarla çakışabileceği için varsayılan kapalı.
+    # Açarken: aşağıdaki ipam bloğu + ocelot-gateway'de
+    #   networks: { mynetwork: { ipv4_address: 172.28.0.10 } }
+    # + auth-api'deki ForwardedHeaders__KnownProxies__0 satırı.
+    # ipam:
+    #   config:
+    #     - subnet: 172.28.0.0/16

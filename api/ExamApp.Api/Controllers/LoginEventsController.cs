@@ -39,11 +39,6 @@ public class LoginEventsController : BaseController
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] LoginEventCreateDto request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.KeycloakUserId))
-        {
-            return BadRequest(new { message = _localizer["loginEvents.keycloakUserIdRequired"].Value });
-        }
-
         if (string.IsNullOrWhiteSpace(request.Role))
         {
             return BadRequest(new { message = _localizer["loginEvents.roleRequired"].Value });
@@ -54,9 +49,14 @@ public class LoginEventsController : BaseController
             return BadRequest(new { message = _localizer["loginEvents.occurredAtUtcRequired"].Value });
         }
 
+        // KeycloakUserId kuralı (Success=true ise zorunlu, issue #100) serviste.
         var result = await _loginEventService.RecordAsync(request, ct);
+        if (result.ErrorKey is not null)
+        {
+            return BadRequest(new { message = _localizer[result.ErrorKey].Value });
+        }
 
         // Henüz GET ucu yok (issue #6); CreatedAtAction yerine Location'ı elle veriyoruz.
-        return Created($"/api/login-events/{result.Id}", result);
+        return Created($"/api/login-events/{result.Created!.Id}", result.Created);
     }
 }

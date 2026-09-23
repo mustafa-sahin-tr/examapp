@@ -1,6 +1,6 @@
 {
   "loginEvents": {
-    "keycloakUserIdRequired": "keycloakUserId zorunludur.",
+    "keycloakUserIdRequired": "Başarılı giriş için keycloakUserId zorunludur.",
     "roleRequired": "role zorunludur.",
     "occurredAtUtcRequired": "occurredAtUtc zorunludur."
   }

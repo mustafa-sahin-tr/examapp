@@ -77,9 +77,11 @@ public class LoginAttemptedConsumer : IConsumer<LoginAttemptedEvent>
         var client = _httpClientFactory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
+        // Issue #100: başarısız denemede KeycloakUserId null, girilen e-posta AttemptedIdentifier'da.
         var body = new
         {
             keycloakUserId = e.KeycloakUserId,
+            attemptedIdentifier = e.AttemptedIdentifier,
             role = e.Role,
             occurredAtUtc = e.OccurredAtUtc,
             success = e.Success
@@ -91,15 +93,19 @@ public class LoginAttemptedConsumer : IConsumer<LoginAttemptedEvent>
         if (!response.IsSuccessStatusCode)
         {
             var payload = await response.Content.ReadAsStringAsync(ct);
+            // Request gövdesi mesaja konmaz: AttemptedIdentifier (PII) dead-letter kuyruğundaki
+            // exception mesajına/loglara sızmasın (issue #100).
             throw new InvalidOperationException(
                 $"login-events yazımı başarısız: {(int)response.StatusCode} {response.ReasonPhrase}. " +
-                $"Request: {bodyJson}. Response: {Truncate(payload)}");
+                $"EventId: {e.EventId}. Response: {Truncate(payload)}");
         }
 
         _db.ProcessedLoginAttempts.Add(new ProcessedLoginAttempt
         {
             EventId = e.EventId,
-            KeycloakUserId = e.KeycloakUserId,
+            // Ledger yalnızca dedup içindir; başarısız denemede sub yok → boş. AttemptedIdentifier
+            // (PII) burada bilinçli olarak SAKLANMAZ (issue #100).
+            KeycloakUserId = e.KeycloakUserId ?? string.Empty,
             OccurredAtUtc = e.OccurredAtUtc,
             Success = e.Success
         });

@@ -9,6 +9,9 @@
     "students": {
       "filterConflict": "schoolId and unassigned cannot be used together."
     },
+    "userList": {
+      "rateLimited": "Too many list requests in a short time. Please wait a moment and try again."
+    },
 
     "dashboard": {
       "invalidDays": "days must be between 1 and 365."

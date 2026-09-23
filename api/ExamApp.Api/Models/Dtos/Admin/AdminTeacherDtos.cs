@@ -15,7 +15,10 @@ public class AdminTeacherListItemDto
     /// <summary>auth-api'den çözümlenir; erişilemezse boş string.</summary>
     public string FullName { get; set; } = string.Empty;
 
-    /// <summary>auth-api'den çözümlenir; erişilemezse boş string.</summary>
+    /// <summary>
+    /// MASKELİ e-posta (issue #246): <c>a***@okul.k12.tr</c> — bkz. <see cref="ExamApp.Api.Helpers.EmailMask"/>.
+    /// auth-api'den çözümlenemezse boş string. Tam adres bu listede hiç dönülmez.
+    /// </summary>
     public string Email { get; set; } = string.Empty;
 
     /// <summary>Bağlı okul; bağımsız/okulsuz öğretmen için null.</summary>

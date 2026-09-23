@@ -34,7 +34,7 @@ describe('AdminTeachersComponent', () => {
       id: 12,
       userId: 1042,
       fullName: 'Ayşe Yılmaz',
-      email: 'ayse@okul.k12.tr',
+      email: 'a***@okul.k12.tr', // issue #246: backend listede maskeli döner
       schoolId: 5,
       schoolName: 'Ankara Lisesi',
       isIndependentTutor: false,
@@ -184,7 +184,7 @@ describe('AdminTeachersComponent', () => {
       adminTr.teachers.columns.accountStatus,
     ]);
     expect(cellTexts('fullName')).toEqual(['Ayşe Yılmaz']);
-    expect(cellTexts('email')).toEqual(['ayse@okul.k12.tr']);
+    expect(cellTexts('email')).toEqual(['a***@okul.k12.tr']); // maskeli değer olduğu gibi gösterilir
     expect(cellTexts('school')).toEqual(['Ankara Lisesi']);
     expect(cellTexts('approvalStatus')).toEqual(['Onaylı']);
     expect(cellTexts('accountStatus')).toEqual(['Aktif']);
@@ -220,6 +220,16 @@ describe('AdminTeachersComponent', () => {
     expect(text()).toContain('Öğretmen bulunamadı');
     expect(fixture.nativeElement.querySelector('table')).toBeNull();
     expect(fixture.nativeElement.querySelector('mat-paginator')).toBeNull();
+  });
+
+  it('render_RateLimited_ShowsRateLimitMessage', () => {
+    configure();
+    adminService.getTeachers.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429 })));
+    create();
+
+    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(adminTr.teachers.rateLimited);
   });
 
   it('render_RequestFails_ShowsErrorWithRetry', () => {

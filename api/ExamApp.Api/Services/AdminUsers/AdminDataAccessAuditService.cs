@@ -42,4 +42,5 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
         // İstemci bağlantıyı kesse bile kayıt tamamlansın: veri sorgusu zaten yapıldı, iz kaybolmamalı.
         await _context.SaveChangesAsync(CancellationToken.None);
     }
+
 }

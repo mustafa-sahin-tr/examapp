@@ -31,7 +31,7 @@ public class AdminControllerDashboardTrendsTests
     private readonly IAdminTeacherService _adminTeachers = Substitute.For<IAdminTeacherService>();
     private readonly IAdminStudentService _adminStudents = Substitute.For<IAdminStudentService>();
 
-    private AdminController NewController() => new(_taxonomy, _classifierCache, _schools, _dashboard, _locations, _teacherApprovals, _adminTeachers, _adminStudents, Substitute.For<IAdminDataAccessAuditService>());
+    private AdminController NewController() => new(_taxonomy, _classifierCache, _schools, _dashboard, _locations, _teacherApprovals, _adminTeachers, _adminStudents, Substitute.For<IAdminDataAccessAuditService>(), Substitute.For<IAdminPasswordResetService>());
 
     [Fact]
     public void AdminController_ClassLevelAuthorizeAttribute_RequiresAdminRole()

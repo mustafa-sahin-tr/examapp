@@ -16,3 +16,13 @@ public sealed record AdminListAccessRecord(
     int PageSize,
     int ReturnedCount,
     int TotalCount);
+
+/// <summary>
+/// Admin hesap aksiyonunun audit girdisi (issue #156). HTTP'ye açılmaz. Sır/PII alanı yok ve eklenmemeli
+/// (geçici şifre, e-posta, ad buraya KONMAZ).
+/// </summary>
+public sealed record AdminUserActionRecord(
+    string ActorKeycloakId,
+    AdminUserAction Action,
+    AdminUserTargetType TargetType,
+    int TargetId);

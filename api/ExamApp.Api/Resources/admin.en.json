@@ -9,6 +9,16 @@
     "students": {
       "filterConflict": "schoolId and unassigned cannot be used together."
     },
+    "passwordReset": {
+      "teacherNotFound": "Teacher not found.",
+      "studentNotFound": "Student not found.",
+      "accountNotFound": "No sign-in account is linked to this user.",
+      "self": "You cannot reset your own password from this screen.",
+      "protectedRole": "Passwords of administrator or service accounts cannot be reset from this screen.",
+      "upstreamFailed": "The password could not be reset right now. Please try again shortly.",
+      "sessionRevokeFailed": "The password was changed but the user's open sessions could not be closed; the new password was not shown. Please try again.",
+      "rateLimited": "Too many password reset requests in a short time. Please wait a moment and try again."
+    },
     "userList": {
       "rateLimited": "Too many list requests in a short time. Please wait a moment and try again."
     },

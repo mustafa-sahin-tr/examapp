@@ -46,6 +46,12 @@ public sealed class FakeUserDirectoryAuthApiClient(IAuthApiClient inner, FakeUse
         return directory.TryResolveAll(ids, out var users) ? Task.FromResult(users) : inner.GetUsersByIdsAsync(ids, ct);
     }
 
+    public Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsOrThrowAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+    {
+        var ids = userIds.ToList();
+        return directory.TryResolveAll(ids, out var users) ? Task.FromResult(users) : inner.GetUsersByIdsOrThrowAsync(ids, ct);
+    }
+
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
     {
         var ids = userIds.ToList();

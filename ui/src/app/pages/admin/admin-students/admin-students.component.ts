@@ -1,10 +1,12 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
@@ -14,6 +16,7 @@ import { SchoolFilterValue } from '../../../shared/components/school-filter/scho
 import { PAGE_SIZE_OPTIONS } from '../../../shared/utils/paging.util';
 import { provideTranslatedPaginatorIntl } from '../../../shared/utils/paginator-intl.util';
 import { SchoolPagedList, adminListErrorMessage } from '../../../shared/utils/school-paged-list';
+import { openAdminResetPasswordDialog } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -47,11 +50,13 @@ export interface AdminStudentRow {
   standalone: true,
   imports: [
     MatButtonModule,
+    MatDialogModule,
     MatIconModule,
     MatPaginatorModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatTableModule,
+    MatTooltipModule,
     TranslocoDirective,
     TranslocoPipe,
     SchoolFilterComponent,
@@ -66,8 +71,9 @@ export interface AdminStudentRow {
 export class AdminStudentsComponent {
   private readonly adminService = inject(AdminService);
   private readonly transloco = inject(TranslocoService);
+  private readonly dialog = inject(MatDialog);
 
-  readonly displayedColumns = ['fullName', 'email', 'school', 'grade', 'accountStatus'];
+  readonly displayedColumns = ['fullName', 'email', 'school', 'grade', 'accountStatus', 'actions'];
   readonly pageSizeOptions = PAGE_SIZE_OPTIONS;
 
   // SIRA BAĞIMLI: `createList()` alan başlatıcısı `adminService` ve `transloco` alanlarından SONRA,
@@ -101,6 +107,32 @@ export class AdminStudentsComponent {
 
   onPage(event: PageEvent): void {
     this.list.onPage(event);
+  }
+
+  /** Şifre sıfırlama dialog'u açıkken ikinci bir dialog açılmaz (çift tıklama). */
+  readonly resetDialogOpen = signal(false);
+
+  /**
+   * Issue #156 — onay + istek + geçici şifre gösterimi dialog'un içindedir; şifre bu komponente hiç gelmez.
+   */
+  resetPassword(row: AdminStudentRow): void {
+    if (this.resetDialogOpen()) return;
+    this.resetDialogOpen.set(true);
+    openAdminResetPasswordDialog(this.dialog, {
+      target: 'student',
+      id: row.id,
+      displayName: this.rowDisplayName(row),
+    })
+      .afterClosed()
+      .subscribe(() => this.resetDialogOpen.set(false));
+  }
+
+  rowDisplayName(row: AdminStudentRow): string {
+    return (
+      row.fullName ??
+      row.email ??
+      this.transloco.translate<string>(`${ADMIN_SCOPE}.passwordReset.unnamed`, { id: row.id })
+    );
   }
 
   private createList(): SchoolPagedList<AdminStudentListItem> {

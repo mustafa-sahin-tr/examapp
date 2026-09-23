@@ -252,4 +252,30 @@ public class AuthApiClientTests
         handler.LastRequest.Headers.Authorization!.ToString().ShouldBe(UserBearer);
         await tokens.DidNotReceive().GetAccessTokenAsync(Arg.Any<CancellationToken>());
     }
+
+    // ---- issue #156: fail-soft olmayan varyant ----
+
+    [Fact]
+    public async Task GetUsersByIdsOrThrow_throws_instead_of_empty_when_service_token_cannot_be_obtained()
+    {
+        var tokens = Substitute.For<IServiceTokenProvider>();
+        tokens.GetAccessTokenAsync(Arg.Any<CancellationToken>())
+            .Returns<string>(_ => throw new InvalidOperationException("Keycloak client credentials missing"));
+        var (client, handler, _, _) = Build(_ => throw new InvalidOperationException("should not be called"), tokenProvider: tokens);
+
+        var ex = await Should.ThrowAsync<HttpRequestException>(() => client.GetUsersByIdsOrThrowAsync([1]));
+
+        ex.InnerException.ShouldBeOfType<InvalidOperationException>();
+        handler.Calls.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetUsersByIdsOrThrow_returns_users_like_the_fail_soft_variant()
+    {
+        var (client, _, _, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, LookupBody((1, "A")))));
+
+        var users = await client.GetUsersByIdsOrThrowAsync([1]);
+
+        users.Single().KeycloakId.ShouldBe("kc-1");
+    }
 }

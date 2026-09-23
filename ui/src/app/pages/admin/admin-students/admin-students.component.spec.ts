@@ -6,6 +6,9 @@ import { ActivatedRoute, ParamMap, Params, Router, convertToParamMap, provideRou
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatPaginator } from '@angular/material/paginator';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { OverlayContainer } from '@angular/cdk/overlay';
+import { AdminResetPasswordDialogComponent } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 
 import { AdminStudentsComponent } from './admin-students.component';
 import { AdminService } from '../../../services/admin.service';
@@ -57,7 +60,7 @@ describe('AdminStudentsComponent', () => {
 
   /** TestBed'i kurar; komponent `create()` ile oluşturulur (constructor URL aboneliğiyle hemen istek atar). */
   function configure(initialParams: Params = {}): void {
-    adminService = jasmine.createSpyObj<AdminService>('AdminService', ['getStudents', 'getSchools']);
+    adminService = jasmine.createSpyObj<AdminService>('AdminService', ['getStudents', 'getSchools', 'resetPassword']);
     adminService.getSchools.and.returnValue(of(schools));
     adminService.getStudents.and.returnValue(of(paged([student()], 45)));
     queryParams$ = new BehaviorSubject<ParamMap>(convertToParamMap(initialParams));
@@ -189,6 +192,7 @@ describe('AdminStudentsComponent', () => {
       adminTr.students.columns.school,
       adminTr.students.columns.grade,
       adminTr.students.columns.accountStatus,
+      adminTr.students.columns.actions, // görsel olarak gizli başlık (#156)
     ]);
     expect(cellTexts('fullName')[0]).toContain('Ali Veli');
     expect(cellTexts('fullName')[0]).toContain('No: 1234');
@@ -443,5 +447,69 @@ describe('AdminStudentsComponent', () => {
     const filter = fixture.debugElement.query(By.directive(SchoolFilterComponent))
       .componentInstance as SchoolFilterComponent;
     expect(filter.unassignedLabel()).toBe('unassignedStudent');
+  });
+
+  // ── Şifre sıfırlama (issue #156) ─────────────────────────────────────────
+
+  function overlay(): HTMLElement {
+    return TestBed.inject(OverlayContainer).getContainerElement();
+  }
+
+  function resetButtons(): HTMLButtonElement[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="reset-password"]'));
+  }
+
+  it('resetPassword_RowAction_OpensConfirmDialogWithRowIdentity', async () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    expect(resetButtons().length).toBe(1);
+    resetButtons()[0].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const config = openSpy.calls.mostRecent().args[1];
+    expect(openSpy.calls.mostRecent().args[0]).toBe(AdminResetPasswordDialogComponent);
+    expect(config?.data).toEqual({ target: 'student', id: 7, displayName: 'Ali Veli' });
+    expect(config?.disableClose).toBeTrue();
+    expect(overlay().textContent).toContain(adminTr.passwordReset.confirmTitle);
+    expect(overlay().textContent).toContain('Ali Veli');
+    // Onay verilmeden istek atılmaz.
+    expect(adminService.resetPassword).not.toHaveBeenCalled();
+  });
+
+  it('resetPassword_CancelInDialog_SendsNoRequestAndReenablesAction', async () => {
+    configure();
+    create();
+
+    resetButtons()[0].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.resetDialogOpen()).toBeTrue();
+
+    (overlay().querySelector('button[data-testid="cancel"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(adminService.resetPassword).not.toHaveBeenCalled();
+    expect(component.resetDialogOpen()).toBeFalse();
+    expect(resetButtons()[0].disabled).toBeFalse();
+  });
+
+  it('resetPassword_DoubleClick_OpensSingleDialog', () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    const row = component.rows()[0];
+    component.resetPassword(row);
+    component.resetPassword(row);
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
   });
 });

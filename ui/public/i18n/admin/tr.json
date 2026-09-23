@@ -262,7 +262,8 @@
       "email": "E-posta",
       "school": "Okul",
       "approvalStatus": "Onay Durumu",
-      "accountStatus": "Hesap Durumu"
+      "accountStatus": "Hesap Durumu",
+      "actions": "İşlemler"
     },
     "approval": {
       "pending": "Beklemede",
@@ -291,12 +292,41 @@
       "email": "E-posta",
       "school": "Okul",
       "grade": "Sınıf",
-      "accountStatus": "Hesap Durumu"
+      "accountStatus": "Hesap Durumu",
+      "actions": "İşlemler"
     },
     "account": {
       "active": "Aktif",
       "inactive": "Pasif",
       "unknown": "Bilinmiyor"
+    }
+  },
+  "passwordReset": {
+    "action": "Şifreyi sıfırla",
+    "actionFor": "{{name}} için şifreyi sıfırla",
+    "unnamed": "Kullanıcı #{{id}}",
+    "confirmTitle": "Şifre sıfırlansın mı?",
+    "confirmIntro": "{{name}} kullanıcısının şifresi geçici bir şifreyle değiştirilecek.",
+    "confirmSessions": "Kullanıcının açık olan tüm oturumları kapatılacak.",
+    "confirmTemporary": "Kullanıcı ilk girişte şifresini değiştirmek zorunda kalacak.",
+    "confirm": "Şifreyi sıfırla",
+    "retry": "Tekrar dene",
+    "submitting": "Sıfırlanıyor...",
+    "cancel": "İptal",
+    "resultTitle": "Geçici şifre oluşturuldu",
+    "passwordLabel": "Geçici şifre",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı",
+    "copyFailed": "Kopyalanamadı; şifreyi seçip elle kopyalayın.",
+    "onceWarning": "Bu şifre bir daha gösterilmeyecek. Pencereyi kapatmadan önce kopyalayıp kullanıcıya güvenli bir kanaldan iletin.",
+    "done": "Kopyaladım, kapat",
+    "errors": {
+      "forbidden": "Bu işlem için yetkiniz yok.",
+      "notFound": "Kullanıcı bulunamadı.",
+      "upstream": "Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla şifre sıfırlama isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitedSeconds": "Kısa sürede çok fazla şifre sıfırlama isteği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
+      "generic": "Şifre sıfırlanırken bir sorun oluştu. Lütfen tekrar deneyin."
     }
   }
 }

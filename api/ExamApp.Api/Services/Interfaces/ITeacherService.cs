@@ -2,6 +2,7 @@ using System;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Tutors;
+using ExamApp.Api.Services.Tenancy;
 
 namespace ExamApp.Api.Services.Interfaces;
 
@@ -17,19 +18,21 @@ public interface ITeacherService
     /// Issue #53: öğretmenin sahip olduğu worksheet sayısı ve bu worksheet'lerin atamalarındaki
     /// benzersiz öğrenci sayısı (direkt + sınıf bazlı atamalar genişletilerek).
     /// </summary>
-    Task<TeacherDashboardSummaryDto> GetDashboardSummaryAsync(int teacherId, CancellationToken ct = default);
+    /// <remarks>issue #222: requester.UserId sahiplik; bağımsız requester'da grade genişletmesi yok, direkt öğrenciler
+    /// Approved Booking'e daraltılır.</remarks>
+    Task<TeacherDashboardSummaryDto> GetDashboardSummaryAsync(SchoolScope requester, CancellationToken ct = default);
 
     /// <summary>
     /// Issue #54: öğretmenin sahip olduğu her worksheet için atanan benzersiz öğrenci sayısı ve
     /// tamamlanma yüzdesi. Sahiplik/hedefleme mantığı GetDashboardSummaryAsync ile aynıdır.
     /// </summary>
-    Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(int teacherId, CancellationToken ct = default);
+    Task<List<TeacherWorksheetOverviewDto>> GetWorksheetsOverviewAsync(SchoolScope requester, CancellationToken ct = default);
 
     /// <summary>
     /// Issue #55: öğretmenin sahip olduğu worksheet'lerde geride kalan (düşük tamamlama ve/veya
     /// süresi geçmiş) öğrenci-worksheet çiftleri. Sadece en az bir bayrağı true olan satırlar döner; boşsa [].
     /// </summary>
-    Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(int teacherId, CancellationToken ct = default);
+    Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, CancellationToken ct = default);
 
     /// <summary>
     /// Issue #95: authenticated kullanıcının kendi tutor profili. Teacher kaydı yoksa NotFound,

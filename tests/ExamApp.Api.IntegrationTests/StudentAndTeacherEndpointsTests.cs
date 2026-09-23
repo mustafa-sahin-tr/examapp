@@ -223,7 +223,22 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
             db.SetCurrentUser(ownerId);
             var ws = new Worksheet { Name = "Sahibin testi", Description = "", GradeId = gradeId };
             var student = new Student { UserId = 900, StudentNumber = "900", SchoolName = "S", GradeId = gradeId };
-            db.AddRange(ws, student);
+            // issue #222: test profili okulsuz (bağımsız) öğretmen; direkt atanan öğrencisi yalnızca Approved Booking
+            // ile kapsamdadır (#192) — gerçekçi "öğretmenin öğrencisi" ilişkisi seed edilir.
+            var ownerTeacher = new Teacher { UserId = ownerId, SchoolId = null, IsIndependentTutor = true };
+            db.AddRange(ws, student, ownerTeacher);
+            await db.SaveChangesAsync();
+
+            var slot = new TeacherAvailabilitySlot
+            {
+                TeacherId = ownerTeacher.Id, Date = new DateOnly(2026, 10, 1),
+                StartTime = new TimeOnly(8, 0), EndTime = new TimeOnly(9, 0), CreatedAt = DateTime.UtcNow,
+            };
+            db.Bookings.Add(new Booking
+            {
+                TeacherId = ownerTeacher.Id, StudentId = student.Id, AvailabilitySlot = slot,
+                Status = BookingStatus.Approved, CreatedAt = DateTime.UtcNow,
+            });
             await db.SaveChangesAsync();
 
             db.WorksheetAssignments.Add(new WorksheetAssignment
@@ -249,6 +264,62 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
             "/api/teacher/dashboard-summary", Json);
         otherSummary!.TotalWorksheets.ShouldBe(1);
         otherSummary.TotalUniqueStudents.ShouldBe(0); // kendi worksheet'ine hiç atama yapılmadı
+    }
+
+    // ---- ExamController: POST /api/worksheet/assignments (issue #222) ----
+
+    private async Task<(int WorksheetId, int GradeId, int? SchoolId)> SeedTeacherWorksheetAsync(int teacherUserId, bool withSchool)
+        => await WithDbAsync(async db =>
+        {
+            var grade = new Grade { Name = "8" };
+            var school = withSchool ? new School { Name = "Okul" } : null;
+            db.Grades.Add(grade);
+            if (school != null) db.Schools.Add(school);
+            await db.SaveChangesAsync();
+
+            db.Teachers.Add(new Teacher
+            {
+                UserId = teacherUserId, SchoolId = school?.Id, IsIndependentTutor = !withSchool,
+            });
+            db.SetCurrentUser(teacherUserId);
+            var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id };
+            db.Worksheets.Add(ws);
+            await db.SaveChangesAsync();
+            return (ws.Id, grade.Id, school?.Id);
+        });
+
+    [Fact]
+    public async Task Independent_teacher_grade_assignment_is_rejected_with_localized_message()
+    {
+        const int tutorId = 60;
+        var (wsId, gradeId, _) = await SeedTeacherWorksheetAsync(tutorId, withSchool: false);
+        var client = await ClientAsWithSchoolAsync(tutorId, "Teacher", "kc-60", schoolId: null, "Teacher");
+
+        var response = await client.PostAsJsonAsync("/api/worksheet/assignments",
+            new WorksheetAssignmentRequestDto { WorksheetId = wsId, GradeId = gradeId, StartAt = DateTime.UtcNow });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<ResponseBaseDto>(Json);
+        body!.Success.ShouldBeFalse();
+        body.Message.ShouldBe(
+            "Bağımsız öğretmenler sınıf bazlı atama yapamaz; yalnızca randevusu olan öğrencilerinizi seçerek atayabilirsiniz.");
+        (await WithDbAsync(db => db.WorksheetAssignments.CountAsync())).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task School_teacher_grade_assignment_succeeds()
+    {
+        const int teacherId = 61;
+        var (wsId, gradeId, schoolId) = await SeedTeacherWorksheetAsync(teacherId, withSchool: true);
+        var client = await ClientAsWithSchoolAsync(teacherId, "Teacher", "kc-61", schoolId, "Teacher");
+
+        var response = await client.PostAsJsonAsync("/api/worksheet/assignments",
+            new WorksheetAssignmentRequestDto { WorksheetId = wsId, GradeId = gradeId, StartAt = DateTime.UtcNow });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var assignment = await WithDbAsync(db => db.WorksheetAssignments.SingleAsync());
+        assignment.GradeId.ShouldBe(gradeId);
+        assignment.SchoolId.ShouldBe(schoolId);
     }
 
     private sealed record CheckStudentResponse(bool HasStudentRecord);

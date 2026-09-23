@@ -29,6 +29,7 @@ import { AuthService } from '../../services/auth.service';
 import { Grade, StudentLookup } from '../../models/student';
 import {
   WorksheetAssignmentDialogComponent,
+  WorksheetAssignmentDialogData,
   WorksheetAssignmentDialogResult,
 } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
@@ -126,6 +127,17 @@ export class WorksheetDetailComponent implements OnInit {
   private grades = signal<Grade[]>([]);
   private studentLookups = signal<StudentLookup[]>([]);
   protected readonly isTeacher = this.authService.hasRole('Teacher');
+  /** Admin (uygulama rolü ya da Keycloak realm rolü) backend'de sınıf atama kısıtından muaftır. */
+  private readonly isAdmin = this.authService.hasRole('Admin') || this.authService.hasRealmRole('Admin');
+  /**
+   * Issue #222: okulsuz (bağımsız) öğretmen sınıf bazlı atama yapamaz. Profil önbelleğinden türetilir
+   * (`schoolId`, yoksa `teacher.schoolId`); refresh ile okul sonradan gelirse kendiliğinden güncellenir.
+   * Profil henüz yokken (null) bağımsız sayılmaz — butonlar titremesin; kesin kararı backend verir.
+   */
+  protected readonly isIndependentTutor = computed(() => {
+    const user = this.authService.user();
+    return this.isTeacher && !this.isAdmin && user !== null && AuthService.schoolIdOf(user) === null;
+  });
   private teacherPanelInitialized = false;
   protected readonly assignmentPanelState = signal<AssignmentPanelState>({
     loading: false,
@@ -573,7 +585,8 @@ export class WorksheetDetailComponent implements OnInit {
         scope,
         grades: this.grades(),
         students: this.studentLookups(),
-      },
+        isIndependentTutor: this.isIndependentTutor(),
+      } satisfies WorksheetAssignmentDialogData,
     });
 
     dialogRef

@@ -148,6 +148,13 @@ export const routes: Routes = [
           import('./pages/admin/admin-students/admin-students.component').then((m) => m.AdminStudentsComponent),
       },
       {
+        // Issue #150: okul yönetimi (Taksonomi'den ayrıldı; admin-home "Okullar" sekmesi olarak da gömülü).
+        path: 'admin/schools',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/school-manager/school-manager.component').then((m) => m.SchoolManagerComponent),
+      },
+      {
         // Issue #63: "Soru Çöz" pratik akışı (kapsam seç → tek tek rastgele soru → anlık geri bildirim).
         path: 'practice',
         canActivate: [authGuard, studentGuard],

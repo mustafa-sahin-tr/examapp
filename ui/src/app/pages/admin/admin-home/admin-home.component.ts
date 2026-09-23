@@ -3,6 +3,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { TaxonomyManagerComponent } from '../taxonomy-manager/taxonomy-manager.component';
+import { SchoolManagerComponent } from '../school-manager/school-manager.component';
 import { ClassifierCacheComponent } from '../classifier-cache/classifier-cache.component';
 import { TeacherApprovalsComponent } from '../teacher-approvals/teacher-approvals.component';
 
@@ -24,6 +25,11 @@ const ADMIN_SCOPE = 'admin';
         <mat-tab [label]="t('tabs.taxonomy')">
           <div class="tab-body">
             <app-taxonomy-manager></app-taxonomy-manager>
+          </div>
+        </mat-tab>
+        <mat-tab [label]="t('tabs.schools')">
+          <div class="tab-body">
+            <app-school-manager [embedded]="true"></app-school-manager>
           </div>
         </mat-tab>
         <mat-tab [label]="t('tabs.classifierCache')">
@@ -71,6 +77,7 @@ const ADMIN_SCOPE = 'admin';
     MatTabsModule,
     MatIconModule,
     TaxonomyManagerComponent,
+    SchoolManagerComponent,
     ClassifierCacheComponent,
     TeacherApprovalsComponent,
     TranslocoDirective,

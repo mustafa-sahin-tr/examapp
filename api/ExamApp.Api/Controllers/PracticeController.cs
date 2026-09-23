@@ -165,11 +165,11 @@ public class PracticeController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return (null, Unauthorized(_localizer["auth.authenticationFailed"].Value));
+            return (null, UserNotResolved(_localizer["auth.authenticationFailed"].Value));
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return (null, Unauthorized(_localizer["student.profileNotFound"].Value));
+            return (null, NotFound(_localizer["student.profileNotFound"].Value));
 
         return (student, null);
     }

@@ -67,6 +67,16 @@ public class BaseController : ControllerBase
     }
 
     /// <summary>
+    /// issue #255: <see cref="GetAuthenticatedUserAsync()"/> kullanıcıyı çözemediğinde dönülecek yanıt.
+    /// Token'da sub (NameIdentifier) yoksa gerçekten kimlik doğrulanamamıştır → 401. Token geçerli ama
+    /// kullanıcı profili bulunamadıysa oturum geçersiz DEĞİLDİR → 404; 401 dönmek UI'ı (refresh → retry →
+    /// logout akışı, #241) gereksiz yere oturumu kapatmaya iterdi. Gövde çağıranın verdiği haliyle korunur.
+    /// </summary>
+    protected IActionResult UserNotResolved(object? body) =>
+        // 401 dalı savunma dalı; [Authorize] + Keycloak JWT (sub claim'i her zaman var) ile pratikte erişilmez.
+        string.IsNullOrEmpty(KeyCloakId) ? Unauthorized(body) : NotFound(body);
+
+    /// <summary>
     /// issue #189: JWT'deki school_id claim'i — yalnızca ipucudur, tek başına yetki kararı vermez.
     /// Geçersiz/yok ise null. Yetki kararları için GetCurrentSchoolIdAsync (sunucu tarafı DB
     /// doğrulaması) kullanılmalı.

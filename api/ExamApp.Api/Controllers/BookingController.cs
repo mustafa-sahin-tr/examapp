@@ -43,7 +43,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.CreateSlotAsync(user.Id, request, ct);
         if (!result.Success)
@@ -59,7 +59,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetMySlotsAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -72,7 +72,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.DeleteSlotAsync(user.Id, id, ct);
         return result.Success ? NoContent() : MapFailure(result);
@@ -91,7 +91,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _recurringAvailability.CreateRuleAsync(user.Id, request, ct);
         if (!result.Success)
@@ -107,7 +107,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _recurringAvailability.GetMyRulesAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -124,7 +124,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _recurringAvailability.DeleteRuleAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -152,7 +152,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.CreateBookingAsync(user.Id, request, ct);
         if (!result.Success)
@@ -168,7 +168,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetTeacherBookingsAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -181,7 +181,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetStudentBookingsAsync(user.Id, skip, take, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -194,7 +194,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.ApproveBookingAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -207,7 +207,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.RejectBookingAsync(user.Id, id, request?.RejectionReason, ct);
         return result.Success ? Ok(result) : MapFailure(result);
@@ -225,7 +225,7 @@ public class BookingController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["booking.unauthorized"].Value);
+            return UserNotResolved(_localizer["booking.unauthorized"].Value);
 
         var result = await _bookingService.GetVideoSessionAsync(user.Id, id, ct);
         return result.Success ? Ok(result) : MapFailure(result);

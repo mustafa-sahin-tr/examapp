@@ -25,6 +25,14 @@
       "title": "Yeni bağımsız öğretmen başvurusu",
       "body": "{0}, bağımsız öğretmen olarak başvurdu ve onay bekliyor."
     },
+    "TeacherApplicationApproved": {
+      "title": "Öğretmen başvurunuz onaylandı",
+      "body": "Öğretmen başvurunuz onaylandı."
+    },
+    "TeacherApplicationRejected": {
+      "title": "Öğretmen başvurunuz reddedildi",
+      "body": "Öğretmen başvurunuz reddedildi."
+    },
     "WorksheetAccessRequested": {
       "title": "Yeni atama izni talebi",
       "body": "{0}, \"{1}\" sınavı için atama izni istiyor."

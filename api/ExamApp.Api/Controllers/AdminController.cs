@@ -180,7 +180,13 @@ public class AdminController : BaseController
     /// </summary>
     [HttpPost("teacher-applications/{id:int}/approve")]
     public async Task<IActionResult> ApproveTeacherApplication(int id, CancellationToken ct)
-        => Result(await _teacherApprovals.ApproveAsync(id, await CurrentUserIdAsync(), ct));
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        return Result(await _teacherApprovals.ApproveAsync(id, await CurrentUserIdAsync(), actor, ct));
+    }
 
     /// <summary>
     /// POST api/admin/teacher-applications/{id}/reject → ApprovalStatus=Rejected + RejectionReason (zorunlu). Okul talebinde
@@ -188,7 +194,13 @@ public class AdminController : BaseController
     /// </summary>
     [HttpPost("teacher-applications/{id:int}/reject")]
     public async Task<IActionResult> RejectTeacherApplication(int id, [FromBody] TeacherRejectRequestDto dto, CancellationToken ct)
-        => Result(await _teacherApprovals.RejectAsync(id, dto.Reason, await CurrentUserIdAsync(), ct));
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        return Result(await _teacherApprovals.RejectAsync(id, dto.Reason, await CurrentUserIdAsync(), actor, ct));
+    }
 
     // ---- Öğretmen listesi (issue #152) ----
 

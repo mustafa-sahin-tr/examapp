@@ -185,6 +185,7 @@ builder.Services.AddMassTransit(x =>
     x.AddConsumer<WorksheetAccessDecisionConsumer, WorksheetAccessDecisionConsumerDefinition>();
     x.AddConsumer<LoginAttemptedConsumer, LoginAttemptedConsumerDefinition>();
     x.AddConsumer<TeacherApplicationSubmittedConsumer, TeacherApplicationSubmittedConsumerDefinition>();
+    x.AddConsumer<TeacherApplicationDecisionConsumer, TeacherApplicationDecisionConsumerDefinition>();
     x.AddConsumer<IndependentTeacherRegisteredConsumer, IndependentTeacherRegisteredConsumerDefinition>();
     x.AddConsumer<BookingRequestCreatedConsumer, BookingRequestCreatedConsumerDefinition>();
     x.AddConsumer<BookingDecisionConsumer, BookingDecisionConsumerDefinition>();
@@ -210,6 +211,7 @@ builder.Services.AddMassTransit(x =>
             e.ConfigureConsumer<WorksheetAccessDecisionConsumer>(context);
             e.ConfigureConsumer<LoginAttemptedConsumer>(context);
             e.ConfigureConsumer<TeacherApplicationSubmittedConsumer>(context);
+            e.ConfigureConsumer<TeacherApplicationDecisionConsumer>(context);
             e.ConfigureConsumer<IndependentTeacherRegisteredConsumer>(context);
             e.ConfigureConsumer<BookingRequestCreatedConsumer>(context);
             e.ConfigureConsumer<BookingDecisionConsumer>(context);

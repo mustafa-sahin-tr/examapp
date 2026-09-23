@@ -24,7 +24,8 @@
     "notifications": {
       "goToExam": "Go to exam",
       "teacherApplication": "New independent teacher application: {{name}}",
-      "goToApplications": "Go to applications"
+      "goToApplications": "Go to applications",
+      "goToProfile": "Go to profile"
     }
   },
   "layout": {

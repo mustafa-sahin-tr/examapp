@@ -24,7 +24,8 @@
     "notifications": {
       "goToExam": "Sınava Git",
       "teacherApplication": "Yeni bağımsız öğretmen başvurusu: {{name}}",
-      "goToApplications": "Başvurulara Git"
+      "goToApplications": "Başvurulara Git",
+      "goToProfile": "Profile Git"
     }
   },
   "layout": {

@@ -17,7 +17,8 @@
       "teachers": "Öğretmen",
       "students": "Öğrenci",
       "worksheets": "Test",
-      "questions": "Soru"
+      "questions": "Soru",
+      "openListAria": "{{label}} listesini aç ({{count}})"
     },
     "ai": {
       "title": "AI Sınıflandırılmış",

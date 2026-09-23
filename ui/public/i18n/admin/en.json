@@ -17,7 +17,8 @@
       "teachers": "Teachers",
       "students": "Students",
       "worksheets": "Exams",
-      "questions": "Questions"
+      "questions": "Questions",
+      "openListAria": "Open {{label}} list ({{count}})"
     },
     "ai": {
       "title": "AI Classified",

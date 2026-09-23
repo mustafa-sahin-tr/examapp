@@ -173,6 +173,26 @@
   }
 }
 
+// Issue #154: liste ekranına giden sayaç kartı (a[routerLink]); görünüm düz kartla aynı.
+.summary-card--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover .summary-icon {
+    color: var(--primaryColor);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primaryColor);
+    outline-offset: 2px;
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
 // ── Loading (skeleton + küçük spinner) ──────────────────────────────────────
 .summary-card--skeleton {
   pointer-events: none;

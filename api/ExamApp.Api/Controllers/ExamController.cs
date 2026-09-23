@@ -67,11 +67,11 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
 
         // Frontend Observable<WorksheetReminderDto | null> bekliyor: yok durumunda da 200 + null.
         var result = await _reminderService.GetAsync(id, student.Id, ct);
@@ -84,11 +84,11 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
 
         try
         {
@@ -107,11 +107,11 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
 
         await _reminderService.DeleteAsync(id, student.Id, ct);
         return NoContent();
@@ -145,7 +145,7 @@ public class ExamController : BaseController
 
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         // Öğretmen takvimi yalnızca onaylanmış randevuları içerir (issue #96); öğrenci akışı değişmedi.
         if (User.IsInRole("Teacher") && !User.IsInRole("Student"))
@@ -156,7 +156,7 @@ public class ExamController : BaseController
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
-            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
 
         var result = await _calendarService.GetMyCalendarAsync(
             student.Id, user.KeycloakId, student.GradeId, student.SchoolId, fromUtc, toUtc, ct);
@@ -186,7 +186,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var result = await _examService.GetWorksheetByIdAsync(id, user, User.IsInRole("Admin"));
         if (result == null)
@@ -203,7 +203,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         int? studentId = null;
@@ -227,13 +227,13 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
         if (student == null)
         {
-            return Unauthorized(_localizer["exam.studentProfileNotFound"].Value);
+            return NotFound(_localizer["exam.studentProfileNotFound"].Value);
         }
 
         try
@@ -261,7 +261,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -299,7 +299,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -326,7 +326,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.CreateRequestAsync(
             request.WorksheetId, request.Note, user.Id, user.KeycloakId, User.IsInRole("Admin"), ct);
@@ -347,7 +347,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.GetIncomingAsync(user.Id, includeDecided, ct);
         return Ok(result);
@@ -359,7 +359,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var count = await _accessRequestService.GetIncomingPendingCountAsync(user.Id, ct);
         return Ok(count);
@@ -371,7 +371,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.ApproveAsync(id, user.Id, User.IsInRole("Admin"), ct);
         return MapAccessDecisionResult(result);
@@ -383,7 +383,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.RejectAsync(id, user.Id, User.IsInRole("Admin"), ct);
         return MapAccessDecisionResult(result);
@@ -395,7 +395,7 @@ public class ExamController : BaseController
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
 
         var result = await _accessRequestService.RevokeGrantAsync(worksheetId, teacherUserId, user.Id, User.IsInRole("Admin"), ct);
         return MapAccessDecisionResult(result);
@@ -418,7 +418,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -432,7 +432,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _examService.GetLatestWorksheetsAsync(pageNumber, pageSize, TeacherOwnerFilter(user));
@@ -453,7 +453,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         // Öğrenci ise kendi sınıfına göre filtrele (istekte gradeId gelmediyse)
@@ -515,7 +515,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
         if (user.Role == UserRole.Student.ToString())
         {
@@ -554,7 +554,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var student = await _studentService.GetStudentProfile(user.Id);
@@ -635,7 +635,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
         var response = await _authoring.CreateOrUpdateAsync(examDto, user.Id, User.IsInRole("Admin"));
         if (!response.Success)
@@ -661,7 +661,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         try
@@ -689,7 +689,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
         var student = await _studentService.GetStudentProfile(user.Id);
 
@@ -715,7 +715,7 @@ public class ExamController : BaseController
             var user = await GetAuthenticatedUserAsync();
             if (user == null)
             {
-                return Unauthorized(_localizer["exam.unauthenticated"].Value);
+                return UserNotResolved(_localizer["exam.unauthenticated"].Value);
             }
             var result = await _authoring.DeleteWorksheetAsync(id, user.Id, User.IsInRole("Admin"));
 
@@ -736,7 +736,7 @@ public class ExamController : BaseController
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
@@ -755,7 +755,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _authoring.CopyWorksheetAsync(id, user.Id, User.IsInRole("Admin"), ct);
@@ -783,7 +783,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _authoring.UpdateWorksheetBackgroundImageAsync(id, file, user.Id, User.IsInRole("Admin"));
@@ -810,7 +810,7 @@ public class ExamController : BaseController
         var user = await GetAuthenticatedUserAsync();
         if (user == null)
         {
-            return Unauthorized(_localizer["exam.unauthenticated"].Value);
+            return UserNotResolved(_localizer["exam.unauthenticated"].Value);
         }
 
         var result = await _authoring.UpdateVisibilityAsync(id, dto, user.Id, User.IsInRole("Admin"));

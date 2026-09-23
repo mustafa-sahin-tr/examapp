@@ -191,6 +191,16 @@ export class CompleteProfileComponent implements OnInit {
           window.location.href = role === 'Parent' ? '/dashboard' : '/tests';
           return;
         }
+        // Issue #255: token geçerli ama hesap profili sunucuda çözülemedi → 404. Oturum geçersiz
+        // değildir; login'e atmak yerine formu açık bırakıp nedenini göster.
+        if (err?.status === 404) {
+          this.submitError.set(
+            'Hesap bilgileriniz şu anda doğrulanamadı. Lütfen birkaç dakika sonra tekrar deneyin; ' +
+              'sorun sürerse çıkış yapıp yeniden giriş yapın.'
+          );
+          return;
+        }
+        // 401 yalnızca oturum gerçekten geçersizse gelir (ör. refresh cookie yok, token kimlik içermiyor).
         if (err?.status === 401) {
           this.snackBar.open('Oturumunuz sona ermiş, lütfen tekrar giriş yapın.', 'Kapat', { duration: 3000 });
           this.router.navigate(['/login']);

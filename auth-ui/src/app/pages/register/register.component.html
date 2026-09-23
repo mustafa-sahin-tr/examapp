@@ -57,12 +57,8 @@
             <select id="role" formControlName="role" class="form-control"
               [class.is-invalid]="registerForm.controls['role'].invalid && registerForm.controls['role'].touched">
               <option value="" disabled selected>Rol seçiniz</option>
-              @if (isLoadingRoles) {
-              <option disabled>Roller yükleniyor...</option>
-              } @else {
               @for (role of roles; track role.value) {
               <option [value]="role.value">{{ role.viewValue }}</option>
-              }
               }
             </select>
             @if (registerForm.controls['role'].touched && registerForm.controls['role'].hasError('required')) {

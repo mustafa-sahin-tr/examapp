@@ -32,14 +32,17 @@ namespace ExamApp.Api.Controllers
         private readonly IKeycloakService _keycloakService;
         private readonly ILogger<AuthController> _logger;
         private readonly IStringLocalizer<Messages> _localizer;
+        private readonly RegistrationSettings _registrationSettings;
 
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory,
              IKeycloakService keycloakService,
              ILogger<AuthController> logger,
-             IStringLocalizer<Messages>? localizer = null)
+             IStringLocalizer<Messages>? localizer = null,
+             IOptions<RegistrationSettings>? registrationOptions = null)
             : base()
         {
+            _registrationSettings = registrationOptions?.Value ?? new RegistrationSettings();
             // Opsiyonel: testler controller'ı `new` ile kurar (bkz. api/ExamApp.Api/Resources/README.md).
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
             _context = context;
@@ -69,36 +72,78 @@ namespace ExamApp.Api.Controllers
         }
 
 
+        /// <summary>
+        /// Anonim kayıt. Issue #240: yanıt e-postanın zaten kayıtlı olup olmadığını ELE VERMEZ.
+        /// <list type="bullet">
+        /// <item>E-postadan bağımsız doğrulamalar (model, seed alanı, rol, e-posta biçimi) DB/Keycloak'tan ÖNCE → 400.</item>
+        /// <item>Yeni kayıt, yerel DB'de kayıtlı e-posta, Keycloak 409, Keycloak 400 (yerel kurallarla Keycloak
+        /// politikası arasında kayma) ve eşzamanlı unique ihlali → aynı 200 + <see cref="RegisterResponse"/>.</item>
+        /// <item>Kayıtlı e-posta yolu da Keycloak'a gerçek bir istek atar; Keycloak kesintisinde iki yol aynı 500'ü verir.</item>
+        /// <item>200 ve 500 yanıtları <see cref="RegistrationSettings.MinimumResponseMilliseconds"/> dolmadan dönmez.</item>
+        /// </list>
+        /// </summary>
         [HttpPost("register")]
         // Kayıt da kimliksiz ve Keycloak kullanıcı oluşturur — login/exchange ile aynı IP bazlı limit (#231 review).
         [EnableRateLimiting(AuthRateLimiting.AuthAttemptsPolicy)]
-        public async Task<IActionResult> Register(RegisterDto request)
+        public async Task<IActionResult> Register(RegisterDto request, CancellationToken ct = default)
         {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            // İkinci savunma (seed sahiplik kilidi): seed alanı e-postası yalnızca dev seed ucundan açılabilir;
+            // register ile seed desenli bir hesap açılıp sonradan seed aracı tarafından sahiplenilemez/silinemez.
+            // Karar e-postanın varlığına değil alan adına bakar — enumeration sızıntısı değil.
+            if (ExamApp.Foundation.Security.SeedDataConventions.IsSeedEmail(request.Email?.Trim().ToLowerInvariant()))
+            {
+                return BadRequest(new { message = _localizer["auth.register.emailDomainNotAllowed"].Value });
+            }
+
+            // Anonim uç yalnızca uygulama rollerini atayabilir; aksi halde Keycloak'taki her realm rolü
+            // (Admin, exam-service) istek gövdesinden seçilebiliyordu (#240). Karar e-postadan bağımsız.
+            var role = AllowedAppRoles.FirstOrDefault(r => r.Equals(request.Role?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (role is null)
+            {
+                return BadRequest(new { message = _localizer["auth.register.invalidRole"].Value });
+            }
+
+            // [EmailAddress] yalnızca '@' arar; Keycloak'a bozuk adres gidip 400 alınması (yalnızca yeni e-posta
+            // yolunda olur) bir oracle olurdu. Biçim kararı e-postanın varlığından bağımsız ve DB'den önce.
+            if (!IsWellFormedRegistrationEmail(request.Email))
+            {
+                return BadRequest(new { message = _localizer["auth.register.invalidEmail"].Value });
+            }
+
+            try
+            {
+                if (await _context.Users.AnyAsync(u => u.Email == request.Email, ct))
+                {
+                    // Yeni e-posta yolu Keycloak'a gidiyor; bu yol da gitmeli ki Keycloak erişilemezken iki yol
+                    // aynı 500'ü versin (yalnızca kayıtlı e-postada 200 dönmesi kesintide oracle olurdu).
+                    // Sonuç kullanılmaz — tek amaç gerçek bir Keycloak admin round-trip'i.
+                    await _keycloakService.FindUserIdByUsernameAsync(request.Email, ct);
+                    _logger.LogInformation("Register: e-posta yerel DB'de zaten kayıtlı; genel kabul yanıtı dönülüyor");
+                    return await RegisterAcceptedAsync(stopwatch, ct);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                _logger.LogError(ex, "Register: kayıt ön kontrolü başarısız");
+                return await RegisterFailedAsync(stopwatch, ct);
+            }
+
             var keycloakUserId = string.Empty;
             try
             {
-                // İkinci savunma (seed sahiplik kilidi): seed alanı e-postası yalnızca dev seed ucundan açılabilir;
-                // register ile seed desenli bir hesap açılıp sonradan seed aracı tarafından sahiplenilemez/silinemez.
-                if (ExamApp.Foundation.Security.SeedDataConventions.IsSeedEmail(request.Email?.Trim().ToLowerInvariant()))
-                {
-                    return BadRequest("Bu e-posta alanı kayıt için kullanılamaz.");
-                }
-
-                if (_context.Users.Any(u => u.Email == request.Email))
-                {
-                    return BadRequest("Email already exists.");
-                }
-
+                // CreateUserAsync/SetRoleAsync bilinçli olarak ct ALMAZ: Keycloak kullanıcısı oluştuktan sonra istek
+                // iptali yarım iş bırakmamalı (yetim Keycloak kullanıcısı → tekrar kayıt 409 → hesap kalıcı bozuk).
                 keycloakUserId = await _keycloakService.CreateUserAsync(
                     request.Email, request.Password, request.Email,
                     request.FirstName, request.LastName);
-                // Keycloak admin access token (önceden alınmalı veya Client Credentials ile otomatik alınabilir)
-                await _keycloakService.SetRoleAsync(keycloakUserId, request.Role);
+                await _keycloakService.SetRoleAsync(keycloakUserId, role);
                 var user = new User
                 {
                     FullName = request.FirstName + " " + request.LastName,
                     Email = request.Email,
-                    Role = request.Role,
+                    Role = role,
                     KeycloakId = keycloakUserId
                 };
 
@@ -107,13 +152,15 @@ namespace ExamApp.Api.Controllers
                 // user.Id identity DB'den üretildiği için outbox satırı, User satırıyla aynı
                 // transaction içinde ama İKİNCİ SaveChanges'te yazılır (WorksheetAccessRequestService
                 // ile aynı desen); tek transaction olduğu için yine atomik.
+                // Geri dönüşsüz nokta: Keycloak kullanıcısı artık var. Yerel yazım istemci iptaliyle
+                // (RequestAborted) kesilirse Keycloak'ta yetim kullanıcı kalırdı → CancellationToken.None.
                 var strategy = _context.Database.CreateExecutionStrategy();
                 await strategy.ExecuteAsync(async () =>
                 {
-                    await using var tx = await _context.Database.BeginTransactionAsync();
+                    await using var tx = await _context.Database.BeginTransactionAsync(CancellationToken.None);
 
                     _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(CancellationToken.None);
 
                     _context.OutboxMessages.Add(new OutboxMessage
                     {
@@ -126,27 +173,123 @@ namespace ExamApp.Api.Controllers
                             ChangedAtUtc = DateTime.UtcNow
                         })
                     });
-                    await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync(CancellationToken.None);
 
-                    await tx.CommitAsync();
+                    await tx.CommitAsync(CancellationToken.None);
                 });
-
-                return Ok(user);
             }
-            catch (Exception ex)
+            catch (KeycloakException ex) when (ex.Kind == KeycloakFailureKind.Conflict)
             {
-                // _logger.LogError(ex, "User DB kayıt hatası");
-
-                // Keycloak'taki kullanıcıyı silmeye çalış
-                if (!string.IsNullOrEmpty(keycloakUserId))
-                {
-                    await _keycloakService.DeleteUserAsync(keycloakUserId);
-                }
-
-                return StatusCode(500, "Kullanıcı kaydedilemedi.");
+                // Kullanıcı adı/e-posta Keycloak'ta var ama yerel DB'de yok (büyük/küçük harf farkı, yarım kalmış
+                // eski kayıt vb.). Keycloak'ın 409 mesajı istemciye gitmez; yanıt yeni kayıtla aynıdır.
+                _logger.LogWarning("Register: Keycloak kullanıcı çakışması (409) — kullanıcı Keycloak'ta var, yerel DB'de yok; genel kabul yanıtı dönülüyor");
+                return await RegisterAcceptedAsync(stopwatch, ct);
+            }
+            catch (KeycloakException ex) when (ex.Kind == KeycloakFailureKind.Validation)
+            {
+                // Yerel doğrulama Keycloak politikasıyla hizalı olduğu için buraya düşülmemeli. Düşülürse bu bir
+                // kayma (realm policy değişti vb.): kayıtlı e-posta yolu Keycloak'a kullanıcı göndermediği için aynı
+                // girdide 400 veremez, bu yüzden 400 dönmek e-posta varlığı oracle'ı olurdu → genel kabul yanıtı.
+                // Kullanıcı oluşmadı; kayma operasyonel olarak yakalansın diye Warning.
+                _logger.LogWarning(ex, "Register: Keycloak kullanıcıyı doğrulama hatasıyla reddetti (yerel kurallar ile realm politikası kaymış olabilir); genel kabul yanıtı dönülüyor");
+                return await RegisterAcceptedAsync(stopwatch, ct);
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                // Eşzamanlı aynı e-posta kaydı (yarış): yerel satır yazılamadı. Bu istekte oluşturulan Keycloak
+                // kullanıcısı geri alınır, yanıt yeni kayıtla aynıdır. Diğer DB hataları aşağıdaki 500 yoluna düşer.
+                _logger.LogWarning(ex, "Register: yerel kullanıcı yazılamadı (eşzamanlı kayıt?); genel kabul yanıtı dönülüyor");
+                await TryDeleteRegisteredKeycloakUserAsync(keycloakUserId);
+                return await RegisterAcceptedAsync(stopwatch, ct);
+            }
+            catch (Exception ex) when (!string.IsNullOrEmpty(keycloakUserId) || ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                // Keycloak kullanıcısı bu istekte oluşturulduysa iptal dahil her hatada geri alınır (yetim kalmaz).
+                _logger.LogError(ex, "Register: kullanıcı kaydı başarısız");
+                await TryDeleteRegisteredKeycloakUserAsync(keycloakUserId);
+                return await RegisterFailedAsync(stopwatch, ct);
             }
 
+            // Kabul yanıtı try dışında: taban beklemesi iptal edilirse commit edilmiş kayıt geri alınmamalı.
+            return await RegisterAcceptedAsync(stopwatch, ct);
+        }
 
+        /// <summary>
+        /// Eşzamanlı kayıt yarışında unique ihlali mi (#240)? Yalnızca PostgreSQL <c>23505</c>; diğer DB hataları
+        /// 500 yoluna gider. Testler (SQLite) ihlali iç <see cref="Npgsql.PostgresException"/> ile temsil eder.
+        /// </summary>
+        internal static bool IsUniqueViolation(DbUpdateException ex)
+            => ex.InnerException is Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation };
+
+        /// <summary>
+        /// Keycloak'ın bu realm'deki kurallarıyla hizalı e-posta biçimi (#240): realm'de e-posta validator'ı yok,
+        /// kullanıcı adı = e-posta. Boşluk yok, tek '@', <see cref="System.Net.Mail.MailAddress"/> ile birebir
+        /// ayrışabilen, en fazla 254 karakter (RFC 5321). E-postanın var olup olmadığına bakmaz.
+        /// </summary>
+        internal static bool IsWellFormedRegistrationEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email) || email.Length > 254 || email.Any(char.IsWhiteSpace) ||
+                email.Count(c => c == '@') != 1)
+            {
+                return false;
+            }
+
+            return System.Net.Mail.MailAddress.TryCreate(email, out var parsed) &&
+                   string.Equals(parsed.Address, email, StringComparison.Ordinal) &&
+                   parsed.Host.Contains('.') && !parsed.Host.StartsWith('.') && !parsed.Host.EndsWith('.');
+        }
+
+        /// <summary>
+        /// Register'ın tek kabul yanıtı (#240): her yolda aynı gövde; taban süre dolana kadar beklenir ki
+        /// "zaten kayıtlı" kısa yolu yanıt süresinden ayırt edilemesin.
+        /// </summary>
+        private async Task<IActionResult> RegisterAcceptedAsync(System.Diagnostics.Stopwatch stopwatch, CancellationToken ct)
+        {
+            await WaitForRegisterFloorAsync(stopwatch, ct);
+            return Ok(new RegisterResponse { Message = _localizer["auth.register.accepted"].Value });
+        }
+
+        /// <summary>Register'ın tek hata yanıtı; kabul yanıtı gibi taban süreyi bekler (#240).</summary>
+        private async Task<IActionResult> RegisterFailedAsync(System.Diagnostics.Stopwatch stopwatch, CancellationToken ct)
+        {
+            await WaitForRegisterFloorAsync(stopwatch, ct);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { message = _localizer["auth.register.failed"].Value });
+        }
+
+        private async Task WaitForRegisterFloorAsync(System.Diagnostics.Stopwatch stopwatch, CancellationToken ct)
+        {
+            var floor = TimeSpan.FromMilliseconds(Math.Max(0, _registrationSettings.MinimumResponseMilliseconds));
+            var remaining = floor - stopwatch.Elapsed;
+            if (remaining > TimeSpan.Zero)
+            {
+                await Task.Delay(remaining, ct);
+            }
+            else if (floor > TimeSpan.Zero)
+            {
+                // Taban aşıldı: bu istekte yanıt süresi yolu ele verebilir — taban değeri gözden geçirilmeli.
+                _logger.LogWarning(
+                    "Register: yanıt süresi tabanı aşıldı ({ElapsedMs} ms > {FloorMs} ms); Registration:MinimumResponseMilliseconds artırılmalı",
+                    (long)stopwatch.Elapsed.TotalMilliseconds, (long)floor.TotalMilliseconds);
+            }
+        }
+
+        private async Task TryDeleteRegisteredKeycloakUserAsync(string keycloakUserId)
+        {
+            // Yalnızca bu istekte oluşturulduysa geri alınır.
+            if (string.IsNullOrEmpty(keycloakUserId))
+            {
+                return;
+            }
+
+            try
+            {
+                await _keycloakService.DeleteUserAsync(keycloakUserId);
+            }
+            catch (Exception cleanupEx)
+            {
+                _logger.LogError(cleanupEx, "Register: yarım kalan Keycloak kullanıcısı silinemedi ({KeycloakUserId})", keycloakUserId);
+            }
         }
 
 
@@ -638,6 +781,9 @@ namespace ExamApp.Api.Controllers
 
         private static readonly string[] AllowedAppRoles = { "Student", "Teacher", "Parent" };
 
+        // Issue #240: realm rol kataloğu (Admin, exam-service dahil) anonim erişime kapalı. Kayıt formu
+        // artık bu uca değil sabit uygulama rollerine (Student/Teacher/Parent) dayanıyor; başka çağıran yok.
+        [Authorize(Roles = "Admin")]
         [HttpGet("roles")]
         public async Task<IActionResult> GetRoles()
         {

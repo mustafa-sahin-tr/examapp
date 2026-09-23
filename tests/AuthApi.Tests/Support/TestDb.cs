@@ -30,6 +30,10 @@ public sealed class TestDb : IDisposable
 
     public AppDbContext NewContext() => new(Options(_connection));
 
+    /// <summary>Aynı veritabanı, verilen EF interceptor'larıyla (örn. SaveChanges hatası simülasyonu).</summary>
+    public AppDbContext NewContext(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors) =>
+        new(new DbContextOptionsBuilder<AppDbContext>(Options(_connection)).AddInterceptors(interceptors).Options);
+
     private static DbContextOptions<AppDbContext> Options(SqliteConnection connection) =>
         new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite(connection)

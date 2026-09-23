@@ -407,7 +407,15 @@ public class KeycloakService : IKeycloakService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
-            throw new KeycloakException($"Keycloak user creation failed: {error}");
+            // 409 = kullanıcı adı/e-posta Keycloak'ta zaten var (#240). Ayrı tür: register bunu
+            // "zaten kayıtlı" olarak istemciye sızdırmadan genel kabul yanıtına eşler.
+            var kind = response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => KeycloakFailureKind.Conflict,
+                System.Net.HttpStatusCode.BadRequest => KeycloakFailureKind.Validation,
+                _ => KeycloakFailureKind.Unexpected,
+            };
+            throw new KeycloakException($"Keycloak user creation failed: {error}", (int)response.StatusCode, kind);
         }
         // Keycloak yeni kullanıcıya ID dönmez, ama Location header'ı olur
         var locationHeader = response.Headers.Location?.ToString();

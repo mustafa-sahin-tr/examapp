@@ -1,10 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import { NavigationExtras } from '@angular/router';
+import { RegisterRequest, RegisterResponse } from '../../models/registration.model';
 
 @Component({
   selector: 'app-register',
@@ -14,19 +16,24 @@ import { NavigationExtras } from '@angular/router';
   imports: [ReactiveFormsModule, MatSnackBarModule, CommonModule],
 })
 export class RegisterComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
+
   registerForm: FormGroup;
   isLoading = false;
   hidePassword = true;
   hideConfirmPassword = true;
-  roles: { value: string; viewValue: string }[] = [];
-  isLoadingRoles = true;
+  // Issue #240: kayıt formu anonim; Keycloak realm rol kataloğu (GET /api/auth/roles) artık yalnızca Admin'e açık.
+  // Anonim kayıtta seçilebilen roller auth-api'nin register allowlist'i ile birebir aynı sabit küme.
+  readonly roles: readonly { value: string; viewValue: string }[] = [
+    { value: 'Student', viewValue: 'Öğrenci' },
+    { value: 'Teacher', viewValue: 'Öğretmen' },
+    { value: 'Parent', viewValue: 'Veli' },
+  ];
 
-  constructor(
-    private fb: FormBuilder,
-    private authService: AuthService,
-    private router: Router,
-    private snackBar: MatSnackBar
-  ) {
+  constructor() {
     this.registerForm = this.fb.group(
       {
         firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -38,45 +45,6 @@ export class RegisterComponent {
       },
       { validator: this.passwordMatchValidator }
     );
-
-    this.loadRoles();
-  }
-
-  loadRoles() {
-    this.isLoadingRoles = true;
-
-    // Role control'ü disable et
-    this.registerForm.get('role')?.disable();
-
-    this.authService.getRoles().subscribe({
-      next: (roles) => {
-        this.roles = roles.map((role) => ({
-          value: role.name,
-          viewValue: role.displayName || role.name,
-        }));
-        this.isLoadingRoles = false;
-
-        // Role control'ü enable et
-        this.registerForm.get('role')?.enable();
-      },
-      error: (error) => {
-        console.error('Roller yüklenemedi:', error);
-        // Fallback olarak varsayılan rolleri kullan
-        this.roles = [
-          { value: 'student', viewValue: 'Öğrenci' },
-          { value: 'teacher', viewValue: 'Öğretmen' },
-          { value: 'parent', viewValue: 'Veli' },
-        ];
-        this.isLoadingRoles = false;
-
-        // Role control'ü enable et
-        this.registerForm.get('role')?.enable();
-
-        this.snackBar.open('Roller yüklenirken hata oluştu, varsayılan roller kullanılıyor.', 'Tamam', {
-          duration: 3000,
-        });
-      },
-    });
   }
 
   passwordMatchValidator(group: FormGroup) {
@@ -89,8 +57,7 @@ export class RegisterComponent {
     if (this.registerForm.valid) {
       this.isLoading = true;
 
-      const fullName = `${this.registerForm.value.firstName} ${this.registerForm.value.lastName}`.trim();
-      const registerPayload = {
+      const registerPayload: RegisterRequest = {
         firstName: this.registerForm.value.firstName,
         lastName: this.registerForm.value.lastName,
         email: this.registerForm.value.email,
@@ -99,27 +66,31 @@ export class RegisterComponent {
       };
 
       this.authService.register(registerPayload).subscribe({
-        next: (res) => {
-          console.log('Başarılı Yanıt:', res);
-          if (res.id) {
-            this.snackBar.open('Kayıt başarılı! Giriş yapabilirsiniz.', 'Tamam', { duration: 3000 });
-            const navigationExtras: NavigationExtras = {
-              state: {
-                email: registerPayload.email,
-                password: registerPayload.password,
-              },
-            };
-            setTimeout(() => {
-              this.router.navigate(['/login'], navigationExtras);
-            }, 1000);
-          } else {
-            console.error('Başarılı ama beklenmeyen yanıt kodu:', res.id);
-          }
+        // Issue #240: yanıt e-postanın zaten kayıtlı olup olmadığını belirtmez (her durumda aynı 200 + mesaj);
+        // bu yüzden başarı gövdesinde id beklenmez, kullanıcı her durumda login'e yönlendirilir.
+        // Mesaj auth-api'de Accept-Language'a göre yerelleştirilir; auth-ui'da i18n yok, yedek metin sabit.
+        next: (res: RegisterResponse) => {
+          this.snackBar.open(
+            res?.message || 'Kayıt talebiniz alındı. Hesabınız oluşturulduysa giriş yapabilirsiniz.',
+            'Tamam',
+            { duration: 5000 }
+          );
+          const navigationExtras: NavigationExtras = {
+            // Parola navigation state'e (tarayıcı history'si) konmaz; login yalnızca e-postayı alabilir.
+            state: { email: registerPayload.email },
+          };
+          setTimeout(() => {
+            this.router.navigate(['/login'], navigationExtras);
+          }, 1000);
         },
-        error: (err) => {
-          console.error('Hata Yanıtı:', err);
+        error: (err: HttpErrorResponse) => {
           this.isLoading = false;
-          this.snackBar.open('Kayıt başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });
+          // 400 (rol / e-posta biçimi / seed alanı) ve 500 gövdesi auth-api'de yerelleştirilmiş `message` taşır;
+          // hiçbiri e-postanın kayıtlı olup olmadığını belirtmez.
+          const serverMessage = typeof err?.error?.message === 'string' ? err.error.message : null;
+          this.snackBar.open(serverMessage || 'Kayıt başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', {
+            duration: 4000,
+          });
         },
       });
     }

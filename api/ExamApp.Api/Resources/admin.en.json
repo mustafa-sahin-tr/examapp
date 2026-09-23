@@ -19,6 +19,17 @@
       "sessionRevokeFailed": "The password was changed but the user's open sessions could not be closed; the new password was not shown. Please try again.",
       "rateLimited": "Too many password reset requests in a short time. Please wait a moment and try again."
     },
+    "accountStatus": {
+      "teacherNotFound": "Teacher not found.",
+      "studentNotFound": "Student not found.",
+      "accountNotFound": "No sign-in account is linked to this user.",
+      "self": "You cannot change the status of your own account from this screen.",
+      "protectedRole": "The status of administrator or service accounts cannot be changed from this screen.",
+      "upstreamFailed": "The account status could not be changed right now. Please try again shortly.",
+      "sessionRevokeFailed": "The account was disabled but the user's open sessions could not be closed. Please try again.",
+      "enabledRequired": "The enabled field is required (true or false).",
+      "rateLimited": "Too many account status changes in a short time. Please wait a moment and try again."
+    },
     "userList": {
       "rateLimited": "Too many list requests in a short time. Please wait a moment and try again."
     },

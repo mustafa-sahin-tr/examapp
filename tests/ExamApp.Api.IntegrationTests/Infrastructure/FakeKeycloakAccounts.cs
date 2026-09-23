@@ -18,8 +18,12 @@ public enum FakeKeycloakFailure
     ResetFails,
     /// <summary>reset-password 404.</summary>
     ResetNotFound,
-    /// <summary>Şifre değişir, logout 500.</summary>
-    LogoutFails
+    /// <summary>Şifre değişir / hesap kapanır, logout 500.</summary>
+    LogoutFails,
+    /// <summary>issue #155: <c>PUT users/{id}</c> (enabled) 500 — durum değişmez.</summary>
+    StatusChangeFails,
+    /// <summary>issue #155: <c>PUT users/{id}</c> (enabled) 404.</summary>
+    StatusChangeNotFound
 }
 
 /// <summary>
@@ -33,9 +37,16 @@ public sealed class FakeKeycloakAccounts
 
     public ConcurrentDictionary<string, int> ResetCalls { get; } = new();
     public ConcurrentDictionary<string, int> LogoutCalls { get; } = new();
+    public ConcurrentDictionary<string, int> SetEnabledCalls { get; } = new();
+
+    /// <summary>issue #155: hesabın Keycloak <c>enabled</c> durumu (kayıtta varsayılan true).</summary>
+    public ConcurrentDictionary<string, bool> Enabled { get; } = new();
 
     public void Add(string sub, string[] realmRoles, string[]? clientRoles = null, FakeKeycloakFailure failure = FakeKeycloakFailure.None)
-        => _accounts[sub] = new Account(realmRoles, clientRoles ?? [], failure);
+    {
+        _accounts[sub] = new Account(realmRoles, clientRoles ?? [], failure);
+        Enabled[sub] = true;
+    }
 
     public bool TryGet(string sub, out Account account) => _accounts.TryGetValue(sub, out account!);
 
@@ -81,6 +92,22 @@ public sealed class FakeKeycloakAccountsService(IKeycloakService inner, FakeKeyc
         accounts.LogoutCalls.AddOrUpdate(keycloakUserId, 1, (_, n) => n + 1);
         if (a.Failure == FakeKeycloakFailure.LogoutFails)
             throw new KeycloakException("Keycloak session logout failed: 500", 500);
+        return Task.CompletedTask;
+    }
+
+    public Task SetEnabledAsync(string keycloakUserId, bool enabled, CancellationToken ct = default)
+    {
+        if (!accounts.TryGet(keycloakUserId, out var a))
+            return inner.SetEnabledAsync(keycloakUserId, enabled, ct);
+        accounts.SetEnabledCalls.AddOrUpdate(keycloakUserId, 1, (_, n) => n + 1);
+        switch (a.Failure)
+        {
+            case FakeKeycloakFailure.StatusChangeFails:
+                throw new KeycloakException("Keycloak account status update failed: 500", 500);
+            case FakeKeycloakFailure.StatusChangeNotFound:
+                throw new KeycloakException("Keycloak account status update failed: 404", 404);
+        }
+        accounts.Enabled[keycloakUserId] = enabled;
         return Task.CompletedTask;
     }
 

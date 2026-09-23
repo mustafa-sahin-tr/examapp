@@ -29,7 +29,7 @@ public class AdminControllerPasswordResetTests
     private AdminController NewController(string? sub = "kc-admin-sub") => new(
         Substitute.For<ITaxonomyService>(), Substitute.For<IClassifierCacheService>(), Substitute.For<ISchoolService>(),
         Substitute.For<IDashboardService>(), Substitute.For<ILocationService>(), Substitute.For<ITeacherApprovalService>(),
-        Substitute.For<IAdminTeacherService>(), Substitute.For<IAdminStudentService>(), Substitute.For<IAdminDataAccessAuditService>(), _reset)
+        Substitute.For<IAdminTeacherService>(), Substitute.For<IAdminStudentService>(), Substitute.For<IAdminDataAccessAuditService>(), _reset, Substitute.For<IAdminAccountStatusService>())
     {
         ControllerContext = new ControllerContext
         {

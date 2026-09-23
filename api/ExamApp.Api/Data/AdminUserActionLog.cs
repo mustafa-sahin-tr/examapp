@@ -39,7 +39,11 @@ public class AdminUserActionLog
 /// <summary>Audit'lenen admin hesap aksiyonları. Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>
 public enum AdminUserAction
 {
-    PasswordReset = 1
+    PasswordReset = 1,
+    /// <summary>issue #155: Keycloak hesabı devre dışı bırakıldı (+ oturumlar kapatıldı).</summary>
+    AccountDisabled = 2,
+    /// <summary>issue #155: Keycloak hesabı yeniden etkinleştirildi.</summary>
+    AccountEnabled = 3
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>
@@ -52,10 +56,12 @@ public enum AdminUserActionOutcome
     Denied = 3,
     /// <summary>Keycloak şifreyi set edemedi — yan etki yok.</summary>
     ResetFailed = 4,
-    /// <summary>Şifre DEĞİŞTİ ama oturumlar kapatılamadı; şifre gösterilmedi.</summary>
+    /// <summary>Şifre DEĞİŞTİ (ya da hesap devre dışı bırakıldı, #155) ama oturumlar kapatılamadı; şifre gösterilmedi.</summary>
     SessionRevokeFailed = 5,
     /// <summary>Öğretmen/öğrenci ya da Keycloak hesabı bulunamadı.</summary>
-    NotFound = 6
+    NotFound = 6,
+    /// <summary>issue #155: Keycloak hesap durumunu (enabled) değiştiremedi — yan etki yok.</summary>
+    StatusChangeFailed = 7
 }
 
 /// <summary>Admin hesap aksiyonunun hedef türü. Kalıcı değer string'dir.</summary>

@@ -328,5 +328,35 @@
       "rateLimitedSeconds": "Too many password reset requests in a short time. Please try again in {{seconds}} seconds.",
       "generic": "Something went wrong while resetting the password. Please try again."
     }
+  },
+  "accountStatus": {
+    "disableAction": "Disable account",
+    "disableActionFor": "Disable the account of {{name}}",
+    "enableAction": "Enable account",
+    "enableActionFor": "Enable the account of {{name}}",
+    "disable": {
+      "confirmTitle": "Disable this account?",
+      "confirmIntro": "The account of {{name}} will be disabled.",
+      "confirmSessions": "All of the user's open sessions will be signed out.",
+      "confirmLogin": "The user will not be able to sign in until the account is enabled again.",
+      "confirm": "Disable"
+    },
+    "enable": {
+      "confirmTitle": "Enable this account?",
+      "confirmIntro": "The account of {{name}} will be enabled again.",
+      "confirmLogin": "The user will be able to sign in again with their current password.",
+      "confirm": "Enable"
+    },
+    "retry": "Try again",
+    "submitting": "Saving...",
+    "cancel": "Cancel",
+    "errors": {
+      "forbidden": "You are not authorized to perform this action.",
+      "notFound": "User not found.",
+      "upstream": "The identity server could not be reached. Please try again later.",
+      "rateLimited": "Too many account status changes in a short time. Please wait a moment and try again.",
+      "rateLimitedSeconds": "Too many account status changes in a short time. Please try again in {{seconds}} seconds.",
+      "generic": "Something went wrong while changing the account status. Please try again."
+    }
   }
 }

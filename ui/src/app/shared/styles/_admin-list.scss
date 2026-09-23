@@ -168,3 +168,12 @@
   white-space: nowrap;
   text-align: end;
 }
+
+// Hesap durumu aksiyonu (#155): devre dışı bırak → tehlike rengi, etkinleştir → başarı rengi.
+.al__status-action mat-icon {
+  color: var(--ms-danger-text-medium);
+}
+
+.al__status-action--enable mat-icon {
+  color: var(--ms-success-text);
+}

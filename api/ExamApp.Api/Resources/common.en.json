@@ -1,5 +1,6 @@
 {
   "common": {
-    "invalidData": "Invalid data."
+    "invalidData": "Invalid data.",
+    "tooManyRequests": "Too many requests. Please wait a moment and try again."
   }
 }

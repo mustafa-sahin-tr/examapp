@@ -7,7 +7,7 @@ import { AdminSchoolPagedQuery } from '../../models/admin-paged-query.model';
 import { SchoolPagedList, adminListErrorMessage } from './school-paged-list';
 
 describe('adminListErrorMessage', () => {
-  const text = (key: 'forbidden' | 'loadFailed'): string => `[${key}]`;
+  const text = (key: 'forbidden' | 'loadFailed' | 'rateLimited'): string => `[${key}]`;
 
   it('status403_ReturnsForbiddenText', () => {
     expect(adminListErrorMessage(new HttpErrorResponse({ status: 403 }), text)).toBe('[forbidden]');
@@ -20,6 +20,11 @@ describe('adminListErrorMessage', () => {
 
   it('status400WithBlankBody_ReturnsLoadFailed', () => {
     expect(adminListErrorMessage(new HttpErrorResponse({ status: 400, error: '   ' }), text)).toBe('[loadFailed]');
+  });
+
+  it('status429_ReturnsRateLimitedText', () => {
+    const err = new HttpErrorResponse({ status: 429, error: 'Too many list requests' });
+    expect(adminListErrorMessage(err, text)).toBe('[rateLimited]');
   });
 
   it('status500_ReturnsLoadFailed', () => {

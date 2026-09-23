@@ -9,7 +9,10 @@ export interface AdminStudentListItem {
   id: number;
   /** auth-api'den çözümlenir; erişilemezse boş string. */
   fullName: string;
-  /** auth-api'den çözümlenir; erişilemezse boş string. */
+  /**
+   * Sunucuda MASKELENMİŞ e-posta (issue #246, KVKK): `a***@okul.k12.tr`. Tam adres bu listede hiç gelmez —
+   * arama/kopyalama/mailto için kullanılamaz. auth-api'den çözümlenemezse boş string.
+   */
   email: string;
   /** Numara yoksa boş string (null gelmez). */
   studentNumber: string;

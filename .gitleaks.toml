@@ -1,0 +1,35 @@
+title = "examapp gitleaks config"
+
+# Issue #238: bu proje varsayılan gitleaks kurallarını kullanır. Path allowlist
+# yalnızca "example" dosyaları için (bunlar zaten CHANGE_ME placeholder'ları
+# taşıyor, gerçek secret değil). Diğer her şey — realm-export.json dahil —
+# gerçekten taranır; yalnızca aşağıdaki dar regex listesindeki bilinen
+# dev-only/placeholder değerler muaf tutulur. Gerçek secret görünen bir değer
+# eklerken önce rotate edip appsettings/.env yerine ortam değişkenine taşı —
+# buraya allowlist eklemek çözüm değildir.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Example/template files with CHANGE_ME placeholders — not real secrets"
+paths = [
+  '''deploy/\.env\.prod\.example$''',
+  '''deploy/gcp/k8s/secret\.example\.yaml$''',
+]
+
+# Dev-only Keycloak/Jitsi secrets (issue #238) — intentionally checked in
+# (.env.example, AppHost/appsettings.json, deploy/keycloak/dev-import/
+# realm-export.json) so a fresh clone's docker-compose/Aspire login flow works
+# out of the box. Never reuse these outside local dev; rotating them means
+# updating .env.example + AppHost/appsettings.json + dev-import/realm-export.json
+# together (see local-dev.md). Also allow the literal "**********" Keycloak
+# uses to mask client secrets it doesn't manage locally (broker,
+# realm-management) and generic CHANGE_ME placeholders.
+regexes = [
+  '''devOnlyExamClientSecretChangeMe12345678''',
+  '''devOnlyExamAdminClientSecretChangeMe12345678''',
+  '''devOnlyJitsiJwtSecretChangeMe1234''',
+  '''devOnlyJitsiRoomSecretChangeMe12''',
+  '''\*{10}''',
+  '''CHANGE_ME[A-Z_]*''',
+]

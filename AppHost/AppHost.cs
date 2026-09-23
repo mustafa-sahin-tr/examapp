@@ -229,11 +229,20 @@ var jitsiWeb = builder.AddContainer("jitsi-web", "jitsi/web", "stable-9584")
 // Aspire.Hosting.Keycloak is a preview-only package at 13.5.0 (no stable
 // release yet) — flagged in the migration decision log.
 // Realm (exam-realm: clients, roles, Google IdP broker config) is imported
-// from deploy/keycloak/import/realm-export.json on every clean start, same
+// from deploy/keycloak/dev-import/realm-export.json on every clean start, same
 // file docker-compose.yml's --import-realm flag already uses, so the realm
 // is reproducible without manual Keycloak admin console setup.
 var keycloakAdminUsername = builder.AddParameter("keycloak-admin-username");
 var keycloakAdminPassword = builder.AddParameter("keycloak-admin-password", secret: true);
+
+// Issue #238: appsettings.json no longer carries real Keycloak client secrets
+// (placeholder ""); these dev-only values must match
+// deploy/keycloak/dev-import/realm-export.json's exam-client/exam-admin "secret"
+// fields (same convention as .env.example for the docker-compose path) or
+// every login/service-to-service token request fails with an
+// invalid_client_credentials error that looks unrelated to config.
+var keycloakClientSecret = builder.AddParameter("keycloak-client-secret", secret: true);
+var keycloakAdminClientSecret = builder.AddParameter("keycloak-admin-client-secret", secret: true);
 
 // Not pinned to docker-compose.yml's 24.0.1: AddKeycloak enables the
 // "opentelemetry" KC_FEATURES flag by default (for dashboard OTLP export),
@@ -242,7 +251,7 @@ var keycloakAdminPassword = builder.AddParameter("keycloak-admin-password", secr
 // match the older pin, upgraded to the current stable release (26.7.0) so
 // Keycloak's own traces show up in the dashboard too — a deliberate
 // deviation from "pin to what's in prod today," worth reviewing before this
-// migration ships, since deploy/keycloak/import/realm-export.json (exported
+// migration ships, since deploy/keycloak/dev-import/realm-export.json (exported
 // against 24.x) hasn't been verified against 26.x's realm import format.
 var keycloak = builder.AddKeycloak("keycloak", port: 8081, adminUsername: keycloakAdminUsername, adminPassword: keycloakAdminPassword)
     .WithImageTag("26.7.0")
@@ -272,7 +281,12 @@ var keycloak = builder.AddKeycloak("keycloak", port: 8081, adminUsername: keyclo
     .WithEnvironment("KC_SPI_THEME_CACHE_TEMPLATES", "false")
     .WithEnvironment("KC_SPI_THEME_STATIC_MAX_AGE", "-1")
     .WithDataVolume("examapp-keycloak-data")
-    .WithRealmImport("../deploy/keycloak/import")
+    // Issue #238: dev-only realm fixture (public dev Keycloak client secrets,
+    // no production credentials) — deliberately NOT deploy/keycloak/import,
+    // which is the prod import path deploy/docker-compose.prod.yml and the
+    // azure-vm-acr-deploy workflow use; that directory must stay empty in git
+    // so ops-provided prod realms are never mixed with dev fixtures.
+    .WithRealmImport("../deploy/keycloak/dev-import")
     // Own storage in the "keycloak" database on the same Postgres instance —
     // matches docker-compose.yml's KC_DB/KC_DB_URL_*/KC_DB_USERNAME/PASSWORD
     // env vars exactly, just with an Aspire-managed dynamic host/port instead
@@ -595,6 +609,8 @@ var gatewayPublicUrl = ocelotGateway.GetEndpoint("http");
 examDotnetApi = examDotnetApi
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
+    .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
+    .WithEnvironment("Keycloak__AdminClientSecret", keycloakAdminClientSecret)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     // AuthApiBaseUrl is another docker-compose hostname ("auth-api:5079")
     // Ocelot's override mechanism never touches, since it's not an Ocelot
@@ -609,6 +625,8 @@ examDotnetApi = examDotnetApi
 badgeService = badgeService
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
+    .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
+    .WithEnvironment("Keycloak__AdminClientSecret", keycloakAdminClientSecret)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     // Issue #165: BadgeService now resolves the caller's numeric user id via
     // GET /api/auth/user-profile on auth-api (same client call ExamDotnetApi
@@ -621,6 +639,8 @@ badgeService = badgeService
 authApi = authApi
     .WithReference(keycloak)
     .WithEnvironment("Keycloak__Host", keycloakHttp)
+    .WithEnvironment("Keycloak__ClientSecret", keycloakClientSecret)
+    .WithEnvironment("Keycloak__AdminClientSecret", keycloakAdminClientSecret)
     .WithEnvironment("Server__BaseUrl", gatewayPublicUrl)
     .WaitFor(keycloak);
 

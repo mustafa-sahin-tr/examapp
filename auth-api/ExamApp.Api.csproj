@@ -4,6 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Issue #238: çıplak `dotnet run` (docker-compose/Aspire dışı) için Keycloak
+         ClientSecret/AdminClientSecret gibi appsettings.json'da artık boş bırakılan
+         secret'ları isteğe bağlı override etmek için. Ana mekanizma değil — .env
+         (docker-compose) veya AppHost parametreleri (Aspire) asıl kaynak. -->
+    <UserSecretsId>auth-api-9d2c7b1a-5e4f-4a3c-8b6d-1f0e9a7c3d52</UserSecretsId>
   </PropertyGroup>
 
   <PropertyGroup>

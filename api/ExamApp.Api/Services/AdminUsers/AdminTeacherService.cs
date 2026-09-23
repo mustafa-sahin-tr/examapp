@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using Microsoft.EntityFrameworkCore;
@@ -70,7 +71,8 @@ public class AdminTeacherService : IAdminTeacherService
                     Id = r.Id,
                     UserId = r.UserId,
                     FullName = user?.FullName ?? string.Empty,
-                    Email = user?.Email ?? string.Empty,
+                    // issue #246: liste görünümünde tam e-posta dönülmez (KVKK veri minimizasyonu).
+                    Email = EmailMask.Apply(user?.Email),
                     SchoolId = r.SchoolId,
                     SchoolName = r.SchoolName,
                     IsIndependentTutor = r.IsIndependentTutor,

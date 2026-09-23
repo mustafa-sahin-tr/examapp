@@ -127,6 +127,7 @@ public class AppDbContext : DbContext
 
     // Login denemeleri (issue #84) — BadgeService servis-to-servis yazar, admin dashboard (issue #6) okur.
     public DbSet<LoginEvent> LoginEvents { get; set; }
+    public DbSet<AdminDataAccessLog> AdminDataAccessLogs { get; set; } // issue #246
 
 
 
@@ -581,6 +582,16 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<LoginEvent>()
             .HasIndex(le => new { le.OccurredAtUtc, le.Role, le.Success });
+
+        // Admin kişisel veri erişim kaydı (issue #246). Enum string saklanır: kayıt ham SQL ile okunduğunda
+        // da anlaşılır kalsın ve üye sırası değişse bile geçmiş satırların anlamı kaymasın.
+        // Index'ler: "bu admin ne zaman neye baktı" ve "şu aralıkta kim erişti" denetim sorguları için.
+        modelBuilder.Entity<AdminDataAccessLog>(e =>
+        {
+            e.Property(a => a.Resource).HasConversion<string>().HasMaxLength(32);
+            e.HasIndex(a => new { a.ActorKeycloakId, a.OccurredAtUtc });
+            e.HasIndex(a => a.OccurredAtUtc);
+        });
 
         // ProgramStep, ProgramStepOption, and ProgramStepAction relationships
         modelBuilder.Entity<ProgramStep>()

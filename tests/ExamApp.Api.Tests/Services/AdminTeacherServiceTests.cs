@@ -145,7 +145,7 @@ public class AdminTeacherServiceTests : IDisposable
 
         var bound = items.Single(i => i.UserId == 42);
         bound.FullName.ShouldBe("Ad 42");
-        bound.Email.ShouldBe("u42@test.local");
+        bound.Email.ShouldBe("u***@test.local"); // issue #246: listede maskeli
         bound.SchoolId.ShouldBe(schoolId);
         bound.SchoolName.ShouldBe("Konya Lisesi");
         bound.IsIndependentTutor.ShouldBeFalse();
@@ -286,6 +286,24 @@ public class AdminTeacherServiceTests : IDisposable
 
         result.TotalCount.ShouldBe(1);
         result.Items.Single().UserId.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Issue246_list_never_returns_a_full_email_address()
+    {
+        await SeedAsync(countA: 3, countB: 0, countUnassigned: 0);
+        _authApi.GetUsersWithAccountStatusByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserLookupResultDto>
+            {
+                new() { Id = 100, FullName = "A", Email = "ali.veli@okul.k12.tr", Enabled = true },
+                new() { Id = 101, FullName = "B", Email = "x@okul.k12.tr", Enabled = true },   // tek karakterlik yerel kısım
+                new() { Id = 102, FullName = "C", Email = "bozuk-adres", Enabled = true },    // @ yok
+            });
+        await using var ctx = _db.NewContext();
+
+        var items = (await NewService(ctx).ListAsync(1, 20, null, false)).Items.OrderBy(i => i.Id).ToList();
+
+        items.Select(i => i.Email).ShouldBe(["a***@okul.k12.tr", "***@okul.k12.tr", "***"]);
     }
 
     public void Dispose() => _db.Dispose();

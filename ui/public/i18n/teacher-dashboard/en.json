@@ -36,5 +36,48 @@
       "lowCompletion": "Low Completion",
       "expired": "Overdue"
     }
+  },
+  "activity": {
+    "title": "Activity Summary (last {{days}} days)",
+    "periodShort": "Last {{days}} days",
+    "accuracy": "{{value}}% accuracy",
+    "accuracyShort": "({{value}}%)",
+    "noAccuracy": "No questions solved yet",
+    "own": {
+      "title": "My Activity",
+      "error": "Something went wrong while loading your activity.",
+      "worksheetsCreated": "New Exams",
+      "assignmentsCreated": "New Assignments",
+      "activeStudents": "Active Students"
+    },
+    "students": {
+      "title": "Student Activity",
+      "error": "Something went wrong while loading student activity.",
+      "questionsSolved": "Questions Solved",
+      "correctCount": "Correct Answers",
+      "time": "Total Time"
+    },
+    "duration": {
+      "hoursMinutes": "{{h}} h {{m}} min",
+      "hours": "{{h}} h",
+      "minutesSeconds": "{{m}} min {{s}} s",
+      "minutes": "{{m}} min",
+      "seconds": "{{s}} s"
+    },
+    "loading": "Loading activity..."
+  },
+  "topStudents": {
+    "title": "Most Active Students (last {{days}} days)",
+    "sortHint": "Sorted by questions solved",
+    "loading": "Loading most active students...",
+    "empty": "Your students have not solved any questions in the last {{days}} days.",
+    "cardCounts": "{{solved}} questions · {{correct}} correct",
+    "columns": {
+      "rank": "#",
+      "student": "Student",
+      "questionsSolved": "Questions Solved",
+      "correct": "Correct",
+      "time": "Study Time"
+    }
   }
 }

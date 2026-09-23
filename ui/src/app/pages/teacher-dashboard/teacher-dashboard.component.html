@@ -181,4 +181,210 @@
       </div>
     }
   </div>
+
+  <!-- Issue #56: Aktivite Özeti (son N gün) -->
+  <div class="dashboard-section">
+    <app-section-header [title]="t('activity.title', { days: activityDays })">
+      <span sectionTitlePrefix class="title-emoji" aria-hidden="true">📊</span>
+    </app-section-header>
+
+    <div class="activity-grid">
+      <!-- Benim Aktivitem -->
+      <section class="activity-card" data-key="own" aria-labelledby="activity-own-title">
+        <h3 class="activity-card__title" id="activity-own-title">
+          <span aria-hidden="true">👤</span> {{ t('activity.own.title') }}
+        </h3>
+
+        @if (ownActivityLoading()) {
+          <div class="activity-tiles" aria-busy="true" aria-live="polite">
+            <span class="cdk-visually-hidden">{{ t('activity.loading') }}</span>
+            @for (i of [0, 1, 2]; track i) {
+              <div class="activity-tile activity-tile--skeleton">
+                <span class="skeleton-line skeleton-line--label"></span>
+                <span class="skeleton-line skeleton-line--value"></span>
+              </div>
+            }
+          </div>
+        } @else if (ownActivityError()) {
+          <div class="state-box state-box--error" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <p class="state-text">{{ ownActivityError() }}</p>
+            <button mat-stroked-button type="button" (click)="loadOwnActivity()">
+              {{ 'common.retry' | transloco }}
+            </button>
+          </div>
+        } @else {
+          <div class="activity-tiles">
+            @for (m of ownActivityMetrics(); track m.key) {
+              <div class="activity-tile" [attr.data-key]="m.key">
+                <span class="activity-tile__value">{{ m.value }}</span>
+                <span class="activity-tile__label">{{ t(m.labelKey) }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        <p class="activity-card__period">
+          <span class="activity-card__period-range">{{ activityPeriod() }}</span>
+          <span class="activity-card__period-short">{{ t('activity.periodShort', { days: activityDays }) }}</span>
+        </p>
+      </section>
+
+      <!-- Öğrenci Aktivitesi -->
+      <section class="activity-card" data-key="students" aria-labelledby="activity-students-title">
+        <h3 class="activity-card__title" id="activity-students-title">
+          <span aria-hidden="true">🎓</span> {{ t('activity.students.title') }}
+        </h3>
+
+        @if (studentsActivityLoading()) {
+          <div class="activity-tiles" aria-busy="true" aria-live="polite">
+            <span class="cdk-visually-hidden">{{ t('activity.loading') }}</span>
+            @for (i of [0, 1, 2]; track i) {
+              <div class="activity-tile activity-tile--skeleton">
+                <span class="skeleton-line skeleton-line--label"></span>
+                <span class="skeleton-line skeleton-line--value"></span>
+              </div>
+            }
+          </div>
+        } @else if (studentsActivityError()) {
+          <div class="state-box state-box--error" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <p class="state-text">{{ studentsActivityError() }}</p>
+            <button mat-stroked-button type="button" (click)="loadStudentsActivity()">
+              {{ 'common.retry' | transloco }}
+            </button>
+          </div>
+        } @else {
+          <div class="activity-tiles">
+            @for (m of studentsActivityMetrics(); track m.key) {
+              <div class="activity-tile" [attr.data-key]="m.key">
+                <span class="activity-tile__value">
+                  @if (m.duration) {
+                    {{ t(m.duration.key, m.duration.params) }}
+                  } @else {
+                    {{ m.value }}
+                  }
+                </span>
+                <span class="activity-tile__label">{{ t(m.labelKey) }}</span>
+                @if (m.key === 'totalCorrectCount') {
+                  <span class="activity-tile__hint">
+                    @if (m.accuracy !== null) {
+                      {{ t('activity.accuracy', { value: m.accuracy }) }}
+                    } @else {
+                      {{ t('activity.noAccuracy') }}
+                    }
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <p class="activity-card__period">
+          <span class="activity-card__period-range">{{ activityPeriod() }}</span>
+          <span class="activity-card__period-short">{{ t('activity.periodShort', { days: activityDays }) }}</span>
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- Issue #56: En Aktif Öğrenciler -->
+  <!-- ngSkipHydration: mat-table kendi DOM'unu yönetir; hydration uzlaştırmasına girmesin, tarayıcıda sıfırdan render edilsin. -->
+  <div class="dashboard-section" ngSkipHydration>
+    <div class="section-header-row">
+      <app-section-header [title]="t('topStudents.title', { days: activityDays })">
+        <span sectionTitlePrefix class="title-emoji" aria-hidden="true">🏆</span>
+      </app-section-header>
+      <span class="section-header-row__hint">{{ t('topStudents.sortHint') }}</span>
+    </div>
+
+    @if (studentsActivityLoading()) {
+      <div class="state-box state-box--loading" aria-busy="true" aria-live="polite">
+        <mat-spinner diameter="28"></mat-spinner>
+        <p class="state-text">{{ t('topStudents.loading') }}</p>
+      </div>
+    } @else if (studentsActivityError()) {
+      <div class="state-box state-box--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ studentsActivityError() }}</p>
+        <button mat-stroked-button type="button" (click)="loadStudentsActivity()">
+          {{ 'common.retry' | transloco }}
+        </button>
+      </div>
+    } @else if (topStudentsEmpty()) {
+      <div class="state-box state-box--empty top-students-empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="state-text">{{ t('topStudents.empty', { days: activityDays }) }}</p>
+      </div>
+    } @else {
+      <!-- Masaüstü: tablo -->
+      <table
+        mat-table
+        [dataSource]="topStudents()"
+        [trackBy]="trackTopStudent"
+        class="top-students-table"
+        [attr.aria-label]="t('topStudents.title', { days: activityDays })"
+      >
+        <ng-container matColumnDef="rank">
+          <th mat-header-cell *matHeaderCellDef>{{ t('topStudents.columns.rank') }}</th>
+          <td mat-cell *matCellDef="let row; let i = index" class="top-students-table__rank">
+            <span aria-hidden="true">{{ rankLabel(i) }}</span><span class="cdk-visually-hidden">{{ i + 1 }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="studentName">
+          <th mat-header-cell *matHeaderCellDef>{{ t('topStudents.columns.student') }}</th>
+          <td mat-cell *matCellDef="let row" class="top-students-table__student">{{ row.studentName }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="questionsSolved">
+          <th mat-header-cell *matHeaderCellDef>{{ t('topStudents.columns.questionsSolved') }}</th>
+          <td mat-cell *matCellDef="let row" class="top-students-table__solved">{{ row.questionsSolved }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="correctCount">
+          <th mat-header-cell *matHeaderCellDef>{{ t('topStudents.columns.correct') }}</th>
+          <td mat-cell *matCellDef="let row">
+            @let accuracy = accuracyOf(row);
+            {{ row.correctCount }}
+            @if (accuracy !== null) {
+              <span class="top-students-table__accuracy">{{ t('activity.accuracyShort', { value: accuracy }) }}</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="timeSeconds">
+          <th mat-header-cell *matHeaderCellDef>{{ t('topStudents.columns.time') }}</th>
+          <td mat-cell *matCellDef="let row" class="top-students-table__time">
+            @let duration = durationOf(row.timeSeconds);
+            {{ t(duration.key, duration.params) }}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="topStudentsDisplayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: topStudentsDisplayedColumns" class="top-students-table__row"></tr>
+      </table>
+
+      <!-- Mobil: kart listesi (aynı veri ve sıra, CSS ile değişir; #54 deseni) -->
+      <ol class="top-student-cards" [attr.aria-label]="t('topStudents.title', { days: activityDays })">
+        @for (row of topStudents(); track row.studentId; let i = $index) {
+          <li class="worksheet-card worksheet-card--static top-student-card">
+            <span class="worksheet-card__name">
+              <span class="top-student-card__rank">
+                <span aria-hidden="true">{{ rankLabel(i) }}</span><span class="cdk-visually-hidden">{{ i + 1 }}</span>
+              </span>
+              <span class="top-student-card__name">{{ row.studentName }}</span>
+            </span>
+            @let cardDuration = durationOf(row.timeSeconds);
+            <div class="top-student-card__meta">
+              <span class="top-student-card__counts">
+                {{ t('topStudents.cardCounts', { solved: row.questionsSolved, correct: row.correctCount }) }}
+              </span>
+              <span class="top-student-card__time">{{ t(cardDuration.key, cardDuration.params) }}</span>
+            </div>
+          </li>
+        }
+      </ol>
+    }
+  </div>
 </div>

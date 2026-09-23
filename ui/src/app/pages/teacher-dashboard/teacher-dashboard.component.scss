@@ -301,6 +301,204 @@
   gap: 0.35rem;
 }
 
+// ── Issue #56: aktivite kartları (iki kart yan yana, mobilde alt alta) ──────
+// Başlıklardaki dekoratif emoji (aria-hidden) ile metin arası boşluk.
+.title-emoji {
+  margin-right: 0.4rem;
+}
+
+// Ekran okuyucuya özel metin; global CDK a11y stili yüklenmemiş olsa da çalışsın diye yerel karşılık.
+.cdk-visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+  outline: 0;
+  appearance: none;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 0.75rem;
+}
+
+.activity-card {
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+
+  &__title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ms-text-strong);
+    font-family: var(--mainFontFamily);
+  }
+
+  &__period {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--ms-text-weak);
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &__period-short {
+    display: none;
+  }
+}
+
+// Number-tile grid: her kartta 3 sütun
+.activity-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.activity-tile {
+  background: var(--ms-surface-medium);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+
+  &__value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--ms-text-strong);
+    letter-spacing: -0.02em;
+    font-family: var(--mainFontFamily);
+    overflow-wrap: anywhere;
+  }
+
+  &__label {
+    font-size: 0.7rem;
+    color: var(--ms-text-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  &__hint {
+    font-size: 0.72rem;
+    color: var(--ms-text-weak);
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &--skeleton {
+    pointer-events: none;
+  }
+}
+
+// ── Issue #56: En Aktif Öğrenciler ──────────────────────────────────────────
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  app-section-header {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__hint {
+    font-size: 0.8rem;
+    color: var(--ms-text-medium);
+    font-family: var(--paragraphFontFamily);
+  }
+}
+
+// Masaüstü: tablo (Sınavlarım tablosuyla aynı çerçeve)
+.top-students-table {
+  width: 100%;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border);
+  border-radius: 10px;
+  overflow: hidden;
+
+  &__rank {
+    width: 3rem;
+    font-weight: 700;
+    color: var(--ms-text-medium);
+  }
+
+  &__student {
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+
+  &__solved {
+    font-weight: 700;
+    color: var(--ms-text-strong);
+  }
+
+  &__accuracy {
+    margin-left: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--ms-text-weak);
+  }
+
+  &__time {
+    white-space: nowrap;
+  }
+}
+
+// Mobil: kart listesi (worksheet-card görünümünü paylaşır, tıklanamaz)
+.top-student-cards {
+  display: none;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.worksheet-card--static {
+  cursor: default;
+
+  &:hover {
+    background: var(--ms-surface-weak);
+  }
+}
+
+.top-student-card {
+  &__rank {
+    margin-right: 0.35rem;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--ms-text-medium);
+    font-family: var(--paragraphFontFamily);
+  }
+
+  &__time {
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--ms-text);
+  }
+}
+
 @media (max-width: 767px) {
   $mobile-bottom-nav-height: 64px;
 
@@ -310,6 +508,19 @@
 
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  // Issue #56: aktivite kartları alt alta; dönem satırı kısa metne döner
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-card__period-range {
+    display: none;
+  }
+
+  .activity-card__period-short {
+    display: inline;
   }
 
   .state-box {
@@ -326,6 +537,15 @@
   }
 
   .worksheet-cards {
+    display: flex;
+  }
+
+  // En Aktif Öğrenciler: tablo gizlenir, kart listesi görünür
+  .top-students-table {
+    display: none;
+  }
+
+  .top-student-cards {
     display: flex;
   }
 }

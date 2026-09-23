@@ -16,6 +16,10 @@
     "fallbackStudentName": "Student #{0}",
     "fallbackTeacherName": "Teacher #{0}",
 
+    "activity": {
+      "invalidDays": "days must be between 1 and 90."
+    },
+
     "search": {
       "priceRangeInvalid": "minPrice cannot be greater than maxPrice."
     },

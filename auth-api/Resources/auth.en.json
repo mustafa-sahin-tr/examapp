@@ -1,0 +1,17 @@
+{
+  "auth": {
+    "login": {
+      "invalidCredentials": "Invalid email or password.",
+      "providerUnavailable": "The sign-in service is currently unavailable, please try again later."
+    },
+    "exchange": {
+      "invalidCode": "The sign-in request is invalid or has expired, please sign in again."
+    },
+    "refresh": {
+      "invalidToken": "Your session has expired, please sign in again."
+    },
+    "completeProfile": {
+      "roleAssignmentFailed": "The role could not be assigned, please try again later."
+    }
+  }
+}

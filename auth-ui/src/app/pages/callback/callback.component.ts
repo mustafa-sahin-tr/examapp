@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatIconModule } from '@angular/material/icon';
+import { httpErrorMessage } from '../../shared/utils/http-error-message';
 
 @Component({
   standalone: true,
@@ -109,8 +110,12 @@ export class CallbackComponent implements OnInit {
 
             window.location.href = (returnBase + dest) || '/login';
           },
-          error: () => {
-            this.snackBar.open('Giriş başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });
+          error: (error: unknown) => {
+            this.snackBar.open(
+              httpErrorMessage(error, 'Giriş başarısız! Lütfen bilgilerinizi kontrol edin.'),
+              'Kapat',
+              { duration: 3000 }
+            );
             setTimeout(() => {
               this.router.navigate(['/login']);
             }, 2000);

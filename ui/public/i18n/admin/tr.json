@@ -4,7 +4,8 @@
     "tabs": {
       "taxonomy": "Taksonomi",
       "classifierCache": "Sınıflandırma Cache",
-      "teacherApplications": "Öğretmen Başvuruları"
+      "teacherApplications": "Öğretmen Başvuruları",
+      "schools": "Okullar"
     }
   },
   "dashboard": {
@@ -105,25 +106,6 @@
       "noTopicTitle": "Önce bir konu seç",
       "noTopicHint": "Seçilen konunun alt konuları burada listelenir"
     },
-    "schools": {
-      "title": "Okullar",
-      "newPlaceholder": "Yeni okul adı",
-      "provincePlaceholder": "İl (opsiyonel)",
-      "provinceAria": "İl",
-      "provinceNone": "— İl yok —",
-      "districtPlaceholder": "İlçe (opsiyonel)",
-      "districtAria": "İlçe",
-      "districtNone": "— İlçe yok —",
-      "addressPlaceholder": "Açık adres (opsiyonel)",
-      "addressAria": "Açık adres",
-      "addressEditPlaceholder": "Açık adres",
-      "add": "Okul ekle",
-      "edit": "Okulu düzenle",
-      "delete": "Okulu sil",
-      "nameAria": "Okul adı",
-      "emptyTitle": "Henüz okul eklenmemiş",
-      "emptyHint": "Okul adı ve isteğe bağlı il / ilçe / adres girip ekle"
-    },
     "actions": {
       "save": "Kaydet",
       "cancel": "Vazgeç"
@@ -135,17 +117,49 @@
       "topicMessage": "\"{{name}}\" konusunu silmek istediğine emin misin?",
       "subtopicTitle": "alt konu sil",
       "subtopicMessage": "\"{{name}}\" alt konusunu silmek istediğine emin misin?",
-      "schoolTitle": "okul sil",
-      "schoolMessage": "\"{{name}}\" okulunu silmek istediğine emin misin?",
       "confirm": "Sil"
     },
     "messages": {
       "taxonomyLoadFailed": "Taksonomi yüklenemedi",
+      "actionFailed": "İşlem başarısız",
+      "close": "Kapat"
+    }
+  },
+  "schools": {
+    "pageTitle": "Okul Yönetimi",
+    "subtitle": "Platformdaki okulları ekle, düzenle ve sil.",
+    "title": "Okullar",
+    "newPlaceholder": "Yeni okul adı",
+    "provincePlaceholder": "İl (opsiyonel)",
+    "provinceAria": "İl",
+    "provinceNone": "— İl yok —",
+    "districtPlaceholder": "İlçe (opsiyonel)",
+    "districtAria": "İlçe",
+    "districtNone": "— İlçe yok —",
+    "addressPlaceholder": "Açık adres (opsiyonel)",
+    "addressAria": "Açık adres",
+    "addressEditPlaceholder": "Açık adres",
+    "add": "Okul ekle",
+    "edit": "Okulu düzenle",
+    "delete": "Okulu sil",
+    "nameAria": "Okul adı",
+    "emptyTitle": "Henüz okul eklenmemiş",
+    "emptyHint": "Okul adı ve isteğe bağlı il / ilçe / adres girip ekle",
+    "actions": {
+      "save": "Kaydet",
+      "cancel": "Vazgeç"
+    },
+    "messages": {
       "schoolsLoadFailed": "Okullar yüklenemedi",
       "provincesLoadFailed": "İller yüklenemedi",
       "districtsLoadFailed": "İlçeler yüklenemedi",
       "actionFailed": "İşlem başarısız",
       "close": "Kapat"
+    },
+    "deleteDialog": {
+      "title": "okul sil",
+      "message": "\"{{name}}\" okulunu silmek istediğine emin misin?",
+      "confirm": "Sil"
     }
   },
   "subjectGrades": {

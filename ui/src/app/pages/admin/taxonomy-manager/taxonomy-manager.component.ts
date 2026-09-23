@@ -18,14 +18,7 @@ import {
 } from '@jsverse/transloco';
 import { firstValueFrom, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
-import {
-  DistrictDto,
-  ProvinceDto,
-  School,
-  TaxonomyFilter,
-  TaxonomySubject,
-  TaxonomyTopic,
-} from '../../../models/taxonomy';
+import { ApiResult, TaxonomyFilter, TaxonomySubject, TaxonomyTopic } from '../../../models/taxonomy';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -35,7 +28,7 @@ import {
   ManageSubjectGradesDialogData,
 } from './manage-subject-grades-dialog/manage-subject-grades-dialog.component';
 
-type Level = 'subject' | 'topic' | 'subtopic' | 'school';
+type Level = 'subject' | 'topic' | 'subtopic';
 /** Sınıf filtresi: 'all' → en az bir sınıfa bağlı dersler, 'unassigned' → sınıfsız dersler, number → o sınıfa bağlı dersler. */
 export type GradeFilter = number | 'all' | 'unassigned';
 
@@ -76,33 +69,6 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly subjects = signal<TaxonomySubject[]>([]);
   readonly grades = signal<{ id: number; name: string }[]>([]);
 
-  readonly schoolsLoading = signal(false);
-  readonly schoolsError = signal<string | null>(null);
-  readonly schools = signal<School[]>([]);
-
-  // ---- il / ilçe (Issue #91) ----
-  readonly provinces = signal<ProvinceDto[]>([]);
-  readonly provincesLoading = signal(false);
-  readonly provincesError = signal<string | null>(null);
-  /** İl id → ilçeleri. Yeni-okul formu ve satır düzenleme aynı anda açık olabildiği için il bazlı önbellek. */
-  readonly districts = signal<Record<number, DistrictDto[]>>({});
-  /** Şu an ilçeleri yüklenen il id'si; yoksa null. */
-  readonly districtsLoading = signal<number | null>(null);
-
-  readonly newSchoolProvinceId = signal<number | null>(null);
-  readonly newSchoolDistrictId = signal<number | null>(null);
-  readonly newSchoolDistricts = computed(() => this.districtsOf(this.newSchoolProvinceId()));
-  readonly newSchoolDistrictsLoading = computed(
-    () => this.newSchoolProvinceId() != null && this.districtsLoading() === this.newSchoolProvinceId()
-  );
-
-  readonly editProvinceId = signal<number | null>(null);
-  readonly editDistrictId = signal<number | null>(null);
-  readonly editDistricts = computed(() => this.districtsOf(this.editProvinceId()));
-  readonly editDistrictsLoading = computed(
-    () => this.editProvinceId() != null && this.districtsLoading() === this.editProvinceId()
-  );
-
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
 
@@ -128,14 +94,11 @@ export class TaxonomyManagerComponent implements OnInit {
   newTopicName = '';
   newTopicGradeId: number | null = null;
   newSubTopicName = '';
-  newSchoolName = '';
-  newSchoolAddressLine = '';
 
   // inline edit state
   editing = signal<{ level: Level; id: number } | null>(null);
   editName = '';
   editGradeId: number | null = null;
-  editAddressLine = '';
 
   constructor() {
     this.preloadScope();
@@ -143,8 +106,6 @@ export class TaxonomyManagerComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    this.loadSchools();
-    this.loadProvinces();
   }
 
   /**
@@ -171,77 +132,6 @@ export class TaxonomyManagerComponent implements OnInit {
         this.loading.set(false);
       },
     });
-  }
-
-  loadSchools(): void {
-    this.schoolsLoading.set(true);
-    this.schoolsError.set(null);
-    this.admin.getSchools().subscribe({
-      next: (list) => {
-        this.schools.set(list);
-        this.schoolsLoading.set(false);
-      },
-      error: () => {
-        this.schoolsError.set(this.text('messages.schoolsLoadFailed'));
-        this.schoolsLoading.set(false);
-      },
-    });
-  }
-
-  // ---- il / ilçe (Issue #91) ----
-
-  loadProvinces(): void {
-    this.provincesLoading.set(true);
-    this.provincesError.set(null);
-    this.admin.getProvinces().subscribe({
-      next: (list) => {
-        this.provinces.set(list);
-        this.provincesLoading.set(false);
-      },
-      error: () => {
-        this.provincesError.set(this.text('messages.provincesLoadFailed'));
-        this.provincesLoading.set(false);
-      },
-    });
-  }
-
-  /** İlçeleri önbellekte yoksa yükler. Aynı il için tekrar istek atılmaz. */
-  private ensureDistricts(provinceId: number | null): void {
-    if (provinceId == null || provinceId in this.districts()) return;
-    this.districtsLoading.set(provinceId);
-    this.admin.getDistricts(provinceId).subscribe({
-      next: (list) => {
-        this.districts.update((d) => ({ ...d, [provinceId]: list }));
-        if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
-      },
-      error: () => {
-        if (this.districtsLoading() === provinceId) this.districtsLoading.set(null);
-        this.snack.open(this.text('messages.districtsLoadFailed'), this.close, { duration: 4000 });
-      },
-    });
-  }
-
-  private districtsOf(provinceId: number | null): DistrictDto[] {
-    return provinceId == null ? [] : this.districts()[provinceId] ?? [];
-  }
-
-  /** Yeni okul formunda il değişti: ilçe seçimi sıfırlanır, yeni ilin ilçeleri yüklenir. */
-  onNewSchoolProvinceChange(provinceId: number | null): void {
-    this.newSchoolProvinceId.set(provinceId);
-    this.newSchoolDistrictId.set(null);
-    this.ensureDistricts(provinceId);
-  }
-
-  /** Düzenleme satırında il değişti: ilçe seçimi sıfırlanır, yeni ilin ilçeleri yüklenir. */
-  onEditProvinceChange(provinceId: number | null): void {
-    this.editProvinceId.set(provinceId);
-    this.editDistrictId.set(null);
-    this.ensureDistricts(provinceId);
-  }
-
-  /** Liste satırı için "İl / İlçe" metni; ikisi de yoksa boş string. */
-  schoolLocation(sc: School): string {
-    return [sc.provinceName, sc.districtName].filter((x): x is string => !!x).join(' / ');
   }
 
   selectSubject(id: number): void {
@@ -366,48 +256,12 @@ export class TaxonomyManagerComponent implements OnInit {
     this.newSubTopicName = '';
   }
 
-  async addSchool(): Promise<void> {
-    const name = this.newSchoolName.trim();
-    if (!name) return;
-    const addressLine = this.newSchoolAddressLine.trim();
-    const ok = await this.runSchools(() =>
-      firstValueFrom(
-        this.admin.createSchool({
-          name,
-          provinceId: this.newSchoolProvinceId(),
-          districtId: this.newSchoolDistrictId(),
-          addressLine: addressLine || null,
-        })
-      )
-    );
-    // Hatalı girişte (örn. 400 "Geçersiz ilçe") form korunur; kullanıcı düzeltip tekrar dener.
-    if (!ok) return;
-    this.newSchoolName = '';
-    this.newSchoolAddressLine = '';
-    this.newSchoolProvinceId.set(null);
-    this.newSchoolDistrictId.set(null);
-  }
-
   // ---- edit ----
 
-  startEdit(
-    level: Level,
-    item: {
-      id: number;
-      name: string;
-      gradeId?: number;
-      provinceId?: number | null;
-      districtId?: number | null;
-      addressLine?: string | null;
-    }
-  ): void {
+  startEdit(level: Level, item: { id: number; name: string; gradeId?: number }): void {
     this.editing.set({ level, id: item.id });
     this.editName = item.name;
     this.editGradeId = item.gradeId ?? null;
-    this.editProvinceId.set(item.provinceId ?? null);
-    this.editDistrictId.set(item.districtId ?? null);
-    this.editAddressLine = item.addressLine ?? '';
-    if (level === 'school') this.ensureDistricts(item.provinceId ?? null);
   }
 
   cancelEdit(): void {
@@ -421,7 +275,7 @@ export class TaxonomyManagerComponent implements OnInit {
 
   async saveEdit(
     level: Level,
-    original: TaxonomySubject | TaxonomyTopic | School | { id: number }
+    original: TaxonomySubject | TaxonomyTopic | { id: number }
   ): Promise<void> {
     const name = this.editName.trim();
     if (!name) return;
@@ -440,23 +294,9 @@ export class TaxonomyManagerComponent implements OnInit {
           })
         )
       );
-    } else if (level === 'subtopic') {
+    } else {
       const topicId = this.selectedTopicId()!;
       await this.run(() => firstValueFrom(this.admin.updateSubTopic(id, { name, topicId })));
-    } else {
-      const addressLine = this.editAddressLine.trim();
-      const ok = await this.runSchools(() =>
-        firstValueFrom(
-          this.admin.updateSchool(id, {
-            name,
-            provinceId: this.editProvinceId(),
-            districtId: this.editDistrictId(),
-            addressLine: addressLine || null,
-          })
-        )
-      );
-      // Backend doğrulama hatasında düzenleme satırı açık kalsın.
-      if (!ok) return;
     }
     this.cancelEdit();
   }
@@ -482,14 +322,12 @@ export class TaxonomyManagerComponent implements OnInit {
     } else if (level === 'topic') {
       await this.run(() => firstValueFrom(this.admin.deleteTopic(item.id)));
       if (this.selectedTopicId() === item.id) this.selectedTopicId.set(null);
-    } else if (level === 'subtopic') {
-      await this.run(() => firstValueFrom(this.admin.deleteSubTopic(item.id)));
     } else {
-      await this.runSchools(() => firstValueFrom(this.admin.deleteSchool(item.id)));
+      await this.run(() => firstValueFrom(this.admin.deleteSubTopic(item.id)));
     }
   }
 
-  private async run(action: () => Promise<{ success: boolean; message: string }>): Promise<void> {
+  private async run(action: () => Promise<ApiResult>): Promise<void> {
     this.busy.set(true);
     try {
       const res = await action();
@@ -499,26 +337,6 @@ export class TaxonomyManagerComponent implements OnInit {
       const msg =
         (err as { error?: { message?: string } } | null)?.error?.message ?? this.text('messages.actionFailed');
       this.snack.open(msg, this.close, { duration: 4000 });
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** @returns işlem başarılıysa true; 400 vb. doğrulama hatasında false (form korunur). */
-  private async runSchools(
-    action: () => Promise<{ success: boolean; message: string }>
-  ): Promise<boolean> {
-    this.busy.set(true);
-    try {
-      const res = await action();
-      this.snack.open(res.message, this.close, { duration: 3000 });
-      if (res.success) this.loadSchools();
-      return res.success;
-    } catch (err: unknown) {
-      const msg =
-        (err as { error?: { message?: string } } | null)?.error?.message ?? this.text('messages.actionFailed');
-      this.snack.open(msg, this.close, { duration: 4000 });
-      return false;
     } finally {
       this.busy.set(false);
     }

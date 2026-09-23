@@ -699,9 +699,10 @@ public class ExamController : BaseController
     }
 
     [HttpGet("grades")]
-    public async Task<IActionResult> GetGrades()
+    [Authorize]
+    public async Task<IActionResult> GetGrades(CancellationToken ct)
     {
-        var grades = await _examService.GetGradesAsync();
+        var grades = await _examService.GetGradesAsync(ct);
         return Ok(grades);
     }
 

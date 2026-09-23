@@ -25,5 +25,5 @@ public interface IExamService
     // GetAllCanvasQuestions stays on the concrete ExamService (admin/debug read, not routed).
 
     Task<ExamAllStatisticsDto> GetGroupedStudentStatistics(int studentId);
-    Task<List<Grade>> GetGradesAsync();
+    Task<List<GradeDto>> GetGradesAsync(CancellationToken ct = default);
 }

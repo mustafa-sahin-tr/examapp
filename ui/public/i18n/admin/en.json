@@ -55,43 +55,35 @@
     "gradeFilter": {
       "label": "Grade",
       "aria": "Grade filter",
-      "all": "All Grades",
-      "unassigned": "No grade assigned"
+      "selectGradeTitle": "Select a grade to continue.",
+      "selectGradeHint": "Subjects and topics are listed for the grade you select"
     },
     "subjects": {
       "title": "Subjects",
       "newPlaceholder": "New subject",
       "add": "Add subject",
       "gradeChipsAria": "Linked grades",
-      "unassignedChip": "No grade assigned",
       "topicCount": "{{count}} topics",
       "manageGrades": "Manage Grades",
       "edit": "Edit subject",
       "delete": "Delete subject",
       "nameAria": "Subject name",
-      "emptyUnassignedTitle": "No subject without a grade",
-      "emptyUnassignedHint": "Every subject is linked to at least one grade",
       "emptyGradeTitle": "No subject linked to this grade",
-      "emptyGradeHint": "You can add this grade from a subject's \"Manage Grades\" action",
-      "emptyLinkedTitle": "No subject linked to a grade",
-      "emptyLinkedHint": "Assign grades to subjects from the \"No grade assigned\" filter",
-      "emptyTitle": "No subjects added yet",
-      "emptyHint": "Add the first subject from the field above"
+      "emptyGradeHint": "Add a subject for this grade from the field above, or link this grade from another subject's \"Manage Grades\" action"
     },
     "topics": {
       "title": "Topics",
       "newPlaceholder": "New topic",
-      "gradePlaceholder": "Grade",
       "add": "Add topic",
       "subTopicCount": "{{count}} subtopics",
       "edit": "Edit topic",
       "delete": "Delete topic",
       "nameAria": "Topic name",
-      "emptyTitle": "This subject has no topics yet",
-      "emptyHint": "Enter a topic name, pick a grade and add it",
+      "emptyTitle": "This subject has no topics for this grade yet",
+      "emptyHint": "Add the first topic for this grade from the field above",
       "noSubjectTitle": "Pick a subject first",
       "noSubjectHint": "The topics of the selected subject are listed here",
-      "nameAndGradeRequired": "Topic name and grade are required"
+      "nameRequired": "Topic name is required"
     },
     "subTopics": {
       "title": "Subtopics",
@@ -121,6 +113,7 @@
     },
     "messages": {
       "taxonomyLoadFailed": "The taxonomy could not be loaded",
+      "gradesLoadFailed": "The grades could not be loaded",
       "actionFailed": "The action failed",
       "close": "Close"
     }

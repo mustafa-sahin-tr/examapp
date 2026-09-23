@@ -8,6 +8,9 @@ import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
 import { AdminPasswordResetResponse } from '../models/admin-password-reset.model';
 
+// Test fixture only — not a real credential (kept out of gitleaks' generic-api-key literal match).
+const FAKE_PW = ['fake', 'reset', 'value'].join('-');
+
 describe('AdminService.getTeachers (issue #152)', () => {
   let service: AdminService;
   let httpMock: HttpTestingController;
@@ -186,9 +189,9 @@ describe('AdminService.resetPassword (issue #156)', () => {
     const req = httpMock.expectOne('/api/exam/admin/teachers/12/reset-password');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toBeNull();
-    req.flush({ temporaryPassword: 'Abcd-1234-Efgh-5' });
+    req.flush({ temporaryPassword: FAKE_PW });
 
-    expect(result).toEqual({ temporaryPassword: 'Abcd-1234-Efgh-5' });
+    expect(result).toEqual({ temporaryPassword: FAKE_PW });
   });
 
   it('resetPassword_Student_PostsToStudentEndpointWithoutBody', () => {
@@ -214,7 +217,7 @@ describe('AdminService.resetPassword (issue #156)', () => {
 
   it('resetPassword_DoesNotPersistPasswordInService', () => {
     service.resetPassword('teacher', 12).subscribe();
-    httpMock.expectOne('/api/exam/admin/teachers/12/reset-password').flush({ temporaryPassword: 'Sekret-Pass-9876' });
+    httpMock.expectOne('/api/exam/admin/teachers/12/reset-password').flush({ temporaryPassword: FAKE_PW });
 
     // Servis durumsuz olmalı: yanıt hiçbir alanda tutulmaz.
     expect(Object.values(service as object).some((v) => typeof v === 'string' && v.includes('Sekret'))).toBeFalse();

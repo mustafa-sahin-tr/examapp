@@ -6,6 +6,24 @@
     </div>
 
     <div class="auth-form-col">
+      @if (schoolApprovalPending()) {
+      <div class="auth-form-header">
+        <h3>Kaydın Tamamlandı</h3>
+      </div>
+      <div class="notice" role="status">
+        <strong>Okul bağlantın yönetici onayı bekliyor</strong>
+        <p>Okul bağlantın bir yönetici tarafından onaylanana kadar okulun öğrencilerini ve sınıflarını göremezsin.</p>
+      </div>
+      <div class="auth-submit">
+        <button type="button" class="default-btn" (click)="continueAfterPending()">Devam Et</button>
+      </div>
+      } @else {
+      @if (submitError(); as message) {
+      <div class="notice notice-error" role="alert">
+        <p>{{ message }}</p>
+      </div>
+      }
+
       @if (step() === 1) {
       <div class="auth-form-header">
         <h3>Profilini Tamamla</h3>
@@ -165,6 +183,7 @@
           }
         </button>
       </div>
+      }
       }
 
     </div>

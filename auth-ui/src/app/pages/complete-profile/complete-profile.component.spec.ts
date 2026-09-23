@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NEVER, of, throwError } from 'rxjs';
 
@@ -30,6 +31,8 @@ describe('CompleteProfileComponent', () => {
       'registerStudentProfile',
       'registerTeacherProfile',
       'registerParentProfile',
+      'isCachedUserCurrent',
+      'clearCachedUser',
     ]);
     routerSpy = jasmine.createSpyObj('Router', ['navigate']);
     snackBarSpy = jasmine.createSpyObj('MatSnackBar', ['open']);
@@ -257,5 +260,51 @@ describe('CompleteProfileComponent', () => {
       schoolId: null,
       gradeId: 10,
     });
+  });
+
+  // ── Issue #234: öğretmen okul onayı beklemesi ──────────────────────────────
+
+  it('onSubmit_TeacherRegistrationSuccessWithSchoolApprovalPending_SetsApprovalPendingSignal', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    authServiceSpy.registerTeacherProfile.and.returnValue(
+      of({
+        accessToken: 'token',
+        expiresIn: 3600,
+        profileId: 99,
+        approvalStatus: 0,
+        requestedSchoolId: 1,
+        schoolApprovalPending: true,
+      }),
+    );
+
+    authServiceSpy.isCachedUserCurrent.and.returnValue(false);
+
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 1 });
+    component.onSubmit();
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_role');
+
+    expect(component.schoolApprovalPending()).toBeTrue();
+    expect(component.isLoading()).toBeFalse();
+  });
+
+  it('onSubmit_TeacherRegistrationConflict409_SetsSubmitErrorKeepsFormOpen', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const errorMsg = 'Mevcut öğretmen kaydınızın okul bilgisi değiştirilemez.';
+    authServiceSpy.registerTeacherProfile.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { message: errorMsg } })),
+    );
+
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 1 });
+    component.onSubmit();
+
+    expect(component.submitError()).toBe(errorMsg);
+    expect(component.isLoading()).toBeFalse();
+    expect(component.schoolApprovalPending()).toBeFalse();
+    expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
 });

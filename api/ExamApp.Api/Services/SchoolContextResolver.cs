@@ -17,6 +17,13 @@ namespace ExamApp.Api.Services;
 ///   Student, Students'da satır yok                                 -> null
 ///   Admin / Service / Parent / diğer roller                        -> null (sorgu atılmaz)
 ///
+/// issue #234 (security): Teacher VEYA Student rolünde önce Teachers satırına bakılır; kullanıcının öğretmen
+/// kaydı varsa okul kapsamı HER ZAMAN Teachers.SchoolId'den gelir — profil/önbellekteki rol Student olsa bile.
+/// Aksi halde öğretmen, student/register ile kendine Students.SchoolId=X yazıp (rol önbellekte Student'a döner)
+/// X okulunun kapsamına girebiliyordu. Kayıt uçları artık iki kaydı birbirini dışlayacak şekilde korur; bu kural
+/// halihazırda iki kaydı olan (eski) kullanıcılar için de öğretmen kaydını esas alır. Teachers.UserId unique
+/// değil — deterministik seçim için OrderBy(Id) (TeacherService.Save ile aynı).
+///
 /// #194 notu: kullanıcının okulu değiştiğinde (ör. transfer), bu resolver'ın sonucu
 /// UserProfileCacheService üzerinden cache'lenir — okul değişikliğinde ilgili keycloakId için
 /// UserProfileCacheService.RemoveAsync çağrılmalı (bkz. Teacher/StudentController Save akışı).
@@ -35,21 +42,27 @@ public class SchoolContextResolver : ISchoolContextResolver
         if (user is null)
             return null;
 
-        return user.Role switch
-        {
-            nameof(UserRole.Teacher) => await _context.Teachers
-                .AsNoTracking()
-                .Where(t => t.UserId == user.Id)
-                .Select(t => (int?)t.SchoolId)
-                .FirstOrDefaultAsync(ct),
+        if (user.Role is not (nameof(UserRole.Teacher) or nameof(UserRole.Student)))
+            return null;
 
-            nameof(UserRole.Student) => await _context.Students
-                .AsNoTracking()
-                .Where(s => s.UserId == user.Id)
-                .Select(s => (int?)s.SchoolId)
-                .FirstOrDefaultAsync(ct),
+        var teacherRow = await _context.Teachers
+            .AsNoTracking()
+            .Where(t => t.UserId == user.Id)
+            .OrderBy(t => t.Id)
+            .Select(t => new { t.SchoolId })
+            .FirstOrDefaultAsync(ct);
 
-            _ => null
-        };
+        if (teacherRow != null)
+            return teacherRow.SchoolId;
+
+        if (user.Role != nameof(UserRole.Student))
+            return null;
+
+        return await _context.Students
+            .AsNoTracking()
+            .Where(s => s.UserId == user.Id)
+            .OrderBy(s => s.Id)
+            .Select(s => (int?)s.SchoolId)
+            .FirstOrDefaultAsync(ct);
     }
 }

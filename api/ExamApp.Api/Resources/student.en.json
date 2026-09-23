@@ -6,6 +6,7 @@
     "registrationFailed": "Student registration failed.",
     "registered": "Student registered successfully.",
     "schoolNotFound": "The selected school was not found.",
+    "teacherRecordExists": "An account with a teacher record cannot register as a student.",
     "gradeUpdated": "Student grade updated successfully.",
     "invalidFile": "Invalid file.",
     "reset": {

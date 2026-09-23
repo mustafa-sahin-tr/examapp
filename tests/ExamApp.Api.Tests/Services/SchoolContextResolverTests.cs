@@ -250,4 +250,66 @@ public class SchoolContextResolverTests : IDisposable
         result.ShouldNotBeNull();
         (result == school1Id || result == school2Id).ShouldBeTrue();
     }
+
+    // ---- Security: Teachers row takes precedence over Students row (issue #234) ----
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_BothTeacherAndStudentRows_TeachersSchoolIdTakesPrecedence_WithNullSchoolId()
+    {
+        var studentSchoolId = await SeedSchoolAsync("Öğrenci Okulu");
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "7" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            gradeId = grade.Id;
+
+            // issue #234: Öğretmen satırı (SchoolId=null) ve Öğrenci satırı (SchoolId=X) varsa,
+            // profil rolü "Student" olsa bile, çözülen okul Öğretmen satırından (null) gelir.
+            ctx.Teachers.Add(new Teacher { UserId = 801, SchoolId = null, IsIndependentTutor = true });
+            ctx.Students.Add(new Student { UserId = 801, StudentNumber = "S801", SchoolId = studentSchoolId, GradeId = gradeId });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 801, KeycloakId = "kc-801", Role = "Student" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        // Teachers.SchoolId = null, bu değer dönmeli (Students.SchoolId değil)
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ResolveSchoolIdAsync_BothTeacherAndStudentRows_TeachersSchoolIdTakesPrecedence_WithSchoolId()
+    {
+        var teacherSchoolId = await SeedSchoolAsync("Öğretmen Okulu");
+        var studentSchoolId = await SeedSchoolAsync("Öğrenci Okulu");
+        int gradeId;
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "8" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            gradeId = grade.Id;
+
+            // issue #234: Öğretmen satırı (SchoolId=Y) ve Öğrenci satırı (SchoolId=X) varsa,
+            // profil rolü "Student" olsa bile, çözülen okul Öğretmen satırından (Y) gelir.
+            ctx.Teachers.Add(new Teacher { UserId = 802, SchoolId = teacherSchoolId });
+            ctx.Students.Add(new Student { UserId = 802, StudentNumber = "S802", SchoolId = studentSchoolId, GradeId = gradeId });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var resolver = NewResolver(testCtx);
+        var user = new UserProfileDto { Id = 802, KeycloakId = "kc-802", Role = "Student" };
+
+        var result = await resolver.ResolveSchoolIdAsync(user);
+
+        // Teachers.SchoolId = teacherSchoolId, bu değer dönmeli (studentSchoolId değil)
+        result.ShouldBe(teacherSchoolId);
+        result.ShouldNotBe(studentSchoolId);
+    }
 }

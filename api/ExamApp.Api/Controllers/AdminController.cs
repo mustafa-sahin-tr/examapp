@@ -153,19 +153,29 @@ public class AdminController : BaseController
     public async Task<ActionResult<List<DistrictDto>>> GetDistricts([FromQuery] int provinceId, CancellationToken ct)
         => Ok(await _locations.GetDistrictsAsync(provinceId, ct));
 
-    // ---- Bağımsız öğretmen başvuruları (issue #94) ----
+    // ---- Öğretmen başvuruları: bağımsız öğretmen (issue #94) + okul bağlantısı talebi (issue #234) ----
 
-    /// <summary>GET api/admin/teacher-applications → Pending durumdaki bağımsız öğretmen başvuruları (en eski önce).</summary>
+    /// <summary>
+    /// GET api/admin/teacher-applications → Pending başvurular (en eski önce): bağımsız öğretmen başvuruları ve okul
+    /// bağlantısı talepleri (<c>isIndependentTutor=false</c>, <c>requestedSchoolId</c>/<c>requestedSchoolName</c> dolu).
+    /// </summary>
     [HttpGet("teacher-applications")]
     public async Task<ActionResult<List<PendingTeacherApplicationDto>>> GetTeacherApplications(CancellationToken ct)
         => Ok(await _teacherApprovals.GetPendingApplicationsAsync(ct));
 
-    /// <summary>POST api/admin/teacher-applications/{id}/approve → ApprovalStatus=Approved. Sadece Pending + bağımsız kayıt için.</summary>
+    /// <summary>
+    /// POST api/admin/teacher-applications/{id}/approve → ApprovalStatus=Approved. Okul talebinde okul bağı burada kurulur
+    /// (SchoolId = RequestedSchoolId) ve öğretmenin profil önbelleği tazelenir. Pending başvuru yoksa 400; arada karar
+    /// verilmiş/talep değişmişse 409.
+    /// </summary>
     [HttpPost("teacher-applications/{id:int}/approve")]
     public async Task<IActionResult> ApproveTeacherApplication(int id, CancellationToken ct)
         => Result(await _teacherApprovals.ApproveAsync(id, await CurrentUserIdAsync(), ct));
 
-    /// <summary>POST api/admin/teacher-applications/{id}/reject → ApprovalStatus=Rejected + RejectionReason. Neden zorunlu.</summary>
+    /// <summary>
+    /// POST api/admin/teacher-applications/{id}/reject → ApprovalStatus=Rejected + RejectionReason (zorunlu). Okul talebinde
+    /// okul bağı kurulmaz. Pending başvuru yoksa 400; arada karar verilmiş/talep değişmişse 409.
+    /// </summary>
     [HttpPost("teacher-applications/{id:int}/reject")]
     public async Task<IActionResult> RejectTeacherApplication(int id, [FromBody] TeacherRejectRequestDto dto, CancellationToken ct)
         => Result(await _teacherApprovals.RejectAsync(id, dto.Reason, await CurrentUserIdAsync(), ct));

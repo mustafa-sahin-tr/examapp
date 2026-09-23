@@ -146,14 +146,15 @@ export class SchoolPagedList<T> {
 }
 
 /**
- * Admin liste hatalarının ortak yorumu: 403 → yetki metni; backend'in 400'de döndüğü yerelleştirilmiş
- * düz metin (filtre çakışması) olduğu gibi; diğerleri → genel yükleme hatası.
+ * Admin liste hatalarının ortak yorumu: 403 → yetki metni; 429 → kullanıcı başına istek limiti (issue #246);
+ * backend'in 400'de döndüğü yerelleştirilmiş düz metin (filtre çakışması) olduğu gibi; diğerleri → genel yükleme hatası.
  */
 export function adminListErrorMessage(
   err: HttpErrorResponse,
-  text: (key: 'forbidden' | 'loadFailed') => string,
+  text: (key: 'forbidden' | 'loadFailed' | 'rateLimited') => string,
 ): string {
   if (err.status === 403) return text('forbidden');
+  if (err.status === 429) return text('rateLimited');
   if (err.status === 400 && typeof err.error === 'string' && err.error.trim()) return err.error;
   return text('loadFailed');
 }

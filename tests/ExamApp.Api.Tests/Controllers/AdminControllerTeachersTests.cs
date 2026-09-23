@@ -1,4 +1,7 @@
+using System.Security.Claims;
 using ExamApp.Api.Controllers;
+using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
@@ -8,7 +11,9 @@ using ExamApp.Api.Services.Locations;
 using ExamApp.Api.Services.Schools;
 using ExamApp.Api.Services.Taxonomy;
 using ExamApp.Api.Services.TeacherApprovals;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ExamApp.Api.Tests.Controllers;
 
@@ -21,10 +26,21 @@ public class AdminControllerTeachersTests
 {
     private readonly IAdminTeacherService _adminTeachers = Substitute.For<IAdminTeacherService>();
 
+    private readonly IAdminDataAccessAuditService _audit = Substitute.For<IAdminDataAccessAuditService>();
+
     private AdminController NewController() => new(
         Substitute.For<ITaxonomyService>(), Substitute.For<IClassifierCacheService>(), Substitute.For<ISchoolService>(),
         Substitute.For<IDashboardService>(), Substitute.For<ILocationService>(), Substitute.For<ITeacherApprovalService>(),
-        _adminTeachers, Substitute.For<IAdminStudentService>());
+        _adminTeachers, Substitute.For<IAdminStudentService>(), _audit)
+    {
+        ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "kc-admin-sub")], "Test"))
+            }
+        }
+    };
 
     [Fact]
     public async Task SchoolId_and_unassigned_together_is_400_and_service_not_called()
@@ -54,5 +70,52 @@ public class AdminControllerTeachersTests
 
         parameter.DefaultValue.ShouldBe(20);
         AdminListPaging.MaxPageSize.ShouldBe(100);
+    }
+
+    // ---- issue #246: audit + rate limit ----
+
+    [Fact]
+    public async Task Issue246_successful_call_is_audited_with_sub_filter_normalized_page_and_row_count()
+    {
+        // Servis pageSize'ı normalize eder (1000 → 100); audit istemcinin ham değerini değil yanıttakini yazar.
+        _adminTeachers.ListAsync(3, 1000, 7, false, Arg.Any<CancellationToken>())
+            .Returns(new Paged<AdminTeacherListItemDto> { PageNumber = 3, PageSize = 100, TotalCount = 250, Items = [new(), new()] });
+
+        await NewController().GetTeachers(schoolId: 7, unassigned: false, page: 3, pageSize: 1000, ct: default);
+
+        await _audit.Received(1).RecordListAccessAsync(
+            new AdminListAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherList, 7, false, 3, 100, 2, 250),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Issue246_rejected_filter_is_not_audited()
+    {
+        await NewController().GetTeachers(schoolId: 3, unassigned: true, page: 1, pageSize: 20, ct: default);
+
+        await _audit.DidNotReceiveWithAnyArgs().RecordListAccessAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Issue246_audit_failure_fails_the_request_instead_of_returning_data()
+    {
+        _adminTeachers.ListAsync(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new Paged<AdminTeacherListItemDto> { PageNumber = 1, PageSize = 20, TotalCount = 1, Items = [new()] });
+        _audit.RecordListAccessAsync(Arg.Any<AdminListAccessRecord>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("db down")));
+
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            NewController().GetTeachers(schoolId: null, unassigned: false, page: 1, pageSize: 20, ct: default));
+    }
+
+    [Fact]
+    public void Issue246_endpoint_carries_the_per_user_rate_limit_policy()
+    {
+        var attribute = typeof(AdminController).GetMethod(nameof(AdminController.GetTeachers))!
+            .GetCustomAttributes(typeof(EnableRateLimitingAttribute), inherit: false)
+            .Cast<EnableRateLimitingAttribute>()
+            .Single();
+
+        attribute.PolicyName.ShouldBe(AdminUserListRateLimiting.Policy);
     }
 }

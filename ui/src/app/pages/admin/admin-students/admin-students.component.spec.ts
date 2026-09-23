@@ -33,7 +33,7 @@ describe('AdminStudentsComponent', () => {
     return {
       id: 7,
       fullName: 'Ali Veli',
-      email: 'ali@ornek.com',
+      email: 'a***@ornek.com', // issue #246: backend listede maskeli döner
       studentNumber: '1234',
       schoolId: 5,
       schoolName: 'Ankara Lisesi',
@@ -192,7 +192,7 @@ describe('AdminStudentsComponent', () => {
     ]);
     expect(cellTexts('fullName')[0]).toContain('Ali Veli');
     expect(cellTexts('fullName')[0]).toContain('No: 1234');
-    expect(cellTexts('email')).toEqual(['ali@ornek.com']);
+    expect(cellTexts('email')).toEqual(['a***@ornek.com']); // maskeli değer olduğu gibi gösterilir
     expect(cellTexts('school')).toEqual(['Ankara Lisesi']);
     expect(cellTexts('grade')).toEqual(['9. Sınıf']);
     expect(cellTexts('accountStatus')).toEqual(['Aktif']);
@@ -229,6 +229,16 @@ describe('AdminStudentsComponent', () => {
     expect(text()).toContain(adminTr.students.empty);
     expect(fixture.nativeElement.querySelector('table')).toBeNull();
     expect(fixture.nativeElement.querySelector('mat-paginator')).toBeNull();
+  });
+
+  it('render_RateLimited_ShowsRateLimitMessage', () => {
+    configure();
+    adminService.getStudents.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429 })));
+    create();
+
+    const alert = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain(adminTr.students.rateLimited);
   });
 
   it('render_RequestFails_ShowsErrorWithRetry', () => {

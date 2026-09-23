@@ -232,6 +232,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.TeacherApprovals.ITeacherApprova
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserDirectory, ExamApp.Api.Services.AdminUsers.AdminUserDirectory>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherService, ExamApp.Api.Services.AdminUsers.AdminTeacherService>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentService, ExamApp.Api.Services.AdminUsers.AdminStudentService>();
+// issue #246: admin kişisel veri listeleri — erişim audit'i (DB) + kullanıcı (sub) başına rate limit.
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminDataAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminDataAccessAuditService>();
+builder.Services.AddAdminUserListRateLimiting();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
@@ -435,6 +438,10 @@ app.UseAuthorization();
 // endpoint'ler) CurrentCulture/CurrentUICulture doğru şekilde ayarlı olur — auth öncesindeki
 // middleware'ler (exception handler, HTTPS redirect) kültüre bağımlı çıktı üretmiyor.
 app.UseRequestLocalization(); // Ayarlar yukarıdaki Configure<RequestLocalizationOptions>'tan gelir.
+
+// issue #246: yalnızca [EnableRateLimiting] taşıyan uçlar (admin kullanıcı listeleri). Auth'tan SONRA: partition
+// anahtarı kullanıcının sub'ıdır ve 401/403 alan istekler kovayı tüketmez; localization'dan sonra: 429 metni çevrilir.
+app.UseRateLimiter();
 
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {

@@ -44,6 +44,10 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         Environment.SetEnvironmentVariable("MinioConfig__Endpoint", "localhost:9000");
         Environment.SetEnvironmentVariable("MinioConfig__AccessKey", "x");
         Environment.SetEnvironmentVariable("MinioConfig__SecretKey", "x");
+        // issue #246: admin liste rate limit'i sub başına; bu uçları çağıran testler her test için benzersiz admin sub
+        // kullanır. Uzun pencere: 429 testi koşunun süresinden/zamanlamasından bağımsız olsun.
+        Environment.SetEnvironmentVariable("RateLimiting__AdminUserList__PermitLimit", "10");
+        Environment.SetEnvironmentVariable("RateLimiting__AdminUserList__WindowSeconds", "3600");
     }
 
     public override async ValueTask DisposeAsync()
@@ -60,6 +64,14 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         {
             services.RemoveAll<IMinIoService>();
             services.AddSingleton<IMinIoService, FakeMinIoService>();
+
+            // issue #246: auth-api test ortamında yok. Kayıtlı sahte kullanıcılar (FakeUserDirectory) dışındaki
+            // id'ler gerçek AuthApiClient'a gider ve fail-soft davranış korunur.
+            services.AddSingleton<FakeUserDirectory>();
+            services.RemoveAll<ExamApp.Api.Services.Interfaces.IAuthApiClient>();
+            services.AddScoped<ExamApp.Api.Services.Interfaces.IAuthApiClient>(sp => new FakeUserDirectoryAuthApiClient(
+                ActivatorUtilities.CreateInstance<ExamApp.Api.Services.AuthApiClient>(sp),
+                sp.GetRequiredService<FakeUserDirectory>()));
 
             services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
             services.AddDistributedMemoryCache();

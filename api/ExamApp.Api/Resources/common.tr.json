@@ -1,5 +1,6 @@
 {
   "common": {
-    "invalidData": "Geçersiz veri."
+    "invalidData": "Geçersiz veri.",
+    "tooManyRequests": "Çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
   }
 }

@@ -15,7 +15,10 @@ export interface AdminTeacherListItem {
   userId: number;
   /** auth-api'den çözümlenir; erişilemezse boş string. */
   fullName: string;
-  /** auth-api'den çözümlenir; erişilemezse boş string. */
+  /**
+   * Sunucuda MASKELENMİŞ e-posta (issue #246, KVKK): `a***@okul.k12.tr`. Tam adres bu listede hiç gelmez —
+   * arama/kopyalama/mailto için kullanılamaz. auth-api'den çözümlenemezse boş string.
+   */
   email: string;
   /** Bağımsız/okulsuz öğretmen için null. */
   schoolId: number | null;

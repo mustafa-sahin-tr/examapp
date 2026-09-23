@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
@@ -14,6 +16,7 @@ using ExamApp.Api.Services.TeacherApprovals;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers;
@@ -36,11 +39,12 @@ public class AdminController : BaseController
     private readonly ITeacherApprovalService _teacherApprovals;
     private readonly IAdminTeacherService _adminTeachers;
     private readonly IAdminStudentService _adminStudents;
+    private readonly IAdminDataAccessAuditService _dataAccessAudit;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IStringLocalizer<Messages>? localizer = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IStringLocalizer<Messages>? localizer = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -51,6 +55,7 @@ public class AdminController : BaseController
         _teacherApprovals = teacherApprovals;
         _adminTeachers = adminTeachers;
         _adminStudents = adminStudents;
+        _dataAccessAudit = dataAccessAudit;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -189,9 +194,11 @@ public class AdminController : BaseController
     /// schoolId ve unassigned birlikte kullanılamaz (taxonomy gradeId/unassigned ile aynı konvansiyon).
     /// pageSize 1..100 aralığına kırpılır. Ad/e-posta/hesap durumu auth-api'den sayfa başına tek çağrıyla gelir;
     /// erişilemezse liste yine döner (ad/e-posta boş, isEnabled null).
+    /// issue #246: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir; kullanıcı başına rate limit (429).
     /// </summary>
     [HttpGet("teachers")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri; ara katmanda/tarayıcıda saklanmasın
+    [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
     public async Task<ActionResult<Paged<AdminTeacherListItemDto>>> GetTeachers(
         [FromQuery, Range(1, int.MaxValue)] int? schoolId,
         [FromQuery] bool unassigned = false,
@@ -202,7 +209,9 @@ public class AdminController : BaseController
         if (schoolId.HasValue && unassigned)
             return BadRequest(_localizer["admin.teachers.filterConflict"].Value);
 
-        return Ok(await _adminTeachers.ListAsync(page, pageSize, schoolId, unassigned, ct));
+        var result = await _adminTeachers.ListAsync(page, pageSize, schoolId, unassigned, ct);
+        await AuditListAccessAsync(AdminDataAccessResource.TeacherList, schoolId, unassigned, result, ct);
+        return Ok(result);
     }
 
     // ---- Öğrenci listesi (issue #153) ----
@@ -213,9 +222,11 @@ public class AdminController : BaseController
     /// GET api/admin/students?unassigned=true                 → okul bağlantısı olmayanlar (SchoolId null)
     /// schoolId ve unassigned birlikte kullanılamaz. pageSize 1..100 aralığına kırpılır. Ad/e-posta/hesap durumu
     /// auth-api'den sayfa başına tek çağrıyla gelir; erişilemezse liste yine döner (ad/e-posta boş, isEnabled null).
+    /// issue #246: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir; kullanıcı başına rate limit (429).
     /// </summary>
     [HttpGet("students")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri; ara katmanda/tarayıcıda saklanmasın
+    [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
     public async Task<ActionResult<Paged<AdminStudentListItemDto>>> GetStudents(
         [FromQuery, Range(1, int.MaxValue)] int? schoolId,
         [FromQuery] bool unassigned = false,
@@ -226,8 +237,19 @@ public class AdminController : BaseController
         if (schoolId.HasValue && unassigned)
             return BadRequest(_localizer["admin.students.filterConflict"].Value);
 
-        return Ok(await _adminStudents.ListAsync(page, pageSize, schoolId, unassigned, ct));
+        var result = await _adminStudents.ListAsync(page, pageSize, schoolId, unassigned, ct);
+        await AuditListAccessAsync(AdminDataAccessResource.StudentList, schoolId, unassigned, result, ct);
+        return Ok(result);
     }
+
+    /// <summary>
+    /// issue #246: veri dönmeden ÖNCE yazılır; yazılamazsa istisna yukarı çıkar ve liste dönmez (fail-closed).
+    /// Sayfa/boyut servisin normalize ettiği değerlerdir (istemcinin gönderdiği ham değer değil).
+    /// </summary>
+    private Task AuditListAccessAsync<T>(AdminDataAccessResource resource, int? schoolId, bool unassigned, Paged<T> result, CancellationToken ct)
+        => _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
+            KeyCloakId ?? string.Empty, resource, schoolId, unassigned,
+            result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount), ct);
 
     // ---- Dashboard ----
 

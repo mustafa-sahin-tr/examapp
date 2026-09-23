@@ -13,6 +13,9 @@ namespace ExamApp.Api.IntegrationTests;
 /// </summary>
 public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : IntegrationTestBase(factory)
 {
+    // issue #246: rate limit kovası sub başına — her test kendi admin kimliğiyle.
+    private static string NewAdminSub() => $"kc-admin-{Guid.NewGuid():N}";
+
     [Fact]
     public async Task Students_list_requires_the_Admin_realm_role()
     {
@@ -27,7 +30,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
         (await student.GetAsync("/api/admin/students"))
             .StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
-        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
         (await admin.GetAsync("/api/admin/students"))
             .StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -52,7 +55,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
             await db.SaveChangesAsync();
             return (a.Id, b.Id, g.Id);
         });
-        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
 
         var page1 = await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>($"/api/admin/students?schoolId={schoolA}", Json);
         var page2 = await admin.GetFromJsonAsync<Paged<AdminStudentListItemDto>>($"/api/admin/students?schoolId={schoolA}&page=2&pageSize=20", Json);
@@ -88,7 +91,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
             db.Students.Add(new Student { UserId = 5000, StudentNumber = "1234" });
             await db.SaveChangesAsync();
         });
-        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
 
         var response = await admin.GetAsync("/api/admin/students?page=1&pageSize=20");
         response.Headers.CacheControl.ShouldNotBeNull();
@@ -110,7 +113,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
             db.Students.Add(new Student { UserId = 4000, StudentNumber = "X" });
             await db.SaveChangesAsync();
         });
-        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
 
         var response = await admin.GetAsync($"/api/admin/students?page={int.MaxValue}&pageSize=100");
 
@@ -125,7 +128,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
     [InlineData(-5)]
     public async Task Non_positive_schoolId_is_400(int schoolId)
     {
-        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
 
         (await admin.GetAsync($"/api/admin/students?schoolId={schoolId}"))
             .StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -134,7 +137,7 @@ public class AdminStudentEndpointsTests(IntegrationApiFactory factory) : Integra
     [Fact]
     public async Task SchoolId_with_unassigned_is_400()
     {
-        var admin = await ClientAsAsync(2, "Admin", "kc-admin", realmRoles: "Admin");
+        var admin = await ClientAsAsync(2, "Admin", NewAdminSub(), realmRoles: "Admin");
 
         (await admin.GetAsync("/api/admin/students?schoolId=1&unassigned=true"))
             .StatusCode.ShouldBe(HttpStatusCode.BadRequest);

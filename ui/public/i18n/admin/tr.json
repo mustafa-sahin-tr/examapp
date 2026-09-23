@@ -254,6 +254,7 @@
     "empty": "Öğretmen bulunamadı",
     "emptyFilteredHint": "Farklı bir okul filtresi deneyin.",
     "loadFailed": "Öğretmen listesi alınırken bir sorun oluştu.",
+    "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
     "forbidden": "Bu listeyi görüntüleme yetkiniz yok.",
     "independent": "Bağımsız",
     "columns": {
@@ -282,6 +283,7 @@
     "empty": "Öğrenci bulunamadı",
     "emptyFilteredHint": "Farklı bir okul filtresi deneyin.",
     "loadFailed": "Öğrenci listesi alınırken bir sorun oluştu.",
+    "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
     "forbidden": "Bu listeyi görüntüleme yetkiniz yok.",
     "studentNumber": "No: {{number}}",
     "columns": {

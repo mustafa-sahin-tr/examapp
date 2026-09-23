@@ -67,7 +67,7 @@ export class WorksheetListEnhancedComponent {
     pageSize: 0,
   });
   completedTestSignal = toSignal(this.testService.getCompleted(1));
-  subjectsSignal = toSignal(this.subjectService.loadCategories());
+  subjectsSignal = toSignal(this.subjectService.loadCategories(), { initialValue: [] as Subject[] });
   gradeService = inject(GradesService);
   gradesSignal = toSignal(this.gradeService.getGrades());
 
@@ -85,7 +85,7 @@ export class WorksheetListEnhancedComponent {
 
   // Computed properties
   filteredSubjects = computed(() => {
-    const subjects = this.subjectsSignal() || [];
+    const subjects = this.subjectsSignal();
     return subjects.filter(
       (subject) => this.selectedSubjectIds().length === 0 || this.selectedSubjectIds().includes(subject.id)
     );
@@ -201,14 +201,14 @@ export class WorksheetListEnhancedComponent {
   }
 
   // Filter functions
-  toggleSubjectFilter(subject: Subject) {
+  toggleSubjectFilter(subjectId: number) {
     const currentIds = this.selectedSubjectIds();
-    const index = currentIds.indexOf(subject.id);
+    const index = currentIds.indexOf(subjectId);
 
     if (index > -1) {
-      this.selectedSubjectIds.set(currentIds.filter((id) => id !== subject.id));
+      this.selectedSubjectIds.set(currentIds.filter((id) => id !== subjectId));
     } else {
-      this.selectedSubjectIds.set([...currentIds, subject.id]);
+      this.selectedSubjectIds.set([...currentIds, subjectId]);
     }
 
     if (this.currentSection() === 'search') {

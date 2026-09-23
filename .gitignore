@@ -71,6 +71,9 @@ deploy/keycloak/import/*
 # Local-only file currently contains secrets; use an example file instead
 finance-api/finance-api/appsettings.json
 
+# GKE secret'ları yerel kalır; prepare-config.sh secret.example.yaml'dan üretir (#228)
+deploy/gcp/k8s/secret.yaml
+
 ### Local databases / sqlite write-ahead logs
 *.db
 *.sqlite

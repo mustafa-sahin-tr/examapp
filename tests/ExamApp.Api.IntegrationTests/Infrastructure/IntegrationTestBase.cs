@@ -58,13 +58,22 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
     /// <summary>An authenticated client. Also seeds the user-profile cache so
     /// BaseController.GetAuthenticatedUserAsync resolves without calling auth-api.</summary>
-    protected async Task<HttpClient> ClientAsAsync(
+    protected Task<HttpClient> ClientAsAsync(
         int userId, string role, string keycloakId = "kc-test", params string[] realmRoles)
+        => ClientAsWithSchoolAsync(userId, role, keycloakId, schoolId: null, realmRoles);
+
+    /// <summary>
+    /// <see cref="ClientAsAsync"/> gibi; profilin (DB'den doğrulanmış sayılan) SchoolId'si de set edilir —
+    /// <c>GetSchoolScopeAsync</c> okulu buradan okur (issue #190/#222).
+    /// </summary>
+    protected async Task<HttpClient> ClientAsWithSchoolAsync(
+        int userId, string role, string keycloakId, int? schoolId, params string[] realmRoles)
     {
         var cache = Factory.Services.GetRequiredService<IDistributedCache>();
         var profile = new UserProfileDto
         {
             Id = userId, KeycloakId = keycloakId, Role = role, FullName = "Test User", Email = "t@t.local",
+            SchoolId = schoolId,
         };
         await cache.SetStringAsync(keycloakId, JsonSerializer.Serialize(profile));
 

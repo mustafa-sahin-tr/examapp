@@ -1,16 +1,20 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Subject, of, throwError } from 'rxjs';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import { WorksheetDetailComponent } from './worksheet-detail.component';
 import { TestService } from '../../services/test.service';
 import { GradesService } from '../../services/grades.service';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, UserProfile } from '../../services/auth.service';
+import { Test } from '../../models/test-instance';
+import { WorksheetDetail } from '../../models/worksheet-detail';
+import { WorksheetAssignmentDialogData } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { StudentService } from '../../services/student.service';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
@@ -54,7 +58,7 @@ describe('WorksheetDetailComponent', () => {
         { provide: Router, useValue: router },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
-        { provide: AuthService, useValue: { hasRole: () => false } },
+        { provide: AuthService, useValue: { hasRole: () => false, hasRealmRole: () => false, user: signal(null) } },
         { provide: StudentService, useValue: {} },
         { provide: GradesService, useValue: { getGrades: () => of([]) } },
         {
@@ -156,7 +160,7 @@ describe('WorksheetDetailComponent reminder=edit deep link', () => {
         { provide: Router, useValue: router },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
         { provide: MatDialog, useValue: jasmine.createSpyObj<MatDialog>('MatDialog', ['open']) },
-        { provide: AuthService, useValue: { hasRole: () => false } },
+        { provide: AuthService, useValue: { hasRole: () => false, hasRealmRole: () => false, user: signal(null) } },
         { provide: StudentService, useValue: {} },
         { provide: GradesService, useValue: { getGrades: () => of([]) } },
         {
@@ -178,5 +182,109 @@ describe('WorksheetDetailComponent reminder=edit deep link', () => {
     expect(testService.getWorksheetDetail).toHaveBeenCalledWith(12);
     expect((component as any)['reminderEditing']()).toBeTrue();
     expect((component as any)['showReminderForm']()).toBeTrue();
+  });
+});
+
+/** Issue #222: bağımsız (okulsuz) öğretmen sınıf bazlı atama yapamaz. */
+describe('WorksheetDetailComponent independent tutor assignment', () => {
+  const teacherProfile = (schoolId: number | null): UserProfile => ({
+    email: 't@x.com',
+    avatar: '',
+    fullName: 'Öğretmen',
+    id: 1,
+    keycloakId: 'kc-1',
+    profileId: 1,
+    role: 'Teacher',
+    schoolId,
+  });
+
+  function setup(options: { role: 'Teacher' | 'Admin'; user: UserProfile | null; realmAdmin?: boolean }) {
+    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
+    dialog.open.and.returnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
+
+    TestBed.configureTestingModule({
+      imports: [WorksheetDetailComponent, NoopAnimationsModule, translocoTesting],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: TestService, useValue: jasmine.createSpyObj<TestService>('TestService', ['getWorksheetDetail']) },
+        { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
+        { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
+        { provide: AuthService, useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: (r: string) => options.realmAdmin === true && r === 'Admin', user: signal(options.user) } },
+        { provide: StudentService, useValue: {} },
+        { provide: GradesService, useValue: { getGrades: () => of([]) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: convertToParamMap({}), data: {} },
+            params: of({}),
+            queryParams: of({}),
+            paramMap: of(convertToParamMap({})),
+            queryParamMap: of(convertToParamMap({})),
+          },
+        },
+      ],
+    });
+    // Komponent MatDialogModule import ettiği için spy, komponent seviyesinde de verilir.
+    TestBed.overrideComponent(WorksheetDetailComponent, { add: { providers: [{ provide: MatDialog, useValue: dialog }] } });
+
+    const fixture = TestBed.createComponent(WorksheetDetailComponent);
+    const component = fixture.componentInstance;
+    component.exam = { id: 12 } as Test;
+    component['detail'].set({
+      worksheet: { id: 12, name: 'Deneme', canEdit: true, canAssign: true },
+      attempts: [],
+      similarWorksheets: [],
+    } as unknown as WorksheetDetail);
+    // Uygulama rolü Admin iken sayfa öğretmen görünümünü (ve atama butonlarını) hiç render etmez;
+    // o durumda yalnızca computed doğrulanır.
+    if (options.role === 'Teacher') {
+      fixture.detectChanges();
+    }
+    return { fixture, component, dialog };
+  }
+
+  const buttons = (fixture: { nativeElement: HTMLElement }, id: string) =>
+    fixture.nativeElement.querySelectorAll(`[data-testid="${id}"]`);
+
+  it('bağımsız öğretmende "Sınıfa ata" butonları render edilmez ve dialog isIndependentTutor=true alır', () => {
+    const { fixture, dialog } = setup({ role: 'Teacher', user: teacherProfile(null) });
+
+    expect(buttons(fixture, 'assign-grade-btn').length).toBe(0);
+    const studentButtons = buttons(fixture, 'assign-student-btn');
+    expect(studentButtons.length).toBeGreaterThan(0);
+
+    (studentButtons[0] as HTMLButtonElement).click();
+
+    expect(dialog.open).toHaveBeenCalled();
+    const config = dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData };
+    expect(config.data.isIndependentTutor).toBeTrue();
+  });
+
+  it('okullu öğretmende "Sınıfa ata" butonları görünür', () => {
+    const { fixture, component } = setup({ role: 'Teacher', user: teacherProfile(3) });
+
+    expect(component['isIndependentTutor']()).toBeFalse();
+    expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
+  });
+
+  it('uygulama rolü Admin olan okulsuz kullanıcı bağımsız sayılmaz', () => {
+    const { component } = setup({ role: 'Admin', user: { ...teacherProfile(null), role: 'Admin' } });
+
+    expect(component['isIndependentTutor']()).toBeFalse();
+  });
+
+  it('realm rolü Admin olan okulsuz öğretmen hesabında "Sınıfa ata" butonları görünür', () => {
+    const { fixture, component } = setup({ role: 'Teacher', user: teacherProfile(null), realmAdmin: true });
+
+    expect(component['isIndependentTutor']()).toBeFalse();
+    expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
+  });
+
+  it('profil henüz yokken (user null) "Sınıfa ata" butonları görünür', () => {
+    const { fixture, component } = setup({ role: 'Teacher', user: null });
+
+    expect(component['isIndependentTutor']()).toBeFalse();
+    expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
   });
 });

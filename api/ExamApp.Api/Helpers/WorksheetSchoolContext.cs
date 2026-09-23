@@ -25,6 +25,23 @@ public static class WorksheetSchoolContext
     }
 
     /// <summary>
+    /// issue #222 (security Ö2): istek sahibinin ÖĞRETMEN kaydı ve okulu — deterministik (<c>OrderBy(Id)</c>;
+    /// <c>Teachers.UserId</c> unique değil). <c>GetSchoolScopeAsync</c> çok rollü hesapta okulu Students tablosundan
+    /// çözebildiği için öğretmen-yetkili kararlar scope'u bu kayıtla doğrular. Kayıt yoksa <c>Exists=false</c>.
+    /// </summary>
+    public static async Task<(bool Exists, int? SchoolId)> ResolveTeacherRecordAsync(
+        this AppDbContext context, int userId, CancellationToken ct = default)
+    {
+        var row = await context.Teachers.AsNoTracking()
+            .Where(t => t.UserId == userId)
+            .OrderBy(t => t.Id)
+            .Select(t => new { t.SchoolId })
+            .FirstOrDefaultAsync(ct);
+
+        return row == null ? (false, null) : (true, row.SchoolId);
+    }
+
+    /// <summary>
     /// Tekil worksheet kararları (detay/atama/kopya/düzenleme) için (sahibin okulu, istekçinin okulu) çifti.
     /// Yalnızca karar için gerekliyse sorgu atar: worksheet SchoolOnly değilse, istekçi admin veya sahibi
     /// ise DB'ye gitmeden <c>(null, null)</c> döner (bu durumlarda CanView/CanAssign zaten okula bakmaz).

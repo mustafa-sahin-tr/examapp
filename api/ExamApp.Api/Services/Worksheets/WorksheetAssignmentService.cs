@@ -33,9 +33,13 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    public async Task<ResponseBaseDto> AssignWorksheetAsync(WorksheetAssignmentRequestDto request, int userId, bool isAdmin = false)
+    public async Task<ResponseBaseDto> AssignWorksheetAsync(
+        WorksheetAssignmentRequestDto request, SchoolScope requester, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        var userId = requester.UserId;
+        var isAdmin = requester.IsUnrestricted;
 
         if (!request.StudentId.HasValue && !request.GradeId.HasValue)
         {
@@ -57,7 +61,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
 
         var worksheet = await _context.Worksheets
             .AsNoTracking()
-            .FirstOrDefaultAsync(w => w.Id == request.WorksheetId);
+            .FirstOrDefaultAsync(w => w.Id == request.WorksheetId, ct);
 
         if (worksheet == null)
         {
@@ -70,7 +74,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         // aynı "bulunamadı" mesajıyla çık — ExamService/WorksheetDetailService ile aynı desen.
         // issue #191: SchoolOnly için sahibin/istekçinin okulu DB'den (yalnızca gerekiyorsa sorgu atar);
         // farklı okul veya okulsuz istekçi için de "bulunamadı".
-        var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin);
+        var (ownerSchoolId, requesterSchoolId) = await _context.ResolveSchoolContextAsync(worksheet, userId, isAdmin, ct);
         if (!WorksheetAccess.CanView(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, worksheet.StudentVisibility,
                 requesterSchoolId, ownerSchoolId))
         {
@@ -89,7 +93,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 requesterSchoolId: requesterSchoolId, ownerSchoolId: ownerSchoolId))
         {
             hasGrant = await _context.WorksheetAccessGrants
-                .AnyAsync(g => g.WorksheetId == worksheet.Id && g.TeacherUserId == userId && g.RevokedAt == null);
+                .AnyAsync(g => g.WorksheetId == worksheet.Id && g.TeacherUserId == userId && g.RevokedAt == null, ct);
         }
 
         if (!WorksheetAccess.CanAssign(worksheet.CreateUserId, userId, isAdmin, worksheet.TeacherSharing, hasGrant,
@@ -102,28 +106,44 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             return new ResponseBaseDto { Success = false, Message = message };
         }
 
+        // issue #222 (security Ö2): scope'un okulu çok rollü hesapta Students tablosundan gelmiş olabilir. Öğretmen
+        // yetkisiyle yapılan atamada okul ÖĞRETMEN kaydından doğrulanır; kayıt yoksa veya uyuşmazsa fail-closed red.
+        // Worksheet erişim kontrollerinden sonra: görünmeyen worksheet için "bulunamadı" cevabı değişmez.
+        if (!isAdmin)
+        {
+            var teacherRecord = await _context.ResolveTeacherRecordAsync(userId, ct);
+            if (!teacherRecord.Exists || teacherRecord.SchoolId != requester.SchoolId)
+            {
+                return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
+            }
+        }
+
+        // issue #222 (ürün kararı A): bağımsız (okulsuz) öğretmen sınıf bazlı atama yapamaz — SchoolId=null ile
+        // yazılan grade ataması tüm okulların o sınıftaki öğrencilerine genişliyordu (PII sızıntısı). Yalnızca
+        // Approved Booking'i olan öğrencilere öğrenci bazlı atama yapabilir (#192). Admin (Unrestricted) etkilenmez.
+        // Worksheet erişim kontrolünden sonra: görünmeyen worksheet için "bulunamadı" oracle'ı korunur.
+        if (requester.IsIndependent && request.GradeId.HasValue)
+        {
+            return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.independentGradeForbidden"] };
+        }
+
         // Non-owner atama (PublicAssignable) yalnızca atayan öğretmenin kendi okulundaki
         // öğrenci/sınıfları hedefleyebilir. Sahip/admin atamalarında da grade hedefliyse
         // atamayı öğretmenin okuluna daraltıyoruz (admin hariç, admin okula bağlı değil).
-        // issue #190: sahip dahil her admin-olmayan atayan için okul bağlamı DB'den çözülür;
-        // öğrenci hedefinde CanAccess ile doğrulanır (worksheet sahibi de başka okulun öğrencisine atayamaz).
+        // issue #190/#222: okul bağlamı sunucu tarafında çözülmüş scope'tan gelir (DB doğrulamalı);
+        // öğrenci hedefinde ApplyScope ile doğrulanır (worksheet sahibi de başka okulun öğrencisine atayamaz).
         int? assignmentSchoolId = null;
-        var requesterScope = SchoolScope.Unrestricted(userId);
+        var requesterScope = requester;
         if (!isAdmin)
         {
-            var assigningTeacher = await _context.Teachers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.UserId == userId);
-
-            if (!isOwnerOrAdmin && (assigningTeacher == null || !assigningTeacher.SchoolId.HasValue))
+            if (!isOwnerOrAdmin && !requester.SchoolId.HasValue)
             {
                 return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.onlyOwnStudents"] };
             }
 
-            requesterScope = SchoolScope.For(userId, assigningTeacher?.SchoolId);
             if (!isOwnerOrAdmin || request.GradeId.HasValue)
             {
-                assignmentSchoolId = assigningTeacher?.SchoolId;
+                assignmentSchoolId = requester.SchoolId;
             }
         }
 
@@ -135,7 +155,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             // Kapsam filtresi ve var/yok tek sorguda (policy ApplyScope: okullu → okul eşitliği, bağımsız → Approved
             // Booking EXISTS, admin → filtre yok); kapsam dışı öğrenci de "bulunamadı" döner.
             student = await _schoolAccessPolicy.ApplyScope(_context.Students.AsNoTracking(), requesterScope)
-                .FirstOrDefaultAsync(s => s.Id == request.StudentId.Value);
+                .FirstOrDefaultAsync(s => s.Id == request.StudentId.Value, ct);
 
             if (student == null)
             {
@@ -158,7 +178,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         {
             grade = await _context.Grades
                 .AsNoTracking()
-                .FirstOrDefaultAsync(g => g.Id == request.GradeId.Value);
+                .FirstOrDefaultAsync(g => g.Id == request.GradeId.Value, ct);
 
             if (grade == null)
             {
@@ -181,7 +201,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         overlapQuery = overlapQuery.Where(wa => wa.StartAt < (endAtUtc ?? DateTime.MaxValue)
             && (wa.EndAt == null || wa.EndAt > startAtUtc));
 
-        var hasOverlap = await overlapQuery.AnyAsync();
+        var hasOverlap = await overlapQuery.AnyAsync(ct);
         if (hasOverlap)
         {
             return new ResponseBaseDto { Success = false, Message = _localizer["worksheets.assignment.overlappingAssignment"] };
@@ -200,7 +220,7 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
         };
 
         _context.WorksheetAssignments.Add(assignment);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(ct);
 
         return new ResponseBaseDto
         {
@@ -343,9 +363,14 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             .Distinct()
             .ToList();
 
+        // issue #222: bağımsız (okulsuz) istek sahibi için grade→öğrenci genişletmesi yapılmaz. Karar A öncesi yazılmış
+        // SchoolId=null grade atamaları tüm okulların o sınıfına genişliyordu; artık yalnızca direkt öğrenci
+        // hedefleri (ApplyScope ile Approved Booking'e daraltılmış) görünür.
+        var expandGradeIds = requester.IsIndependent ? new List<int>() : gradeIds;
+
         // issue #190: görünümdeki öğrenciler istek sahibinin okuluyla sınırlı (admin/servis: tümü).
         var studentsQuery = _schoolAccessPolicy.ApplyScope(_context.Students.AsNoTracking(), requester)
-            .Where(s => directStudentIds.Contains(s.Id) || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)));
+            .Where(s => directStudentIds.Contains(s.Id) || (s.GradeId.HasValue && expandGradeIds.Contains(s.GradeId.Value)));
 
         var students = await studentsQuery.ToListAsync();
         var studentsById = students.ToDictionary(s => s.Id);
@@ -357,11 +382,9 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 .ToDictionaryAsync(g => g.Id, g => g.Name)
             : new Dictionary<int, string>();
 
+        // issue #222 ek sertleştirme: TestInstances sorgusuna yalnızca kapsam içi (ApplyScope'tan geçmiş) öğrenciler
+        // girer; kapsam dışı direkt-öğrenci id'leri ham olarak eklenmez.
         var targetStudentIds = new HashSet<int>(students.Select(s => s.Id));
-        foreach (var studentId in directStudentIds)
-        {
-            targetStudentIds.Add(studentId);
-        }
 
         var instances = targetStudentIds.Count == 0
             ? new List<WorksheetInstance>()
@@ -379,8 +402,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
                 ? studentsById.TryGetValue(assignment.StudentId.Value, out var singleStudent)
                     ? new List<Student> { singleStudent }
                     : new List<Student>()
-                : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value
-                    && (!assignment.SchoolId.HasValue || s.SchoolId == assignment.SchoolId)).ToList();
+                : requester.IsIndependent
+                    ? new List<Student>()
+                    : students.Where(s => s.GradeId.HasValue && assignment.GradeId.HasValue && s.GradeId.Value == assignment.GradeId.Value
+                        && (!assignment.SchoolId.HasValue || s.SchoolId == assignment.SchoolId)).ToList();
 
             var studentDtos = new List<TeacherAssignmentStudentDto>();
 

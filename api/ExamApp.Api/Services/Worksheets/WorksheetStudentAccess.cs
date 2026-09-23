@@ -8,7 +8,9 @@ namespace ExamApp.Api.Services.Worksheets;
 /// Öğrencinin bir worksheet atamasını görüp göremeyeceğine dair ortak predikat.
 /// Hem <see cref="WorksheetReminderService"/> hem <see cref="WorksheetCalendarService"/>
 /// (ve WorksheetDetailService.BuildRankAsync) aynı kuralı kullanır ki
-/// "bana atanmış" tanımı tek yerde kalsın (bkz. WorksheetAssignmentService.GetActiveAssignmentsForStudentAsync).
+/// "bana atanmış" tanımı tek yerde kalsın. issue #236: aktif-pencere sürümü
+/// <see cref="ExamApp.Api.Helpers.WorksheetAccess.ActiveAssignmentsFor"/> da bu ifadeyi kullanır — öğrenci listesi,
+/// keşfet görünürlüğü, "atanan testler" (GetActiveAssignmentsForStudentAsync) ve test başlatma kapısı dahil.
 /// </summary>
 public static class WorksheetStudentAccess
 {

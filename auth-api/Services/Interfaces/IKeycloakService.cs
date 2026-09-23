@@ -19,6 +19,14 @@ public interface IKeycloakService
     Task<TokenResponseDto> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
     Task<List<KeycloakRoleDto>> GetRealmRolesAsync();
 
+    /// <summary>
+    /// Issue #152: verilen Keycloak kullanıcılarının <c>enabled</c> bayrağı. Keycloak admin API id listesiyle toplu
+    /// filtre sunmadığı için kullanıcı başı <c>GET /users/{id}</c>, en fazla <see cref="KeycloakService.AccountStatusMaxParallelism"/>
+    /// eşzamanlı. Fail-soft: okunamayan (404, hata, zaman aşımı/iptal) kullanıcı sözlükte YER ALMAZ; admin token'ı
+    /// alınamazsa <see cref="KeycloakException"/> fırlatır.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, bool>> GetUsersEnabledAsync(IReadOnlyCollection<string> keycloakUserIds, CancellationToken ct = default);
+
     // ---- Toplu test verisi (issue #217) — yalnızca DevUserSeedService kullanır ----
 
     /// <summary>Realm rolünü adına göre çözer (role-mappings API tam temsili ister). Yoksa <see cref="KeycloakException"/>.</summary>

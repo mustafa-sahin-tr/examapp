@@ -3,6 +3,9 @@
     "taxonomy": {
       "filterConflict": "gradeId and unassigned cannot be used together."
     },
+    "teachers": {
+      "filterConflict": "schoolId and unassigned cannot be used together."
+    },
 
     "dashboard": {
       "invalidDays": "days must be between 1 and 365."

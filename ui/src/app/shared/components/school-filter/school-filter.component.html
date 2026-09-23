@@ -1,0 +1,25 @@
+<mat-form-field
+  class="school-filter"
+  appearance="outline"
+  subscriptSizing="dynamic"
+  *transloco="let t; prefix: 'admin.schoolFilter'"
+>
+  <mat-label>{{ t('label') }}</mat-label>
+  <mat-select
+    [value]="value()"
+    [disabled]="disabled()"
+    [attr.aria-busy]="loading()"
+    (selectionChange)="select($event.value)"
+  >
+    <mat-option value="all">{{ t('all') }}</mat-option>
+    <mat-option value="unassigned">{{ t('unassigned') }}</mat-option>
+    @for (school of schools(); track school.id) {
+      <mat-option [value]="school.id">{{ school.name }}</mat-option>
+    }
+  </mat-select>
+  @if (loading()) {
+    <mat-hint>{{ t('loading') }}</mat-hint>
+  } @else if (loadFailed()) {
+    <mat-hint class="school-filter__error">{{ t('loadFailed') }}</mat-hint>
+  }
+</mat-form-field>

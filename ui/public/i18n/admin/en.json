@@ -215,5 +215,49 @@
       "cancel": "Cancel",
       "submit": "Reject"
     }
+  },
+  "schoolFilter": {
+    "label": "School",
+    "all": "All",
+    "unassigned": "Independent / no school",
+    "loading": "Loading schools...",
+    "loadFailed": "Could not load the school list."
+  },
+  "paginator": {
+    "itemsPerPage": "Per page",
+    "next": "Next page",
+    "previous": "Previous page",
+    "first": "First page",
+    "last": "Last page",
+    "range": "{{start}}–{{end}} of {{length}}",
+    "rangeEmpty": "0 of {{length}}"
+  },
+  "teachers": {
+    "title": "Teachers",
+    "subtitle": "All teachers on the platform; filter by school.",
+    "refresh": "Refresh",
+    "loading": "Loading teachers...",
+    "empty": "No teachers found",
+    "emptyFilteredHint": "Try a different school filter.",
+    "loadFailed": "Something went wrong while loading the teacher list.",
+    "forbidden": "You are not allowed to view this list.",
+    "independent": "Independent",
+    "columns": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "school": "School",
+      "approvalStatus": "Approval",
+      "accountStatus": "Account"
+    },
+    "approval": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "account": {
+      "active": "Active",
+      "inactive": "Disabled",
+      "unknown": "Unknown"
+    }
   }
 }

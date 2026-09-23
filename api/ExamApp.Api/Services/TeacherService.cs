@@ -614,88 +614,10 @@ public class TeacherService : ITeacherService
         var worksheetNameById = ownedWorksheets.ToDictionary(w => w.Id, w => w.Name);
         var worksheetIds = ownedWorksheets.Select(w => w.Id).ToList();
 
-        // 2) Bu worksheet'lere ait TÜM atamalar tek sorguda (N+1 yok).
-        //    issue #222: kapsam daraltılmışsa sınıf atamaları hiç çekilmez (grade→öğrenci genişletmesi yok).
+        // 2-4) Atamalar → kapsamlı hedef öğrenciler → (worksheet, öğrenci) çifti bazında atama pencereleri.
+        //      issue #56: ortak yardımcıya taşındı (öğretmen aktivite uçları aynı kümeyi kullanır).
         var target = await ResolveStudentTargetScopeAsync(requester, ct);
-        var expandGrades = target.ExpandGradeAssignments;
-        var assignments = await _context.WorksheetAssignments
-            .AsNoTracking()
-            .Where(wa => worksheetIds.Contains(wa.WorksheetId))
-            .Where(wa => expandGrades || wa.StudentId != null)
-            .Select(wa => new
-            {
-                wa.WorksheetId,
-                wa.StudentId,
-                wa.GradeId,
-                wa.SchoolId,
-                wa.StartAt,
-                wa.EndAt
-            })
-            .ToListAsync(ct);
-
-        if (assignments.Count == 0)
-        {
-            return new List<TeacherLaggingStudentDto>();
-        }
-
-        // 3) Hedef öğrenciler tek sorguda: direkt atananlar + ilgili sınıflardaki tüm öğrenciler.
-        var directStudentIds = assignments
-            .Where(a => a.StudentId.HasValue)
-            .Select(a => a.StudentId!.Value)
-            .Distinct()
-            .ToList();
-
-        var gradeIds = assignments
-            .Where(a => a.GradeId.HasValue && !a.StudentId.HasValue)
-            .Select(a => a.GradeId!.Value)
-            .Distinct()
-            .ToList();
-
-        var students = (directStudentIds.Count == 0 && gradeIds.Count == 0)
-            ? new List<LaggingStudentTarget>()
-            : await TargetStudents(target)
-                .Where(s => directStudentIds.Contains(s.Id)
-                            || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
-                .Select(s => new LaggingStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolId))
-                .ToListAsync(ct);
-
-        if (students.Count == 0)
-        {
-            return new List<TeacherLaggingStudentDto>();
-        }
-
-        var studentsById = students.ToDictionary(s => s.Id);
-        var studentsByGrade = students
-            .Where(s => s.GradeId.HasValue)
-            .GroupBy(s => s.GradeId!.Value)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        // 4) (worksheet, öğrenci) çifti bazında atama pencereleri (GetWorksheetsOverviewAsync ile aynı genişletme).
-        var windowsByPair = new Dictionary<(int WorksheetId, int StudentId), List<AssignmentWindow>>();
-
-        foreach (var assignment in assignments)
-        {
-            var window = new AssignmentWindow(assignment.StartAt, assignment.EndAt);
-
-            if (assignment.StudentId.HasValue)
-            {
-                if (studentsById.ContainsKey(assignment.StudentId.Value))
-                {
-                    AddPairWindow(windowsByPair, assignment.WorksheetId, assignment.StudentId.Value, window);
-                }
-            }
-            else if (assignment.GradeId.HasValue
-                     && studentsByGrade.TryGetValue(assignment.GradeId.Value, out var gradeStudents))
-            {
-                foreach (var student in gradeStudents)
-                {
-                    if (!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
-                    {
-                        AddPairWindow(windowsByPair, assignment.WorksheetId, student.Id, window);
-                    }
-                }
-            }
-        }
+        var (studentsById, windowsByPair) = await ResolveAssignedPairsAsync(worksheetIds, target, ct);
 
         if (windowsByPair.Count == 0)
         {
@@ -717,7 +639,7 @@ public class TeacherService : ITeacherService
 
         // 6) Bellekte hesapla: çift başına "en ilgili" atama = başlamış (StartAt <= now) olanlar arasında en son başlayan.
         //    Henüz başlamamış (Scheduled) atamalar geride kalma sayılmaz.
-        var laggingRows = new List<(int WorksheetId, LaggingStudentTarget Student, bool IsCompleted, bool IsExpired)>();
+        var laggingRows = new List<(int WorksheetId, AssignedStudentTarget Student, bool IsCompleted, bool IsExpired)>();
 
         foreach (var ((worksheetId, studentId), windows) in windowsByPair)
         {
@@ -777,6 +699,234 @@ public class TeacherService : ITeacherService
             .OrderBy(dto => dto.StudentName)
             .ThenBy(dto => dto.WorksheetName)
             .ToList();
+    }
+
+    // ---------------------------------------------------------------------
+    // Issue #56: öğretmen dashboard aktivite kartları + "En Aktif Öğrenciler"
+    // ---------------------------------------------------------------------
+
+    /// <summary>Aktivite uçlarında <c>days</c> için izin verilen aralık (controller doğrular).</summary>
+    public const int ActivityMinDays = 1;
+    public const int ActivityMaxDays = 90;
+
+    /// <summary>"En Aktif Öğrenciler" tablosunun sabit üst sınırı.</summary>
+    public const int ActivityTopStudentsLimit = 10;
+
+    public async Task<TeacherOwnActivitySummaryDto> GetOwnActivitySummaryAsync(SchoolScope requester, int days, CancellationToken ct = default)
+    {
+        var teacherId = requester.UserId;
+        var cutoff = ActivityCutoff(days);
+
+        // Öğretmenin kendi eylemleri: son N günde oluşturduğu worksheet'ler ve atamalar (CreateUserId == teacherId).
+        // Soft-delete edilmiş kayıtlar global query filter ile zaten dışarıda.
+        var worksheetsCreated = await _context.Worksheets
+            .AsNoTracking()
+            .CountAsync(w => w.CreateUserId == teacherId && w.CreateTime >= cutoff, ct);
+
+        var assignmentsCreated = await _context.WorksheetAssignments
+            .AsNoTracking()
+            .CountAsync(wa => wa.CreateUserId == teacherId && wa.CreateTime >= cutoff, ct);
+
+        var activity = await GetStudentActivityAsync(requester, cutoff, ct);
+
+        return new TeacherOwnActivitySummaryDto
+        {
+            WorksheetsCreated = worksheetsCreated,
+            AssignmentsCreated = assignmentsCreated,
+            ActiveStudents = activity.Count
+        };
+    }
+
+    public async Task<TeacherStudentsActivitySummaryDto> GetStudentsActivitySummaryAsync(SchoolScope requester, int days, CancellationToken ct = default)
+    {
+        var activity = await GetStudentActivityAsync(requester, ActivityCutoff(days), ct);
+
+        var top = activity
+            .OrderByDescending(a => a.QuestionsSolved)
+            .ThenByDescending(a => a.CorrectCount)
+            .ThenBy(a => a.TimeSeconds)
+            .ThenBy(a => a.Student.Id)
+            .Take(ActivityTopStudentsLimit)
+            .ToList();
+
+        // Adlar yalnızca listelenecek öğrenciler için, tek batch çağrıyla (N+1 yok); erişilemezse StudentNumber fallback'i.
+        var nameByUserId = await ResolveStudentNamesAsync(top.Select(a => a.Student.UserId).Distinct().ToList(), ct);
+
+        return new TeacherStudentsActivitySummaryDto
+        {
+            TotalQuestionsSolved = activity.Sum(a => a.QuestionsSolved),
+            TotalCorrectCount = activity.Sum(a => a.CorrectCount),
+            TotalTimeSeconds = activity.Sum(a => a.TimeSeconds),
+            TopStudents = top
+                .Select(a => new TeacherActiveStudentDto
+                {
+                    StudentId = a.Student.Id,
+                    StudentName = nameByUserId.TryGetValue(a.Student.UserId, out var fullName)
+                        ? fullName
+                        : _localizer["teacher.fallbackStudentName", a.Student.StudentNumber],
+                    QuestionsSolved = a.QuestionsSolved,
+                    CorrectCount = a.CorrectCount,
+                    TimeSeconds = a.TimeSeconds
+                })
+                .ToList()
+        };
+    }
+
+    /// <summary>
+    /// Bugün (UTC) dahil son <paramref name="days"/> takvim günü — admin dashboard trendleriyle
+    /// (DashboardService.GetTrendsAsync) aynı pencere tanımı.
+    /// </summary>
+    private static DateTime ActivityCutoff(int days)
+        => DateTime.UtcNow.Date.AddDays(-(Math.Clamp(days, ActivityMinDays, ActivityMaxDays) - 1));
+
+    /// <summary>
+    /// issue #56: öğretmenin kendi worksheet'lerine atanan öğrencilerin (dashboard/lagging ile aynı kapsam, #222/#235)
+    /// <paramref name="cutoff"/> sonrası çözdüğü sorular, öğrenci bazında. Yalnızca en az bir soru çözmüş öğrenciler döner.
+    /// Bir cevap ancak (worksheet, öğrenci) çifti bir atamayla hedefleniyorsa sayılır — öğrencinin başka öğretmenin
+    /// sınavında ya da bu öğretmenin kendisine atanmamış bir worksheet'inde çözdüğü sorular dahil edilmez.
+    /// Ürün kararı (#56): çift atanmışsa cevap, atamanın StartAt/EndAt penceresinden bağımsız sayılır.
+    /// </summary>
+    private async Task<List<StudentActivity>> GetStudentActivityAsync(SchoolScope requester, DateTime cutoff, CancellationToken ct)
+    {
+        var teacherId = requester.UserId;
+
+        var worksheetIds = await _context.Worksheets
+            .AsNoTracking()
+            .Where(w => w.CreateUserId == teacherId)
+            .Select(w => w.Id)
+            .ToListAsync(ct);
+
+        if (worksheetIds.Count == 0)
+            return new List<StudentActivity>();
+
+        var target = await ResolveStudentTargetScopeAsync(requester, ct);
+        var (studentsById, windowsByPair) = await ResolveAssignedPairsAsync(worksheetIds, target, ct);
+
+        if (windowsByPair.Count == 0)
+            return new List<StudentActivity>();
+
+        var targetStudentIds = windowsByPair.Keys.Select(k => k.StudentId).Distinct().ToList();
+
+        // "Çözülen soru" DashboardService.GetTrendsAsync ile aynı tanım: satır test başlarken boş açılır, cevap
+        // verildiğinde SelectedAnswerId/AnswerPayload set edilir ve UpdateTime cevap anını taşır.
+        // Süre = soru bazlı TimeTaken (saniye; BadgeService StudentDailyActivity.TotalTimeSeconds ile aynı kaynak).
+        // SQL tarafında (worksheet, öğrenci) bazında gruplanır; çift filtresi bellekte uygulanır.
+        var rows = await _context.TestInstanceQuestions
+            .AsNoTracking()
+            .Where(q => (q.SelectedAnswerId != null || q.AnswerPayload != null)
+                        && q.UpdateTime != null && q.UpdateTime >= cutoff)
+            .Where(q => worksheetIds.Contains(q.WorksheetInstance.WorksheetId)
+                        && targetStudentIds.Contains(q.WorksheetInstance.StudentId))
+            .GroupBy(q => new { q.WorksheetInstance.WorksheetId, q.WorksheetInstance.StudentId })
+            .Select(g => new
+            {
+                g.Key.WorksheetId,
+                g.Key.StudentId,
+                Solved = g.Count(),
+                Correct = g.Count(x => x.IsCorrect),
+                TimeSeconds = g.Sum(x => x.TimeTaken > 0 ? x.TimeTaken : 0)
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Where(r => windowsByPair.ContainsKey((r.WorksheetId, r.StudentId)))
+            .GroupBy(r => r.StudentId)
+            .Select(g => new StudentActivity(
+                studentsById[g.Key],
+                g.Sum(r => r.Solved),
+                g.Sum(r => r.Correct),
+                g.Sum(r => r.TimeSeconds)))
+            .Where(a => a.QuestionsSolved > 0)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Sahip olunan worksheet'lerin atamalarını kapsamlı hedef öğrencilere genişletir ve (worksheet, öğrenci) çifti
+    /// bazında atama pencerelerini döner (GetWorksheetsOverviewAsync ile aynı genişletme kuralı):
+    /// direkt atama → öğrenci Students'ta (soft-delete dışı) ve kapsamdaysa; sınıf ataması → o sınıftaki kapsam içi
+    /// öğrenciler (atamanın SchoolId'si doluysa o okulla sınırlı). Tüm atamalar ve öğrenciler birer sorguda (N+1 yok).
+    /// </summary>
+    private async Task<(Dictionary<int, AssignedStudentTarget> StudentsById,
+        Dictionary<(int WorksheetId, int StudentId), List<AssignmentWindow>> WindowsByPair)> ResolveAssignedPairsAsync(
+        List<int> worksheetIds, StudentTargetScope target, CancellationToken ct)
+    {
+        var studentsById = new Dictionary<int, AssignedStudentTarget>();
+        var windowsByPair = new Dictionary<(int WorksheetId, int StudentId), List<AssignmentWindow>>();
+
+        // issue #222: kapsam daraltılmışsa sınıf atamaları hiç çekilmez (grade→öğrenci genişletmesi yok).
+        var expandGrades = target.ExpandGradeAssignments;
+        var assignments = await _context.WorksheetAssignments
+            .AsNoTracking()
+            .Where(wa => worksheetIds.Contains(wa.WorksheetId))
+            .Where(wa => expandGrades || wa.StudentId != null)
+            .Select(wa => new
+            {
+                wa.WorksheetId,
+                wa.StudentId,
+                wa.GradeId,
+                wa.SchoolId,
+                wa.StartAt,
+                wa.EndAt
+            })
+            .ToListAsync(ct);
+
+        if (assignments.Count == 0)
+            return (studentsById, windowsByPair);
+
+        var directStudentIds = assignments
+            .Where(a => a.StudentId.HasValue)
+            .Select(a => a.StudentId!.Value)
+            .Distinct()
+            .ToList();
+
+        var gradeIds = assignments
+            .Where(a => a.GradeId.HasValue && !a.StudentId.HasValue)
+            .Select(a => a.GradeId!.Value)
+            .Distinct()
+            .ToList();
+
+        var students = (directStudentIds.Count == 0 && gradeIds.Count == 0)
+            ? new List<AssignedStudentTarget>()
+            : await TargetStudents(target)
+                .Where(s => directStudentIds.Contains(s.Id)
+                            || (s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value)))
+                .Select(s => new AssignedStudentTarget(s.Id, s.UserId, s.StudentNumber, s.GradeId, s.SchoolId))
+                .ToListAsync(ct);
+
+        if (students.Count == 0)
+            return (studentsById, windowsByPair);
+
+        studentsById = students.ToDictionary(s => s.Id);
+        var studentsByGrade = students
+            .Where(s => s.GradeId.HasValue)
+            .GroupBy(s => s.GradeId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var assignment in assignments)
+        {
+            var window = new AssignmentWindow(assignment.StartAt, assignment.EndAt);
+
+            if (assignment.StudentId.HasValue)
+            {
+                if (studentsById.ContainsKey(assignment.StudentId.Value))
+                {
+                    AddPairWindow(windowsByPair, assignment.WorksheetId, assignment.StudentId.Value, window);
+                }
+            }
+            else if (assignment.GradeId.HasValue
+                     && studentsByGrade.TryGetValue(assignment.GradeId.Value, out var gradeStudents))
+            {
+                foreach (var student in gradeStudents)
+                {
+                    if (!assignment.SchoolId.HasValue || assignment.SchoolId == student.SchoolId)
+                    {
+                        AddPairWindow(windowsByPair, assignment.WorksheetId, student.Id, window);
+                    }
+                }
+            }
+        }
+
+        return (studentsById, windowsByPair);
     }
 
     // ---------------------------------------------------------------------
@@ -1140,9 +1290,11 @@ public class TeacherService : ITeacherService
 
     private sealed record StudentTarget(int Id, int? GradeId, int? SchoolId);
 
-    private sealed record LaggingStudentTarget(int Id, int UserId, string StudentNumber, int? GradeId, int? SchoolId);
+    private sealed record AssignedStudentTarget(int Id, int UserId, string StudentNumber, int? GradeId, int? SchoolId);
 
     private sealed record AssignmentWindow(DateTime StartAt, DateTime? EndAt);
+
+    private sealed record StudentActivity(AssignedStudentTarget Student, int QuestionsSolved, int CorrectCount, int TimeSeconds);
 
     private sealed record InstanceSnapshot(int WorksheetId, int StudentId, DateTime StartTime, DateTime? EndTime, WorksheetInstanceStatus Status);
 

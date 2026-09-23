@@ -204,6 +204,41 @@ namespace ExamApp.Api.Controllers
             return Ok(lagging);
         }
 
+        /// <summary>
+        /// Issue #56: öğretmen dashboard "Benim Aktivitem" kartı. teacherId path'te yok — authenticated user'dan
+        /// alınır (IDOR yüzeyi yok). <paramref name="days"/> 1..90, varsayılan 7; aralık dışı 400.
+        /// </summary>
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("own-activity-summary")]
+        public async Task<ActionResult<TeacherOwnActivitySummaryDto>> GetOwnActivitySummary(
+            [FromQuery] int days = 7, CancellationToken ct = default)
+        {
+            if (!IsValidActivityDays(days))
+                return BadRequest(new { message = _localizer["teacher.activity.invalidDays"].Value });
+
+            var scope = await GetSchoolScopeAsync(ct);
+            return Ok(await _teacherService.GetOwnActivitySummaryAsync(scope, days, ct));
+        }
+
+        /// <summary>
+        /// Issue #56: öğretmen dashboard "Öğrenci Aktivitesi" kartı + "En Aktif Öğrenciler" tablosu.
+        /// Yalnızca öğretmenin kendi worksheet'lerine atanan öğrenciler; <paramref name="days"/> 1..90, varsayılan 7.
+        /// </summary>
+        [Authorize(Roles = "Teacher")]
+        [HttpGet("students-activity-summary")]
+        public async Task<ActionResult<TeacherStudentsActivitySummaryDto>> GetStudentsActivitySummary(
+            [FromQuery] int days = 7, CancellationToken ct = default)
+        {
+            if (!IsValidActivityDays(days))
+                return BadRequest(new { message = _localizer["teacher.activity.invalidDays"].Value });
+
+            var scope = await GetSchoolScopeAsync(ct);
+            return Ok(await _teacherService.GetStudentsActivitySummaryAsync(scope, days, ct));
+        }
+
+        private static bool IsValidActivityDays(int days)
+            => days >= TeacherService.ActivityMinDays && days <= TeacherService.ActivityMaxDays;
+
         // ------------------------------------------------------------------
         // Issue #95: bağımsız öğretmen tutor profili + öğrenci araması
         // ------------------------------------------------------------------

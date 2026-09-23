@@ -11,9 +11,14 @@ import { SectionHeaderComponent } from '../../shared/components/section-header/s
 import { TeacherService } from '../../services/teacher.service';
 import {
   TeacherDashboardSummary,
+  TeacherActiveStudent,
   TeacherLaggingStudent,
+  TeacherOwnActivitySummary,
+  TeacherStudentsActivitySummary,
   TeacherWorksheetOverview,
 } from '../../models/teacher-dashboard.model';
+import { LocaleService } from '../../services/locale.service';
+import { DurationLabel, accuracyPercent, formatActivityDuration, formatActivityPeriod } from './activity-format';
 
 interface SummaryCardViewModel {
   key: 'worksheets' | 'students';
@@ -23,6 +28,23 @@ interface SummaryCardViewModel {
   icon: string;
 }
 
+/** Issue #56: aktivite kartlarının "tile" metriği. Değer ya sayı ya da okunur süre anahtarıdır. */
+interface ActivityMetricViewModel {
+  key: string;
+  /** Scope'a göreli çeviri anahtarı. */
+  labelKey: string;
+  value: number | null;
+  duration: DurationLabel | null;
+  /** Doğru sayısının yanındaki doğruluk yüzdesi; 0'a bölme durumunda null. */
+  accuracy: number | null;
+}
+
+/** Issue #56: "En Aktif Öğrenciler" ilk üç sıra rozetleri (maket). */
+const RANK_MEDALS: readonly string[] = ['🥇', '🥈', '🥉'];
+
+/** Issue #56: aktivite penceresi (gün). Backend 1..90 kabul eder. */
+export const ACTIVITY_WINDOW_DAYS = 7;
+
 /** Issue #54: tamamlanma yüzdesi bu eşiğin altındaysa uyarı, üstünde/eşitse başarı rengi. */
 const COMPLETION_SUCCESS_THRESHOLD = 50;
 
@@ -31,7 +53,7 @@ const COMPLETION_SUCCESS_THRESHOLD = 50;
  * - Issue #53: özet kartları.
  * - Issue #54: "Sınavlarım" tablosu (mobilde kart listesi).
  * - Issue #55: "Geride Kalan Öğrenciler" tablosu (etiketli).
- * Aktivite kartları sonraki alt issue'da (#56).
+ * - Issue #56: "Benim Aktivitem" / "Öğrenci Aktivitesi" kartları + "En Aktif Öğrenciler" tablosu.
  *
  * Çeviriler kendi Transloco scope'unda: `public/i18n/teacher-dashboard/<lang>.json` (issue #183).
  */
@@ -58,6 +80,7 @@ export class TeacherDashboardComponent implements OnInit {
   private readonly teacherService = inject(TeacherService);
   private readonly router = inject(Router);
   private readonly transloco = inject(TranslocoService);
+  private readonly localeService = inject(LocaleService);
 
   // ── Issue #53: özet kartları ──────────────────────────────────────────────
   readonly loading = signal(true);
@@ -97,6 +120,64 @@ export class TeacherDashboardComponent implements OnInit {
 
   readonly laggingDisplayedColumns: readonly string[] = ['studentName', 'worksheetName', 'flags'];
 
+  // ── Issue #56: aktivite kartları + En Aktif Öğrenciler ────────────────────
+  readonly activityDays = ACTIVITY_WINDOW_DAYS;
+
+  /** Kartların altındaki dönem satırı (ör. "17–23 Eylül 2026"); dil değişince yeniden biçimlenir. */
+  readonly activityPeriod = computed(() =>
+    formatActivityPeriod(this.activityDays, new Date(), this.localeService.localeDefinition().angularLocale),
+  );
+
+  readonly ownActivityLoading = signal(true);
+  readonly ownActivityError = signal<string | null>(null);
+  readonly ownActivity = signal<TeacherOwnActivitySummary | null>(null);
+
+  readonly studentsActivityLoading = signal(true);
+  readonly studentsActivityError = signal<string | null>(null);
+  readonly studentsActivity = signal<TeacherStudentsActivitySummary | null>(null);
+
+  readonly ownActivityMetrics = computed<ActivityMetricViewModel[]>(() => {
+    const a = this.ownActivity();
+    if (!a) {
+      return [];
+    }
+    return [
+      this.metric('worksheetsCreated', 'activity.own.worksheetsCreated', a.worksheetsCreated),
+      this.metric('assignmentsCreated', 'activity.own.assignmentsCreated', a.assignmentsCreated),
+      this.metric('activeStudents', 'activity.own.activeStudents', a.activeStudents),
+    ];
+  });
+
+  readonly studentsActivityMetrics = computed<ActivityMetricViewModel[]>(() => {
+    const a = this.studentsActivity();
+    if (!a) {
+      return [];
+    }
+    return [
+      this.metric('totalQuestionsSolved', 'activity.students.questionsSolved', a.totalQuestionsSolved),
+      {
+        ...this.metric('totalCorrectCount', 'activity.students.correctCount', a.totalCorrectCount),
+        accuracy: accuracyPercent(a.totalCorrectCount, a.totalQuestionsSolved),
+      },
+      {
+        ...this.metric('totalTimeSeconds', 'activity.students.time', null),
+        duration: formatActivityDuration(a.totalTimeSeconds),
+      },
+    ];
+  });
+
+  /** Backend'in sırası (çözülen soru azalan) korunur; UI yeniden sıralamaz. */
+  readonly topStudents = computed<TeacherActiveStudent[]>(() => this.studentsActivity()?.topStudents ?? []);
+  readonly topStudentsEmpty = computed(() => this.topStudents().length === 0);
+
+  readonly topStudentsDisplayedColumns: readonly string[] = [
+    'rank',
+    'studentName',
+    'questionsSolved',
+    'correctCount',
+    'timeSeconds',
+  ];
+
   constructor() {
     this.preloadScope();
   }
@@ -105,6 +186,63 @@ export class TeacherDashboardComponent implements OnInit {
     this.loadSummary();
     this.loadWorksheetsOverview();
     this.loadLaggingStudents();
+    this.loadOwnActivity();
+    this.loadStudentsActivity();
+  }
+
+  loadOwnActivity(): void {
+    this.ownActivityLoading.set(true);
+    this.ownActivityError.set(null);
+
+    this.teacherService
+      .getOwnActivitySummary(this.activityDays)
+      .pipe(finalize(() => this.ownActivityLoading.set(false)))
+      .subscribe({
+        next: (activity) => this.ownActivity.set(activity),
+        error: () => {
+          this.ownActivity.set(null);
+          this.ownActivityError.set(this.text('activity.own.error'));
+        },
+      });
+  }
+
+  /** Hem "Öğrenci Aktivitesi" kartını hem "En Aktif Öğrenciler" tablosunu besler (tek response). */
+  loadStudentsActivity(): void {
+    this.studentsActivityLoading.set(true);
+    this.studentsActivityError.set(null);
+
+    this.teacherService
+      .getStudentsActivitySummary(this.activityDays)
+      .pipe(finalize(() => this.studentsActivityLoading.set(false)))
+      .subscribe({
+        next: (activity) => this.studentsActivity.set(activity),
+        error: () => {
+          this.studentsActivity.set(null);
+          this.studentsActivityError.set(this.text('activity.students.error'));
+        },
+      });
+  }
+
+  /** Şablonda satır bazlı süre/doğruluk için; saf yardımcıların ince sarmalayıcıları. */
+  durationOf(seconds: number): DurationLabel {
+    return formatActivityDuration(seconds);
+  }
+
+  accuracyOf(row: TeacherActiveStudent): number | null {
+    return accuracyPercent(row.correctCount, row.questionsSolved);
+  }
+
+  trackTopStudent(_index: number, row: TeacherActiveStudent): number {
+    return row.studentId;
+  }
+
+  /** Maketteki sıra gösterimi: ilk üç sıra madalya, sonrası sıra numarası (1 tabanlı). */
+  rankLabel(index: number): string {
+    return RANK_MEDALS[index] ?? String(index + 1);
+  }
+
+  private metric(key: string, labelKey: string, value: number | null): ActivityMetricViewModel {
+    return { key, labelKey, value, duration: null, accuracy: null };
   }
 
   loadLaggingStudents(): void {
@@ -184,5 +322,4 @@ export class TeacherDashboardComponent implements OnInit {
       .pipe(take(1))
       .subscribe();
   }
-
 }

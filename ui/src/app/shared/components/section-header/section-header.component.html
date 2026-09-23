@@ -8,7 +8,7 @@
       <img *ngIf="!iconName && icon" [src]="icon" class="section-icon" alt="{{ title }} icon" />
     </span>
     <div class="title-container">
-      <h2 class="section-title">{{ title }}</h2>
+      <h2 class="section-title"><ng-content select="[sectionTitlePrefix]"></ng-content>{{ title }}</h2>
       <p class="section-subtitle" *ngIf="subtitle">{{ subtitle }}</p>
     </div>
   </div>

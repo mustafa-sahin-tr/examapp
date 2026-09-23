@@ -16,6 +16,10 @@
     "fallbackStudentName": "Öğrenci #{0}",
     "fallbackTeacherName": "Öğretmen #{0}",
 
+    "activity": {
+      "invalidDays": "days 1 ile 90 arasında olmalı."
+    },
+
     "search": {
       "priceRangeInvalid": "minPrice, maxPrice değerinden büyük olamaz."
     },

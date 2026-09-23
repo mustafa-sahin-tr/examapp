@@ -36,5 +36,48 @@
       "lowCompletion": "Düşük Tamamlama",
       "expired": "Süresi Geçti"
     }
+  },
+  "activity": {
+    "title": "Aktivite Özeti (son {{days}} gün)",
+    "periodShort": "Son {{days}} gün",
+    "accuracy": "%{{value}} doğruluk",
+    "accuracyShort": "(%{{value}})",
+    "noAccuracy": "Henüz çözülen soru yok",
+    "own": {
+      "title": "Benim Aktivitem",
+      "error": "Aktivite bilgileriniz alınırken bir sorun oluştu.",
+      "worksheetsCreated": "Yeni Sınav",
+      "assignmentsCreated": "Yeni Atama",
+      "activeStudents": "Etkin Öğrenci"
+    },
+    "students": {
+      "title": "Öğrenci Aktivitesi",
+      "error": "Öğrenci aktivitesi alınırken bir sorun oluştu.",
+      "questionsSolved": "Çözülen Soru",
+      "correctCount": "Doğru Sayısı",
+      "time": "Toplam Süre"
+    },
+    "duration": {
+      "hoursMinutes": "{{h}} sa {{m}} dk",
+      "hours": "{{h}} sa",
+      "minutesSeconds": "{{m}} dk {{s}} sn",
+      "minutes": "{{m}} dk",
+      "seconds": "{{s}} sn"
+    },
+    "loading": "Aktivite bilgileri yükleniyor..."
+  },
+  "topStudents": {
+    "title": "En Aktif Öğrenciler (son {{days}} gün)",
+    "sortHint": "Çözülen soruya göre sıralı",
+    "loading": "En aktif öğrenciler yükleniyor...",
+    "empty": "Son {{days}} günde öğrencileriniz henüz soru çözmedi.",
+    "cardCounts": "{{solved}} soru · {{correct}} doğru",
+    "columns": {
+      "rank": "#",
+      "student": "Öğrenci",
+      "questionsSolved": "Çözülen Soru",
+      "correct": "Doğru",
+      "time": "Çalışma Süresi"
+    }
   }
 }

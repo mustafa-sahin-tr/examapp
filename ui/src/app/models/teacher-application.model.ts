@@ -32,6 +32,25 @@ export interface TeacherApplicationSubmittedPayload {
   body: string;
 }
 
+/**
+ * BadgeService SignalR `TeacherApplicationDecided` push payload'ı (issue #157 — Clients.User(sub),
+ * yalnızca başvuru sahibine gider).
+ * Şekil: Services/BadgeService/Consumers/TeacherApplicationDecisionConsumer.cs → SendAsync anonim nesnesi.
+ * Güvenlik kararı: ret gerekçesi/admin kimliği YOK — sabit metin.
+ */
+export interface TeacherApplicationDecidedPayload {
+  notificationId: number;
+  teacherId: number;
+  approved: boolean;
+  /**
+   * issue #157 review: true → bağımsız öğretmen başvurusu (/tutor-profile sayfası var); false → okul
+   * bağlantısı talebi (öğretmenin özel bir profil sayfası yok — UI aksiyon göstermez).
+   */
+  isIndependentTutor: boolean;
+  title: string;
+  body: string;
+}
+
 /** POST .../teacher-applications/{id}/reject gövdesi (TeacherRejectRequestDto). 1..500 karakter. */
 export interface TeacherRejectRequest {
   reason: string;

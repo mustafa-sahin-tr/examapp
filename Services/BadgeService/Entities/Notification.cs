@@ -41,10 +41,24 @@ public class Notification
     public int? SourceAccessRequestId { get; set; }
 
     /// <summary>
-    /// Idempotency anahtarı: bağımsız öğretmen başvurusundan (Teacher.Id, issue #94) üretilen
-    /// Admin bildiriminin tekilliğini sağlar. Başvuru kaynaklı olmayan bildirimlerde null.
+    /// Idempotency anahtarı (yalnızca <c>Type == "TeacherApplicationSubmitted"</c> için, bkz.
+    /// BadgeDbContext'teki filtreli unique index): bağımsız öğretmen başvurusundan (Teacher.Id,
+    /// issue #94) üretilen Admin bildiriminin tekilliğini sağlar. Karar bildirimlerinde (issue #157,
+    /// <see cref="SourceEventId"/> kullanır) yalnızca referans amaçlı doldurulur, tekillik burada
+    /// KURULMAZ — aynı öğretmen birden fazla kez başvurup karar alabilir (ör. red sonrası yeni okul
+    /// talebi), bu durumda ikinci karar da (farklı Type+TeacherId kombinasyonu paylaşılsa da farklı
+    /// EventId ile) bildirilmelidir.
     /// </summary>
     public int? SourceTeacherApplicationId { get; set; }
+
+    /// <summary>
+    /// Idempotency anahtarı (issue #157): outbox event'inin kendi Guid kimliği (ör.
+    /// <see cref="ExamApp.Foundation.Contracts.TeacherApplicationDecidedEvent.EventId"/>). Aynı öğretmen
+    /// için birden fazla karar üretilebildiğinden (Teacher.Id tek başına tekillik için yetersiz) karar
+    /// bildirimleri burada tekilleştirilir; TeacherId/Type'a göre değil, kararın kendisine göre dedup
+    /// yapılır. Event kimliği taşımayan eski event'lerde (TeacherApplicationSubmitted vb.) null kalır.
+    /// </summary>
+    public Guid? SourceEventId { get; set; }
 
     /// <summary>
     /// Idempotency anahtarı: bir randevu talebinden (Booking.Id, issue #96) üretilen bildirimin

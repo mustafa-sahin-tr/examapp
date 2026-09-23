@@ -694,7 +694,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999);
+            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeTrue();
         }
 
@@ -729,7 +729,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.RejectAsync(teacherId, "Insufficient qualifications", adminUserId: 999);
+            var result = await approvalService.RejectAsync(teacherId, "Insufficient qualifications", adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeTrue();
         }
 
@@ -772,7 +772,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999);
+            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeFalse();
             result.Message.ShouldNotBeNull();
         }
@@ -804,7 +804,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999);
+            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeTrue();
         }
 
@@ -812,7 +812,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999);
+            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeFalse();
             result.Conflict.ShouldBeTrue();
         }
@@ -929,7 +929,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            await approvalService.RejectAsync(teacherId, "Insufficient credentials", adminUserId: 999);
+            await approvalService.RejectAsync(teacherId, "Insufficient credentials", adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
         }
 
         // Verify state after rejection
@@ -1079,7 +1079,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999);
+            var result = await approvalService.ApproveAsync(teacherId, adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeFalse();
             result.Conflict.ShouldBeTrue();
         }
@@ -1107,7 +1107,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.RejectAsync(teacherId, "Rejected", adminUserId: 999);
+            var result = await approvalService.RejectAsync(teacherId, "Rejected", adminUserId: 999, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeTrue();
         }
 
@@ -1115,7 +1115,7 @@ public class SimpleServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var approvalService = NewTeacherApprovalService(ctx);
-            var result = await approvalService.RejectAsync(teacherId, "Try again", adminUserId: 998);
+            var result = await approvalService.RejectAsync(teacherId, "Try again", adminUserId: 998, actorAdminKeycloakId: "kc-admin-test");
             result.Success.ShouldBeFalse();
             result.Conflict.ShouldBeTrue();
         }

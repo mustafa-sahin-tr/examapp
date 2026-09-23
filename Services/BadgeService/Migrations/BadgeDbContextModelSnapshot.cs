@@ -114,6 +114,9 @@ namespace BadgeService.Migrations
                     b.Property<int?>("SourceBookingId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("SourceEventId")
+                        .HasColumnType("uuid");
+
                     b.Property<int?>("SourceReminderId")
                         .HasColumnType("integer");
 
@@ -140,13 +143,17 @@ namespace BadgeService.Migrations
                         .IsUnique()
                         .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
 
+                    b.HasIndex("Type", "SourceEventId")
+                        .IsUnique()
+                        .HasFilter("\"SourceEventId\" IS NOT NULL");
+
                     b.HasIndex("Type", "SourceReminderId")
                         .IsUnique()
                         .HasFilter("\"SourceReminderId\" IS NOT NULL");
 
                     b.HasIndex("Type", "SourceTeacherApplicationId")
                         .IsUnique()
-                        .HasFilter("\"SourceTeacherApplicationId\" IS NOT NULL");
+                        .HasFilter("\"SourceTeacherApplicationId\" IS NOT NULL AND \"Type\" = 'TeacherApplicationSubmitted'");
 
                     b.HasIndex("UserId", "IsRead", "CreatedAt");
 

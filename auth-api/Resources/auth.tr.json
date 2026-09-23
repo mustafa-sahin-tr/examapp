@@ -1,5 +1,8 @@
 {
   "auth": {
+    "usersLookup": {
+      "accountStatusTooManyIds": "Hesap durumu en fazla {0} kullanıcı için istenebilir."
+    },
     "login": {
       "invalidCredentials": "E-posta veya şifre hatalı.",
       "providerUnavailable": "Giriş servisine şu anda ulaşılamıyor, lütfen daha sonra tekrar deneyin."

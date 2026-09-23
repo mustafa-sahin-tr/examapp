@@ -98,6 +98,53 @@ public class AuthApiClientTests
     }
 
     [Fact]
+    public async Task GetUsersByIds_does_not_ask_for_account_status()
+    {
+        var (client, handler, _, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, LookupBody((1, "A")))));
+
+        var result = await client.GetUsersByIdsAsync([1]);
+
+        result.Single().Enabled.ShouldBeNull();
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        body.RootElement.TryGetProperty("IncludeAccountStatus", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GetUsersWithAccountStatusByIds_sends_flag_and_maps_enabled()
+    {
+        // Issue #152: auth-api yanıtındaki "enabled" (camelCase, null olabilir) UserLookupResultDto.Enabled'a eşlenir.
+        const string response = """
+            [{"id":1,"keycloakId":"kc-1","fullName":"A","email":"a@test.local","avatar":"","role":"Teacher","enabled":true},
+             {"id":2,"keycloakId":"kc-2","fullName":"B","email":"b@test.local","avatar":"","role":"Teacher","enabled":false},
+             {"id":3,"keycloakId":"kc-3","fullName":"C","email":"c@test.local","avatar":"","role":"Teacher","enabled":null}]
+            """;
+        var (client, handler, _, _) = Build(_ => Task.FromResult(Json(HttpStatusCode.OK, response)));
+
+        var result = await client.GetUsersWithAccountStatusByIdsAsync([1, 2, 3]);
+
+        result.Single(u => u.Id == 1).Enabled.ShouldBe(true);
+        result.Single(u => u.Id == 2).Enabled.ShouldBe(false);
+        result.Single(u => u.Id == 3).Enabled.ShouldBeNull();
+        handler.LastRequest!.RequestUri!.ToString().ShouldBe("http://auth-api.test/api/auth/users/lookup");
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe(ServiceToken);
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        body.RootElement.GetProperty("IncludeAccountStatus").GetBoolean().ShouldBeTrue();
+        body.RootElement.GetProperty("UserIds").EnumerateArray().Select(e => e.GetInt32()).ShouldBe([1, 2, 3]);
+    }
+
+    [Fact]
+    public async Task GetUsersWithAccountStatusByIds_returns_empty_when_service_token_cannot_be_obtained()
+    {
+        var tokens = Substitute.For<IServiceTokenProvider>();
+        tokens.GetAccessTokenAsync(Arg.Any<CancellationToken>())
+            .Returns<string>(_ => throw new HttpRequestException("connection refused"));
+        var (client, handler, _, _) = Build(_ => throw new InvalidOperationException("should not be called"), tokenProvider: tokens);
+
+        (await client.GetUsersWithAccountStatusByIdsAsync([1])).ShouldBeEmpty();
+        handler.Calls.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task GetUsersByIds_works_without_an_http_context()
     {
         // Hangfire/CLI gibi request dışı bağlamlarda da servis token'ı ile çalışmalı.

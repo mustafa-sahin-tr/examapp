@@ -215,5 +215,49 @@
       "cancel": "İptal",
       "submit": "Reddet"
     }
+  },
+  "schoolFilter": {
+    "label": "Okul",
+    "all": "Tümü",
+    "unassigned": "Bağımsız / okulsuz",
+    "loading": "Okullar yükleniyor...",
+    "loadFailed": "Okul listesi alınamadı."
+  },
+  "paginator": {
+    "itemsPerPage": "Sayfa başına",
+    "next": "Sonraki sayfa",
+    "previous": "Önceki sayfa",
+    "first": "İlk sayfa",
+    "last": "Son sayfa",
+    "range": "{{start}}–{{end}} / {{length}}",
+    "rangeEmpty": "0 / {{length}}"
+  },
+  "teachers": {
+    "title": "Öğretmenler",
+    "subtitle": "Platformdaki tüm öğretmenler; okula göre filtrelenebilir.",
+    "refresh": "Yenile",
+    "loading": "Öğretmenler yükleniyor...",
+    "empty": "Öğretmen bulunamadı",
+    "emptyFilteredHint": "Farklı bir okul filtresi deneyin.",
+    "loadFailed": "Öğretmen listesi alınırken bir sorun oluştu.",
+    "forbidden": "Bu listeyi görüntüleme yetkiniz yok.",
+    "independent": "Bağımsız",
+    "columns": {
+      "fullName": "Ad Soyad",
+      "email": "E-posta",
+      "school": "Okul",
+      "approvalStatus": "Onay Durumu",
+      "accountStatus": "Hesap Durumu"
+    },
+    "approval": {
+      "pending": "Beklemede",
+      "approved": "Onaylı",
+      "rejected": "Reddedildi"
+    },
+    "account": {
+      "active": "Aktif",
+      "inactive": "Pasif",
+      "unknown": "Bilinmiyor"
+    }
   }
 }

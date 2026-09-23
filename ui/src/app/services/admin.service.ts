@@ -17,6 +17,8 @@ import {
   TeacherApplicationActionResult,
   TeacherRejectRequest,
 } from '../models/teacher-application.model';
+import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-teacher.model';
+import { Paged } from '../models/test-instance';
 
 interface UpsertSubject {
   name: string;
@@ -147,6 +149,18 @@ export class AdminService {
       `${this.baseUrl}/teacher-applications/${teacherId}/reject`,
       body,
     );
+  }
+
+  // ---- öğretmen listesi (Issue #152) ----
+  /**
+   * Sayfalı öğretmen listesi. `schoolId` ve `unassigned` birlikte gönderilmez (backend 400);
+   * ikisi birden verilirse `unassigned` önceliklidir.
+   */
+  getTeachers(query: AdminTeacherListQuery): Observable<Paged<AdminTeacherListItem>> {
+    let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
+    if (query.unassigned) params = params.set('unassigned', 'true');
+    else if (query.schoolId != null) params = params.set('schoolId', query.schoolId);
+    return this.http.get<Paged<AdminTeacherListItem>>(`${this.baseUrl}/teachers`, { params });
   }
 
   // ---- classifier cache ----

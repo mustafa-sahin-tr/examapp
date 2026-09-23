@@ -51,4 +51,9 @@ services:
       # same source of truth as prod so login/consent/error screens are
       # identical across environments (see local-dev.md / issue #186).
       - ./deploy/keycloak/keycloak-themes/my-theme:/opt/keycloak/themes/my-theme
-      - ./deploy/keycloak/import:/opt/keycloak/data/import
+      # Issue #238: dev-only realm (public dev Keycloak client secrets, no
+      # production credentials) — deliberately NOT deploy/keycloak/import,
+      # which is the prod import path deploy/docker-compose.prod.yml and the
+      # azure-vm-acr-deploy workflow use; that directory must stay empty in
+      # git so ops-provided prod realms are never mixed with dev fixtures.
+      - ./deploy/keycloak/dev-import:/opt/keycloak/data/import

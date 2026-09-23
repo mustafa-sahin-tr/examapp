@@ -12,6 +12,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
+      # Issue #238: appsettings.json artık Postgres/MinIO/Keycloak secret'larını
+      # düz metin tutmuyor — hepsi .env'den gelir.
+      - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=worksheet;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - MinioConfig__AccessKey=${MINIO_ROOT_USER}
+      - MinioConfig__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET .env icinde tanimli olmali}
+      - Keycloak__AdminClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET .env icinde tanimli olmali}
       # Issue #228: Redis parolası appsettings.json'da tutulmaz; .env'deki
       # REDIS_PASSWORD'dan (redis servisinin --requirepass'i ile aynı) gelir.
       - Redis__Configuration=redis:6379,password=${REDIS_PASSWORD:?REDIS_PASSWORD .env icinde tanimli olmali}
@@ -48,6 +55,13 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
+      # Issue #238: appsettings.json artık Postgres/MinIO/Keycloak secret'larını
+      # düz metin tutmuyor — hepsi .env'den gelir.
+      - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - MinioConfig__AccessKey=${MINIO_ROOT_USER}
+      - MinioConfig__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET .env icinde tanimli olmali}
+      - Keycloak__AdminClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET .env icinde tanimli olmali}
     volumes:
       - ./auth-api:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
@@ -75,6 +89,16 @@ services:
       # carries the same default; kept explicit here so the compose topology is
       # self-describing and overridable — same pattern as ExamApi__BaseUrl.
       - AuthApi__BaseUrl=http://auth-api:5079
+      # Issue #238: appsettings.Development.json artık Postgres/RabbitMQ/MinIO/
+      # Keycloak secret'larını düz metin tutmuyor — hepsi .env'den gelir.
+      - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - MinioConfig__AccessKey=${MINIO_ROOT_USER}
+      - MinioConfig__SecretKey=${MINIO_ROOT_PASSWORD}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET .env icinde tanimli olmali}
+      - Keycloak__AdminClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET .env icinde tanimli olmali}
     volumes:
       - ./Services/BadgeService:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation

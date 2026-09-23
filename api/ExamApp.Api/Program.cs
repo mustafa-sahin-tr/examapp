@@ -82,6 +82,26 @@ var keycloakConfig = builder.Configuration.GetSection("Keycloak");
 
 builder.Services.Configure<KeycloakSettings>(keycloakConfig);
 
+// Issue #238: appsettings.json'daki Keycloak ClientSecret/AdminClientSecret artık
+// gerçek değer taşımıyor ("" placeholder) — Development dışında boş secret ile
+// sessizce 401/invalid_client alınmasın diye açılışta açıkça patlat. Development'ta
+// docker-compose/.env veya Aspire AppHost parametreleri değeri zaten dolduruyor.
+if (!builder.Environment.IsDevelopment())
+{
+    // "devOnly" öneki .env.example/AppHost'taki dev-only Keycloak secret'larının
+    // ortak deseni (bkz. .env.example) — bunlar yanlışlıkla prod/staging'e
+    // taşınmışsa da boş secret'la aynı şekilde reddedilir.
+    static bool IsMissingOrDevOnly(string? value) =>
+        string.IsNullOrWhiteSpace(value) || value.StartsWith("devOnly", StringComparison.OrdinalIgnoreCase);
+
+    if (IsMissingOrDevOnly(keycloakConfig["ClientSecret"]) ||
+        IsMissingOrDevOnly(keycloakConfig["AdminClientSecret"]))
+    {
+        throw new InvalidOperationException(
+            "Keycloak:ClientSecret ve Keycloak:AdminClientSecret ortam değişkeninden (Keycloak__ClientSecret / Keycloak__AdminClientSecret) set edilmeli; Development dışında boş veya dev-only değer bırakılamaz.");
+    }
+}
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = "smart";

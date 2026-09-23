@@ -28,6 +28,7 @@ public static class OutboxEventRegistry
         typeof(BookingRequestCreatedEvent),
         typeof(BookingDecisionEvent),
         typeof(UserPreferredLocaleChangedEvent),
+        typeof(StudentPointsChangedEvent),
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

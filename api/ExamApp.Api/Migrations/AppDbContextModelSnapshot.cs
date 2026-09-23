@@ -2727,6 +2727,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("SourceUpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("StudentId")
                         .HasColumnType("integer");
 

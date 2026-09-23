@@ -145,6 +145,12 @@ services:
       Keycloak__AdminClientSecret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
       Keycloak__TokenUrl: realms/exam-realm/protocol/openid-connect/token
       Keycloak__RealmRolesUrl: admin/realms/exam-realm/roles
+      # Issue #225: exam API hosts a MassTransit consumer (queue "exam-api") for
+      # BadgeService's StudentPointsChangedEvent. In Production a missing
+      # RabbitMQ__Host fails startup.
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASS}
     depends_on:
       postgres:
         condition: service_healthy
@@ -268,6 +274,39 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_started
+    networks:
+      - exam-net
+
+  # Issue #225: third instance of the same OutboxPublisher code, pointed at
+  # BadgeService's "badge" DB. BadgeService writes StudentPointsChangedEvent to
+  # its own OutboxMessages table; this relay publishes it to RabbitMQ for
+  # exam-dotnet-api's "exam-api" queue. Without it the badge outbox table grows
+  # unbounded and leaderboard points never sync. Same image as
+  # exam-outbox-publisher (see docker-compose.prod.images.yml); only the
+  # connection string differs.
+  badge-outbox-publisher:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-worker.Dockerfile
+      args:
+        PROJECT_PATH: Services/OutboxPublisher/OutboxPublisherService.csproj
+        APP_DLL: OutboxPublisherService.dll
+    container_name: badge-outbox-publisher
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      # exam-badge-api applies the badge DB migrations (OutboxMessages table).
+      exam-badge-api:
         condition: service_started
     networks:
       - exam-net

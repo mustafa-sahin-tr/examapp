@@ -66,6 +66,22 @@ Sonra su dosyalari gercek degerlerle doldur:
 - `deploy/gcp/k8s/managed-certificate.yaml`
 - `deploy/gcp/k8s/ingress.yaml`
 
+### Outbox publisher'lar (issue #225)
+
+`apps.yaml` ayni `exam-outbox-publisher` image'ini iki Deployment olarak calistirir; sadece connection string farklidir:
+
+| Deployment | DB | Secret anahtari |
+|---|---|---|
+| `exam-outbox-publisher` | `worksheet_v2` | `CONNECTIONSTRINGS_EXAM` |
+| `badge-outbox-publisher` | `badge` (BadgeService `OutboxMessages`, `StudentPointsChangedEvent`) | `CONNECTIONSTRINGS_BADGE` |
+
+Yeni secret anahtari yok: `badge-outbox-publisher` BadgeService'in zaten kullandigi `CONNECTIONSTRINGS_BADGE` ve `RABBITMQ_USER`/`RABBITMQ_PASS` anahtarlarini okur.
+`exam-dotnet-api` da artik RabbitMQ consumer'i barindirdigi icin `RabbitMQ__Host/Username/Password` env'lerine ihtiyac duyar (Production'da Host yoksa baslamaz); bunlar da ayni `RABBITMQ_USER`/`RABBITMQ_PASS` anahtarlarindan gelir.
+
+`deploy-gke.sh` / pipeline'da `service=exam-outbox-publisher` secildiginde `badge-outbox-publisher` da ayni tag'e guncellenir.
+
+Not: `identity-outbox-publisher` (auth-api identity DB) henuz prod manifestlerinde yok.
+
 ## 3) Ilk manuel image build + push (opsiyonel hizli test)
 
 ```bash

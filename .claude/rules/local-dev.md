@@ -24,6 +24,7 @@ dev defaults; never reuse them outside local dev.
 | exam-badge-api | 5080 (HTTP), 8006 (HTTPS) | BadgeService / event handler |
 | exam-outbox-publisher | 5081 (HTTP), 8007 (HTTPS) | outbox → RabbitMQ (worksheet DB) |
 | identity-outbox-publisher | 5082 (HTTP), 8008 (HTTPS) | outbox → RabbitMQ (identity/auth-api DB) |
+| badge-outbox-publisher | 5083 (HTTP), 8009 (HTTPS) | outbox → RabbitMQ (badge DB; puan senkronu #225) |
 | angular-app | 4200 | ana UI |
 | auth-ui | 4201 | Keycloak login akışı |
 | keycloak | 8081 | admin console: http://localhost:8081 |

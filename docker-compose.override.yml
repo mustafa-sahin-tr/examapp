@@ -18,6 +18,9 @@ services:
   identity-outbox-publisher:
     command: dotnet watch run --urls=http://+:8008
 
+  badge-outbox-publisher:
+    command: dotnet watch run --urls=http://+:8009
+
   angular-app:
     command: sh -c "yarn install && yarn start"
 

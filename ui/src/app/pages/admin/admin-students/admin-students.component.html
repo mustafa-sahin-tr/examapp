@@ -1,14 +1,19 @@
-<section class="al" *transloco="let t; prefix: 'admin.teachers'">
+<section class="al" *transloco="let t; prefix: 'admin.students'">
   <header class="al__head">
     <div class="al__title">
-      <mat-icon>groups</mat-icon>
+      <mat-icon>school</mat-icon>
       <div>
         <h1>{{ t('title') }}</h1>
         <p>{{ t('subtitle') }}</p>
       </div>
     </div>
     <div class="al__tools">
-      <app-school-filter class="al__filter" [value]="filter()" (valueChange)="onFilterChange($event)" />
+      <app-school-filter
+        class="al__filter"
+        unassignedLabel="unassignedStudent"
+        [value]="filter()"
+        (valueChange)="onFilterChange($event)"
+      />
       <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
         <mat-icon>sync</mat-icon> {{ t('refresh') }}
       </button>
@@ -42,7 +47,12 @@
       <table mat-table [dataSource]="rows()" class="al__table" [class.al__table--stale]="loading()">
         <ng-container matColumnDef="fullName">
           <th mat-header-cell *matHeaderCellDef>{{ t('columns.fullName') }}</th>
-          <td mat-cell *matCellDef="let row" [class.al__muted]="!row.fullName">{{ row.fullName ?? '—' }}</td>
+          <td mat-cell *matCellDef="let row">
+            <span [class.al__muted]="!row.fullName">{{ row.fullName ?? '—' }}</span>
+            @if (row.studentNumber) {
+              <small class="al__sub">{{ t('studentNumber', { number: row.studentNumber }) }}</small>
+            }
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="email">
@@ -53,17 +63,13 @@
         <ng-container matColumnDef="school">
           <th mat-header-cell *matHeaderCellDef>{{ t('columns.school') }}</th>
           <td mat-cell *matCellDef="let row" [class.al__muted]="!row.schoolName">
-            {{ row.schoolName ?? (row.independent ? t('independent') : '—') }}
+            {{ row.schoolName ?? (row.noSchool ? ('admin.schoolFilter.unassignedStudent' | transloco) : '—') }}
           </td>
         </ng-container>
 
-        <ng-container matColumnDef="approvalStatus">
-          <th mat-header-cell *matHeaderCellDef>{{ t('columns.approvalStatus') }}</th>
-          <td mat-cell *matCellDef="let row">
-            <span class="al__chip" [class]="'al__chip--' + row.approvalKey">
-              {{ t('approval.' + row.approvalKey) }}
-            </span>
-          </td>
+        <ng-container matColumnDef="grade">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.grade') }}</th>
+          <td mat-cell *matCellDef="let row" [class.al__muted]="!row.gradeName">{{ row.gradeName ?? '—' }}</td>
         </ng-container>
 
         <ng-container matColumnDef="accountStatus">

@@ -6,6 +6,9 @@
  */
 export type SchoolFilterValue = 'all' | 'unassigned' | number;
 
+/** "Okulsuz" seçeneğinin `admin.schoolFilter.<anahtar>` etiketi: öğretmen → `unassigned`, öğrenci → `unassignedStudent`. */
+export type SchoolFilterUnassignedLabel = 'unassigned' | 'unassignedStudent';
+
 /** Filtre değerini backend query alanlarına çevirir; ikisi asla birlikte dolmaz. */
 export function schoolFilterToQuery(value: SchoolFilterValue): { schoolId: number | null; unassigned: boolean } {
   if (value === 'unassigned') return { schoolId: null, unassigned: true };

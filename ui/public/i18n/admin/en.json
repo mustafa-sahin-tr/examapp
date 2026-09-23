@@ -221,7 +221,8 @@
     "all": "All",
     "unassigned": "Independent / no school",
     "loading": "Loading schools...",
-    "loadFailed": "Could not load the school list."
+    "loadFailed": "Could not load the school list.",
+    "unassignedStudent": "No school"
   },
   "paginator": {
     "itemsPerPage": "Per page",
@@ -253,6 +254,29 @@
       "pending": "Pending",
       "approved": "Approved",
       "rejected": "Rejected"
+    },
+    "account": {
+      "active": "Active",
+      "inactive": "Disabled",
+      "unknown": "Unknown"
+    }
+  },
+  "students": {
+    "title": "Students",
+    "subtitle": "All students on the platform; filter by school.",
+    "refresh": "Refresh",
+    "loading": "Loading students...",
+    "empty": "No students found",
+    "emptyFilteredHint": "Try a different school filter.",
+    "loadFailed": "Something went wrong while loading the student list.",
+    "forbidden": "You are not allowed to view this list.",
+    "studentNumber": "No: {{number}}",
+    "columns": {
+      "fullName": "Full Name",
+      "email": "Email",
+      "school": "School",
+      "grade": "Grade",
+      "accountStatus": "Account"
     },
     "account": {
       "active": "Active",

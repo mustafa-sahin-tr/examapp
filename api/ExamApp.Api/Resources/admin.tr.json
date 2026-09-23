@@ -6,6 +6,9 @@
     "teachers": {
       "filterConflict": "schoolId ve unassigned birlikte kullanılamaz."
     },
+    "students": {
+      "filterConflict": "schoolId ve unassigned birlikte kullanılamaz."
+    },
 
     "dashboard": {
       "invalidDays": "days 1 ile 365 arasında olmalı."

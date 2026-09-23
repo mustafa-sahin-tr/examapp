@@ -12,7 +12,7 @@
     (selectionChange)="select($event.value)"
   >
     <mat-option value="all">{{ t('all') }}</mat-option>
-    <mat-option value="unassigned">{{ t('unassigned') }}</mat-option>
+    <mat-option value="unassigned">{{ t(unassignedLabel()) }}</mat-option>
     @for (school of schools(); track school.id) {
       <mat-option [value]="school.id">{{ school.name }}</mat-option>
     }

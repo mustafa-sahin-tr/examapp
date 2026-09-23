@@ -16,18 +16,21 @@
         <ng-container *ngIf="!activityApiError(); else heatmapError">
           <ng-container *ngIf="activityDataFromApi().length > 0; else heatmapEmpty">
             <ng-container *ngIf="showActivitySummary()">
-              <div class="activity-summary">
-                <div class="number-card-container" *ngIf="activityNumberCardData().length > 0">
-                  <div class="number-card-scroll">
-                    <ngx-charts-number-card [view]="activityNumberCardView()" [scheme]="activityNumberCardScheme"
-                      [results]="activityNumberCardData()" [cardColor]="activityNumberCardColor">
-                    </ngx-charts-number-card>
+              <!-- Issue #197: sabit boyutlu ngx-charts number-card yerine genişliğe göre sütun değiştiren kart grid'i -->
+              <ul class="activity-stats" *ngIf="activityNumberCardData().length > 0">
+                <li class="stat-card" *ngFor="let card of activityNumberCardData(); trackBy: trackStatCard"
+                  [attr.data-key]="card.key">
+                  <div class="stat-card__header">
+                    <span class="stat-card__label">{{ card.name }}</span>
+                    <mat-icon class="stat-card__icon" aria-hidden="true">{{ card.icon }}</mat-icon>
                   </div>
-                </div>
-              </div>
+                  <span class="stat-card__value">{{ card.value | number }}</span>
+                </li>
+              </ul>
             </ng-container>
-            <div class="heatmap-scroll">
-              <ngx-charts-heat-map [view]="activityHeatmapView()" [scheme]="activityColorScheme"
+            <div class="heatmap-scroll" #heatmapScroll>
+              <!-- #197: kapsayıcı genişliği ölçülmeden çizilmez; aksi halde önce tahmini sonra gerçek genişlikle iki kez çizilir -->
+              <ngx-charts-heat-map *ngIf="heatmapContainerWidth() > 0" [view]="activityHeatmapView()" [scheme]="activityColorScheme"
                 [results]="activityHeatmapData()" [xAxis]="true" [yAxis]="showHeatmapYAxis()" [legend]="false"
                 [showXAxisLabel]="showHeatmapAxisLabels()" [showYAxisLabel]="showHeatmapAxisLabels()" [gradient]="true"
                 [xAxisTickFormatting]="activityXAxisTickFormatting" [tooltipText]="activityHeatmapTooltip">

@@ -7,7 +7,7 @@ namespace ExamApp.Api.Helpers;
 
 /// <summary>
 /// Brute-force / credential-stuffing koruması için kimlik doğrulanmamış auth uçlarına
-/// (<c>POST /api/auth/login</c>, <c>POST /api/auth/exchange</c>) uygulanan IP bazlı rate limit.
+/// (<c>POST /api/auth/login</c>, <c>POST /api/auth/exchange</c>, <c>POST /api/auth/register</c>) uygulanan IP bazlı rate limit.
 ///
 /// Neden gateway'de değil: <c>ocelot.json</c>'daki <c>/api/auth/{everything}</c> tek bir wildcard
 /// route — login/exchange'i register/logout/user-profile'dan ayırmıyor. Buradaki isimli policy

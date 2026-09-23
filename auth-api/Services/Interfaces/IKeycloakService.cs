@@ -14,9 +14,9 @@ public interface IKeycloakService
     Task<string> CreateUserAsync(string username, string password, string email, string firstName, string lastName);
     Task DeleteUserAsync(string userId);
     Task LogoutAsync(string refreshToken);
-    Task<TokenResponseDto> LoginAsync(string username, string password); Task SetRoleAsync(string keycloakUserId, string userRole);
-    Task<TokenResponseDto> ExchangeTokenAsync(string code);
-    Task<TokenResponseDto> RefreshTokenAsync(string refreshToken);
+    Task<TokenResponseDto> LoginAsync(string username, string password, CancellationToken ct = default); Task SetRoleAsync(string keycloakUserId, string userRole);
+    Task<TokenResponseDto> ExchangeTokenAsync(string code, CancellationToken ct = default);
+    Task<TokenResponseDto> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
     Task<List<KeycloakRoleDto>> GetRealmRolesAsync();
 
     // ---- Toplu test verisi (issue #217) — yalnızca DevUserSeedService kullanır ----

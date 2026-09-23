@@ -146,7 +146,7 @@ public class KeycloakService : IKeycloakService
         }
     }
 
-    public async Task<TokenResponseDto> ExchangeTokenAsync(string code)
+    public async Task<TokenResponseDto> ExchangeTokenAsync(string code, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(_keycloakSettings.RedirectUri))
         {
@@ -162,24 +162,81 @@ public class KeycloakService : IKeycloakService
                 { "code", code }
             };
 
-        var response = await _http.PostAsync(
-            BuildKeycloakUri(_keycloakSettings.TokenUrl),
-            new FormUrlEncodedContent(body)
-        );
+        var content = await PostTokenRequestAsync(BuildKeycloakUri(_keycloakSettings.TokenUrl), body, "code exchange", ct);
+        return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
+    }
 
-        var content = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
+    /// <summary>
+    /// Token uç noktasına form isteği gönderir ve başarısızlığı <see cref="KeycloakFailureKind"/> ile
+    /// sınıflandırır (issue #231): <c>invalid_grant</c> → <see cref="KeycloakFailureKind.InvalidGrant"/>;
+    /// ağ hatası/zaman aşımı/devre kesici/5xx → <see cref="KeycloakFailureKind.ProviderUnavailable"/>;
+    /// diğerleri (ör. <c>invalid_client</c> — yapılandırma hatası) → <see cref="KeycloakFailureKind.Unexpected"/>.
+    /// Exception mesajı log içindir; istemciye controller'ın genel mesajı gider.
+    /// </summary>
+    private async Task<string> PostTokenRequestAsync(Uri tokenUri, Dictionary<string, string> body, string operation, CancellationToken ct)
+    {
+        try
         {
-            // Keycloak error'ını ayıkla
+            using var form = new FormUrlEncodedContent(body);
+            using var response = await _http.PostAsync(tokenUri, form, ct);
+            var content = await response.Content.ReadAsStringAsync(ct);
+            if (response.IsSuccessStatusCode)
+            {
+                return content;
+            }
+
+            throw ClassifyTokenError((int)response.StatusCode, content, operation);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new KeycloakException($"Keycloak {operation} failed: token endpoint unreachable ({ex.Message})", ex,
+                StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            // HttpClient.Timeout. İstemci isteği iptal ettiyse (RequestAborted) exception olduğu gibi yükselir.
+            throw new KeycloakException($"Keycloak {operation} failed: token endpoint timed out", ex,
+                StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable);
+        }
+        catch (Polly.ExecutionRejectedException ex)
+        {
+            // ServiceDefaults standart resilience handler'ı: deneme zaman aşımı (TimeoutRejectedException) / devre kesici açık.
+            throw new KeycloakException($"Keycloak {operation} failed: resilience pipeline rejected the call ({ex.GetType().Name})", ex,
+                StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable);
+        }
+    }
+
+    private static KeycloakException ClassifyTokenError(int statusCode, string content, string operation)
+    {
+        string? error = null;
+        string? description = null;
+        try
+        {
             using var doc = JsonDocument.Parse(content);
-            var error = doc.RootElement.GetProperty("error").GetString();
-            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                ? descProp.GetString()
-                : null;
-            throw new KeycloakException($"Keycloak login failed: {error} - {description}");
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                error = doc.RootElement.TryGetProperty("error", out var errProp) ? errProp.GetString() : null;
+                description = doc.RootElement.TryGetProperty("error_description", out var descProp) ? descProp.GetString() : null;
+            }
+        }
+        catch (JsonException)
+        {
+            // Proxy/HTML hata sayfası vb. — sınıflandırma durum koduna göre yapılır.
         }
 
-        return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
+        if (statusCode >= 500)
+        {
+            return new KeycloakException($"Keycloak {operation} failed: HTTP {statusCode} {error} - {description}",
+                StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable);
+        }
+
+        if (string.Equals(error, "invalid_grant", StringComparison.Ordinal))
+        {
+            return new KeycloakException($"Keycloak {operation} failed: {error} - {description}",
+                StatusCodes.Status401Unauthorized, KeycloakFailureKind.InvalidGrant);
+        }
+
+        return new KeycloakException($"Keycloak {operation} failed: HTTP {statusCode} {error ?? "<no error>"} - {description}");
     }
 
     // App-level roles a user may hold — used both to validate the incoming role and to
@@ -273,7 +330,7 @@ public class KeycloakService : IKeycloakService
         }
     }
 
-    public async Task<TokenResponseDto> LoginAsync(string username, string password)
+    public async Task<TokenResponseDto> LoginAsync(string username, string password, CancellationToken ct = default)
     {
         var body = new Dictionary<string, string>
             {
@@ -284,24 +341,7 @@ public class KeycloakService : IKeycloakService
                 { "password", password }
             };
 
-        var response = await _http.PostAsync(
-            BuildKeycloakUri(_keycloakSettings.TokenUrl),
-            new FormUrlEncodedContent(body)
-        );
-
-        var content = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-        {
-            // Keycloak error'ını ayıkla
-            using var doc = JsonDocument.Parse(content);
-            var error = doc.RootElement.GetProperty("error").GetString();
-            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                ? descProp.GetString()
-                : null;
-            // _logger.LogWarning("Login failed: {Error} - {Description}", error, description);
-            throw new KeycloakException($"Keycloak login failed: {error} - {description}");
-        }
-
+        var content = await PostTokenRequestAsync(BuildKeycloakUri(_keycloakSettings.TokenUrl), body, "login", ct);
         return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
     }
 
@@ -395,7 +435,7 @@ public class KeycloakService : IKeycloakService
         throw new NotImplementedException();
     }
 
-    public async Task<TokenResponseDto> RefreshTokenAsync(string refreshToken)
+    public async Task<TokenResponseDto> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
         var parameters = new Dictionary<string, string>
             {
@@ -405,23 +445,10 @@ public class KeycloakService : IKeycloakService
                 { "refresh_token", refreshToken }
             };
 
-        var response = await _http.PostAsync(
-             $"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}",
-            new FormUrlEncodedContent(parameters)
-        );
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = JsonDocument.Parse(content);
-            var error = doc.RootElement.GetProperty("error").GetString();
-            var description = doc.RootElement.TryGetProperty("error_description", out var descProp)
-                ? descProp.GetString()
-                : null;
-            throw new KeycloakException($"Keycloak refresh token failed: {error} - {description}");
-        }
-
-        return await response.Content.ReadFromJsonAsync<TokenResponseDto>();
+        // Aynı sınıflandırma (#231): süresi dolmuş/iptal edilmiş refresh token → InvalidGrant (global handler 401).
+        var content = await PostTokenRequestAsync(
+            new Uri($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}"), parameters, "refresh token", ct);
+        return JsonSerializer.Deserialize<TokenResponseDto>(content)!;
     }
     public async Task<List<KeycloakRoleDto>> GetRealmRolesAsync()
     {
@@ -470,6 +497,15 @@ public class KeycloakService : IKeycloakService
             ).ToList();
 
             return filteredRoles ?? new List<KeycloakRoleDto>();
+        }
+        catch (KeycloakException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or Polly.ExecutionRejectedException)
+        {
+            throw new KeycloakException($"Error fetching roles: Keycloak unreachable ({ex.GetType().Name})", ex,
+                StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable);
         }
         catch (Exception ex)
         {

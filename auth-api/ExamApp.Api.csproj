@@ -32,6 +32,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Mesaj sözlüğü (issue #184/#231): Resources/<alan>.<dil>.json çıktı klasörüne kopyalanır
+         (AddJsonLocalization ContentRoot üzerinden okur). Web SDK json dosyalarını zaten Content
+         olarak eklediği için Include değil Update kullanılır. -->
+    <Content Update="Resources\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../api/ExamApp.Foundation/ExamApp.Foundation.csproj" />
     <ProjectReference Include="..\ServiceDefaults\ExamApp.ServiceDefaults.csproj" />
   </ItemGroup>

@@ -47,6 +47,7 @@ public class DevSeedController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning(ex, "dev seed-users geçersiz istek");
             return BadRequest(new { message = ex.Message });
         }
         catch (DevSeedEnvironmentException ex)
@@ -77,6 +78,7 @@ public class DevSeedController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning(ex, "dev seed-cleanup geçersiz istek");
             return BadRequest(new { message = ex.Message });
         }
         catch (DevSeedEnvironmentException ex)

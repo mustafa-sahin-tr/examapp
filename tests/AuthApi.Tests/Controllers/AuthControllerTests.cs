@@ -20,7 +20,8 @@ namespace AuthApi.Tests.Controllers;
 /// <summary>
 /// Issue #84: every login attempt (success or failure) through <see cref="AuthController.Login"/>
 /// and <see cref="AuthController.EchangeCode"/> must be persisted via the outbox, without
-/// leaking credentials, and without swallowing the underlying Keycloak failure.
+/// leaking credentials. Issue #231: the Keycloak failure is mapped to a safe 401/503 response
+/// (unclassified failures are still rethrown to the global handler).
 /// </summary>
 public class AuthControllerTests : IDisposable
 {
@@ -121,17 +122,18 @@ public class AuthControllerTests : IDisposable
     // ---- Login: failure ----
 
     [Fact]
-    public async Task Login_invalid_credentials_writes_a_failed_login_outbox_row_and_rethrows()
+    public async Task Login_invalid_credentials_writes_a_failed_login_outbox_row_and_returns_401()
     {
         await using var context = _db.NewContext();
         var keycloak = Substitute.For<IKeycloakService>();
         keycloak.LoginAsync("bad@test.local", TestPassword)
-            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401));
+            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401, KeycloakFailureKind.InvalidGrant));
 
         var controller = NewController(keycloak, context);
 
-        await Should.ThrowAsync<KeycloakException>(() =>
-            controller.Login(ExampleLogin("bad@test.local", TestPassword)));
+        var result = await controller.Login(ExampleLogin("bad@test.local", TestPassword));
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
 
         await using var check = _db.NewContext();
         var row = await check.OutboxMessages.SingleAsync();
@@ -170,17 +172,18 @@ public class AuthControllerTests : IDisposable
     // ---- EchangeCode: failure ----
 
     [Fact]
-    public async Task EchangeCode_invalid_code_writes_a_failed_login_outbox_row_and_rethrows()
+    public async Task EchangeCode_invalid_code_writes_a_failed_login_outbox_row_and_returns_401()
     {
         await using var context = _db.NewContext();
         var keycloak = Substitute.For<IKeycloakService>();
         keycloak.ExchangeTokenAsync("bad-code-example")
-            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401));
+            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401, KeycloakFailureKind.InvalidGrant));
 
         var controller = NewController(keycloak, context);
 
-        await Should.ThrowAsync<KeycloakException>(() =>
-            controller.EchangeCode(new CodeDto { Code = "bad-code-example" }));
+        var result = await controller.EchangeCode(new CodeDto { Code = "bad-code-example" });
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
 
         await using var check = _db.NewContext();
         var row = await check.OutboxMessages.SingleAsync();
@@ -219,14 +222,81 @@ public class AuthControllerTests : IDisposable
 
         var keycloak = Substitute.For<IKeycloakService>();
         keycloak.LoginAsync("bad@test.local", TestPassword)
-            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401));
+            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401, KeycloakFailureKind.InvalidGrant));
 
         var controller = NewController(keycloak, context);
 
-        // The original Keycloak failure must still surface — not an unrelated DB exception
+        // The original Keycloak failure must still surface (401) — not an unrelated DB exception
         // from the outbox write that ran (and failed) inside the catch block.
+        var result = await controller.Login(ExampleLogin("bad@test.local", TestPassword));
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status401Unauthorized);
+    }
+
+    // ---- Issue #231: provider unavailable / unclassified failures ----
+
+    [Fact]
+    public async Task Login_provider_unavailable_returns_503_and_still_writes_a_failed_login_outbox_row()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.LoginAsync("student@test.local", TestPassword)
+            .Returns<TokenResponseDto>(_ => throw new KeycloakException("unreachable", new HttpRequestException("connection refused"),
+                StatusCodes.Status503ServiceUnavailable, KeycloakFailureKind.ProviderUnavailable));
+
+        var controller = NewController(keycloak, context);
+
+        var result = await controller.Login(ExampleLogin("student@test.local", TestPassword));
+
+        result.ShouldBeOfType<ObjectResult>().StatusCode.ShouldBe(StatusCodes.Status503ServiceUnavailable);
+
+        await using var check = _db.NewContext();
+        var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.Success.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Login_unclassified_keycloak_failure_is_rethrown_to_the_global_handler_after_writing_the_outbox_row()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.LoginAsync("student@test.local", TestPassword)
+            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_client"));
+
+        var controller = NewController(keycloak, context);
+
         await Should.ThrowAsync<KeycloakException>(() =>
-            controller.Login(ExampleLogin("bad@test.local", TestPassword)));
+            controller.Login(ExampleLogin("student@test.local", TestPassword)));
+
+        await using var check = _db.NewContext();
+        (await check.OutboxMessages.CountAsync()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CompleteProfile_keycloak_failure_returns_502_without_keycloak_details()
+    {
+        await using var context = _db.NewContext();
+        const string sub = "kc-complete-profile";
+        context.Users.Add(new User { KeycloakId = sub, Email = "cp@test.local", FullName = "Complete Profile", Role = "" });
+        await context.SaveChangesAsync();
+
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.SetRoleAsync(sub, "Teacher")
+            .Returns(_ => throw new KeycloakException(
+                "Failed to assign role in Keycloak: {\"error\":\"unknown_error\"} http://keycloak.internal:8080/admin/realms/exam-realm"));
+        var controller = NewController(keycloak, context);
+        controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(
+            new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, sub) }, "Test"));
+
+        var result = await controller.CompleteProfile(new CompleteProfileDto { Role = "Teacher" });
+
+        var objectResult = result.ShouldBeOfType<ObjectResult>();
+        objectResult.StatusCode.ShouldBe(StatusCodes.Status502BadGateway);
+        var body = JsonSerializer.Serialize(objectResult.Value);
+        body.ShouldNotContain("keycloak.internal");
+        body.ShouldNotContain("unknown_error");
+        body.ShouldNotContain("Failed to assign role");
+        body.ShouldContain("message");
     }
 
     // ---- UpdatePreferredLocale: outbox event writing (issue #185) ----

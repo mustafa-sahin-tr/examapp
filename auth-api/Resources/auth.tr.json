@@ -1,0 +1,17 @@
+{
+  "auth": {
+    "login": {
+      "invalidCredentials": "E-posta veya şifre hatalı.",
+      "providerUnavailable": "Giriş servisine şu anda ulaşılamıyor, lütfen daha sonra tekrar deneyin."
+    },
+    "exchange": {
+      "invalidCode": "Oturum açma isteği geçersiz veya süresi dolmuş, lütfen tekrar giriş yapın."
+    },
+    "refresh": {
+      "invalidToken": "Oturumunuzun süresi doldu, lütfen tekrar giriş yapın."
+    },
+    "completeProfile": {
+      "roleAssignmentFailed": "Rol atanamadı, lütfen daha sonra tekrar deneyin."
+    }
+  }
+}

@@ -85,6 +85,11 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// İstemciye giden login/exchange hata mesajları (issue #231): Resources/<alan>.<dil>.json + Accept-Language.
+builder.Services.AddAuthLocalization();
+// İşlenmemiş exception → log + genel ProblemDetails (Development dahil stack trace yok; bkz. Helpers/AuthErrorHandling.cs).
+builder.Services.AddAuthErrorHandling();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -144,6 +149,10 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// En dışta: sonraki her middleware/controller exception'ı burada log'lanır ve gövdesiz-stack ProblemDetails'e çevrilir.
+// Development'ta örtük eklenen DeveloperExceptionPage'den daha içte olduğu için o sayfa artık tetiklenmez (#231).
+app.UseAuthErrorHandling();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -154,6 +163,8 @@ if (app.Environment.IsDevelopment())
 // X-Forwarded-For'u RemoteIpAddress'e uygulayan middleware, adresi okuyan her şeyden önce gelmeli.
 app.UseForwardedHeaders();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+// Accept-Language → CurrentUICulture (IStringLocalizer<Messages> mesajları için).
+app.UseRequestLocalization();
 app.UseHttpsRedirection();
 // Routing'den sonra (WebApplication UseRouting'i pipeline başına örtük ekler), auth'tan önce:
 // limit aşan istek JWT doğrulaması yapılmadan 429 ile reddedilir.

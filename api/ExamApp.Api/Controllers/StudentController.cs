@@ -166,8 +166,6 @@ namespace ExamApp.Api.Controllers
             // 🔹 Token’dan UserId'yi al // token var valid ama user
             var user = await GetAuthenticatedUserAsync();
 
-            await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Student);
-
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
                 return Unauthorized(_localizer["auth.noRefreshToken"].Value);
@@ -182,28 +180,42 @@ namespace ExamApp.Api.Controllers
 
             if (response.Success == false)
             {
-                return BadRequest(new { message = response.Message });
+                // issue #234: öğretmen kaydı olan kullanıcı öğrenci olarak kaydolamaz → 409.
+                return response.Conflict
+                    ? Conflict(new { message = response.Message })
+                    : BadRequest(new { message = response.Message });
             }
+
+            // issue #234: Keycloak rolü yalnızca doğrulama/çakışma kontrolleri geçtikten SONRA verilir — reddedilen
+            // bir kayıt denemesi kullanıcıya Student rolü eklememeli.
+            await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Student);
+
+            // issue #234 (security re-review): önbelleğe İSTEK verisi yazılmaz; okul DB'den ISchoolContextResolver ile
+            // çözülür (öğretmen kaydı varsa Teachers.SchoolId esas — eşzamanlı teacher/student register yarışında iki
+            // satır oluşsa bile istekteki okul kapsama taşınmaz). Rol ise bilinçli olarak az önce Keycloak'ta atanan
+            // rolle yazılır: yalnızca RemoveAsync yapılsaydı bir sonraki istek profili auth-api'den yükler ve auth-api
+            // Users.Role'ü yalnızca login/exchange'te senkronladığı için rol boş/eski gelip 1 saat cache'lenirdi
+            // (ParentController'daki "rol cache'ini tazele" kaygısıyla aynı).
+            // RefreshTokenAsync'ten ÖNCE: refresh token geçersizse fırlatır, ama DB zaten güncellendiği
+            // için cache eski Role/SchoolId ile kalmamalı.
+            user.Role = UserRole.Student.ToString();
+            user.SchoolId = await HttpContext.RequestServices.GetRequiredService<ISchoolContextResolver>()
+                .ResolveSchoolIdAsync(user, HttpContext.RequestAborted);
 
             // issue #189: Student.SchoolId değişmiş olabilir — Keycloak "school_id" attribute'unu
             // (JWT'ye taşınan ipucu) RefreshTokenAsync'ten ÖNCE güncelle ki hemen aşağıda alınan
             // yeni token bu claim'i güncel haliyle içersin. Keycloak hatası kayıt akışını kırmamalı.
             try
             {
-                await _keycloakService.SetSchoolIdAttributeAsync(user.KeycloakId, request.SchoolId);
+                await _keycloakService.SetSchoolIdAttributeAsync(user.KeycloakId, user.SchoolId);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Keycloak school_id attribute update failed for {KeycloakId}", user.KeycloakId);
             }
 
-            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
-            // (Role boş, SchoolId eski) haliyle Redis'e cache'lemiş olabilir. Tek seferde güncel
-            // Role + SchoolId ile cache'le ki 1 saat boyunca diğer endpoint'ler eski değeri görmesin.
-            // RefreshTokenAsync'ten ÖNCE: refresh token geçersizse fırlatır, ama DB zaten güncellendiği
-            // için cache eski Role/SchoolId ile kalmamalı.
-            user.Role = UserRole.Student.ToString();
-            user.SchoolId = request.SchoolId;
+            // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski (Role boş, SchoolId eski)
+            // haliyle Redis'e cache'lemiş olabilir — yukarıda çözülen Role + DB SchoolId ile tek seferde üzerine yaz.
             await _userProfileCacheService.SetAsync(user.KeycloakId, user);
 
             // 2. Keycloak token endpoint'ine isteği hazırla

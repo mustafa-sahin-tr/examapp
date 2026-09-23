@@ -7,7 +7,7 @@
     </div>
 
     <!-- STEP 1 — role picker -->
-    @if (step() === 1) {
+    @if (step() === 1 && !schoolApprovalPending()) {
       <h2>{{ t('wizard.roleQuestion') }}</h2>
       <p class="hint">{{ t('wizard.roleHint') }}</p>
       <div class="role-grid">
@@ -26,8 +26,27 @@
       </div>
     }
 
-    <!-- STEP 2 — role-specific form -->
-    @if (step() === 2) {
+    <!-- Issue #234: okul bağlantısı admin onayı bekliyor -->
+    @if (schoolApprovalPending()) {
+      <div class="notice notice--info" role="status">
+        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+        <div>
+          <strong>{{ t('wizard.schoolApprovalPendingTitle') }}</strong>
+          <p>{{ t('wizard.schoolApprovalPendingBody') }}</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button mat-raised-button color="primary" type="button" (click)="continueAfterPending()">
+          {{ t('actions.continue') }}
+        </button>
+      </div>
+    } @else if (step() === 2) {
+      @if (submitError(); as message) {
+        <div class="notice notice--error" role="alert">
+          <mat-icon aria-hidden="true">error_outline</mat-icon>
+          <p>{{ message }}</p>
+        </div>
+      }
       @switch (role()) {
         @case ('student') {
           <h2>{{ t('wizard.studentTitle') }}</h2>

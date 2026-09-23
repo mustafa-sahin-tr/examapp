@@ -192,13 +192,14 @@
     "close": "Close"
   },
   "approvals": {
-    "title": "Independent Teacher Applications",
-    "subtitle": "Applications awaiting approval from teachers who registered without a school.",
+    "title": "Teacher Applications",
+    "subtitle": "Pending independent-teacher applications and school membership requests. Until a school membership is approved, the teacher cannot see the school’s students or classes.",
     "refresh": "Refresh",
     "loading": "Loading applications...",
     "empty": "No pending applications",
     "columns": {
       "fullName": "Full Name",
+      "type": "Application Type",
       "email": "Email",
       "appliedAt": "Application Date",
       "actions": "Action"
@@ -221,6 +222,11 @@
       "maxLength": "The rejection reason can be at most {{max}} characters.",
       "cancel": "Cancel",
       "submit": "Reject"
+    },
+    "types": {
+      "independent": "Independent",
+      "school": "School: {{schoolName}}",
+      "schoolUnknown": "School #{{schoolId}}"
     }
   },
   "schoolFilter": {

@@ -8,6 +8,7 @@ import {
   RegisterProfileResponse,
   RegisterStudentPayload,
   RegisterTeacherPayload,
+  RegisterTeacherResponse,
   School,
 } from '../models/registration.model';
 import { LocaleHintService } from './locale-hint.service';
@@ -111,9 +112,13 @@ export class AuthService {
     return this.http.post<RegisterProfileResponse>('/api/exam/student/register', payload);
   }
 
-  /** Assigns the Teacher realm role, creates the Teacher profile row, and refreshes the session cookie. */
-  registerTeacherProfile(payload: RegisterTeacherPayload): Observable<RegisterProfileResponse> {
-    return this.http.post<RegisterProfileResponse>('/api/exam/teacher/register', payload);
+  /**
+   * Assigns the Teacher realm role, creates the Teacher profile row, and refreshes the session cookie.
+   * Issue #234: okul talebi admin onayı bekler (`schoolApprovalPending`); mevcut kaydın okulunu/bağımsızlığını
+   * değiştirme denemesi 409 `{ message }` döner.
+   */
+  registerTeacherProfile(payload: RegisterTeacherPayload): Observable<RegisterTeacherResponse> {
+    return this.http.post<RegisterTeacherResponse>('/api/exam/teacher/register', payload);
   }
 
   /** Assigns the Parent realm role, creates the Parent profile row, and refreshes the session cookie. */

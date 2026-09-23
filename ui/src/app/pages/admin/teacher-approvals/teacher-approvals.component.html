@@ -34,6 +34,16 @@
         </td>
       </ng-container>
 
+      <ng-container matColumnDef="type">
+        <th mat-header-cell *matHeaderCellDef>{{ t('columns.type') }}</th>
+        <td mat-cell *matCellDef="let row">
+          <span class="ta__type" [class.ta__type--school]="!row.isIndependentTutor">
+            <mat-icon aria-hidden="true">{{ row.isIndependentTutor ? 'person' : 'school' }}</mat-icon>
+            {{ typeLabel(row) }}
+          </span>
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="email">
         <th mat-header-cell *matHeaderCellDef>{{ t('columns.email') }}</th>
         <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.email">

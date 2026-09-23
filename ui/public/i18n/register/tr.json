@@ -5,7 +5,8 @@
     "back": "Geri",
     "save": "Kaydet",
     "saving": "Kaydediliyor…",
-    "complete": "Kaydı Tamamla"
+    "complete": "Kaydı Tamamla",
+    "continue": "Devam et"
   },
   "roles": {
     "student": "Öğrenci",
@@ -50,7 +51,9 @@
     "parentTitle": "Veli Kaydı",
     "parentHint": "Hesabınızı veli olarak tamamlamak üzeresiniz. Çocuklarınızı daha sonra profilinizden ekleyebilirsiniz.",
     "success": "Kayıt tamamlandı!",
-    "error": "Kayıt başarısız! Lütfen tekrar deneyin."
+    "error": "Kayıt başarısız! Lütfen tekrar deneyin.",
+    "schoolApprovalPendingTitle": "Okul bağlantınız yönetici onayı bekliyor",
+    "schoolApprovalPendingBody": "Hesabınız oluşturuldu. Okul bağlantınız bir yönetici tarafından onaylanana kadar okulun öğrencilerini ve sınıflarını göremezsiniz."
   },
   "student": {
     "title": "Öğrenci Kaydı",

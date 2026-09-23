@@ -17,6 +17,30 @@ export interface RegisterProfileResponse {
   profileId: number;
 }
 
+/** Backend enum ExamApp.Api.Data.TeacherApprovalStatus — JSON'a sayı olarak serialize edilir. */
+export enum TeacherApprovalStatus {
+  Pending = 0,
+  Approved = 1,
+  Rejected = 2,
+}
+
+/**
+ * Issue #234 — POST /api/exam/teacher/register yanıtı (TeacherController.RegisterTeacher `Ok(new { ... })`).
+ * Okul talebi admin onayına kadar bağ kurmaz; onaylı `schoolId` bu yanıtta dönmez.
+ */
+export interface RegisterTeacherResponse extends RegisterProfileResponse {
+  approvalStatus: TeacherApprovalStatus;
+  /** Onay bekleyen okul bağlantısı talebi; yoksa null. */
+  requestedSchoolId: number | null;
+  /** true → okul bağlantısı yönetici onayı bekliyor. */
+  schoolApprovalPending: boolean;
+}
+
+/** 400 / 409 hata gövdesi (409 → teacher.registrationChangeNotAllowed, localize). */
+export interface RegisterErrorBody {
+  message?: string;
+}
+
 export interface RegisterStudentPayload {
   studentNumber: string;
   schoolId: number | null;

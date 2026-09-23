@@ -1977,6 +1977,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<int?>("RequestedSchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("SchoolId")
                         .HasColumnType("integer");
 
@@ -2007,6 +2010,8 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RequestedSchoolId");
 
                     b.HasIndex("SchoolId");
 
@@ -3552,9 +3557,16 @@ namespace ExamApp.Api.Migrations
 
             modelBuilder.Entity("ExamApp.Api.Data.Teacher", b =>
                 {
+                    b.HasOne("ExamApp.Api.Data.School", "RequestedSchool")
+                        .WithMany()
+                        .HasForeignKey("RequestedSchoolId")
+                        .OnDelete(DeleteBehavior.ClientNoAction);
+
                     b.HasOne("ExamApp.Api.Data.School", "School")
                         .WithMany()
                         .HasForeignKey("SchoolId");
+
+                    b.Navigation("RequestedSchool");
 
                     b.Navigation("School");
                 });

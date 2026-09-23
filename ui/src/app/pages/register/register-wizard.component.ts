@@ -2,6 +2,7 @@ import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +19,7 @@ import { TeacherService } from '../../services/teacher.service';
 import { ParentService } from '../../services/parent.service';
 import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
+import { TeacherRegistrationError } from '../../models/teacher-registration.model';
 import { REGISTER_SCOPE } from './register-scope';
 
 type Role = 'student' | 'teacher' | 'parent';
@@ -26,6 +28,8 @@ type Role = 'student' | 'teacher' | 'parent';
 interface RegistrationResult {
   accessToken?: string;
   profileId?: number;
+  /** Yalnız öğretmen ucu (issue #234): okul bağlantısı admin onayı bekliyor. */
+  schoolApprovalPending?: boolean;
 }
 
 @Component({
@@ -64,6 +68,10 @@ export class RegisterWizardComponent implements OnInit {
   step = computed(() => (this.role() ? 2 : 1));
   isSubmitting = signal(false);
   readonly grades = signal<Grade[]>([]);
+  /** Issue #234: kayıt tamamlandı ama okul bağlantısı admin onayı bekliyor — yönlendirmeden önce bilgilendir. */
+  readonly schoolApprovalPending = signal(false);
+  /** Issue #234: 409 gibi kullanıcıya gösterilecek backend mesajı; form kullanılabilir kalır. */
+  readonly submitError = signal<string | null>(null);
 
   studentForm = this.fb.group({
     studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
@@ -98,6 +106,12 @@ export class RegisterWizardComponent implements OnInit {
 
   back() {
     this.role.set(null);
+    this.submitError.set(null);
+  }
+
+  /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
+  continueAfterPending() {
+    this.router.navigate(['/tests']);
   }
 
   private loadGrades() {
@@ -123,6 +137,7 @@ export class RegisterWizardComponent implements OnInit {
     }
 
     this.isSubmitting.set(true);
+    this.submitError.set(null);
     request$.subscribe({
       next: (val: RegistrationResult) => {
         this.isSubmitting.set(false);
@@ -145,10 +160,22 @@ export class RegisterWizardComponent implements OnInit {
           }
         }
         this.notify('wizard.success');
+        if (role === 'teacher' && val?.schoolApprovalPending) {
+          // Oturum kaydedildi; kullanıcı bilgilendirme kartını görüp "Devam et" ile ilerler.
+          this.schoolApprovalPending.set(true);
+          return;
+        }
         this.router.navigate([role === 'parent' ? '/dashboard' : '/tests']);
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);
+        // Issue #234: mevcut kaydın okulunu/bağımsızlığını değiştirme denemesi → 409, backend mesajı gösterilir.
+        if (err instanceof HttpErrorResponse && err.status === 409) {
+          const body = err.error as TeacherRegistrationError | null;
+          this.submitError.set(body?.message || null);
+          if (!body?.message) this.notify('wizard.error');
+          return;
+        }
         this.notify('wizard.error');
         console.error('Register wizard error:', err);
       },

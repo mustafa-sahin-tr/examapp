@@ -42,12 +42,13 @@ if (auditOptions is not null)
 
 builder.AddServiceDefaults();
 
-// 📌 Kestrel için port değerini `appsettings.json` veya Environment Variable'dan al
-var kestrelPort = builder.Configuration.GetValue<int>("Kestrel:Port", 5079); // Varsayılan 5079
+// 📌 Kestrel port'u (Kestrel:Port, varsayılan 5079) ve bind adresi (Kestrel:BindLoopbackOnly, varsayılan
+// tüm arayüzler) yapılandırmadan okunur — issue #100, bkz. KestrelBinding.
+var kestrelPort = KestrelBinding.ResolvePort(builder.Configuration);
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.ListenAnyIP(kestrelPort); // 🟢 Dinamik Port Kullanımı
+    KestrelBinding.Configure(serverOptions, builder.Configuration);
 });
 
 if (builder.Environment.IsDevelopment())
@@ -122,7 +123,7 @@ builder.Services.AddAuthorization(options =>
 
 // Login/exchange brute-force koruması (bkz. Helpers/AuthRateLimiting.cs). Forwarded-headers
 // kaydı da burada: gateway arkasında limiter anahtarı gerçek istemci IP'si olmalı.
-builder.Services.AddAuthForwardedHeaders(builder.Configuration);
+builder.Services.AddAuthForwardedHeaders(builder.Configuration, builder.Environment);
 builder.Services.AddAuthRateLimiting(builder.Configuration);
 
 var redisConfig = builder.Configuration.GetSection("Redis");
@@ -185,6 +186,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 
 var app = builder.Build();
+
+// Issue #100 review: Production'da boş ForwardedHeaders açılışı AddAuthForwardedHeaders içinde durdurur;
+// diğer ortamlarda "XFF her kaynaktan kabul" durumu görünür olsun.
+if (!app.Environment.IsProduction() && AuthRateLimiting.IsForwardedHeadersTrustOpen(app.Configuration))
+{
+    app.Logger.LogWarning(
+        "ForwardedHeaders:KnownNetworks/KnownProxies boş — X-Forwarded-For her kaynaktan kabul ediliyor. " +
+        "Yalnızca auth-api'ye gateway dışından erişilemiyorsa güvenli (Aspire: loopback bind, compose: 127.0.0.1 portu).");
+}
 
 // Database migration — fail fast: don't serve requests against a wrong schema.
 using (var scope = app.Services.CreateScope())

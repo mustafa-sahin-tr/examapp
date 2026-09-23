@@ -176,7 +176,8 @@ public sealed class LoginErrorResponseTests : IAsyncDisposable
         row.Type.ShouldBe(OutboxEventRegistry.NameFor<LoginAttemptedEvent>());
         var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>(row.Content)!;
         evt.Success.ShouldBeFalse();
-        evt.KeycloakUserId.ShouldBe("bad@test.local");
+        evt.KeycloakUserId.ShouldBeNull(); // issue #100: unverified e-mail is not an identity
+        evt.AttemptedIdentifier.ShouldBe("bad@test.local");
         row.Content.ShouldNotContain(ExamplePassword);
     }
 

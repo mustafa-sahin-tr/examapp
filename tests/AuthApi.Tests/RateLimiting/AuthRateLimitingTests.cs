@@ -24,14 +24,18 @@ public class AuthRateLimitingTests
 {
     private const string TestClientIpHeader = "X-Test-Client-Ip";
 
-    private static async Task<IHost> StartHostAsync(int permitLimit)
+    private static async Task<IHost> StartHostAsync(int permitLimit, IDictionary<string, string?>? extraConfig = null)
     {
+        var settings = new Dictionary<string, string?>
+        {
+            ["RateLimiting:AuthAttempts:PermitLimit"] = permitLimit.ToString(),
+            ["RateLimiting:AuthAttempts:WindowSeconds"] = "60",
+        };
+        foreach (var (key, value) in extraConfig ?? new Dictionary<string, string?>())
+            settings[key] = value;
+
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["RateLimiting:AuthAttempts:PermitLimit"] = permitLimit.ToString(),
-                ["RateLimiting:AuthAttempts:WindowSeconds"] = "60",
-            })
+            .AddInMemoryCollection(settings)
             .Build();
 
         return await new HostBuilder()
@@ -131,6 +135,113 @@ public class AuthRateLimitingTests
 
         var otherForwardedClient = await PostAsync(client, "/login", clientIp: gatewayIp, forwardedFor: "203.0.113.6");
         otherForwardedClient.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    // ---- Issue #100: ForwardedHeaders:KnownNetworks CIDR pinning ----
+
+    private static Dictionary<string, string?> PinnedNetwork(string cidr) => new()
+    {
+        ["ForwardedHeaders:KnownNetworks:0"] = cidr,
+    };
+
+    [Fact]
+    public async Task With_known_networks_x_forwarded_for_from_a_trusted_gateway_is_honoured()
+    {
+        using var host = await StartHostAsync(permitLimit: 1, PinnedNetwork("10.0.0.0/24"));
+        using var client = host.GetTestClient();
+        const string gatewayIp = "10.0.0.2"; // inside the pinned CIDR
+
+        (await PostAsync(client, "/login", clientIp: gatewayIp, forwardedFor: "203.0.113.5"))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await PostAsync(client, "/login", clientIp: gatewayIp, forwardedFor: "203.0.113.5"))
+            .StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        // Different real client behind the same trusted gateway → separate bucket.
+        (await PostAsync(client, "/login", clientIp: gatewayIp, forwardedFor: "203.0.113.6"))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task With_known_networks_a_direct_caller_cannot_escape_the_limit_by_spoofing_x_forwarded_for()
+    {
+        using var host = await StartHostAsync(permitLimit: 1, PinnedNetwork("10.0.0.0/24"));
+        using var client = host.GetTestClient();
+        const string attackerIp = "198.51.100.66"; // outside the pinned CIDR, bypassing the gateway
+
+        (await PostAsync(client, "/login", clientIp: attackerIp, forwardedFor: "203.0.113.1"))
+            .StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Rotating the spoofed header must not yield a fresh bucket: the limit keys on the real peer.
+        (await PostAsync(client, "/login", clientIp: attackerIp, forwardedFor: "203.0.113.2"))
+            .StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public void Invalid_known_network_cidr_fails_fast_at_startup()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(PinnedNetwork("not-a-cidr"))
+            .Build();
+
+        Should.Throw<InvalidOperationException>(() => new ServiceCollection().AddAuthForwardedHeaders(config))
+            .Message.ShouldContain("KnownNetworks");
+    }
+
+    private static IConfiguration ConfigOf(Dictionary<string, string?> values) =>
+        new ConfigurationBuilder().AddInMemoryCollection(values).Build();
+
+    private static IHostEnvironment Env(string name)
+    {
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns(name);
+        return env;
+    }
+
+    [Theory]
+    [InlineData("0.0.0.0/0")]
+    [InlineData("::/0")]
+    public void A_slash_zero_known_network_is_rejected_at_startup(string cidr)
+    {
+        Should.Throw<InvalidOperationException>(
+                () => new ServiceCollection().AddAuthForwardedHeaders(ConfigOf(PinnedNetwork(cidr))))
+            .Message.ShouldContain("/0");
+    }
+
+    [Fact]
+    public void Invalid_known_proxy_fails_eagerly_at_registration_not_on_first_request()
+    {
+        var config = ConfigOf(new() { ["ForwardedHeaders:KnownProxies:0"] = "not-an-ip" });
+
+        // Throws from AddAuthForwardedHeaders itself — no options resolution / request needed.
+        Should.Throw<InvalidOperationException>(() => new ServiceCollection().AddAuthForwardedHeaders(config))
+            .Message.ShouldContain("KnownProxies");
+    }
+
+    [Fact]
+    public void Production_with_no_known_networks_or_proxies_fails_fast()
+    {
+        Should.Throw<InvalidOperationException>(
+                () => new ServiceCollection().AddAuthForwardedHeaders(ConfigOf(new()), Env(Environments.Production)))
+            .Message.ShouldContain("Production");
+    }
+
+    [Theory]
+    [InlineData("ForwardedHeaders:KnownNetworks:0", "10.0.0.0/24")]
+    [InlineData("ForwardedHeaders:KnownProxies:0", "10.0.0.2")]
+    public void Production_with_either_list_pinned_starts(string key, string value)
+    {
+        Should.NotThrow(() => new ServiceCollection()
+            .AddAuthForwardedHeaders(ConfigOf(new() { [key] = value }), Env(Environments.Production)));
+    }
+
+    [Fact]
+    public void Development_with_no_pinning_starts_and_is_reported_as_open_trust()
+    {
+        var config = ConfigOf(new());
+
+        Should.NotThrow(() => new ServiceCollection().AddAuthForwardedHeaders(config, Env(Environments.Development)));
+        AuthRateLimiting.IsForwardedHeadersTrustOpen(config).ShouldBeTrue();
+        AuthRateLimiting.IsForwardedHeadersTrustOpen(ConfigOf(PinnedNetwork("10.0.0.0/24"))).ShouldBeFalse();
     }
 
     [Fact]

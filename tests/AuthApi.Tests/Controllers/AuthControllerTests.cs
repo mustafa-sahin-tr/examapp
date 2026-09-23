@@ -141,8 +141,30 @@ public class AuthControllerTests : IDisposable
 
         var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>(row.Content)!;
         evt.Success.ShouldBeFalse();
-        evt.KeycloakUserId.ShouldBe("bad@test.local"); // no sub available yet — email used as correlation key
+        // Issue #100: no sub yet — the unverified e-mail must NOT masquerade as a Keycloak identity.
+        evt.KeycloakUserId.ShouldBeNull();
+        evt.AttemptedIdentifier.ShouldBe("bad@test.local");
+        evt.Role.ShouldBe("Unknown");
         row.Content.ShouldNotContain(TestPassword);
+    }
+
+    [Fact]
+    public async Task Login_failure_truncates_an_overlong_attempted_identifier_to_256_chars()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        var longEmail = new string('a', 300) + "@test.local";
+        keycloak.LoginAsync(longEmail, TestPassword)
+            .Returns<TokenResponseDto>(_ => throw new KeycloakException("invalid_grant", 401, KeycloakFailureKind.InvalidGrant));
+
+        var controller = NewController(keycloak, context);
+
+        await controller.Login(ExampleLogin(longEmail, TestPassword));
+
+        await using var check = _db.NewContext();
+        var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.AttemptedIdentifier!.Length.ShouldBe(256);
+        evt.KeycloakUserId.ShouldBeNull();
     }
 
     // ---- EchangeCode: success ----
@@ -165,6 +187,7 @@ public class AuthControllerTests : IDisposable
         var row = await check.OutboxMessages.SingleAsync();
         var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>(row.Content)!;
         evt.KeycloakUserId.ShouldBe("kc-sub-2");
+        evt.AttemptedIdentifier.ShouldBeNull();
         evt.Role.ShouldBe("Teacher");
         evt.Success.ShouldBeTrue();
     }
@@ -189,6 +212,10 @@ public class AuthControllerTests : IDisposable
         var row = await check.OutboxMessages.SingleAsync();
         var evt = JsonSerializer.Deserialize<LoginAttemptedEvent>(row.Content)!;
         evt.Success.ShouldBeFalse();
+        // Issue #100: the old "unknown" literal is gone; the auth code is never an identifier.
+        evt.KeycloakUserId.ShouldBeNull();
+        evt.AttemptedIdentifier.ShouldBeNull();
+        row.Content.ShouldNotContain("bad-code-example");
     }
 
     // ---- Outbox write failure must never break the login response (code review finding) ----

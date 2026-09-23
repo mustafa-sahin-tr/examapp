@@ -47,4 +47,35 @@ public class LoginEventsEndpointTests(IntegrationApiFactory factory) : Integrati
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
+
+    [Fact]
+    public async Task Create_returns_400_for_a_successful_login_without_keycloak_user_id()
+    {
+        // Issue #100: a successful login must carry a verified identity (Keycloak sub).
+        var service = ServiceClient();
+        var dto = ValidEvent();
+        dto.KeycloakUserId = null;
+
+        var response = await service.PostAsJsonAsync("/api/login-events", dto);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_accepts_a_failed_attempt_without_keycloak_user_id()
+    {
+        var service = ServiceClient();
+        var dto = new LoginEventCreateDto
+        {
+            KeycloakUserId = null,
+            AttemptedIdentifier = "someone@test.local",
+            Role = "Unknown",
+            OccurredAtUtc = DateTime.UtcNow,
+            Success = false,
+        };
+
+        var response = await service.PostAsJsonAsync("/api/login-events", dto);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
 }

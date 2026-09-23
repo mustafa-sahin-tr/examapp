@@ -80,15 +80,44 @@ public static class AuthRateLimiting
     /// kendi gördüğü uzak adresle <b>üzerine yazar</b> (append etmez); bu yüzden <c>ForwardLimit=1</c>
     /// yeterlidir ve gateway üzerinden gelen bir istemci başlığı sahteleyemez.
     ///
-    /// Güvenilen proxy listesi <c>ForwardedHeaders:KnownProxies</c> (IP dizisi) ile pinlenir.
-    /// Liste boşsa framework'ün "yalnızca loopback" varsayılanı KALDIRILIR ve başlık her kaynaktan
+    /// Güvenilen kaynaklar iki anahtarla pinlenir (issue #100):
+    /// <list type="bullet">
+    /// <item><c>ForwardedHeaders:KnownNetworks</c> — CIDR dizisi (ör. compose/k8s pod ağı
+    /// <c>172.28.0.0/16</c>). Gateway IP'si container/pod yeniden yaratıldıkça değiştiğinden
+    /// production'da tercih edilen yol budur.</item>
+    /// <item><c>ForwardedHeaders:KnownProxies</c> — tekil IP dizisi (sabit IP'li proxy için).</item>
+    /// </list>
+    /// İkisinden biri doluysa <c>X-Forwarded-For</c> YALNIZCA bu kaynaklardan gelen isteklerde
+    /// uygulanır; başka bir peer'ın gönderdiği başlık yok sayılır (rate limit gerçek peer IP'sine düşer).
+    ///
+    /// İkisi de boşsa framework'ün "yalnızca loopback" varsayılanı KALDIRILIR ve başlık her kaynaktan
     /// kabul edilir — çünkü bu topolojide auth-api'nin tek ingress'i gateway'dir ve loopback
     /// varsayılanı container ağında başlığı yok sayıp herkesi gateway IP'sinde tek kovaya düşürür.
-    /// auth-api doğrudan dışarıya açılacaksa KnownProxies mutlaka doldurulmalıdır.
+    /// Bu varsayılan yalnızca auth-api'ye gateway dışından erişilemediğinde güvenlidir: Aspire'da
+    /// <c>Kestrel:BindLoopbackOnly=true</c>, docker-compose'da host portu <c>127.0.0.1</c>'e bağlı
+    /// (bkz. <see cref="KestrelBinding"/>). auth-api başka bir ağdan erişilebilir olacaksa
+    /// KnownNetworks/KnownProxies mutlaka doldurulmalıdır.
+    ///
+    /// Açılış kontrolleri (issue #100 review): hatalı IP/CIDR ve <c>/0</c> prefix'li ağ (tüm adres uzayı —
+    /// pinlememe ile eşdeğer) reddedilir. <paramref name="environment"/> Production ise ve iki liste de
+    /// boşsa açılış durdurulur; diğer ortamlarda Program.cs uyarı loglar
+    /// (bkz. <see cref="IsForwardedHeadersTrustOpen"/>).
     /// </summary>
-    public static IServiceCollection AddAuthForwardedHeaders(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddAuthForwardedHeaders(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment? environment = null)
     {
-        var knownProxies = configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+        // Değerler lambda içinde değil burada parse edilir: hatalı değer ilk istekte değil açılışta patlasın
+        // (sessizce "herkese güven" moduna düşmesin).
+        var (knownProxies, knownNetworks) = ParseForwardedHeadersTrust(configuration);
+
+        if (environment?.IsProduction() == true && knownProxies.Count == 0 && knownNetworks.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"{KnownNetworksKey} or {KnownProxiesKey} must be configured in Production: with both empty, " +
+                "X-Forwarded-For is trusted from any peer and the auth IP rate limit can be bypassed.");
+        }
 
         services.Configure<ForwardedHeadersOptions>(options =>
         {
@@ -100,16 +129,55 @@ public static class AuthRateLimiting
             options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
 
-            foreach (var raw in knownProxies)
-            {
-                if (IPAddress.TryParse(raw, out var ip))
-                    options.KnownProxies.Add(ip);
-                else
-                    throw new InvalidOperationException($"ForwardedHeaders:KnownProxies contains an invalid IP address: '{raw}'.");
-            }
+            foreach (var ip in knownProxies)
+                options.KnownProxies.Add(ip);
+
+            foreach (var network in knownNetworks)
+                options.KnownIPNetworks.Add(network);
         });
 
         return services;
+    }
+
+    public const string KnownProxiesKey = "ForwardedHeaders:KnownProxies";
+    public const string KnownNetworksKey = "ForwardedHeaders:KnownNetworks";
+
+    /// <summary>
+    /// KnownProxies ve KnownNetworks ikisi de boşsa <c>true</c>: X-Forwarded-For her kaynaktan kabul edilir.
+    /// Production dışı ortamlarda Program.cs açılışta bu durumu uyarı olarak loglar.
+    /// </summary>
+    public static bool IsForwardedHeadersTrustOpen(IConfiguration configuration)
+    {
+        var (knownProxies, knownNetworks) = ParseForwardedHeadersTrust(configuration);
+        return knownProxies.Count == 0 && knownNetworks.Count == 0;
+    }
+
+    private static (List<IPAddress> KnownProxies, List<System.Net.IPNetwork> KnownNetworks) ParseForwardedHeadersTrust(
+        IConfiguration configuration)
+    {
+        var rawProxies = configuration.GetSection(KnownProxiesKey).Get<string[]>() ?? [];
+        var rawNetworks = configuration.GetSection(KnownNetworksKey).Get<string[]>() ?? [];
+
+        var proxies = new List<IPAddress>(rawProxies.Length);
+        foreach (var raw in rawProxies)
+        {
+            if (!IPAddress.TryParse(raw?.Trim(), out var ip))
+                throw new InvalidOperationException($"{KnownProxiesKey} contains an invalid IP address: '{raw}'.");
+            proxies.Add(ip);
+        }
+
+        var networks = new List<System.Net.IPNetwork>(rawNetworks.Length);
+        foreach (var raw in rawNetworks)
+        {
+            if (!System.Net.IPNetwork.TryParse(raw?.Trim(), out var network))
+                throw new InvalidOperationException($"{KnownNetworksKey} contains an invalid CIDR: '{raw}'.");
+            if (network.PrefixLength == 0)
+                throw new InvalidOperationException(
+                    $"{KnownNetworksKey} must not contain a /0 network ('{raw}'): it trusts every address, which is the same as no pinning.");
+            networks.Add(network);
+        }
+
+        return (proxies, networks);
     }
 
     private static string ClientKey(HttpContext httpContext) =>

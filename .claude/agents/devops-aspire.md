@@ -21,7 +21,7 @@ Aspire AppHost projesi, `deploy/` (Azure + GCP) ve servis konfigürasyonları.
 |---|---|
 | exam-dotnet-api | 5079 / 8005 |
 | ocelot-gateway | 5678 (tüm client trafiği) |
-| auth-api | 6079 / 9005 |
+| auth-api | 6079 (yalnız 127.0.0.1, #100) |
 | exam-badge-api | 5080 / 8006 |
 | exam-outbox-publisher | 5081 / 8007 |
 | angular-app | 4200, auth-ui | 4201 |

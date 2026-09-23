@@ -16,6 +16,7 @@ import { Test } from '../../models/test-instance';
 import { WorksheetDetail } from '../../models/worksheet-detail';
 import { WorksheetAssignmentDialogData } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { StudentService } from '../../services/student.service';
+import { StudentLookup } from '../../models/student';
 
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../models/locale';
@@ -198,7 +199,12 @@ describe('WorksheetDetailComponent independent tutor assignment', () => {
     schoolId,
   });
 
-  function setup(options: { role: 'Teacher' | 'Admin'; user: UserProfile | null; realmAdmin?: boolean }) {
+  function setup(options: {
+    role: 'Teacher' | 'Admin';
+    user: UserProfile | null;
+    realmAdmin?: boolean;
+    studentService?: Partial<StudentService>;
+  }) {
     const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     dialog.open.and.returnValue({ afterClosed: () => of(undefined) } as MatDialogRef<unknown>);
 
@@ -211,7 +217,7 @@ describe('WorksheetDetailComponent independent tutor assignment', () => {
         { provide: Router, useValue: jasmine.createSpyObj<Router>('Router', ['navigate']) },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']) },
         { provide: AuthService, useValue: { hasRole: (r: string) => r === options.role, hasRealmRole: (r: string) => options.realmAdmin === true && r === 'Admin', user: signal(options.user) } },
-        { provide: StudentService, useValue: {} },
+        { provide: StudentService, useValue: options.studentService ?? {} },
         { provide: GradesService, useValue: { getGrades: () => of([]) } },
         {
           provide: ActivatedRoute,
@@ -279,6 +285,48 @@ describe('WorksheetDetailComponent independent tutor assignment', () => {
 
     expect(component['isIndependentTutor']()).toBeFalse();
     expect(buttons(fixture, 'assign-grade-btn').length).toBeGreaterThan(0);
+  });
+
+  /** Issue #223: lookup durumu dialog'a canlı sinyal olarak geçer. */
+  it('lookup başarılıysa durum loaded olur ve dialog canlı sinyalleri alır', () => {
+    const lookup = new Subject<StudentLookup[]>();
+    const { fixture, component, dialog } = setup({
+      role: 'Teacher',
+      user: teacherProfile(null),
+      studentService: { getLookup: () => lookup.asObservable() },
+    });
+
+    component['loadStudentLookup']();
+    (buttons(fixture, 'assign-student-btn')[0] as HTMLButtonElement).click();
+    const data = (dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData }).data;
+    expect(data.studentsStatus!()).toBe('loading');
+    expect(data.students()).toEqual([]);
+
+    const ada: StudentLookup = { id: 11, userId: 21, studentNumber: '101', fullName: 'Ada', schoolName: 'Okul', gradeId: 1 };
+    lookup.next([ada]);
+
+    expect(component['studentLookupStatus']()).toBe('loaded');
+    expect(data.studentsStatus!()).toBe('loaded');
+    expect(data.students()).toEqual([ada]);
+  });
+
+  it('lookup hata verirse durum error olur ve dialog bunu görür', () => {
+    const lookup = new Subject<StudentLookup[]>();
+    const { fixture, component, dialog } = setup({
+      role: 'Teacher',
+      user: teacherProfile(3),
+      studentService: { getLookup: () => lookup.asObservable() },
+    });
+
+    component['loadStudentLookup']();
+    (buttons(fixture, 'assign-student-btn')[0] as HTMLButtonElement).click();
+    const data = (dialog.open.calls.mostRecent().args[1] as { data: WorksheetAssignmentDialogData }).data;
+
+    lookup.error(new Error('boom'));
+
+    expect(component['studentLookupStatus']()).toBe('error');
+    expect(data.studentsStatus!()).toBe('error');
+    expect(data.students()).toEqual([]);
   });
 
   it('profil henüz yokken (user null) "Sınıfa ata" butonları görünür', () => {

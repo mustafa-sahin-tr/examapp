@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, Signal, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -20,13 +20,22 @@ export interface WorksheetAssignmentDialogData {
   worksheetId: number;
   scope: 'grade' | 'student';
   grades: Grade[];
-  students: StudentLookup[];
+  /** Issue #223: canlı sinyal; dialog açıkken lookup tamamlanırsa liste kendiliğinden güncellenir. */
+  students: Signal<StudentLookup[]>;
   /**
    * Issue #222: okulsuz (bağımsız) öğretmen sınıf bazlı atama yapamaz; yalnızca öğrenci seçer.
    * Açan sayfa `AuthService.schoolIdOf(user) === null` ile türetir. Verilmezse okullu kabul edilir.
    */
   isIndependentTutor?: boolean;
+  /**
+   * Issue #223: öğrenci lookup'ının canlı durumu. Boş durum metni yalnızca 'loaded' iken gösterilir;
+   * yükleniyor/hata durumunda yanıltıcı "öğrenci yok" mesajı çıkmaz ve seçici disabled olur.
+   * Verilmezse 'loaded' kabul edilir.
+   */
+  studentsStatus?: Signal<StudentLookupStatus>;
 }
+
+export type StudentLookupStatus = 'loading' | 'loaded' | 'error';
 
 export interface WorksheetAssignmentDialogResult {
   request: WorksheetAssignmentRequest;
@@ -63,6 +72,8 @@ export class WorksheetAssignmentDialogComponent {
 
   protected readonly grades = this.data.grades;
   protected readonly students = this.data.students;
+  protected readonly studentsStatus: Signal<StudentLookupStatus> =
+    this.data.studentsStatus ?? signal<StudentLookupStatus>('loaded').asReadonly();
 
   /** Issue #222: bağımsız öğretmende "Sınıfa ata" seçeneği hiç render edilmez, scope 'student'a sabitlenir. */
   protected readonly isIndependentTutor = this.data.isIndependentTutor === true;
@@ -93,14 +104,25 @@ export class WorksheetAssignmentDialogComponent {
 
   protected readonly filteredStudents = computed(() => {
     const gradeId = this.gradeIdSignal();
+    const students = this.students();
     if (!gradeId) {
-      return this.students;
+      return students;
     }
 
-    return this.students.filter((student) => student.gradeId === gradeId);
+    return students.filter((student) => student.gradeId === gradeId);
   });
 
   constructor() {
+    // Issue #223: lookup yüklenmeden/hata varken öğrenci seçilemez.
+    effect(() => {
+      const control = this.form.controls.studentId;
+      if (this.studentsStatus() === 'loaded') {
+        control.enable({ emitEvent: false });
+      } else {
+        control.disable({ emitEvent: false });
+      }
+    });
+
     this.form.controls.scope.valueChanges.pipe(takeUntilDestroyed()).subscribe((scope) => {
       if (scope === 'grade') {
         this.form.controls.gradeId.addValidators([Validators.required]);

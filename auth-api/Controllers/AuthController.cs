@@ -143,7 +143,9 @@ namespace ExamApp.Api.Controllers
         }
 
 
-        [Authorize]
+        // Issue #219: toplu ad/e-posta/KeycloakId çözümü yalnızca servisler (exam API) içindir;
+        // son kullanıcı token'ı ile çağrılamaz. Gateway'de de /api/auth/users/lookup engellidir.
+        [Authorize(Policy = "Service")]
         [HttpPost("users/lookup")]
         public async Task<IActionResult> GetUsersByIds([FromBody] BulkUserLookupRequest request)
         {

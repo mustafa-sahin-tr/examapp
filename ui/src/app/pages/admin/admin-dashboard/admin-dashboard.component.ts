@@ -12,7 +12,8 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -35,6 +36,8 @@ interface SummaryCardViewModel {
   labelKey: string;
   value: number;
   icon: string;
+  /** Filtresiz liste ekranı (issue #154); yoksa kart tıklanamaz, düz `div` olarak kalır. */
+  route?: string;
 }
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
@@ -405,6 +408,8 @@ function findPeak(points: AdminDashboardTrendPoint[]): AdminDashboardTrendPoint 
   standalone: true,
   imports: [
     DecimalPipe,
+    NgTemplateOutlet,
+    RouterLink,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -458,8 +463,8 @@ export class AdminDashboardComponent implements OnInit {
       return [];
     }
     return [
-      { key: 'teachers', labelKey: 'cards.teachers', value: s.teacherCount, icon: 'school' },
-      { key: 'students', labelKey: 'cards.students', value: s.studentCount, icon: 'groups' },
+      { key: 'teachers', labelKey: 'cards.teachers', value: s.teacherCount, icon: 'school', route: '/admin/teachers' },
+      { key: 'students', labelKey: 'cards.students', value: s.studentCount, icon: 'groups', route: '/admin/students' },
       { key: 'worksheets', labelKey: 'cards.worksheets', value: s.worksheetCount, icon: 'assignment' },
       { key: 'questions', labelKey: 'cards.questions', value: s.questionCount, icon: 'quiz' },
     ];

@@ -27,13 +27,28 @@
     @if (summary(); as s) {
       <div class="summary-grid">
         @for (card of cards(); track card.key) {
-          <div class="summary-card" [attr.data-key]="card.key">
+          <ng-template #cardContent>
             <div class="summary-card__header">
               <span class="summary-label">{{ t(card.labelKey) }}</span>
-              <mat-icon class="summary-icon">{{ card.icon }}</mat-icon>
+              <mat-icon class="summary-icon" aria-hidden="true">{{ card.icon }}</mat-icon>
             </div>
             <span class="summary-value">{{ card.value | number }}</span>
-          </div>
+          </ng-template>
+          <!-- Issue #154: öğretmen/öğrenci kartı filtresiz liste ekranına giden gerçek bir link -->
+          @if (card.route) {
+            <a
+              class="summary-card summary-card--link"
+              [attr.data-key]="card.key"
+              [routerLink]="card.route"
+              [attr.aria-label]="t('cards.openListAria', { label: t(card.labelKey), count: card.value | number })"
+            >
+              <ng-container [ngTemplateOutlet]="cardContent" />
+            </a>
+          } @else {
+            <div class="summary-card" [attr.data-key]="card.key">
+              <ng-container [ngTemplateOutlet]="cardContent" />
+            </div>
+          }
         }
 
         <div class="summary-card summary-card--ai" data-key="ai">

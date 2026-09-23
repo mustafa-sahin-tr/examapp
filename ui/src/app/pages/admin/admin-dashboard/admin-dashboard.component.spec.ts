@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router, UrlTree } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { ScaleType } from '@swimlane/ngx-charts';
 
@@ -760,4 +760,64 @@ describe('AdminDashboardComponent', () => {
     expect(loginCard.querySelector('ngx-charts-bar-vertical')).toBeFalsy();
   });
 
+  // ── Issue #154: sayaç kartlarından liste ekranlarına navigasyon ─────────────
+
+  it('cards_TeacherAndStudentCards_AreLinksToUnfilteredListRoutes', () => {
+    fixture = configure();
+    fixture.detectChanges();
+
+    const teacherCard: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-key="teachers"]');
+    const studentCard: HTMLAnchorElement = fixture.nativeElement.querySelector('[data-key="students"]');
+
+    // Gerçek <a href>: klavyede odaklanır ve Enter ile açılır, ek tabindex/keydown gerekmez.
+    expect(teacherCard.tagName).toBe('A');
+    expect(studentCard.tagName).toBe('A');
+    expect(teacherCard.getAttribute('href')).toBe('/admin/teachers');
+    expect(studentCard.getAttribute('href')).toBe('/admin/students');
+  });
+
+  it('cards_TeacherAndStudentCards_HaveDescriptiveAriaLabelWithCount', () => {
+    fixture = configure();
+    fixture.detectChanges();
+
+    const teacherCard: HTMLElement = fixture.nativeElement.querySelector('[data-key="teachers"]');
+    const studentCard: HTMLElement = fixture.nativeElement.querySelector('[data-key="students"]');
+
+    expect(teacherCard.getAttribute('aria-label')).toBe('Öğretmen listesini aç (12)');
+    expect(studentCard.getAttribute('aria-label')).toBe('Öğrenci listesini aç (340)');
+  });
+
+  it('cards_WorksheetAndQuestionCards_StayNonInteractive', () => {
+    fixture = configure();
+    fixture.detectChanges();
+
+    for (const key of ['worksheets', 'questions']) {
+      const card: HTMLElement = fixture.nativeElement.querySelector(`[data-key="${key}"]`);
+      expect(card.tagName).withContext(key).toBe('DIV');
+      expect(card.hasAttribute('href')).withContext(key).toBeFalse();
+    }
+  });
+
+  it('cardClick_TeacherAndStudentCards_NavigateToListRoutes', () => {
+    fixture = configure();
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
+
+    (fixture.nativeElement.querySelector('[data-key="teachers"]') as HTMLElement).click();
+    (fixture.nativeElement.querySelector('[data-key="students"]') as HTMLElement).click();
+
+    const urls = navigateSpy.calls.allArgs().map(([url]) => router.serializeUrl(url as UrlTree));
+    expect(urls).toEqual(['/admin/teachers', '/admin/students']);
+  });
+
+  it('routes_TeacherAndStudentListPaths_AreGuardedByAuthAndAdminGuard', () => {
+    const layoutRoute = routes.find((r) => Array.isArray(r.children));
+
+    for (const path of ['admin/teachers', 'admin/students']) {
+      const route = layoutRoute?.children?.find((r) => r.path === path);
+      expect(route).withContext(path).toBeDefined();
+      expect(route?.canActivate).withContext(path).toEqual([authGuard, adminGuard]);
+    }
+  });
 });

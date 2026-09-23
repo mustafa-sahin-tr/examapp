@@ -1,0 +1,100 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter, Router } from '@angular/router';
+import { TranslocoService } from '@jsverse/transloco';
+import { of, Subject } from 'rxjs';
+
+import { EnhancedLayoutComponent } from './enhanced-layout.component';
+import { AuthService } from '../../services/auth.service';
+import { SignalRService } from '../../services/signalr.service';
+import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
+import { UserThemeService } from '../../services/user-theme.service';
+import { ThemeConfigService } from '../../services/theme-config.service';
+import { routes } from '../../app.routes';
+import { translocoTestingModule } from '../../shared/testing/transloco-testing';
+
+/**
+ * Issue #154: admin menüsündeki "Öğretmenler"/"Öğrenciler" girişleri.
+ * Menü rol filtresi sınıf alanında (`visibleMenuItems`) hesaplandığı için komponent render
+ * edilmeden (ngOnInit / SignalR / refresh akışı tetiklenmeden) doğrulanır.
+ */
+describe('EnhancedLayoutComponent menu (issue #154)', () => {
+  const ADMIN_LIST_ENTRIES = [
+    { id: 'admin-teachers', route: '/admin/teachers', labelKey: 'menu.adminTeachers', tr: 'Öğretmenler' },
+    { id: 'admin-students', route: '/admin/students', labelKey: 'menu.adminStudents', tr: 'Öğrenciler' },
+  ];
+
+  function create(roles: string[]): EnhancedLayoutComponent {
+    const authStub: Partial<AuthService> = {
+      hasRealmRole: (role: string) => roles.includes(role),
+      isAuthenticated: () => of(true),
+    };
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, translocoTestingModule()],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authStub },
+        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: UserThemeService, useValue: {} },
+        { provide: ThemeConfigService, useValue: {} },
+      ],
+    });
+    return TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+  }
+
+  it('visibleMenuItems_AdminRole_ContainsTeachersAndStudentsEntriesWithListRoutes', () => {
+    const component = create(['Admin']);
+
+    for (const entry of ADMIN_LIST_ENTRIES) {
+      const item = component.visibleMenuItems.find((i) => i.id === entry.id);
+      expect(item).withContext(entry.id).toBeDefined();
+      expect(item?.type).withContext(entry.id).toBe('menu');
+      expect(item?.route).withContext(entry.id).toBe(entry.route);
+      expect(item?.labelKey).withContext(entry.id).toBe(entry.labelKey);
+      expect(item?.icon).withContext(entry.id).toBeTruthy();
+    }
+  });
+
+  for (const role of ['Teacher', 'Student']) {
+    it(`visibleMenuItems_${role}Role_DoesNotContainAdminListEntries`, () => {
+      const component = create([role]);
+      const routesShown = component.visibleMenuItems.map((i) => i.route);
+
+      for (const entry of ADMIN_LIST_ENTRIES) {
+        expect(routesShown).withContext(role).not.toContain(entry.route);
+      }
+    });
+  }
+
+  it('menuLabels_AdminListEntries_ResolveToTurkishTexts', () => {
+    create(['Admin']);
+    const transloco = TestBed.inject(TranslocoService);
+
+    for (const entry of ADMIN_LIST_ENTRIES) {
+      // Şablon `layout` prefix'i ile çevirir: t(item.labelKey)
+      expect(transloco.translate(`layout.${entry.labelKey}`)).toBe(entry.tr);
+    }
+  });
+
+  it('navigateTo_AdminListEntries_NavigatesToListRouteAndMarksActive', () => {
+    const component = create(['Admin']);
+    const router = TestBed.inject(Router);
+    const navigateSpy = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+
+    for (const entry of ADMIN_LIST_ENTRIES) {
+      component.navigateTo(entry.route);
+      expect(navigateSpy).toHaveBeenCalledWith([entry.route], {});
+      expect(component.activeMenuItem()).toBe(entry.id);
+    }
+  });
+
+  it('routes_AdminListEntryRoutes_ExistInAppRoutes', () => {
+    const layoutRoute = routes.find((r) => Array.isArray(r.children));
+    const childPaths = layoutRoute?.children?.map((r) => `/${r.path}`) ?? [];
+
+    for (const entry of ADMIN_LIST_ENTRIES) {
+      expect(childPaths).toContain(entry.route);
+    }
+  });
+});

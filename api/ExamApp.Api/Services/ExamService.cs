@@ -342,7 +342,7 @@ public class ExamService : IExamService
         // görebilir. TeacherSharing bu eksenle ilgisizdir — öğretmenler arası paylaşım öğrencinin
         // kendi öğretmeninin worksheet'lerini görmesini etkilemez.
         query = query.Where(t =>
-            _context.ActiveAssignmentsFor(studentProfile.Id, studentProfile.GradeId, now)
+            _context.ActiveAssignmentsFor(studentProfile.Id, studentProfile.GradeId, studentProfile.SchoolId, now)
                 .Any(a => a.WorksheetId == t.Id)
             || (t.StudentVisibility == WorksheetStudentVisibility.Normal
                 && studentProfile.GradeId.HasValue && t.GradeId == studentProfile.GradeId.Value));
@@ -388,7 +388,7 @@ public class ExamService : IExamService
         // Bu sayfadaki worksheet'lerden hangileri öğrenciye/sınıfına aktif olarak atanmış
         // (IsAssigned) — kalanlar yalnızca keşfet ile görünüyor demektir.
         var pageWorksheetIds = tests.Select(t => t.Id).ToList();
-        var assignedWorksheetIds = (await _context.ActiveAssignmentsFor(studentProfile.Id, studentProfile.GradeId, now)
+        var assignedWorksheetIds = (await _context.ActiveAssignmentsFor(studentProfile.Id, studentProfile.GradeId, studentProfile.SchoolId, now)
             .Where(a => pageWorksheetIds.Contains(a.WorksheetId))
             .Select(a => a.WorksheetId)
             .Distinct()

@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Linq.Expressions;
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Worksheets;
 
 namespace ExamApp.Api.Helpers;
 
@@ -146,17 +147,20 @@ public static class WorksheetAccess
     /// <summary>
     /// Bir öğrenciye/sınıfına şu an aktif olan (StartAt/EndAt penceresi içindeki) atamalar.
     /// "Aktif atama" tanımı tek yerde tutulur — <see cref="CanStudentStartTest"/> ile kullanılan
-    /// öğrencinin test başlatabilme koşulu, görünürlük filtresi (issue #14) ve "IsAssigned"
-    /// hesaplaması hepsi buradan beslenir; tanım sadece burada değişir.
+    /// öğrencinin test başlatabilme koşulu, görünürlük filtresi (issue #14), "IsAssigned"
+    /// hesaplaması ve öğrencinin "atanan testler" listesi hepsi buradan beslenir; tanım sadece burada değişir.
+    /// Hedef/okul koşulu <see cref="WorksheetStudentAccess.AssignmentVisibleTo"/>'dan gelir (takvim/hatırlatıcı/
+    /// sıralama ile aynı ifade): issue #236 — sınıf-hedefli atamanın <c>SchoolId</c>'si doluysa öğrencinin okuluyla
+    /// eşleşmeli; X okuluna yapılmış grade ataması başka okuldaki aynı sınıf öğrencisine açılmaz.
+    /// <paramref name="schoolId"/> öğrencinin DB'den çözülmüş okuludur (Students.SchoolId), client girdisi değil.
     /// IQueryable döner ki EF Core SQL'e çevirebilsin — bool döndüren
     /// <see cref="CanStudentStartTest"/> ile karıştırma, o bellek-içi bir karardır.
     /// </summary>
     public static IQueryable<WorksheetAssignment> ActiveAssignmentsFor(
-        this AppDbContext context, int studentId, int? gradeId, DateTime now)
+        this AppDbContext context, int studentId, int? gradeId, int? schoolId, DateTime now)
     {
-        return context.WorksheetAssignments.Where(a =>
-            (a.StudentId == studentId
-                || (a.StudentId == null && a.GradeId != null && a.GradeId == gradeId))
-            && a.StartAt <= now && (a.EndAt == null || a.EndAt > now));
+        return context.WorksheetAssignments
+            .Where(WorksheetStudentAccess.AssignmentVisibleTo(studentId, gradeId, schoolId))
+            .Where(a => a.StartAt <= now && (a.EndAt == null || a.EndAt > now));
     }
 }

@@ -9,7 +9,7 @@ import { Grade } from '../models/student';
 export class GradesService {
   private readonly http = inject(HttpClient);
 
-  /** Backend `GET api/worksheet/grades` (Grade entity); istemci yalnız id/ad okur. */
+  /** Backend `GET api/worksheet/grades` → `GradeDto { id, name }`. */
   getGrades(): Observable<Grade[]> {
     return this.http.get<Grade[]>('/api/exam/worksheet/grades');
   }

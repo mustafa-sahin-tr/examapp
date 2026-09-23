@@ -42,8 +42,32 @@ public class ExamEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
         (await Anonymous().GetAsync("/api/worksheet/grades")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
         var client = await ClientAsAsync(1, "Teacher", "kc-t", "Teacher");
-        var grades = await client.GetFromJsonAsync<List<Grade>>("/api/worksheet/grades", Json);
+        var grades = await client.GetFromJsonAsync<List<GradeDto>>("/api/worksheet/grades", Json);
         grades!.ShouldContain(g => g.Name == "1");
+    }
+
+    [Fact]
+    public async Task Grades_endpoint_returns_only_id_and_name_properties()
+    {
+        await WithDbAsync(async db =>
+        {
+            db.Grades.Add(new Grade { Name = "Grade A" });
+            await db.SaveChangesAsync();
+        });
+
+        var client = await ClientAsAsync(1, "Teacher", "kc-t", "Teacher");
+        var response = await client.GetAsync("/api/worksheet/grades");
+        var json = await response.Content.ReadAsStringAsync();
+
+        // Verify JSON contains only 'id' and 'name' properties, no audit fields like createUserId
+        json.ShouldContain("\"id\":");
+        json.ShouldContain("\"name\":");
+        json.ShouldNotContain("createUserId");
+        json.ShouldNotContain("updateUserId");
+        json.ShouldNotContain("deleteUserId");
+        json.ShouldNotContain("createTime");
+        json.ShouldNotContain("updateTime");
+        json.ShouldNotContain("deleteTime");
     }
 
     [Fact]

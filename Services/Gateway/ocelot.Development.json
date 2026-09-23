@@ -40,6 +40,30 @@
       "Priority": 2
     },
     {
+      "DownstreamPathTemplate": "/__blocked/api/auth/users/lookup",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/users/lookup",
+      "Priority": 2
+    },
+    {
+      "DownstreamPathTemplate": "/__blocked/api/auth/users/lookup/",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "auth-api",
+          "Port": 5079
+        }
+      ],
+      "UpstreamPathTemplate": "/api/auth/users/lookup/",
+      "Priority": 2
+    },
+    {
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

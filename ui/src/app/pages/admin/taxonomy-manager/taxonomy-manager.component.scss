@@ -68,17 +68,6 @@
       border-color: var(--ms-action-border);
     }
   }
-
-  .unassigned-toggle {
-    mat-icon {
-      font-size: 16px;
-      width: 16px;
-      height: 16px;
-      margin-right: 4px;
-      vertical-align: -3px;
-      color: var(--ms-warning-text-medium);
-    }
-  }
 }
 
 .columns {
@@ -156,10 +145,6 @@
   align-items: center;
   gap: 4px;
 
-  &.stacked {
-    flex-wrap: wrap;
-  }
-
   .dense {
     flex: 1;
     min-width: 120px;
@@ -175,11 +160,6 @@
   ::ng-deep .mat-mdc-text-field-wrapper {
     padding-block: 0;
   }
-}
-
-.inline-grade {
-  width: 110px;
-  flex: 0 0 auto;
 }
 
 // ---- list ----
@@ -271,19 +251,6 @@
     background: var(--ms-action-background-weak);
     color: var(--ms-action-text);
     border: 1px solid var(--ms-action-border);
-
-    mat-icon {
-      font-size: 13px;
-      width: 13px;
-      height: 13px;
-      line-height: 13px;
-    }
-
-    &--warn {
-      background: var(--ms-warning-surface-weak);
-      color: var(--ms-warning-text-medium);
-      border-color: var(--ms-warning-border);
-    }
   }
 
   .meta {

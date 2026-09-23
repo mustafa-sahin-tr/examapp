@@ -1,5 +1,6 @@
 using System;
 using BadgeService.Entities;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace BadgeService;
@@ -17,6 +18,13 @@ public class BadgeDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProcessedLoginAttempt> ProcessedLoginAttempts => Set<ProcessedLoginAttempt>();
     public DbSet<UserLocalePreference> UserLocalePreferences => Set<UserLocalePreference>();
+
+    /// <summary>
+    /// BadgeService'in kendi transactional outbox'ı (issue #225). exam/identity DB'lerindeki tabloyla
+    /// aynı şema (<see cref="OutboxMessage"/>, tablo adı "OutboxMessages") — böylece aynı
+    /// OutboxPublisher kodu üçüncü bir instance (<c>badge-outbox-publisher</c>) olarak bu DB'yi poll eder.
+    /// </summary>
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

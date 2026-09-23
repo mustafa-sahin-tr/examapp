@@ -2,6 +2,7 @@
 
 
 using BadgeService;
+using BadgeService.Commands;
 using BadgeService.Consumers;
 using BadgeService.Data;
 using BadgeService.Services;
@@ -15,7 +16,32 @@ using BadgeService.Security;
 using ExamApp.Foundation.Localization;
 
 
-var builder = WebApplication.CreateBuilder(args);
+// Komut modu (issue #225): `dotnet run -- backfill-student-points [--dry-run]` — host kurulur, şema
+// migrate edilir, komut çalışır ve süreç çıkar (Kestrel/MassTransit başlatılmaz).
+var isBackfillCommand = StudentPointsBackfillCommand.IsRequested(args);
+var backfillDryRun = false;
+if (isBackfillCommand)
+{
+    try
+    {
+        backfillDryRun = StudentPointsBackfillCommand.ParseDryRun(args);
+    }
+    catch (ArgumentException ex)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return StudentPointsBackfillCommand.ExitUsage;
+    }
+}
+
+// Komut arg'ları IConfiguration'a sızmasın.
+var builder = WebApplication.CreateBuilder(isBackfillCommand ? [] : args);
+
+if (isBackfillCommand && !StudentPointsBackfillCommand.IsAllowedEnvironment(builder.Environment))
+{
+    Console.Error.WriteLine(
+        $"{StudentPointsBackfillCommand.CommandName} yalnızca Development/Staging ortamında çalışır; mevcut ortam: {builder.Environment.EnvironmentName}.");
+    return StudentPointsBackfillCommand.ExitEnvironmentRefused;
+}
 
 builder.AddServiceDefaults();
 
@@ -51,6 +77,7 @@ builder.Services.AddSingleton<ICallerIdentityResolver, AuthApiCallerIdentityReso
 builder.Services.AddScoped<AnswerSubmissionAggregationService>();
 builder.Services.AddScoped<BadgeEvaluator>();
 builder.Services.AddScoped<StudentReportService>();
+builder.Services.AddScoped<UserResetService>();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.SectionName));
 builder.Services.AddScoped<IQuestionClassifier, GeminiQuestionClassifier>();
@@ -128,7 +155,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<AnswerSubmittedConsumer>();
+    x.AddConsumer<AnswerSubmittedConsumer, AnswerSubmittedConsumerDefinition>();
     x.AddConsumer<QuestionCreatedConsumer>();
     x.AddConsumer<WorksheetReminderDueConsumer, WorksheetReminderDueConsumerDefinition>();
     x.AddConsumer<WorksheetAccessRequestedConsumer, WorksheetAccessRequestedConsumerDefinition>();
@@ -150,6 +177,7 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint("badge-service", e =>
         {
+            // Kullanıcı bazlı sıralı işleme (partitioner) AnswerSubmittedConsumerDefinition'da (issue #225).
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);
             // WorksheetReminderDueConsumer'ın retry'ı WorksheetReminderDueConsumerDefinition'da
@@ -196,8 +224,26 @@ using (var scope = app.Services.CreateScope())
     await BadgeSeeder.SeedAsync(dbContext);
 }
 
+if (isBackfillCommand)
+{
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("StudentPointsBackfill");
+    try
+    {
+        await StudentPointsBackfillCommand.RunAsync(
+            scope.ServiceProvider.GetRequiredService<BadgeDbContext>(), logger, backfillDryRun);
+        return StudentPointsBackfillCommand.ExitOk;
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "{Command} başarısız.", StudentPointsBackfillCommand.CommandName);
+        return StudentPointsBackfillCommand.ExitFailed;
+    }
+}
+
 app.MapHub<BadgeNotificationHub>("/hub/badges");
 app.MapControllers();
 app.MapDefaultEndpoints();
 
 app.Run();
+return 0;

@@ -18,16 +18,35 @@ public class AnswerSubmissionAggregationService
 
     public async Task ProcessAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
+        var (questionAggregate, previousPoints) = await UpdateStudentQuestionAggregateAsync(message, cancellationToken);
+        var subjectAggregate = await UpdateStudentSubjectAggregateAsync(message, cancellationToken);
+        var activity = await UpdateDailyActivityAsync(message, cancellationToken);
 
-        await UpdateStudentQuestionAggregateAsync(message, now, cancellationToken);
-        await UpdateStudentSubjectAggregateAsync(message, now, cancellationToken);
-        await UpdateDailyActivityAsync(message, now, cancellationToken);
+        // Zaman damgası tüm okumalardan SONRA, SaveChanges'e olabildiğince yakın alınır (issue #225):
+        // StudentPointsChangedEvent'in versiyonu budur; aynı kullanıcının event'leri BadgeService'te
+        // sıralı işlendiğinden (AnswerSubmittedConsumerDefinition partitioner'ı) versiyon sırası commit
+        // sırasıyla örtüşür.
+        var now = DateTime.UtcNow;
+        questionAggregate.LastUpdatedUtc = now;
+        if (subjectAggregate != null)
+        {
+            subjectAggregate.LastUpdatedUtc = now;
+        }
+        activity.LastUpdatedUtc = now;
+
+        // Liderlik puan hattı: puan değiştiyse mutlak değeri outbox'a yaz — aggregate ile aynı SaveChanges
+        // (aynı transaction). Yanlış cevap puanı değiştirmez → event yok; exam API tarafında satırı olmayan
+        // öğrenci zaten 0 XP görünür.
+        if (questionAggregate.TotalPoints != previousPoints)
+        {
+            StudentPointsOutbox.Enqueue(_context, questionAggregate.UserId, questionAggregate.TotalPoints, now);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task UpdateStudentQuestionAggregateAsync(AnswerSubmittedEvent message, DateTime now, CancellationToken cancellationToken)
+    private async Task<(StudentQuestionAggregate Aggregate, int PreviousPoints)> UpdateStudentQuestionAggregateAsync(
+        AnswerSubmittedEvent message, CancellationToken cancellationToken)
     {
         var aggregate = await _context.StudentQuestionAggregates
             .FirstOrDefaultAsync(x => x.UserId == message.UserId, cancellationToken);
@@ -41,6 +60,8 @@ public class AnswerSubmissionAggregationService
             };
             _context.StudentQuestionAggregates.Add(aggregate);
         }
+
+        var previousPoints = aggregate.TotalPoints;
 
         aggregate.TotalQuestions += 1;
         aggregate.TotalTimeSeconds += Math.Max(0, message.TimeTakenInSeconds);
@@ -61,14 +82,14 @@ public class AnswerSubmissionAggregationService
         }
 
         aggregate.LastAnsweredAtUtc = message.SubmittedAt;
-        aggregate.LastUpdatedUtc = now;
+        return (aggregate, previousPoints);
     }
 
-    private async Task UpdateStudentSubjectAggregateAsync(AnswerSubmittedEvent message, DateTime now, CancellationToken cancellationToken)
+    private async Task<StudentSubjectAggregate?> UpdateStudentSubjectAggregateAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken)
     {
         if (!message.SubjectId.HasValue && string.IsNullOrWhiteSpace(message.Subject))
         {
-            return;
+            return null;
         }
 
         StudentSubjectAggregate? subjectAggregate;
@@ -111,10 +132,10 @@ public class AnswerSubmissionAggregationService
             subjectAggregate.TotalPoints += Math.Max(0, message.QuestionPoint);
         }
 
-        subjectAggregate.LastUpdatedUtc = now;
+        return subjectAggregate;
     }
 
-    private async Task UpdateDailyActivityAsync(AnswerSubmittedEvent message, DateTime now, CancellationToken cancellationToken)
+    private async Task<StudentDailyActivity> UpdateDailyActivityAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken)
     {
         var activityDate = message.SubmittedAt.Date;
 
@@ -142,7 +163,7 @@ public class AnswerSubmissionAggregationService
         }
 
         activity.ActivityScore = CalculateActivityScore(activity);
-        activity.LastUpdatedUtc = now;
+        return activity;
     }
 
     private static int CalculateActivityScore(StudentDailyActivity activity)

@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -62,6 +63,15 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
 
             services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
             services.AddDistributedMemoryCache();
+
+            // issue #225: RabbitMQ:Host test ortamında yok → Program.cs bus kurmaz. Consumer'ları gerçek
+            // MassTransit pipeline'ı (retry definition dahil) üzerinden, in-memory test harness ile çalıştır.
+            services.AddMassTransitTestHarness(x =>
+            {
+                x.SetTestTimeouts(testTimeout: TimeSpan.FromMinutes(5));
+                x.AddConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer,
+                    ExamApp.Api.Consumers.StudentPointsChangedConsumerDefinition>();
+            });
 
             services.AddAuthentication(options =>
             {

@@ -15,6 +15,7 @@ using ExamApp.Api.Services.Taxonomy;
 using ExamApp.Api.Services.TeacherApprovals;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
@@ -40,11 +41,12 @@ public class AdminController : BaseController
     private readonly IAdminTeacherService _adminTeachers;
     private readonly IAdminStudentService _adminStudents;
     private readonly IAdminDataAccessAuditService _dataAccessAudit;
+    private readonly IAdminPasswordResetService _passwordReset;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IStringLocalizer<Messages>? localizer = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IStringLocalizer<Messages>? localizer = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -56,6 +58,7 @@ public class AdminController : BaseController
         _adminTeachers = adminTeachers;
         _adminStudents = adminStudents;
         _dataAccessAudit = dataAccessAudit;
+        _passwordReset = passwordReset;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -250,6 +253,55 @@ public class AdminController : BaseController
         => _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
             KeyCloakId ?? string.Empty, resource, schoolId, unassigned,
             result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount), ct);
+
+    // ---- Şifre sıfırlama (issue #156) ----
+
+    /// <summary>
+    /// POST api/admin/teachers/{id}/reset-password → öğretmenin (Teacher.Id) Keycloak şifresini geçici bir şifreyle
+    /// değiştirir (ilk girişte değiştirme zorunlu), tüm oturumlarını kapatır ve geçici şifreyi YALNIZCA bu yanıtta döner:
+    /// <c>200 { "temporaryPassword": "..." }</c>. Yanıt önbelleğe alınmaz (no-store). Hedef admin/servis hesabı ya da
+    /// çağıranın kendisi → 403; kayıt/hesap yok → 404; auth-api/Keycloak hatası → 502 (şifre değişip oturumlar kapatılamadıysa
+    /// ayrı mesajla 502). Admin başına rate limit (429).
+    /// </summary>
+    [HttpPost("teachers/{id:int}/reset-password")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // Cache-Control: no-store + Pragma: no-cache
+    [EnableRateLimiting(AdminPasswordResetRateLimiting.Policy)]
+    public Task<IActionResult> ResetTeacherPassword(int id, CancellationToken ct)
+        => ResetPasswordAsync(AdminUserTargetType.Teacher, id, ct);
+
+    /// <summary>POST api/admin/students/{id}/reset-password → <see cref="ResetTeacherPassword"/> ile aynı sözleşme (Student.Id).</summary>
+    [HttpPost("students/{id:int}/reset-password")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminPasswordResetRateLimiting.Policy)]
+    public Task<IActionResult> ResetStudentPassword(int id, CancellationToken ct)
+        => ResetPasswordAsync(AdminUserTargetType.Student, id, ct);
+
+    private async Task<IActionResult> ResetPasswordAsync(AdminUserTargetType targetType, int id, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+
+        var result = await _passwordReset.ResetAsync(targetType, id, actor, ct);
+        return result.Status switch
+        {
+            AdminPasswordResetStatus.Success =>
+                Ok(new AdminPasswordResetResponseDto { TemporaryPassword = result.TemporaryPassword! }),
+            AdminPasswordResetStatus.TargetNotFound => NotFound(Message(targetType == AdminUserTargetType.Teacher
+                ? "admin.passwordReset.teacherNotFound"
+                : "admin.passwordReset.studentNotFound")),
+            AdminPasswordResetStatus.AccountNotFound => NotFound(Message("admin.passwordReset.accountNotFound")),
+            AdminPasswordResetStatus.ForbiddenSelf =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.passwordReset.self")),
+            AdminPasswordResetStatus.ForbiddenProtectedRole =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.passwordReset.protectedRole")),
+            AdminPasswordResetStatus.SessionRevokeFailed =>
+                StatusCode(StatusCodes.Status502BadGateway, Message("admin.passwordReset.sessionRevokeFailed")),
+            _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.passwordReset.upstreamFailed"))
+        };
+    }
+
+    private object Message(string key) => new { message = _localizer[key].Value };
 
     // ---- Dashboard ----
 

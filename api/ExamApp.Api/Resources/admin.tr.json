@@ -9,6 +9,16 @@
     "students": {
       "filterConflict": "schoolId ve unassigned birlikte kullanılamaz."
     },
+    "passwordReset": {
+      "teacherNotFound": "Öğretmen bulunamadı.",
+      "studentNotFound": "Öğrenci bulunamadı.",
+      "accountNotFound": "Bu kullanıcıya bağlı bir oturum açma hesabı bulunamadı.",
+      "self": "Kendi şifrenizi bu ekrandan sıfırlayamazsınız.",
+      "protectedRole": "Yönetici veya servis hesaplarının şifresi bu ekrandan sıfırlanamaz.",
+      "upstreamFailed": "Şifre şu anda sıfırlanamadı. Lütfen biraz sonra tekrar deneyin.",
+      "sessionRevokeFailed": "Şifre değiştirildi ancak kullanıcının açık oturumları kapatılamadı; yeni şifre gösterilmedi. Lütfen işlemi tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla şifre sıfırlama isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
     "userList": {
       "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },

@@ -6,6 +6,7 @@ import { AdminService } from './admin.service';
 import { AdminTeacherListItem } from '../models/admin-teacher.model';
 import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
+import { AdminPasswordResetResponse } from '../models/admin-password-reset.model';
 
 describe('AdminService.getTeachers (issue #152)', () => {
   let service: AdminService;
@@ -161,5 +162,61 @@ describe('AdminService.getStudents (issue #153)', () => {
     expect(req.request.params.get('unassigned')).toBe('true');
     expect(req.request.params.has('schoolId')).toBeFalse();
     req.flush(response);
+  });
+});
+
+describe('AdminService.resetPassword (issue #156)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('resetPassword_Teacher_PostsToTeacherEndpointWithoutBody', () => {
+    let result: AdminPasswordResetResponse | undefined;
+    service.resetPassword('teacher', 12).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne('/api/exam/admin/teachers/12/reset-password');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush({ temporaryPassword: 'Abcd-1234-Efgh-5' });
+
+    expect(result).toEqual({ temporaryPassword: 'Abcd-1234-Efgh-5' });
+  });
+
+  it('resetPassword_Student_PostsToStudentEndpointWithoutBody', () => {
+    service.resetPassword('student', 7).subscribe();
+
+    const req = httpMock.expectOne('/api/exam/admin/students/7/reset-password');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeNull();
+    req.flush({ temporaryPassword: 'x' });
+  });
+
+  it('resetPassword_Target_SelectsUrlSegment', () => {
+    service.resetPassword('teacher', 3).subscribe();
+    service.resetPassword('student', 4).subscribe();
+
+    const teacherReq = httpMock.expectOne('/api/exam/admin/teachers/3/reset-password');
+    const studentReq = httpMock.expectOne('/api/exam/admin/students/4/reset-password');
+    expect(teacherReq.request.method).toBe('POST');
+    expect(studentReq.request.method).toBe('POST');
+    teacherReq.flush({ temporaryPassword: 'a' });
+    studentReq.flush({ temporaryPassword: 'b' });
+  });
+
+  it('resetPassword_DoesNotPersistPasswordInService', () => {
+    service.resetPassword('teacher', 12).subscribe();
+    httpMock.expectOne('/api/exam/admin/teachers/12/reset-password').flush({ temporaryPassword: 'Sekret-Pass-9876' });
+
+    // Servis durumsuz olmalı: yanıt hiçbir alanda tutulmaz.
+    expect(Object.values(service as object).some((v) => typeof v === 'string' && v.includes('Sekret'))).toBeFalse();
   });
 });

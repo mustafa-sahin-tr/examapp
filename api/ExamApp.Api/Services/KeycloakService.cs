@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -29,8 +30,16 @@ public class KeycloakService : IKeycloakService
 
 
 
-    private async Task<string> GetKeycloakAdminTokenAsync()
+    // issue #156: admin token bu (scoped) örnek içinde yeniden kullanılır — tek istek içindeki rol/reset/logout
+    // çağrıları tek token alır. Süresi (expires_in) dolmadan 30 sn önce yenilenir.
+    private string? _cachedAdminToken;
+    private DateTimeOffset _cachedAdminTokenExpiresAt;
+
+    private async Task<string> GetKeycloakAdminTokenAsync(CancellationToken ct = default)
     {
+        if (_cachedAdminToken is not null && DateTimeOffset.UtcNow < _cachedAdminTokenExpiresAt)
+            return _cachedAdminToken;
+
         var content = new FormUrlEncodedContent(new[]
         {
             new KeyValuePair<string, string>("grant_type", "client_credentials"),
@@ -41,15 +50,27 @@ public class KeycloakService : IKeycloakService
         _logger.LogDebug("Requesting Keycloak admin token from {Host}/{TokenUrl} with client_id={ClientId}",
             _keycloakSettings.Host, _keycloakSettings.TokenUrl, _keycloakSettings.AdminClientId);
 
-        var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content);
-        var json = await response.Content.ReadAsStringAsync();
+        using var response = await _http.PostAsync($"{_keycloakSettings.Host}/{_keycloakSettings.TokenUrl}", content, ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
             _logger.LogError("Keycloak admin token request failed: {Status}", response.StatusCode);
-            throw new KeycloakException($"Keycloak admin token request failed: {(int)response.StatusCode}");
+            throw new KeycloakException($"Keycloak admin token request failed: {(int)response.StatusCode}", 502);
         }
         using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.GetProperty("access_token").GetString();
+        // access_token yoksa KeyNotFoundException yerine anlamlı KeycloakException (çağıranlar 502'ye eşler).
+        if (!doc.RootElement.TryGetProperty("access_token", out var tokenElement)
+            || tokenElement.ValueKind != JsonValueKind.String
+            || string.IsNullOrEmpty(tokenElement.GetString()))
+        {
+            _logger.LogError("Keycloak admin token response has no access_token");
+            throw new KeycloakException("Keycloak admin token response has no access_token", 502);
+        }
+
+        var expiresIn = doc.RootElement.TryGetProperty("expires_in", out var exp) && exp.TryGetInt32(out var seconds) ? seconds : 60;
+        _cachedAdminToken = tokenElement.GetString()!;
+        _cachedAdminTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(0, expiresIn - 30));
+        return _cachedAdminToken;
     }
 
     public async Task<TokenResponseDto> ExchangeTokenAsync(string code)
@@ -398,5 +419,139 @@ public class KeycloakService : IKeycloakService
             _logger.LogError("Failed to update school_id attribute in Keycloak: {Error}", error);
             throw new KeycloakException($"Failed to update school_id attribute in Keycloak: {error}");
         }
+    }
+
+    // ---- issue #156: admin şifre sıfırlama (#155 aynı altyapıyı kullanır) ----
+    // Bu metotlar paylaşılan _http.DefaultRequestHeaders'ı DEĞİŞTİRMEZ; token istek başına eklenir.
+    // Hata mesajlarına Keycloak yanıt gövdesi konmaz (yalnızca durum kodu): reset-password hata gövdesi
+    // politika ayrıntısı taşıyabilir ve exception mesajları loglara düşer.
+
+    private const string RealmManagementClientId = "realm-management";
+
+    // realm-management client'ının iç UUID'si (Host+UserUrl başına süreç ömrü boyunca sabit).
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> RealmManagementUuidCache = new();
+
+    private static readonly JsonSerializerOptions CaseInsensitive = new() { PropertyNameCaseInsensitive = true };
+
+    public async Task<KeycloakUserRolesDto> GetUserRolesAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        var realmRoles = await GetRoleNamesAsync($"{AdminUserUrl(keycloakUserId)}/role-mappings/realm/composite", ct);
+
+        // realm-management client rolleri (realm-admin, manage-users, ...): ETKİN (composite + grup) roller için
+        // client UUID'si gerekir. /clients sorgusu view-clients ister (exam-admin'de yok); UUID bunun yerine admin
+        // servis hesabının kendi role-mapping'lerinden okunur (manage-users taşıdığı için realm-management girdisi hep var).
+        var uuid = await GetRealmManagementClientUuidAsync(ct);
+        IReadOnlyList<string> clientRoles;
+        if (uuid is not null)
+        {
+            clientRoles = await GetRoleNamesAsync(
+                $"{AdminUserUrl(keycloakUserId)}/role-mappings/clients/{Uri.EscapeDataString(uuid)}/composite", ct);
+        }
+        else
+        {
+            // Yedek: yalnızca DOĞRUDAN atanmış client rolleri (grup/composite üzerinden gelenler görünmez).
+            _logger.LogWarning("realm-management client UUID çözülemedi; yalnızca doğrudan client rol atamaları kontrol ediliyor");
+            using var response = await SendAsAdminAsync(HttpMethod.Get, $"{AdminUserUrl(keycloakUserId)}/role-mappings", null, ct);
+            EnsureSuccess(response, "Keycloak role mapping lookup failed");
+            var mappings = await response.Content.ReadFromJsonAsync<KeycloakRoleMappingsDto>(CaseInsensitive, ct);
+            clientRoles = mappings?.ClientMappings is { } cm && cm.TryGetValue(RealmManagementClientId, out var rm)
+                ? rm.Mappings?.Where(r => !string.IsNullOrEmpty(r?.name)).Select(r => r.name).ToList() ?? new List<string>()
+                : new List<string>();
+        }
+
+        return new KeycloakUserRolesDto(realmRoles, clientRoles);
+    }
+
+    public async Task<string> ResetPasswordAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        var generated = TemporaryPasswordGenerator.Generate();
+        var body = JsonSerializer.Serialize(new { type = "password", value = generated, temporary = true });
+
+        using var content = new StringContent(body, Encoding.UTF8, "application/json");
+        using var response = await SendAsAdminAsync(HttpMethod.Put, $"{AdminUserUrl(keycloakUserId)}/reset-password", content, ct);
+        // Gövde bilerek okunmuyor/loglanmıyor (bkz. yukarıdaki not).
+        EnsureSuccess(response, "Keycloak password reset failed");
+        return generated;
+    }
+
+    public async Task LogoutUserSessionsAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        using var response = await SendAsAdminAsync(HttpMethod.Post, $"{AdminUserUrl(keycloakUserId)}/logout", content: null, ct);
+        EnsureSuccess(response, "Keycloak session logout failed");
+    }
+
+    private async Task<IReadOnlyList<string>> GetRoleNamesAsync(string url, CancellationToken ct)
+    {
+        using var response = await SendAsAdminAsync(HttpMethod.Get, url, content: null, ct);
+        EnsureSuccess(response, "Keycloak role lookup failed");
+        var roles = await response.Content.ReadFromJsonAsync<List<KeycloakRoleDto>>(CaseInsensitive, ct) ?? new List<KeycloakRoleDto>();
+        return roles.Where(r => !string.IsNullOrEmpty(r?.name)).Select(r => r.name).ToList();
+    }
+
+    private async Task<string?> GetRealmManagementClientUuidAsync(CancellationToken ct)
+    {
+        var cacheKey = $"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}";
+        if (RealmManagementUuidCache.TryGetValue(cacheKey, out var cached))
+            return cached;
+
+        var serviceAccountId = SubjectOf(await GetKeycloakAdminTokenAsync(ct));
+        if (serviceAccountId is null)
+            return null;
+
+        using var response = await SendAsAdminAsync(HttpMethod.Get, $"{AdminUserUrl(serviceAccountId)}/role-mappings", null, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("Admin service account role mappings could not be read: {Status}", (int)response.StatusCode);
+            return null;
+        }
+
+        var mappings = await response.Content.ReadFromJsonAsync<KeycloakRoleMappingsDto>(CaseInsensitive, ct);
+        var uuid = mappings?.ClientMappings is { } cm && cm.TryGetValue(RealmManagementClientId, out var rm) ? rm.Id : null;
+        if (string.IsNullOrEmpty(uuid))
+            return null;
+        RealmManagementUuidCache[cacheKey] = uuid;
+        return uuid;
+    }
+
+    /// <summary>JWT payload'undaki <c>sub</c> (imza doğrulanmaz — token'ı Keycloak'tan biz aldık).</summary>
+    private static string? SubjectOf(string jwt)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length < 2)
+                return null;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            using var doc = JsonDocument.Parse(Convert.FromBase64String(payload));
+            return doc.RootElement.TryGetProperty("sub", out var sub) ? sub.GetString() : null;
+        }
+        catch (Exception ex) when (ex is FormatException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    private void EnsureSuccess(HttpResponseMessage response, string what)
+    {
+        if (response.IsSuccessStatusCode)
+            return;
+        _logger.LogWarning("{What}: {Status}", what, (int)response.StatusCode);
+        throw new KeycloakException($"{what}: {(int)response.StatusCode}", (int)response.StatusCode);
+    }
+
+    private string AdminUserUrl(string keycloakUserId)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new KeycloakException("Keycloak user ID cannot be null or empty.", 400);
+        return $"{_keycloakSettings.Host}/{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}";
+    }
+
+    private async Task<HttpResponseMessage> SendAsAdminAsync(HttpMethod method, string url, HttpContent? content, CancellationToken ct)
+    {
+        var adminToken = await GetKeycloakAdminTokenAsync(ct);
+        using var request = new HttpRequestMessage(method, url) { Content = content };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        return await _http.SendAsync(request, ct);
     }
 }

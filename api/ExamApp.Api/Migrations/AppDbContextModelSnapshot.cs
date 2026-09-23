@@ -70,6 +70,51 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("AdminDataAccessLogs");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.AdminUserActionLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ActorKeycloakId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("TargetId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc");
+
+                    b.HasIndex("ActorKeycloakId", "OccurredAtUtc");
+
+                    b.HasIndex("TargetType", "TargetId", "OccurredAtUtc");
+
+                    b.ToTable("AdminUserActionLogs");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.Answer", b =>
                 {
                     b.Property<int>("Id")

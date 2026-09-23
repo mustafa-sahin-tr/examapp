@@ -262,7 +262,8 @@
       "email": "Email",
       "school": "School",
       "approvalStatus": "Approval",
-      "accountStatus": "Account"
+      "accountStatus": "Account",
+      "actions": "Actions"
     },
     "approval": {
       "pending": "Pending",
@@ -291,12 +292,41 @@
       "email": "Email",
       "school": "School",
       "grade": "Grade",
-      "accountStatus": "Account"
+      "accountStatus": "Account",
+      "actions": "Actions"
     },
     "account": {
       "active": "Active",
       "inactive": "Disabled",
       "unknown": "Unknown"
+    }
+  },
+  "passwordReset": {
+    "action": "Reset password",
+    "actionFor": "Reset password for {{name}}",
+    "unnamed": "User #{{id}}",
+    "confirmTitle": "Reset password?",
+    "confirmIntro": "{{name}}'s password will be replaced with a temporary password.",
+    "confirmSessions": "All of the user's active sessions will be signed out.",
+    "confirmTemporary": "The user will have to change the password at the next sign-in.",
+    "confirm": "Reset password",
+    "retry": "Try again",
+    "submitting": "Resetting...",
+    "cancel": "Cancel",
+    "resultTitle": "Temporary password created",
+    "passwordLabel": "Temporary password",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Could not copy; select the password and copy it manually.",
+    "onceWarning": "This password will not be shown again. Copy it before closing this window and share it with the user through a secure channel.",
+    "done": "I copied it, close",
+    "errors": {
+      "forbidden": "You are not allowed to perform this action.",
+      "notFound": "User not found.",
+      "upstream": "The identity server could not be reached. Please try again later.",
+      "rateLimited": "Too many password reset requests in a short time. Please wait a moment and try again.",
+      "rateLimitedSeconds": "Too many password reset requests in a short time. Please try again in {{seconds}} seconds.",
+      "generic": "Something went wrong while resetting the password. Please try again."
     }
   }
 }

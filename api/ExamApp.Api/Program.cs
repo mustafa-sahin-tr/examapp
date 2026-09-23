@@ -255,6 +255,11 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentService,
 // issue #246: admin kişisel veri listeleri — erişim audit'i (DB) + kullanıcı (sub) başına rate limit.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminDataAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminDataAccessAuditService>();
 builder.Services.AddAdminUserListRateLimiting();
+// issue #156: admin şifre sıfırlama (geçici şifre) — audit AdminUserActionLogs'a, ayrı rate limit kovası.
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountTargetResolver, ExamApp.Api.Services.AdminUsers.AdminAccountTargetResolver>();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserActionAuditService, ExamApp.Api.Services.AdminUsers.AdminUserActionAuditService>();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminPasswordResetService, ExamApp.Api.Services.AdminUsers.AdminPasswordResetService>();
+builder.Services.AddAdminPasswordResetRateLimiting();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

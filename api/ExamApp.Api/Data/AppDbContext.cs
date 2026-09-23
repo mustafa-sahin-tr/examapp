@@ -128,6 +128,7 @@ public class AppDbContext : DbContext
     // Login denemeleri (issue #84) — BadgeService servis-to-servis yazar, admin dashboard (issue #6) okur.
     public DbSet<LoginEvent> LoginEvents { get; set; }
     public DbSet<AdminDataAccessLog> AdminDataAccessLogs { get; set; } // issue #246
+    public DbSet<AdminUserActionLog> AdminUserActionLogs { get; set; } // issue #156
 
 
 
@@ -590,6 +591,18 @@ public class AppDbContext : DbContext
         {
             e.Property(a => a.Resource).HasConversion<string>().HasMaxLength(32);
             e.HasIndex(a => new { a.ActorKeycloakId, a.OccurredAtUtc });
+            e.HasIndex(a => a.OccurredAtUtc);
+        });
+
+        // Admin hesap aksiyonu kaydı (issue #156, şifre sıfırlama). #246 ile aynı: enum'lar string; yalnızca Outcome güncellenir.
+        // Index'ler: "bu admin ne yaptı", "bu kullanıcıya ne yapıldı" ve zaman aralığı denetim sorguları.
+        modelBuilder.Entity<AdminUserActionLog>(e =>
+        {
+            e.Property(a => a.Action).HasConversion<string>().HasMaxLength(32);
+            e.Property(a => a.TargetType).HasConversion<string>().HasMaxLength(16);
+            e.Property(a => a.Outcome).HasConversion<string>().HasMaxLength(32);
+            e.HasIndex(a => new { a.ActorKeycloakId, a.OccurredAtUtc });
+            e.HasIndex(a => new { a.TargetType, a.TargetId, a.OccurredAtUtc });
             e.HasIndex(a => a.OccurredAtUtc);
         });
 

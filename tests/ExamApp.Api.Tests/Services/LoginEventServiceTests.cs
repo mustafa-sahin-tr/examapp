@@ -31,7 +31,8 @@ public class LoginEventServiceTests : IDisposable
             Success = true,
         });
 
-        result.Id.ShouldBeGreaterThan(0);
+        result.ErrorKey.ShouldBeNull();
+        result.Created!.Id.ShouldBeGreaterThan(0);
 
         await using var check = _db.NewContext();
         var row = await check.LoginEvents.SingleAsync();
@@ -42,13 +43,60 @@ public class LoginEventServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RecordAsync_persists_a_failed_login_event()
+    public async Task RecordAsync_persists_a_failed_login_event_with_null_keycloak_user_id_and_attempted_identifier()
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx).RecordAsync(new LoginEventCreateDto
+        {
+            KeycloakUserId = null,
+            AttemptedIdentifier = "  someone@test.local  ",
+            Role = "Unknown",
+            OccurredAtUtc = DateTime.UtcNow,
+            Success = false,
+        });
+
+        result.ErrorKey.ShouldBeNull();
+        await using var check = _db.NewContext();
+        var row = await check.LoginEvents.SingleAsync();
+        row.Success.ShouldBeFalse();
+        row.KeycloakUserId.ShouldBeNull();
+        row.AttemptedIdentifier.ShouldBe("someone@test.local");
+    }
+
+    // ---- Issue #100: KeycloakUserId is mandatory only for a successful login ----
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task RecordAsync_successful_login_without_keycloak_user_id_is_rejected_and_not_persisted(string? keycloakUserId)
+    {
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx).RecordAsync(new LoginEventCreateDto
+        {
+            KeycloakUserId = keycloakUserId,
+            Role = "Student",
+            OccurredAtUtc = DateTime.UtcNow,
+            Success = true,
+        });
+
+        result.Created.ShouldBeNull();
+        result.ErrorKey.ShouldBe(LoginEventService.KeycloakUserIdRequiredOnSuccessKey);
+        await using var check = _db.NewContext();
+        (await check.LoginEvents.AnyAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RecordAsync_failed_attempt_with_blank_ids_stores_nulls()
     {
         await using var ctx = _db.NewContext();
 
         await NewService(ctx).RecordAsync(new LoginEventCreateDto
         {
-            KeycloakUserId = "unknown@test.local",
+            KeycloakUserId = " ",
+            AttemptedIdentifier = "",
             Role = "Unknown",
             OccurredAtUtc = DateTime.UtcNow,
             Success = false,
@@ -56,7 +104,76 @@ public class LoginEventServiceTests : IDisposable
 
         await using var check = _db.NewContext();
         var row = await check.LoginEvents.SingleAsync();
-        row.Success.ShouldBeFalse();
+        row.KeycloakUserId.ShouldBeNull();
+        row.AttemptedIdentifier.ShouldBeNull();
+    }
+
+    // ---- Issue #100 review: messages from a pre-#100 producer still in flight during deploy ----
+
+    [Theory]
+    [InlineData("legacy@test.local", "legacy@test.local")]
+    [InlineData("unknown", null)]
+    public async Task RecordAsync_legacy_failed_attempt_moves_keycloak_user_id_into_attempted_identifier(
+        string legacyKeycloakUserId, string? expectedAttemptedIdentifier)
+    {
+        await using var ctx = _db.NewContext();
+
+        await NewService(ctx).RecordAsync(new LoginEventCreateDto
+        {
+            KeycloakUserId = legacyKeycloakUserId,
+            AttemptedIdentifier = null,
+            Role = "Unknown",
+            OccurredAtUtc = DateTime.UtcNow,
+            Success = false,
+        });
+
+        await using var check = _db.NewContext();
+        var row = await check.LoginEvents.SingleAsync();
+        row.KeycloakUserId.ShouldBeNull();
+        row.AttemptedIdentifier.ShouldBe(expectedAttemptedIdentifier);
+    }
+
+    [Fact]
+    public async Task RecordAsync_failed_attempt_with_both_fields_keeps_them_as_sent()
+    {
+        // New producer never sends both on failure, but if it does, the explicit AttemptedIdentifier wins
+        // and no legacy rewrite happens.
+        await using var ctx = _db.NewContext();
+
+        await NewService(ctx).RecordAsync(new LoginEventCreateDto
+        {
+            KeycloakUserId = "kc-sub-7",
+            AttemptedIdentifier = "typed@test.local",
+            Role = "Student",
+            OccurredAtUtc = DateTime.UtcNow,
+            Success = false,
+        });
+
+        await using var check = _db.NewContext();
+        var row = await check.LoginEvents.SingleAsync();
+        row.KeycloakUserId.ShouldBe("kc-sub-7");
+        row.AttemptedIdentifier.ShouldBe("typed@test.local");
+    }
+
+    [Fact]
+    public async Task RecordAsync_successful_login_drops_the_attempted_identifier()
+    {
+        // Data minimisation: once the identity is verified (sub present) the unverified input is not kept.
+        await using var ctx = _db.NewContext();
+
+        await NewService(ctx).RecordAsync(new LoginEventCreateDto
+        {
+            KeycloakUserId = "kc-sub-6",
+            AttemptedIdentifier = "student@test.local",
+            Role = "Student",
+            OccurredAtUtc = DateTime.UtcNow,
+            Success = true,
+        });
+
+        await using var check = _db.NewContext();
+        var row = await check.LoginEvents.SingleAsync();
+        row.KeycloakUserId.ShouldBe("kc-sub-6");
+        row.AttemptedIdentifier.ShouldBeNull();
     }
 
     [Fact]

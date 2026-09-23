@@ -63,7 +63,7 @@ and let it re-import fresh with the new dev-only secret.
 |---|---|---|
 | exam-dotnet-api | 5079 (HTTP), 8005 (HTTPS) | ana backend API |
 | ocelot-gateway | 5678 | tüm client trafiği buraya gelir |
-| auth-api | 6079 (HTTP), 9005 (HTTPS) | Keycloak yönetim |
+| auth-api | 6079 (HTTP, yalnız `127.0.0.1`, #100) | Keycloak yönetim — client trafiği gateway üzerinden |
 | exam-badge-api | 5080 (HTTP), 8006 (HTTPS) | BadgeService / event handler |
 | exam-outbox-publisher | 5081 (HTTP), 8007 (HTTPS) | outbox → RabbitMQ (worksheet DB) |
 | identity-outbox-publisher | 5082 (HTTP), 8008 (HTTPS) | outbox → RabbitMQ (identity/auth-api DB) |

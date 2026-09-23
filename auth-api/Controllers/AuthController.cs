@@ -27,6 +27,12 @@ namespace ExamApp.Api.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
+        /// <summary>
+        /// exam API'deki <c>LoginEvent.AttemptedIdentifier</c> kolonu 256 karakterle sınırlı; daha uzun bir
+        /// girdi orada 400 alıp consumer'ı dead-letter'a düşürmesin diye kırpılır (issue #100).
+        /// </summary>
+        private const int AttemptedIdentifierMaxLength = 256;
+
         protected readonly AppDbContext _context;
         private readonly KeycloakSettings _keycloakSettings;
         private readonly IKeycloakService _keycloakService;
@@ -411,12 +417,14 @@ namespace ExamApp.Api.Controllers
             catch (KeycloakException ex)
             {
                 // Login denemesi Keycloak seviyesinde reddedildi (kötü kimlik bilgisi vb.) — henüz
-                // bir sub'a erişimimiz yok, bu yüzden e-posta korelasyon anahtarı olarak kullanılır.
-                // Şifre/token event'e YAZILMAZ.
+                // bir sub'a erişimimiz yok. Issue #100: doğrulanmamış e-posta KeycloakUserId'ye
+                // YAZILMAZ (başkasının e-postası "kimlik" gibi kalıcılaşmasın); ayrı AttemptedIdentifier
+                // alanında taşınır. Şifre/token event'e YAZILMAZ.
                 await TryWriteLoginAttemptedEventAsync(
-                    keycloakUserId: request.Email,
+                    keycloakUserId: null,
                     role: "Unknown",
-                    success: false);
+                    success: false,
+                    attemptedIdentifier: NormalizeAttemptedIdentifier(request.Email));
 
                 // Issue #231: istemciye yalnızca genel mesaj; Keycloak ayrıntısı log'da kalır.
                 // Sınıflandırılmamış hatalar global handler'a (log + gövdesinde stack olmayan 500) bırakılır.
@@ -525,7 +533,7 @@ namespace ExamApp.Api.Controllers
                 // Authorization code exchange'i başarısız oldu — henüz bir sub'a erişimimiz yok
                 // (code tek kullanımlık/kısa ömürlü, kimlik belirleyici olarak taşınmaz).
                 await TryWriteLoginAttemptedEventAsync(
-                    keycloakUserId: "unknown",
+                    keycloakUserId: null,
                     role: "Unknown",
                     success: false);
 
@@ -800,15 +808,17 @@ namespace ExamApp.Api.Controllers
         /// bloklamaz/geciktirmez: aynı DbContext/transaction içinde ekleyip <c>SaveChangesAsync</c>
         /// çağırmak yeterli — asıl RabbitMQ publish'ini ayrı bir process olan
         /// <c>identity-outbox-publisher</c> yapar. Şifre/token gibi hassas veri taşınmaz; sadece
-        /// sub/role/zaman/sonuç.
+        /// sub/role/zaman/sonuç; başarısız login'de ek olarak doğrulanmamış tanımlayıcı
+        /// (<see cref="LoginAttemptedEvent.AttemptedIdentifier"/>, issue #100).
         /// </summary>
-        private async Task WriteLoginAttemptedEventAsync(string keycloakUserId, string role, bool success)
+        private async Task WriteLoginAttemptedEventAsync(string? keycloakUserId, string role, bool success, string? attemptedIdentifier)
         {
             var outboxId = Guid.NewGuid();
             var @event = new LoginAttemptedEvent
             {
                 EventId = outboxId,
                 KeycloakUserId = keycloakUserId,
+                AttemptedIdentifier = attemptedIdentifier,
                 Role = role,
                 OccurredAtUtc = DateTime.UtcNow,
                 Success = success
@@ -853,16 +863,28 @@ namespace ExamApp.Api.Controllers
         /// already succeeded (or failed) must still get that result, not an unrelated 500
         /// from the audit side-effect.
         /// </summary>
-        private async Task TryWriteLoginAttemptedEventAsync(string keycloakUserId, string role, bool success)
+        private async Task TryWriteLoginAttemptedEventAsync(string? keycloakUserId, string role, bool success, string? attemptedIdentifier = null)
         {
             try
             {
-                await WriteLoginAttemptedEventAsync(keycloakUserId, role, success);
+                await WriteLoginAttemptedEventAsync(keycloakUserId, role, success, attemptedIdentifier);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Login outbox event yazılamadı (sub={Sub}, success={Success}); login akışı bloklanmadı.", keycloakUserId, success);
             }
+        }
+
+        /// <summary>
+        /// Başarısız login'de girilen tanımlayıcıyı trim'ler ve <see cref="AttemptedIdentifierMaxLength"/>'e
+        /// kırpar. Boş girdi → null.
+        /// </summary>
+        private static string? NormalizeAttemptedIdentifier(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+            var trimmed = value.Trim();
+            return trimmed.Length <= AttemptedIdentifierMaxLength ? trimmed : trimmed[..AttemptedIdentifierMaxLength];
         }
 
         private async Task<UserProfileDto> GetUserProfile(string sub)

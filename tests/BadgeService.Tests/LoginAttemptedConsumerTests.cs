@@ -149,6 +149,66 @@ public class LoginAttemptedConsumerTests : IDisposable
         check.ProcessedLoginAttempts.Count().ShouldBe(2);
     }
 
+    // ---- Issue #100: failed attempt carries AttemptedIdentifier, not KeycloakUserId ----
+
+    private static LoginAttemptedEvent FailedAttempt(string? attemptedIdentifier = "victim@test.local") => new()
+    {
+        KeycloakUserId = null,
+        AttemptedIdentifier = attemptedIdentifier,
+        Role = "Unknown",
+        OccurredAtUtc = new DateTime(2026, 9, 8, 10, 0, 0, DateTimeKind.Utc),
+        Success = false,
+    };
+
+    [Fact]
+    public async Task Consume_maps_attempted_identifier_and_null_keycloak_user_id_into_the_post_body()
+    {
+        var http = new StubHttp().On("/api/login-events", HttpStatusCode.Created, "{}");
+
+        await NewConsumer(http).Consume(Context(FailedAttempt()));
+
+        var body = http.BodyMatching("/api/login-events");
+        body.ShouldContain("\"keycloakUserId\":null");
+        body.ShouldContain("\"attemptedIdentifier\":\"victim@test.local\"");
+        body.ShouldContain("\"success\":false");
+    }
+
+    [Fact]
+    public async Task Consume_successful_login_posts_a_null_attempted_identifier()
+    {
+        var http = new StubHttp().On("/api/login-events", HttpStatusCode.Created, "{}");
+
+        await NewConsumer(http).Consume(Context(Event()));
+
+        var body = http.BodyMatching("/api/login-events");
+        body.ShouldContain("\"attemptedIdentifier\":null");
+    }
+
+    [Fact]
+    public async Task Consume_failed_attempt_ledger_row_does_not_store_the_attempted_identifier()
+    {
+        var http = new StubHttp().On("/api/login-events", HttpStatusCode.Created, "{}");
+        var e = FailedAttempt();
+
+        await NewConsumer(http).Consume(Context(e));
+
+        await using var check = _db.NewContext();
+        var recorded = check.ProcessedLoginAttempts.Single();
+        recorded.EventId.ShouldBe(e.EventId);
+        recorded.KeycloakUserId.ShouldBe(string.Empty); // no sub yet; the e-mail (PII) is NOT kept in the ledger
+    }
+
+    [Fact]
+    public async Task Consume_failure_exception_message_does_not_leak_the_attempted_identifier()
+    {
+        var http = new StubHttp().On("/api/login-events", HttpStatusCode.BadRequest, "{}");
+
+        var ex = await Should.ThrowAsync<InvalidOperationException>(
+            () => NewConsumer(http).Consume(Context(FailedAttempt())));
+
+        ex.Message.ShouldNotContain("victim@test.local");
+    }
+
     [Fact]
     public async Task Consume_rethrows_when_exam_api_responds_with_a_server_error()
     {

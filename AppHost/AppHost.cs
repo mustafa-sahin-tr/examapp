@@ -510,6 +510,15 @@ var authApi = builder.AddProject<Projects.AuthApi>("auth-api")
     // ExamDotnetApi above.
     .WithHttpEndpoint(port: 6079, name: "http", isProxied: false)
     .WithEnvironment("Kestrel__Port", "6079")
+    // Issue #100: host process olarak koşan auth-api yalnızca loopback'i dinler (127.0.0.1 + ::1).
+    // Gateway (aynı makinede host process) ve seed/audit CLI localhost:6079 ile ulaşmaya devam eder;
+    // LAN'dan doğrudan erişilip sahte X-Forwarded-For ile IP rate limit'i delinemez. Endpoint'in
+    // targetHost'u varsayılan "localhost" ve isProxied: false olduğundan DCP araya proxy koymaz —
+    // loopback bind ile uyumlu (ListenAnyIP'deki "dead-end proxy" sorunu burada oluşmaz).
+    // DİKKAT: auth-api'ye erişen bir CONTAINER kaynağı (AddContainer/AddDockerfile) eklenirse loopback
+    // bind yüzünden erişim kopar (container host'un 127.0.0.1'ine ulaşamaz). O durumda bu satırı
+    // kaldırıp ForwardedHeaders__KnownNetworks/KnownProxies ile pinleyin.
+    .WithEnvironment("Kestrel__BindLoopbackOnly", "true")
     // Same UseHttpsRedirection()-targets-a-dead-launchSettings-port fix as
     // ExamDotnetApi above — this is literally the service (auth-api) where
     // it was actually observed (redirected to launchSettings' :7246).

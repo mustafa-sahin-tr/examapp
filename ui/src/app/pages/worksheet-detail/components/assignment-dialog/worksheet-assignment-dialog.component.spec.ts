@@ -1,3 +1,4 @@
+import { WritableSignal, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNativeDateAdapter } from '@angular/material/core';
@@ -5,9 +6,11 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 
 import {
+  StudentLookupStatus,
   WorksheetAssignmentDialogComponent,
   WorksheetAssignmentDialogData,
 } from './worksheet-assignment-dialog.component';
+import { StudentLookup } from '../../../../models/student';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALE_CODES } from '../../../../models/locale';
 import rootTr from '../../../../../../public/i18n/tr.json';
 import worksheetDetailTr from '../../../../../../public/i18n/worksheet-detail/tr.json';
@@ -26,12 +29,25 @@ const translocoTesting = TranslocoTestingModule.forRoot({
 describe('WorksheetAssignmentDialogComponent', () => {
   let dialogRef: jasmine.SpyObj<MatDialogRef<WorksheetAssignmentDialogComponent>>;
 
-  function create(overrides: Partial<WorksheetAssignmentDialogData> = {}) {
+  const ada: StudentLookup = { id: 11, userId: 21, studentNumber: '101', fullName: 'Ada', schoolName: 'Okul', gradeId: 1 };
+  let studentsSig: WritableSignal<StudentLookup[]>;
+  let statusSig: WritableSignal<StudentLookupStatus>;
+
+  type CreateOptions = Partial<Omit<WorksheetAssignmentDialogData, 'students' | 'studentsStatus'>> & {
+    students?: StudentLookup[];
+    studentsStatus?: StudentLookupStatus;
+  };
+
+  function create(options: CreateOptions = {}) {
+    const { students = [ada], studentsStatus = 'loaded', ...overrides } = options;
+    studentsSig = signal(students);
+    statusSig = signal(studentsStatus);
     const data: WorksheetAssignmentDialogData = {
       worksheetId: 7,
       scope: 'grade',
       grades: [{ id: 1, name: '5-A' }],
-      students: [{ id: 11, userId: 21, studentNumber: '101', fullName: 'Ada', schoolName: 'Okul', gradeId: 1 }],
+      students: studentsSig.asReadonly(),
+      studentsStatus: statusSig.asReadonly(),
       ...overrides,
     };
 
@@ -84,8 +100,84 @@ describe('WorksheetAssignmentDialogComponent', () => {
     expect(result.request.gradeId).toBeUndefined();
   });
 
-  it('öğrenci listesi boşsa boş durum metnini gösterir', () => {
-    const fixture = create({ isIndependentTutor: true, students: [] });
-    expect(fixture.nativeElement.querySelector('[data-testid="no-students"]')).not.toBeNull();
+  describe('boş öğrenci listesi (issue #223)', () => {
+    const q = (fixture: { nativeElement: HTMLElement }, id: string) =>
+      fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+
+    it('bağımsız öğretmende onaylı ders metnini gösterir, genel metni göstermez', () => {
+      const fixture = create({ isIndependentTutor: true, students: [] });
+
+      const independent = q(fixture, 'no-students-independent');
+      expect(independent).not.toBeNull();
+      expect(independent!.textContent).toContain(
+        'Henüz onaylı dersi olan öğrencin yok; randevu onaylanınca burada görünür.'
+      );
+      expect(q(fixture, 'no-students')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('önce sınıf seçerek');
+    });
+
+    it('okullu öğretmende genel metni gösterir, bağımsız metnini göstermez', () => {
+      const fixture = create({ scope: 'student', students: [] });
+
+      expect(q(fixture, 'no-students')).not.toBeNull();
+      expect(q(fixture, 'no-students-independent')).toBeNull();
+    });
+
+    it('bağımsız öğretmende liste doluysa boş durum göstermez', () => {
+      const fixture = create({ isIndependentTutor: true });
+
+      expect(q(fixture, 'no-students-independent')).toBeNull();
+      expect(q(fixture, 'no-students')).toBeNull();
+    });
+
+    it('liste yüklenirken boş durum yerine yükleniyor metnini gösterir', () => {
+      const fixture = create({ isIndependentTutor: true, students: [], studentsStatus: 'loading' });
+
+      expect(q(fixture, 'students-loading')).not.toBeNull();
+      expect(q(fixture, 'no-students-independent')).toBeNull();
+      expect(q(fixture, 'no-students')).toBeNull();
+    });
+
+    it('lookup hata verdiyse boş durum yerine hata metnini gösterir', () => {
+      const fixture = create({ isIndependentTutor: true, students: [], studentsStatus: 'error' });
+
+      expect(q(fixture, 'students-error')).not.toBeNull();
+      expect(q(fixture, 'no-students-independent')).toBeNull();
+    });
+
+    it('okullu öğretmende lookup hata verdiyse genel boş metni göstermez', () => {
+      const fixture = create({ scope: 'student', students: [], studentsStatus: 'error' });
+
+      expect(q(fixture, 'students-error')).not.toBeNull();
+      expect(q(fixture, 'no-students')).toBeNull();
+    });
+
+    it('yüklenmeden önce öğrenci seçici disabled, yüklenince enabled olur', () => {
+      const fixture = create({ isIndependentTutor: true, students: [], studentsStatus: 'loading' });
+      const control = fixture.componentInstance['form'].controls.studentId;
+      expect(control.disabled).toBeTrue();
+
+      statusSig.set('error');
+      fixture.detectChanges();
+      expect(control.disabled).toBeTrue();
+
+      statusSig.set('loaded');
+      fixture.detectChanges();
+      expect(control.enabled).toBeTrue();
+    });
+
+    it('yükleniyor durumunda açılan dialog, parent sinyali yüklenince canlı güncellenir', () => {
+      const fixture = create({ isIndependentTutor: true, students: [], studentsStatus: 'loading' });
+      expect(q(fixture, 'students-loading')).not.toBeNull();
+
+      studentsSig.set([ada]);
+      statusSig.set('loaded');
+      fixture.detectChanges();
+
+      expect(q(fixture, 'students-loading')).toBeNull();
+      expect(q(fixture, 'no-students-independent')).toBeNull();
+      expect(fixture.componentInstance['filteredStudents']()).toEqual([ada]);
+      expect(fixture.componentInstance['form'].controls.studentId.enabled).toBeTrue();
+    });
   });
 });

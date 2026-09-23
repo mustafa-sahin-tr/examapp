@@ -1,3 +1,4 @@
+using ExamApp.Api.Commands;
 using ExamApp.Api.Data;
 using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
@@ -9,7 +10,35 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
 
-var builder = WebApplication.CreateBuilder(args);
+// Komut modu (issue #267): `dotnet run -- audit-privileged-users [--format table|csv|json]` — salt okunur yetkili
+// hesap denetimi. Web host KURULMAZ (Kestrel/Redis/migration yok); yalnızca yapılandırma okunur, komut çalışır, çıkılır.
+// Hiçbir şey yazmadığı için seed komutlarının aksine ortam guard'ı yoktur (Production'da da çalışır).
+PrivilegedUserAuditCommand.Options? auditOptions = null;
+if (PrivilegedUserAuditCommand.IsRequested(args))
+{
+    try
+    {
+        auditOptions = PrivilegedUserAuditCommand.Parse(args);
+    }
+    catch (ArgumentException ex)
+    {
+        Console.Error.WriteLine(ex.Message);
+        return PrivilegedUserAuditCommand.ExitUsage;
+    }
+    if (auditOptions.ShowHelp)
+    {
+        Console.WriteLine(PrivilegedUserAuditCommand.Usage);
+        return PrivilegedUserAuditCommand.ExitOk;
+    }
+}
+
+// Komut arg'ları IConfiguration'a sızmasın.
+var builder = WebApplication.CreateBuilder(auditOptions is null ? args : []);
+
+if (auditOptions is not null)
+{
+    return await PrivilegedUserAuditCommand.ExecuteAsync(builder.Configuration, auditOptions);
+}
 
 builder.AddServiceDefaults();
 
@@ -199,4 +228,4 @@ app.MapControllers();
 app.MapDefaultEndpoints();
 
 app.Run();
-
+return 0;

@@ -32,7 +32,7 @@ public interface IKeycloakService
     /// <summary>Realm rolünü adına göre çözer (role-mappings API tam temsili ister). Yoksa <see cref="KeycloakException"/>.</summary>
     Task<KeycloakRoleDto> GetRealmRoleAsync(string roleName, CancellationToken ct = default);
 
-    /// <summary>Kullanıcı adı ile (exact) arar; yoksa null.</summary>
+    /// <summary>Kullanıcı adı ile (exact) arar; yoksa null. Register (#240) kayıtlı e-posta yolunda Keycloak round-trip eşitlemesi için de kullanır.</summary>
     Task<string?> FindUserIdByUsernameAsync(string username, CancellationToken ct = default);
 
     /// <summary>

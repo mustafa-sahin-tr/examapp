@@ -19,6 +19,18 @@ public enum KeycloakFailureKind
 
     /// <summary>Keycloak'a ulaşılamadı: ağ hatası, zaman aşımı, devre kesici veya 5xx — istemciye 503.</summary>
     ProviderUnavailable = 2,
+
+    /// <summary>
+    /// Keycloak kaynağı oluşturmayı çakışma ile reddetti (409 — örn. kullanıcı adı/e-posta zaten kayıtlı).
+    /// Register bunu istemciye AYIRT EDİLEMEZ şekilde (genel kabul yanıtı) yansıtır — issue #240.
+    /// </summary>
+    Conflict = 3,
+
+    /// <summary>
+    /// Keycloak girdiyi doğrulama hatasıyla reddetti (400 — parola politikası, geçersiz ad/e-posta). Register'da
+    /// yerel kurallar realm politikasıyla hizalıdır; buraya düşmek bir kaymadır (#240).
+    /// </summary>
+    Validation = 4,
 }
 
 public class KeycloakException : Exception

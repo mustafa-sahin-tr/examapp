@@ -53,3 +53,20 @@ export interface RegisterTeacherPayload {
   /** true → bağımsız özel ders öğretmeni; hesap admin onayı bekler (Pending). */
   isIndependentTutor: boolean;
 }
+
+/** POST /api/auth/register — auth-api RegisterDto. `role`: Student | Teacher | Parent (#240 allowlist). */
+export interface RegisterRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
+/**
+ * POST /api/auth/register yanıtı (auth-api RegisterResponse, #240). E-posta yeni de olsa kayıtlı da olsa aynı
+ * gövde döner; kullanıcı id'si/token içermez.
+ */
+export interface RegisterResponse {
+  message: string;
+}

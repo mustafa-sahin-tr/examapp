@@ -31,6 +31,7 @@ import {
   WorksheetAssignmentDialogComponent,
   WorksheetAssignmentDialogData,
   WorksheetAssignmentDialogResult,
+  StudentLookupStatus,
 } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { IsStudentDirective, IsTeacherDirective } from '../../shared/directives/is-student.directive';
 import {
@@ -126,6 +127,7 @@ export class WorksheetDetailComponent implements OnInit {
   gradeName = signal<string>(''); // Sınıf adı
   private grades = signal<Grade[]>([]);
   private studentLookups = signal<StudentLookup[]>([]);
+  private studentLookupStatus = signal<StudentLookupStatus>('loading');
   protected readonly isTeacher = this.authService.hasRole('Teacher');
   /** Admin (uygulama rolü ya da Keycloak realm rolü) backend'de sınıf atama kısıtından muaftır. */
   private readonly isAdmin = this.authService.hasRole('Admin') || this.authService.hasRealmRole('Admin');
@@ -584,7 +586,8 @@ export class WorksheetDetailComponent implements OnInit {
         worksheetId: this.exam.id,
         scope,
         grades: this.grades(),
-        students: this.studentLookups(),
+        students: this.studentLookups.asReadonly(),
+        studentsStatus: this.studentLookupStatus.asReadonly(),
         isIndependentTutor: this.isIndependentTutor(),
       } satisfies WorksheetAssignmentDialogData,
     });
@@ -807,12 +810,19 @@ export class WorksheetDetailComponent implements OnInit {
       return;
     }
 
+    this.studentLookupStatus.set('loading');
     this.studentService
       .getLookup()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (students) => this.studentLookups.set(students ?? []),
-        error: () => this.studentLookups.set([]),
+        next: (students) => {
+          this.studentLookups.set(students ?? []);
+          this.studentLookupStatus.set('loaded');
+        },
+        error: () => {
+          this.studentLookups.set([]);
+          this.studentLookupStatus.set('error');
+        },
       });
   }
 

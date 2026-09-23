@@ -40,8 +40,17 @@
         </mat-select>
         <mat-error>{{ t('assignDialog.studentRequired') }}</mat-error>
       </mat-form-field>
-      @if (filteredStudents().length === 0) {
-        <div class="helper-text empty" data-testid="no-students">{{ t('assignDialog.noStudents') }}</div>
+      @if (studentsStatus() === 'loading') {
+        <div class="helper-text" data-testid="students-loading">{{ t('assignDialog.studentsLoading') }}</div>
+      } @else if (studentsStatus() === 'error') {
+        <div class="helper-text empty" data-testid="students-error">{{ t('assignDialog.studentsLoadError') }}</div>
+      } @else if (filteredStudents().length === 0) {
+        @if (isIndependentTutor) {
+          <!-- Issue #223: #192 sonrası lookup yalnızca onaylı randevusu olan öğrencileri döner; boş liste hata değildir. -->
+          <div class="helper-text" data-testid="no-students-independent">{{ t('assignDialog.noStudentsIndependent') }}</div>
+        } @else {
+          <div class="helper-text empty" data-testid="no-students">{{ t('assignDialog.noStudents') }}</div>
+        }
       } @else {
         <div class="helper-text">
           {{ isIndependentTutor ? t('assignDialog.independentStudentHelper') : t('assignDialog.studentHelper') }}

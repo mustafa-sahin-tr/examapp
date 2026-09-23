@@ -18,6 +18,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
 import { jwtDecode } from 'jwt-decode';
+import { httpErrorMessage } from '../../shared/utils/http-error-message';
 
 @Component({
   selector: 'app-login',
@@ -109,9 +110,13 @@ export class LoginComponent implements OnInit {
           const role = 'Student'; //res.role; // 0 = Student, 1 = Teacher, 2 = Parent
           this.checkUserSession(role);
         },
-        error: () => {
+        error: (error: unknown) => {
           this.isLoading = false;
-          this.snackBar.open('Giriş başarısız! Lütfen bilgilerinizi kontrol edin.', 'Kapat', { duration: 3000 });
+          this.snackBar.open(
+            httpErrorMessage(error, 'Giriş başarısız! Lütfen bilgilerinizi kontrol edin.'),
+            'Kapat',
+            { duration: 3000 }
+          );
         },
       });
     }

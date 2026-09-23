@@ -147,7 +147,7 @@ public class AuthRateLimitingTests
     }
 
     [Fact]
-    public void Only_login_and_exchange_actions_carry_the_auth_attempts_policy()
+    public void Only_login_exchange_and_register_actions_carry_the_auth_attempts_policy()
     {
         var actions = typeof(AuthController)
             .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
@@ -160,6 +160,6 @@ public class AuthRateLimitingTests
             .OrderBy(n => n)
             .ToList();
 
-        limited.ShouldBe(new[] { nameof(AuthController.EchangeCode), nameof(AuthController.Login) });
+        limited.ShouldBe(new[] { nameof(AuthController.EchangeCode), nameof(AuthController.Login), nameof(AuthController.Register) });
     }
 }

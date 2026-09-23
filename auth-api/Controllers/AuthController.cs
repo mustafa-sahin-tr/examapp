@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -30,13 +31,17 @@ namespace ExamApp.Api.Controllers
         private readonly KeycloakSettings _keycloakSettings;
         private readonly IKeycloakService _keycloakService;
         private readonly ILogger<AuthController> _logger;
+        private readonly IStringLocalizer<Messages> _localizer;
 
         public AuthController(AppDbContext context,
              IOptions<KeycloakSettings> options, IHttpClientFactory factory,
              IKeycloakService keycloakService,
-             ILogger<AuthController> logger)
+             ILogger<AuthController> logger,
+             IStringLocalizer<Messages>? localizer = null)
             : base()
         {
+            // Opsiyonel: testler controller'ı `new` ile kurar (bkz. api/ExamApp.Api/Resources/README.md).
+            _localizer = localizer ?? FallbackMessageLocalizer.Instance;
             _context = context;
             _keycloakSettings = options.Value;
             _keycloakService = keycloakService;
@@ -65,6 +70,8 @@ namespace ExamApp.Api.Controllers
 
 
         [HttpPost("register")]
+        // Kayıt da kimliksiz ve Keycloak kullanıcı oluşturur — login/exchange ile aynı IP bazlı limit (#231 review).
+        [EnableRateLimiting(AuthRateLimiting.AuthAttemptsPolicy)]
         public async Task<IActionResult> Register(RegisterDto request)
         {
             var keycloakUserId = string.Empty;
@@ -200,9 +207,9 @@ namespace ExamApp.Api.Controllers
             TokenResponseDto tokenDto;
             try
             {
-                tokenDto = await _keycloakService.LoginAsync(request.Email, request.Password);
+                tokenDto = await _keycloakService.LoginAsync(request.Email, request.Password, HttpContext.RequestAborted);
             }
-            catch (KeycloakException)
+            catch (KeycloakException ex)
             {
                 // Login denemesi Keycloak seviyesinde reddedildi (kötü kimlik bilgisi vb.) — henüz
                 // bir sub'a erişimimiz yok, bu yüzden e-posta korelasyon anahtarı olarak kullanılır.
@@ -211,7 +218,15 @@ namespace ExamApp.Api.Controllers
                     keycloakUserId: request.Email,
                     role: "Unknown",
                     success: false);
-                throw; // Mevcut hata davranışı korunur (global handler / middleware).
+
+                // Issue #231: istemciye yalnızca genel mesaj; Keycloak ayrıntısı log'da kalır.
+                // Sınıflandırılmamış hatalar global handler'a (log + gövdesinde stack olmayan 500) bırakılır.
+                var failure = KeycloakTokenFailureResult(ex, "login", "auth.login.invalidCredentials");
+                if (failure is null)
+                {
+                    throw;
+                }
+                return failure;
             }
 
             var handler = new JwtSecurityTokenHandler();
@@ -258,10 +273,24 @@ namespace ExamApp.Api.Controllers
             // 1. Refresh token'ı cookie'den al
             var refreshToken = Request.Cookies["refresh_token"];
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("No refresh token provided.");
+                return Unauthorized(new { message = _localizer["auth.refresh.invalidToken"].Value });
 
             // 2. Keycloak token endpoint'ine isteği hazırla
-            var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
+            TokenResponseDto tokenData;
+            try
+            {
+                tokenData = await _keycloakService.RefreshTokenAsync(refreshToken, HttpContext.RequestAborted);
+            }
+            catch (KeycloakException ex)
+            {
+                // Süresi dolmuş/iptal edilmiş refresh token → 401, Keycloak erişilemez → 503 (#231 review).
+                var failure = KeycloakTokenFailureResult(ex, "refresh token", "auth.refresh.invalidToken");
+                if (failure is null)
+                {
+                    throw;
+                }
+                return failure;
+            }
             // 3. Yeni refresh token varsa, cookie’yi güncelle
             if (!string.IsNullOrEmpty(tokenData.RefreshToken))
             {
@@ -290,9 +319,9 @@ namespace ExamApp.Api.Controllers
             TokenResponseDto tokenDto;
             try
             {
-                tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code);
+                tokenDto = await _keycloakService.ExchangeTokenAsync(dto.Code, HttpContext.RequestAborted);
             }
-            catch (KeycloakException)
+            catch (KeycloakException ex)
             {
                 // Authorization code exchange'i başarısız oldu — henüz bir sub'a erişimimiz yok
                 // (code tek kullanımlık/kısa ömürlü, kimlik belirleyici olarak taşınmaz).
@@ -300,7 +329,13 @@ namespace ExamApp.Api.Controllers
                     keycloakUserId: "unknown",
                     role: "Unknown",
                     success: false);
-                throw; // Mevcut hata davranışı korunur.
+
+                var failure = KeycloakTokenFailureResult(ex, "code exchange", "auth.exchange.invalidCode");
+                if (failure is null)
+                {
+                    throw;
+                }
+                return failure;
             }
 
             var handler = new JwtSecurityTokenHandler();
@@ -449,7 +484,10 @@ namespace ExamApp.Api.Controllers
             }
             catch (KeycloakException ex)
             {
-                return StatusCode(StatusCodes.Status502BadGateway, $"Failed to assign role in Keycloak: {ex.Message}");
+                // Keycloak ayrıntısı (hata gövdesi, kullanıcı id) istemciye değil log'a (#231 review).
+                _logger.LogWarning(ex, "complete-profile: Keycloak rol ataması başarısız (sub={Sub}, role={Role})", sub, role);
+                return StatusCode(StatusCodes.Status502BadGateway,
+                    new { message = _localizer["auth.completeProfile.roleAssignmentFailed"].Value });
             }
 
             // This single conditional UPDATE is the real one-time guard for the *local*
@@ -547,37 +585,12 @@ namespace ExamApp.Api.Controllers
         [HttpGet("roles")]
         public async Task<IActionResult> GetRoles()
         {
-            try
-            {
-                Console.WriteLine("🔍 GetRoles endpoint called");
-
-                if (_keycloakService == null)
-                {
-                    Console.WriteLine("❌ KeycloakService is null");
-                    return StatusCode(500, "KeycloakService is not properly configured");
-                }
-
-                if (_keycloakSettings == null)
-                {
-                    Console.WriteLine("❌ KeycloakSettings is null");
-                    return StatusCode(500, "KeycloakSettings is not properly configured");
-                }
-
-                Console.WriteLine($"🔧 Keycloak Host: {_keycloakSettings.Host}");
-                Console.WriteLine($"🔧 Realm Roles URL: {_keycloakSettings.RealmRolesUrl}");
-
-                var roles = await _keycloakService.GetRealmRolesAsync();
-
-                Console.WriteLine($"✅ Found {roles?.Count ?? 0} roles");
-
-                return Ok(roles);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error in GetRoles: {ex.Message}");
-                Console.WriteLine($"❌ Stack trace: {ex.StackTrace}");
-                return StatusCode(500, $"Failed to fetch roles: {ex.Message}");
-            }
+            // Hata yolu global handler'a bırakılır (#231 review): exception log'lanır, istemciye
+            // Keycloak host/URL/mesaj içermeyen ProblemDetails gider (erişilemezse 503, diğerleri 500).
+            _logger.LogDebug("GetRoles: realm rolleri Keycloak'tan okunuyor");
+            var roles = await _keycloakService.GetRealmRolesAsync();
+            _logger.LogDebug("GetRoles: {Count} rol bulundu", roles?.Count ?? 0);
+            return Ok(roles);
         }
 
         /// <summary>
@@ -607,6 +620,29 @@ namespace ExamApp.Api.Controllers
             });
 
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Keycloak token uç noktası hatasını istemciye güvenli bir yanıta eşler (issue #231):
+        /// <c>invalid_grant</c> → 401, Keycloak erişilemez → 503; ikisi de yalnızca <c>{ message }</c>
+        /// (yerelleştirilmiş, iç ayrıntı yok). Ayrıntı log'a yazılır. Sınıflandırılmamış hata için
+        /// <c>null</c> döner — çağıran rethrow eder ve global handler 500 ProblemDetails üretir.
+        /// </summary>
+        private IActionResult? KeycloakTokenFailureResult(KeycloakException ex, string operation, string invalidGrantMessageKey)
+        {
+            switch (ex.Kind)
+            {
+                case KeycloakFailureKind.InvalidGrant:
+                    _logger.LogWarning("Keycloak {Operation} rejected: {Reason}", operation, ex.Message);
+                    return StatusCode(StatusCodes.Status401Unauthorized,
+                        new { message = _localizer[invalidGrantMessageKey].Value });
+                case KeycloakFailureKind.ProviderUnavailable:
+                    _logger.LogWarning(ex, "Keycloak {Operation} failed: identity provider unavailable", operation);
+                    return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                        new { message = _localizer["auth.login.providerUnavailable"].Value });
+                default:
+                    return null;
+            }
         }
 
         /// <summary>

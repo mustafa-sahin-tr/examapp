@@ -12,6 +12,9 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8005
+      # Issue #228: Redis parolası appsettings.json'da tutulmaz; .env'deki
+      # REDIS_PASSWORD'dan (redis servisinin --requirepass'i ile aynı) gelir.
+      - Redis__Configuration=redis:6379,password=${REDIS_PASSWORD:?REDIS_PASSWORD .env icinde tanimli olmali}
       # Jitsi self-host (issue #97). Browser talks to jitsi-web directly at
       # PublicBaseUrl, not through the container network — this is only used
       # by the API to generate the meeting URL + sign the JWT.
@@ -348,7 +351,7 @@ services:
     restart: always
     ports:
       - '6379:6379'
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD .env icinde tanimli olmali}
     networks:
       - mynetwork
 

@@ -66,8 +66,9 @@ Every service still runs on its own, exactly as before — this was verified for
 
 ```bash
 cd api/ExamApp.Api
+set -a; . ../../.env; set +a   # REDIS_PASSWORD vb. kok .env'den (cp .env.example .env)
 ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=worksheet;Username=examuser;Password=exampass" \
-Redis__Configuration="localhost:6379,password=MyStrongRedisPassword" \
+Redis__Configuration="localhost:6379,password=$REDIS_PASSWORD" \
 MinioConfig__Endpoint="localhost:9000" \
 dotnet run
 ```

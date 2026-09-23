@@ -9,10 +9,18 @@ namespace ExamApp.Api.Models.Dtos;
 /// </summary>
 public class LoginEventCreateDto
 {
-    /// <summary>Keycloak <c>sub</c> claim'i.</summary>
-    [Required]
+    /// <summary>
+    /// Keycloak <c>sub</c> claim'i. <c>Success=true</c> ise zorunlu (servis kuralı, 400); başarısız
+    /// denemede boş/null olabilir (issue #100).
+    /// </summary>
     [MaxLength(64)]
-    public string KeycloakUserId { get; set; } = string.Empty;
+    public string? KeycloakUserId { get; set; }
+
+    /// <summary>
+    /// Başarısız denemede girilen doğrulanmamış tanımlayıcı (e-posta, PII — issue #100). Opsiyonel.
+    /// </summary>
+    [MaxLength(256)]
+    public string? AttemptedIdentifier { get; set; }
 
     /// <summary>Login anındaki realm rolü (Student / Teacher / Admin ...).</summary>
     [Required]

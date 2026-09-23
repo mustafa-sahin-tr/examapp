@@ -7,7 +7,7 @@ namespace ExamApp.Api.Services.Interfaces;
 
 public interface IStudentService
 {
-    Task<List<Grade>> GetGradesAsync();
+    Task<List<GradeDto>> GetGradesAsync(CancellationToken ct = default);
 
     Task<StudentProfileDto> GetStudentProfile(int userId);
 

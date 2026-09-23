@@ -852,9 +852,13 @@ public class ExamService : IExamService
         }; return response;
     }
 
-    public async Task<List<Grade>> GetGradesAsync()
+    public async Task<List<GradeDto>> GetGradesAsync(CancellationToken ct = default)
     {
-        return await _context.Grades.ToListAsync();
+        return await _context.Grades
+            .AsNoTracking()
+            .OrderBy(g => g.Id)
+            .Select(g => new GradeDto { Id = g.Id, Name = g.Name })
+            .ToListAsync(ct);
     }
 
 }

@@ -269,9 +269,9 @@ namespace ExamApp.Api.Controllers
 
 
         [HttpGet("grades")]
-        public async Task<IActionResult> GetGradesAsync()
+        public async Task<IActionResult> GetGradesAsync(CancellationToken ct)
         {
-            var grades = await _studentService.GetGradesAsync();
+            var grades = await _studentService.GetGradesAsync(ct);
             return Ok(grades);
         }
 

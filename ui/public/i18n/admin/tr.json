@@ -328,5 +328,35 @@
       "rateLimitedSeconds": "Kısa sürede çok fazla şifre sıfırlama isteği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
       "generic": "Şifre sıfırlanırken bir sorun oluştu. Lütfen tekrar deneyin."
     }
+  },
+  "accountStatus": {
+    "disableAction": "Devre dışı bırak",
+    "disableActionFor": "{{name}} hesabını devre dışı bırak",
+    "enableAction": "Etkinleştir",
+    "enableActionFor": "{{name}} hesabını etkinleştir",
+    "disable": {
+      "confirmTitle": "Hesap devre dışı bırakılsın mı?",
+      "confirmIntro": "{{name}} kullanıcısının hesabı devre dışı bırakılacak.",
+      "confirmSessions": "Kullanıcının açık olan tüm oturumları kapatılacak.",
+      "confirmLogin": "Hesap tekrar etkinleştirilene kadar kullanıcı giriş yapamayacak.",
+      "confirm": "Devre dışı bırak"
+    },
+    "enable": {
+      "confirmTitle": "Hesap etkinleştirilsin mi?",
+      "confirmIntro": "{{name}} kullanıcısının hesabı yeniden etkinleştirilecek.",
+      "confirmLogin": "Kullanıcı mevcut şifresiyle tekrar giriş yapabilecek.",
+      "confirm": "Etkinleştir"
+    },
+    "retry": "Tekrar dene",
+    "submitting": "Kaydediliyor...",
+    "cancel": "İptal",
+    "errors": {
+      "forbidden": "Bu işlem için yetkiniz yok.",
+      "notFound": "Kullanıcı bulunamadı.",
+      "upstream": "Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla hesap durumu değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitedSeconds": "Kısa sürede çok fazla hesap durumu değişikliği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
+      "generic": "Hesap durumu değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin."
+    }
   }
 }

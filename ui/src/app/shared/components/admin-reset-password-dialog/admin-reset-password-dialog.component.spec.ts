@@ -8,7 +8,6 @@ import { Subject, of, throwError } from 'rxjs';
 import {
   AdminResetPasswordDialogComponent,
   AdminResetPasswordDialogData,
-  passwordResetErrorMessage,
 } from './admin-reset-password-dialog.component';
 import { AdminService } from '../../../services/admin.service';
 import { AdminPasswordResetResponse } from '../../../models/admin-password-reset.model';
@@ -271,34 +270,5 @@ describe('AdminResetPasswordDialogComponent (issue #156)', () => {
     expect(JSON.stringify({ ...localStorage })).not.toContain(PW);
     expect(JSON.stringify({ ...sessionStorage })).not.toContain(PW);
     expect(JSON.stringify(history.state ?? null)).not.toContain(PW);
-  });
-});
-
-describe('passwordResetErrorMessage (issue #156)', () => {
-  const text = (key: string, params?: Record<string, unknown>) => (params ? `${key}:${params['seconds']}` : key);
-
-  it('mapsStatusCodes_PreferringBackendMessage', () => {
-    expect(passwordResetErrorMessage(new HttpErrorResponse({ status: 403, error: { message: ' m ' } }), text)).toBe('m');
-    expect(passwordResetErrorMessage(new HttpErrorResponse({ status: 403, error: { message: '' } }), text)).toBe(
-      'forbidden',
-    );
-    expect(passwordResetErrorMessage(new HttpErrorResponse({ status: 404, error: 'x' }), text)).toBe('notFound');
-    expect(passwordResetErrorMessage(new HttpErrorResponse({ status: 502 }), text)).toBe('upstream');
-    expect(
-      passwordResetErrorMessage(
-        new HttpErrorResponse({ status: 429, headers: new HttpHeaders({ 'Retry-After': 'abc' }) }),
-        text,
-      ),
-    ).toBe('rateLimited');
-    expect(
-      passwordResetErrorMessage(
-        new HttpErrorResponse({ status: 429, headers: new HttpHeaders({ 'Retry-After': '5' }) }),
-        text,
-      ),
-    ).toBe('rateLimitedSeconds:5');
-    expect(passwordResetErrorMessage(new HttpErrorResponse({ status: 0 }), text)).toBe('generic');
-    expect(passwordResetErrorMessage(new HttpErrorResponse({ status: 400, error: { message: 'm' } }), text)).toBe(
-      'generic',
-    );
   });
 });

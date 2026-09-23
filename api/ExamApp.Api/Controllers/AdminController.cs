@@ -42,11 +42,12 @@ public class AdminController : BaseController
     private readonly IAdminStudentService _adminStudents;
     private readonly IAdminDataAccessAuditService _dataAccessAudit;
     private readonly IAdminPasswordResetService _passwordReset;
+    private readonly IAdminAccountStatusService _accountStatus;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IStringLocalizer<Messages>? localizer = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -59,6 +60,7 @@ public class AdminController : BaseController
         _adminStudents = adminStudents;
         _dataAccessAudit = dataAccessAudit;
         _passwordReset = passwordReset;
+        _accountStatus = accountStatus;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -298,6 +300,56 @@ public class AdminController : BaseController
             AdminPasswordResetStatus.SessionRevokeFailed =>
                 StatusCode(StatusCodes.Status502BadGateway, Message("admin.passwordReset.sessionRevokeFailed")),
             _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.passwordReset.upstreamFailed"))
+        };
+    }
+
+    // ---- Hesap durumu: devre dışı bırak / etkinleştir (issue #155) ----
+
+    /// <summary>
+    /// PATCH api/admin/teachers/{id}/account-status, gövde <c>{ "enabled": bool }</c> → öğretmenin (Teacher.Id) Keycloak
+    /// hesabını etkinleştirir / devre dışı bırakır; devre dışı bırakmada tüm oturumlarını da kapatır. Yanıt
+    /// <c>200 { "enabled": bool }</c>; zaten istenen durumdaysa da 200 (idempotent). Hedef admin/servis hesabı ya da
+    /// çağıranın kendisi → 403; kayıt/hesap yok → 404; auth-api/Keycloak hatası → 502 (hesap kapanıp oturumlar
+    /// kapatılamadıysa ayrı mesajla 502). Admin başına rate limit (429).
+    /// </summary>
+    [HttpPatch("teachers/{id:int}/account-status")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminAccountStatusRateLimiting.Policy)]
+    public Task<IActionResult> SetTeacherAccountStatus(int id, [FromBody] AdminAccountStatusRequestDto request, CancellationToken ct)
+        => SetAccountStatusAsync(AdminUserTargetType.Teacher, id, request, ct);
+
+    /// <summary>PATCH api/admin/students/{id}/account-status → <see cref="SetTeacherAccountStatus"/> ile aynı sözleşme (Student.Id).</summary>
+    [HttpPatch("students/{id:int}/account-status")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminAccountStatusRateLimiting.Policy)]
+    public Task<IActionResult> SetStudentAccountStatus(int id, [FromBody] AdminAccountStatusRequestDto request, CancellationToken ct)
+        => SetAccountStatusAsync(AdminUserTargetType.Student, id, request, ct);
+
+    private async Task<IActionResult> SetAccountStatusAsync(
+        AdminUserTargetType targetType, int id, AdminAccountStatusRequestDto request, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+        if (request?.Enabled is not bool enabled)
+            return BadRequest(Message("admin.accountStatus.enabledRequired"));
+
+        var result = await _accountStatus.SetEnabledAsync(targetType, id, enabled, actor, ct);
+        return result.Status switch
+        {
+            AdminAccountStatusChangeStatus.Success =>
+                Ok(new AdminAccountStatusResponseDto { Enabled = result.Enabled ?? enabled }),
+            AdminAccountStatusChangeStatus.TargetNotFound => NotFound(Message(targetType == AdminUserTargetType.Teacher
+                ? "admin.accountStatus.teacherNotFound"
+                : "admin.accountStatus.studentNotFound")),
+            AdminAccountStatusChangeStatus.AccountNotFound => NotFound(Message("admin.accountStatus.accountNotFound")),
+            AdminAccountStatusChangeStatus.ForbiddenSelf =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.accountStatus.self")),
+            AdminAccountStatusChangeStatus.ForbiddenProtectedRole =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.accountStatus.protectedRole")),
+            AdminAccountStatusChangeStatus.SessionRevokeFailed =>
+                StatusCode(StatusCodes.Status502BadGateway, Message("admin.accountStatus.sessionRevokeFailed")),
+            _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.accountStatus.upstreamFailed"))
         };
     }
 

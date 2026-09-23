@@ -223,3 +223,39 @@ describe('AdminService.resetPassword (issue #156)', () => {
     expect(Object.values(service as object).some((v) => typeof v === 'string' && v.includes('Sekret'))).toBeFalse();
   });
 });
+
+describe('AdminService.setAccountStatus (issue #155)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('setAccountStatus_Teacher_PatchesAccountStatusWithEnabledBody', () => {
+    let result: { enabled: boolean } | undefined;
+    service.setAccountStatus('teacher', 12, false).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne('/api/exam/admin/teachers/12/account-status');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ enabled: false });
+    req.flush({ enabled: false });
+
+    expect(result).toEqual({ enabled: false });
+  });
+
+  it('setAccountStatus_Student_UsesStudentSegment', () => {
+    service.setAccountStatus('student', 7, true).subscribe();
+
+    const req = httpMock.expectOne('/api/exam/admin/students/7/account-status');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body).toEqual({ enabled: true });
+    req.flush({ enabled: true });
+  });
+});

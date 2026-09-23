@@ -9,6 +9,7 @@ import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@js
 import { Subscription, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { AdminPasswordResetTarget } from '../../../models/admin-password-reset.model';
+import { adminActionErrorMessage } from '../../utils/admin-action-error.util';
 
 /** Yönetim ekranlarının ortak Transloco scope'u (`public/i18n/admin/<lang>.json`). */
 const ADMIN_SCOPE = 'admin';
@@ -23,14 +24,6 @@ export interface AdminResetPasswordDialogData {
 }
 
 type Phase = 'confirm' | 'submitting' | 'done';
-
-export type PasswordResetErrorKey =
-  | 'forbidden'
-  | 'notFound'
-  | 'upstream'
-  | 'rateLimited'
-  | 'rateLimitedSeconds'
-  | 'generic';
 
 /**
  * Issue #156 — Admin şifre sıfırlama: onay → istek → geçici şifrenin tek seferlik gösterimi.
@@ -93,7 +86,13 @@ export class AdminResetPasswordDialogComponent {
         this.phase.set('done');
       },
       error: (err: HttpErrorResponse) =>
-        this.fail(passwordResetErrorMessage(err, (key, params) => this.text(`errors.${key}`, params))),
+        this.fail(
+          adminActionErrorMessage(
+            err,
+            `${TEXT_PREFIX}.errors`,
+            (key, params) => this.transloco.translate<string>(key, params) ?? '',
+          ),
+        ),
     });
   }
 
@@ -124,42 +123,6 @@ export class AdminResetPasswordDialogComponent {
   private text(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${TEXT_PREFIX}.${key}`, params) ?? '';
   }
-}
-
-/**
- * Şifre sıfırlama hatalarının yorumu. Backend 403/404/502'de yerelleştirilmiş `{ message }` döner — varsa o
- * gösterilir; gövdesiz 403 (admin değil) → yetki metni. 429'un gövdesi düz metindir; kullanıcı dostu metin
- * gösterilir (`Retry-After` saniye ise süre eklenir). 500 ve ağ hataları → genel metin.
- */
-export function passwordResetErrorMessage(
-  err: HttpErrorResponse,
-  text: (key: PasswordResetErrorKey, params?: Record<string, unknown>) => string,
-): string {
-  switch (err.status) {
-    case 403:
-      return bodyMessage(err) ?? text('forbidden');
-    case 404:
-      return bodyMessage(err) ?? text('notFound');
-    case 502:
-      return bodyMessage(err) ?? text('upstream');
-    case 429: {
-      const seconds = Number.parseInt(err.headers?.get('Retry-After') ?? '', 10);
-      return Number.isFinite(seconds) && seconds > 0
-        ? text('rateLimitedSeconds', { seconds })
-        : text('rateLimited');
-    }
-    default:
-      return text('generic');
-  }
-}
-
-function bodyMessage(err: HttpErrorResponse): string | null {
-  const body: unknown = err.error;
-  if (body && typeof body === 'object' && 'message' in body) {
-    const message = (body as { message: unknown }).message;
-    if (typeof message === 'string' && message.trim()) return message.trim();
-  }
-  return null;
 }
 
 /**

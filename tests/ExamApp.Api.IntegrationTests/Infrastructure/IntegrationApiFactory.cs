@@ -58,6 +58,9 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         // issue #156: şifre sıfırlama rate limit'i — 429 testi zamanlamadan bağımsız olsun.
         Environment.SetEnvironmentVariable("RateLimiting__AdminPasswordReset__PermitLimit", "5");
         Environment.SetEnvironmentVariable("RateLimiting__AdminPasswordReset__WindowSeconds", "3600");
+        // issue #155: hesap durumu rate limit'i — aynı gerekçe.
+        Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__PermitLimit", "5");
+        Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__WindowSeconds", "3600");
     }
 
     public override async ValueTask DisposeAsync()
@@ -81,7 +84,8 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
             services.RemoveAll<ExamApp.Api.Services.Interfaces.IAuthApiClient>();
             services.AddScoped<ExamApp.Api.Services.Interfaces.IAuthApiClient>(sp => new FakeUserDirectoryAuthApiClient(
                 ActivatorUtilities.CreateInstance<ExamApp.Api.Services.AuthApiClient>(sp),
-                sp.GetRequiredService<FakeUserDirectory>()));
+                sp.GetRequiredService<FakeUserDirectory>(),
+                sp.GetRequiredService<FakeKeycloakAccounts>()));
 
             // issue #156: şifre sıfırlama uçları kayıtlı sahte Keycloak hesapları üzerinden uçtan uca çalışır;
             // diğer tüm IKeycloakService çağrıları gerçek servise gider (davranış değişmez).

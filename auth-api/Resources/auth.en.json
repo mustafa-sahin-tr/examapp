@@ -1,5 +1,8 @@
 {
   "auth": {
+    "usersLookup": {
+      "accountStatusTooManyIds": "Account status can be requested for at most {0} users."
+    },
     "login": {
       "invalidCredentials": "Invalid email or password.",
       "providerUnavailable": "The sign-in service is currently unavailable, please try again later."

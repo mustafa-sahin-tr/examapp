@@ -134,6 +134,13 @@ export const routes: Routes = [
           import('./pages/admin/teacher-approvals/teacher-approvals.component').then((m) => m.TeacherApprovalsComponent),
       },
       {
+        // Issue #152: öğretmen listesi (server-side sayfalama + okul filtresi).
+        path: 'admin/teachers',
+        canActivate: [authGuard, adminGuard],
+        loadComponent: () =>
+          import('./pages/admin/admin-teachers/admin-teachers.component').then((m) => m.AdminTeachersComponent),
+      },
+      {
         // Issue #63: "Soru Çöz" pratik akışı (kapsam seç → tek tek rastgele soru → anlık geri bildirim).
         path: 'practice',
         canActivate: [authGuard, studentGuard],

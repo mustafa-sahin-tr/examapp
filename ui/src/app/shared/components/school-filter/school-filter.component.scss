@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.school-filter {
+  width: 100%;
+  min-width: 240px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.school-filter__error {
+  color: var(--ms-danger-text-medium);
+}

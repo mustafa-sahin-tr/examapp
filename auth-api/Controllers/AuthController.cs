@@ -162,6 +162,12 @@ namespace ExamApp.Api.Controllers
             }
 
             var distinctIds = request.UserIds.Distinct().ToList();
+            if (request.IncludeAccountStatus && distinctIds.Count > MaxAccountStatusLookupIds)
+            {
+                // Hesap durumu Keycloak'a kullanıcı başı GET demek; sayfalı admin listeleri (≤ 100) dışında izin verme.
+                return BadRequest(new { message = _localizer["auth.usersLookup.accountStatusTooManyIds", MaxAccountStatusLookupIds].Value });
+            }
+
             var users = await _context.Users
                 .Where(u => !u.IsDeleted && distinctIds.Contains(u.Id))
                 .Select(u => new UserLookupResponse
@@ -175,7 +181,57 @@ namespace ExamApp.Api.Controllers
                 })
                 .ToListAsync();
 
+            if (request.IncludeAccountStatus && users.Count > 0)
+            {
+                await FillAccountStatusAsync(users);
+            }
+
             return Ok(users);
+        }
+
+        /// <summary>
+        /// Issue #152: Keycloak <c>enabled</c> okumasının üst süre sınırı. Exam API → auth-api çağrısı ServiceDefaults'un
+        /// 10 sn attempt timeout'una tabi; bütçe bunun altında kalmalı ki yavaş Keycloak lookup'ın tamamını düşürmesin.
+        /// </summary>
+        private static readonly TimeSpan AccountStatusBudget = TimeSpan.FromSeconds(5);
+
+        /// <summary>Issue #152 review: <c>IncludeAccountStatus=true</c> iken en fazla bu kadar (tekil) id.</summary>
+        internal const int MaxAccountStatusLookupIds = 100;
+
+        /// <summary>
+        /// Fail-soft: Keycloak erişilemez/yapılandırılmamış ya da bütçe dolduysa okunamayan kullanıcıların
+        /// <c>Enabled</c> alanı null kalır; lookup yine 200 döner (ad/e-posta auth DB'den gelir).
+        /// </summary>
+        private async Task FillAccountStatusAsync(List<UserLookupResponse> users)
+        {
+            var requestAborted = HttpContext?.RequestAborted ?? CancellationToken.None;
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(requestAborted);
+            budget.CancelAfter(AccountStatusBudget);
+
+            try
+            {
+                var keycloakIds = users.Select(u => u.KeycloakId).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+                var statuses = await _keycloakService.GetUsersEnabledAsync(keycloakIds, budget.Token);
+                foreach (var user in users)
+                {
+                    if (!string.IsNullOrWhiteSpace(user.KeycloakId) && statuses.TryGetValue(user.KeycloakId, out var enabled))
+                    {
+                        user.Enabled = enabled;
+                    }
+                }
+
+                var unknown = users.Count(u => u.Enabled is null);
+                if (unknown > 0)
+                {
+                    _logger.LogWarning("[users/lookup] {Unknown}/{Total} kullanıcının Keycloak hesap durumu okunamadı; Enabled=null döndü.",
+                        unknown, users.Count);
+                }
+            }
+            catch (Exception ex) when (ex is KeycloakException or HttpRequestException or Polly.ExecutionRejectedException
+                                       || (ex is OperationCanceledException && !requestAborted.IsCancellationRequested))
+            {
+                _logger.LogWarning(ex, "[users/lookup] Keycloak hesap durumu okunamadı; {Count} kullanıcı için Enabled=null.", users.Count);
+            }
         }
 
 

@@ -76,7 +76,17 @@ public class AuthApiClient : IAuthApiClient
     /// Lookup HTTP çağrısının kendisi başarısız olursa eskisi gibi <see cref="HttpRequestException"/> fırlatır
     /// (çağıran yerler bunu zaten yakalıyor); 401/403'te önce teşhis uyarısı loglanır.
     /// </summary>
-    public async Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+    public Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+        => LookupUsersAsync(userIds, includeAccountStatus: false, ct);
+
+    /// <summary>
+    /// Issue #152: aynı <c>users/lookup</c> çağrısı, <c>IncludeAccountStatus=true</c> ile — auth-api Keycloak <c>enabled</c>
+    /// bayrağını da döner (Keycloak okunamazsa o kullanıcı için null). Hata/fail-soft davranışı <see cref="GetUsersByIdsAsync"/> ile aynı.
+    /// </summary>
+    public Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+        => LookupUsersAsync(userIds, includeAccountStatus: true, ct);
+
+    private async Task<IReadOnlyList<UserLookupResultDto>> LookupUsersAsync(IEnumerable<int> userIds, bool includeAccountStatus, CancellationToken ct)
     {
         if (userIds == null)
         {
@@ -108,7 +118,9 @@ public class AuthApiClient : IAuthApiClient
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/auth/users/lookup")
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(new { UserIds = distinctIds }),
+                JsonSerializer.Serialize(includeAccountStatus
+                    ? new { UserIds = distinctIds, IncludeAccountStatus = true }
+                    : (object)new { UserIds = distinctIds }),
                 Encoding.UTF8,
                 "application/json")
         };

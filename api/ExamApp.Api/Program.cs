@@ -228,6 +228,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.Locations.ILocationService, Exam
 builder.Services.AddScoped<ExamApp.Api.Services.Classifier.IClassifierCacheService, ExamApp.Api.Services.Classifier.ClassifierCacheService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Dashboard.IDashboardService, ExamApp.Api.Services.Dashboard.DashboardService>();
 builder.Services.AddScoped<ExamApp.Api.Services.TeacherApprovals.ITeacherApprovalService, ExamApp.Api.Services.TeacherApprovals.TeacherApprovalService>();
+// Admin kullanıcı listeleri (issue #152 öğretmen; #153 öğrenci aynı IAdminUserDirectory'yi kullanır)
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserDirectory, ExamApp.Api.Services.AdminUsers.AdminUserDirectory>();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherService, ExamApp.Api.Services.AdminUsers.AdminTeacherService>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

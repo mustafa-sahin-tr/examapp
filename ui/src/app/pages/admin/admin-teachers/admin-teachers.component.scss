@@ -1,0 +1,154 @@
+:host {
+  display: block;
+  font-family: var(--paragraphFontFamily);
+  color: var(--ms-text);
+}
+
+.at {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 20px 24px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+// ── Başlık (admin-home / admin-dashboard ile aynı görsel dil) ───────────────
+.at__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.at__title {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  mat-icon {
+    color: var(--primaryColor);
+    margin-top: 2px;
+  }
+
+  h1 {
+    margin: 0 0 0.25rem;
+    font-family: var(--mainFontFamily);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--heading-on-dark);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--ms-text-medium);
+  }
+}
+
+.at__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.at__filter {
+  width: 280px;
+  max-width: 100%;
+}
+
+// ── Durumlar ────────────────────────────────────────────────────────────────
+.at__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--ms-text-medium);
+
+  small {
+    color: var(--ms-text-weak);
+  }
+
+  &--error {
+    color: var(--ms-danger-text-medium);
+  }
+}
+
+.at__empty-icon {
+  font-size: 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--ms-text-weak);
+}
+
+// ── Tablo ───────────────────────────────────────────────────────────────────
+.at__table-wrap {
+  position: relative;
+  overflow-x: auto;
+  border-radius: 10px;
+}
+
+.at__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
+.at__table {
+  width: 100%;
+  background: var(--main-foreground-color);
+  transition: opacity 0.15s ease;
+
+  &--stale {
+    opacity: 0.6;
+  }
+}
+
+.at__muted {
+  color: var(--ms-text-weak);
+  font-style: italic;
+}
+
+.at__chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--ms-text-medium);
+  background: var(--ms-surface-weak);
+
+  &--approved,
+  &--active {
+    color: var(--ms-success-text);
+    background: var(--ms-success-surface-weak);
+    border-color: var(--ms-success-border);
+  }
+
+  &--pending {
+    color: var(--ms-warning-text);
+    background: var(--ms-warning-surface-weak);
+    border-color: var(--ms-warning-border);
+  }
+
+  &--rejected,
+  &--inactive {
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface-weak);
+    border-color: var(--ms-danger-border);
+  }
+}
+
+.at__paginator {
+  background: transparent;
+}

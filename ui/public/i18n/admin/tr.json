@@ -55,43 +55,35 @@
     "gradeFilter": {
       "label": "Sınıf",
       "aria": "Sınıf filtresi",
-      "all": "Tüm Sınıflar",
-      "unassigned": "Sınıf atanmamış"
+      "selectGradeTitle": "Devam etmek için bir sınıf seç.",
+      "selectGradeHint": "Dersler ve konular seçtiğin sınıfa göre listelenir"
     },
     "subjects": {
       "title": "Dersler",
       "newPlaceholder": "Yeni ders",
       "add": "Ders ekle",
       "gradeChipsAria": "Bağlı sınıflar",
-      "unassignedChip": "Sınıf atanmamış",
       "topicCount": "{{count}} konu",
       "manageGrades": "Sınıfları Yönet",
       "edit": "Dersi düzenle",
       "delete": "Dersi sil",
       "nameAria": "Ders adı",
-      "emptyUnassignedTitle": "Sınıf atanmamış ders yok",
-      "emptyUnassignedHint": "Tüm dersler en az bir sınıfa bağlı",
       "emptyGradeTitle": "Bu sınıfa bağlı ders yok",
-      "emptyGradeHint": "Bir dersin \"Sınıfları Yönet\" aksiyonundan bu sınıfı ekleyebilirsin",
-      "emptyLinkedTitle": "Sınıfa bağlı ders yok",
-      "emptyLinkedHint": "\"Sınıf atanmamış\" filtresinden derslere sınıf ata",
-      "emptyTitle": "Henüz ders eklenmemiş",
-      "emptyHint": "Yukarıdaki alandan ilk dersi ekle"
+      "emptyGradeHint": "Yukarıdaki alandan bu sınıfa ders ekle ya da başka bir sınıftaki dersin \"Sınıfları Yönet\" aksiyonundan bu sınıfı bağla"
     },
     "topics": {
       "title": "Konular",
       "newPlaceholder": "Yeni konu",
-      "gradePlaceholder": "Sınıf",
       "add": "Konu ekle",
       "subTopicCount": "{{count}} alt",
       "edit": "Konuyu düzenle",
       "delete": "Konuyu sil",
       "nameAria": "Konu adı",
-      "emptyTitle": "Bu derste henüz konu yok",
-      "emptyHint": "Konu adı ve sınıf seçip ekle",
+      "emptyTitle": "Bu dersin bu sınıfta henüz konusu yok",
+      "emptyHint": "Yukarıdaki alandan bu sınıfa ilk konuyu ekle",
       "noSubjectTitle": "Önce bir ders seç",
       "noSubjectHint": "Seçilen dersin konuları burada listelenir",
-      "nameAndGradeRequired": "Konu adı ve sınıf gerekli"
+      "nameRequired": "Konu adı gerekli"
     },
     "subTopics": {
       "title": "Alt Konular",
@@ -121,6 +113,7 @@
     },
     "messages": {
       "taxonomyLoadFailed": "Taksonomi yüklenemedi",
+      "gradesLoadFailed": "Sınıflar yüklenemedi",
       "actionFailed": "İşlem başarısız",
       "close": "Kapat"
     }

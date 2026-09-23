@@ -5,7 +5,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -18,7 +17,8 @@ import {
 } from '@jsverse/transloco';
 import { firstValueFrom, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
-import { ApiResult, TaxonomyFilter, TaxonomySubject, TaxonomyTopic } from '../../../models/taxonomy';
+import { GradesService } from '../../../services/grades.service';
+import { ApiResult, TaxonomyGrade, TaxonomySubject, TaxonomyTopic } from '../../../models/taxonomy';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -29,8 +29,6 @@ import {
 } from './manage-subject-grades-dialog/manage-subject-grades-dialog.component';
 
 type Level = 'subject' | 'topic' | 'subtopic';
-/** Sınıf filtresi: 'all' → en az bir sınıfa bağlı dersler, 'unassigned' → sınıfsız dersler, number → o sınıfa bağlı dersler. */
-export type GradeFilter = number | 'all' | 'unassigned';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -47,7 +45,6 @@ const ADMIN_SCOPE = 'admin';
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     MatProgressBarModule,
     MatButtonToggleModule,
     MatDialogModule,
@@ -59,6 +56,7 @@ const ADMIN_SCOPE = 'admin';
 })
 export class TaxonomyManagerComponent implements OnInit {
   private readonly admin = inject(AdminService);
+  private readonly gradesService = inject(GradesService);
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
@@ -67,23 +65,26 @@ export class TaxonomyManagerComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly busy = signal(false);
   readonly subjects = signal<TaxonomySubject[]>([]);
-  readonly grades = signal<{ id: number; name: string }[]>([]);
+  /** Tek kaynak: `GradesService.getGrades()` (ilk açılış); ağaç yanıtındaki `grades` kullanılmaz. */
+  readonly grades = signal<TaxonomyGrade[]>([]);
 
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
 
-  /** Issue #119: Sınıf filtresi. Backend sadece gradeId/unassigned filtreler; 'all' için sınıfsız dersler istemcide gizlenir. */
-  readonly selectedGradeFilter = signal<GradeFilter>('all');
-  readonly visibleSubjects = computed(() =>
-    this.selectedGradeFilter() === 'all'
-      ? this.subjects().filter((s) => s.gradeIds.length > 0)
-      : this.subjects()
-  );
+  /**
+   * Issue #151: Sınıf filtresi her zaman belirli bir sınıftır ("Tüm Sınıflar"/"Sınıf atanmamış" yok).
+   * `null` yalnızca ilk açılışta, admin henüz sınıf seçmemişken olur; seçimden sonra geri dönülemez.
+   */
+  readonly selectedGradeFilter = signal<number | null>(null);
 
   readonly selectedSubject = computed(
-    () => this.visibleSubjects().find((s) => s.id === this.selectedSubjectId()) ?? null
+    () => this.subjects().find((s) => s.id === this.selectedSubjectId()) ?? null
   );
-  readonly topics = computed(() => this.selectedSubject()?.topics ?? []);
+  /** Backend `gradeId` yalnız dersleri filtreler; konular seçili sınıfa göre istemcide süzülür. */
+  readonly topics = computed(() => {
+    const subject = this.selectedSubject();
+    return subject ? this.gradeTopics(subject) : [];
+  });
   readonly selectedTopic = computed(
     () => this.topics().find((t) => t.id === this.selectedTopicId()) ?? null
   );
@@ -92,41 +93,69 @@ export class TaxonomyManagerComponent implements OnInit {
   // inline add fields
   newSubjectName = '';
   newTopicName = '';
-  newTopicGradeId: number | null = null;
   newSubTopicName = '';
 
   // inline edit state
   editing = signal<{ level: Level; id: number } | null>(null);
   editName = '';
-  editGradeId: number | null = null;
 
   constructor() {
     this.preloadScope();
   }
 
   ngOnInit(): void {
-    this.load();
+    this.loadGrades();
+  }
+
+  /** İlk açılışta yalnız sınıf listesi yüklenir (Issue #151): sınıf seçilmeden ders/konu ağacı istenmez. */
+  loadGrades(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.gradesService.getGrades().subscribe({
+      next: (grades) => {
+        this.grades.set(
+          grades.map((g) => ({ id: g.id, name: g.name })).sort((a, b) => a.id - b.id)
+        );
+        this.loading.set(false);
+      },
+      error: () => {
+        this.error.set(this.text('messages.gradesLoadFailed'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  /** Hata kutusundaki "Tekrar dene": sınıf seçilmediyse sınıf listesini, seçildiyse ağacı yeniden ister. */
+  retry(): void {
+    if (this.selectedGradeFilter() == null) this.loadGrades();
+    else this.load();
   }
 
   /**
-   * @param autoSelectFirst seçim geçersizse ilk dersi otomatik seç (ilk yükleme / CRUD sonrası).
+   * Seçili sınıfın ders/konu ağacını yükler; sınıf seçili değilse istek atmaz.
+   * @param autoSelectFirst seçim geçersizse ilk dersi otomatik seç (CRUD sonrası).
    * Filtre değişiminde `false` verilir: issue AC gereği alt seçimler sıfır kalır.
    */
   load(autoSelectFirst = true): void {
+    const gradeId = this.selectedGradeFilter();
+    if (gradeId == null) return;
     this.loading.set(true);
     this.error.set(null);
-    this.admin.getTaxonomy(this.filterParams()).subscribe({
+    this.admin.getTaxonomy({ gradeId }).subscribe({
       next: (tree) => {
         this.subjects.set(tree.subjects);
-        this.grades.set(tree.grades);
         // keep selections if still valid
-        if (!this.visibleSubjects().some((s) => s.id === this.selectedSubjectId())) {
-          this.selectedSubjectId.set(autoSelectFirst ? (this.visibleSubjects()[0]?.id ?? null) : null);
+        if (!this.subjects().some((s) => s.id === this.selectedSubjectId())) {
+          this.selectedSubjectId.set(autoSelectFirst ? (this.subjects()[0]?.id ?? null) : null);
           this.selectedTopicId.set(null);
         }
         this.loading.set(false);
       },
       error: () => {
+        // Eski sınıfın dersleri ekranda kalırsa yanlış gradeId ile konu yazılabilir.
+        this.subjects.set([]);
+        this.selectedSubjectId.set(null);
+        this.selectedTopicId.set(null);
         this.error.set(this.text('messages.taxonomyLoadFailed'));
         this.snack.open(this.text('messages.taxonomyLoadFailed'), this.close, { duration: 4000 });
         this.loading.set(false);
@@ -149,52 +178,31 @@ export class TaxonomyManagerComponent implements OnInit {
     return this.grades().find((g) => g.id === id)?.name ?? `#${id}`;
   }
 
-  // ---- grade filter (Issue #119) ----
+  // ---- grade filter (Issue #119, #151) ----
 
-  setGradeFilter(filter: GradeFilter | null | undefined): void {
-    if (filter == null || filter === this.selectedGradeFilter()) return;
-    this.selectedGradeFilter.set(filter);
-    // AC: filtre değişince Ders → Konu → Alt Konu seçimleri sıfırlanır
+  setGradeFilter(gradeId: number | null | undefined): void {
+    if (gradeId == null || gradeId === this.selectedGradeFilter()) return;
+    this.selectedGradeFilter.set(gradeId);
+    // AC: filtre değişince Ders → Konu → Alt Konu seçimleri ve eski sınıfın verisi hemen temizlenir;
+    // yanıt gelene kadar önceki sınıfın dersine yeni sınıfın gradeId'siyle konu yazılamaz.
+    this.subjects.set([]);
     this.selectedSubjectId.set(null);
     this.selectedTopicId.set(null);
+    this.newTopicName = '';
+    this.newSubTopicName = '';
     this.cancelEdit();
     this.load(false);
   }
 
-  private filterParams(): TaxonomyFilter | undefined {
-    const f = this.selectedGradeFilter();
-    if (f === 'unassigned') return { unassigned: true };
-    if (typeof f === 'number') return { gradeId: f };
-    return undefined;
+  /** Dersin yalnız seçili sınıfa ait konuları. */
+  gradeTopics(s: TaxonomySubject): TaxonomyTopic[] {
+    const gradeId = this.selectedGradeFilter();
+    return gradeId == null ? [] : s.topics.filter((t) => t.gradeId === gradeId);
   }
 
   /** Dersin bağlı olduğu sınıfların adları (chip listesi için). */
   subjectGradeNames(s: TaxonomySubject): string[] {
     return s.gradeIds.map((id) => this.gradeName(id));
-  }
-
-  /** Filtreye göre boş liste başlığı / ipucu. */
-  subjectsEmptyText(): { title: string; hint: string } {
-    const f = this.selectedGradeFilter();
-    if (f === 'unassigned') {
-      return {
-        title: this.text('subjects.emptyUnassignedTitle'),
-        hint: this.text('subjects.emptyUnassignedHint'),
-      };
-    }
-    if (typeof f === 'number') {
-      return {
-        title: this.text('subjects.emptyGradeTitle'),
-        hint: this.text('subjects.emptyGradeHint'),
-      };
-    }
-    if (this.subjects().length > 0) {
-      return {
-        title: this.text('subjects.emptyLinkedTitle'),
-        hint: this.text('subjects.emptyLinkedHint'),
-      };
-    }
-    return { title: this.text('subjects.emptyTitle'), hint: this.text('subjects.emptyHint') };
   }
 
   /** Scope'a göreli anahtarı senkron çözer; sözlük şablon render edilirken yüklenmiş olur. */
@@ -230,21 +238,24 @@ export class TaxonomyManagerComponent implements OnInit {
 
   async addSubject(): Promise<void> {
     const name = this.newSubjectName.trim();
-    if (!name) return;
-    await this.run(() => firstValueFrom(this.admin.createSubject({ name })));
+    const gradeId = this.selectedGradeFilter();
+    if (!name || gradeId == null) return;
+    // "Sınıf atanmamış" filtresi kalktığı için yeni ders seçili sınıfa bağlı oluşturulur; aksi halde listede görünmez.
+    await this.run(() => firstValueFrom(this.admin.createSubject({ name, gradeIds: [gradeId] })));
     this.newSubjectName = '';
   }
 
   async addTopic(): Promise<void> {
     const name = this.newTopicName.trim();
     const subjectId = this.selectedSubjectId();
-    if (!name || !subjectId || !this.newTopicGradeId) {
-      this.snack.open(this.text('topics.nameAndGradeRequired'), this.close, { duration: 3000 });
+    const gradeId = this.selectedGradeFilter();
+    // Form yalnız sınıf ve ders seçiliyken görünür; sınıf her zaman filtreden gelir.
+    if (!subjectId || gradeId == null) return;
+    if (!name) {
+      this.snack.open(this.text('topics.nameRequired'), this.close, { duration: 3000 });
       return;
     }
-    await this.run(() =>
-      firstValueFrom(this.admin.createTopic({ name, subjectId, gradeId: this.newTopicGradeId! }))
-    );
+    await this.run(() => firstValueFrom(this.admin.createTopic({ name, subjectId, gradeId })));
     this.newTopicName = '';
   }
 
@@ -258,10 +269,9 @@ export class TaxonomyManagerComponent implements OnInit {
 
   // ---- edit ----
 
-  startEdit(level: Level, item: { id: number; name: string; gradeId?: number }): void {
+  startEdit(level: Level, item: { id: number; name: string }): void {
     this.editing.set({ level, id: item.id });
     this.editName = item.name;
-    this.editGradeId = item.gradeId ?? null;
   }
 
   cancelEdit(): void {
@@ -284,14 +294,11 @@ export class TaxonomyManagerComponent implements OnInit {
     if (level === 'subject') {
       await this.run(() => firstValueFrom(this.admin.updateSubject(id, { name })));
     } else if (level === 'topic') {
+      // Issue #151: konunun sınıfı bu ekrandan değiştirilemez; backend DTO'su gradeId istediği için mevcut değer gönderilir.
       const t = original as TaxonomyTopic;
       await this.run(() =>
         firstValueFrom(
-          this.admin.updateTopic(id, {
-            name,
-            subjectId: t.subjectId,
-            gradeId: this.editGradeId ?? t.gradeId,
-          })
+          this.admin.updateTopic(id, { name, subjectId: t.subjectId, gradeId: t.gradeId })
         )
       );
     } else {

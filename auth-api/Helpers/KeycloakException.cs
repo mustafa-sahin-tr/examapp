@@ -53,3 +53,18 @@ public class KeycloakException : Exception
         Kind = kind;
     }
 }
+
+/// <summary>
+/// Realm rolü yok (issue #267 denetimi): <c>/roles/{role}/users</c> 404 döndü VE realm'in rol listesi okunabildi —
+/// yani yanlış realm/URL değil, rol gerçekten tanımsız. Denetim bunu "rol yok, üye yok" olarak raporlar.
+/// </summary>
+public sealed class KeycloakRoleNotFoundException : KeycloakException
+{
+    public string RoleName { get; }
+
+    public KeycloakRoleNotFoundException(string roleName)
+        : base($"Realm role '{roleName}' was not found in Keycloak.", 404)
+    {
+        RoleName = roleName;
+    }
+}

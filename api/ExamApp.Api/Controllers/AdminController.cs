@@ -1,7 +1,10 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Locations;
@@ -31,11 +34,12 @@ public class AdminController : BaseController
     private readonly IDashboardService _dashboard;
     private readonly ILocationService _locations;
     private readonly ITeacherApprovalService _teacherApprovals;
+    private readonly IAdminTeacherService _adminTeachers;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IStringLocalizer<Messages>? localizer = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IStringLocalizer<Messages>? localizer = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -44,6 +48,7 @@ public class AdminController : BaseController
         _dashboard = dashboard;
         _locations = locations;
         _teacherApprovals = teacherApprovals;
+        _adminTeachers = adminTeachers;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -162,6 +167,30 @@ public class AdminController : BaseController
     [HttpPost("teacher-applications/{id:int}/reject")]
     public async Task<IActionResult> RejectTeacherApplication(int id, [FromBody] TeacherRejectRequestDto dto, CancellationToken ct)
         => Result(await _teacherApprovals.RejectAsync(id, dto.Reason, await CurrentUserIdAsync(), ct));
+
+    // ---- Öğretmen listesi (issue #152) ----
+
+    /// <summary>
+    /// GET api/admin/teachers?page=1&amp;pageSize=20           → tüm öğretmenler, Id'ye göre artan
+    /// GET api/admin/teachers?schoolId=5                      → yalnızca 5 numaralı okulun öğretmenleri
+    /// GET api/admin/teachers?unassigned=true                 → okul bağlantısı olmayanlar (SchoolId null)
+    /// schoolId ve unassigned birlikte kullanılamaz (taxonomy gradeId/unassigned ile aynı konvansiyon).
+    /// pageSize 1..100 aralığına kırpılır. Ad/e-posta/hesap durumu auth-api'den sayfa başına tek çağrıyla gelir;
+    /// erişilemezse liste yine döner (ad/e-posta boş, isEnabled null).
+    /// </summary>
+    [HttpGet("teachers")]
+    public async Task<ActionResult<Paged<AdminTeacherListItemDto>>> GetTeachers(
+        [FromQuery, Range(1, int.MaxValue)] int? schoolId,
+        [FromQuery] bool unassigned = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = AdminTeacherService.DefaultPageSize,
+        CancellationToken ct = default)
+    {
+        if (schoolId.HasValue && unassigned)
+            return BadRequest(_localizer["admin.teachers.filterConflict"].Value);
+
+        return Ok(await _adminTeachers.ListAsync(page, pageSize, schoolId, unassigned, ct));
+    }
 
     // ---- Dashboard ----
 

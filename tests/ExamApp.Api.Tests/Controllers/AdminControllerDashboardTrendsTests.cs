@@ -1,5 +1,6 @@
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Classifier;
 using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Locations;
@@ -27,7 +28,9 @@ public class AdminControllerDashboardTrendsTests
     private readonly ILocationService _locations = Substitute.For<ILocationService>();
     private readonly ITeacherApprovalService _teacherApprovals = Substitute.For<ITeacherApprovalService>();
 
-    private AdminController NewController() => new(_taxonomy, _classifierCache, _schools, _dashboard, _locations, _teacherApprovals);
+    private readonly IAdminTeacherService _adminTeachers = Substitute.For<IAdminTeacherService>();
+
+    private AdminController NewController() => new(_taxonomy, _classifierCache, _schools, _dashboard, _locations, _teacherApprovals, _adminTeachers);
 
     [Fact]
     public void AdminController_ClassLevelAuthorizeAttribute_RequiresAdminRole()

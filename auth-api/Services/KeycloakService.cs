@@ -27,12 +27,15 @@ public class KeycloakService : IKeycloakService
     private readonly HttpClient _http;
     private readonly HttpClient _adminHttp;
     private readonly KeycloakSettings _keycloakSettings;
+    private readonly KeycloakAdminTokenCache _adminTokenCache;
 
-    public KeycloakService(IHttpClientFactory factory, IOptions<KeycloakSettings> options)
+    /// <param name="adminTokenCache">DI'da singleton; verilmezse (testler) örneğe özel önbellek — eski davranış.</param>
+    public KeycloakService(IHttpClientFactory factory, IOptions<KeycloakSettings> options, KeycloakAdminTokenCache? adminTokenCache = null)
     {
         _http = factory.CreateClient();
         _adminHttp = factory.CreateClient(AdminHttpClientName);
         _keycloakSettings = options.Value;
+        _adminTokenCache = adminTokenCache ?? new KeycloakAdminTokenCache();
     }
 
     private Uri GetKeycloakBaseUri()
@@ -77,24 +80,14 @@ public class KeycloakService : IKeycloakService
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    // Admin token'ı servis örneği (scoped → HTTP isteği) ömrünce önbellekle: toplu seed'de (issue #217)
-    // her Keycloak çağrısı için ayrıca token istemek istek sayısını ikiye katlıyordu. Tekil akışlarda
-    // davranış değişmez (istek başına en fazla bir token). Süre: Keycloak'ın expires_in'i - 10 sn.
-    private string? _cachedAdminToken;
-    private DateTimeOffset _cachedAdminTokenExpiresAt;
-
-    private async Task<string> GetKeycloakAdminTokenAsync(CancellationToken ct = default)
-    {
-        if (_cachedAdminToken is not null && _cachedAdminTokenExpiresAt > DateTimeOffset.UtcNow)
-        {
-            return _cachedAdminToken;
-        }
-
-        var (token, expiresInSeconds) = await RequestKeycloakAdminTokenAsync(ct);
-        _cachedAdminToken = token;
-        _cachedAdminTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(1, expiresInSeconds - 10));
-        return token;
-    }
+    // Admin token'ı paylaşılan önbellekten (KeycloakAdminTokenCache, DI'da singleton): toplu seed'de (issue #217)
+    // her çağrı için token istemek istek sayısını ikiye katlıyordu; #152 review ile istekler arası da paylaşılır.
+    // Süre: Keycloak'ın expires_in'i - 10 sn. Anahtar token URL + admin client id.
+    private Task<string> GetKeycloakAdminTokenAsync(CancellationToken ct = default)
+        => _adminTokenCache.GetOrCreateAsync(
+            $"{_keycloakSettings.TokenUrl}|{_keycloakSettings.AdminClientId}",
+            RequestKeycloakAdminTokenAsync,
+            ct);
 
     private async Task<(string Token, int ExpiresInSeconds)> RequestKeycloakAdminTokenAsync(CancellationToken ct)
     {
@@ -754,6 +747,72 @@ public class KeycloakService : IKeycloakService
             root.TryGetProperty("skipped", out var skipped) ? skipped.GetInt32() : 0,
             root.TryGetProperty("overwritten", out var over) ? over.GetInt32() : 0,
             results);
+    }
+
+    // ---- Hesap durumu (issue #152) — users/lookup IncludeAccountStatus ----
+
+    /// <summary>Keycloak'a aynı anda en fazla bu kadar kullanıcı okuma isteği (admin listesi sayfası ≤ 100 kullanıcı).</summary>
+    public const int AccountStatusMaxParallelism = 8;
+
+    public async Task<IReadOnlyDictionary<string, bool>> GetUsersEnabledAsync(IReadOnlyCollection<string> keycloakUserIds, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(keycloakUserIds);
+        var ids = keycloakUserIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToList();
+        var result = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(StringComparer.Ordinal);
+        if (ids.Count == 0)
+            return result;
+
+        // Token hatası KeycloakException olarak çağırana gider (çağıran fail-soft'a çevirir).
+        var adminToken = await GetKeycloakAdminTokenAsync(ct);
+
+        // Keycloak admin API id listesiyle toplu filtre sunmuyor (GET /users yalnızca search/email/username/q);
+        // tüm realm'i sayfalamak yerine kullanıcı başı GET, sınırlı paralel. Retry'sız admin client (_adminHttp,
+        // resilience handler'ı kaldırılmış) kullanılır: yavaş Keycloak'a yeniden deneme yükü bindirilmez, tek süre
+        // sınırı çağıranın ct'si (users/lookup'ta 5 sn bütçe). Authorization istek bazında konur — paylaşılan
+        // DefaultRequestHeaders eşzamanlı isteklerde güvenli değil.
+        using var gate = new SemaphoreSlim(AccountStatusMaxParallelism);
+        var tasks = ids.Select(async id =>
+        {
+            try
+            {
+                await gate.WaitAsync(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get,
+                    BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(id)}"));
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+                using var response = await _adminHttp.SendAsync(request, ct);
+                if (!response.IsSuccessStatusCode)
+                    return; // 404 (Keycloak'ta yok) dahil: bilinmiyor
+
+                var json = await response.Content.ReadAsStringAsync(ct);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object &&
+                    doc.RootElement.TryGetProperty("enabled", out var enabledEl) &&
+                    enabledEl.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                {
+                    result[id] = enabledEl.GetBoolean();
+                }
+            }
+            catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException
+                                       or Polly.ExecutionRejectedException)
+            {
+                // Tek kullanıcının okunamaması listeyi düşürmez; süre bütçesi dolduysa (iptal) o ana kadar okunanlar döner.
+            }
+            finally
+            {
+                gate.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks);
+        return result;
     }
 
     // ---- Temizleme (issue #218) ----

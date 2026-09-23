@@ -35,6 +35,7 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
     private const string UsernameHeader = "X-Test-Username";
 
     private readonly TestDb _db = TestDb.Create();
+    private readonly IKeycloakService _keycloak = Substitute.For<IKeycloakService>();
     private IHost? _host;
 
     private sealed class HeaderAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
@@ -74,7 +75,7 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
                     services.AddScoped(_ => _db.NewContext());
                     services.AddSingleton(Options.Create(new KeycloakSettings()));
                     services.AddSingleton(Substitute.For<IHttpClientFactory>());
-                    services.AddSingleton(Substitute.For<IKeycloakService>());
+                    services.AddSingleton(_keycloak);
 
                     services.AddAuthentication(HeaderAuthHandler.SchemeName)
                         .AddScheme<AuthenticationSchemeOptions, HeaderAuthHandler>(HeaderAuthHandler.SchemeName, _ => { });
@@ -98,11 +99,14 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
         return _host.GetTestClient();
     }
 
-    private static HttpRequestMessage LookupRequest(int[] ids, string? sub, string? roles = null, string? azp = null, string? username = null)
+    private static HttpRequestMessage LookupRequest(int[] ids, string? sub, string? roles = null, string? azp = null, string? username = null,
+        bool? includeAccountStatus = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/users/lookup")
         {
-            Content = JsonContent.Create(new { UserIds = ids })
+            Content = includeAccountStatus is null
+                ? JsonContent.Create(new { UserIds = ids })
+                : JsonContent.Create(new { UserIds = ids, IncludeAccountStatus = includeAccountStatus.Value })
         };
         if (sub is not null) request.Headers.Add(SubHeader, sub);
         if (roles is not null) request.Headers.Add(RolesHeader, roles);
@@ -197,6 +201,110 @@ public sealed class UsersLookupAuthorizationTests : IAsyncDisposable
         var client = await StartAsync();
 
         var response = await client.SendAsync(LookupRequest(Enumerable.Range(1, 500).ToArray(), sub: "svc", roles: ServicePrincipal.ServiceRole));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    // ---- Hesap durumu (issue #152) ----
+
+    private sealed record LookupRow(int Id, string KeycloakId, string Email, bool? Enabled);
+
+    [Fact]
+    public async Task Without_account_status_flag_keycloak_is_not_called_and_enabled_is_null()
+    {
+        var id = await SeedUserAsync("kc-10", "Deniz", "deniz@test.local");
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(LookupRequest([id], sub: "svc", roles: ServicePrincipal.ServiceRole));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var rows = await response.Content.ReadFromJsonAsync<List<LookupRow>>();
+        rows!.Single().Enabled.ShouldBeNull();
+        await _keycloak.DidNotReceive().GetUsersEnabledAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task With_account_status_flag_enabled_is_mapped_from_keycloak_by_keycloak_id()
+    {
+        var active = await SeedUserAsync("kc-a", "Aktif", "aktif@test.local");
+        var disabled = await SeedUserAsync("kc-d", "Pasif", "pasif@test.local");
+        var unknown = await SeedUserAsync("kc-u", "Bilinmeyen", "bilinmeyen@test.local");
+        _keycloak.GetUsersEnabledAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, bool> { ["kc-a"] = true, ["kc-d"] = false });
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(LookupRequest([active, disabled, unknown], sub: "svc", roles: ServicePrincipal.ServiceRole,
+            includeAccountStatus: true));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var rows = await response.Content.ReadFromJsonAsync<List<LookupRow>>();
+        rows!.Single(r => r.Id == active).Enabled.ShouldBe(true);
+        rows.Single(r => r.Id == disabled).Enabled.ShouldBe(false);
+        rows.Single(r => r.Id == unknown).Enabled.ShouldBeNull(); // Keycloak'ta yok / okunamadı
+        await _keycloak.Received(1).GetUsersEnabledAsync(
+            Arg.Is<IReadOnlyCollection<string>>(ids => ids.OrderBy(x => x).SequenceEqual(new[] { "kc-a", "kc-d", "kc-u" })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("keycloak")]
+    [InlineData("http")]
+    [InlineData("timeout")]
+    [InlineData("polly-timeout")]
+    [InlineData("polly-circuit")]
+    public async Task With_account_status_flag_keycloak_failure_still_returns_users_with_null_enabled(string failure)
+    {
+        var id = await SeedUserAsync("kc-f", "Fail Soft", "failsoft@test.local");
+        Exception ex = failure switch
+        {
+            "keycloak" => new KeycloakException("admin token unavailable"),
+            "http" => new HttpRequestException("connection refused"),
+            "polly-timeout" => new Polly.Timeout.TimeoutRejectedException("attempt timeout"),
+            "polly-circuit" => new Polly.CircuitBreaker.BrokenCircuitException("circuit open"),
+            _ => new TaskCanceledException("budget exceeded")
+        };
+        _keycloak.GetUsersEnabledAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyDictionary<string, bool>>(_ => throw ex);
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(LookupRequest([id], sub: "svc", roles: ServicePrincipal.ServiceRole, includeAccountStatus: true));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var rows = await response.Content.ReadFromJsonAsync<List<LookupRow>>();
+        var row = rows!.Single();
+        row.Email.ShouldBe("failsoft@test.local");
+        row.Enabled.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task With_account_status_flag_more_than_100_distinct_ids_gets_400_and_keycloak_is_not_called()
+    {
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(LookupRequest(Enumerable.Range(1, 101).ToArray(), sub: "svc",
+            roles: ServicePrincipal.ServiceRole, includeAccountStatus: true));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        await _keycloak.DidNotReceive().GetUsersEnabledAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task With_account_status_flag_100_distinct_ids_is_accepted_and_duplicates_do_not_count()
+    {
+        var client = await StartAsync();
+        var ids = Enumerable.Range(1, 100).Concat(Enumerable.Range(1, 50)).ToArray(); // 150 id, 100 tekil
+
+        var response = await client.SendAsync(LookupRequest(ids, sub: "svc", roles: ServicePrincipal.ServiceRole, includeAccountStatus: true));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Without_account_status_flag_the_500_id_limit_still_applies()
+    {
+        var client = await StartAsync();
+
+        var response = await client.SendAsync(LookupRequest(Enumerable.Range(1, 300).ToArray(), sub: "svc", roles: ServicePrincipal.ServiceRole));
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }

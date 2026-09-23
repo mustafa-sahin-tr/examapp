@@ -58,7 +58,8 @@ export class TestService {
   /**
    * Başkasının (public) sınavını kendi hesabına kopyalar (issue #16).
    * Kopya `Private` bir worksheet olarak açılır; kopyalayan sahibidir.
-   * 401 / 403 / 404 hata döner.
+   * 403 / 404 hata döner; oturumdaki kullanıcının profili çözülemezse de 404 (issue #255 —
+   * 401 yalnızca token kimlik içermiyorsa, yani oturum gerçekten geçersizse döner).
    */
   copyWorksheet(worksheetId: number): Observable<CopyWorksheetResult> {
     return this.http.post<CopyWorksheetResult>(`${this.baseUrl}/${worksheetId}/copy`, null);

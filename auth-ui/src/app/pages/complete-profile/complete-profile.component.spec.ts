@@ -307,4 +307,42 @@ describe('CompleteProfileComponent', () => {
     expect(component.schoolApprovalPending()).toBeFalse();
     expect(routerSpy.navigate).not.toHaveBeenCalled();
   });
+  it('onSubmit_ParentRegistrationProfileNotResolved404_SetsSubmitErrorWithoutRedirect', () => {
+    const fixture = createComponent({ role: 'parent' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    authServiceSpy.registerParentProfile.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 404, error: { message: 'Kullanıcı çözümlenemedi.' } })),
+    );
+    // MatSnackBarModule bileşenin kendi ortam enjektöründe MatSnackBar sağlar; kök sahte örnek yerine o izlenir.
+    const openSpy = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
+
+    component.onSubmit();
+
+    expect(authServiceSpy.registerParentProfile).toHaveBeenCalled();
+    expect(component.submitError()).toContain('doğrulanamadı');
+    expect(component.isLoading()).toBeFalse();
+    expect(routerSpy.navigate).not.toHaveBeenCalled();
+    expect(openSpy).not.toHaveBeenCalled();
+  });
+
+  it('onSubmit_ParentRegistrationSessionExpired401_ShowsSessionMessageAndNavigatesToLogin', () => {
+    const fixture = createComponent({ role: 'parent' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    authServiceSpy.registerParentProfile.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 401 })),
+    );
+    const openSpy = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
+
+    component.onSubmit();
+
+    expect(openSpy).toHaveBeenCalledWith(
+      'Oturumunuz sona ermiş, lütfen tekrar giriş yapın.',
+      'Kapat',
+      jasmine.any(Object),
+    );
+    expect(routerSpy.navigate).toHaveBeenCalledWith(['/login']);
+    expect(component.submitError()).toBeNull();
+  });
 });

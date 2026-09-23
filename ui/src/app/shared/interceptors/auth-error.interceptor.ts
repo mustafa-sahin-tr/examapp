@@ -2,6 +2,7 @@ import { HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
+import { isCrossOriginUrl, pathnameOf } from '../utils/request-url.util';
 
 /**
  * 401'de token yenilemesi DENENMEYECEK uçlar — yol (pathname) tam eşleşmesiyle (issue #241).
@@ -22,18 +23,6 @@ const REFRESH_EXCLUDED_PATHS: ReadonlySet<string> = new Set([
   '/api/exam/auth/logout',
 ]);
 
-/** URL'nin yolunu query/hash ve sondaki `/` olmadan döner; göreli ve mutlak URL'leri destekler. */
-function pathnameOf(url: string): string {
-  let path: string;
-  try {
-    // Taban yalnızca göreli URL'leri çözmek için; SSR'da `window` olmadığından sabit.
-    path = new URL(url, 'http://localhost').pathname;
-  } catch {
-    path = url.split(/[?#]/)[0];
-  }
-  return path.length > 1 ? path.replace(/\/+$/, '') : path;
-}
-
 export function isRefreshExcluded(req: HttpRequest<unknown>): boolean {
   return REFRESH_EXCLUDED_PATHS.has(pathnameOf(req.url));
 }
@@ -41,17 +30,9 @@ export function isRefreshExcluded(req: HttpRequest<unknown>): boolean {
 /**
  * İstek uygulamanın origin'i dışına mı gidiyor? Üçüncü taraf 401'i bizim oturumumuzla ilgili değildir;
  * refresh denemek ve isteği Bearer token ile tekrarlamak token'ı dış origin'e sızdırır.
- * SSR'da `location` yoktur: yalnız mutlak `http(s)://` URL'ler dış sayılır.
  */
 export function isCrossOrigin(req: HttpRequest<unknown>): boolean {
-  if (typeof location === 'undefined') {
-    return /^https?:\/\//i.test(req.url);
-  }
-  try {
-    return new URL(req.url, location.origin).origin !== location.origin;
-  } catch {
-    return true;
-  }
+  return isCrossOriginUrl(req.url);
 }
 
 export const authErrorInterceptor: HttpInterceptorFn = (req, next) => {

@@ -36,7 +36,7 @@ namespace ExamApp.Api.Controllers
             var user = await GetAuthenticatedUserAsync();
             if (user == null || user.Id <= 0)
             {
-                return Unauthorized(new { message = _localizer["auth.userNotResolved"].Value });
+                return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
             }
 
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Parent);

@@ -8,7 +8,7 @@ import { CreateProgramRequest, ProgramStudyPageScheduleRequest, UserProgram } fr
   providedIn: 'root',
 })
 export class ProgramService {
-  private apiUrl = 'api/exam/program'; // API endpoint with exam prefix
+  private apiUrl = '/api/exam/program'; // gateway üzerinden, göreli (aynı origin)
 
   constructor(private http: HttpClient) {}
 

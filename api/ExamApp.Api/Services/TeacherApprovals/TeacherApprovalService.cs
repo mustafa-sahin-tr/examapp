@@ -8,8 +8,11 @@ using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
+using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -34,11 +37,16 @@ public class TeacherApprovalService : ITeacherApprovalService
     private readonly IKeycloakService? _keycloakService;
     private readonly ILogger<TeacherApprovalService> _logger;
 
+    // issue #157: karar audit'i (AdminUserActionLogs). DI her zaman verir; DI'siz kurulan (birim test)
+    // örneklerde null → audit atlanır (best-effort, karar bundan etkilenmez).
+    private readonly IAdminUserActionAuditService? _audit;
+
     public TeacherApprovalService(AppDbContext context, IAuthApiClient authApiClient,
         IStringLocalizer<Messages>? localizer = null,
         UserProfileCacheService? profileCache = null,
         IKeycloakService? keycloakService = null,
-        ILogger<TeacherApprovalService>? logger = null)
+        ILogger<TeacherApprovalService>? logger = null,
+        IAdminUserActionAuditService? auditService = null)
     {
         _context = context;
         _authApiClient = authApiClient;
@@ -46,6 +54,7 @@ public class TeacherApprovalService : ITeacherApprovalService
         _profileCache = profileCache;
         _keycloakService = keycloakService;
         _logger = logger ?? NullLogger<TeacherApprovalService>.Instance;
+        _audit = auditService;
     }
 
     public async Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default)
@@ -82,7 +91,7 @@ public class TeacherApprovalService : ITeacherApprovalService
         return pending;
     }
 
-    public async Task<ResponseBaseDto> ApproveAsync(int teacherId, int adminUserId, CancellationToken ct = default)
+    public async Task<ResponseBaseDto> ApproveAsync(int teacherId, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default)
     {
         var teacher = await _context.Teachers.AsNoTracking().FirstOrDefaultAsync(t => t.Id == teacherId, ct);
         var guardError = GuardPendingApplication(teacher);
@@ -105,21 +114,53 @@ public class TeacherApprovalService : ITeacherApprovalService
             newRequestedSchoolId = null;
         }
 
+        // issue #157: bildirim outbox'ı için başvuru sahibinin Keycloak sub'ı, transaction AÇILMADAN ÖNCE
+        // (I/O'yu tx dışında tutmak için, WorksheetAccessRequestService ile aynı desen) best-effort çözülür.
+        // Lookup başarısız/boşsa outbox YAZILMAZ, karar yine commit edilir (mimari karar #157).
+        var targetKeycloakId = await TryResolveTargetKeycloakIdAsync(teacher.UserId, teacherId, ct);
+
+        var now = DateTime.UtcNow;
+
         // Koşullu güncelleme (code review #234): okuma ile yazma arasında öğretmen talebini değiştirdiyse
         // (bağımsızlığa geçiş, yeni talep) ya da başka bir admin karar verdiyse 0 satır etkilenir → alreadyDecided.
         // ExecuteUpdate SaveChanges audit'ini atlar; UpdateTime/UpdateUserId burada açıkça yazılır.
-        var now = DateTime.UtcNow;
-        var affected = await PendingApplicationQuery(teacherId, isIndependent, expectedRequestedSchoolId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(t => t.ApprovalStatus, TeacherApprovalStatus.Approved)
-                .SetProperty(t => t.RejectionReason, (string?)null)
-                .SetProperty(t => t.SchoolId, newSchoolId)
-                .SetProperty(t => t.RequestedSchoolId, newRequestedSchoolId)
-                .SetProperty(t => t.UpdateTime, now)
-                .SetProperty(t => t.UpdateUserId, adminUserId), ct);
+        // issue #157: ExecuteUpdate + outbox insert tek transaction'da (retry-on-failure için execution
+        // strategy içinde — WorksheetAccessRequestService.CreateRequestAsync ile aynı desen).
+        var affected = 0;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            // issue #157 review: retry'da bir önceki denemenin ChangeTracker'a eklediği (ama commit
+            // edilmemiş) outbox mesajı temizlenmezse ikinci deneme aynı OutboxMessage'ı BİR DAHA ekler
+            // (Guid Id farklı olsa da aynı karar için iki event) → duplicate bildirim riski.
+            _context.ChangeTracker.Clear();
+
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+            affected = await PendingApplicationQuery(teacherId, isIndependent, expectedRequestedSchoolId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.ApprovalStatus, TeacherApprovalStatus.Approved)
+                    .SetProperty(t => t.RejectionReason, (string?)null)
+                    .SetProperty(t => t.SchoolId, newSchoolId)
+                    .SetProperty(t => t.RequestedSchoolId, newRequestedSchoolId)
+                    .SetProperty(t => t.UpdateTime, now)
+                    .SetProperty(t => t.UpdateUserId, adminUserId), ct);
+
+            if (affected > 0 && !string.IsNullOrWhiteSpace(targetKeycloakId))
+            {
+                AddDecisionOutbox(teacherId, targetKeycloakId, approved: true, isIndependent, now);
+                await _context.SaveChangesAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+        });
 
         if (affected == 0)
             return AlreadyDecided();
+
+        // issue #157 review: audit, best-effort ama karardan hemen sonra — SyncSchoolMembershipAsync
+        // (Keycloak/Redis I/O) atmasa da fırlatsa audit izi kaybolmasın.
+        await TryAuditDecisionAsync(AdminUserAction.TeacherApproved, teacherId, actorAdminKeycloakId);
 
         // Önbellek/Keycloak yalnızca güncelleme gerçekten uygulandıysa.
         if (linksSchool)
@@ -128,7 +169,7 @@ public class TeacherApprovalService : ITeacherApprovalService
         return Ok(_localizer["admin.teacherApplication.approved"], teacher.Id);
     }
 
-    public async Task<ResponseBaseDto> RejectAsync(int teacherId, string reason, int adminUserId, CancellationToken ct = default)
+    public async Task<ResponseBaseDto> RejectAsync(int teacherId, string reason, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default)
     {
         var trimmedReason = reason?.Trim();
         if (string.IsNullOrWhiteSpace(trimmedReason))
@@ -142,21 +183,112 @@ public class TeacherApprovalService : ITeacherApprovalService
         if (guardError != null)
             return guardError;
 
+        // issue #157: bkz. ApproveAsync — aynı best-effort sub çözümü, aynı gerekçe.
+        var targetKeycloakId = await TryResolveTargetKeycloakIdAsync(teacher!.UserId, teacherId, ct);
+
         // issue #234: redde okul bağı kurulmaz. RequestedSchoolId hangi okul talebinin reddedildiğini göstermek
         // için korunur; SchoolId null kalır, Rejected durumu talebin artık beklemediğini belirtir.
         // Koşullu güncelleme: ApproveAsync ile aynı yarış koruması.
         var now = DateTime.UtcNow;
-        var affected = await PendingApplicationQuery(teacherId, teacher!.IsIndependentTutor, teacher.RequestedSchoolId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(t => t.ApprovalStatus, TeacherApprovalStatus.Rejected)
-                .SetProperty(t => t.RejectionReason, trimmedReason)
-                .SetProperty(t => t.UpdateTime, now)
-                .SetProperty(t => t.UpdateUserId, adminUserId), ct);
+        var affected = 0;
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            // issue #157 review: bkz. ApproveAsync — retry'da çift outbox'ı önler.
+            _context.ChangeTracker.Clear();
+
+            await using var tx = await _context.Database.BeginTransactionAsync(ct);
+
+            affected = await PendingApplicationQuery(teacherId, teacher.IsIndependentTutor, teacher.RequestedSchoolId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(t => t.ApprovalStatus, TeacherApprovalStatus.Rejected)
+                    .SetProperty(t => t.RejectionReason, trimmedReason)
+                    .SetProperty(t => t.UpdateTime, now)
+                    .SetProperty(t => t.UpdateUserId, adminUserId), ct);
+
+            if (affected > 0 && !string.IsNullOrWhiteSpace(targetKeycloakId))
+            {
+                AddDecisionOutbox(teacherId, targetKeycloakId, approved: false, teacher.IsIndependentTutor, now);
+                await _context.SaveChangesAsync(ct);
+            }
+
+            await tx.CommitAsync(ct);
+        });
 
         if (affected == 0)
             return AlreadyDecided();
 
+        await TryAuditDecisionAsync(AdminUserAction.TeacherRejected, teacherId, actorAdminKeycloakId);
+
         return Ok(_localizer["admin.teacherApplication.rejected"], teacher.Id);
+    }
+
+    /// <summary>
+    /// issue #157: karar bildirimi outbox event'ini ChangeTracker'a ekler (SaveChanges çağıran metotta).
+    /// Payload'da ret gerekçesi ve admin kimliği YOK (security review).
+    /// </summary>
+    private void AddDecisionOutbox(int teacherId, string targetKeycloakId, bool approved, bool isIndependentTutor, DateTime decidedAt)
+    {
+        var @event = new TeacherApplicationDecidedEvent
+        {
+            EventId = Guid.NewGuid(),
+            TeacherId = teacherId,
+            TargetKeycloakId = targetKeycloakId,
+            Approved = approved,
+            IsIndependentTutor = isIndependentTutor,
+            DecidedAtUtc = decidedAt
+        };
+
+        _context.OutboxMessages.Add(new OutboxMessage
+        {
+            Type = OutboxEventRegistry.NameFor<TeacherApplicationDecidedEvent>(),
+            Content = JsonSerializer.Serialize(@event),
+            CreatedAt = decidedAt
+        });
+    }
+
+    /// <summary>
+    /// issue #157: kararın gideceği başvuru sahibinin Keycloak sub'ı best-effort çözülür. auth-api
+    /// erişilemezse ya da kullanıcı için sub bulunamazsa null döner ve çağıran outbox'ı atlar — karar
+    /// yine de commit edilir (bildirim kaybı Keycloak lookup'ından daha az kritik kabul edildi).
+    /// </summary>
+    private async Task<string?> TryResolveTargetKeycloakIdAsync(int userId, int teacherId, CancellationToken ct)
+    {
+        try
+        {
+            var users = await _authApiClient.GetUsersByIdsAsync(new[] { userId }, ct);
+            var keycloakId = users.FirstOrDefault(u => u.Id == userId)?.KeycloakId;
+            if (string.IsNullOrWhiteSpace(keycloakId))
+            {
+                _logger.LogWarning(
+                    "TeacherApplicationDecided: no KeycloakId for user {UserId} (TeacherId={TeacherId}); notification outbox skipped.",
+                    userId, teacherId);
+                return null;
+            }
+            return keycloakId;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _logger.LogWarning(ex,
+                "TeacherApplicationDecided: KeycloakId lookup failed for user {UserId} (TeacherId={TeacherId}); notification outbox skipped.",
+                userId, teacherId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// issue #157: karar audit'i best-effort — karar zaten commit edildikten SONRA çağrılır, audit yazımı
+    /// başarısız olsa da karar geri alınmaz (AdminAccountStatusService'teki "Requested→Succeeded" akışının
+    /// aksine burada dış sistem çağrısı yok; tek DB yazımı zaten atomik şekilde tamamlandı, audit yalnızca
+    /// iz amaçlı ek bir kayıttır). actorAdminKeycloakId boşsa (DI'siz test) sessizce atlanır.
+    /// </summary>
+    private async Task TryAuditDecisionAsync(AdminUserAction action, int teacherId, string? actorAdminKeycloakId)
+    {
+        if (_audit == null || string.IsNullOrWhiteSpace(actorAdminKeycloakId))
+            return;
+
+        var record = new AdminUserActionRecord(actorAdminKeycloakId, action, AdminUserTargetType.Teacher, teacherId);
+        await _audit.TryRecordAsync(record, AdminUserActionOutcome.Succeeded);
     }
 
     /// <summary>

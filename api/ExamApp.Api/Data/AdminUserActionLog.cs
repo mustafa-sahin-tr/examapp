@@ -43,7 +43,11 @@ public enum AdminUserAction
     /// <summary>issue #155: Keycloak hesabı devre dışı bırakıldı (+ oturumlar kapatıldı).</summary>
     AccountDisabled = 2,
     /// <summary>issue #155: Keycloak hesabı yeniden etkinleştirildi.</summary>
-    AccountEnabled = 3
+    AccountEnabled = 3,
+    /// <summary>issue #157: öğretmen başvurusu (bağımsız öğretmen / okul bağlantısı) onaylandı.</summary>
+    TeacherApproved = 4,
+    /// <summary>issue #157: öğretmen başvurusu (bağımsız öğretmen / okul bağlantısı) reddedildi.</summary>
+    TeacherRejected = 5
 }
 
 /// <summary>Admin hesap aksiyonunun sonucu. Kalıcı değer string'dir.</summary>

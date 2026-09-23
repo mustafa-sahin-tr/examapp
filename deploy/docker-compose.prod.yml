@@ -97,6 +97,10 @@ services:
       KC_HEALTH_ENABLED: 'true'
     volumes:
       # Drop your exported realm JSON(s) here (DO NOT commit them): deploy/keycloak/import/*.json
+      # Issue #238: this directory is gitignored and MUST stay empty in the repo —
+      # deploy/keycloak/dev-import/ (dev-only fixture, public dev secrets) is a
+      # separate path used only by docker-compose.override.yml/AppHost.cs and is
+      # never synced here by the deploy workflow.
       - ./keycloak/import:/opt/keycloak/data/import:ro
       - ./keycloak/keycloak-themes/my-theme:/opt/keycloak/themes/my-theme:ro
     depends_on:

@@ -820,7 +820,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "devOnlyExamAdminClientSecretChangeMe12345678",
       "redirectUris": [
         "/*"
       ],
@@ -926,7 +926,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "devOnlyExamClientSecretChangeMe12345678",
       "redirectUris": [
         "https://www.hedefokul.com/*",
         "https://hedefokul.com/app/*",

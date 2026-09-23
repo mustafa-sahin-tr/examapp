@@ -57,6 +57,29 @@ if (builder.Environment.IsDevelopment())
     StartupConfigDump.Print(builder.Configuration, builder.Environment.EnvironmentName, kestrelPort);
 }
 
+// Issue #238: appsettings(.Development).json'daki Keycloak ClientSecret/
+// AdminClientSecret artık gerçek değer taşımıyor ("" placeholder) — Development
+// dışında ServiceTokenProvider'ın ilk token isteğinde patlamasını beklemek yerine
+// açılışta açıkça patlat. Development'ta docker-compose/.env veya Aspire AppHost
+// parametreleri değeri zaten dolduruyor.
+if (!builder.Environment.IsDevelopment())
+{
+    var badgeKeycloakConfig = builder.Configuration.GetSection("Keycloak");
+
+    // "devOnly" öneki .env.example/AppHost'taki dev-only Keycloak secret'larının
+    // ortak deseni (bkz. .env.example) — bunlar yanlışlıkla prod/staging'e
+    // taşınmışsa da boş secret'la aynı şekilde reddedilir.
+    static bool IsMissingOrDevOnly(string? value) =>
+        string.IsNullOrWhiteSpace(value) || value.StartsWith("devOnly", StringComparison.OrdinalIgnoreCase);
+
+    if (IsMissingOrDevOnly(badgeKeycloakConfig["ClientSecret"]) ||
+        IsMissingOrDevOnly(badgeKeycloakConfig["AdminClientSecret"]))
+    {
+        throw new InvalidOperationException(
+            "Keycloak:ClientSecret ve Keycloak:AdminClientSecret ortam değişkeninden (Keycloak__ClientSecret / Keycloak__AdminClientSecret) set edilmeli; Development dışında boş veya dev-only değer bırakılamaz.");
+    }
+}
+
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

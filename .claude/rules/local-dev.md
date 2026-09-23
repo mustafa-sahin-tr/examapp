@@ -14,6 +14,49 @@ docker-compose up -d
 credentials that `docker-compose.yml` reads via `${VAR}`. `.env.example` has the
 dev defaults; never reuse them outside local dev.
 
+**Issue #238**: `appsettings.json`/`appsettings.Development.json` no longer carry
+real Keycloak `ClientSecret`/`AdminClientSecret` values (blanked to `""`), and
+`Keycloak:ClientSecret`/`AdminClientSecret` reject empty **and** `devOnly`-prefixed
+values outside `Development` (fail-fast at startup). The dev-only baseline realm
+also moved from `deploy/keycloak/import/` (the prod import path — must stay
+empty/gitignored, ops drop their own real realm export there) to
+`deploy/keycloak/dev-import/realm-export.json` (tracked, dev-only secrets,
+used by `docker-compose.override.yml` and `AppHost.cs` only).
+
+`KEYCLOAK_CLIENT_SECRET`/`KEYCLOAK_ADMIN_CLIENT_SECRET` in `.env.example` must
+match `deploy/keycloak/dev-import/realm-export.json`'s `exam-client`/`exam-admin`
+`secret` fields — if you change one, change both, or login/service-to-service
+tokens fail. Running Aspire instead of docker-compose? Same two dev-only values
+live in `AppHost/appsettings.json`'s `Parameters` section
+(`keycloak-client-secret`, `keycloak-admin-client-secret`).
+
+**If you already have a local `.env`** (created before this change), add the two
+new lines manually — `cp .env.example .env` again would overwrite the rest of
+your `.env`:
+```bash
+echo 'KEYCLOAK_CLIENT_SECRET=devOnlyExamClientSecretChangeMe12345678' >> .env
+echo 'KEYCLOAK_ADMIN_CLIENT_SECRET=devOnlyExamAdminClientSecretChangeMe12345678' >> .env
+```
+
+**If you already have a running Keycloak container/volume** (created before this
+change), its realm was imported with the *old* masked (`**********`) secret —
+`--import-realm` does not re-import into an existing realm, so recreating `.env`
+alone is not enough. Pick one:
+- **(a) Update the running Keycloak** — admin console
+  (http://localhost:8081, or `:8082/admin/` under Aspire) → Clients →
+  `exam-client` / `exam-admin` → Credentials → regenerate/paste the new
+  `devOnlyExamClientSecretChangeMe12345678` / `devOnlyExamAdminClientSecretChangeMe12345678`
+  secret to match `.env`/`AppHost/appsettings.json`.
+- **(b) Keep your old secret instead** — put your existing (pre-#238) client
+  secret value in `.env` (`KEYCLOAK_CLIENT_SECRET`/`KEYCLOAK_ADMIN_CLIENT_SECRET`)
+  or, for Aspire, override via `dotnet user-secrets set "Parameters:keycloak-client-secret" "<value>"`
+  (and `...-admin-client-secret`) in `AppHost/`, instead of the new dev-only
+  default — either way, don't let it fall through to the fail-fast `devOnly`
+  check by leaving it unset.
+
+Otherwise, drop the Keycloak container + its Postgres `keycloak` database/volume
+and let it re-import fresh with the new dev-only secret.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |

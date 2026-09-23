@@ -40,38 +40,49 @@ public class TeacherService : ITeacherService
     }
 
     /// <summary>
-    /// issue #222: dashboard/overview/lagging uçlarında atama hedeflerinin öğrenciye nasıl genişletileceği.
+    /// issue #222/#235: dashboard/overview/lagging uçlarında atama hedeflerinin öğrenciye nasıl genişletileceği.
     /// <see cref="ExpandGradeAssignments"/>=false ise sınıf (grade-only) atamaları hiç dikkate alınmaz;
-    /// <see cref="DirectStudentScope"/> doluysa direkt öğrenciler o scope ile (<see cref="ISchoolAccessPolicy.ApplyScope{T}"/>) daraltılır.
+    /// <see cref="StudentScope"/> doluysa genişletilen öğrenci kümesinin TAMAMI (direkt + sınıf) o scope ile
+    /// (<see cref="ISchoolAccessPolicy.ApplyScope{T}"/>) daraltılır. Yalnızca admin/servis için null.
     /// </summary>
-    private readonly record struct StudentTargetScope(bool ExpandGradeAssignments, SchoolScope? DirectStudentScope)
+    private readonly record struct StudentTargetScope(bool ExpandGradeAssignments, SchoolScope? StudentScope)
     {
-        /// <summary>Admin ve doğrulanmış okullu öğretmen: önceki davranış (grade genişletmesi atamanın SchoolId'siyle sınırlı).</summary>
-        public static StudentTargetScope Unchanged => new(true, null);
+        /// <summary>Admin/servis: kapsam yok (grade genişletmesi yalnızca atamanın SchoolId'siyle sınırlı, platform geneli).</summary>
+        public static StudentTargetScope Unrestricted => new(true, null);
+
+        /// <summary>Doğrulanmış okullu öğretmen: grade genişletmesi açık, öğrenci kümesi <paramref name="scope"/> ile sınırlı (#235).</summary>
+        public static StudentTargetScope SchoolBound(SchoolScope scope) => new(true, scope);
+
+        /// <summary>Bağımsız/okulsuz/doğrulanamayan: grade genişletmesi yok, öğrenciler Approved Booking'e daraltılır (#222).</summary>
+        public static StudentTargetScope Narrow(int userId) => new(false, SchoolScope.For(userId, null));
     }
 
     /// <summary>
-    /// issue #222: tek karar noktası. Unrestricted → değişmez. Aksi halde okul ÖĞRETMEN kaydından (deterministik) doğrulanır
-    /// (security Ö2: çok rollü hesapta scope okulu Students'tan gelebilir): okullu ve scope ile uyumlu → değişmez;
-    /// bağımsız, öğretmen kaydı yok veya uyuşmazlık → en dar davranış (grade genişletmesi yok, direkt öğrenciler
-    /// Approved Booking'e daraltılır).
+    /// issue #222/#235: tek karar noktası. Unrestricted → kapsamsız. Aksi halde okul ÖĞRETMEN kaydından (deterministik)
+    /// doğrulanır (security Ö2: çok rollü hesapta scope okulu Students'tan gelebilir):
+    /// okullu ve scope ile uyumlu → grade genişletmesi açık, öğrenci kümesi öğretmenin okuluyla sınırlı (#235 — başka
+    /// okulun öğretmeni/admin'in bu worksheet'e yaptığı atamalar başka okulun öğrencisini göstermez);
+    /// bağımsız, onay bekleyen okulsuz, öğretmen kaydı yok veya uyuşmazlık → en dar davranış (grade genişletmesi yok,
+    /// öğrenciler Approved Booking'e daraltılır).
     /// </summary>
     private async Task<StudentTargetScope> ResolveStudentTargetScopeAsync(SchoolScope requester, CancellationToken ct)
     {
         if (requester.IsUnrestricted)
-            return StudentTargetScope.Unchanged;
+            return StudentTargetScope.Unrestricted;
 
         var teacher = await _context.ResolveTeacherRecordAsync(requester.UserId, ct);
         if (teacher.Exists && teacher.SchoolId.HasValue && teacher.SchoolId == requester.SchoolId)
-            return StudentTargetScope.Unchanged;
+            // Okul bilerek öğretmen kaydından alınır; requester.SchoolId ile eşitliği yukarıda doğrulandı.
+            return StudentTargetScope.SchoolBound(SchoolScope.For(requester.UserId, teacher.SchoolId));
 
-        return new StudentTargetScope(false, SchoolScope.For(requester.UserId, null));
+        return StudentTargetScope.Narrow(requester.UserId);
     }
 
+    /// <summary>Üç panel ucunun ortak öğrenci kaynağı: kapsam (#235) burada, tek yerde uygulanır.</summary>
     private IQueryable<Student> TargetStudents(StudentTargetScope target)
     {
         var students = _context.Students.AsNoTracking();
-        return target.DirectStudentScope is { } scope ? _schoolAccessPolicy.ApplyScope(students, scope) : students;
+        return target.StudentScope is { } scope ? _schoolAccessPolicy.ApplyScope(students, scope) : students;
     }
 
     public async Task<Teacher?> GetTeacher(int userId)
@@ -402,8 +413,8 @@ public class TeacherService : ITeacherService
 
         if (gradeIds.Count > 0)
         {
-            var gradeStudents = await _context.Students
-                .AsNoTracking()
+            // issue #235: sınıf genişletmesi de kapsamlı kaynaktan (TargetStudents) — sayaç okul dışı öğrenciyi saymaz.
+            var gradeStudents = await TargetStudents(target)
                 .Where(s => s.GradeId.HasValue && gradeIds.Contains(s.GradeId.Value))
                 .Select(s => new { s.Id, GradeId = s.GradeId!.Value, s.SchoolId })
                 .ToListAsync(ct);

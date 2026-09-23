@@ -216,10 +216,11 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
     {
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 400, StudentNumber = "a", SchoolName = "s" };
+            var student = new Student { UserId = 400, StudentNumber = "a", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -246,10 +247,11 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
     {
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 500, StudentNumber = "a", SchoolName = "s" };
+            var student = new Student { UserId = 500, StudentNumber = "a", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -277,10 +279,11 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         // has already passed -> both IsLowCompletion and IsExpired should be true together.
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 600, StudentNumber = "a", SchoolName = "s" };
+            var student = new Student { UserId = 600, StudentNumber = "a", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -316,11 +319,12 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
         // worksheet/student is still open -> the newer window should win (not-expired, low completion).
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             ctx.SetCurrentUser(TeacherId);
             var gradeId = await SeedGradeAsync(ctx);
 
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 700, StudentNumber = "a", SchoolName = "s", GradeId = gradeId };
+            var student = new Student { UserId = 700, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = gradeId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -357,10 +361,11 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
 
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 800, StudentNumber = "S-42", SchoolName = "s" };
+            var student = new Student { UserId = 800, StudentNumber = "S-42", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -383,10 +388,11 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
     {
         await using (var ctx = _db.NewContext())
         {
+            SchoolTeacher(TeacherId); // Ensure teacher school is initialized
             var gradeId = await SeedGradeAsync(ctx);
             ctx.SetCurrentUser(TeacherId);
             var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
-            var student = new Student { UserId = 900, StudentNumber = "S-99", SchoolName = "s" };
+            var student = new Student { UserId = 900, StudentNumber = "S-99", SchoolId = _teacherSchoolId };
             ctx.AddRange(ws, student);
             await ctx.SaveChangesAsync();
 
@@ -408,6 +414,80 @@ public class TeacherServiceLaggingStudentsTests : IDisposable
 
         result.Count.ShouldBe(1);
         result[0].StudentName.ShouldBe("Ayşe Yılmaz");
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_SchoolTeacherWithCrossSchoolAssignment_OnlySeesTheirSchool()
+    {
+        // Issue #235: a school-scoped teacher with a cross-school grade worksheet
+        // only sees lagging students from their own school, not from other schools.
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId); // Ensure teacher school exists
+            var gradeId = await SeedGradeAsync(ctx);
+            var otherSchool = new School { Name = "Diğer Okul" };
+            ctx.Schools.Add(otherSchool);
+            await ctx.SaveChangesAsync();
+
+            ctx.SetCurrentUser(TeacherId);
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
+            var studentInTeacherSchool = new Student { UserId = 1011, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = gradeId };
+            var studentInOtherSchool = new Student { UserId = 1012, StudentNumber = "b", SchoolId = otherSchool.Id, GradeId = gradeId };
+            ctx.AddRange(ws, studentInTeacherSchool, studentInOtherSchool);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-1);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, GradeId = gradeId, StartAt = startAt, EndAt = startAt.AddDays(10)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserLookupResultDto>());
+
+        await using var check = _db.NewContext();
+        var result = await NewService(check).GetLaggingStudentsAsync(SchoolTeacher(TeacherId));
+
+        result.Count.ShouldBe(1); // Only lagging student from teacher's school
+    }
+
+    [Fact]
+    public async Task GetLaggingStudentsAsync_PendingUnschooledTeacherWithGradeAssignment_SeesZero()
+    {
+        // Acceptance criteria: pending/unscoped teacher (no school, not validated) sees 0 lagging students
+        // in grade assignments because grade expansion is disabled (StudentTargetScope.Narrow).
+        const int pendingTeacherId = 7777;
+        await using (var ctx = _db.NewContext())
+        {
+            SchoolTeacher(TeacherId); // Ensure other school exists
+            var gradeId = await SeedGradeAsync(ctx);
+
+            ctx.SetCurrentUser(TeacherId);
+            var ws = new Worksheet { Name = "WS", Description = "", GradeId = gradeId };
+            var student1 = new Student { UserId = 4001, StudentNumber = "a", SchoolId = _teacherSchoolId, GradeId = gradeId };
+            var student2 = new Student { UserId = 4002, StudentNumber = "b", SchoolId = _teacherSchoolId, GradeId = gradeId };
+            ctx.AddRange(ws, student1, student2);
+            await ctx.SaveChangesAsync();
+
+            var startAt = DateTime.UtcNow.AddDays(-1);
+            ctx.WorksheetAssignments.Add(new WorksheetAssignment
+            {
+                WorksheetId = ws.Id, GradeId = gradeId, StartAt = startAt, EndAt = startAt.AddDays(10)
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<UserLookupResultDto>());
+
+        await using var check = _db.NewContext();
+        // Pending teacher: no school (null), not validated. SchoolScope with SchoolId=null is independent/pending.
+        var pendingScope = SchoolScope.For(pendingTeacherId, null);
+        var result = await NewService(check).GetLaggingStudentsAsync(pendingScope);
+
+        result.Count.ShouldBe(0); // No direct assignments, grade expansion disabled for unscoped
     }
 
     public void Dispose() => _db.Dispose();

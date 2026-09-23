@@ -1,22 +1,38 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Admin;
+using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.TeacherApprovals;
 using ExamApp.Api.Tests.Support;
+using ExamApp.Foundation.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
 
 /// <summary>
 /// Issue #94: admin onay paneli — bağımsız öğretmen başvurularını listeleme/onaylama/reddetme.
+/// Issue #157: karar bildirimi outbox event'i + admin karar audit'i.
 /// </summary>
 public class TeacherApprovalServiceTests : IDisposable
 {
     private readonly TestDb _db = TestDb.Create();
     private const int AdminUserId = 999;
+    private const string AdminSub = "kc-admin-999";
     private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
+    private readonly IAdminUserActionAuditService _audit = Substitute.For<IAdminUserActionAuditService>();
 
     private TeacherApprovalService NewService(AppDbContext ctx) => new(ctx, _authApi);
+
+    private TeacherApprovalService NewServiceWithAudit(AppDbContext ctx) =>
+        new(ctx, _authApi, auditService: _audit);
+
+    private void UserResolvesToSub(int userId, string? sub) =>
+        _authApi.GetUsersByIdsAsync(Arg.Is<IEnumerable<int>>(ids => ids.Contains(userId)), Arg.Any<CancellationToken>())
+            .Returns(new List<UserLookupResultDto>
+            {
+                new() { Id = userId, KeycloakId = sub ?? string.Empty }
+            });
 
     private static Teacher IndependentPending(int userId) => new()
     {
@@ -72,7 +88,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId);
+        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
 
         response.Success.ShouldBeTrue();
 
@@ -94,7 +110,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId);
+        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
         response.Conflict.ShouldBeTrue();
@@ -120,7 +136,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId);
+        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
         response.Conflict.ShouldBeTrue();
@@ -144,7 +160,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId);
+        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
 
@@ -156,7 +172,7 @@ public class TeacherApprovalServiceTests : IDisposable
     public async Task ApproveAsync_UnknownTeacherId_ReturnsNotFound()
     {
         await using var ctx = _db.NewContext();
-        var response = await NewService(ctx).ApproveAsync(12345, AdminUserId);
+        var response = await NewService(ctx).ApproveAsync(12345, AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
         response.NotFound.ShouldBeTrue();
@@ -177,7 +193,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).RejectAsync(teacherId, "Belge eksik", AdminUserId);
+        var response = await NewService(actCtx).RejectAsync(teacherId, "Belge eksik", AdminUserId, AdminSub);
 
         response.Success.ShouldBeTrue();
 
@@ -203,7 +219,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).RejectAsync(teacherId, reason!, AdminUserId);
+        var response = await NewService(actCtx).RejectAsync(teacherId, reason!, AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
 
@@ -224,7 +240,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).RejectAsync(teacherId, "gerekçe", AdminUserId);
+        var response = await NewService(actCtx).RejectAsync(teacherId, "gerekçe", AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
         response.Conflict.ShouldBeTrue();
@@ -248,12 +264,201 @@ public class TeacherApprovalServiceTests : IDisposable
         var tooLong = new string('a', 501);
 
         await using var actCtx = _db.NewContext();
-        var response = await NewService(actCtx).RejectAsync(teacherId, tooLong, AdminUserId);
+        var response = await NewService(actCtx).RejectAsync(teacherId, tooLong, AdminUserId, AdminSub);
 
         response.Success.ShouldBeFalse();
 
         await using var check = _db.NewContext();
         (await check.Teachers.SingleAsync(t => t.Id == teacherId)).ApprovalStatus.ShouldBe(TeacherApprovalStatus.Pending);
+    }
+
+    // ---- issue #157: karar bildirimi outbox + admin karar audit'i ----
+
+    [Fact]
+    public async Task ApproveAsync_SubResolved_WritesOutboxEventWithoutReasonOrAdminIdentity()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(30);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+        UserResolvesToSub(30, "kc-teacher-30");
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
+        response.Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var outbox = await check.OutboxMessages
+            .SingleAsync(m => m.Type == OutboxEventRegistry.NameFor<TeacherApplicationDecidedEvent>());
+        var payload = System.Text.Json.JsonSerializer.Deserialize<TeacherApplicationDecidedEvent>(outbox.Content)!;
+
+        payload.TeacherId.ShouldBe(teacherId);
+        payload.TargetKeycloakId.ShouldBe("kc-teacher-30");
+        payload.Approved.ShouldBeTrue();
+        payload.EventId.ShouldNotBe(Guid.Empty);
+
+        // Güvenlik kararı (issue #157): payload'da ret gerekçesi/admin kimliği yok — TeacherApplicationDecidedEvent
+        // tipinde zaten böyle bir alan tanımlı değil; serileştirilmiş içerik de sadece beklenen alanları taşır.
+        outbox.Content.ShouldNotContain("Reason");
+        outbox.Content.ShouldNotContain(AdminSub);
+    }
+
+    [Fact]
+    public async Task RejectAsync_SubResolved_WritesOutboxEventWithoutReasonOrAdminIdentity()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(31);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+        UserResolvesToSub(31, "kc-teacher-31");
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewService(actCtx).RejectAsync(teacherId, "Belge eksik", AdminUserId, AdminSub);
+        response.Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        var outbox = await check.OutboxMessages
+            .SingleAsync(m => m.Type == OutboxEventRegistry.NameFor<TeacherApplicationDecidedEvent>());
+        var payload = System.Text.Json.JsonSerializer.Deserialize<TeacherApplicationDecidedEvent>(outbox.Content)!;
+
+        payload.TeacherId.ShouldBe(teacherId);
+        payload.TargetKeycloakId.ShouldBe("kc-teacher-31");
+        payload.Approved.ShouldBeFalse();
+
+        outbox.Content.ShouldNotContain("Belge eksik");
+        outbox.Content.ShouldNotContain(AdminSub);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_SubLookupFails_CommitsDecisionButSkipsOutbox()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(32);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+
+        _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<UserLookupResultDto>>(new HttpRequestException("auth-api down")));
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewService(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
+        response.Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        (await check.Teachers.SingleAsync(t => t.Id == teacherId)).ApprovalStatus.ShouldBe(TeacherApprovalStatus.Approved);
+        (await check.OutboxMessages.CountAsync(m => m.Type == OutboxEventRegistry.NameFor<TeacherApplicationDecidedEvent>()))
+            .ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task RejectAsync_SubLookupReturnsEmpty_CommitsDecisionButSkipsOutbox()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(33);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+        UserResolvesToSub(33, sub: null); // lookup succeeds but no KeycloakId
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewService(actCtx).RejectAsync(teacherId, "gerekçe", AdminUserId, AdminSub);
+        response.Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        (await check.Teachers.SingleAsync(t => t.Id == teacherId)).ApprovalStatus.ShouldBe(TeacherApprovalStatus.Rejected);
+        (await check.OutboxMessages.CountAsync(m => m.Type == OutboxEventRegistry.NameFor<TeacherApplicationDecidedEvent>()))
+            .ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_WithActorSub_RecordsAuditAsTeacherApproved()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(34);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+        UserResolvesToSub(34, "kc-teacher-34");
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewServiceWithAudit(actCtx).ApproveAsync(teacherId, AdminUserId, AdminSub);
+        response.Success.ShouldBeTrue();
+
+        await _audit.Received(1).TryRecordAsync(
+            Arg.Is<AdminUserActionRecord>(r =>
+                r.ActorKeycloakId == AdminSub &&
+                r.Action == AdminUserAction.TeacherApproved &&
+                r.TargetType == AdminUserTargetType.Teacher &&
+                r.TargetId == teacherId),
+            AdminUserActionOutcome.Succeeded);
+    }
+
+    [Fact]
+    public async Task RejectAsync_WithActorSub_RecordsAuditAsTeacherRejected()
+    {
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(35);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+        UserResolvesToSub(35, "kc-teacher-35");
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewServiceWithAudit(actCtx).RejectAsync(teacherId, "gerekçe", AdminUserId, AdminSub);
+        response.Success.ShouldBeTrue();
+
+        await _audit.Received(1).TryRecordAsync(
+            Arg.Is<AdminUserActionRecord>(r =>
+                r.ActorKeycloakId == AdminSub &&
+                r.Action == AdminUserAction.TeacherRejected &&
+                r.TargetType == AdminUserTargetType.Teacher &&
+                r.TargetId == teacherId),
+            AdminUserActionOutcome.Succeeded);
+    }
+
+    [Fact]
+    public async Task ApproveAsync_BlankActorSub_DoesNotRecordAudit()
+    {
+        // issue #157 review: interface artık actorAdminKeycloakId'yi ZORUNLU kılıyor (controller KeyCloakId
+        // yoksa zaten 403 döner) ama TryAuditDecisionAsync yine de boş/whitespace değere karşı savunmacı
+        // kalır — bu, "her zaman dolu gelir" varsayımının kırılması durumunda audit'in sessizce NRE atmak
+        // yerine no-op olmasını sağlar.
+        int teacherId;
+        await using (var ctx = _db.NewContext())
+        {
+            var teacher = IndependentPending(36);
+            ctx.Teachers.Add(teacher);
+            await ctx.SaveChangesAsync();
+            teacherId = teacher.Id;
+        }
+        UserResolvesToSub(36, "kc-teacher-36");
+
+        await using var actCtx = _db.NewContext();
+        var response = await NewServiceWithAudit(actCtx).ApproveAsync(teacherId, AdminUserId, "   ");
+        response.Success.ShouldBeTrue();
+
+        await _audit.DidNotReceive().TryRecordAsync(Arg.Any<AdminUserActionRecord>(), Arg.Any<AdminUserActionOutcome>());
     }
 
     public void Dispose() => _db.Dispose();

@@ -75,11 +75,22 @@ public class BadgeDbContext : DbContext
             .HasIndex(x => new { x.Type, x.SourceAccessRequestId })
             .IsUnique()
             .HasFilter("\"SourceAccessRequestId\" IS NOT NULL");
-        // Idempotency: bir bağımsız öğretmen başvurusu (issue #94), tipi başına en fazla bir bildirim üretir.
+        // Idempotency: bir bağımsız öğretmen BAŞVURUSU (issue #94, "TeacherApplicationSubmitted") tipi
+        // başına en fazla bir bildirim üretir. Filtre bilinçli olarak Type'a da bağlanır (issue #157
+        // review): aynı sütun (SourceTeacherApplicationId) karar bildirimlerinde (TeacherApplicationApproved/
+        // Rejected) REFERANS amaçlı dolu olabilir ama aynı öğretmen zaman içinde birden fazla karara konu
+        // olabildiğinden (ör. red sonrası yeni okul talebi) o tipler için burada tekillik KURULMAZ —
+        // dedup'ları SourceEventId üzerinden yapılır (aşağıda).
         modelBuilder.Entity<Notification>()
             .HasIndex(x => new { x.Type, x.SourceTeacherApplicationId })
             .IsUnique()
-            .HasFilter("\"SourceTeacherApplicationId\" IS NOT NULL");
+            .HasFilter("\"SourceTeacherApplicationId\" IS NOT NULL AND \"Type\" = 'TeacherApplicationSubmitted'");
+        // Idempotency: öğretmen başvurusu KARARI (issue #157) — TeacherId tek başına tekillik için yetersiz
+        // (aynı öğretmen birden fazla kez karara konu olabilir); dedup event'in kendi Guid kimliğiyle yapılır.
+        modelBuilder.Entity<Notification>()
+            .HasIndex(x => new { x.Type, x.SourceEventId })
+            .IsUnique()
+            .HasFilter("\"SourceEventId\" IS NOT NULL");
 
         modelBuilder.Entity<ProcessedLoginAttempt>().HasKey(x => x.Id);
         // Idempotency: aynı login denemesi (event'in kendi EventId'si) en fazla bir kez exam API'ye yazılır.

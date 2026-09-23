@@ -4,7 +4,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AccessRequestUpdate } from '../models/worksheet-access-request.model';
-import { TeacherApplicationSubmittedPayload } from '../models/teacher-application.model';
+import {
+  TeacherApplicationSubmittedPayload,
+  TeacherApplicationDecidedPayload,
+} from '../models/teacher-application.model';
 import { TranslocoService } from '@jsverse/transloco';
 import { AuthService } from './auth.service';
 
@@ -32,6 +35,13 @@ export class SignalRService {
   /** BadgeService `TeacherApplicationSubmitted` event akışı (bağımsız öğretmen başvurusu — issue #94, yalnızca Admin). */
   private readonly teacherApplicationSubmittedSubject = new Subject<TeacherApplicationSubmittedPayload>();
   public readonly teacherApplicationSubmitted$ = this.teacherApplicationSubmittedSubject.asObservable();
+
+  /**
+   * BadgeService `TeacherApplicationDecided` event akışı (öğretmen başvuru kararı — issue #157).
+   * Backend zaten Clients.User(sub) ile yalnızca başvuru sahibine gönderir.
+   */
+  private readonly teacherApplicationDecidedSubject = new Subject<TeacherApplicationDecidedPayload>();
+  public readonly teacherApplicationDecided$ = this.teacherApplicationDecidedSubject.asObservable();
 
   public startConnection() {
     this.hubConnection = new signalR.HubConnectionBuilder()
@@ -86,6 +96,24 @@ export class SignalRService {
       ref.onAction().subscribe(() => {
         this.router.navigate(['/admin/teacher-approvals']);
       });
+    });
+
+    this.hubConnection.on('TeacherApplicationDecided', (data: TeacherApplicationDecidedPayload) => {
+      this.teacherApplicationDecidedSubject.next(data);
+      // Güvenlik kararı (issue #157): gerekçe/admin kimliği taşınmaz, backend'in ürettiği sabit metin gösterilir.
+      // issue #157 review: yalnızca bağımsız öğretmen başvurusunda (/tutor-profile) bir hedef sayfa var;
+      // okul bağlantısı talebinde (isIndependentTutor=false) öğretmenin özel bir profil sayfası yok —
+      // bu durumda aksiyon BUTONU gösterilmez, sadece bilgilendirme mesajı.
+      if (data.isIndependentTutor) {
+        const ref = this.snackBar.open(data.body || data.title, this.t('common.notifications.goToProfile'), {
+          duration: 8000,
+        });
+        ref.onAction().subscribe(() => {
+          this.router.navigate(['/tutor-profile']);
+        });
+      } else {
+        this.snackBar.open(data.body || data.title, this.t('common.close'), { duration: 8000 });
+      }
     });
   }
 

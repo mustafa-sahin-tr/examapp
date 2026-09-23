@@ -24,6 +24,7 @@ public static class OutboxEventRegistry
         typeof(WorksheetAccessRequestRejectedEvent),
         typeof(LoginAttemptedEvent),
         typeof(TeacherApplicationSubmittedEvent),
+        typeof(TeacherApplicationDecidedEvent),
         typeof(IndependentTeacherRegisteredEvent),
         typeof(BookingRequestCreatedEvent),
         typeof(BookingDecisionEvent),

@@ -25,6 +25,14 @@
       "title": "New independent teacher application",
       "body": "{0} applied to become an independent teacher and is awaiting approval."
     },
+    "TeacherApplicationApproved": {
+      "title": "Your teacher application was approved",
+      "body": "Your teacher application was approved."
+    },
+    "TeacherApplicationRejected": {
+      "title": "Your teacher application was rejected",
+      "body": "Your teacher application was rejected."
+    },
     "WorksheetAccessRequested": {
       "title": "New assignment access request",
       "body": "{0} is requesting assignment access for \"{1}\"."

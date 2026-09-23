@@ -181,6 +181,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'admin', labelKey: 'menu.admin', icon: 'admin_panel_settings', route: '/admin', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teacher-approvals', labelKey: 'menu.teacherApprovals', icon: 'how_to_reg', route: '/admin/teacher-approvals', type: 'menu', roles: ['Admin'] },
     { id: 'admin-teachers', labelKey: 'menu.adminTeachers', icon: 'groups', route: '/admin/teachers', type: 'menu', roles: ['Admin'] },
+    { id: 'admin-students', labelKey: 'menu.adminStudents', icon: 'school', route: '/admin/students', type: 'menu', roles: ['Admin'] },
     { id: 'divider2', labelKey: '', icon: '', route: '', type: 'divider' },
     { id: 'help', labelKey: 'menu.help', icon: 'support', route: '/help', type: 'menu' },
     { id: 'feedback', labelKey: 'menu.feedback', icon: 'feedback', route: '/feedback', type: 'menu' },

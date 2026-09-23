@@ -6,7 +6,7 @@ import { TranslocoDirective, provideTranslocoScope } from '@jsverse/transloco';
 import { catchError, map, of } from 'rxjs';
 import { School } from '../../../models/taxonomy';
 import { AdminService } from '../../../services/admin.service';
-import { SchoolFilterValue } from './school-filter.model';
+import { SchoolFilterUnassignedLabel, SchoolFilterValue } from './school-filter.model';
 
 type SchoolsState =
   | { status: 'loading'; schools: School[] }
@@ -38,6 +38,11 @@ export class SchoolFilterComponent {
 
   readonly value = model<SchoolFilterValue>('all');
   readonly disabled = input(false);
+  /**
+   * "Okula bağlı olmayanlar" seçeneğinin etiketi (`admin.schoolFilter.*` anahtarı).
+   * Öğretmen listesi "Bağımsız / okulsuz" (varsayılan), öğrenci listesi "Okulsuz" kullanır.
+   */
+  readonly unassignedLabel = input<SchoolFilterUnassignedLabel>('unassigned');
 
   private readonly state = toSignal(
     this.adminService.getSchools().pipe(

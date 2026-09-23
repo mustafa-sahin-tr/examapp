@@ -231,6 +231,7 @@ builder.Services.AddScoped<ExamApp.Api.Services.TeacherApprovals.ITeacherApprova
 // Admin kullanıcı listeleri (issue #152 öğretmen; #153 öğrenci aynı IAdminUserDirectory'yi kullanır)
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserDirectory, ExamApp.Api.Services.AdminUsers.AdminUserDirectory>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherService, ExamApp.Api.Services.AdminUsers.AdminTeacherService>();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentService, ExamApp.Api.Services.AdminUsers.AdminStudentService>();
 
 // Student activity reset
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();

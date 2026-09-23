@@ -24,7 +24,7 @@ public class AdminControllerTeachersTests
     private AdminController NewController() => new(
         Substitute.For<ITaxonomyService>(), Substitute.For<IClassifierCacheService>(), Substitute.For<ISchoolService>(),
         Substitute.For<IDashboardService>(), Substitute.For<ILocationService>(), Substitute.For<ITeacherApprovalService>(),
-        _adminTeachers);
+        _adminTeachers, Substitute.For<IAdminStudentService>());
 
     [Fact]
     public async Task SchoolId_and_unassigned_together_is_400_and_service_not_called()
@@ -53,6 +53,6 @@ public class AdminControllerTeachersTests
             .GetParameters().Single(p => p.Name == "pageSize");
 
         parameter.DefaultValue.ShouldBe(20);
-        AdminTeacherService.MaxPageSize.ShouldBe(100);
+        AdminListPaging.MaxPageSize.ShouldBe(100);
     }
 }

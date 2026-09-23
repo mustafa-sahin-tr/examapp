@@ -4,6 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 
 import { AdminService } from './admin.service';
 import { AdminTeacherListItem } from '../models/admin-teacher.model';
+import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
 
 describe('AdminService.getTeachers (issue #152)', () => {
@@ -79,6 +80,84 @@ describe('AdminService.getTeachers (issue #152)', () => {
     service.getTeachers({ page: 1, pageSize: 20, schoolId: 5, unassigned: true }).subscribe();
 
     const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/teachers');
+    expect(req.request.params.get('unassigned')).toBe('true');
+    expect(req.request.params.has('schoolId')).toBeFalse();
+    req.flush(response);
+  });
+});
+
+describe('AdminService.getStudents (issue #153)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  const response: Paged<AdminStudentListItem> = {
+    pageNumber: 1,
+    pageSize: 20,
+    totalCount: 1,
+    items: [
+      {
+        id: 7,
+        fullName: 'Ali Veli',
+        email: 'ali@ornek.com',
+        studentNumber: '1234',
+        schoolId: 5,
+        schoolName: 'Ankara Lisesi',
+        gradeId: 9,
+        gradeName: '9. Sınıf',
+        isEnabled: true,
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('getStudents_NoFilter_SendsPageAndPageSizeOnly', () => {
+    let result: Paged<AdminStudentListItem> | undefined;
+    service.getStudents({ page: 1, pageSize: 20 }).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/students');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('page')).toBe('1');
+    expect(req.request.params.get('pageSize')).toBe('20');
+    expect(req.request.params.has('schoolId')).toBeFalse();
+    expect(req.request.params.has('unassigned')).toBeFalse();
+    req.flush(response);
+
+    expect(result).toEqual(response);
+  });
+
+  it('getStudents_SchoolId_SendsSchoolIdWithoutUnassigned', () => {
+    service.getStudents({ page: 2, pageSize: 50, schoolId: 5, unassigned: false }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/students');
+    expect(req.request.params.get('page')).toBe('2');
+    expect(req.request.params.get('pageSize')).toBe('50');
+    expect(req.request.params.get('schoolId')).toBe('5');
+    expect(req.request.params.has('unassigned')).toBeFalse();
+    req.flush(response);
+  });
+
+  it('getStudents_Unassigned_SendsUnassignedTrueWithoutSchoolId', () => {
+    service.getStudents({ page: 1, pageSize: 20, schoolId: null, unassigned: true }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/students');
+    expect(req.request.params.get('unassigned')).toBe('true');
+    expect(req.request.params.has('schoolId')).toBeFalse();
+    req.flush(response);
+  });
+
+  it('getStudents_SchoolIdAndUnassigned_NeverSendsBoth', () => {
+    service.getStudents({ page: 1, pageSize: 20, schoolId: 5, unassigned: true }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/students');
     expect(req.request.params.get('unassigned')).toBe('true');
     expect(req.request.params.has('schoolId')).toBeFalse();
     req.flush(response);

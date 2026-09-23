@@ -1,3 +1,5 @@
+import { AdminSchoolPagedQuery } from './admin-paged-query.model';
+
 /**
  * Issue #152 — GET /api/exam/admin/teachers yanıt elemanı (AdminTeacherListItemDto).
  * Zarf: `Paged<AdminTeacherListItem>` (models/test-instance.ts).
@@ -25,13 +27,5 @@ export interface AdminTeacherListItem {
   isEnabled: boolean | null;
 }
 
-/**
- * Sorgu parametreleri. `schoolId` ile `unassigned=true` birlikte gönderilemez (backend 400 döner).
- * `page` 1-tabanlı; `pageSize` backend'de 1..100 aralığına kırpılır.
- */
-export interface AdminTeacherListQuery {
-  page: number;
-  pageSize: number;
-  schoolId?: number | null;
-  unassigned?: boolean;
-}
+/** Sorgu parametreleri; `schoolId` ile `unassigned=true` birlikte gönderilemez. */
+export type AdminTeacherListQuery = AdminSchoolPagedQuery;

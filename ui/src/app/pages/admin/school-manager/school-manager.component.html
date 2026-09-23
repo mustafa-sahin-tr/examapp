@@ -1,0 +1,209 @@
+<div class="schools" [class.al]="!embedded()" *transloco="let t; prefix: 'admin.schools'">
+  @if (!embedded()) {
+    <!-- Doğrudan /admin/schools ile açıldığında; admin-home sekmesinde çift başlık olmasın. -->
+    <header class="al__head">
+      <div class="al__title">
+        <mat-icon>apartment</mat-icon>
+        <div>
+          <h1>{{ t('pageTitle') }}</h1>
+          <p>{{ t('subtitle') }}</p>
+        </div>
+      </div>
+    </header>
+  }
+
+  @if (busy() || schoolsLoading()) {
+    <mat-progress-bar mode="indeterminate" class="top-bar"></mat-progress-bar>
+  }
+
+  <mat-card class="column schools-section" appearance="outlined">
+    <header class="column-header">
+      <h3>{{ t('title') }}</h3>
+      <span class="count">{{ schools().length }}</span>
+    </header>
+
+    <div class="add-row stacked">
+      <mat-form-field appearance="outline" class="dense">
+        <input
+          matInput
+          [placeholder]="t('newPlaceholder')"
+          [(ngModel)]="newSchoolName"
+          (keyup.enter)="addSchool()"
+        />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense location-select">
+        <mat-select
+          [placeholder]="t('provincePlaceholder')"
+          [attr.aria-label]="t('provinceAria')"
+          [ngModel]="newSchoolProvinceId()"
+          (ngModelChange)="onNewSchoolProvinceChange($event)"
+          [disabled]="provincesLoading() || !!provincesError()"
+        >
+          <mat-option [value]="null">{{ t('provinceNone') }}</mat-option>
+          @for (p of provinces(); track p.id) {
+            <mat-option [value]="p.id">{{ p.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense location-select">
+        <mat-select
+          [placeholder]="t('districtPlaceholder')"
+          [attr.aria-label]="t('districtAria')"
+          [ngModel]="newSchoolDistrictId()"
+          (ngModelChange)="newSchoolDistrictId.set($event)"
+          [disabled]="newSchoolProvinceId() == null || newSchoolDistrictsLoading()"
+        >
+          <mat-option [value]="null">{{ t('districtNone') }}</mat-option>
+          @for (d of newSchoolDistricts(); track d.id) {
+            <mat-option [value]="d.id">{{ d.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="dense address-field">
+        <input
+          matInput
+          [placeholder]="t('addressPlaceholder')"
+          [attr.aria-label]="t('addressAria')"
+          maxlength="500"
+          [(ngModel)]="newSchoolAddressLine"
+          (keyup.enter)="addSchool()"
+        />
+      </mat-form-field>
+      <button
+        mat-icon-button
+        color="primary"
+        type="button"
+        [attr.aria-label]="t('add')"
+        (click)="addSchool()"
+        [disabled]="busy()"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    @if (provincesError()) {
+      <div class="location-error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span class="state-text">{{ provincesError() }}</span>
+        <button
+          mat-button
+          type="button"
+          (click)="loadProvinces()"
+          [disabled]="provincesLoading()"
+        >
+          {{ 'common.retry' | transloco }}
+        </button>
+      </div>
+    }
+
+    @if (schoolsError()) {
+      <div class="state-box state-box--error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <p class="state-text">{{ schoolsError() }}</p>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="loadSchools()"
+          [disabled]="schoolsLoading()"
+        >
+          {{ 'common.retry' | transloco }}
+        </button>
+      </div>
+    } @else if (!schoolsLoading() && schools().length === 0) {
+      <div class="empty-state">
+        <mat-icon>school</mat-icon>
+        <p class="empty-title">{{ t('emptyTitle') }}</p>
+        <p class="empty-hint">{{ t('emptyHint') }}</p>
+      </div>
+    } @else {
+      <ul class="list schools-list">
+        @for (sc of schools(); track sc.id) {
+          <li class="item static">
+            @if (!isEditing(sc.id)) {
+              <span class="name">{{ sc.name }}</span>
+              @if (schoolLocation(sc); as loc) {
+                <span class="meta" [title]="sc.addressLine ?? ''">{{ loc }}</span>
+              }
+              <span class="actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  [attr.aria-label]="t('edit')"
+                  (click)="startEdit(sc)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="danger"
+                  [attr.aria-label]="t('delete')"
+                  (click)="remove(sc)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </span>
+            } @else {
+              <span class="edit-row">
+                <input
+                  class="inline-edit"
+                  [attr.aria-label]="t('nameAria')"
+                  [(ngModel)]="editName"
+                  (keyup.enter)="saveEdit(sc)"
+                />
+                <mat-form-field appearance="outline" class="dense location-select">
+                  <mat-select
+                    [placeholder]="t('provinceAria')"
+                    [attr.aria-label]="t('provinceAria')"
+                    [ngModel]="editProvinceId()"
+                    (ngModelChange)="onEditProvinceChange($event)"
+                    [disabled]="provincesLoading() || !!provincesError()"
+                  >
+                    <mat-option [value]="null">{{ t('provinceNone') }}</mat-option>
+                    @for (p of provinces(); track p.id) {
+                      <mat-option [value]="p.id">{{ p.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="dense location-select">
+                  <mat-select
+                    [placeholder]="t('districtAria')"
+                    [attr.aria-label]="t('districtAria')"
+                    [ngModel]="editDistrictId()"
+                    (ngModelChange)="editDistrictId.set($event)"
+                    [disabled]="editProvinceId() == null || editDistrictsLoading()"
+                  >
+                    <mat-option [value]="null">{{ t('districtNone') }}</mat-option>
+                    @for (d of editDistricts(); track d.id) {
+                      <mat-option [value]="d.id">{{ d.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <input
+                  class="inline-edit address-field"
+                  [placeholder]="t('addressEditPlaceholder')"
+                  [attr.aria-label]="t('addressAria')"
+                  maxlength="500"
+                  [(ngModel)]="editAddressLine"
+                  (keyup.enter)="saveEdit(sc)"
+                />
+                <button
+                  mat-icon-button
+                  color="primary"
+                  type="button"
+                  [attr.aria-label]="t('actions.save')"
+                  (click)="saveEdit(sc)"
+                >
+                  <mat-icon>check</mat-icon>
+                </button>
+                <button mat-icon-button type="button" [attr.aria-label]="t('actions.cancel')" (click)="cancelEdit()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </mat-card>
+</div>

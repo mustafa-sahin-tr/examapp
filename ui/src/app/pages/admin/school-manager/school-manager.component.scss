@@ -1,0 +1,312 @@
+@use '../../../shared/styles/admin-list';
+
+// Issue #150: okul yönetimi TaxonomyManagerComponent'ten taşındı; görünüm aynı kalsın diye
+// taksonominin kolon/liste dili burada tekrarlanır (yalnız okul ekranının kullandığı kısım).
+
+.schools {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.top-bar {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+}
+
+// ---- card ----
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--ms-surface-weak);
+  border: 1px solid var(--ms-border-weak);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  h3 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--heading-on-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .count {
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 20px;
+    min-width: 20px;
+    text-align: center;
+    background: var(--ms-action-background);
+    color: var(--ms-action-text);
+    border-radius: 10px;
+    padding: 0 8px;
+  }
+}
+
+// ---- add row ----
+
+.add-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  &.stacked {
+    flex-wrap: wrap;
+  }
+
+  .dense {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
+// Taksonomi ekranındaki yoğun form alanı görünümüyle birebir aynı (eski kural olduğu gibi taşındı).
+.dense {
+  font-size: 13px;
+
+  ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+    display: none;
+  }
+  ::ng-deep .mat-mdc-text-field-wrapper {
+    padding-block: 0;
+  }
+}
+
+// ---- list ----
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.schools-list {
+  max-height: 40vh;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 4px 8px 4px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+  font-size: 13px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background: var(--ms-surface-medium);
+    border-color: var(--ms-border-weak);
+  }
+
+  &.static {
+    cursor: default;
+  }
+
+  .name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--ms-text-medium);
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 2px;
+
+    button {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      color: var(--ms-text-medium);
+
+      &:hover {
+        color: var(--ms-text-strong);
+      }
+
+      &.danger:hover {
+        color: var(--ms-danger-text-medium);
+      }
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+    }
+  }
+
+  .edit-row {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+}
+
+.inline-edit {
+  flex: 1;
+  min-width: 100px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--ms-action-border);
+  border-radius: 6px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text-strong);
+  font: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: var(--ms-action-border-focus);
+  }
+}
+
+// Issue #91: il / ilçe seçimleri ve açık adres
+.location-select {
+  flex: 1 1 140px;
+  min-width: 140px;
+}
+
+.address-field {
+  flex: 2 1 200px;
+  min-width: 160px;
+}
+
+.location-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ms-danger-text-medium);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .state-text {
+    flex: 1;
+  }
+}
+
+// ---- empty state ----
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  flex: 1;
+  padding: 32px 16px;
+  color: var(--ms-text-medium);
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 4px;
+    color: var(--ms-text-weak);
+  }
+
+  .empty-title {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ms-text);
+  }
+
+  .empty-hint {
+    margin: 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+  }
+}
+
+// ---- error banner ----
+
+.state-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border);
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+
+  mat-icon {
+    flex-shrink: 0;
+  }
+
+  .state-text {
+    margin: 0;
+    flex: 1;
+    font-family: var(--paragraphFontFamily);
+    font-size: 14px;
+  }
+
+  &--error {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text);
+
+    mat-icon {
+      color: var(--ms-danger-text-medium);
+    }
+  }
+
+  @media (max-width: 900px) {
+    flex-wrap: wrap;
+
+    button {
+      width: 100%;
+    }
+  }
+}

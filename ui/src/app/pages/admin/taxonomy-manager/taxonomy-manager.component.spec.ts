@@ -6,7 +6,7 @@ import { of, throwError } from 'rxjs';
 
 import { TaxonomyManagerComponent } from './taxonomy-manager.component';
 import { AdminService } from '../../../services/admin.service';
-import { ApiResult, School, TaxonomySubject, TaxonomyTree } from '../../../models/taxonomy';
+import { ApiResult, TaxonomySubject, TaxonomyTree } from '../../../models/taxonomy';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
 
@@ -42,24 +42,9 @@ describe('TaxonomyManagerComponent', () => {
     grades: [{ id: 5, name: '5. Sınıf' }],
   };
 
-  const schools: School[] = [
-    {
-      id: 1,
-      name: 'Atatürk İlkokulu',
-      provinceId: 6,
-      provinceName: 'Ankara',
-      districtId: 601,
-      districtName: 'Çankaya',
-      addressLine: null,
-    },
-  ];
-
   function configure(): ComponentFixture<TaxonomyManagerComponent> {
     adminService = jasmine.createSpyObj<AdminService>('AdminService', [
       'getTaxonomy',
-      'getSchools',
-      'getProvinces',
-      'getDistricts',
       'createSubject',
       'updateSubject',
       'deleteSubject',
@@ -69,16 +54,10 @@ describe('TaxonomyManagerComponent', () => {
       'createSubTopic',
       'updateSubTopic',
       'deleteSubTopic',
-      'createSchool',
-      'updateSchool',
-      'deleteSchool',
       'addSubjectGrade',
       'removeSubjectGrade',
     ]);
     adminService.getTaxonomy.and.returnValue(of(tree));
-    adminService.getSchools.and.returnValue(of(schools));
-    adminService.getProvinces.and.returnValue(of([{ id: 6, name: 'Ankara' }, { id: 35, name: 'İzmir' }]));
-    adminService.getDistricts.and.returnValue(of([{ id: 601, name: 'Çankaya', provinceId: 6 }]));
 
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     dialog.open.and.returnValue({ afterClosed: () => of(true) } as any);
@@ -183,84 +162,6 @@ describe('TaxonomyManagerComponent', () => {
     expect(component.newSubTopicName).toBe('');
   });
 
-  it('addSchool_WithProvinceDistrictAddress_CallsCreateSchoolWithTrimmedFields', async () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    adminService.createSchool.and.returnValue(of(okResult));
-    component.newSchoolName = '  Cumhuriyet Ortaokulu ';
-    component.onNewSchoolProvinceChange(6);
-    component.newSchoolDistrictId.set(601);
-    component.newSchoolAddressLine = ' Atatürk Bulvarı No:1 ';
-
-    await component.addSchool();
-
-    expect(adminService.getDistricts).toHaveBeenCalledOnceWith(6);
-    expect(adminService.createSchool).toHaveBeenCalledOnceWith({
-      name: 'Cumhuriyet Ortaokulu',
-      provinceId: 6,
-      districtId: 601,
-      addressLine: 'Atatürk Bulvarı No:1',
-    });
-    expect(component.newSchoolProvinceId()).toBeNull();
-    expect(component.newSchoolDistrictId()).toBeNull();
-    expect(component.newSchoolAddressLine).toBe('');
-  });
-
-  it('addSchool_NoLocation_SendsNulls', async () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    adminService.createSchool.and.returnValue(of(okResult));
-    component.newSchoolName = 'Yeni Okul';
-
-    await component.addSchool();
-
-    expect(adminService.createSchool).toHaveBeenCalledOnceWith({
-      name: 'Yeni Okul',
-      provinceId: null,
-      districtId: null,
-      addressLine: null,
-    });
-  });
-
-  it('onNewSchoolProvinceChange_ProvinceChanges_ResetsDistrictSelection', () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    component.onNewSchoolProvinceChange(6);
-    component.newSchoolDistrictId.set(601);
-    component.onNewSchoolProvinceChange(35);
-
-    expect(component.newSchoolDistrictId()).toBeNull();
-    expect(adminService.getDistricts).toHaveBeenCalledWith(35);
-  });
-
-  it('addSchool_BackendRejects_KeepsFormValues', async () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    adminService.createSchool.and.returnValue(
-      throwError(() => ({ error: { message: 'İlçe seçildiğinde il de seçilmelidir.' } }))
-    );
-    component.newSchoolName = 'Yeni Okul';
-    component.newSchoolAddressLine = 'Adres';
-
-    await component.addSchool();
-
-    expect(component.newSchoolName).toBe('Yeni Okul');
-    expect(component.newSchoolAddressLine).toBe('Adres');
-    expect(snackBar.open).toHaveBeenCalledWith(
-      'İlçe seçildiğinde il de seçilmelidir.',
-      'Kapat',
-      jasmine.anything()
-    );
-  });
-
   it('remove_ConfirmDialogAccepted_CallsDeleteSubject', async () => {
     fixture = configure();
     component = fixture.componentInstance;
@@ -305,17 +206,6 @@ describe('TaxonomyManagerComponent', () => {
     await component.remove('subtopic', { id: 100, name: 'Basit Kesirler' });
 
     expect(adminService.deleteSubTopic).toHaveBeenCalledOnceWith(100);
-  });
-
-  it('remove_SchoolLevel_CallsDeleteSchool', async () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-    adminService.deleteSchool.and.returnValue(of(okResult));
-
-    await component.remove('school', { id: 1, name: 'Atatürk İlkokulu' });
-
-    expect(adminService.deleteSchool).toHaveBeenCalledOnceWith(1);
   });
 
   it('saveEdit_SubjectLevel_CallsUpdateSubjectWithTrimmedName', async () => {
@@ -371,67 +261,6 @@ describe('TaxonomyManagerComponent', () => {
       name: 'Basit Kesirler 2',
       topicId: 10,
     });
-  });
-
-  it('saveEdit_SchoolLevel_CallsUpdateSchoolWithLocationFields', async () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-    adminService.updateSchool.and.returnValue(of(okResult));
-
-    component.startEdit('school', schools[0]);
-    expect(component.editProvinceId()).toBe(6);
-    expect(component.editDistrictId()).toBe(601);
-    expect(adminService.getDistricts).toHaveBeenCalledOnceWith(6);
-
-    component.editName = 'Atatürk İlkokulu 2';
-    component.editAddressLine = ' Yeni adres ';
-
-    await component.saveEdit('school', schools[0]);
-
-    expect(adminService.updateSchool).toHaveBeenCalledOnceWith(1, {
-      name: 'Atatürk İlkokulu 2',
-      provinceId: 6,
-      districtId: 601,
-      addressLine: 'Yeni adres',
-    });
-    expect(component.editing()).toBeNull();
-  });
-
-  it('schoolRow_WithProvinceAndDistrict_ShowsCombinedLocation', () => {
-    fixture = configure();
-    fixture.detectChanges();
-
-    const meta: HTMLElement = fixture.nativeElement.querySelector('.schools-list .meta');
-    expect(meta.textContent?.trim()).toBe('Ankara / Çankaya');
-  });
-
-  it('schoolLocation_ProvinceAndDistrictPresent_JoinsBothWithSlash', () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    expect(component.schoolLocation(schools[0])).toBe('Ankara / Çankaya');
-  });
-
-  it('schoolLocation_OnlyProvincePresent_ReturnsProvinceNameOnly', () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    const school: School = { id: 2, name: 'İl Olan Okul', provinceId: 6, provinceName: 'Ankara', districtId: null, districtName: null, addressLine: null };
-
-    expect(component.schoolLocation(school)).toBe('Ankara');
-  });
-
-  it('schoolLocation_NoProvinceOrDistrict_ReturnsEmptyString', () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-
-    const school: School = { id: 3, name: 'Adressiz Okul', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null };
-
-    expect(component.schoolLocation(school)).toBe('');
   });
 
   // ── Sınıf filtresi / GradeSubject (Issue #119) ────────────────────────────
@@ -663,32 +492,17 @@ describe('TaxonomyManagerComponent', () => {
     expect(component.error()).toBeNull();
   });
 
-  it('loadSchools_RequestFails_ShowsSchoolsErrorBanner', () => {
+
+  // ── Okul bölümü (Issue #150: SchoolManagerComponent'e taşındı) ────────────
+
+  it('render_AfterSchoolsMovedOut_DoesNotRenderSchoolsSection', () => {
     fixture = configure();
-    component = fixture.componentInstance;
-    adminService.getSchools.and.returnValue(throwError(() => new Error('boom')));
-
     fixture.detectChanges();
 
-    expect(component.schoolsError()).toBe('Okullar yüklenemedi');
-    const errorBox: HTMLElement = fixture.nativeElement.querySelector('.schools-section .state-box--error');
-    expect(errorBox).toBeTruthy();
-    expect(errorBox.querySelector('button')).toBeTruthy();
-  });
-
-  it('schoolsRetryButtonClick_AfterLoadSchoolsError_CallsLoadSchoolsAgain', () => {
-    fixture = configure();
-    component = fixture.componentInstance;
-    adminService.getSchools.and.returnValue(throwError(() => new Error('boom')));
-    fixture.detectChanges();
-    expect(adminService.getSchools).toHaveBeenCalledTimes(1);
-
-    adminService.getSchools.and.returnValue(of(schools));
-    const retry: HTMLButtonElement = fixture.nativeElement.querySelector('.schools-section .state-box--error button');
-    retry.click();
-    fixture.detectChanges();
-
-    expect(adminService.getSchools).toHaveBeenCalledTimes(2);
-    expect(component.schoolsError()).toBeNull();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('.schools-section')).toBeNull();
+    expect(el.querySelector('.schools-list')).toBeNull();
+    expect(el.textContent).not.toContain('Okullar');
+    expect(el.textContent).not.toContain('Yeni okul adı');
   });
 });

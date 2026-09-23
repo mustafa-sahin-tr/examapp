@@ -6,8 +6,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 /// <summary>
-/// Öğretmen hesabının onay durumu (issue #92). Okula bağlı öğretmenler doğrudan Approved;
-/// bağımsız öğretmenler (IsIndependentTutor) admin onayı bekler.
+/// Öğretmen hesabının onay durumu (issue #92). Bağımsız öğretmenler (IsIndependentTutor) ve okul bağlantısı
+/// talep eden öğretmenler (<see cref="Teacher.RequestedSchoolId"/>, issue #234) admin onayı bekler.
 /// </summary>
 public enum TeacherApprovalStatus
 {
@@ -33,6 +33,17 @@ public class Teacher : BaseEntity, ISchoolScoped
 
     [ForeignKey("SchoolId")]
     public School? School { get; set; }
+
+    /// <summary>
+    /// issue #234: kayıtta öğretmenin bağlanmak İSTEDİĞİ okul. Kullanıcı okul üyeliğini kendisi kuramaz;
+    /// istek burada Pending bekler, <see cref="SchoolId"/> admin onayına kadar null kalır — böylece okul-kapsam
+    /// kuralları (<c>ISchoolAccessPolicy</c>, #190/#192/#222) onu okulsuz görür. Onayda SchoolId'ye taşınır ve
+    /// temizlenir; redde SchoolId kurulmaz, RequestedSchoolId hangi talebin reddedildiğini göstermek için kalır.
+    /// Bekleyen talep = <c>RequestedSchoolId != null &amp;&amp; ApprovalStatus == Pending</c>.
+    /// </summary>
+    public int? RequestedSchoolId { get; set; }
+
+    public School? RequestedSchool { get; set; }
 
     /// <summary>Okula bağlı olmayan, bağımsız çalışan öğretmen (issue #92). SchoolId null olabilir.</summary>
     public bool IsIndependentTutor { get; set; }

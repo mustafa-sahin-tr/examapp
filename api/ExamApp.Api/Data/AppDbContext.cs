@@ -189,6 +189,15 @@ public class AppDbContext : DbContext
             .Property(t => t.IsIndependentTutor)
             .HasDefaultValue(false);
 
+        // issue #234: onay bekleyen okul bağlantısı talebi. School'a ikinci FK — SchoolId ile karışmasın diye
+        // açıkça yapılandırılır. ClientNoAction: okullar soft-delete edilir (Remove aslında UPDATE); SetNull/Cascade
+        // seçilseydi change tracker'daki bekleyen talepler sessizce null'a çekilirdi. DB tarafı NO ACTION.
+        modelBuilder.Entity<Teacher>()
+            .HasOne(t => t.RequestedSchool)
+            .WithMany()
+            .HasForeignKey(t => t.RequestedSchoolId)
+            .OnDelete(DeleteBehavior.ClientNoAction);
+
         // İl / ilçe referans tabloları + okul adresi (issue #91).
         // Referans kayıtlar silinemez (Restrict) — okul FK'leri nullable, mevcut satırlar etkilenmez.
         modelBuilder.Entity<Province>()

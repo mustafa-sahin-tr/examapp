@@ -105,6 +105,19 @@ public class StudentService : IStudentService
             };
         }
 
+        // issue #234 (security): öğretmen ve öğrenci kaydı birbirini dışlar. Öğretmen kaydı olan kullanıcı
+        // student/register ile kendine Students.SchoolId yazıp (önbellekte Role=Student) başka bir okulun
+        // kapsamına giremez.
+        if (await _context.Teachers.AnyAsync(t => t.UserId == userId))
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["student.teacherRecordExists"]
+            };
+        }
+
         var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
         if (student != null)
         {

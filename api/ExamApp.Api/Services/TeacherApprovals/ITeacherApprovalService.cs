@@ -6,7 +6,7 @@ using ExamApp.Api.Models.Dtos.Admin;
 
 namespace ExamApp.Api.Services.TeacherApprovals;
 
-/// <summary>Admin tarafı: bağımsız öğretmen başvurularını listeleme / onaylama / reddetme (issue #94).</summary>
+/// <summary>Admin tarafı: bağımsız öğretmen (issue #94) ve okul bağlantısı (issue #234) başvurularını listeleme / onaylama / reddetme.</summary>
 public interface ITeacherApprovalService
 {
     Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default);

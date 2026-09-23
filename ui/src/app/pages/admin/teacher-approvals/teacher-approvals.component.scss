@@ -75,3 +75,30 @@
     border-color: var(--ms-border);
   }
 }
+
+// Issue #234: başvuru türü etiketi (Bağımsız / Okul: <ad>).
+.ta__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text-weak);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+
+  mat-icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &--school {
+    border-color: var(--ms-warning-border);
+    background: var(--ms-warning-surface-weak);
+    color: var(--ms-warning-text-weak);
+  }
+}

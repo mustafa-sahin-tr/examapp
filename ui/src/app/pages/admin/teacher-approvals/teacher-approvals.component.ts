@@ -27,7 +27,8 @@ import {
 } from './reject-teacher-application-dialog/reject-teacher-application-dialog.component';
 
 /**
- * Issue #94 — Admin onay paneli: bekleyen bağımsız öğretmen başvuruları.
+ * Issue #94 / #234 — Admin onay paneli: bekleyen öğretmen başvuruları (bağımsız öğretmen başvurusu ya da
+ * okul bağlantısı talebi; satırda tür etiketi gösterilir).
  * Liste tek seferde yüklenir; onay/red sonrası satır listeden düşürülür (backend zaten Pending dışını
  * döndürmez, yeniden fetch gereksiz). Aksiyon durumu satır bazlı tutulur (`actingIds`), diğer satırlar
  * kullanılabilir kalır.
@@ -63,7 +64,7 @@ export class TeacherApprovalsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly transloco = inject(TranslocoService);
 
-  readonly displayedColumns = ['fullName', 'email', 'appliedAt', 'actions'];
+  readonly displayedColumns = ['fullName', 'type', 'email', 'appliedAt', 'actions'];
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -117,6 +118,17 @@ export class TeacherApprovalsComponent implements OnInit {
   displayName(row: PendingTeacherApplication): string {
     const name = row.fullName?.trim();
     return name ? name : this.text('unnamed', { userId: row.userId });
+  }
+
+  /** Issue #234: satırın başvuru türü etiketi — "Bağımsız" ya da "Okul: <ad>". */
+  typeLabel(row: PendingTeacherApplication): string {
+    if (row.isIndependentTutor) {
+      return this.text('types.independent');
+    }
+    const schoolName = row.requestedSchoolName?.trim();
+    return schoolName
+      ? this.text('types.school', { schoolName })
+      : this.text('types.schoolUnknown', { schoolId: row.requestedSchoolId ?? '—' });
   }
 
   approve(row: PendingTeacherApplication): void {

@@ -3,9 +3,17 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
-import { Grade, RegisterProfileResponse, School } from '../../models/registration.model';
+import {
+  Grade,
+  RegisterErrorBody,
+  RegisterProfileResponse,
+  RegisterTeacherResponse,
+  School,
+} from '../../models/registration.model';
 
 type AppRole = 'Student' | 'Teacher' | 'Parent';
 
@@ -38,6 +46,10 @@ export class CompleteProfileComponent implements OnInit {
   readonly selectedRole = signal<AppRole | null>(null);
   readonly step = computed(() => (this.selectedRole() ? 2 : 1));
   readonly isLoading = signal(false);
+  /** Issue #234: öğretmen kaydı tamamlandı, okul bağlantısı yönetici onayı bekliyor — yönlendirmeden önce bilgilendir. */
+  readonly schoolApprovalPending = signal(false);
+  /** Issue #234: 409 (kayıt değişikliğine izin yok) backend mesajı; form kullanılabilir kalır. */
+  readonly submitError = signal<string | null>(null);
 
   readonly grades = signal<Grade[]>([]);
   readonly gradesLoading = signal(false);
@@ -94,6 +106,12 @@ export class CompleteProfileComponent implements OnInit {
 
   back(): void {
     this.selectedRole.set(null);
+    this.submitError.set(null);
+  }
+
+  /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
+  continueAfterPending(): void {
+    window.location.href = '/tests';
   }
 
   private loadGrades(): void {
@@ -147,15 +165,27 @@ export class CompleteProfileComponent implements OnInit {
     request$ = this.buildRequest(role);
 
     this.isLoading.set(true);
+    this.submitError.set(null);
     request$.subscribe({
       next: (res) => {
         this.isLoading.set(false);
         this.applySession(role, res);
+        if (role === 'Teacher' && 'schoolApprovalPending' in res && res.schoolApprovalPending) {
+          // Oturum kaydedildi; kullanıcı bilgilendirme kartını görüp "Devam Et" ile ilerler.
+          this.schoolApprovalPending.set(true);
+          return;
+        }
         this.snackBar.open('Profiliniz tamamlandı! Yönlendiriliyorsunuz...', 'Tamam', { duration: 3000 });
         window.location.href = role === 'Parent' ? '/dashboard' : '/tests';
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.isLoading.set(false);
+        // Issue #234: öğretmen ucunda 409 = mevcut kaydın okulu/bağımsızlığı değiştirilemez; mesajı göster, yönlendirme.
+        if (role === 'Teacher' && err?.status === 409) {
+          const body = err.error as RegisterErrorBody | null;
+          this.submitError.set(body?.message || 'Mevcut öğretmen kaydınızın okul bilgisi bu adımla değiştirilemez.');
+          return;
+        }
         if (err?.status === 409) {
           this.snackBar.open('Profiliniz zaten tamamlanmış.', 'Tamam', { duration: 3000 });
           window.location.href = role === 'Parent' ? '/dashboard' : '/tests';
@@ -171,7 +201,7 @@ export class CompleteProfileComponent implements OnInit {
     });
   }
 
-  private buildRequest(role: AppRole) {
+  private buildRequest(role: AppRole): Observable<RegisterProfileResponse | RegisterTeacherResponse> {
     if (role === 'Student') {
       const { studentNumber, schoolId, gradeId } = this.studentForm.getRawValue();
       return this.authService.registerStudentProfile({

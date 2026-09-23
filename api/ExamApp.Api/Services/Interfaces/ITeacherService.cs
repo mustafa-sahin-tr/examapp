@@ -8,7 +8,7 @@ namespace ExamApp.Api.Services.Interfaces;
 
 public interface ITeacherService
 {
-    Task<ResponseBaseDto> Save(int userId, RegisterTeacherDto dto);
+    Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto);
 
     Task<Teacher?> GetTeacher(int userId);
 

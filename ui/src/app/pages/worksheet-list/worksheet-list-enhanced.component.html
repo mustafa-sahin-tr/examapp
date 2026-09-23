@@ -183,8 +183,8 @@
               <app-custom-checkbox
                 [label]="subject.name"
                 [checked]="selectedSubjectIds().includes(subject.id)"
-                [value]="subject"
-                (checkedChange)="toggleSubjectFilter(subject)"
+                [value]="subject.id"
+                (checkedChange)="toggleSubjectFilter(subject.id)"
               ></app-custom-checkbox>
             </div>
           </div>
@@ -194,7 +194,7 @@
               <app-custom-checkbox
                 [label]="grade.name"
                 [checked]="selectedGradeIds().includes(grade.id)"
-                [value]="grade"
+                [value]="grade.id"
                 (checkedChange)="toggleGradeFilter(grade.id)"
               ></app-custom-checkbox>
             </div>

@@ -75,6 +75,41 @@ public interface IKeycloakService
         IReadOnlyList<KeycloakSeedUser> users, IReadOnlyList<string> realmRoleNames, KeycloakHashedCredential credential,
         CancellationToken ct = default);
 
+    // ---- Yetkili hesap denetimi (issue #267) — yalnızca audit-privileged-users komutu kullanır ----
+
+    /// <summary>
+    /// Realm rolüne DOĞRUDAN atanmış kullanıcılar: <c>GET /roles/{role}/users?first=&amp;max=&amp;briefRepresentation=false</c>,
+    /// boş sayfa gelene kadar tüm sayfalar dolaşılır. Salt okunur. Rol realm'de yoksa
+    /// <see cref="KeycloakRoleNotFoundException"/>; diğer hatalarda (realm/URL yanlış dahil) <see cref="KeycloakException"/>. Not: kompozit rol/grup üzerinden gelen üyelik bu uçta listelenmez.
+    /// </summary>
+    Task<IReadOnlyList<KeycloakRoleMember>> GetUsersInRoleAsync(string roleName, CancellationToken ct = default);
+
+    /// <summary>Rolün doğrudan atandığı gruplar (<c>GET /roles/{role}/groups</c>, sayfalı). Rol yoksa <see cref="KeycloakRoleNotFoundException"/>.</summary>
+    Task<IReadOnlyList<KeycloakGroupRef>> GetGroupsInRoleAsync(string roleName, CancellationToken ct = default);
+
+    /// <summary>Grubun doğrudan üyeleri (<c>GET /groups/{id}/members</c>, sayfalı).</summary>
+    Task<IReadOnlyList<KeycloakRoleMember>> GetGroupMembersAsync(string groupId, CancellationToken ct = default);
+
+    /// <summary>Grubun doğrudan alt grupları (<c>GET /groups/{id}/children</c>, sayfalı) — alt gruplar üst grubun rollerini miras alır.</summary>
+    Task<IReadOnlyList<KeycloakGroupRef>> GetSubGroupsAsync(string groupId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Kompozit realm rolleri → doğrudan içerdiği realm rolleri (<c>GET /roles/{r}/composites/realm</c>). Kompozit olmayan
+    /// roller sözlükte yer almaz. Client rolü kompozitleri <c>view-clients</c> gerektirdiği için kapsam dışı.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetRealmRoleCompositesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// <c>GET /users/{id}/credentials</c> → kimlik bilgisi türleri (örn. <c>password</c>, <c>otp</c>). Salt okunur. Keycloak 26
+    /// kullanıcı temsilinde <c>serviceAccountClientId</c> dönmediği ve client listesi <c>view-clients</c> yetkisi istediği
+    /// için servis hesabı doğrulamasında kullanılır: gerçek servis hesabının kimlik bilgisi yoktur.
+    /// Fail-closed: 404 dahil her hata <see cref="KeycloakException"/>.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetUserCredentialTypesAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary><c>GET /users/{id}/federated-identity</c> → bağlı IdP adları. Fail-closed: 404 dahil her hata <see cref="KeycloakException"/>.</summary>
+    Task<IReadOnlyList<string>> GetUserFederatedIdentityProvidersAsync(string keycloakUserId, CancellationToken ct = default);
+
     // ---- Temizleme (issue #218) — yalnızca DevUserSeedService.CleanupAsync kullanır ----
 
     /// <summary>

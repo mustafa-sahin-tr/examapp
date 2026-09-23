@@ -823,6 +823,238 @@ public class KeycloakService : IKeycloakService
         return result;
     }
 
+    // ---- Yetkili hesap denetimi (issue #267) ----
+
+    /// <summary>Rol/grup üyeleri sayfa boyutu (Keycloak varsayılanı 100; açıkça verilir).</summary>
+    public const int RoleMembersPageSize = 100;
+
+    /// <summary>
+    /// Sayfalı admin listelerinde üst sınır (sayfa sayısı). Aşılırsa <see cref="KeycloakException"/> — sonsuz döngü ya da
+    /// beklenmedik büyüklükte liste sessizce kesilmez (fail-closed).
+    /// </summary>
+    public const int MaxAdminPages = 1000;
+
+    /// <summary>
+    /// Sayfalı admin GET'i: boş sayfa gelene kadar ya da sayfada HİÇ yeni id gelmezse (sunucu <c>first</c>'i yok sayıyorsa)
+    /// durur; <see cref="MaxAdminPages"/> aşılırsa hata. Öğeler id'ye göre tekilleştirilir ve <c>Clone()</c>'lanır.
+    /// <paramref name="onNotFound"/> 404'te çağrılır (fırlatmalı); verilmezse 404 de genel hata.
+    /// </summary>
+    private async Task<List<JsonElement>> ReadAllPagesAsync(
+        Func<int, string> pathForFirst, string what, Func<Task>? onNotFound, CancellationToken ct)
+    {
+        var items = new List<JsonElement>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var first = 0;
+        for (var pageNo = 0; ; pageNo++)
+        {
+            if (pageNo >= MaxAdminPages)
+                throw new KeycloakException($"Failed to {what}: page limit ({MaxAdminPages}) exceeded.");
+            ct.ThrowIfCancellationRequested();
+
+            using var response = await _adminHttp.GetAsync(BuildKeycloakUri(pathForFirst(first)), ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound && onNotFound is not null)
+                await onNotFound();
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(ct);
+                throw new KeycloakException($"Failed to {what} ({(int)response.StatusCode}): {error}");
+            }
+
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                throw new KeycloakException($"Failed to {what}: unexpected response shape.");
+
+            var page = 0;
+            var fresh = 0;
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                page++;
+                var id = element.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String ? idEl.GetString() : null;
+                if (id is null || !seen.Add(id)) continue;
+                fresh++;
+                items.Add(element.Clone());
+            }
+
+            // Boş sayfa → bitti. "sayfa < max" ile DURULMAZ (max'ı kırpan sürümlerde eksik bırakır). Yeni id yoksa
+            // sunucu aynı sayfayı tekrar döndürüyor demektir → dur (sonsuz döngü koruması).
+            if (page == 0 || fresh == 0) break;
+            first += page;
+        }
+        return items;
+    }
+
+    private static KeycloakRoleMember? ParseRoleMember(JsonElement element)
+    {
+        var id = element.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+        var username = element.TryGetProperty("username", out var u) ? u.GetString() : null;
+        if (id is null || username is null) return null;
+
+        var email = element.TryGetProperty("email", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
+        var enabled = element.TryGetProperty("enabled", out var en) && en.ValueKind == JsonValueKind.True;
+        DateTimeOffset? created = element.TryGetProperty("createdTimestamp", out var ts) && ts.ValueKind == JsonValueKind.Number && ts.TryGetInt64(out var ms)
+            ? DateTimeOffset.FromUnixTimeMilliseconds(ms)
+            : null;
+        var saClient = element.TryGetProperty("serviceAccountClientId", out var sa) && sa.ValueKind == JsonValueKind.String ? sa.GetString() : null;
+        return new KeycloakRoleMember(id, username, email, enabled, created, saClient, ReadSingleValuedAttributes(element));
+    }
+
+    private static KeycloakGroupRef? ParseGroup(JsonElement element)
+    {
+        var id = element.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+        if (id is null) return null;
+        var name = element.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
+        var path = element.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+        return new KeycloakGroupRef(id, name ?? id, path ?? "/" + (name ?? id));
+    }
+
+    /// <summary>404: realm rol listesi okunabiliyorsa rol yok, değilse (realm/URL yanlış) genel hata — denetim sessizce temiz görünmesin.</summary>
+    private async Task ThrowRoleNotFoundOrMisconfiguredAsync(string roleName, CancellationToken ct)
+    {
+        using var probe = await _adminHttp.GetAsync(BuildKeycloakUri($"{_keycloakSettings.RealmRolesUrl}?first=0&max=1"), ct);
+        if (probe.IsSuccessStatusCode)
+            throw new KeycloakRoleNotFoundException(roleName);
+        throw new KeycloakException(
+            $"Failed to read realm role '{roleName}': 404 and realm roles endpoint returned {(int)probe.StatusCode} (check Keycloak:RealmRolesUrl).");
+    }
+
+    public async Task<IReadOnlyList<KeycloakRoleMember>> GetUsersInRoleAsync(string roleName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+            throw new ArgumentException("Rol adı boş olamaz.", nameof(roleName));
+
+        await AuthorizeAdminAsync(ct);
+        var role = Uri.EscapeDataString(roleName);
+        // briefRepresentation=false: serviceAccountClientId/attributes (döndüren sürümlerde) tam temsilde gelir.
+        var elements = await ReadAllPagesAsync(
+            first => $"{_keycloakSettings.RealmRolesUrl}/{role}/users?first={first}&max={RoleMembersPageSize}&briefRepresentation=false",
+            $"list users in realm role '{roleName}'",
+            () => ThrowRoleNotFoundOrMisconfiguredAsync(roleName, ct),
+            ct);
+        return elements.Select(ParseRoleMember).OfType<KeycloakRoleMember>().ToList();
+    }
+
+    public async Task<IReadOnlyList<KeycloakGroupRef>> GetGroupsInRoleAsync(string roleName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+            throw new ArgumentException("Rol adı boş olamaz.", nameof(roleName));
+
+        await AuthorizeAdminAsync(ct);
+        var role = Uri.EscapeDataString(roleName);
+        var elements = await ReadAllPagesAsync(
+            first => $"{_keycloakSettings.RealmRolesUrl}/{role}/groups?first={first}&max={RoleMembersPageSize}&briefRepresentation=false",
+            $"list groups in realm role '{roleName}'",
+            () => ThrowRoleNotFoundOrMisconfiguredAsync(roleName, ct),
+            ct);
+        return elements.Select(ParseGroup).OfType<KeycloakGroupRef>().ToList();
+    }
+
+    public async Task<IReadOnlyList<KeycloakRoleMember>> GetGroupMembersAsync(string groupId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(groupId))
+            throw new ArgumentException("Grup id'si boş olamaz.", nameof(groupId));
+
+        await AuthorizeAdminAsync(ct);
+        var group = Uri.EscapeDataString(groupId);
+        var elements = await ReadAllPagesAsync(
+            first => $"{RealmAdminPath()}/groups/{group}/members?first={first}&max={RoleMembersPageSize}&briefRepresentation=false",
+            $"list members of group '{groupId}'", null, ct);
+        return elements.Select(ParseRoleMember).OfType<KeycloakRoleMember>().ToList();
+    }
+
+    public async Task<IReadOnlyList<KeycloakGroupRef>> GetSubGroupsAsync(string groupId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(groupId))
+            throw new ArgumentException("Grup id'si boş olamaz.", nameof(groupId));
+
+        await AuthorizeAdminAsync(ct);
+        var group = Uri.EscapeDataString(groupId);
+        var elements = await ReadAllPagesAsync(
+            first => $"{RealmAdminPath()}/groups/{group}/children?first={first}&max={RoleMembersPageSize}&briefRepresentation=true",
+            $"list subgroups of group '{groupId}'", null, ct);
+        return elements.Select(ParseGroup).OfType<KeycloakGroupRef>().ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetRealmRoleCompositesAsync(CancellationToken ct = default)
+    {
+        await AuthorizeAdminAsync(ct);
+
+        var roles = await ReadAllPagesAsync(
+            first => $"{_keycloakSettings.RealmRolesUrl}?first={first}&max={RoleMembersPageSize}&briefRepresentation=false",
+            "list realm roles", null, ct);
+
+        var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var role in roles)
+        {
+            var name = role.TryGetProperty("name", out var n) ? n.GetString() : null;
+            var composite = role.TryGetProperty("composite", out var c) && c.ValueKind == JsonValueKind.True;
+            if (name is null || !composite) continue;
+
+            ct.ThrowIfCancellationRequested();
+            using var response = await _adminHttp.GetAsync(
+                BuildKeycloakUri($"{_keycloakSettings.RealmRolesUrl}/{Uri.EscapeDataString(name)}/composites/realm"), ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(ct);
+                throw new KeycloakException($"Failed to read composites of realm role '{name}' ({(int)response.StatusCode}): {error}");
+            }
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                throw new KeycloakException($"Failed to read composites of realm role '{name}': unexpected response shape.");
+            result[name] = doc.RootElement.EnumerateArray()
+                .Select(e => e.TryGetProperty("name", out var cn) && cn.ValueKind == JsonValueKind.String ? cn.GetString() : null)
+                .OfType<string>()
+                .ToList();
+        }
+        return result;
+    }
+
+    public async Task<IReadOnlyList<string>> GetUserCredentialTypesAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new ArgumentException("Keycloak kullanıcı id'si boş olamaz.", nameof(keycloakUserId));
+
+        using var doc = await GetUserSubresourceArrayAsync(keycloakUserId, "credentials", ct);
+        return doc.RootElement.EnumerateArray()
+            .Select(c => c.TryGetProperty("type", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null)
+            .OfType<string>()
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<string>> GetUserFederatedIdentityProvidersAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+            throw new ArgumentException("Keycloak kullanıcı id'si boş olamaz.", nameof(keycloakUserId));
+
+        using var doc = await GetUserSubresourceArrayAsync(keycloakUserId, "federated-identity", ct);
+        return doc.RootElement.EnumerateArray()
+            .Select(c => c.TryGetProperty("identityProvider", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null)
+            .Select(p => p ?? "?")
+            .ToList();
+    }
+
+    /// <summary><c>GET /users/{id}/{sub}</c> dizi yanıtı. Fail-closed: 404 dahil her başarısızlık <see cref="KeycloakException"/>.</summary>
+    private async Task<JsonDocument> GetUserSubresourceArrayAsync(string keycloakUserId, string subresource, CancellationToken ct)
+    {
+        await AuthorizeAdminAsync(ct);
+
+        using var response = await _adminHttp.GetAsync(
+            BuildKeycloakUri($"{_keycloakSettings.UserUrl}/{Uri.EscapeDataString(keycloakUserId)}/{subresource}"), ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            throw new KeycloakException(
+                $"Failed to read {subresource} of Keycloak user '{keycloakUserId}' ({(int)response.StatusCode}): {error}", (int)response.StatusCode);
+        }
+
+        var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+        if (doc.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            doc.Dispose();
+            throw new KeycloakException($"Failed to read {subresource} of Keycloak user '{keycloakUserId}': unexpected response shape.");
+        }
+        return doc;
+    }
+
     // ---- Temizleme (issue #218) ----
 
     public async Task<IReadOnlyList<KeycloakUserSummary>> SearchUsersAsync(string fragment, KeycloakUserSearchField field, CancellationToken ct = default)
@@ -834,38 +1066,21 @@ public class KeycloakService : IKeycloakService
 
         const int pageSize = 500;
         var param = field == KeycloakUserSearchField.Username ? "username" : "email";
+        // `search=` prefix eşleştirir (Keycloak 22+); `email=`/`username=` exact=false iken infix ("contains").
+        // Sayfalama ReadAllPagesAsync: boş sayfa / yeni id yok → dur, üst sınır aşılırsa hata (#267 review).
+        var elements = await ReadAllPagesAsync(
+            first => $"{_keycloakSettings.UserUrl}?{param}={Uri.EscapeDataString(fragment)}&exact=false&briefRepresentation=false&first={first}&max={pageSize}",
+            $"search Keycloak users '{fragment}'", null, ct);
+
         var all = new List<KeycloakUserSummary>();
-        var first = 0;
-        while (true)
+        foreach (var element in elements)
         {
-            ct.ThrowIfCancellationRequested();
-            // `search=` prefix eşleştirir (Keycloak 22+); `email=`/`username=` exact=false iken infix ("contains").
-            // Boş sayfa gelene kadar döner (sayfa < max ile durmak, Keycloak'ın max'ı kırptığı sürümlerde eksik bırakır).
-            var response = await _adminHttp.GetAsync(BuildKeycloakUri(
-                $"{_keycloakSettings.UserUrl}?{param}={Uri.EscapeDataString(fragment)}&exact=false&briefRepresentation=false&first={first}&max={pageSize}"), ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync(ct);
-                throw new KeycloakException($"Failed to search Keycloak users '{fragment}': {error}");
-            }
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            using var doc = JsonDocument.Parse(json);
-            var page = 0;
-            foreach (var element in doc.RootElement.EnumerateArray())
-            {
-                page++;
-                var id = element.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
-                var username = element.TryGetProperty("username", out var u) ? u.GetString() : null;
-                var email = element.TryGetProperty("email", out var e) ? e.GetString() : null;
-                if (id is null || username is null) continue;
-                all.Add(new KeycloakUserSummary(id, username, email, ReadSingleValuedAttributes(element)));
-            }
-
-            if (page == 0) break;
-            first += page;
+            var id = element.GetProperty("id").GetString()!;
+            var username = element.TryGetProperty("username", out var u) ? u.GetString() : null;
+            var email = element.TryGetProperty("email", out var e) ? e.GetString() : null;
+            if (username is null) continue;
+            all.Add(new KeycloakUserSummary(id, username, email, ReadSingleValuedAttributes(element)));
         }
-
         return all;
     }
 

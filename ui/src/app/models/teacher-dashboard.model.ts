@@ -45,3 +45,49 @@ export interface TeacherLaggingStudent {
   /** Atamanın bitiş tarihi geçmiş ve tamamlanmamış. */
   isExpired: boolean;
 }
+
+/**
+ * Issue #56 — GET /api/exam/teacher/own-activity-summary?days=N yanıtı ("Benim Aktivitem" kartı).
+ * Backend karşılığı: api/ExamApp.Api/Models/Dtos/TeacherActivitySummaryDtos.cs (TeacherOwnActivitySummaryDto)
+ *
+ * Pencere = bugün (UTC) dahil son `days` takvim günü; `days` 1..90, dışı 400.
+ */
+export interface TeacherOwnActivitySummary {
+  /** Öğretmenin pencerede oluşturduğu worksheet sayısı (silinenler hariç). */
+  worksheetsCreated: number;
+  /** Öğretmenin pencerede oluşturduğu atama satırı sayısı; sınıf ataması tek atama sayılır. */
+  assignmentsCreated: number;
+  /** Öğretmenin worksheet'lerinde pencerede en az bir soru cevaplamış öğrenci sayısı. */
+  activeStudents: number;
+}
+
+/**
+ * Issue #56 — "En Aktif Öğrenciler" tablosunun tek satırı.
+ * Backend karşılığı: TeacherActiveStudentDto.
+ */
+export interface TeacherActiveStudent {
+  studentId: number;
+  /** Auth-api'den çözümlenen ad-soyad; erişilemezse "Öğrenci #{StudentNumber}" fallback'i. */
+  studentName: string;
+  questionsSolved: number;
+  correctCount: number;
+  timeSeconds: number;
+}
+
+/**
+ * Issue #56 — GET /api/exam/teacher/students-activity-summary?days=N yanıtı
+ * ("Öğrenci Aktivitesi" kartı + "En Aktif Öğrenciler" tablosu).
+ * Backend karşılığı: TeacherStudentsActivitySummaryDto.
+ */
+export interface TeacherStudentsActivitySummary {
+  /** Kapsamdaki tüm öğrencilerin pencerede cevapladığı soru sayısı (yalnız topStudents değil). */
+  totalQuestionsSolved: number;
+  totalCorrectCount: number;
+  /** Soru bazlı çözüm süreleri toplamı (saniye). */
+  totalTimeSeconds: number;
+  /**
+   * En fazla 10 öğrenci; backend questionsSolved azalan sıralı döndürür (UI sırayı değiştirmez).
+   * Hiç soru çözmemiş öğrenci listelenmez; veri yoksa [].
+   */
+  topStudents: TeacherActiveStudent[];
+}

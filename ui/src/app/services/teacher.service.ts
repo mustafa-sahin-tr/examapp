@@ -4,6 +4,8 @@ import { Observable } from 'rxjs';
 import {
   TeacherDashboardSummary,
   TeacherLaggingStudent,
+  TeacherOwnActivitySummary,
+  TeacherStudentsActivitySummary,
   TeacherWorksheetOverview,
 } from '../models/teacher-dashboard.model';
 import {
@@ -53,6 +55,26 @@ export class TeacherService {
    */
   getLaggingStudents(): Observable<TeacherLaggingStudent[]> {
     return this.http.get<TeacherLaggingStudent[]>(`${this.baseUrl}/lagging-students`);
+  }
+
+  /**
+   * Issue #56: "Benim Aktivitem" — son `days` günde oluşturulan sınav/atama ve etkin öğrenci sayısı.
+   * teacherId gönderilmez (token'dan). `days` 1..90 olmalı; dışı 400.
+   */
+  getOwnActivitySummary(days = 7): Observable<TeacherOwnActivitySummary> {
+    const params = new HttpParams().set('days', days);
+    return this.http.get<TeacherOwnActivitySummary>(`${this.baseUrl}/own-activity-summary`, { params });
+  }
+
+  /**
+   * Issue #56: "Öğrenci Aktivitesi" toplamları + "En Aktif Öğrenciler" (en fazla 10, çözülen soruya göre azalan).
+   * teacherId gönderilmez (token'dan). `days` 1..90 olmalı; dışı 400.
+   */
+  getStudentsActivitySummary(days = 7): Observable<TeacherStudentsActivitySummary> {
+    const params = new HttpParams().set('days', days);
+    return this.http.get<TeacherStudentsActivitySummary>(`${this.baseUrl}/students-activity-summary`, {
+      params,
+    });
   }
 
   /**

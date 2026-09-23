@@ -35,6 +35,18 @@ public interface ITeacherService
     Task<List<TeacherLaggingStudentDto>> GetLaggingStudentsAsync(SchoolScope requester, CancellationToken ct = default);
 
     /// <summary>
+    /// Issue #56: "Benim Aktivitem" — son <paramref name="days"/> günde oluşturulan worksheet/atama sayısı ve
+    /// etkin öğrenci sayısı. Öğrenci kapsamı GetDashboardSummaryAsync ile aynıdır (#222/#235).
+    /// </summary>
+    Task<TeacherOwnActivitySummaryDto> GetOwnActivitySummaryAsync(SchoolScope requester, int days, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issue #56: "Öğrenci Aktivitesi" toplamları + "En Aktif Öğrenciler" (çözülen soruya göre azalan, en fazla 10).
+    /// Öğrenci kapsamı GetDashboardSummaryAsync ile aynıdır (#222/#235).
+    /// </summary>
+    Task<TeacherStudentsActivitySummaryDto> GetStudentsActivitySummaryAsync(SchoolScope requester, int days, CancellationToken ct = default);
+
+    /// <summary>
     /// Issue #95: authenticated kullanıcının kendi tutor profili. Teacher kaydı yoksa NotFound,
     /// IsIndependentTutor=false ise Forbidden bayrağıyla döner.
     /// </summary>

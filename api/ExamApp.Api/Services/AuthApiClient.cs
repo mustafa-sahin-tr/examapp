@@ -77,16 +77,24 @@ public class AuthApiClient : IAuthApiClient
     /// (çağıran yerler bunu zaten yakalıyor); 401/403'te önce teşhis uyarısı loglanır.
     /// </summary>
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
-        => LookupUsersAsync(userIds, includeAccountStatus: false, ct);
+        => LookupUsersAsync(userIds, includeAccountStatus: false, failSoftOnTokenError: true, ct);
+
+    /// <summary>
+    /// Issue #156: <see cref="GetUsersByIdsAsync"/> gibi, ama servis token'ı alınamazsa boş liste DÖNMEZ,
+    /// <see cref="HttpRequestException"/> fırlatır — "kullanıcı yok" ile "auth-api'ye ulaşılamadı" ayrılsın
+    /// (admin hesap aksiyonlarında ilki 404, ikincisi 502).
+    /// </summary>
+    public Task<IReadOnlyList<UserLookupResultDto>> GetUsersByIdsOrThrowAsync(IEnumerable<int> userIds, CancellationToken ct = default)
+        => LookupUsersAsync(userIds, includeAccountStatus: false, failSoftOnTokenError: false, ct);
 
     /// <summary>
     /// Issue #152: aynı <c>users/lookup</c> çağrısı, <c>IncludeAccountStatus=true</c> ile — auth-api Keycloak <c>enabled</c>
     /// bayrağını da döner (Keycloak okunamazsa o kullanıcı için null). Hata/fail-soft davranışı <see cref="GetUsersByIdsAsync"/> ile aynı.
     /// </summary>
     public Task<IReadOnlyList<UserLookupResultDto>> GetUsersWithAccountStatusByIdsAsync(IEnumerable<int> userIds, CancellationToken ct = default)
-        => LookupUsersAsync(userIds, includeAccountStatus: true, ct);
+        => LookupUsersAsync(userIds, includeAccountStatus: true, failSoftOnTokenError: true, ct);
 
-    private async Task<IReadOnlyList<UserLookupResultDto>> LookupUsersAsync(IEnumerable<int> userIds, bool includeAccountStatus, CancellationToken ct)
+    private async Task<IReadOnlyList<UserLookupResultDto>> LookupUsersAsync(IEnumerable<int> userIds, bool includeAccountStatus, bool failSoftOnTokenError, CancellationToken ct)
     {
         if (userIds == null)
         {
@@ -107,6 +115,8 @@ public class AuthApiClient : IAuthApiClient
         catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException
                                    || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
+            if (!failSoftOnTokenError)
+                throw new HttpRequestException("auth-api service token could not be obtained.", ex);
             _logger.LogWarning(ex,
                 "[AuthApiClient] Servis token'ı alınamadı; users/lookup atlanıyor, {Count} kullanıcı isimsiz kalacak.",
                 distinctIds.Count);

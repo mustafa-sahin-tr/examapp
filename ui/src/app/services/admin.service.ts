@@ -20,6 +20,7 @@ import {
 import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-teacher.model';
 import { AdminStudentListItem, AdminStudentListQuery } from '../models/admin-student.model';
 import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
+import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
 import { Paged } from '../models/test-instance';
 
 interface UpsertSubject {
@@ -173,6 +174,19 @@ export class AdminService {
     return this.http.get<Paged<AdminStudentListItem>>(`${this.baseUrl}/students`, {
       params: schoolPagedParams(query),
     });
+  }
+
+  // ---- şifre sıfırlama (Issue #156) ----
+  /**
+   * Hedefin Keycloak şifresini geçici bir şifreyle değiştirir (ilk girişte değiştirme zorunlu) ve tüm
+   * oturumlarını kapatır. Yanıttaki şifre SAKLANMAZ — yalnızca çağırana (sonuç dialog'u) iletilir.
+   * Hatalar: 403 kendi hesabı/korumalı rol (`{ message }`) veya yetkisiz (gövdesiz), 404 kayıt/hesap yok,
+   * 429 rate limit (`Retry-After`), 502 kimlik sunucusu hatası (şifre değişip oturumlar kapatılamadıysa da 502,
+   * ayrı `{ message }` ile — şifre dönmez). `id` = Teacher.Id / Student.Id (admin listesindeki `id`).
+   */
+  resetPassword(target: AdminPasswordResetTarget, id: number): Observable<AdminPasswordResetResponse> {
+    const segment = target === 'teacher' ? 'teachers' : 'students';
+    return this.http.post<AdminPasswordResetResponse>(`${this.baseUrl}/${segment}/${id}/reset-password`, null);
   }
 
   // ---- classifier cache ----

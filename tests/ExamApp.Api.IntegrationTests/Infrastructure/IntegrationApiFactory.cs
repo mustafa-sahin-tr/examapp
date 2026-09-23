@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
 
 namespace ExamApp.Api.IntegrationTests.Infrastructure;
@@ -54,6 +55,9 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         // kullanır. Uzun pencere: 429 testi koşunun süresinden/zamanlamasından bağımsız olsun.
         Environment.SetEnvironmentVariable("RateLimiting__AdminUserList__PermitLimit", "10");
         Environment.SetEnvironmentVariable("RateLimiting__AdminUserList__WindowSeconds", "3600");
+        // issue #156: şifre sıfırlama rate limit'i — 429 testi zamanlamadan bağımsız olsun.
+        Environment.SetEnvironmentVariable("RateLimiting__AdminPasswordReset__PermitLimit", "5");
+        Environment.SetEnvironmentVariable("RateLimiting__AdminPasswordReset__WindowSeconds", "3600");
     }
 
     public override async ValueTask DisposeAsync()
@@ -78,6 +82,19 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
             services.AddScoped<ExamApp.Api.Services.Interfaces.IAuthApiClient>(sp => new FakeUserDirectoryAuthApiClient(
                 ActivatorUtilities.CreateInstance<ExamApp.Api.Services.AuthApiClient>(sp),
                 sp.GetRequiredService<FakeUserDirectory>()));
+
+            // issue #156: şifre sıfırlama uçları kayıtlı sahte Keycloak hesapları üzerinden uçtan uca çalışır;
+            // diğer tüm IKeycloakService çağrıları gerçek servise gider (davranış değişmez).
+            services.AddSingleton<FakeKeycloakAccounts>();
+            services.RemoveAll<ExamApp.Api.Services.Interfaces.IKeycloakService>();
+            services.AddScoped<ExamApp.Api.Services.Interfaces.IKeycloakService>(sp => new FakeKeycloakAccountsService(
+                ActivatorUtilities.CreateInstance<ExamApp.Api.Services.KeycloakService>(sp),
+                sp.GetRequiredService<FakeKeycloakAccounts>()));
+
+            // issue #156: tüm log çıktısı (Trace dahil) — "geçici şifre loglara yazılmıyor" testi için.
+            services.AddSingleton<CapturingLoggerProvider>();
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(sp => sp.GetRequiredService<CapturingLoggerProvider>());
+            services.AddLogging(b => b.AddFilter<CapturingLoggerProvider>(null, Microsoft.Extensions.Logging.LogLevel.Trace));
 
             services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
             services.AddDistributedMemoryCache();

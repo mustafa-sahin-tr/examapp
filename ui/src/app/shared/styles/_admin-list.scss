@@ -161,3 +161,10 @@
   font-size: 0.75rem;
   color: var(--ms-text-weak);
 }
+
+// Satır aksiyonları (ör. şifre sıfırlama #156) — sağa yaslı, dar sütun.
+.al__actions-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: end;
+}

@@ -293,6 +293,24 @@
     .mobile-toolbar-actions + .mobile-toolbar-actions {
         margin-left: 0;
     }
+
+    // Issue #197: 360px'te menü + başlık + dil seçici + tema anahtarı toolbar'ı ~6px taşırıp tüm sayfaya
+    // yatay kaydırma ekliyordu. Dar telefonda iç boşluk daralır; başlık gerekirse kısalır, aksiyonlar küçülmez.
+    @media (max-width: 400px) {
+        padding-inline: 8px;
+        gap: 4px;
+
+        .mobile-toolbar-title {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mobile-toolbar-actions {
+            flex-shrink: 0;
+        }
+    }
 }
 
 // Masaüstü toolbar: arama kutusu ile profil menüsü arasında (issue #81, #180)

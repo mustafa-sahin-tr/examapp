@@ -391,4 +391,145 @@ describe('DashboardComponent', () => {
       expect(component.activityApiError()).toBeFalse();
     });
   });
+
+  describe('responsive activity summary (issue #197)', () => {
+    const activityResponse = {
+      userId: 16,
+      startDateUtc: '2026-09-01T00:00:00Z',
+      endDateUtc: NOW_ISO,
+      days: [
+        {
+          dateUtc: '2026-09-08T00:00:00Z',
+          questionCount: 12,
+          correctCount: 9,
+          totalTimeSeconds: 600,
+          totalPoints: 30,
+          activityScore: 4,
+        },
+        {
+          dateUtc: '2026-09-09T00:00:00Z',
+          questionCount: 8,
+          correctCount: 5,
+          totalTimeSeconds: 300,
+          totalPoints: 20,
+          activityScore: 3,
+        },
+      ],
+    };
+
+    /** Komponent host'unu verilen genişlikte bir kapsayıcıya koyar; grid sütun sayısı kapsayıcı genişliğine bağlıdır. */
+    function renderAtWidth(widthPx: number): ComponentFixture<DashboardComponent> {
+      const fixture = TestBed.createComponent(DashboardComponent);
+      const host = fixture.nativeElement as HTMLElement;
+      host.style.display = 'block';
+      host.style.width = `${widthPx}px`;
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    function statCards(fixture: ComponentFixture<DashboardComponent>): HTMLElement[] {
+      return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.stat-card'));
+    }
+
+    /** auto-fit boş izleri 0px'e çöker; yalnızca gerçekten kart taşıyan sütunlar sayılır. */
+    function visibleColumnCount(fixture: ComponentFixture<DashboardComponent>): number {
+      const grid = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.activity-stats');
+      const tracks = getComputedStyle(grid!).gridTemplateColumns.split(' ');
+      return tracks.filter((track) => parseFloat(track) > 0).length;
+    }
+
+    beforeEach(() => {
+      badgeServiceSpy.getUserActivity.and.returnValue(of(activityResponse));
+    });
+
+    it('render_ActivityLoaded_RendersFourNativeStatCardsInsteadOfFixedSizeNumberCardChart', () => {
+      const fixture = renderAtWidth(1000);
+
+      const cards = statCards(fixture);
+      expect(cards.map((card) => card.getAttribute('data-key'))).toEqual([
+        'questions',
+        'correct',
+        'minutes',
+        'activityScore',
+      ]);
+      expect(cards.map((card) => card.querySelector('.stat-card__value')?.textContent?.trim())).toEqual([
+        '20',
+        '14',
+        '15',
+        '7',
+      ]);
+      expect(cards[0].querySelector('.stat-card__label')?.textContent?.trim()).toBe('Toplam Soru');
+      expect((fixture.nativeElement as HTMLElement).querySelector('ngx-charts-number-card')).toBeNull();
+    });
+
+    it('statGrid_WideContainer_ShowsAllFourCardsInOneRow', () => {
+      const fixture = renderAtWidth(1000);
+
+      expect(visibleColumnCount(fixture)).toBe(4);
+    });
+
+    it('statGrid_PhoneWidthContainer_WrapsToTwoColumns', () => {
+      const fixture = renderAtWidth(320);
+
+      expect(visibleColumnCount(fixture)).toBe(2);
+    });
+
+    it('statCard_LongLabelAndLargeValue_DoesNotOverflowCard', () => {
+      const fixture = renderAtWidth(320);
+      fixture.componentInstance.activityNumberCardData.set([
+        {
+          key: 'questions',
+          icon: 'quiz',
+          name: 'Çokuzunbirçevirimetnikartıntaşmamasıgerekenetiketdeğeri',
+          value: 123456789012,
+        },
+      ]);
+      fixture.detectChanges();
+
+      const card = statCards(fixture)[0];
+      expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
+      const grid = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.activity-stats')!;
+      expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth);
+    });
+
+    it('heatmapView_ContainerMeasured_WidthFollowsContainerAndWeeksFit', () => {
+      component = createComponent();
+      component.ngOnInit();
+
+      component.heatmapContainerWidth.set(360);
+
+      // (360 - 48 eksen payı) / 22 px en küçük hafta sütunu = 14 hafta; en yeni haftalar kalır.
+      expect(component.activityHeatmapData().length).toBe(14);
+      expect(component.activityHeatmapData()).toEqual(component.activityDataFromApi().slice(-14));
+      expect(component.activityHeatmapView()[0]).toBe(360);
+    });
+
+    it('heatmapView_WideContainer_ShowsAllWeeksAtContainerWidth', () => {
+      component = createComponent();
+      component.ngOnInit();
+
+      component.heatmapContainerWidth.set(1400);
+
+      expect(component.activityHeatmapData().length).toBe(52);
+      expect(component.activityHeatmapView()[0]).toBe(1400);
+    });
+
+    it('heatmapView_VeryNarrowContainer_KeepsMinimumWeeksAndScrollsOnlyInsideContainer', () => {
+      component = createComponent();
+      component.ngOnInit();
+
+      component.heatmapContainerWidth.set(100);
+
+      expect(component.activityHeatmapData().length).toBe(12);
+      expect(component.activityHeatmapView()[0]).toBe(12 * 22 + 48);
+    });
+
+    it('heatmapScroll_Rendered_MeasuresItsContainerWidth', () => {
+      const fixture = renderAtWidth(600);
+
+      const scroll = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.heatmap-scroll')!;
+      expect(fixture.componentInstance.heatmapContainerWidth()).toBe(scroll.clientWidth);
+      expect(fixture.componentInstance.heatmapContainerWidth()).toBeGreaterThan(0);
+    });
+  });
 });

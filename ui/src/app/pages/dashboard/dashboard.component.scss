@@ -1,3 +1,12 @@
+// Issue #197 — breakpoint'ler (projede global mixin yok; bu dosyada zaten kullanılan değerler adlandırıldı).
+$bp-stack: 960px; // aktivite + rozet kartı alt alta
+$bp-mobile: 767px; // mobil yerleşim (alt navigasyon, gizli ok butonları)
+$bp-narrow: 480px; // dar telefon: özet kartları sabit 2 sütun
+
+:host {
+  display: block;
+}
+
 .list-container {
   display: flex;
   align-items: center;
@@ -29,7 +38,6 @@
 }
 
 .cards::-webkit-scrollbar,
-.number-card-scroll::-webkit-scrollbar,
 .heatmap-scroll::-webkit-scrollbar {
   display: none;
 }
@@ -75,6 +83,7 @@
 .last-login-chip {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid var(--ms-border-weak);
@@ -83,7 +92,7 @@
   font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 // ===== Aktivite + rozet iki sütun =====
@@ -98,6 +107,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  // styles.scss'deki global `.heatmap-container { align-items: center }` çocukları içerik genişliğine büzüyordu;
+  // özet kart grid'i ve heat map kapsayıcının tam genişliğini kullanmalı (issue #197).
+  align-items: stretch;
   gap: 18px;
 }
 
@@ -213,61 +225,85 @@
   display: flex;
 }
 
-.activity-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -6px;
-}
-
-.reset-btn {
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(77, 72, 146, 0.9);
-  color: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.reset-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .reset-message {
   margin: 0;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--ms-text-medium);
 }
 
-.activity-summary {
+// ===== Aktivite özet kartları (issue #197) =====
+// Eskiden ngx-charts-number-card sabit [900, 200] view ile çiziliyordu → ekran daralınca kartlar küçülmüyor,
+// kapsayıcı içinde gizli kaydırma çubuğuyla taşıyordu. Artık sütun sayısı kapsayıcı genişliğine göre değişir:
+// geniş: 4 sütun, orta: 2 sütun, dar telefon: 2 sütun (bkz. $bp-narrow).
+.activity-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border-weak);
+  background-color: var(--ms-surface-weak);
   display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  align-items: stretch;
-  margin-bottom: 24px;
+  flex-direction: column;
+  gap: 8px;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__label {
+    min-width: 0;
+    font-family: var(--paragraphFontFamily);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    color: var(--ms-text-medium);
+    overflow-wrap: anywhere;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--ms-action-text-medium);
+  }
+
+  &__value {
+    font-family: var(--mainFontFamily);
+    font-size: clamp(20px, 1.2rem + 0.8vw, 28px);
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--ms-text-strong);
+    overflow-wrap: anywhere;
+  }
 }
 
-.activity-summary .number-card-container {
-  flex: 1 1 600px;
-  min-width: 280px;
-}
-
-.number-card-scroll,
+// Heat map genişliği TS'de kapsayıcıdan ölçülür (activityHeatmapView); kaydırma yalnızca en az hafta sayısı
+// sığmadığında ve yalnızca bu kapsayıcının içinde olur.
 .heatmap-scroll {
   width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
-}
-
-.number-card-scroll {
-  padding-bottom: 4px;
 }
 
 .heatmap-mobile-hint {
   display: none;
   margin: -4px 0 4px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--ms-text-weak);
 }
 
 .earned-badges-container {
@@ -275,8 +311,8 @@
   min-width: 220px;
   padding: 16px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background-color: #1f2636;
+  border: 1px solid var(--ms-border-weak);
+  background-color: var(--ms-surface-weak);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -285,13 +321,13 @@
 .earned-badges-heading {
   font-size: 14px;
   font-weight: 600;
-  color: #f7fafc;
+  color: var(--ms-text-strong);
   margin: 0;
 }
 
 .badges-state {
   font-size: 13px;
-  color: #a0aec0;
+  color: var(--ms-text-weak);
   margin: 0;
 }
 
@@ -305,8 +341,8 @@
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--ms-surface-medium);
+  border: 1px solid var(--ms-border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -378,11 +414,7 @@
   color: rgba(11, 19, 36, 0.8);
 }
 
-@media (max-width: 960px) {
-  .activity-summary {
-    gap: 16px;
-  }
-
+@media (max-width: $bp-stack) {
   // Tek sütun: heat map üstte, rozet kartı altta
   .activity-grid {
     flex-direction: column;
@@ -395,7 +427,7 @@
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: $bp-mobile) {
   $mobile-bottom-nav-height: 64px;
 
   .dashboard-section {
@@ -404,16 +436,6 @@
 
   .dashboard-section:last-of-type {
     padding-bottom: calc(#{$mobile-bottom-nav-height} + env(safe-area-inset-bottom) + 16px);
-  }
-
-  .activity-actions {
-    margin-top: 0;
-    justify-content: stretch;
-  }
-
-  .reset-btn {
-    width: 100%;
-    min-height: 42px;
   }
 
   .psds-carousel__track {
@@ -445,20 +467,13 @@
     display: none;
   }
 
-  .activity-summary {
-    gap: 14px;
-    margin-bottom: 10px;
+  .activity-stats {
+    gap: 10px;
   }
 
-  .activity-summary .number-card-container {
-    min-width: 0;
+  .stat-card {
+    padding: 10px 12px;
   }
-
-  .number-card-scroll {
-    padding-bottom: 0;
-  }
-
-
 
   .heatmap-mobile-hint {
     display: block;
@@ -484,12 +499,23 @@
   }
 }
 
+@media (max-width: $bp-narrow) {
+  // Mobil layout içerik alanına yatay boşluk vermiyor; kart kenarları ekran kenarına yapışmasın.
+  :host {
+    padding-inline: 12px;
+  }
+
+  .activity-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .info {
-  color: #718096;
+  color: var(--ms-text-weak);
   font-size: 14px;
 }
 
 .error {
-  color: #e53e3e;
+  color: var(--ms-danger-text-medium);
   font-size: 14px;
 }

@@ -162,6 +162,22 @@ namespace BadgeService.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("BadgeService.Entities.ProcessedAnswerSubmission", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("EventId");
+
+                    b.ToTable("ProcessedAnswerSubmissions");
+                });
+
             modelBuilder.Entity("BadgeService.Entities.ProcessedLoginAttempt", b =>
                 {
                     b.Property<int>("Id")

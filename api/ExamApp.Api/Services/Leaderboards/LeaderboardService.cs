@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
@@ -87,7 +88,7 @@ public sealed class LeaderboardService : ILeaderboardService
         {
             Rank = request.Skip + i + 1,
             Xp = row.Xp,
-            Level = row.Level,
+            Level = StudentLevel.FromXp(row.Xp),
             IsMe = row.UserId == request.RequesterUserId
         }).ToList();
 
@@ -126,8 +127,9 @@ public sealed class LeaderboardService : ILeaderboardService
     }
 
     /// <summary>
-    /// XP/Level: öğrencinin tek StudentPoints satırından (yoksa 0). Profil ekranıyla aynı değer
-    /// (StudentService.GetStudentProfile Sum/OrderBy kullanır; UNIQUE index sayesinde sonuç aynıdır).
+    /// XP: öğrencinin tek StudentPoints satırından (yoksa 0). Profil ekranıyla aynı değer
+    /// (StudentService.GetStudentProfile Sum kullanır; UNIQUE index sayesinde sonuç aynıdır).
+    /// Level SQL'den okunmaz; issue #243: <see cref="StudentLevel.FromXp"/> ile XP'den bellekte hesaplanır.
     /// </summary>
     public static IQueryable<RankedRow> Rank(IQueryable<Student> students)
     {
@@ -136,8 +138,7 @@ public sealed class LeaderboardService : ILeaderboardService
             {
                 Id = s.Id,
                 UserId = s.UserId,
-                Xp = s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0,
-                Level = s.StudentPoints.Select(sp => (int?)sp.Level).FirstOrDefault() ?? 0
+                Xp = s.StudentPoints.Select(sp => (int?)sp.XP).FirstOrDefault() ?? 0
             })
             .OrderByDescending(r => r.Xp)
             .ThenBy(r => r.Id);
@@ -182,6 +183,5 @@ public sealed class LeaderboardService : ILeaderboardService
         public int Id { get; set; }
         public int UserId { get; set; }
         public int Xp { get; set; }
-        public int Level { get; set; }
     }
 }

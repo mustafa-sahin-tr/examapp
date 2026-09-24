@@ -37,7 +37,7 @@ SERVICES_TO_DEPLOY_NORM="$(trim_ws "${SERVICES_TO_DEPLOY:-}")"
 # IMPORTANT: keep application deployments isolated from the minimal/infra stack.
 # The minimal stack is managed via the dedicated workflow mode (bootstrap_minimal)
 # and should not be implicitly restarted/pulled during normal app deploys.
-APP_SERVICES="question-detector exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher badge-outbox-publisher angular-app auth-ui ocelot-gateway"
+APP_SERVICES="question-detector exam-dotnet-api auth-api exam-badge-api exam-outbox-publisher identity-outbox-publisher badge-outbox-publisher angular-app auth-ui ocelot-gateway"
 
 # Allow caller to override services via CLI args (e.g. vm-update.sh auth-api)
 if [ "$#" -gt 0 ]; then
@@ -45,11 +45,16 @@ if [ "$#" -gt 0 ]; then
   SERVICES_TO_DEPLOY_NORM="$(trim_ws "$*")"
 fi
 
-# Issue #225: badge-outbox-publisher runs the exam-outbox-publisher image, so a
-# single-service deploy of exam-outbox-publisher (the only name CI knows) must
-# roll the badge instance too, otherwise it stays on the old tag.
+# Issue #84 / #225: identity-outbox-publisher and badge-outbox-publisher both
+# run the exam-outbox-publisher image, so a single-service deploy of
+# exam-outbox-publisher (the only name CI knows) must roll those instances
+# too, otherwise they stay on the old tag.
 case " $SERVICES_TO_DEPLOY_NORM " in
   *" exam-outbox-publisher "*)
+    case " $SERVICES_TO_DEPLOY_NORM " in
+      *" identity-outbox-publisher "*) ;;
+      *) SERVICES_TO_DEPLOY_NORM="$SERVICES_TO_DEPLOY_NORM identity-outbox-publisher" ;;
+    esac
     case " $SERVICES_TO_DEPLOY_NORM " in
       *" badge-outbox-publisher "*) ;;
       *) SERVICES_TO_DEPLOY_NORM="$SERVICES_TO_DEPLOY_NORM badge-outbox-publisher" ;;

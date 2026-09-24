@@ -2,16 +2,17 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.LoginEvents;
 using ExamApp.Api.Services.StudentReset;
 using ExamApp.Foundation.Localization;
-using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
@@ -35,8 +36,7 @@ namespace ExamApp.Api.Controllers
 
         private readonly UserProfileCacheService _userProfileCacheService;
 
-        private readonly IBackgroundJobClient _backgroundJobs;
-        private readonly StudentResetJob _studentResetJob;
+        private readonly IStudentResetScheduler _studentResetScheduler;
         private readonly ILoginEventService _loginEventService;
         private readonly ILogger<StudentController> _logger;
 
@@ -52,8 +52,7 @@ namespace ExamApp.Api.Controllers
             UserProfileCacheService userProfileCacheService,
             IOptions<KeycloakSettings> options,
             IKeycloakService keycloakService,
-            IBackgroundJobClient backgroundJobs,
-            StudentResetJob studentResetJob,
+            IStudentResetScheduler studentResetScheduler,
             ILoginEventService loginEventService,
             ILogger<StudentController> logger,
             IStringLocalizer<Messages>? localizer = null)
@@ -64,8 +63,7 @@ namespace ExamApp.Api.Controllers
             _userProfileCacheService = userProfileCacheService;
             _keycloakService = keycloakService;
             _keycloakSettings = options.Value;
-            _backgroundJobs = backgroundJobs;
-            _studentResetJob = studentResetJob;
+            _studentResetScheduler = studentResetScheduler;
             _loginEventService = loginEventService;
             _logger = logger;
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
@@ -90,6 +88,7 @@ namespace ExamApp.Api.Controllers
 
         [Authorize(Roles = "Student")]
         [HttpPost("me/reset")]
+        [EnableRateLimiting(StudentSelfResetRateLimiting.Policy)]
         public async Task<IActionResult> ResetMyStudentData(CancellationToken cancellationToken)
         {
             // issue #255: yalnız cache'e bakmak (TTL dolunca null) geçerli oturumu 401 ile düşürüyordu;
@@ -106,12 +105,12 @@ namespace ExamApp.Api.Controllers
                 return NotFound(new { message = _localizer["student.notFound"].Value });
             }
 
-            // Enqueue a Hangfire job so reset is handled asynchronously.
-            // We pass userId + studentId + keycloak id, but we do NOT store end-user JWT.
-            var jobId = _backgroundJobs.Enqueue(() =>
-                _studentResetJob.RunAsync(user.Id, student.Id, KeyCloakId));
+            // Hangfire işi (JWT saklanmaz). issue #243: aynı kullanıcı için bekleyen iş varsa yenisi açılmaz,
+            // mevcut işin id'si döner (aynı 202 sözleşmesi, farklı mesaj).
+            var result = _studentResetScheduler.Enqueue(user.Id, student.Id, KeyCloakId);
+            var messageKey = result.AlreadyPending ? "student.reset.alreadyPending" : "student.reset.queued";
 
-            return Accepted(new { jobId, message = _localizer["student.reset.queued"].Value });
+            return Accepted(new { jobId = result.JobId, message = _localizer[messageKey].Value });
         }
 
         // Handy for manual browser testing; the actual reset must be triggered via POST.

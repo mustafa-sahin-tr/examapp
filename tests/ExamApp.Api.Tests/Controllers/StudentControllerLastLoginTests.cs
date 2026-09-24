@@ -9,7 +9,6 @@ using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.LoginEvents;
 using ExamApp.Api.Services.StudentReset;
 using ExamApp.Api.Tests.Support;
-using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -30,8 +29,7 @@ public class StudentControllerLastLoginTests : IDisposable
     private readonly IMinIoService _minio = Substitute.For<IMinIoService>();
     private readonly IStudentService _studentService = Substitute.For<IStudentService>();
     private readonly IKeycloakService _keycloakService = Substitute.For<IKeycloakService>();
-    private readonly IBackgroundJobClient _backgroundJobs = Substitute.For<IBackgroundJobClient>();
-    private readonly IBadgeResetApiClient _badgeResetApiClient = Substitute.For<IBadgeResetApiClient>();
+    private readonly IStudentResetScheduler _studentResetScheduler = Substitute.For<IStudentResetScheduler>();
     private readonly ILoginEventService _loginEventService = Substitute.For<ILoginEventService>();
 
     private StudentController NewController(string? keycloakUserId)
@@ -40,16 +38,13 @@ public class StudentControllerLastLoginTests : IDisposable
             new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())),
             Substitute.For<ILogger<UserProfileCacheService>>());
 
-        var studentResetJob = new StudentResetJob(_db.NewContext(), _badgeResetApiClient);
-
         var controller = new StudentController(
             _minio,
             _studentService,
             userProfileCache,
             Options.Create(new KeycloakSettings()),
             _keycloakService,
-            _backgroundJobs,
-            studentResetJob,
+            _studentResetScheduler,
             _loginEventService,
             Substitute.For<ILogger<StudentController>>());
 

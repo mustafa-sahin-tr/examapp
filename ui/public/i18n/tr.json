@@ -24,6 +24,7 @@
     "notifications": {
       "goToExam": "Sınava Git",
       "teacherApplication": "Yeni bağımsız öğretmen başvurusu: {{name}}",
+      "teacherSchoolRequest": "Yeni okul bağlantısı talebi: {{name}} → {{school}}",
       "goToApplications": "Başvurulara Git",
       "goToProfile": "Profile Git"
     }

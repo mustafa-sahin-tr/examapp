@@ -7,6 +7,7 @@ import { AccessRequestUpdate } from '../models/worksheet-access-request.model';
 import {
   TeacherApplicationSubmittedPayload,
   TeacherApplicationDecidedPayload,
+  TeacherSchoolRequestSubmittedPayload,
 } from '../models/teacher-application.model';
 import { TranslocoService } from '@jsverse/transloco';
 import { AuthService } from './auth.service';
@@ -35,6 +36,10 @@ export class SignalRService {
   /** BadgeService `TeacherApplicationSubmitted` event akışı (bağımsız öğretmen başvurusu — issue #94, yalnızca Admin). */
   private readonly teacherApplicationSubmittedSubject = new Subject<TeacherApplicationSubmittedPayload>();
   public readonly teacherApplicationSubmitted$ = this.teacherApplicationSubmittedSubject.asObservable();
+
+  /** BadgeService `TeacherSchoolRequestSubmitted` event akışı (öğretmen okul bağlantısı talebi — issue #277, yalnızca Admin). */
+  private readonly teacherSchoolRequestSubmittedSubject = new Subject<TeacherSchoolRequestSubmittedPayload>();
+  public readonly teacherSchoolRequestSubmitted$ = this.teacherSchoolRequestSubmittedSubject.asObservable();
 
   /**
    * BadgeService `TeacherApplicationDecided` event akışı (öğretmen başvuru kararı — issue #157).
@@ -90,6 +95,22 @@ export class SignalRService {
       this.teacherApplicationSubmittedSubject.next(data);
       const ref = this.snackBar.open(
         this.t('common.notifications.teacherApplication', { name: data.applicantName }),
+        this.t('common.notifications.goToApplications'),
+        { duration: 8000 },
+      );
+      ref.onAction().subscribe(() => {
+        this.router.navigate(['/admin/teacher-approvals']);
+      });
+    });
+
+    this.hubConnection.on('TeacherSchoolRequestSubmitted', (data: TeacherSchoolRequestSubmittedPayload) => {
+      // Backend zaten role:Admin grubuna gönderir; istemci tarafı kontrol savunma amaçlı (TeacherApplicationSubmitted ile aynı).
+      if (!this.authService.hasRole('Admin')) {
+        return;
+      }
+      this.teacherSchoolRequestSubmittedSubject.next(data);
+      const ref = this.snackBar.open(
+        this.t('common.notifications.teacherSchoolRequest', { name: data.applicantName, school: data.schoolName }),
         this.t('common.notifications.goToApplications'),
         { duration: 8000 },
       );

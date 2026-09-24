@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Constants;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Logging;
 namespace ExamApp.Api.Controllers;
 
 [Authorize]
+[UserProfileUnavailableFilter] // issue #277 security re-review: profil sağlayıcı hatası → 503 (fail-closed)
 public class BaseController : ControllerBase
 {
     protected string? KeyCloakId => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -51,18 +53,15 @@ public class BaseController : ControllerBase
         var userProfileProvider = HttpContext.RequestServices.GetRequiredService<IUserProfileProvider>();
         try
         {
-            return await userProfileProvider.GetAsync(KeyCloakId, ct);
+            return WithEffectiveRole(await userProfileProvider.GetAsync(KeyCloakId, ct));
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            return new UserProfileDto
-            {
-                Id = 0,
-                KeycloakId = KeyCloakId ?? string.Empty,
-                FullName = preferredUsername ?? User.Identity?.Name ?? "Authenticated User",
-                Email = string.Empty,
-                Role = "Service"
-            };
+            // issue #277 security re-review: fail-closed. Kullanıcı token'ı için "Service" rollü sahte profil ÜRETİLMEZ —
+            // servis muafiyetli kontroller (ör. StudyItemService sahiplik) atlanıyordu. "Service" rolünü yalnızca yukarıdaki
+            // gerçek servis principal'ı (client-credentials, ServicePrincipal.IsService — ApprovedTeacher muafiyetiyle aynı
+            // tespit) alır. Provider hatası → 503 (UserProfileUnavailableFilter); profil yoksa (null) çağıran UserNotResolved.
+            throw new UserProfileUnavailableException(ex);
         }
     }
 
@@ -133,9 +132,22 @@ public class BaseController : ControllerBase
     private async Task<UserProfileDto> ResolveVerifiedProfileAsync(CancellationToken ct)
     {
         var userProfileProvider = HttpContext.RequestServices.GetRequiredService<IUserProfileProvider>();
-        return await userProfileProvider.GetAsync(KeyCloakId, ct)
+        return WithEffectiveRole(await userProfileProvider.GetAsync(KeyCloakId, ct)
             ?? throw new InvalidOperationException(
-                $"User profile could not be resolved for KeycloakId={KeyCloakId}; cannot determine school context.");
+                $"User profile could not be resolved for KeycloakId={KeyCloakId}; cannot determine school context."));
+    }
+
+    /// <summary>
+    /// issue #277 review (security HIGH): profil rolünü JWT ile doğrulanmış etkin role çevirir (<see cref="EffectiveRole"/>).
+    /// Controller'lar ve UserProfileDto alan servisler öğretmen/öğrenci dal kararını HER ZAMAN bu değerle verir — profil
+    /// (auth-api) rolü JWT'yle ayrışırsa #287 ApprovedTeacher kapısı (JWT'ye bakar) atlanamasın. Provider her çağrıda yeni
+    /// (önbellekten deserialize edilmiş) nesne döndürür; önbellekteki kayıt değişmez.
+    /// </summary>
+    private UserProfileDto WithEffectiveRole(UserProfileDto profile)
+    {
+        if (profile is not null)
+            profile.Role = EffectiveRole.Resolve(profile.Role, User);
+        return profile!;
     }
 
     /// <summary>DB'den doğrulanmış SchoolId; JWT claim'i ile uyuşmazsa DB kazanır ve uyuşmazlık loglanır.</summary>

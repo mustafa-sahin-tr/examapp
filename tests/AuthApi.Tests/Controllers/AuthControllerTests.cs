@@ -192,6 +192,79 @@ public class AuthControllerTests : IDisposable
         evt.Success.ShouldBeTrue();
     }
 
+    // ---- Issue #277 review (item 3): EnsureLocalUserAsync (login/exchange sync) stamps
+    // RoleUpdatedAtUtc so a late/replayed UserRoleChangedEvent can't overwrite a newer direct
+    // sync from Keycloak. ----
+
+    [Fact]
+    public async Task EchangeCode_newUserWithAppRole_stampsRoleUpdatedAtUtc()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync("auth-code-new-user")
+            .Returns(SuccessfulTokenResponse("kc-sub-new", "new-teacher@test.local", "Teacher"));
+
+        var controller = NewController(keycloak, context);
+        var before = DateTime.UtcNow;
+
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-new-user" });
+
+        await using var check = _db.NewContext();
+        var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-new");
+        user.Role.ShouldBe("Teacher");
+        user.RoleUpdatedAtUtc.ShouldNotBeNull();
+        user.RoleUpdatedAtUtc!.Value.ShouldBeGreaterThanOrEqualTo(before);
+    }
+
+    [Fact]
+    public async Task EchangeCode_newUserWithoutAppRoleYet_leavesRoleUpdatedAtUtcNull()
+    {
+        await using var context = _db.NewContext();
+        var keycloak = Substitute.For<IKeycloakService>();
+        // No app role claim yet — profile completion (complete-profile) hasn't happened.
+        keycloak.ExchangeTokenAsync("auth-code-no-role")
+            .Returns(SuccessfulTokenResponse("kc-sub-norole", "pending@test.local"));
+
+        var controller = NewController(keycloak, context);
+
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-no-role" });
+
+        await using var check = _db.NewContext();
+        var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-norole");
+        user.Role.ShouldBeEmpty();
+        user.RoleUpdatedAtUtc.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task EchangeCode_existingUserRoleChangedSinceLastLogin_stampsRoleUpdatedAtUtc()
+    {
+        await using var context = _db.NewContext();
+        context.Users.Add(new User
+        {
+            KeycloakId = "kc-sub-existing",
+            Email = "existing@test.local",
+            FullName = "Existing User",
+            Role = "Student",
+            RoleUpdatedAtUtc = null
+        });
+        await context.SaveChangesAsync();
+
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.ExchangeTokenAsync("auth-code-role-changed")
+            .Returns(SuccessfulTokenResponse("kc-sub-existing", "existing@test.local", "Teacher"));
+
+        var controller = NewController(keycloak, context);
+        var before = DateTime.UtcNow;
+
+        await controller.EchangeCode(new CodeDto { Code = "auth-code-role-changed" });
+
+        await using var check = _db.NewContext();
+        var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-sub-existing");
+        user.Role.ShouldBe("Teacher");
+        user.RoleUpdatedAtUtc.ShouldNotBeNull();
+        user.RoleUpdatedAtUtc!.Value.ShouldBeGreaterThanOrEqualTo(before);
+    }
+
     // ---- EchangeCode: failure ----
 
     [Fact]

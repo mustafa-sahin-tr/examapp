@@ -18,6 +18,7 @@ import { provideTranslatedPaginatorIntl } from '../../../shared/utils/paginator-
 import { SchoolPagedList, adminListErrorMessage } from '../../../shared/utils/school-paged-list';
 import { openAdminResetPasswordDialog } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 import { openAdminAccountStatusDialog } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
+import { openAdminStudentSchoolDialog } from '../../../shared/components/admin-student-school-dialog/admin-student-school-dialog.component';
 
 /** Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183). */
 const ADMIN_SCOPE = 'admin';
@@ -33,6 +34,8 @@ export interface AdminStudentRow {
   studentNumber: string | null;
   /** null → "—" */
   email: string | null;
+  /** Öğrencinin okulu; okulsuzsa null. */
+  schoolId: number | null;
   /** null → okula bağlı değilse "Okulsuz", bağlıysa (ad çözülemedi) "—" */
   schoolName: string | null;
   noSchool: boolean;
@@ -155,6 +158,41 @@ export class AdminStudentsComponent {
       });
   }
 
+  /** Okul değişikliği dialog'u açıkken ikinci bir dialog açılmaz (çift tıklama). */
+  readonly schoolDialogOpen = signal(false);
+
+  /**
+   * Issue #277 (madde 8) — öğrencinin okulunu değiştir. Onay (etkiler) + istek dialog'dadır; başarıda satır yeni okulla
+   * anında güncellenir. Hata görülüp vazgeçilirse (ör. 409 eşzamanlı değişiklik) liste yeniden yüklenir.
+   */
+  changeSchool(row: AdminStudentRow): void {
+    if (this.schoolDialogOpen()) return;
+    this.schoolDialogOpen.set(true);
+    openAdminStudentSchoolDialog(this.dialog, {
+      id: row.id,
+      displayName: this.rowDisplayName(row),
+      currentSchoolId: row.schoolId,
+      currentSchoolName: row.schoolName,
+    })
+      .afterClosed()
+      .subscribe((result) => {
+        this.schoolDialogOpen.set(false);
+        if (!result) return;
+        if ('refresh' in result) this.list.load();
+        else this.applySchool(row.id, result.schoolId, result.schoolName);
+      });
+  }
+
+  /**
+   * Ham liste öğesi güncellenir; `noSchool` dahil satır alanları `rows` computed'ında `toRow` ile yeniden türetilir
+   * (ayrı tutulan bir `noSchool` yok, bayat kalamaz).
+   */
+  private applySchool(id: number, schoolId: number, schoolName: string | null): void {
+    this.list.items.update((items) =>
+      items.map((item) => (item.id === id ? { ...item, schoolId, schoolName } : item)),
+    );
+  }
+
   private applyAccountStatus(id: number, enabled: boolean): void {
     this.list.items.update((items) => items.map((item) => (item.id === id ? { ...item, isEnabled: enabled } : item)));
   }
@@ -188,6 +226,7 @@ function toRow(item: AdminStudentListItem): AdminStudentRow {
     fullName: item.fullName?.trim() || null,
     studentNumber: item.studentNumber.trim() || null,
     email: item.email?.trim() || null,
+    schoolId: item.schoolId,
     schoolName: item.schoolName?.trim() || null,
     noSchool: item.schoolId == null,
     gradeName: item.gradeName?.trim() || null,

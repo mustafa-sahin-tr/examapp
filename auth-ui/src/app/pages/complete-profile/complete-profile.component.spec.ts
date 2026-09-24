@@ -1,10 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NEVER, of, throwError } from 'rxjs';
 
-import { CompleteProfileComponent } from './complete-profile.component';
+import { CompleteProfileComponent, cooldownMessage } from './complete-profile.component';
 import { AuthService } from '../../services/auth.service';
 import { Grade, School } from '../../models/registration.model';
 
@@ -390,6 +390,47 @@ describe('CompleteProfileComponent', () => {
     expect(component.isLoading()).toBeFalse();
     expect(component.schoolApprovalPending()).toBeFalse();
     expect(routerSpy.navigate).not.toHaveBeenCalled();
+  });
+
+  // ── Issue #277: reddedilen okul talebinden sonra 24 saat bekleme (429) ────
+
+  it('onSubmit_TeacherSchoolRequestCooldown429_ShowsServerMessageWithRemainingTimeAndStaysOnForm', () => {
+    const fixture = createComponent({ role: 'teacher' });
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const redirectSpy = spyOn(component, 'redirectTo');
+    const openSpy = spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
+    authServiceSpy.registerTeacherProfile.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 429,
+            error: { message: 'Okul talebiniz reddedildi.', retryAfterSeconds: 23 * 3600 + 59 * 60 + 1, retryAfterUtc: null },
+            headers: new HttpHeaders({ 'Retry-After': '86341' }),
+          }),
+      ),
+    );
+
+    component.teacherForm.setValue({ isIndependentTutor: false, schoolId: 1 });
+    component.onSubmit();
+    fixture.detectChanges();
+
+    expect(component.submitError()).toBe(
+      'Okul talebiniz reddedildi. Yeni bir okul talebini yaklaşık 24 saat 0 dakika sonra gönderebilirsin.',
+    );
+    expect(component.isLoading()).toBeFalse();
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(redirectSpy).not.toHaveBeenCalled();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent).toContain(
+      'Okul talebiniz reddedildi.',
+    );
+  });
+
+  it('cooldownMessage_NoBody_UsesRetryAfterHeaderAndDefaultText', () => {
+    const err = new HttpErrorResponse({ status: 429, headers: new HttpHeaders({ 'Retry-After': '90' }) });
+    expect(cooldownMessage(err)).toBe(
+      'Reddedilen okul talebinizden sonra bekleme süresi henüz dolmadı. Yeni bir okul talebini yaklaşık 2 dakika sonra gönderebilirsin.',
+    );
   });
 
   // ── Issue #259: öğrenci kaydında okul kilidi / eşzamanlı kayıt 409'ları ────

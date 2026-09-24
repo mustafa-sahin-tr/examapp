@@ -189,12 +189,43 @@ public class StudentService : IStudentService
                 SchoolId = dto.SchoolId,
                 GradeId = dto.GradeId
             };
-            _context.Students.Add(student);
         }
 
+        var isNew = student.Id == 0;
+        var teacherRecordRace = false;
         try
         {
-            await _context.SaveChangesAsync();
+            if (isNew)
+            {
+                // issue #277 (madde 9): yeni öğrenci satırı, kullanıcı kaydı kilidi (TeacherService.Save ile aynı anahtar)
+                // altında ve öğretmen satırı kontrolü transaction içinde TEKRARLANARAK yazılır — eşzamanlı
+                // teacher/register ile iki tabloya birden satır yazılamaz (#259 unique index'leri tablo başınadır).
+                // Retry-on-failure (Aspire Npgsql) nedeniyle transaction execution strategy İÇİNDE açılır; SaveChanges
+                // değişiklikleri commit'e kadar kabul etmez ki geçici hata sonrası retry INSERT'i yeniden denesin.
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
+                {
+                    await using var tx = await _context.Database.BeginTransactionAsync();
+                    await _context.Database.AcquireUserRegistrationLockAsync(userId);
+
+                    if (await _context.Teachers.AnyAsync(t => t.UserId == userId))
+                    {
+                        teacherRecordRace = true;
+                        return; // commit yok → dispose'da rollback
+                    }
+
+                    if (_context.Entry(student).State == EntityState.Detached)
+                        _context.Students.Add(student);
+
+                    await _context.SaveChangesAsync(acceptAllChangesOnSuccess: false);
+                    await tx.CommitAsync();
+                    _context.ChangeTracker.AcceptAllChanges();
+                });
+            }
+            else
+            {
+                await _context.SaveChangesAsync();
+            }
         }
         catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
         {
@@ -205,6 +236,16 @@ public class StudentService : IStudentService
                 Success = false,
                 Conflict = true,
                 Message = _localizer["student.registrationConflict"]
+            };
+        }
+
+        if (teacherRecordRace)
+        {
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["student.teacherRecordExists"]
             };
         }
 

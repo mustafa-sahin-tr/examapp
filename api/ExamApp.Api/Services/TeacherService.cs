@@ -6,12 +6,14 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.TeacherApprovals;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Localization;
 using ExamApp.Foundation.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Services;
 
@@ -29,14 +31,20 @@ public class TeacherService : ITeacherService
     // (birim test) senaryolar için opsiyonel — varsayılan aynı kuralı uygulayan gerçek policy'dir.
     private readonly ISchoolAccessPolicy _schoolAccessPolicy;
 
+    // issue #277 (madde 2): retten sonra yeni okul talebi bekleme süresi. DI her zaman bağlanmış options'ı verir;
+    // DI'siz (birim test) kurulumda varsayılan (24 saat).
+    private readonly TeacherSchoolRequestOptions _schoolRequestOptions;
+
     public TeacherService(AppDbContext context, IAuthApiClient authApiClient,
         IStringLocalizer<Messages>? localizer = null,
-        ISchoolAccessPolicy? schoolAccessPolicy = null)
+        ISchoolAccessPolicy? schoolAccessPolicy = null,
+        IOptions<TeacherSchoolRequestOptions>? schoolRequestOptions = null)
     {
         _context = context;
         _authApiClient = authApiClient;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _schoolAccessPolicy = schoolAccessPolicy ?? new SchoolAccessPolicy(context);
+        _schoolRequestOptions = schoolRequestOptions?.Value ?? new TeacherSchoolRequestOptions();
     }
 
     /// <summary>
@@ -94,14 +102,24 @@ public class TeacherService : ITeacherService
 
     public async Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto)
     {
-        if (dto.SchoolId.HasValue &&
-            !await _context.Schools.AnyAsync(s => s.Id == dto.SchoolId.Value))
+        // issue #277 (madde 1): okul adı, talep bildirimi (TeacherSchoolRequestSubmittedEvent) metni için aynı sorguda okunur.
+        string? requestedSchoolName = null;
+        if (dto.SchoolId.HasValue)
         {
-            return new TeacherRegistrationResultDto
+            var school = await _context.Schools.AsNoTracking()
+                .Where(s => s.Id == dto.SchoolId.Value)
+                .Select(s => new { s.Name })
+                .FirstOrDefaultAsync();
+            if (school == null)
             {
-                Success = false,
-                Message = _localizer["teacher.schoolNotFound"]
-            };
+                return new TeacherRegistrationResultDto
+                {
+                    Success = false,
+                    Message = _localizer["teacher.schoolNotFound"]
+                };
+            }
+
+            requestedSchoolName = school.Name;
         }
 
         // issue #234: okul üyeliği kullanıcı tarafından KURULAMAZ. İstekteki okul yalnızca bir talep olarak
@@ -133,6 +151,7 @@ public class TeacherService : ITeacherService
         Teacher teacher;
         var shouldPublishIndependentTeacherEvent = false;
         var shouldPublishApplicationSubmittedEvent = false;
+        var shouldPublishSchoolRequestEvent = false;
         var schoolApprovalPending = false;
 
         if (existingTeacher != null)
@@ -172,16 +191,47 @@ public class TeacherService : ITeacherService
                 };
             }
 
+            // issue #277 (madde 2): reddedilen öğretmen, son ret anından itibaren bekleme süresi
+            // (TeacherApprovals:SchoolRequestCooldownHours, varsayılan 24 saat) dolmadan yeni okul talebi açamaz → 429.
+            // Yalnızca YENİ talep açılışını keser; idempotent tekrarlar ve bağımsızlığa geçiş etkilenmez.
+            if (opensSchoolRequest && teacher.ApprovalStatus == TeacherApprovalStatus.Rejected
+                && teacher.LastRejectedAt.HasValue && _schoolRequestOptions.SchoolRequestCooldownHours > 0)
+            {
+                var retryAfterUtc = teacher.LastRejectedAt.Value.AddHours(_schoolRequestOptions.SchoolRequestCooldownHours);
+                var remaining = retryAfterUtc - DateTime.UtcNow;
+                if (remaining > TimeSpan.Zero)
+                {
+                    return new TeacherRegistrationResultDto
+                    {
+                        Success = false,
+                        TooManyRequests = true,
+                        RetryAfterUtc = retryAfterUtc,
+                        Message = _localizer["teacher.schoolRequestCooldown", (int)Math.Ceiling(remaining.TotalHours)],
+                        ObjectId = teacher.Id,
+                        SchoolId = teacher.SchoolId,
+                        RequestedSchoolId = teacher.RequestedSchoolId,
+                        ApprovalStatus = teacher.ApprovalStatus,
+                        AccountApproved = teacher.AccountApprovedAt != null
+                    };
+                }
+            }
+
             // Tek izin verilen geçiş: okula bağlı → bağımsız (issue #92). ApprovalStatus yalnızca bu geçişte
             // Pending'e çekilir; aksi halde admin'in verdiği karar tekrar register çağrısıyla değişmez.
-            // Bekleyen okul talebi varsa geri çekilir (bağımsız başvuruda okul talebi anlamsız). Onaylı
-            // SchoolId'ye dokunulmaz (issue #234: bu uç SchoolId'yi değiştirmez).
+            // Bekleyen okul talebi varsa geri çekilir (bağımsız başvuruda okul talebi anlamsız).
+            // issue #277 (madde 3, #235 security notu): onaylı okul bağı (SchoolId) bu geçişte HEMEN kaldırılır — eskiden
+            // korunuyordu ve bağımsız başvuru onay beklerken (hatta reddedilse de) eski okulun kapsamı (okul öğrencileri,
+            // sınıf atamaları, SchoolOnly paylaşımlar) sürüyordu. Öğretmen HESABI onaylı kalır (#287: AccountApprovedAt'e
+            // dokunulmaz) — yalnızca okul kapsamlı veri erişimini kaybeder. Mevcut worksheet/atama verisi silinmez
+            // (atamaların kendi SchoolId'si korunur; bkz. #277 raporu). Okul bağı bu uçtan geri KURULAMAZ
+            // (bağımsız → okullu geçiş 409); yeniden bağlanma admin yoluyla.
             var becomesIndependent = !teacher.IsIndependentTutor && dto.IsIndependentTutor;
             if (becomesIndependent)
             {
                 teacher.IsIndependentTutor = true;
                 teacher.ApprovalStatus = TeacherApprovalStatus.Pending;
                 teacher.RequestedSchoolId = null;
+                teacher.SchoolId = null;
             }
             else if (opensSchoolRequest)
             {
@@ -191,10 +241,11 @@ public class TeacherService : ITeacherService
                 schoolApprovalPending = true;
             }
 
-            // Yalnızca bağımsız geçişlerde aynı transaction içinde ilgili outbox event'leri yazılır.
+            // Bağımsız geçişte ve yeni okul talebinde aynı transaction içinde ilgili outbox event'leri yazılır.
             // Aynı değerle tekrar submit (idempotent) event üretmez.
             shouldPublishIndependentTeacherEvent = becomesIndependent;
             shouldPublishApplicationSubmittedEvent = becomesIndependent;
+            shouldPublishSchoolRequestEvent = opensSchoolRequest && !becomesIndependent;
         }
         else
         {
@@ -214,33 +265,93 @@ public class TeacherService : ITeacherService
             };
 
             // Yeni bağımsız öğretmen kaydı hem yeni bağımsız kayıt event'ini hem Pending başvuru event'ini üretir.
-            // Okul bağlantısı talebi için event YAZILMAZ: TeacherApplicationSubmittedEvent'in tüketicisi bildirim
-            // metnini "bağımsız öğretmen başvurusu" olarak üretir; talep admin başvuru listesinde görünür.
+            // Okul bağlantısı talebi TeacherApplicationSubmittedEvent YAZMAZ (onun tüketicisi metni "bağımsız öğretmen
+            // başvurusu" olarak üretir); issue #277 (madde 1): talep için ayrı TeacherSchoolRequestSubmittedEvent yazılır.
             shouldPublishIndependentTeacherEvent = dto.IsIndependentTutor;
             shouldPublishApplicationSubmittedEvent = dto.IsIndependentTutor;
+            shouldPublishSchoolRequestEvent = requestedSchoolId.HasValue;
         }
 
-        // Başvuran adı auth-api'den best-effort çözülür (issue #94 admin bildirimi için).
+        // Başvuran adı auth-api'den best-effort çözülür (issue #94 / #277 admin bildirimi için).
         // Dış HTTP çağrısı transaction/retry lambda'sının DIŞINDA tutulur ki retry'da tekrarlanmasın.
-        var applicantName = (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)
+        var applicantName = (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent
+                             || shouldPublishSchoolRequestEvent)
             ? await ResolveApplicantNameAsync(userId)
             : null;
 
+        // issue #277 (madde 1): okul talebi event'inin kimliği ve anı lambda DIŞINDA bir kez belirlenir — retry'da aynı talep
+        // için aynı EventId yazılır (tüketici tekilleştirmesi). Outbox satırı her denemede yeniden kurulur (aşağıya bkz.).
+        var schoolRequestEventId = Guid.NewGuid();
+        var schoolRequestSubmittedAt = DateTime.UtcNow;
+
+        // issue #277 takip (retry güvenliği): execution strategy (Aspire Npgsql retry-on-failure) geçici bir hatada —
+        // özellikle SaveChanges'ler başarılı olup COMMIT düştüğünde — lambda'yı baştan çalıştırır. Önceki denemenin
+        // SaveChanges'i değişiklikleri "kabul etmiş" olur (Unchanged + DB'de geri alınmış Id), bu yüzden eskiden retry'da
+        // teacher/outbox satırları sessizce YAZILMADAN commit edilebiliyordu. Artık her deneme temiz başlar:
+        //  - ChangeTracker temizlenir;
+        //  - güncellemede kayıt transaction içinde yeniden okunur ve YALNIZCA kararla değişen alanlar (aşağıdaki anlık
+        //    görüntü) üzerine yazılır — karar mantığı lambda dışında kalır (retry'da "değişti mi" karşılaştırması bozulmasın);
+        //  - yeni kayıtta geri alınmış denemenin Id'si sıfırlanıp entity yeniden eklenir;
+        //  - outbox satırları her denemede yeni nesnelerle eklenir.
+        var modifiedTeacherValues = isUpdate
+            ? _context.Entry(teacher).Properties
+                .Where(p => p.IsModified)
+                .Select(p => (Name: p.Metadata.Name, Value: p.CurrentValue))
+                .ToList()
+            : null;
+
+        // issue #277 review (NIT 4): karar (bağımsıza geçiş / yeni okul talebi) kilitsiz okunan duruma göre verildi. Aynı
+        // kullanıcının eşzamanlı iki isteği (ör. iki paralel okul talebi → iki admin bildirimi, son yazan kazanır) aynı kararı
+        // verebilirdi. Geçiş varsa karar girdileri kilidin ALTINDA yeniden okunan satırla karşılaştırılır; değişmişse yazmadan
+        // 409 (registrationConflict) — ikinci istek, birincinin commit'inden sonra güncel durumla tekrar denenebilir.
+        (bool IsIndependentTutor, TeacherApprovalStatus ApprovalStatus, int? RequestedSchoolId, int? SchoolId)? decisionSnapshot =
+            isUpdate && modifiedTeacherValues!.Count > 0 ? DecisionInputs(_context.Entry(teacher), original: true) : null;
+
         var teacherId = 0;
+        var studentRecordRace = false;
+        var concurrentDecisionChange = false;
         var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
             await strategy.ExecuteAsync(async () =>
             {
+                _context.ChangeTracker.Clear();
+                studentRecordRace = false;
+                concurrentDecisionChange = false;
+
                 await using var tx = await _context.Database.BeginTransactionAsync();
 
-                if (!isUpdate)
+                // issue #277 (madde 9): öğretmen/öğrenci kaydı birbirini dışlar; yukarıdaki kontrol kilitsizdir. Eşzamanlı
+                // student/register ile yarışı kapatmak için kontrol, kullanıcı kaydı kilidi (StudentService.Save ile aynı
+                // anahtar) altında transaction içinde TEKRARLANIR. Öğrenci satırı varsa hiçbir şey yazılmadan geri alınır.
+                await _context.Database.AcquireUserRegistrationLockAsync(userId);
+                if (await _context.Students.AnyAsync(s => s.UserId == userId))
                 {
-                    // Retry'da aynı instance tekrar Add edilir; zaten Added state'te olduğu için no-op.
+                    studentRecordRace = true;
+                    return; // commit yok → dispose'da rollback
+                }
+
+                if (isUpdate)
+                {
+                    var tracked = await _context.Teachers.AsTracking().FirstAsync(t => t.Id == teacher.Id);
+                    var entry = _context.Entry(tracked);
+                    if (decisionSnapshot is { } expected && expected != DecisionInputs(entry, original: false))
+                    {
+                        concurrentDecisionChange = true;
+                        return; // commit yok → dispose'da rollback
+                    }
+
+                    foreach (var (name, value) in modifiedTeacherValues!)
+                        entry.Property(name).CurrentValue = value;
+                }
+                else
+                {
+                    teacher.Id = 0; // geri alınmış önceki denemenin identity değeri taşınmasın
                     _context.Teachers.Add(teacher);
                 }
 
                 await _context.SaveChangesAsync();
+                var savedTeacherId = teacher.Id; // güncellemede kayıt Id'si değişmez; yeni kayıtta identity burada set edildi
 
                 if (shouldPublishIndependentTeacherEvent)
                 {
@@ -254,23 +365,43 @@ public class TeacherService : ITeacherService
                         Type = OutboxEventRegistry.NameFor<IndependentTeacherRegisteredEvent>(),
                         Content = JsonSerializer.Serialize(new IndependentTeacherRegisteredEvent
                         {
-                            TeacherId = teacher.Id,
+                            TeacherId = savedTeacherId,
                             UserId = userId,
                             IsNewRegistration = !isUpdate,
                             RegisteredAt = now
                         }),
                         CreatedAt = now
                     });
-                    AddTeacherApplicationSubmittedOutbox(teacher.Id, userId, applicantName);
+                    AddTeacherApplicationSubmittedOutbox(savedTeacherId, userId, applicantName);
                 }
 
-                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)
+                if (shouldPublishSchoolRequestEvent)
+                {
+                    _context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = OutboxEventRegistry.NameFor<TeacherSchoolRequestSubmittedEvent>(),
+                        CreatedAt = schoolRequestSubmittedAt,
+                        Content = JsonSerializer.Serialize(new TeacherSchoolRequestSubmittedEvent
+                        {
+                            EventId = schoolRequestEventId,
+                            TeacherId = savedTeacherId,
+                            UserId = userId,
+                            RequestedSchoolId = teacher.RequestedSchoolId!.Value,
+                            RequestedSchoolName = requestedSchoolName,
+                            ApplicantName = applicantName,
+                            IsNewRegistration = !isUpdate,
+                            SubmittedAtUtc = schoolRequestSubmittedAt
+                        })
+                    });
+                }
+
+                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || shouldPublishSchoolRequestEvent)
                 {
                     await _context.SaveChangesAsync();
                 }
 
                 await tx.CommitAsync();
-                teacherId = teacher.Id;
+                teacherId = savedTeacherId;
             });
         }
         catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
@@ -286,6 +417,26 @@ public class TeacherService : ITeacherService
             };
         }
 
+        if (concurrentDecisionChange)
+        {
+            return new TeacherRegistrationResultDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["teacher.registrationConflict"]
+            };
+        }
+
+        if (studentRecordRace)
+        {
+            return new TeacherRegistrationResultDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["teacher.studentRecordExists"]
+            };
+        }
+
         return new TeacherRegistrationResultDto
         {
             Success = true,
@@ -298,6 +449,17 @@ public class TeacherService : ITeacherService
             ApprovalStatus = teacher.ApprovalStatus,
             AccountApproved = teacher.AccountApprovedAt != null
         };
+    }
+
+    /// <summary>issue #277 review (NIT 4): Save'in kararını belirleyen alanlar (orijinal ya da mevcut değerleriyle).</summary>
+    private static (bool IsIndependentTutor, TeacherApprovalStatus ApprovalStatus, int? RequestedSchoolId, int? SchoolId)
+        DecisionInputs(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Teacher> entry, bool original)
+    {
+        T Get<T>(string name) => (T)(original ? entry.Property(name).OriginalValue : entry.Property(name).CurrentValue)!;
+        return (Get<bool>(nameof(Teacher.IsIndependentTutor)),
+            Get<TeacherApprovalStatus>(nameof(Teacher.ApprovalStatus)),
+            (int?)(original ? entry.Property(nameof(Teacher.RequestedSchoolId)).OriginalValue : entry.Property(nameof(Teacher.RequestedSchoolId)).CurrentValue),
+            (int?)(original ? entry.Property(nameof(Teacher.SchoolId)).OriginalValue : entry.Property(nameof(Teacher.SchoolId)).CurrentValue));
     }
 
     /// <summary>

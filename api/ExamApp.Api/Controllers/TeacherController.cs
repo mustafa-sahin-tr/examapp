@@ -1,3 +1,5 @@
+using ExamApp.Api.Services.UserRoles;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -53,6 +55,8 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized(_localizer["teacher.refreshTokenMissing"].Value);
 
             // 🔹 Öğretmen zaten var mı?
+            // issue #277 (madde 4): rol değişikliği bağlamı, user.Role aşağıda üzerine yazılmadan ÖNCE alınır.
+            var roleChange = new UserRoleChangeRequest(user.KeycloakId, user.Id, user.Role);
             var response = await _teacherService.Save(user.Id, request);
             if (response == null)
             {
@@ -61,6 +65,21 @@ namespace ExamApp.Api.Controllers
 
             if (response.Success == false)
             {
+                // issue #277 (madde 2): retten sonra bekleme süresi dolmadan yeni okul talebi → 429 + Retry-After (saniye).
+                if (response.TooManyRequests)
+                {
+                    var retryAfterSeconds = response.RetryAfterUtc is { } retryAt
+                        ? Math.Max(1, (int)Math.Ceiling((retryAt - DateTime.UtcNow).TotalSeconds))
+                        : 1;
+                    Response.Headers.RetryAfter = retryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    return StatusCode(StatusCodes.Status429TooManyRequests, new
+                    {
+                        message = response.Message,
+                        retryAfterSeconds,
+                        retryAfterUtc = response.RetryAfterUtc
+                    });
+                }
+
                 // issue #234: mevcut kaydın okul/bağımsızlık bilgisini değiştirme denemesi → 409.
                 return response.Conflict
                     ? Conflict(new { message = response.Message })
@@ -70,6 +89,11 @@ namespace ExamApp.Api.Controllers
             // issue #234: Keycloak rolü yalnızca doğrulama/çakışma kontrolleri geçtikten SONRA verilir — reddedilen
             // bir kayıt denemesi (ör. öğrenci kaydı olan kullanıcı) kullanıcıya Teacher rolü eklememeli.
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Teacher);
+
+            // issue #277 (madde 4): Keycloak rolü BAŞARIYLA atandıktan sonra, rol gerçekten değiştiyse UserRoleChangedEvent
+            // (auth-api Users.Role senkronu). Sıra/hata davranışı: UserRoleChangeRecorder.
+            await HttpContext.RequestServices.GetRequiredService<IUserRoleChangeRecorder>()
+                .RecordIfChangedAsync(roleChange, UserRole.Teacher, HttpContext.RequestAborted);
 
             // issue #234 (security re-review): önbelleğe İSTEK verisi yazılmaz; okul DB'den ISchoolContextResolver ile
             // çözülür (öğretmen kaydı varsa Teachers.SchoolId esas — eşzamanlı teacher/student register yarışında iki

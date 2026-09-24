@@ -55,6 +55,7 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
             .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
             .AddSingleton(profileProvider)
             .AddSingleton<ISchoolContextResolver>(new SchoolContextResolver(ctx))
+            .AddSingleton<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder>(new ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder(ctx))
             .BuildServiceProvider();
 
         var controller = new StudentController(

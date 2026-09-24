@@ -1,0 +1,66 @@
+<div class="ssd-dialog" *transloco="let t; prefix: 'admin.studentSchool'">
+  <header class="ssd-header">
+    <mat-icon class="ssd-icon" aria-hidden="true">swap_horiz</mat-icon>
+    <div class="ssd-header__text">
+      <h2 mat-dialog-title>{{ t('title') }}</h2>
+      <p class="ssd-subtitle">{{ data.displayName }}</p>
+    </div>
+  </header>
+
+  <mat-dialog-content class="ssd-content">
+    <p class="ssd-current" data-testid="current-school">
+      {{ t('currentSchool', { school: data.currentSchoolName ?? t('noSchool') }) }}
+    </p>
+
+    <app-school-select
+      [label]="t('newSchool')"
+      [required]="true"
+      [disabled]="submitting() || conflict()"
+      [excludeSchoolId]="data.currentSchoolId"
+      [(value)]="selectedSchoolId"
+      (selectionChange)="onSchoolSelected($event)"
+    />
+
+    <p class="ssd-effects-title">{{ t('effectsTitle') }}</p>
+    <ul class="ssd-effects" data-testid="school-effects">
+      <li><mat-icon aria-hidden="true">assignment</mat-icon><span>{{ t('effectAssignments') }}</span></li>
+      <li><mat-icon aria-hidden="true">person_off</mat-icon><span>{{ t('effectOldTeachers') }}</span></li>
+      <li><mat-icon aria-hidden="true">lock</mat-icon><span>{{ t('effectLock') }}</span></li>
+    </ul>
+
+    @if (error()) {
+      <div class="ssd-error" role="alert" data-testid="school-error">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="ssd-actions">
+    <button mat-stroked-button type="button" (click)="cancel()" [disabled]="submitting()" data-testid="cancel">
+      {{ t('cancel') }}
+    </button>
+    @if (conflict()) {
+      <button mat-flat-button type="button" class="ssd-primary" (click)="reload()" data-testid="reload">
+        {{ t('reload') }}
+      </button>
+    } @else {
+      <button
+        mat-flat-button
+        type="button"
+        class="ssd-primary"
+        (click)="confirm()"
+        [disabled]="!canSubmit()"
+        [attr.aria-busy]="submitting()"
+        data-testid="confirm"
+      >
+        @if (submitting()) {
+          <mat-spinner diameter="18" class="ssd-spinner"></mat-spinner>
+          {{ t('submitting') }}
+        } @else {
+          {{ error() ? t('retry') : t('confirm') }}
+        }
+      </button>
+    }
+  </mat-dialog-actions>
+</div>

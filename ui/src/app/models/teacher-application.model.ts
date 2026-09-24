@@ -99,6 +99,24 @@ export interface TeacherApplicationSubmittedPayload {
 }
 
 /**
+ * Issue #277 — BadgeService SignalR `TeacherSchoolRequestSubmitted` push payload'ı (role:Admin grubuna gider):
+ * öğretmen bir okul bağlantısı talebi gönderdi (yeni kayıt veya mevcut öğretmenin talebi), admin onayı bekliyor.
+ * Şekil: Services/BadgeService/Consumers/TeacherSchoolRequestSubmittedConsumer.cs → SendAsync anonim nesnesi.
+ */
+export interface TeacherSchoolRequestSubmittedPayload {
+  notificationId: number;
+  teacherId: number;
+  userId: number;
+  requestedSchoolId: number;
+  /** Ad çözümlenemezse backend yedek metin gönderir; boş gelmez. */
+  applicantName: string;
+  /** Okul adı çözümlenemezse backend yedek metin gönderir; boş gelmez. */
+  schoolName: string;
+  title: string;
+  body: string;
+}
+
+/**
  * BadgeService SignalR `TeacherApplicationDecided` push payload'ı (issue #157 — Clients.User(sub),
  * yalnızca başvuru sahibine gider).
  * Şekil: Services/BadgeService/Consumers/TeacherApplicationDecisionConsumer.cs → SendAsync anonim nesnesi.

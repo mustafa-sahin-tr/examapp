@@ -82,6 +82,37 @@
     gap: 8px;
   }
 
+  // Issue #277: okul seçimi (listeden) ve öğretmen çalışma şekli.
+  .school-select {
+    margin-bottom: 8px;
+  }
+
+  .field-error {
+    margin: -4px 0 8px;
+    font-size: 13px;
+    color: var(--ms-danger-text);
+  }
+
+  .teacher-mode {
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    legend {
+      margin-bottom: 4px;
+      font-family: var(--mainFontFamily);
+      font-weight: 600;
+    }
+  }
+
+  .teacher-mode__options {
+    display: flex;
+    flex-direction: column;
+  }
+
   .actions {
     display: flex;
     justify-content: flex-end;
@@ -113,6 +144,10 @@
 
     p {
       margin: 0;
+    }
+
+    .notice__detail {
+      margin-top: 4px;
     }
 
     &--error {

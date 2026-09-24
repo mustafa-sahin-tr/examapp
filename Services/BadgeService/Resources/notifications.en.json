@@ -5,6 +5,7 @@
       "defaultStudent": "A student",
       "defaultApplicant": "A teacher",
       "defaultRequester": "A teacher",
+      "defaultSchool": "a school",
       "unnamedWorksheet": "a worksheet",
       "worksheetFallback": "The worksheet",
       "rejectionReasonSuffix": " Reason: {0}"
@@ -32,6 +33,10 @@
     "TeacherApplicationRejected": {
       "title": "Your teacher application was rejected",
       "body": "Your teacher application was rejected."
+    },
+    "TeacherSchoolRequestSubmitted": {
+      "title": "New school join request",
+      "body": "New school join request: {0} → {1}"
     },
     "WorksheetAccessRequested": {
       "title": "New assignment access request",

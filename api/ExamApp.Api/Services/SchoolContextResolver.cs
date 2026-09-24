@@ -11,7 +11,7 @@ namespace ExamApp.Api.Services;
 /// Davranış tablosu (Rol × kayıt durumu → sonuç):
 ///   Teacher, Teachers'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId
 ///   Teacher, satır var, SchoolId null (bağımsız öğretmen)          -> null
-///   Teacher, Teachers'da satır yok                                 -> null
+///   Teacher, Teachers'da satır yok                                 -> Students satırının SchoolId'si (yoksa null; #277 review)
 ///   Student, Students'da UserId eşleşen satır var, SchoolId dolu   -> o SchoolId
 ///   Student, satır var, SchoolId null                              -> null
 ///   Student, Students'da satır yok                                 -> null
@@ -55,8 +55,9 @@ public class SchoolContextResolver : ISchoolContextResolver
         if (teacherRow != null)
             return teacherRow.SchoolId;
 
-        if (user.Role != nameof(UserRole.Student))
-            return null;
+        // issue #277 review (security HIGH): profil rolü (auth-api) JWT'den geri kalabilir — Teacher ↔ Student ayrımı burada
+        // karar vermez. Öğretmen kaydı yoksa öğrenci kaydının okulu esas alınır (iki kayıt birbirini dışlar, #234/#277 madde 9);
+        // dal kararı controller'da JWT'yle doğrulanmış etkin rolle verilir (EffectiveRole).
 
         return await _context.Students
             .AsNoTracking()

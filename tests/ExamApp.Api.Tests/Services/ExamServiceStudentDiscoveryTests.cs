@@ -145,6 +145,7 @@ public class ExamServiceStudentDiscoveryTests : IDisposable
                 WorksheetId = worksheetId,
                 GradeId = gradeId,
                 StudentId = null,
+                IsPlatformWide = true, // issue #277: okulsuz öğrenci yalnızca platform geneli sınıf atamasını görür
                 StartAt = DateTime.UtcNow.AddDays(-1)
             });
             await seed.SaveChangesAsync();

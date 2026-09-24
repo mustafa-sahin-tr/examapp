@@ -24,6 +24,7 @@
     "notifications": {
       "goToExam": "Sınava Git",
       "teacherApplication": "Yeni bağımsız öğretmen başvurusu: {{name}}",
+      "teacherSchoolRequest": "Yeni okul bağlantısı talebi: {{name}} → {{school}}",
       "goToApplications": "Başvurulara Git",
       "goToProfile": "Profile Git"
     }
@@ -429,6 +430,17 @@
         "customLoaded": "Kaydedilmiş özel tema ayarlarınız yüklendi ve düzenleyebilirsiniz!",
         "presetLoaded": "Kaydedilmiş preset tema yüklendi ve düzenleyebilirsiniz!"
       }
+    },
+    "schoolSelect": {
+      "label": "Okul",
+      "placeholder": "Okul adı, ilçe veya il yazın",
+      "loading": "Okullar yükleniyor...",
+      "loadFailed": "Okul listesi yüklenemedi.",
+      "retry": "Tekrar dene",
+      "empty": "Kayıtlı okul bulunmuyor.",
+      "noMatch": "Eşleşen okul yok",
+      "pickFromList": "Listeden bir okul seçin; serbest metin kaydedilmez.",
+      "clear": "Okul seçimini temizle"
     }
   },
   "dashboard": {

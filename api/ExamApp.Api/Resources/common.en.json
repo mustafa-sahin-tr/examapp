@@ -1,6 +1,7 @@
 {
   "common": {
     "invalidData": "Invalid data.",
-    "tooManyRequests": "Too many requests. Please wait a moment and try again."
+    "tooManyRequests": "Too many requests. Please wait a moment and try again.",
+    "profileUnavailable": "Your user information cannot be verified right now. Please try again shortly."
   }
 }

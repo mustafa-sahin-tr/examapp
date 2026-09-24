@@ -25,11 +25,13 @@ public static class OutboxEventRegistry
         typeof(LoginAttemptedEvent),
         typeof(TeacherApplicationSubmittedEvent),
         typeof(TeacherApplicationDecidedEvent),
+        typeof(TeacherSchoolRequestSubmittedEvent), // issue #277
         typeof(IndependentTeacherRegisteredEvent),
         typeof(BookingRequestCreatedEvent),
         typeof(BookingDecisionEvent),
         typeof(UserPreferredLocaleChangedEvent),
         typeof(StudentPointsChangedEvent),
+        typeof(UserRoleChangedEvent), // issue #277 (item 4)
     };
 
     private static readonly Dictionary<string, Type> ByFullName =

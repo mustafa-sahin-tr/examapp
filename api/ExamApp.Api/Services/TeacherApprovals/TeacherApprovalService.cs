@@ -353,6 +353,9 @@ public class TeacherApprovalService : ITeacherApprovalService
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(t => t.ApprovalStatus, TeacherApprovalStatus.Rejected)
                     .SetProperty(t => t.RejectionReason, trimmedReason)
+                    // issue #277 (madde 2): yeni okul talebi bekleme süresi bu andan sayılır (UpdateTime değil — o sonraki
+                    // her profil kaydında değişir).
+                    .SetProperty(t => t.LastRejectedAt, now)
                     .SetProperty(t => t.UpdateTime, now)
                     .SetProperty(t => t.UpdateUserId, adminUserId), ct);
 

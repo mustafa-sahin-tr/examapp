@@ -41,10 +41,21 @@
         </button>
       </div>
     } @else if (step() === 2) {
-      @if (submitError(); as message) {
-        <div class="notice notice--error" role="alert">
+      @if (submitError() || retryAfter()) {
+        <div class="notice notice--error" role="alert" data-testid="submit-error">
           <mat-icon aria-hidden="true">error_outline</mat-icon>
-          <p>{{ message }}</p>
+          <div>
+            <p>{{ submitError() ?? t('wizard.schoolRequestCooldown') }}</p>
+            @if (retryAfter(); as remaining) {
+              <p class="notice__detail" data-testid="retry-after">
+                {{
+                  remaining.hours > 0
+                    ? t('wizard.retryAfterHours', { hours: remaining.hours, minutes: remaining.minutes })
+                    : t('wizard.retryAfterMinutes', { minutes: remaining.minutes })
+                }}
+              </p>
+            }
+          </div>
         </div>
       }
       @switch (role()) {
@@ -55,18 +66,24 @@
               <mat-label>{{ t('fields.studentNumber') }}</mat-label>
               <input matInput formControlName="studentNumber" />
             </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>{{ t('fields.schoolName') }}</mat-label>
-              <input matInput formControlName="schoolName" />
-            </mat-form-field>
+            <app-school-select
+              class="school-select"
+              [label]="t('fields.school')"
+              [hint]="t('fields.studentSchoolHint')"
+              [value]="studentForm.controls.schoolId.value"
+              (valueChange)="studentForm.controls.schoolId.setValue($event)"
+            />
             <mat-form-field appearance="outline">
               <mat-label>{{ t('fields.grade') }}</mat-label>
-              <mat-select formControlName="gradeId">
+              <mat-select formControlName="gradeId" required>
                 <mat-option [value]="null">{{ t('fields.gradePlaceholder') }}</mat-option>
                 @for (grade of grades(); track grade.id) {
                   <mat-option [value]="grade.id">{{ grade.name }}</mat-option>
                 }
               </mat-select>
+              @if (studentForm.controls.gradeId.invalid) {
+                <mat-error>{{ t('fields.gradeRequired') }}</mat-error>
+              }
             </mat-form-field>
             <div class="actions">
               <button mat-button type="button" (click)="back()">{{ t('actions.back') }}</button>
@@ -84,10 +101,39 @@
         @case ('teacher') {
           <h2>{{ t('wizard.teacherTitle') }}</h2>
           <form [formGroup]="teacherForm" (ngSubmit)="submit()">
-            <mat-form-field appearance="outline">
-              <mat-label>{{ t('fields.schoolName') }}</mat-label>
-              <input matInput formControlName="schoolName" />
-            </mat-form-field>
+            <fieldset class="teacher-mode">
+              <legend>{{ t('fields.teacherMode') }}</legend>
+              <mat-radio-group
+                formControlName="isIndependentTutor"
+                class="teacher-mode__options"
+                (change)="onTeacherModeChange()"
+              >
+                <mat-radio-button [value]="false" data-testid="teacher-affiliated">
+                  {{ t('fields.teacherAffiliated') }}
+                </mat-radio-button>
+                <mat-radio-button [value]="true" data-testid="teacher-independent">
+                  {{ t('fields.teacherIndependent') }}
+                </mat-radio-button>
+              </mat-radio-group>
+              @if (isIndependentTutor()) {
+                <p class="hint">{{ t('fields.teacherIndependentHint') }}</p>
+              }
+            </fieldset>
+            @if (!isIndependentTutor()) {
+              <app-school-select
+                class="school-select"
+                [label]="t('fields.school')"
+                [hint]="t('fields.teacherSchoolHint')"
+                [value]="teacherForm.controls.schoolId.value"
+                (valueChange)="teacherForm.controls.schoolId.setValue($event)"
+                (unmatchedChange)="teacherSchoolUnmatched.set($event)"
+              />
+              @if (teacherSchoolError()) {
+                <p class="field-error" role="alert" data-testid="teacher-school-error">
+                  {{ t('fields.schoolNotPicked') }}
+                </p>
+              }
+            }
             <div class="actions">
               <button mat-button type="button" (click)="back()">{{ t('actions.back') }}</button>
               <button

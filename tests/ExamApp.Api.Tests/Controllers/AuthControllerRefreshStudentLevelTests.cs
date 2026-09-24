@@ -63,7 +63,7 @@ public class AuthControllerRefreshStudentLevelTests : IDisposable
                 HttpContext = new DefaultHttpContext
                 {
                     User = new ClaimsPrincipal(new ClaimsIdentity(
-                        new[] { new Claim(ClaimTypes.NameIdentifier, Sub) }, authenticationType: "TestAuth"))
+                        new[] { new Claim(ClaimTypes.NameIdentifier, Sub), new Claim(ClaimTypes.Role, "Student") }, authenticationType: "TestAuth"))
                 }
             }
         };

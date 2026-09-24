@@ -1,9 +1,9 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { EMPTY, Subject, of, throwError } from 'rxjs';
+import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 
-import { TeacherApprovalsComponent } from './teacher-approvals.component';
+import { PUSH_RELOAD_AUDIT_MS, TeacherApprovalsComponent } from './teacher-approvals.component';
 import { AdminService } from '../../../services/admin.service';
 import { SignalRService } from '../../../services/signalr.service';
 import {
@@ -52,7 +52,6 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
     const app: PendingTeacherApplication = {
       teacherId: 1,
-      userId: 100,
       fullName: 'Ali Öğretmen',
       email: 'ali@test.com',
       appliedAt: new Date().toISOString(),
@@ -71,7 +70,6 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
     const app: PendingTeacherApplication = {
       teacherId: 2,
-      userId: 101,
       fullName: 'Ayşe Öğretmen',
       email: 'ayse@test.com',
       appliedAt: new Date().toISOString(),
@@ -90,7 +88,6 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
     const app: PendingTeacherApplication = {
       teacherId: 3,
-      userId: 102,
       fullName: 'Mehmet Öğretmen',
       email: 'mehmet@test.com',
       appliedAt: new Date().toISOString(),
@@ -109,7 +106,6 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
     const app: PendingTeacherApplication = {
       teacherId: 4,
-      userId: 103,
       fullName: 'Fatma Öğretmen',
       email: 'fatma@test.com',
       appliedAt: new Date().toISOString(),
@@ -128,7 +124,6 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
     const independent: PendingTeacherApplication = {
       teacherId: 1,
-      userId: 100,
       fullName: 'Ali Bağımsız',
       email: 'ali@test.com',
       appliedAt: '2026-09-20T10:00:00Z',
@@ -139,7 +134,6 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
     const schoolBased: PendingTeacherApplication = {
       teacherId: 2,
-      userId: 101,
       fullName: 'Ayşe Okul',
       email: 'ayse@test.com',
       appliedAt: '2026-09-21T14:30:00Z',
@@ -168,7 +162,6 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   function application(overrides: Partial<PendingTeacherApplication> = {}): PendingTeacherApplication {
     return {
       teacherId: 7,
-      userId: 700,
       fullName: 'Ali Öğretmen',
       email: 'a***@okul.k12.tr', // listede maskeli
       appliedAt: '2026-09-20T10:00:00Z',
@@ -187,7 +180,10 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
     return new HttpErrorResponse({ status, headers: new HttpHeaders(headers ?? {}) });
   }
 
-  function createComponent(list: PendingTeacherApplication[] = [application()]): ComponentFixture<TeacherApprovalsComponent> {
+  function createComponent(
+    list: PendingTeacherApplication[] | Observable<PendingTeacherApplication[]> = [application()],
+    push$: Observable<unknown> = EMPTY,
+  ): ComponentFixture<TeacherApprovalsComponent> {
     adminService = jasmine.createSpyObj('AdminService', [
       'getPendingTeacherApplications',
       'getTeacherApplication',
@@ -195,13 +191,13 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
       'rejectTeacherApplication',
     ]);
     snackBar = jasmine.createSpyObj('MatSnackBar', ['open']);
-    adminService.getPendingTeacherApplications.and.returnValue(of(list));
+    adminService.getPendingTeacherApplications.and.returnValue(Array.isArray(list) ? of(list) : list);
 
     TestBed.configureTestingModule({
       imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
       providers: [
         { provide: AdminService, useValue: adminService },
-        { provide: SignalRService, useValue: jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: EMPTY }) },
+        { provide: SignalRService, useValue: jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: push$ }) },
         { provide: MatSnackBar, useValue: snackBar },
       ],
     });
@@ -218,14 +214,62 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
 
   // ── Liste yükleme hataları ─────────────────────────────────────────────
 
-  it('load_429_ShowsRateLimitedMessage', () => {
-    createComponent();
-    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(429, { 'Retry-After': '30' })));
-
-    component.load();
+  it('load_429OnInitialLoad_ShowsInlineRateLimitedMessage', () => {
+    createComponent(throwError(() => httpError(429, { 'Retry-After': '30' })));
 
     expect(component.error()).toBe(approvals.rateLimited);
     expect(component.applications()).toEqual([]);
+    expect(snackBar.open).not.toHaveBeenCalled();
+  });
+
+  it('load_429AfterSuccessfulLoad_KeepsListAndRevealedEmails_ShowsSnackbar', () => {
+    createComponent();
+    adminService.getTeacherApplication.and.returnValue(of(detail()));
+    component.revealEmail(application());
+    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(429)));
+
+    component.load();
+
+    expect(component.error()).toBeNull();
+    expect(component.loading()).toBeFalse();
+    expect(component.applications().map((a) => a.teacherId)).toEqual([7]);
+    expect(component.revealedEmails().get(7)).toBe('ali@okul.k12.tr');
+    expect(snackBar.open).toHaveBeenCalledWith(approvals.rateLimited, approvals.close, jasmine.any(Object));
+  });
+
+  it('load_500AfterSuccessfulLoad_ClearsListAndShowsInlineError', () => {
+    createComponent();
+    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(500)));
+
+    component.load();
+
+    expect(component.error()).toBe(approvals.loadFailed);
+    expect(component.applications()).toEqual([]);
+  });
+
+  it('signalRPushBurst_IsCoalescedIntoSingleReload', fakeAsync(() => {
+    const push$ = new Subject<void>();
+    createComponent([application()], push$);
+    adminService.getPendingTeacherApplications.calls.reset();
+
+    push$.next();
+    push$.next();
+    tick(1000);
+    push$.next();
+    expect(adminService.getPendingTeacherApplications).not.toHaveBeenCalled();
+
+    tick(PUSH_RELOAD_AUDIT_MS);
+    expect(adminService.getPendingTeacherApplications).toHaveBeenCalledTimes(1);
+
+    discardPeriodicTasks();
+  }));
+
+  it('displayName_BlankFullName_FallsBackToTeacherId', () => {
+    createComponent();
+
+    expect(component.displayName(application({ fullName: '  ' }))).toBe(
+      approvals.unnamed.replace('{{teacherId}}', '7'),
+    );
   });
 
   it('load_403_ShowsForbiddenMessage', () => {
@@ -364,14 +408,14 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   });
 
   it('revealedEmail_PrunedOnReloadForRowsNoLongerListed', () => {
-    createComponent([application(), application({ teacherId: 8, userId: 800, email: 'b***@x.com' })]);
+    createComponent([application(), application({ teacherId: 8, email: 'b***@x.com' })]);
     adminService.getTeacherApplication.and.callFake((id: number) =>
       of(detail({ teacherId: id, email: id === 7 ? 'ali@okul.k12.tr' : 'bora@x.com' })),
     );
     component.revealEmail(application());
     component.revealEmail(application({ teacherId: 8 }));
 
-    adminService.getPendingTeacherApplications.and.returnValue(of([application({ teacherId: 8, userId: 800 })]));
+    adminService.getPendingTeacherApplications.and.returnValue(of([application({ teacherId: 8 })]));
     component.load();
 
     expect([...component.revealedEmails().keys()]).toEqual([8]);

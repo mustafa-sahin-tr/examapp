@@ -205,7 +205,7 @@
       "appliedAt": "Application Date",
       "actions": "Action"
     },
-    "unnamed": "Unnamed (user #{{userId}})",
+    "unnamed": "Unnamed (application #{{teacherId}})",
     "approve": "Approve",
     "reject": "Reject",
     "acting": "Processing",

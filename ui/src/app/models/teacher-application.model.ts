@@ -4,8 +4,8 @@
  * fullName / email auth-api'den çözümlenir; erişilemezse boş string gelir, UI fallback gösterir.
  */
 export interface PendingTeacherApplication {
+  /** Başvurunun (Teacher kaydının) id'si. Issue #262: auth-api `userId` artık dönmez. */
   teacherId: number;
-  userId: number;
   fullName: string;
   /**
    * Sunucuda MASKELENMİŞ e-posta (issue #262, KVKK): `a***@okul.k12.tr`. Tam adres listede hiç gelmez;
@@ -29,8 +29,8 @@ export interface PendingTeacherApplication {
  * uçlarıyla aynı rate limit kovasını kullanır (429 + `Retry-After`). Bekleyen başvuru yoksa 404.
  */
 export interface TeacherApplicationDetail {
+  /** Issue #262: auth-api `userId` bu yanıtta da dönmez. */
   teacherId: number;
-  userId: number;
   /** auth-api'den çözümlenir; erişilemezse boş string. */
   fullName: string;
   /** TAM e-posta (maskesiz); auth-api'den çözümlenemezse boş string. Kalıcı olarak saklanmamalı. */

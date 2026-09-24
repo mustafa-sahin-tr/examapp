@@ -277,7 +277,6 @@ describe('AdminService.getTeacherApplication (issue #262)', () => {
   it('getTeacherApplication_GetsDetailEndpointWithTeacherId_ReturnsFullEmail', () => {
     const detail: TeacherApplicationDetail = {
       teacherId: 7,
-      userId: 700,
       fullName: 'Ali Öğretmen',
       email: 'ali@okul.k12.tr',
       appliedAt: '2026-09-20T10:00:00Z',

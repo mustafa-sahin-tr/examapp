@@ -28,43 +28,73 @@
   }
 }
 
+// Issue #196 — kompakt filtre satırı: masaüstünde tüm filtreler tek satırda.
 .ts__filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
+  align-items: center;
+  gap: 12px;
+  padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
   border: 1px solid var(--ms-border);
   border-radius: 12px;
   background: var(--main-foreground-color);
 }
 
-.ts__filter {
-  flex: 1 1 200px;
-  min-width: 160px;
-
-  &--narrow {
-    flex: 0 1 150px;
-  }
+.ts__subject {
+  flex: 0 0 180px;
+  width: 180px;
+  min-width: 0;
 }
 
 .ts__hint-error {
   color: var(--ms-danger-text-medium);
 }
 
+// Ücret aralığı tek bir grup: ortak kapsayıcı + tek etiket + ayraç + tek ₺ eki.
+.ts__price {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ms-border-strong);
+  border-radius: 8px;
+}
+
+.ts__price-label {
+  font-family: var(--mainFontFamily);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ms-text);
+}
+
+.ts__price-input {
+  flex: 0 0 96px;
+  width: 96px;
+  min-width: 0;
+}
+
+.ts__price-sep,
+.ts__price-suffix {
+  color: var(--ms-text-weak);
+}
+
+.ts__price-suffix {
+  font-weight: 600;
+}
+
 .ts__modes {
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding-top: 0.75rem;
 }
 
 .ts__filter-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding-top: 0.5rem;
+  margin-left: auto;
 }
 
 .ts__grid {
@@ -78,9 +108,39 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ts__filter,
-  .ts__filter--narrow {
-    flex: 1 1 100%;
+  // Mobil: alanlar alt alta; ücret min/max yan yana kalır, butonlar eşit genişlikte en altta.
+  .ts__filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ts__subject {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .ts__price {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .ts__price-input {
+    flex: 1 1 0;
+    width: auto;
+  }
+
+  .ts__modes {
+    flex-wrap: wrap;
+    min-height: 44px;
+  }
+
+  .ts__filter-actions {
+    margin-left: 0;
+
+    button {
+      flex: 1 1 0;
+      min-height: 44px;
+    }
   }
 }
 

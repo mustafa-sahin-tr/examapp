@@ -55,7 +55,7 @@
         type="button"
         class="sl-add"
         data-testid="add-link"
-        [disabled]="addBlocked() || busy() || loading() || !!error()"
+        [disabled]="addBlocked() || locked() || !!error()"
         (click)="openCreate()"
       >
         <mat-icon>add</mat-icon>
@@ -99,7 +99,7 @@
         class="sl-list"
         cdkDropList
         [cdkDropListData]="links()"
-        [cdkDropListDisabled]="busy()"
+        [cdkDropListDisabled]="locked()"
         (cdkDropListDropped)="drop($event)"
         [attr.aria-label]="t('manager.listAria')"
       >
@@ -148,7 +148,7 @@
                 mat-icon-button
                 type="button"
                 data-testid="move-up"
-                [disabled]="first || busy()"
+                [disabled]="first || locked()"
                 [attr.aria-label]="t('manager.moveUp')"
                 (click)="moveUp(i)"
               >
@@ -158,7 +158,7 @@
                 mat-icon-button
                 type="button"
                 data-testid="move-down"
-                [disabled]="last || busy()"
+                [disabled]="last || locked()"
                 [attr.aria-label]="t('manager.moveDown')"
                 (click)="moveDown(i)"
               >
@@ -173,7 +173,7 @@
                   <mat-slide-toggle
                     data-testid="active-toggle"
                     [checked]="link.isActive"
-                    [disabled]="busy() || (!link.isActive && limitReached())"
+                    [disabled]="locked() || (!link.isActive && limitReached())"
                     [aria-label]="t('manager.activeToggleAria', { title: link.title })"
                     (change)="toggleActive(link, $event)"
                   ></mat-slide-toggle>
@@ -182,7 +182,7 @@
                   mat-icon-button
                   type="button"
                   data-testid="edit"
-                  [disabled]="busy()"
+                  [disabled]="locked()"
                   [attr.aria-label]="t('manager.edit')"
                   (click)="openEdit(link)"
                 >
@@ -193,7 +193,7 @@
                   type="button"
                   class="sl-danger"
                   data-testid="delete"
-                  [disabled]="busy()"
+                  [disabled]="locked()"
                   [attr.aria-label]="t('manager.delete')"
                   (click)="remove(link)"
                 >

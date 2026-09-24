@@ -16,15 +16,15 @@ using BadgeService.Security;
 using ExamApp.Foundation.Localization;
 
 
-// Komut modu (issue #225): `dotnet run -- backfill-student-points [--dry-run]` — host kurulur, şema
-// migrate edilir, komut çalışır ve süreç çıkar (Kestrel/MassTransit başlatılmaz).
+// Komut modu (issue #225/#243): `dotnet run -- backfill-student-points [--dry-run] [--allow-production] [--confirm]`
+// — host kurulur, şema migrate edilir, komut çalışır ve süreç çıkar (Kestrel/MassTransit başlatılmaz).
 var isBackfillCommand = StudentPointsBackfillCommand.IsRequested(args);
-var backfillDryRun = false;
+var backfillArgs = default(StudentPointsBackfillCommand.ParsedArgs);
 if (isBackfillCommand)
 {
     try
     {
-        backfillDryRun = StudentPointsBackfillCommand.ParseDryRun(args);
+        backfillArgs = StudentPointsBackfillCommand.ParseArgs(args);
     }
     catch (ArgumentException ex)
     {
@@ -36,11 +36,22 @@ if (isBackfillCommand)
 // Komut arg'ları IConfiguration'a sızmasın.
 var builder = WebApplication.CreateBuilder(isBackfillCommand ? [] : args);
 
-if (isBackfillCommand && !StudentPointsBackfillCommand.IsAllowedEnvironment(builder.Environment))
+if (isBackfillCommand && !StudentPointsBackfillCommand.IsAllowedEnvironment(builder.Environment, backfillArgs.AllowProduction))
 {
     Console.Error.WriteLine(
-        $"{StudentPointsBackfillCommand.CommandName} yalnızca Development/Staging ortamında çalışır; mevcut ortam: {builder.Environment.EnvironmentName}.");
+        $"{StudentPointsBackfillCommand.CommandName} yalnızca Development/Staging ortamında (veya Production'da --allow-production ile) çalışır; mevcut ortam: {builder.Environment.EnvironmentName}.");
     return StudentPointsBackfillCommand.ExitEnvironmentRefused;
+}
+
+var backfillDryRun = isBackfillCommand
+    ? StudentPointsBackfillCommand.ResolveEffectiveDryRun(builder.Environment, backfillArgs.DryRun, backfillArgs.Confirm)
+    : false;
+
+if (isBackfillCommand && builder.Environment.IsProduction() && backfillDryRun && !backfillArgs.DryRun)
+{
+    Console.WriteLine(
+        $"UYARI: Production'da --confirm verilmedi; {StudentPointsBackfillCommand.CommandName} dry-run olarak çalıştırılıyor. " +
+        "Özeti gördükten sonra gerçek yazım için --allow-production --confirm ile tekrar çalıştırın.");
 }
 
 builder.AddServiceDefaults();

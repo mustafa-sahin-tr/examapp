@@ -2,10 +2,10 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: examapp-config
-  CORS_ALLOWED_ORIGIN_0: https://exam.example.com
   namespace: examapp
 data:
   PUBLIC_BASE_URL: https://exam.example.com
+  CORS_ALLOWED_ORIGIN_0: https://exam.example.com
   KEYCLOAK_REDIRECT_URI: https://exam.example.com/app/callback
   KEYCLOAK_CLIENT_CALLBACK_URL: https://exam.example.com/app/callback&response_type=code&scope=openid&state=https://exam.example.com
   KEYCLOAK_REALM: exam-realm

@@ -13,6 +13,8 @@
     "invalidFile": "Invalid file.",
     "reset": {
       "queued": "The reset request has been queued.",
+      "alreadyPending": "You already have a pending reset request; your data will be reset once it completes.",
+      "rateLimited": "You reset your data only recently. Please try again later.",
       "usePost": "This endpoint works with POST: POST /api/exam/student/me/reset"
     },
     "theme": {

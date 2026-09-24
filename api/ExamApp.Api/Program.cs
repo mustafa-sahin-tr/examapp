@@ -267,6 +267,9 @@ builder.Services.AddAdminAccountStatusRateLimiting();
 builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.AddScoped<IBadgeResetApiClient, BadgeResetApiClient>();
 builder.Services.AddScoped<StudentResetJob>();
+// issue #243: self-reset tekilleştirme (bekleyen iş varsa yenisi açılmaz) + sub başına rate limit.
+builder.Services.AddScoped<IStudentResetScheduler, StudentResetScheduler>();
+builder.Services.AddStudentSelfResetRateLimiting();
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).

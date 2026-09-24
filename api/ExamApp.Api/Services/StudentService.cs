@@ -60,7 +60,6 @@ public class StudentService : IStudentService
                 SchoolName = s.SchoolName,
                 SchoolId = s.SchoolId,
                 XP = s.StudentPoints.Sum(sp => sp.XP),
-                Level = s.StudentPoints.OrderByDescending(sp => sp.LastUpdated).Select(sp => sp.Level).FirstOrDefault(), // 🟢 En son seviye
                 TotalQuestionsSolved = _context.StudentPointHistories.Count(p => p.StudentId == s.Id),
                 CorrectAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Doğru Cevap"),
                 WrongAnswers = _context.StudentPointHistories.Count(p => p.StudentId == s.Id && p.Reason == "Yanlış Cevap"),
@@ -89,6 +88,12 @@ public class StudentService : IStudentService
                     .ToList()
             })
             .FirstOrDefaultAsync();
+
+        // issue #243: seviye saklanan StudentPoints.Level'dan değil, XP'den okuma anında hesaplanır.
+        if (student != null)
+        {
+            student.Level = StudentLevel.FromXp(student.XP);
+        }
 
         return student;
 

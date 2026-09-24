@@ -476,6 +476,53 @@ spec:
                   key: RABBITMQ_PASS
 
 ---
+# Issue #84 / #243: second instance of the OutboxPublisher code (same image as
+# exam-outbox-publisher), pointed at auth-api's "auth_db" (identity) database.
+# Relays auth-api's outbox events (e.g. account/notification events) to
+# RabbitMQ. 1 replica is enough; scaling out is safe (FOR UPDATE SKIP LOCKED).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-outbox-publisher
+  namespace: examapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: identity-outbox-publisher
+  template:
+    metadata:
+      labels:
+        app: identity-outbox-publisher
+    spec:
+      containers:
+        - name: identity-outbox-publisher
+          image: REPLACE_IMAGE/exam-outbox-publisher:latest
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: examapp-config
+                  key: ASPNETCORE_ENVIRONMENT
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: CONNECTIONSTRINGS_AUTH
+            - name: RabbitMQ__Host
+              value: rabbitmq.examapp.svc.cluster.local
+            - name: RabbitMQ__Username
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_USER
+            - name: RabbitMQ__Password
+              valueFrom:
+                secretKeyRef:
+                  name: examapp-secrets
+                  key: RABBITMQ_PASS
+
+---
 # Issue #225: third instance of the OutboxPublisher code (same image as
 # exam-outbox-publisher), pointed at BadgeService's "badge" DB. Relays
 # StudentPointsChangedEvent from the badge OutboxMessages table to RabbitMQ

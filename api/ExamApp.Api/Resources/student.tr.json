@@ -13,6 +13,8 @@
     "invalidFile": "Geçersiz dosya.",
     "reset": {
       "queued": "Sıfırlama işlemi kuyruğa alındı.",
+      "alreadyPending": "Bekleyen bir sıfırlama işleminiz zaten var; tamamlanınca verileriniz sıfırlanmış olacak.",
+      "rateLimited": "Verilerinizi kısa süre önce sıfırladınız. Lütfen daha sonra tekrar deneyin.",
       "usePost": "Bu endpoint POST ile çalışır: POST /api/exam/student/me/reset"
     },
     "theme": {

@@ -15,7 +15,7 @@ import {
   TranslocoService,
   provideTranslocoScope,
 } from '@jsverse/transloco';
-import { Observable, finalize, take } from 'rxjs';
+import { Observable, auditTime, finalize, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { adminListErrorMessage } from '../../../shared/utils/school-paged-list';
 import { adminActionErrorMessage } from '../../../shared/utils/admin-action-error.util';
@@ -45,6 +45,9 @@ import {
  * provider'ı burada da verilir.
  */
 const ADMIN_SCOPE = 'admin';
+
+/** SignalR yeni-başvuru push'larından sonra listeyi yeniden çekmeden önce birleştirme penceresi (ms). */
+export const PUSH_RELOAD_AUDIT_MS = 5000;
 
 @Component({
   selector: 'app-teacher-approvals',
@@ -83,6 +86,8 @@ export class TeacherApprovalsComponent implements OnInit {
   readonly revealedEmails = signal<ReadonlyMap<number, string>>(new Map());
   /** Tam e-posta isteği süren teacherId'ler (satır bazlı buton disable + spinner). */
   readonly revealingIds = signal<ReadonlySet<number>>(new Set());
+  /** En az bir kez başarılı liste yüklendi mi (429'da mevcut listeyi korumak için). */
+  private hasLoaded = false;
 
   readonly isEmpty = computed(() => !this.loading() && !this.error() && this.applications().length === 0);
 
@@ -97,9 +102,10 @@ export class TeacherApprovalsComponent implements OnInit {
     this.load();
 
     // Yeni başvuru push'u (SignalR TeacherApplicationSubmitted) gelince listeyi yeniden çek;
-    // admin sayfayı elle yenilemek zorunda kalmasın.
+    // admin sayfayı elle yenilemek zorunda kalmasın. Issue #262: liste ucu adminin paylaşımlı rate limit
+    // kovasını (30/dk) harcar → push patlamaları tek yüklemede birleştirilir.
     this.signalR.teacherApplicationSubmitted$
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(auditTime(PUSH_RELOAD_AUDIT_MS), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.load());
   }
 
@@ -115,12 +121,20 @@ export class TeacherApprovalsComponent implements OnInit {
       )
       .subscribe({
         next: (list) => {
+          this.hasLoaded = true;
           this.applications.set(list);
           // Artık listede olmayan başvuruların tam e-postasını bellekte tutma.
           const ids = new Set(list.map((a) => a.teacherId));
           this.revealedEmails.update((map) => new Map([...map].filter(([id]) => ids.has(id))));
         },
         error: (err: HttpErrorResponse) => {
+          // Issue #262: 429 geçicidir — elde liste varsa (ve açılmış e-postalar) korunur, yalnızca uyarı gösterilir.
+          if (err.status === 429 && this.hasLoaded) {
+            this.snackBar.open(adminListErrorMessage(err, (key) => this.text(key)), this.text('close'), {
+              duration: 5000,
+            });
+            return;
+          }
           this.applications.set([]);
           this.revealedEmails.set(new Map());
           // Admin liste uçlarıyla ortak yorum: 403 yetki, 429 istek limiti (issue #262), diğerleri genel hata.
@@ -186,10 +200,10 @@ export class TeacherApprovalsComponent implements OnInit {
       });
   }
 
-  /** auth-api ad çözümlemesi başarısızsa boş gelir; userId ile ayırt edilebilir fallback göster. */
+  /** auth-api ad çözümlemesi başarısızsa boş gelir; başvuru (teacherId) ile ayırt edilebilir fallback göster. */
   displayName(row: PendingTeacherApplication): string {
     const name = row.fullName?.trim();
-    return name ? name : this.text('unnamed', { userId: row.userId });
+    return name ? name : this.text('unnamed', { teacherId: row.teacherId });
   }
 
   /** Issue #234: satırın başvuru türü etiketi — "Bağımsız" ya da "Okul: <ad>". */

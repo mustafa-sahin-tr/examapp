@@ -205,7 +205,7 @@
       "appliedAt": "Başvuru Tarihi",
       "actions": "İşlem"
     },
-    "unnamed": "İsimsiz (kullanıcı #{{userId}})",
+    "unnamed": "İsimsiz (başvuru #{{teacherId}})",
     "approve": "Onayla",
     "reject": "Reddet",
     "acting": "İşleniyor",

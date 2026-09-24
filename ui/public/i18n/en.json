@@ -24,6 +24,7 @@
     "notifications": {
       "goToExam": "Go to exam",
       "teacherApplication": "New independent teacher application: {{name}}",
+      "teacherSchoolRequest": "New school link request: {{name}} → {{school}}",
       "goToApplications": "Go to applications",
       "goToProfile": "Go to profile"
     }

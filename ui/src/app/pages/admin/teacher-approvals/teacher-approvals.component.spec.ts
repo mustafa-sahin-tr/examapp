@@ -31,7 +31,10 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       'approveTeacherApplication',
       'rejectTeacherApplication',
     ]);
-    signalR = jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: of(undefined) });
+    signalR = jasmine.createSpyObj('SignalRService', [], {
+      teacherApplicationSubmitted$: of(undefined),
+      teacherSchoolRequestSubmitted$: EMPTY,
+    });
 
     adminService.getTeacherApplications.and.returnValue(of(paged([])));
 
@@ -219,6 +222,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   function createComponent(
     list: TeacherApplicationListItem[] | Observable<Paged<TeacherApplicationListItem>> = [application()],
     push$: Observable<unknown> = EMPTY,
+    schoolRequestPush$: Observable<unknown> = EMPTY,
   ): ComponentFixture<TeacherApprovalsComponent> {
     adminService = jasmine.createSpyObj('AdminService', [
       'getTeacherApplications',
@@ -233,7 +237,13 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
       imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
       providers: [
         { provide: AdminService, useValue: adminService },
-        { provide: SignalRService, useValue: jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: push$ }) },
+        {
+          provide: SignalRService,
+          useValue: jasmine.createSpyObj('SignalRService', [], {
+            teacherApplicationSubmitted$: push$,
+            teacherSchoolRequestSubmitted$: schoolRequestPush$,
+          }),
+        },
         { provide: MatSnackBar, useValue: snackBar },
         provideNoopAnimations(),
       ],
@@ -297,6 +307,28 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
 
     tick(PUSH_RELOAD_AUDIT_MS);
     expect(adminService.getTeacherApplications).toHaveBeenCalledTimes(1);
+
+    discardPeriodicTasks();
+  }));
+
+  // Issue #277: okul bağlantısı talebi push'u da listeyi yeniler; iki akış birlikte tek yüklemede birleşir.
+  it('signalRSchoolRequestPush_ReloadsList_CoalescedWithApplicationPush', fakeAsync(() => {
+    const push$ = new Subject<void>();
+    const schoolPush$ = new Subject<void>();
+    createComponent([application()], push$, schoolPush$);
+    adminService.getTeacherApplications.calls.reset();
+
+    schoolPush$.next();
+    push$.next();
+    schoolPush$.next();
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
+
+    tick(PUSH_RELOAD_AUDIT_MS);
+    expect(adminService.getTeacherApplications).toHaveBeenCalledTimes(1);
+
+    schoolPush$.next();
+    tick(PUSH_RELOAD_AUDIT_MS);
+    expect(adminService.getTeacherApplications).toHaveBeenCalledTimes(2);
 
     discardPeriodicTasks();
   }));
@@ -511,7 +543,13 @@ describe('TeacherApprovalsComponent — status filter & paging (issue #187)', ()
       imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
       providers: [
         { provide: AdminService, useValue: adminService },
-        { provide: SignalRService, useValue: jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: push$ }) },
+        {
+          provide: SignalRService,
+          useValue: jasmine.createSpyObj('SignalRService', [], {
+            teacherApplicationSubmitted$: push$,
+            teacherSchoolRequestSubmitted$: EMPTY,
+          }),
+        },
         { provide: MatSnackBar, useValue: snackBar },
         provideNoopAnimations(),
       ],
@@ -841,7 +879,7 @@ describe('TeacherApprovalsComponent — account approval label (Issue #287)', ()
       imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
       providers: [
         { provide: AdminService, useValue: adminService },
-        { provide: SignalRService, useValue: { teacherApplicationSubmitted$: EMPTY } },
+        { provide: SignalRService, useValue: { teacherApplicationSubmitted$: EMPTY, teacherSchoolRequestSubmitted$: EMPTY } },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj('MatSnackBar', ['open']) },
         provideNoopAnimations(),
       ],

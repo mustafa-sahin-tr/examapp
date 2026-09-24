@@ -51,11 +51,11 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         await ctx.SaveChangesAsync();
 
         ctx.StudentPoints.AddRange(
-            new StudentPoint { StudentId = a1.Id, XP = 300, Level = 99 },
-            new StudentPoint { StudentId = a2.Id, XP = 100, Level = 99 },
-            new StudentPoint { StudentId = b1.Id, XP = 500, Level = 99 },
-            new StudentPoint { StudentId = b2.Id, XP = 200, Level = 99 },
-            new StudentPoint { StudentId = n1.Id, XP = 400, Level = 99 });
+            new StudentPoint { StudentId = a1.Id, XP = 300 },
+            new StudentPoint { StudentId = a2.Id, XP = 100 },
+            new StudentPoint { StudentId = b1.Id, XP = 500 },
+            new StudentPoint { StudentId = b2.Id, XP = 200 },
+            new StudentPoint { StudentId = n1.Id, XP = 400 });
         await ctx.SaveChangesAsync();
 
         _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())

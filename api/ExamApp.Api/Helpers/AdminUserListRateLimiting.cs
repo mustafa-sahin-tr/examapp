@@ -131,8 +131,12 @@ public static class AdminUserListRateLimiting
     }
 
     /// <summary>
-    /// Keycloak <c>sub</c>. [Authorize(Roles="Admin")] nedeniyle normalde hep doludur; olmazsa tüm "kimliksiz"
-    /// istekler tek ortak kovaya düşer (limit gevşemez, sıkılaşır).
+    /// Keycloak <c>sub</c>. [Authorize(Roles="Admin")] nedeniyle normalde hep doludur. Bu yardımcı yalnızca
+    /// sub DOLU olduğu doğrulandıktan SONRA çağrılır (bkz. <see cref="AdminUserListRateLimitPolicy.GetPartition"/> /
+    /// <c>RejectAsync</c>) — sub eksikse artık ortak "unknown" kovasına düşmek yerine koşulsuz reddedilir
+    /// (issue #279 item 7, <c>StudentSelfResetRateLimitPolicy</c> ile aynı düzeltme). "unknown" yedeği yine de
+    /// burada bırakıldı: bu metot audit/log gibi başka bağlamlardan da çağrılabilir, orada boş sub asla olmamalı
+    /// ama savunmacı bir varsayılan gerekir.
     /// </summary>
     internal static string PartitionKey(HttpContext httpContext) =>
         "sub:" + (httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown");
@@ -165,8 +169,26 @@ public sealed class AdminUserListRateLimitPolicy : IRateLimiterPolicy<string>
         _logger = logger;
     }
 
+    /// <summary>
+    /// issue #279 item 7: sub'sız (kimliksiz) istekler için ayrılmış partition; hepsi koşulsuz reddedilir
+    /// (bkz. <see cref="GetPartition"/> ve <see cref="RejectAsync"/>) — aynı düzeltme daha önce
+    /// <c>StudentSelfResetRateLimitPolicy</c>'de yapılmıştı (issue #243 review): sub yoksa
+    /// <see cref="AdminUserListRateLimiting.PartitionKey"/> "sub:unknown" dönüyordu ve tüm kimliksiz
+    /// istekler TEK ortak kovayı paylaşıyordu — biri kovayı tüketince diğer kimliksiz istekler de 429
+    /// alıyordu (global DoS zafiyeti). [Authorize(Roles="Admin")] Keycloak token'ında sub'ı pratikte
+    /// garanti eder ama sözleşmeyle değil; limiter'ı sub'a bağlı bırakmak yerine sub'sız isteği burada
+    /// koşulsuz reddediyoruz (401). Meşru bir akış etkilenmez: [Authorize] zaten sub'sız isteği 401'le
+    /// reddeder, buraya normalde hiç ulaşmaz.
+    /// </summary>
+    internal const string MissingSubPartitionKey = "sub:<missing>";
+
     public RateLimitPartition<string> GetPartition(HttpContext httpContext)
     {
+        if (string.IsNullOrEmpty(httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)))
+        {
+            return RateLimitPartition.Get(MissingSubPartitionKey, _ => new RejectAllRateLimiter());
+        }
+
         var settings = _options.CurrentValue;
         var partitionKey = AdminUserListRateLimiting.PartitionKey(httpContext);
         var storeKey = _instanceName + KeyPrefix + partitionKey;
@@ -178,6 +200,15 @@ public sealed class AdminUserListRateLimitPolicy : IRateLimiterPolicy<string>
 
     private async ValueTask RejectAsync(OnRejectedContext context, CancellationToken cancellationToken)
     {
+        if (string.IsNullOrEmpty(context.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)))
+        {
+            // Kota aşımı değil kimlik eksikliği: 429 + Retry-After yanıltıcı olurdu (issue #279 item 7).
+            _logger.LogWarning("[AdminUserList] sub claim'i olmayan istek reddedildi: path={Path}",
+                context.HttpContext.Request.Path.Value);
+            context.HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
         // Olası token kötüye kullanımının izi: yalnızca sub (PII değil) + path.
         _logger.LogWarning("[AdminUserList] Rate limit aşıldı: sub={Sub} path={Path}",
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);

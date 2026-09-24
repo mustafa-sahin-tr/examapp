@@ -21,17 +21,18 @@ namespace BadgeService.Consumers;
 /// <c>earnedBadgeIds</c> — re-running it against unchanged aggregates (duplicate case) or the same
 /// aggregates twice (retry-after-partial-failure case) produces no new badge and no second push.
 ///
-/// NOT covered by EventId dedup (separate, pre-existing product concern, tracked in #243 as
-/// out-of-scope): a student re-submitting an answer for the SAME question (answer change) produces a
-/// brand-new outbox row / EventId each time <c>TestSessionService.SaveAnswer</c> runs, so each such
-/// call is — correctly, per current product behavior — counted again.
+/// RESOLVED by issue #279 (item 4, owner decision "soru başına bir kez, son cevap sayılır"): the
+/// double-points gap above is closed by a SECOND, EventId-independent idempotency layer in
+/// <see cref="AnswerSubmissionAggregationService"/> — points are tracked per (TestInstanceId, QuestionId)
+/// in <c>AnswerPointAward</c>, keyed on the answer's own revision (<c>SubmittedAt</c>). A re-submission for
+/// the same question still counts as a new "attempt" (TotalQuestions/streak/etc.), but only the DELTA
+/// between the previous and new awarded points is applied — so correct→wrong→correct nets out to the
+/// last answer's points instead of accumulating. See that class's XML doc for the full design.
 ///
-/// Error path (unchanged by #243, see <see cref="AnswerSubmittedConsumerDefinition"/>): no retry is
-/// configured — an unhandled exception is not swallowed, it propagates and MassTransit moves the
-/// message straight to the <c>badge-service_error</c> (dead-letter) queue for investigation. Now that
-/// this consumer is idempotent for events carrying a non-empty EventId, adding bounded retry would be
-/// safe for those messages, but is left out of #243's scope since events without an EventId (legacy
-/// producers) would still double-count on retry.
+/// Error path (issue #279, item 5 — CHANGED from #243): <see cref="AnswerSubmittedConsumerDefinition"/> now
+/// configures bounded retry (1s/5s/15s, 3 attempts). This is now safe for ALL messages, including
+/// <see cref="Guid.Empty"/> EventId ones, because the revision-based layer above dedupes independently of
+/// EventId. Exhausted retries still dead-letter to <c>badge-service_error</c>.
 /// </summary>
 public class AnswerSubmittedConsumer : IConsumer<AnswerSubmittedEvent>
 {

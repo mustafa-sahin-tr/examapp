@@ -54,7 +54,7 @@ public class StudentResetJobTests : IDisposable
             await ctx.SaveChangesAsync();
             studentId = student.Id;
 
-            ctx.StudentPoints.Add(new StudentPoint { StudentId = studentId, XP = 100, Level = 3 });
+            ctx.StudentPoints.Add(new StudentPoint { StudentId = studentId, XP = 100 });
             ctx.StudentPointHistories.Add(new StudentPointHistory { StudentId = studentId, Points = 10, Reason = "Doğru Cevap" });
             ctx.Leaderboards.Add(new Leaderboard { StudentId = studentId, TotalPoints = 100, Rank = 1, TimePeriod = "Weekly" });
 

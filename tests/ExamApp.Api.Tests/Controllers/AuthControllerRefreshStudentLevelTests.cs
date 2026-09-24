@@ -39,7 +39,7 @@ public class AuthControllerRefreshStudentLevelTests : IDisposable
         ctx.Students.Add(student);
         await ctx.SaveChangesAsync();
         foreach (var xp in xpRows)
-            ctx.StudentPoints.Add(new StudentPoint { StudentId = student.Id, XP = xp, Level = 0 });
+            ctx.StudentPoints.Add(new StudentPoint { StudentId = student.Id, XP = xp });
         await ctx.SaveChangesAsync();
         return student.Id;
     }

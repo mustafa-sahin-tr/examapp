@@ -75,12 +75,13 @@ Sonra su dosyalari gercek degerlerle doldur:
 | `exam-outbox-publisher` | `worksheet_v2` | `CONNECTIONSTRINGS_EXAM` |
 | `badge-outbox-publisher` | `badge` (BadgeService `OutboxMessages`, `StudentPointsChangedEvent`) | `CONNECTIONSTRINGS_BADGE` |
 
-Yeni secret anahtari yok: `badge-outbox-publisher` BadgeService'in zaten kullandigi `CONNECTIONSTRINGS_BADGE` ve `RABBITMQ_USER`/`RABBITMQ_PASS` anahtarlarini okur.
-`exam-dotnet-api` da artik RabbitMQ consumer'i barindirdigi icin `RabbitMQ__Host/Username/Password` env'lerine ihtiyac duyar (Production'da Host yoksa baslamaz); bunlar da ayni `RABBITMQ_USER`/`RABBITMQ_PASS` anahtarlarindan gelir.
+Issue #279: RabbitMQ artik tek paylasilan `RABBITMQ_USER`/`RABBITMQ_PASS` admin hesabiyla degil, servise ozel en az yetkili kullanicilarla baglaniyor. `secret.example.yaml`'daki `RABBITMQ_EXAM_OUTBOX_PASSWORD`/`RABBITMQ_IDENTITY_OUTBOX_PASSWORD`/`RABBITMQ_BADGE_OUTBOX_PASSWORD`/`RABBITMQ_BADGE_SERVICE_PASSWORD`/`RABBITMQ_EXAM_API_PASSWORD` secret anahtarlari + `stateful-services.yaml`'daki `rabbitmq-init` Job'u (yalnizca `RABBITMQ_USER`/`RABBITMQ_PASS` admin hesabini kullanarak, management HTTP API uzerinden `add_user`/`set_permissions` cagirir) bu kullanicilari olusturur; `apps.yaml`'daki her Deployment kendi kullanici adini (literal, secret degil: `exam_outbox_pub`, `identity_outbox_pub`, `badge_outbox_pub`, `badge_service`, `exam_api`) ve kendi parola secret anahtarini okur. `RABBITMQ_USER`/`RABBITMQ_PASS` artik yalnizca `rabbitmq-init` Job'u ve ops (management UI) icin.
+
+`exam-dotnet-api` da artik RabbitMQ consumer'i barindirdigi icin `RabbitMQ__Host/Username/Password` env'lerine ihtiyac duyar (Production'da Host yoksa baslamaz); `RabbitMQ__Username=exam_api`, parola `RABBITMQ_EXAM_API_PASSWORD`'dan gelir.
 
 `deploy-gke.sh` / pipeline'da `service=exam-outbox-publisher` secildiginde `badge-outbox-publisher` da ayni tag'e guncellenir.
 
-Not: `identity-outbox-publisher` (auth-api identity DB) henuz prod manifestlerinde yok.
+Not: `identity-outbox-publisher` (auth-api identity DB) `apps.yaml`'da mevcut (ayri Deployment, `CONNECTIONSTRINGS_AUTH` + `RabbitMQ__Username=identity_outbox_pub`).
 
 ## 3) Ilk manuel image build + push (opsiyonel hizli test)
 

@@ -41,6 +41,16 @@ public class UserResetService
         var subjectAgg = await _db.StudentSubjectAggregates.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         if (subjectAgg.Count > 0) _db.StudentSubjectAggregates.RemoveRange(subjectAgg);
 
+        // issue #279 (item 3 + item 4): reset/KVKK silmede kullanıcının idempotency ledger'ı
+        // (ProcessedAnswerSubmission) ve puan-tekilleştirme durumu (AnswerPointAward) da silinir —
+        // aksi halde reset sonrası aynı (TestInstanceId, QuestionId) için gelecek bir mesaj eski
+        // "PointsAwarded"ı baz alıp yanlış delta hesaplardı.
+        var processedSubmissions = await _db.ProcessedAnswerSubmissions.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        if (processedSubmissions.Count > 0) _db.ProcessedAnswerSubmissions.RemoveRange(processedSubmissions);
+
+        var pointAwards = await _db.AnswerPointAwards.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        if (pointAwards.Count > 0) _db.AnswerPointAwards.RemoveRange(pointAwards);
+
         var pointsReset = questionAgg.Count > 0;
         if (pointsReset)
         {

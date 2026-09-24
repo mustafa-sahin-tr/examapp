@@ -22,6 +22,39 @@ namespace BadgeService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BadgeService.Entities.AnswerPointAward", b =>
+                {
+                    b.Property<int>("TestInstanceId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LastAppliedRevision")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastAppliedRevisionUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PointsAwarded")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TestInstanceQuestionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("TestInstanceId", "QuestionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AnswerPointAwards");
+                });
+
             modelBuilder.Entity("BadgeService.Entities.BadgeDefinition", b =>
                 {
                     b.Property<Guid>("Id")
@@ -175,6 +208,10 @@ namespace BadgeService.Migrations
 
                     b.HasKey("EventId");
 
+                    b.HasIndex("ProcessedAt");
+
+                    b.HasIndex("UserId");
+
                     b.ToTable("ProcessedAnswerSubmissions");
                 });
 
@@ -274,6 +311,12 @@ namespace BadgeService.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId", "ActivityDate")
@@ -315,6 +358,12 @@ namespace BadgeService.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
@@ -353,6 +402,12 @@ namespace BadgeService.Migrations
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 

@@ -52,7 +52,6 @@ public class StudentPointsSyncServiceTests : IDisposable
         var row = (await RowsAsync()).Single();
         row.StudentId.ShouldBe(studentId);
         row.XP.ShouldBe(120);
-        row.Level.ShouldBe(0);
         row.SourceUpdatedAtUtc.ShouldBe(T0);
     }
 
@@ -118,12 +117,12 @@ public class StudentPointsSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task Legacy_row_without_a_version_is_updated_and_keeps_its_level()
+    public async Task Legacy_row_without_a_version_is_updated()
     {
         var studentId = await SeedStudentAsync();
         await using (var ctx = _db.NewContext())
         {
-            ctx.StudentPoints.Add(new StudentPoint { StudentId = studentId, XP = 7, Level = 3 });
+            ctx.StudentPoints.Add(new StudentPoint { StudentId = studentId, XP = 7 });
             await ctx.SaveChangesAsync();
         }
 
@@ -131,7 +130,6 @@ public class StudentPointsSyncServiceTests : IDisposable
 
         var row = (await RowsAsync()).ShouldHaveSingleItem();
         row.XP.ShouldBe(200);
-        row.Level.ShouldBe(3);
     }
 
     [Fact]
@@ -142,8 +140,6 @@ public class StudentPointsSyncServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var sp = await ctx.StudentPoints.SingleAsync();
-            sp.Level = 4;
-            await ctx.SaveChangesAsync();
             ctx.StudentPoints.Remove(sp); // StudentResetJob: soft delete
             await ctx.SaveChangesAsync();
         }
@@ -152,14 +148,13 @@ public class StudentPointsSyncServiceTests : IDisposable
         (await ApplyAsync(42, 300, T0)).ShouldBe(StudentPointsSyncResult.Stale);
         (await RowsAsync()).ShouldHaveSingleItem().IsDeleted.ShouldBeTrue();
 
-        // BadgeService reset'inin 0 event'i (daha yeni) satırı canlandırır; seviye sıfırlanır.
+        // BadgeService reset'inin 0 event'i (daha yeni) satırı canlandırır.
         (await ApplyAsync(42, 0, T0.AddMinutes(1))).ShouldBe(StudentPointsSyncResult.Applied);
         var row = (await RowsAsync()).ShouldHaveSingleItem();
         row.StudentId.ShouldBe(studentId);
         row.IsDeleted.ShouldBeFalse();
         row.DeleteTime.ShouldBeNull();
         row.XP.ShouldBe(0);
-        row.Level.ShouldBe(0);
     }
 
     [Fact]

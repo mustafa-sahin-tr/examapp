@@ -55,10 +55,50 @@ services:
     container_name: exam-rabbitmq
     restart: unless-stopped
     environment:
+      # RABBITMQ_USER/PASS is the ops-only admin account (management UI,
+      # rabbitmq-init below). Issue #279: application services no longer use
+      # it — each gets its own least-privilege user, created by rabbitmq-init
+      # at startup instead of a committed rabbitmq/definitions.json (which
+      # would require baking prod passwords into a tracked file).
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - exam-net
+
+  # Issue #279: one-shot init job — creates the 5 per-service RabbitMQ users
+  # and sets their least-privilege permissions via the management HTTP API
+  # (same regex matrix as rabbitmq/definitions.json's dev definitions;
+  # deploy/scripts/rabbitmq-init.sh is the single source of truth for prod —
+  # keep both files' regexes in sync by hand, there is no shared import
+  # between them). Idempotent (PUT upserts), so safe to run on every deploy —
+  # `restart: "no"` + the other services' `service_completed_successfully`
+  # dependency below ensures it always finishes before they start, without
+  # blocking subsequent deploys where it's already run.
+  rabbitmq-init:
+    image: curlimages/curl:8.10.1
+    container_name: exam-rabbitmq-init
+    restart: 'no'
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASS: ${RABBITMQ_PASS}
+      RABBITMQ_EXAM_OUTBOX_PASSWORD: ${RABBITMQ_EXAM_OUTBOX_PASSWORD}
+      RABBITMQ_IDENTITY_OUTBOX_PASSWORD: ${RABBITMQ_IDENTITY_OUTBOX_PASSWORD}
+      RABBITMQ_BADGE_OUTBOX_PASSWORD: ${RABBITMQ_BADGE_OUTBOX_PASSWORD}
+      RABBITMQ_BADGE_SERVICE_PASSWORD: ${RABBITMQ_BADGE_SERVICE_PASSWORD}
+      RABBITMQ_EXAM_API_PASSWORD: ${RABBITMQ_EXAM_API_PASSWORD}
+    volumes:
+      - ./scripts/rabbitmq-init.sh:/rabbitmq-init.sh:ro
+    entrypoint: ['sh', '/rabbitmq-init.sh']
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - exam-net
 
@@ -152,9 +192,12 @@ services:
       # Issue #225: exam API hosts a MassTransit consumer (queue "exam-api") for
       # BadgeService's StudentPointsChangedEvent. In Production a missing
       # RabbitMQ__Host fails startup.
+      # Issue #279: dedicated least-privilege user (read-only on its own
+      # "exam-api" queue, cannot publish/forge StudentPointsChangedEvent) —
+      # created by the rabbitmq-init job below, not the shared admin user.
       RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASS}
+      RabbitMQ__Username: exam_api
+      RabbitMQ__Password: ${RABBITMQ_EXAM_API_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
@@ -162,6 +205,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
       minio:
         condition: service_started
       keycloak:
@@ -225,12 +270,14 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Jwt__Key: ${JWT_KEY}
       Server__BaseUrl: ${PUBLIC_BASE_URL}
+      # Issue #279: dedicated least-privilege user — every outbox event
+      # except StudentPointsChangedEvent, never write access to it.
       RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASS}
+      RabbitMQ__Username: badge_service
+      RabbitMQ__Password: ${RABBITMQ_BADGE_SERVICE_PASSWORD}
       Keycloak__Authority: ${PUBLIC_BASE_URL}/realms/exam-realm
       Keycloak__Host: http://keycloak:8080
-      Keycloak__Realm: exam-realm      
+      Keycloak__Realm: exam-realm
       Keycloak__ClientId: ${KEYCLOAK_CLIENT_ID}
       Keycloak__ClientSecret: ${KEYCLOAK_CLIENT_SECRET}
       Keycloak__AdminClientId: ${KEYCLOAK_ADMIN_CLIENT_ID}
@@ -254,6 +301,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
       auth-api:
         condition: service_started
     networks:
@@ -271,14 +320,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=worksheet_v2;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Issue #279: dedicated least-privilege user — write access only to the
+      # worksheet-DB outbox event exchanges, no queue/read access.
       RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASS}
+      RabbitMQ__Username: exam_outbox_pub
+      RabbitMQ__Password: ${RABBITMQ_EXAM_OUTBOX_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
     networks:
       - exam-net
 
@@ -299,14 +352,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=auth_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Issue #279: dedicated least-privilege user — write access only to
+      # LoginAttemptedEvent/UserPreferredLocaleChangedEvent, no queue/read.
       RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASS}
+      RabbitMQ__Username: identity_outbox_pub
+      RabbitMQ__Password: ${RABBITMQ_IDENTITY_OUTBOX_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
       # auth-api applies the auth_db migrations (OutboxMessages table).
       auth-api:
         condition: service_started
@@ -332,14 +389,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Issue #279: dedicated least-privilege user — the ONLY user allowed to
+      # write StudentPointsChangedEvent (closes the fake-event risk).
       RabbitMQ__Host: rabbitmq
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASS}
+      RabbitMQ__Username: badge_outbox_pub
+      RabbitMQ__Password: ${RABBITMQ_BADGE_OUTBOX_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_started
+      rabbitmq-init:
+        condition: service_completed_successfully
       # exam-badge-api applies the badge DB migrations (OutboxMessages table).
       exam-badge-api:
         condition: service_started

@@ -174,5 +174,95 @@ public class TestSessionServiceAnswerTests : IDisposable
         (await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId), otherUser)).Success.ShouldBeFalse();
     }
 
+    // ---- issue #279 review (blocker): AnswerRevision — DB-generated, atomically incrementing ----
+
+    [Fact]
+    public async Task First_SaveAnswer_bumps_AnswerRevision_from_zero_to_one_and_carries_it_on_the_event()
+    {
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId), User)).Success.ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        (await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId)).AnswerRevision.ShouldBe(1);
+
+        var evt = JsonSerializer.Deserialize<AnswerSubmittedEvent>((await check.OutboxMessages.SingleAsync()).Content)!;
+        evt.Revision.ShouldBe(1);
+        evt.TestInstanceQuestionId.ShouldBe(s.TiqId);
+    }
+
+    [Fact]
+    public async Task Repeated_SaveAnswer_calls_for_the_same_question_strictly_increase_AnswerRevision()
+    {
+        var s = await SeedInstanceAsync();
+
+        var revisions = new List<int>();
+        foreach (var selected in new[] { s.CorrectAnswerId, s.WrongAnswerId, s.CorrectAnswerId })
+        {
+            await using var ctx = _db.NewContext();
+            await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, selected), User);
+            await using var check = _db.NewContext();
+            var evt = JsonSerializer.Deserialize<AnswerSubmittedEvent>(
+                (await check.OutboxMessages.OrderBy(m => m.CreatedAt).LastAsync()).Content)!;
+            revisions.Add(evt.Revision);
+        }
+
+        revisions.ShouldBe(new[] { 1, 2, 3 });
+    }
+
+    [Fact]
+    public async Task A_failed_SaveAnswer_for_an_unknown_question_does_not_touch_any_AnswerRevision()
+    {
+        await using var ctx = _db.NewContext();
+        (await NewService(ctx).SaveAnswer(Dto(999, 999, 1), User)).Success.ShouldBeFalse();
+        // Nothing to assert on a row that was never created — this test documents that the atomic
+        // revision increment only runs after the ownership/existence check succeeds (no wasted UPDATE).
+    }
+
+    // ---- issue #279 review (critical fix): SaveAnswer must not open a transaction OUTSIDE an execution
+    // strategy — Aspire's AddNpgsqlDbContext enables Npgsql retry-on-failure in production, and EF Core
+    // refuses to run a command inside a user-initiated transaction once a retrying strategy is configured
+    // ("does not support user-initiated transactions"). SQLite's own default strategy never retries, so a
+    // regression here is invisible against a plain TestDb.NewContext() — this test attaches
+    // TestRetryingExecutionStrategy (RetriesOnFailure = true) to reproduce that failure mode. ----
+
+    [Fact]
+    public async Task SaveAnswer_succeeds_under_a_retrying_execution_strategy()
+    {
+        // Would throw InvalidOperationException ("... does not support user-initiated transactions ...")
+        // if SaveAnswer opened Database.BeginTransactionAsync() outside CreateExecutionStrategy().ExecuteAsync.
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+        {
+            var result = await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId), User);
+            result.Success.ShouldBeTrue();
+        }
+
+        // Fresh context for the read-back: `ctx` above still has the row tracked with its ORIGINAL
+        // (pre-increment) in-memory AnswerRevision — the atomic increment only ever touched the DB via raw
+        // SQL, so re-querying on the SAME context would return the stale cached instance (identity
+        // resolution), not the persisted value. Same technique the other AnswerRevision tests use.
+        await using var check = _db.NewContext();
+        (await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId)).AnswerRevision.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Repeated_SaveAnswer_calls_under_a_retrying_execution_strategy_still_increment_the_revision()
+    {
+        var s = await SeedInstanceAsync();
+
+        await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
+        {
+            await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.CorrectAnswerId), User);
+            var second = await NewService(ctx).SaveAnswer(Dto(s.InstanceId, s.TiqId, s.WrongAnswerId), User);
+            second.Success.ShouldBeTrue();
+        }
+
+        await using var check = _db.NewContext();
+        (await check.TestInstanceQuestions.FirstAsync(x => x.Id == s.TiqId)).AnswerRevision.ShouldBe(2);
+    }
+
     public void Dispose() => _db.Dispose();
 }

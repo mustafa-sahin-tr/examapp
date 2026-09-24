@@ -39,13 +39,45 @@ var redis = builder.AddRedis("redis")
 var rabbitUser = builder.AddParameter("rabbitmq-user");
 var rabbitPassword = builder.AddParameter("rabbitmq-password", secret: true);
 
+// Issue #279: per-service RabbitMQ users instead of every consumer/publisher
+// sharing the "rabbituser" admin above. Usernames are fixed, non-secret
+// literals (matching rabbitmq/definitions.json's `users[].name` and
+// docker-compose.yml's per-service `RabbitMQ__Username` — kept as plain
+// strings below rather than AddParameter, same as e.g. jicofo's "focus"
+// literal). Only the passwords are parameters; dev-only defaults below must
+// match .env.example's RABBITMQ_*_PASSWORD values and definitions.json's
+// password_hash for that user (regenerate with
+// rabbitmq/generate-password-hashes.py — see .claude/rules/local-dev.md).
+var examOutboxPubUser = "exam_outbox_pub";
+var examOutboxPubPassword = builder.AddParameter("rabbitmq-exam-outbox-password", secret: true);
+var identityOutboxPubUser = "identity_outbox_pub";
+var identityOutboxPubPassword = builder.AddParameter("rabbitmq-identity-outbox-password", secret: true);
+var badgeOutboxPubUser = "badge_outbox_pub";
+var badgeOutboxPubPassword = builder.AddParameter("rabbitmq-badge-outbox-password", secret: true);
+var badgeServiceRabbitUser = "badge_service";
+var badgeServiceRabbitPassword = builder.AddParameter("rabbitmq-badge-service-password", secret: true);
+var examApiRabbitUser = "exam_api";
+var examApiRabbitPassword = builder.AddParameter("rabbitmq-exam-api-password", secret: true);
+
 // Pinned to the standard AMQP port 5672 (matching docker-compose.yml) because
 // BadgeService/OutboxPublisher's MassTransit setup (cfg.Host(host, "/", ...))
 // only reads RabbitMQ:Host, not a port — it always assumes 5672. A dynamic
 // Aspire-assigned port would silently connect to the wrong place instead of
 // failing loudly, so this is fixed rather than left to random allocation.
+//
+// Issue #279: bind-mounts definitions.json (per-service users/vhost
+// permissions — least privilege, e.g. only badge-outbox-publisher can write
+// the StudentPointsChangedEvent exchange) + rabbitmq.conf (which points
+// management.load_definitions at it), mirroring docker-compose.yml's
+// ./rabbitmq/{definitions.json,rabbitmq.conf} mounts. load_definitions runs
+// on every node boot (defines missing users/permissions, never deletes or
+// overwrites an existing user's password) — see .claude/rules/local-dev.md
+// if you already have a local Aspire RabbitMQ volume and need to rotate the
+// admin ("rabbituser") password specifically.
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5672)
-    .WithManagementPlugin();
+    .WithManagementPlugin()
+    .WithBindMount("../rabbitmq/definitions.json", "/etc/rabbitmq/definitions.json", isReadOnly: true)
+    .WithBindMount("../rabbitmq/rabbitmq.conf", "/etc/rabbitmq/rabbitmq.conf", isReadOnly: true);
 var rabbitmqEndpoint = rabbitmq.GetEndpoint("tcp");
 
 // No first-party or Community Toolkit MinIO hosting integration is used here:
@@ -377,8 +409,11 @@ var examDotnetApi = builder.AddProject<Projects.ExamApp_Api>("exam-dotnet-api")
     {
         context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
     })
-    .WithEnvironment("RabbitMQ__Username", rabbitUser)
-    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    // Issue #279: exam_api user — read/consume-only on its own "exam-api" queue,
+    // configure/write only StudentPointsChangedEvent (never AnswerSubmittedEvent
+    // etc.). See rabbitmq/definitions.json permission matrix.
+    .WithEnvironment("RabbitMQ__Username", examApiRabbitUser)
+    .WithEnvironment("RabbitMQ__Password", examApiRabbitPassword)
     .WaitFor(postgres)
     .WaitFor(redis)
     .WaitFor(rabbitmq)
@@ -406,8 +441,12 @@ var badgeService = builder.AddProject<Projects.BadgeService>("exam-badge-api")
     {
         context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
     })
-    .WithEnvironment("RabbitMQ__Username", rabbitUser)
-    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    // Issue #279: badge_service user — reads/consumes its own "badge-service"
+    // queue, configure/write on every outbox event exchange EXCEPT
+    // StudentPointsChangedEvent (which only badge-outbox-publisher may write).
+    // See rabbitmq/definitions.json permission matrix.
+    .WithEnvironment("RabbitMQ__Username", badgeServiceRabbitUser)
+    .WithEnvironment("RabbitMQ__Password", badgeServiceRabbitPassword)
     .WithEnvironment("MinioConfig__AccessKey", minioRootUser)
     .WithEnvironment("MinioConfig__SecretKey", minioRootPassword)
     .WithEnvironment(context =>
@@ -439,8 +478,11 @@ var outboxPublisher = builder.AddProject<Projects.OutboxPublisherService>("exam-
     {
         context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
     })
-    .WithEnvironment("RabbitMQ__Username", rabbitUser)
-    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    // Issue #279: exam_outbox_pub user — configure/write only on the worksheet
+    // DB's outbox event exchanges; no queue, never reads. See
+    // rabbitmq/definitions.json permission matrix.
+    .WithEnvironment("RabbitMQ__Username", examOutboxPubUser)
+    .WithEnvironment("RabbitMQ__Password", examOutboxPubPassword)
     .WaitFor(postgres)
     .WaitFor(rabbitmq);
 
@@ -461,8 +503,12 @@ var identityOutboxPublisher = builder.AddProject<Projects.OutboxPublisherService
     {
         context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
     })
-    .WithEnvironment("RabbitMQ__Username", rabbitUser)
-    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    // Issue #279: identity_outbox_pub user — configure/write only
+    // LoginAttemptedEvent/UserPreferredLocaleChangedEvent exchanges (the only
+    // events auth-api's identity DB ever writes to its outbox); no queue,
+    // never reads. See rabbitmq/definitions.json permission matrix.
+    .WithEnvironment("RabbitMQ__Username", identityOutboxPubUser)
+    .WithEnvironment("RabbitMQ__Password", identityOutboxPubPassword)
     .WaitFor(postgres)
     .WaitFor(rabbitmq);
 
@@ -481,8 +527,12 @@ var badgeOutboxPublisher = builder.AddProject<Projects.OutboxPublisherService>("
     {
         context.EnvironmentVariables["RabbitMQ__Host"] = rabbitmqEndpoint.Property(EndpointProperty.Host);
     })
-    .WithEnvironment("RabbitMQ__Username", rabbitUser)
-    .WithEnvironment("RabbitMQ__Password", rabbitPassword)
+    // Issue #279: badge_outbox_pub user — the ONLY user allowed to
+    // configure/write the StudentPointsChangedEvent exchange (closes the
+    // fake-StudentPointsChangedEvent risk this issue calls out); no queue,
+    // never reads. See rabbitmq/definitions.json permission matrix.
+    .WithEnvironment("RabbitMQ__Username", badgeOutboxPubUser)
+    .WithEnvironment("RabbitMQ__Password", badgeOutboxPubPassword)
     .WaitFor(postgres)
     .WaitFor(rabbitmq)
     // BadgeService applies its own migrations at startup (creates OutboxMessages);

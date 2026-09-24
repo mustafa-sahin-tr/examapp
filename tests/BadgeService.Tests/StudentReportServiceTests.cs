@@ -17,7 +17,7 @@ public class StudentReportServiceTests : IDisposable
         {
             ctx.BadgeDefinitions.Add(new BadgeDefinition
             {
-                Id = Guid.NewGuid(), Name = "İlk Adım", Description = "d", Category = "c",
+                Id = Guid.NewGuid(), Code = "test-ilk-adim", Name = "İlk Adım", Description = "d", Category = "c",
                 RuleType = "AnswerCount", RuleConfigJson = "{\"target\":10}",
             });
             await ctx.SaveChangesAsync();
@@ -53,12 +53,12 @@ public class StudentReportServiceTests : IDisposable
         {
             ctx.BadgeDefinitions.Add(new BadgeDefinition
             {
-                Id = Guid.NewGuid(), Name = "Bozuk Kural", Description = "d", Category = "c",
+                Id = Guid.NewGuid(), Code = "test-bozuk-kural", Name = "Bozuk Kural", Description = "d", Category = "c",
                 RuleType = "AnswerCount", RuleConfigJson = "{}",
             });
             ctx.BadgeDefinitions.Add(new BadgeDefinition
             {
-                Id = Guid.NewGuid(), Name = "Geçerli Kural", Description = "d", Category = "c",
+                Id = Guid.NewGuid(), Code = "test-gecerli-kural", Name = "Geçerli Kural", Description = "d", Category = "c",
                 RuleType = "AnswerCount", RuleConfigJson = "{\"target\":5}",
             });
             await ctx.SaveChangesAsync();
@@ -83,7 +83,7 @@ public class StudentReportServiceTests : IDisposable
             });
             var def = new BadgeDefinition
             {
-                Id = Guid.NewGuid(), Name = "Çalışkan", Description = "d", Category = "c",
+                Id = Guid.NewGuid(), Code = "test-caliskan", Name = "Çalışkan", Description = "d", Category = "c",
                 RuleType = "AnswerCount", RuleConfigJson = "{}",
             };
             ctx.BadgeDefinitions.Add(def);
@@ -113,6 +113,47 @@ public class StudentReportServiceTests : IDisposable
         report.Summary.BestCorrectStreak.ShouldBe(4);
         report.BadgeProgress.ShouldHaveSingleItem().Name.ShouldBe("Çalışkan");
         report.SubjectBreakdown.ShouldHaveSingleItem().AccuracyPercentage.ShouldBe(75);
+    }
+
+    [Fact]
+    public async Task BadgeProgress_hides_inactive_badges_with_no_progress_but_keeps_already_earned_ones()
+    {
+        // Issue #148: deactivated badges disappear from the catalog for badges never started, but a
+        // badge the student already earned/completed stays visible — deactivation isn't a history-eraser.
+        Guid inactiveNeverStartedId;
+        Guid inactiveButEarnedId;
+        await using (var ctx = _db.NewContext())
+        {
+            var neverStarted = new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Code = "inactive-never-started", Name = "Hiç Başlanmamış", Description = "d",
+                Category = "c", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":10}", IsActive = false,
+            };
+            var earnedButNowInactive = new BadgeDefinition
+            {
+                Id = Guid.NewGuid(), Code = "inactive-earned", Name = "Kazanılmış Ama Pasif", Description = "d",
+                Category = "c", RuleType = "AnswerCount", RuleConfigJson = "{\"target\":10}", IsActive = false,
+            };
+            inactiveNeverStartedId = neverStarted.Id;
+            inactiveButEarnedId = earnedButNowInactive.Id;
+            ctx.BadgeDefinitions.AddRange(neverStarted, earnedButNowInactive);
+            ctx.StudentQuestionAggregates.Add(new StudentQuestionAggregate
+            {
+                Id = Guid.NewGuid(), UserId = 1, TotalQuestions = 10, CorrectQuestions = 10,
+            });
+            ctx.StudentBadgeProgresses.Add(new StudentBadgeProgress
+            {
+                Id = Guid.NewGuid(), UserId = 1, BadgeDefinitionId = earnedButNowInactive.Id,
+                CurrentValue = 10, TargetValue = 10, IsCompleted = true,
+            });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var read = _db.NewContext();
+        var report = await NewService(read).GetBadgeProgressAsync(1);
+
+        report.BadgeProgress.ShouldNotContain(b => b.BadgeDefinitionId == inactiveNeverStartedId);
+        report.BadgeProgress.ShouldContain(b => b.BadgeDefinitionId == inactiveButEarnedId && b.IsCompleted);
     }
 
     [Fact]

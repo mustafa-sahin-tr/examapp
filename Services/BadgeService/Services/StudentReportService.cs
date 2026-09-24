@@ -29,10 +29,12 @@ public class StudentReportService
             return await BuildEmptyReportAsync(userId, cancellationToken);
         }
 
+        // Issue #148: deactivated badges are hidden from the catalog, but a badge the student already
+        // earned (IsCompleted) stays visible — deactivation must not erase history.
         var badgeProgress = await _context.StudentBadgeProgresses
             .AsNoTracking()
             .Include(x => x.BadgeDefinition)
-            .Where(x => x.UserId == userId)
+            .Where(x => x.UserId == userId && (x.BadgeDefinition.IsActive || x.IsCompleted))
             .OrderBy(x => x.BadgeDefinition.PathKey == null)
             .ThenBy(x => x.BadgeDefinition.PathName)
             .ThenBy(x => x.BadgeDefinition.PathOrder)
@@ -111,8 +113,10 @@ public class StudentReportService
 
         var activitySummary = ActivityAnalytics.Calculate(dailyActivities);
 
+        // Issue #148: no progress rows yet — nothing earned, so only active definitions are shown.
         var definitions = await _context.BadgeDefinitions
             .AsNoTracking()
+            .Where(x => x.IsActive)
             .OrderBy(x => x.PathKey == null)
             .ThenBy(x => x.PathName)
             .ThenBy(x => x.PathOrder)

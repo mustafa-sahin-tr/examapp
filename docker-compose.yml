@@ -74,8 +74,10 @@ services:
       # Issue #277 (madde 4): auth-api artık RabbitMQ consumer'ı barındırıyor (kuyruk "auth-api":
       # exam API'nin outbox'ından UserRoleChangedEvent → Users.Role). Aynı desen exam-dotnet-api'deki
       # StudentPointsChangedConsumer ile (issue #225). Servise özel, en az yetkili kullanıcı —
-      # bkz. rabbitmq/definitions.json (yalnız "auth-api" kuyruğunu okuyabilir, yalnız
-      # UserRoleChangedEvent exchange'ine configure/write yapabilir).
+      # bkz. rabbitmq/definitions.json: "auth-api" kuyruğunu okuyup/tüketebilir ve
+      # UserRoleChangedEvent exchange'ine YALNIZCA configure+read (bind/subscribe) yapabilir —
+      # write (publish) izni SADECE kendi auth-api(_error|_skipped)? kuyruğuna/exchange'ine
+      # tanınır, asla mesaj tipi exchange'ine değil (aksi halde event'i forge edebilirdi).
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__Username=auth_api
       - RabbitMQ__Password=${RABBITMQ_AUTH_API_PASSWORD:?RABBITMQ_AUTH_API_PASSWORD .env icinde tanimli olmali}

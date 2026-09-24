@@ -623,7 +623,12 @@ namespace ExamApp.Api.Controllers
                     KeycloakId = sub,
                     Email = email,
                     FullName = fullName,
-                    Role = appRole
+                    Role = appRole,
+                    // issue #277 review (item 3): auth-api'nin KENDİ doğrudan yazımı da
+                    // RoleUpdatedAtUtc'yi damgalar — UserRoleChangedConsumer'ın tazelik
+                    // karşılaştırması (event'ten önce mi sonra mı) bu satırı da hesaba katsın,
+                    // gecikmiş/tekrarlanmış bir event bu daha yeni senkronu geri almasın.
+                    RoleUpdatedAtUtc = string.IsNullOrEmpty(appRole) ? null : DateTime.UtcNow
                 });
                 await _context.SaveChangesAsync();
                 return;
@@ -632,6 +637,7 @@ namespace ExamApp.Api.Controllers
             if (!string.IsNullOrEmpty(appRole) && !string.Equals(user.Role, appRole, StringComparison.OrdinalIgnoreCase))
             {
                 user.Role = appRole;
+                user.RoleUpdatedAtUtc = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
         }
@@ -704,10 +710,13 @@ namespace ExamApp.Api.Controllers
             // lose this race (0 rows affected), another request already completed the
             // profile locally first; Keycloak still ends up correct (exclusive, single
             // role) either way, so we treat this the same as "already set".
+            // issue #277 review (item 3): RoleUpdatedAtUtc de damgalanır — UserRoleChangedConsumer'ın
+            // tazelik karşılaştırması bu doğrudan yazımı da hesaba katsın (bkz. EnsureLocalUserAsync).
             var affected = await _context.Users
                 .Where(u => u.KeycloakId == sub && (u.Role == null || u.Role == ""))
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(u => u.Role, role)
+                    .SetProperty(u => u.RoleUpdatedAtUtc, DateTime.UtcNow)
                     .SetProperty(u => u.UpdateTime, DateTime.UtcNow));
 
             if (affected == 0)

@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Contracts;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -20,26 +21,52 @@ namespace ExamApp.Api.Consumers;
 /// <c>Users.Id</c>'si auth-api'ninkiyle aynı id uzayında DEĞİL, sayısal eşleştirme yanlış
 /// satırı günceller (bkz. event XML yorumu).
 ///
-/// Idempotency / sırasız teslim: <see cref="User.RoleUpdatedAtUtc"/> event'in
-/// <see cref="UserRoleChangedEvent.ChangedAtUtc"/>'inden daha yeniyse yazma atlanır — aynı
-/// mesajın tekrar teslimi (ChangedAtUtc eşit → yazma atlanır) ve sıra dışı teslim (eski event
-/// geç gelirse) her ikisi de bu tek koşulla no-op olur. UserPreferredLocaleChangedConsumer
-/// (BadgeService) ile birebir aynı desen.
+/// <para>
+/// GÜVENLİK (issue #277 review, HIGH): <see cref="UserRoleChangedEvent.NewRole"/> KÖR
+/// GÜVENİLMEZ ve doğrudan yazılmaz. Event yalnızca "bu kullanıcı için Keycloak'ı yeniden
+/// oku" tetikleyicisi (re-sync trigger) olarak ele alınır — gerçek değer
+/// <see cref="IKeycloakService.GetUserRealmRoleNamesAsync"/> ile Keycloak'tan TAZE okunur ve
+/// yalnızca <see cref="AllowedRoles"/> allowlist'indeki (Student/Teacher/Parent) bir eşleşme
+/// yazılır. Sebep: <c>ChangedAtUtc</c> event üretim anını taşır ama Keycloak'a yazma anıyla
+/// aynı sırayı GARANTİ ETMEZ (ör. complete-profile'da Keycloak çağrısı başarısız olup local
+/// DB'ye hiç dokunulmadığı, ya da iki eşzamanlı isteğin Keycloak'ta hangisinin son yazdığının
+/// event sırasıyla uyuşmadığı senaryolarda "event'in taşıdığı rolü kör yaz" kalıcı bir
+/// tutarsızlığa yol açabilirdi). Keycloak'ta app rolü YOKSA (henüz atanmamış / temizlenmiş)
+/// <c>Users.Role</c> DOKUNULMAZ, yalnızca loglanır.
+/// </para>
+///
+/// Idempotency / sırasız teslim: <see cref="User.RoleUpdatedAtUtc"/> (mikrosaniyeye
+/// yuvarlanmış, bkz. <see cref="TruncateToMicroseconds"/>) event'in <c>ChangedAtUtc</c>'inden
+/// daha yeniyse Keycloak'a gidilmez — yalnızca gereksiz tekrar senkron/HTTP çağrısını önleyen
+/// bir OPTİMİZASYON (doğruluk için şart değil: her senkron zaten Keycloak'taki GÜNCEL durumu
+/// okur, bu yüzden sırasız/tekrar teslim her zaman aynı doğru sonuca yakınsar — review'daki
+/// "ChangedAtUtc yazma sırasını garanti etmez" endişesi böylece kapanır).
 ///
 /// Hata yolu: KeycloakId'ye ait kullanıcı bulunamazsa (auth-api'nin kendi register akışı
 /// henüz o satırı yazmamış olabilir — geçici olabilir) <see cref="UserNotFoundForRoleSyncException"/>
-/// fırlatılır → <see cref="UserRoleChangedConsumerDefinition"/>: 1s/5s/15s aralıklı 3 retry →
-/// hâlâ bulunamazsa mesaj <c>auth-api_error</c> (dead-letter) kuyruğuna taşınır, Warning loglanır.
-/// Beklenmeyen hata (DB erişilemez vb.) aynı retry/dead-letter yoluna fırlatılır. Sessiz yutma yok.
+/// fırlatılır; Keycloak geçici hatası (<c>KeycloakException</c>) da fırlatılır → ikisi de
+/// <see cref="UserRoleChangedConsumerDefinition"/>: 1s/5s/15s aralıklı 3 retry → hâlâ
+/// başarısızsa mesaj <c>auth-api_error</c> (dead-letter) kuyruğuna taşınır, Warning loglanır.
+/// Sessiz yutma yok.
 /// </summary>
 public sealed class UserRoleChangedConsumer : IConsumer<UserRoleChangedEvent>
 {
+    /// <summary>
+    /// Yazılabilecek TEK allowlist — event'ten VEYA Keycloak'tan gelen hiçbir değer bunun
+    /// dışında <c>Users.Role</c>'e yazılmaz (issue #277 review L3). <c>KeycloakService</c>'in
+    /// kendi <c>AppRoleNames</c>'iyle (private) aynı liste, kasıtlı olarak burada da
+    /// tekrarlanır — consumer'ın güvenlik sınırı KeycloakService'in iç detayına bağlı olmamalı.
+    /// </summary>
+    private static readonly string[] AllowedRoles = { "Student", "Teacher", "Parent" };
+
     private readonly AppDbContext _db;
+    private readonly IKeycloakService _keycloak;
     private readonly ILogger<UserRoleChangedConsumer> _logger;
 
-    public UserRoleChangedConsumer(AppDbContext db, ILogger<UserRoleChangedConsumer> logger)
+    public UserRoleChangedConsumer(AppDbContext db, IKeycloakService keycloak, ILogger<UserRoleChangedConsumer> logger)
     {
         _db = db;
+        _keycloak = keycloak;
         _logger = logger;
     }
 
@@ -64,23 +91,64 @@ public sealed class UserRoleChangedConsumer : IConsumer<UserRoleChangedEvent>
             throw new UserNotFoundForRoleSyncException(e.KeycloakId, e.EventId);
         }
 
-        if (user.RoleUpdatedAtUtc is { } lastUpdated && e.ChangedAtUtc <= lastUpdated)
+        var eventChangedAtUtc = TruncateToMicroseconds(e.ChangedAtUtc);
+        if (user.RoleUpdatedAtUtc is { } lastUpdated && eventChangedAtUtc <= TruncateToMicroseconds(lastUpdated))
         {
             _logger.LogInformation(
-                "UserRoleChanged eski/duplicate (KeycloakId={KeycloakId}, EventId={EventId}, " +
-                "EventChangedAt={EventChangedAt}, StoredRoleUpdatedAt={StoredRoleUpdatedAt}); atlanıyor.",
-                e.KeycloakId, e.EventId, e.ChangedAtUtc, lastUpdated);
+                "UserRoleChanged eski/duplicate — yerel kayıt zaten en az bu kadar taze " +
+                "(KeycloakId={KeycloakId}, EventId={EventId}, EventChangedAt={EventChangedAt}, " +
+                "StoredRoleUpdatedAt={StoredRoleUpdatedAt}); Keycloak'a gidilmeden atlanıyor.",
+                e.KeycloakId, e.EventId, eventChangedAtUtc, lastUpdated);
             return;
         }
 
-        user.Role = e.NewRole;
-        user.RoleUpdatedAtUtc = e.ChangedAtUtc;
+        // Event yalnızca tetikleyici — GERÇEK rol her zaman Keycloak'tan taze okunur (yukarıdaki
+        // güvenlik notuna bkz.). Geçici Keycloak hatası (KeycloakException) burada YAKALANMAZ,
+        // consumer definition'ın retry/dead-letter yoluna düşer.
+        var currentRealmRoles = await _keycloak.GetUserRealmRoleNamesAsync(e.KeycloakId, ct);
+        var resolvedRole = AllowedRoles.FirstOrDefault(allowed =>
+            currentRealmRoles.Any(r => r.Equals(allowed, StringComparison.OrdinalIgnoreCase)));
+
+        var now = TruncateToMicroseconds(DateTime.UtcNow);
+
+        if (resolvedRole is null)
+        {
+            // Keycloak'ta hiç app rolü yok (henüz atanmamış / temizlenmiş) — Users.Role'e
+            // DOKUNULMAZ. RoleUpdatedAtUtc yine de damgalanır: bu, "bu ana kadar Keycloak'ı
+            // kontrol ettik, app rolü yok" bilgisini taşır ve aynı/daha eski event'in tekrar
+            // teslimini gereksiz Keycloak çağrısı yapmadan atlamayı sağlar.
+            user.RoleUpdatedAtUtc = now;
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "UserRoleChanged: Keycloak'ta app rolü yok (KeycloakId={KeycloakId}, EventId={EventId}); " +
+                "Users.Role değiştirilmedi.",
+                e.KeycloakId, e.EventId);
+            return;
+        }
+
+        user.Role = resolvedRole;
+        user.RoleUpdatedAtUtc = now;
 
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "UserRoleChanged işlendi. KeycloakId={KeycloakId}, EventId={EventId}, NewRole={NewRole}.",
-            e.KeycloakId, e.EventId, e.NewRole);
+            "UserRoleChanged işlendi (Keycloak'tan taze okunan rol yazıldı). KeycloakId={KeycloakId}, " +
+            "EventId={EventId}, ResolvedRole={ResolvedRole}.",
+            e.KeycloakId, e.EventId, resolvedRole);
+    }
+
+    /// <summary>
+    /// Postgres <c>timestamp with time zone</c> mikrosaniye hassasiyetinde saklar; .NET
+    /// <see cref="DateTime"/> tick'leri 100ns'dir. DB'den geri okunan bir değer bu yüzden
+    /// bellekteki orijinal değerle tick düzeyinde eşleşmeyebilir — karşılaştırma/yazmadan ÖNCE
+    /// ikisi de mikrosaniyeye yuvarlanır (issue #277 review NIT2), aksi halde "aynı" iki zaman
+    /// damgası &lt;= karşılaştırmasında farklı görünebilir.
+    /// </summary>
+    internal static DateTime TruncateToMicroseconds(DateTime dt)
+    {
+        const long ticksPerMicrosecond = TimeSpan.TicksPerMillisecond / 1000; // 10
+        return new DateTime(dt.Ticks - (dt.Ticks % ticksPerMicrosecond), dt.Kind);
     }
 }
 
@@ -98,8 +166,8 @@ public sealed class UserNotFoundForRoleSyncException(string keycloakId, Guid eve
 
 /// <summary>
 /// Retry'ı yalnızca bu consumer'a scope'lar: 1s, 5s, 15s aralıklı 3 deneme (geçici sıralama
-/// sorunu/DB kesintisi) → sonra <c>auth-api_error</c> dead-letter kuyruğu. exam API'nin
-/// StudentPointsChangedConsumerDefinition'ıyla aynı desen.
+/// sorunu/DB kesintisi/Keycloak geçici hatası) → sonra <c>auth-api_error</c> dead-letter
+/// kuyruğu. exam API'nin StudentPointsChangedConsumerDefinition'ıyla aynı desen.
 /// </summary>
 public sealed class UserRoleChangedConsumerDefinition : ConsumerDefinition<UserRoleChangedConsumer>
 {

@@ -47,9 +47,21 @@ public class UserRoleChangedEvent
     /// <summary>Exam API'nin yerel (worksheet DB) User.Id'si — yalnızca log/korelasyon amaçlı.</summary>
     public int UserId { get; set; }
 
-    /// <summary>Keycloak'ta atanan yeni rol adı: "Teacher" | "Student" | "Parent".</summary>
+    /// <summary>
+    /// Keycloak'a atanan rol adı: "Teacher" | "Student" | "Parent" — YALNIZCA loglama/korelasyon
+    /// amaçlı. auth-api tüketicisi (<c>UserRoleChangedConsumer</c>) BUNU KÖR YAZMAZ: event yalnızca
+    /// "bu kullanıcı için Keycloak'ı yeniden oku" tetikleyicisidir, gerçek değer her zaman
+    /// Keycloak'tan taze okunup allowlist (Student/Teacher/Parent) ile filtrelenerek yazılır
+    /// (issue #277 review, HIGH — <c>ChangedAtUtc</c> event üretim anını taşır ama Keycloak'a
+    /// gerçek yazma sırasını garanti etmediği için event'in taşıdığı değere güvenilemez).
+    /// </summary>
     public string NewRole { get; set; } = string.Empty;
 
-    /// <summary>Değişikliğin gerçekleştiği an (UTC). Sırasız/tekrar teslimde tazelik kontrolü için.</summary>
+    /// <summary>
+    /// Değişikliğin (Keycloak'a SetRoleAsync çağrısının) gerçekleştiği an (UTC). Consumer'da
+    /// yalnızca gereksiz tekrar Keycloak sorgusunu önleyen bir tazelik OPTİMİZASYONU için
+    /// kullanılır — doğruluk için şart değildir, çünkü her senkron zaten Keycloak'taki güncel
+    /// durumu okur.
+    /// </summary>
     public DateTime ChangedAtUtc { get; set; }
 }

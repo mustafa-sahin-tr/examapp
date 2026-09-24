@@ -56,6 +56,14 @@ public class AdminDataAccessLog
     public int? TargetId { get; set; }
 
     /// <summary>
+    /// issue #187 (security review): detay uçlarında erişim anında hedef kaydın durumu (öğretmen başvurusu:
+    /// <c>Pending</c>/<c>Approved</c>/<c>Rejected</c>) — tam e-posta yalnızca Pending'de döndüğünden hangi seviyede veri
+    /// görüldüğü audit'ten okunabilsin. Liste satırlarında ve 404/429'da null.
+    /// </summary>
+    [MaxLength(16)]
+    public string? TargetStatus { get; set; }
+
+    /// <summary>
     /// issue #262: isteğin sonucu. <see cref="AdminDataAccessOutcome.RateLimited"/> satırlarında veri DÖNMEMİŞTİR;
     /// sayfa/sayı alanları 0'dır. Kalıcı değer string'dir.
     /// </summary>

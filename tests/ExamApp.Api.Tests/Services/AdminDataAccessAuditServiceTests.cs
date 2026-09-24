@@ -90,6 +90,25 @@ public class AdminDataAccessAuditServiceTests : IDisposable
         raw.ShouldBe(["All", "Pending"]);
     }
 
+    [Fact]
+    public async Task Detail_access_records_the_target_status_only_when_served()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new AdminDataAccessAuditService(ctx);
+            await service.RecordDetailAccessAsync(new AdminDetailAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationDetail, 5, AdminDataAccessOutcome.Served, "Rejected"));
+            await service.RecordDetailAccessAsync(new AdminDetailAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationDetail, 6, AdminDataAccessOutcome.NotFound, "Pending"));
+            await service.RecordListAccessAsync(new AdminListAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationList, null, false, 1, 20, 0, 0, TeacherApplicationStatusFilter.All));
+        }
+
+        await using var read = _db.NewContext();
+        var rows = await read.AdminDataAccessLogs.OrderBy(r => r.Id).ToListAsync();
+        rows.Select(r => r.TargetStatus).ShouldBe(["Rejected", null, null]);
+    }
+
     // ---- issue #262 ----
 
     [Fact]

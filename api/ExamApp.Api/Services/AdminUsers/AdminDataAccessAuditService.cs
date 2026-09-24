@@ -52,6 +52,7 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             ActorKeycloakId = RequireActor(record.ActorKeycloakId),
             Resource = record.Resource,
             TargetId = record.TargetId,
+            TargetStatus = record.Outcome == AdminDataAccessOutcome.Served ? record.TargetStatus : null,
             Page = 1,
             PageSize = 1,
             ReturnedCount = found,

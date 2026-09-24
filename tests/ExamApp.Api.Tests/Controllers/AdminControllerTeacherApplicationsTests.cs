@@ -116,29 +116,29 @@ public class AdminControllerTeacherApplicationsTests
     [Fact]
     public async Task Detail_is_audited_with_the_target_id()
     {
-        var detail = new TeacherApplicationDetailDto { TeacherId = 42, Email = "ali@x.com" };
+        var detail = new TeacherApplicationDetailDto { TeacherId = 42, Email = "ali@x.com", Status = "Pending" };
         _approvals.GetApplicationAsync(42, Arg.Any<CancellationToken>()).Returns(detail);
 
         var result = await NewController().GetTeacherApplication(42, default);
 
         result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(detail);
         await _audit.Received(1).RecordDetailAccessAsync(
-            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 42, AdminDataAccessOutcome.Served),
+            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 42, AdminDataAccessOutcome.Served, "Pending"),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Detail_of_a_rejected_application_is_served_and_audited()
+    public async Task Detail_of_a_rejected_application_is_served_and_audited_with_its_status()
     {
         // issue #187: detay yalnızca bekleyen değil, her durumdaki başvuru için döner.
-        var detail = new TeacherApplicationDetailDto { TeacherId = 43, Email = "red@x.com", Status = "Rejected", RejectionReason = "Belge eksik" };
+        var detail = new TeacherApplicationDetailDto { TeacherId = 43, Email = "r***@x.com", Status = "Rejected", RejectionReason = "Belge eksik" };
         _approvals.GetApplicationAsync(43, Arg.Any<CancellationToken>()).Returns(detail);
 
         var result = await NewController().GetTeacherApplication(43, default);
 
         result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(detail);
         await _audit.Received(1).RecordDetailAccessAsync(
-            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 43, AdminDataAccessOutcome.Served),
+            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 43, AdminDataAccessOutcome.Served, "Rejected"),
             Arg.Any<CancellationToken>());
     }
 
@@ -151,7 +151,7 @@ public class AdminControllerTeacherApplicationsTests
 
         result.Result.ShouldBeOfType<NotFoundResult>();
         await _audit.Received(1).RecordDetailAccessAsync(
-            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 7, AdminDataAccessOutcome.NotFound),
+            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 7, AdminDataAccessOutcome.NotFound, null),
             Arg.Any<CancellationToken>());
     }
 

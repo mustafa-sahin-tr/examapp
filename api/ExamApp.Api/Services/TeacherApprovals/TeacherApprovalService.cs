@@ -121,7 +121,11 @@ public class TeacherApprovalService : ITeacherApprovalService
         {
             TeacherId = row.TeacherId,
             FullName = user?.FullName ?? string.Empty,
-            Email = user?.Email ?? string.Empty, // tam adres — çağıran (controller) erişimi audit'ler
+            // issue #187 (security review): TAM adres yalnızca bekleyen başvuruda (karar için gerekli); karar verilmiş
+            // başvuruda liste ile aynı maske (#262 veri minimizasyonu). Çağıran (controller) erişimi durumla audit'ler.
+            Email = user is null
+                ? string.Empty
+                : row.Status == TeacherApprovalStatus.Pending ? user.Email ?? string.Empty : EmailMask.Apply(user.Email),
             AppliedAt = row.AppliedAt,
             IsIndependentTutor = row.IsIndependentTutor,
             RequestedSchoolId = row.RequestedSchoolId,

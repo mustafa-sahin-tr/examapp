@@ -69,6 +69,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("TargetId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TargetStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<int>("TotalCount")
                         .HasColumnType("integer");
 

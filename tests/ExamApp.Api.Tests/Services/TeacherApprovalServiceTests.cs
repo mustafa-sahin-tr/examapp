@@ -144,7 +144,7 @@ public class TeacherApprovalServiceTests : IDisposable
     // ---- ListApplicationsAsync(Pending) ----
 
     [Fact]
-    public async Task GetPendingApplicationsAsync_ReturnsOnlyIndependentPendingTeachers()
+    public async Task ListApplicationsAsync_Pending_ReturnsOnlyPendingApplications()
     {
         await using (var ctx = _db.NewContext())
         {
@@ -166,7 +166,7 @@ public class TeacherApprovalServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetPendingApplicationsAsync_NoPendingApplications_ReturnsEmptyList()
+    public async Task ListApplicationsAsync_Pending_NoPendingApplications_ReturnsEmptyPage()
     {
         await using var ctx = _db.NewContext();
         var result = await NewService(ctx).ListApplicationsAsync(TeacherApplicationStatusFilter.Pending, 1, 20);

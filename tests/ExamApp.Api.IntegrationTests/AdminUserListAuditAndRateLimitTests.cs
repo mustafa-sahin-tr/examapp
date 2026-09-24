@@ -198,11 +198,13 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         rows[0].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
         rows[1].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
         rows[1].TargetId.ShouldBe(teacherId);
+        rows[1].TargetStatus.ShouldBe("Pending");
         rows[1].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
         // #262 review: 404 de iz bırakır (id tarama)
         rows[2].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
         rows[2].TargetId.ShouldBe(int.MaxValue);
         rows[2].Outcome.ShouldBe(AdminDataAccessOutcome.NotFound);
+        rows[2].TargetStatus.ShouldBeNull();
         rows[2].ReturnedCount.ShouldBe(0);
     }
 
@@ -239,10 +241,12 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
 
         (await admin.GetAsync("/api/admin/teacher-applications?status=approved")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        // Detay: reddedilmiş başvuru da TAM e-postayla döner (#187).
+        // Detay: reddedilmiş başvuru da döner (#187) ama e-posta MASKELİ (security review — tam adres yalnızca Pending'de).
         var detail = await admin.GetAsync($"/api/admin/teacher-applications/{teacherId}");
         detail.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await detail.Content.ReadAsStringAsync()).ShouldContain("\"email\":\"red@okul.k12.tr\"");
+        var detailJson = await detail.Content.ReadAsStringAsync();
+        detailJson.ShouldContain("\"email\":\"r***@okul.k12.tr\"");
+        detailJson.ShouldNotContain("red@okul");
 
         var rows = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
             .Where(r => r.ActorKeycloakId == sub).OrderBy(r => r.Id).ToListAsync());
@@ -252,6 +256,7 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         rows[1].StatusFilter.ShouldBe(TeacherApplicationStatusFilter.All);
         rows[2].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
         rows[2].TargetId.ShouldBe(teacherId);
+        rows[2].TargetStatus.ShouldBe("Rejected");
         rows[2].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
     }
 

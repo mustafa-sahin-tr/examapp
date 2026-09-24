@@ -195,9 +195,10 @@ public class AdminController : BaseController
     }
 
     /// <summary>
-    /// GET api/admin/teacher-applications/{id} → tek başvurunun detayı, TAM e-posta ile (issue #262). issue #187: her durumdaki
-    /// (Pending/Approved/Rejected) başvuru; başvuru olmayan öğretmen / bilinmeyen id → 404. Her çağrı audit'lenir
-    /// (TargetId = teacherId; veri dönmeden önce, fail-closed; 404 → Outcome=NotFound);
+    /// GET api/admin/teacher-applications/{id} → tek başvurunun detayı (issue #262). issue #187: her durumdaki
+    /// (Pending/Approved/Rejected) başvuru; başvuru olmayan öğretmen / bilinmeyen id → 404. TAM e-posta YALNIZCA Pending'de;
+    /// karar verilmiş başvuruda maskeli (veri minimizasyonu). Her çağrı audit'lenir (TargetId = teacherId, TargetStatus =
+    /// başvuru durumu; veri dönmeden önce, fail-closed; 404 → Outcome=NotFound);
     /// liste uçlarıyla aynı rate limit kovası.
     /// </summary>
     [HttpGet("teacher-applications/{id:int}")]
@@ -211,7 +212,8 @@ public class AdminController : BaseController
         // 404 da audit'lenir (Outcome=NotFound): id tarama denemeleri iz bıraksın.
         await _dataAccessAudit.RecordDetailAccessAsync(new AdminDetailAccessRecord(
             KeyCloakId ?? string.Empty, AdminDataAccessResource.TeacherApplicationDetail, id,
-            detail == null ? AdminDataAccessOutcome.NotFound : AdminDataAccessOutcome.Served), ct);
+            detail == null ? AdminDataAccessOutcome.NotFound : AdminDataAccessOutcome.Served,
+            detail?.Status), ct);
 
         return detail == null ? NotFound() : Ok(detail);
     }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExamApp.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260924122108_AddAdminDataAccessLogStatusFilter")]
-    partial class AddAdminDataAccessLogStatusFilter
+    [Migration("20260924130115_AddAdminDataAccessLogStatusFilterAndTargetStatus")]
+    partial class AddAdminDataAccessLogStatusFilterAndTargetStatus
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -71,6 +71,10 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<int?>("TargetId")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TargetStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<int>("TotalCount")
                         .HasColumnType("integer");

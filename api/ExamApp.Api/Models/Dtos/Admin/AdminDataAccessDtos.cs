@@ -27,7 +27,8 @@ public sealed record AdminDetailAccessRecord(
     string ActorKeycloakId,
     AdminDataAccessResource Resource,
     int TargetId,
-    AdminDataAccessOutcome Outcome = AdminDataAccessOutcome.Served);
+    AdminDataAccessOutcome Outcome = AdminDataAccessOutcome.Served,
+    string? TargetStatus = null); // issue #187: erişilen kaydın durumu (ör. başvuru Pending/Approved/Rejected); 404'te null
 
 /// <summary>
 /// Rate limit'e takılan (429) admin veri isteğinin audit girdisi (issue #262). Veri dönmediği için sayfa/sayı yok;

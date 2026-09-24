@@ -20,7 +20,8 @@ public interface ITeacherApprovalService
         TeacherApplicationStatusFilter status, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
-    /// issue #262 / #187: tek başvurunun detayı (her durumda) — TAM e-posta ile. Başvuru olmayan / bilinmeyen id → null (404).
+    /// issue #262 / #187: tek başvurunun detayı (her durumda). E-posta yalnızca Pending'de TAM, Approved/Rejected'da maskeli.
+    /// Başvuru olmayan / bilinmeyen id → null (404).
     /// Kişisel veri döndürdüğü için çağıran erişimi audit'lemelidir.
     /// </summary>
     Task<TeacherApplicationDetailDto?> GetApplicationAsync(int teacherId, CancellationToken ct = default);

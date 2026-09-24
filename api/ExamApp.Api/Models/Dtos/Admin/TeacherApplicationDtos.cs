@@ -18,7 +18,7 @@ public class TeacherApplicationListItemDto
 
     /// <summary>
     /// MASKELİ e-posta (issue #262): <c>a***@okul.k12.tr</c> — bkz. <see cref="ExamApp.Api.Helpers.EmailMask"/>.
-    /// auth-api'den çözümlenemezse boş string. Tam adres yalnızca <see cref="TeacherApplicationDetailDto"/>'da.
+    /// auth-api'den çözümlenemezse boş string. Tam adres yalnızca bekleyen başvurunun detayında (<see cref="TeacherApplicationDetailDto"/>).
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
@@ -55,7 +55,7 @@ public class TeacherApplicationListItemDto
 }
 
 /// <summary>
-/// issue #262: <c>GET api/admin/teacher-applications/{id}</c> yanıtı — liste satırıyla aynı alanlar, fark: <see cref="Email"/> TAM.
+/// issue #262: <c>GET api/admin/teacher-applications/{id}</c> yanıtı — liste satırıyla aynı alanlar, fark: <see cref="Email"/> bekleyen başvuruda TAM.
 /// issue #187: her durumdaki (Pending/Approved/Rejected) başvuru için döner; başvuru olmayan öğretmen → 404.
 /// Her çağrı <c>AdminDataAccessLogs</c>'a (Resource=TeacherApplicationDetail, TargetId=TeacherId) yazılır; bulunamayan id
 /// de <c>Outcome=NotFound</c> ile (id tarama denemeleri görünür olsun).
@@ -69,7 +69,10 @@ public class TeacherApplicationDetailDto
     /// <summary>auth-api'den çözümlenir; erişilemezse boş string.</summary>
     public string FullName { get; set; } = string.Empty;
 
-    /// <summary>TAM e-posta; auth-api'den çözümlenemezse boş string.</summary>
+    /// <summary>
+    /// TAM e-posta YALNIZCA <see cref="Status"/>=Pending iken (karar için); Approved/Rejected'da maskeli (<c>a***@x.com</c>,
+    /// issue #187 security review). auth-api'den çözümlenemezse boş string.
+    /// </summary>
     public string Email { get; set; } = string.Empty;
 
     public DateTime AppliedAt { get; set; }

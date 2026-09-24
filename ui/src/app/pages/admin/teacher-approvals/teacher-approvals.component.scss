@@ -60,6 +60,21 @@
   font-style: italic;
 }
 
+.ta__email {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  &--full {
+    color: var(--ms-text-strong);
+    font-style: normal;
+  }
+}
+
+.ta__reveal {
+  color: var(--ms-text-medium);
+}
+
 .ta__actions {
   display: flex;
   align-items: center;

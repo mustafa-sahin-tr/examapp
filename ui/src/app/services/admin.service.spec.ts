@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { AdminService } from './admin.service';
@@ -7,6 +7,7 @@ import { AdminTeacherListItem } from '../models/admin-teacher.model';
 import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
 import { AdminPasswordResetResponse } from '../models/admin-password-reset.model';
+import { TeacherApplicationDetail } from '../models/teacher-application.model';
 
 // Test fixture only — not a real credential (kept out of gitleaks' generic-api-key literal match).
 const FAKE_PW = ['fake', 'reset', 'value'].join('-');
@@ -22,7 +23,6 @@ describe('AdminService.getTeachers (issue #152)', () => {
     items: [
       {
         id: 12,
-        userId: 1042,
         fullName: 'Ayşe Yılmaz',
         email: 'ayse@okul.k12.tr',
         schoolId: 5,
@@ -257,5 +257,60 @@ describe('AdminService.setAccountStatus (issue #155)', () => {
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ enabled: true });
     req.flush({ enabled: true });
+  });
+});
+
+describe('AdminService.getTeacherApplication (issue #262)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('getTeacherApplication_GetsDetailEndpointWithTeacherId_ReturnsFullEmail', () => {
+    const detail: TeacherApplicationDetail = {
+      teacherId: 7,
+      userId: 700,
+      fullName: 'Ali Öğretmen',
+      email: 'ali@okul.k12.tr',
+      appliedAt: '2026-09-20T10:00:00Z',
+      isIndependentTutor: false,
+      requestedSchoolId: 5,
+      requestedSchoolName: 'Ankara Lisesi',
+    };
+    let result: TeacherApplicationDetail | undefined;
+
+    service.getTeacherApplication(7).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne('/api/exam/admin/teacher-applications/7');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.keys()).toEqual([]);
+    req.flush(detail);
+    expect(result).toEqual(detail);
+  });
+
+  it('getTeacherApplication_429_PropagatesErrorWithRetryAfter', () => {
+    let status = 0;
+    let retryAfter: string | null | undefined;
+
+    service.getTeacherApplication(7).subscribe({
+      error: (err: HttpErrorResponse) => {
+        status = err.status;
+        retryAfter = err.headers.get('Retry-After');
+      },
+    });
+
+    httpMock
+      .expectOne('/api/exam/admin/teacher-applications/7')
+      .flush('Too many requests', { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '30' } });
+    expect(status).toBe(429);
+    expect(retryAfter).toBe('30');
   });
 });

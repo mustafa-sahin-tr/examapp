@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, WritableSignal, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   TranslocoDirective,
   TranslocoPipe,
@@ -16,6 +17,8 @@ import {
 } from '@jsverse/transloco';
 import { Observable, finalize, take } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
+import { adminListErrorMessage } from '../../../shared/utils/school-paged-list';
+import { adminActionErrorMessage } from '../../../shared/utils/admin-action-error.util';
 import { SignalRService } from '../../../services/signalr.service';
 import {
   PendingTeacherApplication,
@@ -33,6 +36,10 @@ import {
  * döndürmez, yeniden fetch gereksiz). Aksiyon durumu satır bazlı tutulur (`actingIds`), diğer satırlar
  * kullanılabilir kalır.
  *
+ * Issue #262: listede e-posta maskeli gelir; admin satır bazında "E-postayı göster" ile audit'li detay ucundan
+ * tam adresi ister. Tam adresler yalnız bellekte (`revealedEmails`, teacherId → e-posta) tutulur; satır listeden
+ * düşünce ya da liste yeniden yüklenince ilgili kayıt atılır.
+ *
  * Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183).
  * Kendi route'undan da (`/admin/teacher-approvals`) açıldığı için scope'u admin-home'dan devralmaz,
  * provider'ı burada da verilir.
@@ -49,6 +56,7 @@ const ADMIN_SCOPE = 'admin';
     MatIconModule,
     MatProgressSpinnerModule,
     MatTableModule,
+    MatTooltipModule,
     TranslocoDirective,
     TranslocoPipe,
   ],
@@ -71,6 +79,10 @@ export class TeacherApprovalsComponent implements OnInit {
   readonly applications = signal<PendingTeacherApplication[]>([]);
   /** Şu an approve/reject isteği süren teacherId'ler (satır bazlı disable). */
   readonly actingIds = signal<ReadonlySet<number>>(new Set());
+  /** Issue #262: talep üzerine açılan TAM e-postalar (teacherId → e-posta). */
+  readonly revealedEmails = signal<ReadonlyMap<number, string>>(new Map());
+  /** Tam e-posta isteği süren teacherId'ler (satır bazlı buton disable + spinner). */
+  readonly revealingIds = signal<ReadonlySet<number>>(new Set());
 
   readonly isEmpty = computed(() => !this.loading() && !this.error() && this.applications().length === 0);
 
@@ -102,16 +114,76 @@ export class TeacherApprovalsComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (list) => this.applications.set(list),
+        next: (list) => {
+          this.applications.set(list);
+          // Artık listede olmayan başvuruların tam e-postasını bellekte tutma.
+          const ids = new Set(list.map((a) => a.teacherId));
+          this.revealedEmails.update((map) => new Map([...map].filter(([id]) => ids.has(id))));
+        },
         error: (err: HttpErrorResponse) => {
           this.applications.set([]);
-          this.error.set(this.extractMessage(err, this.text('loadFailed')));
+          this.revealedEmails.set(new Map());
+          // Admin liste uçlarıyla ortak yorum: 403 yetki, 429 istek limiti (issue #262), diğerleri genel hata.
+          this.error.set(adminListErrorMessage(err, (key) => this.text(key)));
         },
       });
   }
 
   isActing(teacherId: number): boolean {
     return this.actingIds().has(teacherId);
+  }
+
+  isRevealing(teacherId: number): boolean {
+    return this.revealingIds().has(teacherId);
+  }
+
+  /** Satırda gösterilecek e-posta: açıldıysa tam adres, değilse listedeki maskeli adres. */
+  emailFor(row: PendingTeacherApplication): string {
+    return this.revealedEmails().get(row.teacherId) ?? row.email;
+  }
+
+  isEmailRevealed(teacherId: number): boolean {
+    return this.revealedEmails().has(teacherId);
+  }
+
+  /**
+   * Issue #262: tam e-postayı audit'li detay ucundan ister. 404 → başvuru artık bekleyen değil (listeyi yenile);
+   * 429 → istek limiti (varsa `Retry-After` saniyesi ile); diğer hatalar genel mesaj.
+   */
+  revealEmail(row: PendingTeacherApplication): void {
+    const id = row.teacherId;
+    if (this.isRevealing(id) || this.isEmailRevealed(id)) {
+      return;
+    }
+    this.setFlag(this.revealingIds, id, true);
+
+    this.adminService
+      .getTeacherApplication(id)
+      .pipe(
+        finalize(() => this.setFlag(this.revealingIds, id, false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (detail) => {
+          const email = detail.email?.trim();
+          if (!email) {
+            this.snackBar.open(this.text('emailUnavailable'), this.text('close'), { duration: 4000 });
+            return;
+          }
+          this.revealedEmails.update((map) => new Map(map).set(id, email));
+        },
+        error: (err: HttpErrorResponse) => {
+          // 403/429 (+ `Retry-After` saniyesi)/502/diğer → `admin.approvals.emailErrors.*`.
+          const message = adminActionErrorMessage(err, `${ADMIN_SCOPE}.approvals.emailErrors`, (key, params) =>
+            this.transloco.translate<string>(key, params),
+          );
+          this.snackBar.open(message, this.text('close'), { duration: 5000 });
+          // 404: başvuru artık bekleyen değil (arada onaylanmış/reddedilmiş) → listeyi güncelle.
+          if (err.status === 404) {
+            this.load();
+          }
+        },
+      });
   }
 
   /** auth-api ad çözümlemesi başarısızsa boş gelir; userId ile ayırt edilebilir fallback göster. */
@@ -177,7 +249,7 @@ export class TeacherApprovalsComponent implements OnInit {
             this.snackBar.open(res.message || this.text('actionFailed'), this.text('close'), { duration: 4000 });
             return;
           }
-          this.applications.update((list) => list.filter((a) => a.teacherId !== id));
+          this.removeRow(id);
           this.snackBar.open(successMessage, this.text('close'), { duration: 3000 });
         },
         error: (err: HttpErrorResponse) => {
@@ -186,14 +258,28 @@ export class TeacherApprovalsComponent implements OnInit {
           });
           // 404 / 409: kayıt artık Pending değil; listeyi güncel tut.
           if (err.status === 404 || err.status === 409) {
-            this.applications.update((list) => list.filter((a) => a.teacherId !== id));
+            this.removeRow(id);
           }
         },
       });
   }
 
+  private removeRow(id: number): void {
+    this.applications.update((list) => list.filter((a) => a.teacherId !== id));
+    this.revealedEmails.update((map) => {
+      const next = new Map(map);
+      next.delete(id);
+      return next;
+    });
+  }
+
+
   private setActing(id: number, on: boolean): void {
-    this.actingIds.update((set) => {
+    this.setFlag(this.actingIds, id, on);
+  }
+
+  private setFlag(target: WritableSignal<ReadonlySet<number>>, id: number, on: boolean): void {
+    target.update((set) => {
       const next = new Set(set);
       if (on) next.add(id);
       else next.delete(id);

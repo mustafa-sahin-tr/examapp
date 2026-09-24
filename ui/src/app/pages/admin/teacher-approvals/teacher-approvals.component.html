@@ -47,7 +47,25 @@
       <ng-container matColumnDef="email">
         <th mat-header-cell *matHeaderCellDef>{{ t('columns.email') }}</th>
         <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.email">
-          {{ row.email || '—' }}
+          <div class="ta__email">
+            <span [class.ta__email--full]="isEmailRevealed(row.teacherId)">{{ emailFor(row) || '—' }}</span>
+            @if (row.email && !isEmailRevealed(row.teacherId)) {
+              @if (isRevealing(row.teacherId)) {
+                <mat-spinner diameter="18" [attr.aria-label]="t('revealingEmail')"></mat-spinner>
+              } @else {
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="ta__reveal"
+                  (click)="revealEmail(row)"
+                  [matTooltip]="t('showEmail')"
+                  [attr.aria-label]="t('showEmailFor', { name: displayName(row) })"
+                >
+                  <mat-icon>visibility</mat-icon>
+                </button>
+              }
+            }
+          </div>
         </td>
       </ng-container>
 

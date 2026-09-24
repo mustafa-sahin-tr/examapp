@@ -9,10 +9,8 @@ import { AdminSchoolPagedQuery } from './admin-paged-query.model';
 export type AdminTeacherApprovalStatus = 'Pending' | 'Approved' | 'Rejected';
 
 export interface AdminTeacherListItem {
-  /** Teacher kaydının id'si. */
+  /** Teacher kaydının id'si. (issue #262: auth-api `userId` artık bu listede dönmez.) */
   id: number;
-  /** auth-api kullanıcı id'si. */
-  userId: number;
   /** auth-api'den çözümlenir; erişilemezse boş string. */
   fullName: string;
   /**

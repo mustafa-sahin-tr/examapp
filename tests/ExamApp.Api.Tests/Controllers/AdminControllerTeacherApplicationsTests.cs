@@ -19,7 +19,7 @@ namespace ExamApp.Api.Tests.Controllers;
 
 /// <summary>
 /// Issue #262: GET api/admin/teacher-applications (maskeli liste) ve GET api/admin/teacher-applications/{id} (tam e-posta)
-/// — her başarılı çağrı veri dönmeden önce audit'lenir (fail-closed), 404 audit'lenmez; iki uç da admin liste
+/// — her çağrı veri dönmeden önce audit'lenir (fail-closed), 404 de Outcome=NotFound ile; iki uç da admin liste
 /// rate limit kovasında, no-store ve 429 audit'i için kaynak metadata'sı taşır.
 /// </summary>
 public class AdminControllerTeacherApplicationsTests
@@ -66,19 +66,21 @@ public class AdminControllerTeacherApplicationsTests
 
         result.Result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(detail);
         await _audit.Received(1).RecordDetailAccessAsync(
-            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 42),
+            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 42, AdminDataAccessOutcome.Served),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Missing_application_is_404_and_not_audited()
+    public async Task Missing_application_is_404_and_audited_as_not_found()
     {
         _approvals.GetPendingApplicationAsync(7, Arg.Any<CancellationToken>()).Returns((TeacherApplicationDetailDto?)null);
 
         var result = await NewController().GetTeacherApplication(7, default);
 
         result.Result.ShouldBeOfType<NotFoundResult>();
-        await _audit.DidNotReceiveWithAnyArgs().RecordDetailAccessAsync(default!, default);
+        await _audit.Received(1).RecordDetailAccessAsync(
+            new AdminDetailAccessRecord("kc-admin-sub", AdminDataAccessResource.TeacherApplicationDetail, 7, AdminDataAccessOutcome.NotFound),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

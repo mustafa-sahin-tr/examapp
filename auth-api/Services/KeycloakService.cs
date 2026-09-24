@@ -767,14 +767,13 @@ public class KeycloakService : IKeycloakService
     /// </summary>
     public const int AccountStatusBulkThreshold = 4;
 
-    /// <summary>Devre dışı kullanıcı taraması sayfa boyutu.</summary>
-    public const int DisabledScanPageSize = 100;
-
     /// <summary>
-    /// Devre dışı kullanıcı taramasının üst sınırı (sayfa). Aşılırsa (≥ 1000 devre dışı kullanıcı) tarama sonuçsuz sayılır
-    /// ve kullanıcı başı yola düşülür — büyük listeyi her admin sayfasında taramak kullanıcı başı GET'ten pahalı olurdu.
+    /// Devre dışı kullanıcı taraması TEK sayfadır (issue #262 güvenlik review'u): bu kadar ya da daha fazla devre dışı
+    /// kullanıcı dönerse (sayfa dolu) tarama sonuçsuz sayılır ve kullanıcı başı yola düşülür. Offset sayfalaması
+    /// (<c>first</c>/<c>max</c>) sayfalar arası eşzamanlı enable/disable'da kullanıcı atlayabilir — atlanan devre dışı
+    /// kullanıcı "etkin" görünürdü; tek sayfa bu yarışı ortadan kaldırır.
     /// </summary>
-    public const int DisabledScanMaxPages = 10;
+    public const int DisabledScanPageSize = 100;
 
     public async Task<IReadOnlyDictionary<string, bool>> GetUsersEnabledAsync(IReadOnlyCollection<string> keycloakUserIds, CancellationToken ct = default)
     {
@@ -793,8 +792,8 @@ public class KeycloakService : IKeycloakService
             switch (scan.Status)
             {
                 case DisabledScanStatus.Complete:
-                    // Kabul edilen ödün: Keycloak'tan silinmiş (auth DB'de kalmış) kullanıcı da "etkin" görünür; kullanıcı başı
-                    // yolda 404 → bilinmiyor (null) idi. Admin listesinde hesap durumu bilgi amaçlıdır; yetki kararı değildir.
+                    // Devre dışı listede olmayan her id → true (bkz. IKeycloakService sözleşmesi: Keycloak'tan silinmiş kullanıcı da
+                    // "etkin" görünür; kullanıcı başı yolda 404 → bilinmiyor idi). Hesap durumu bilgi amaçlıdır; yetki kararı değildir.
                     foreach (var id in ids)
                         result[id] = !scan.DisabledIds!.Contains(id);
                     return result;
@@ -814,47 +813,42 @@ public class KeycloakService : IKeycloakService
     private sealed record DisabledScan(DisabledScanStatus Status, HashSet<string>? DisabledIds = null);
 
     /// <summary>
-    /// Realm'deki devre dışı kullanıcıların id'leri: <c>GET /users?enabled=false&amp;briefRepresentation=true&amp;first&amp;max</c>,
-    /// kısa sayfa gelene kadar. Keycloak filtreyi yok sayıyorsa (yanıtta <c>enabled=true</c> kullanıcı) ya da
-    /// <see cref="DisabledScanMaxPages"/> aşılırsa sonuçsuz. HTTP/JSON hatası ya da iptal → başarısız.
+    /// Realm'deki devre dışı kullanıcıların id'leri: TEK istek <c>GET /users?enabled=false&amp;briefRepresentation=true&amp;first=0&amp;max=100</c>.
+    /// Sayfa doluysa (≥ <see cref="DisabledScanPageSize"/> devre dışı kullanıcı; tam liste tek sayfaya sığmıyor olabilir) ya da
+    /// Keycloak filtreyi yok sayıyorsa (yanıtta <c>enabled=true</c> kullanıcı) sonuçsuz. HTTP/JSON hatası ya da iptal → başarısız.
     /// </summary>
     private async Task<DisabledScan> ScanDisabledUsersAsync(string adminToken, CancellationToken ct)
     {
         var disabled = new HashSet<string>(StringComparer.Ordinal);
         try
         {
-            for (var page = 0; page < DisabledScanMaxPages; page++)
+            using var request = new HttpRequestMessage(HttpMethod.Get, BuildKeycloakUri(
+                $"{_keycloakSettings.UserUrl}?enabled=false&briefRepresentation=true&first=0&max={DisabledScanPageSize}"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+            using var response = await _adminHttp.SendAsync(request, ct);
+            if (!response.IsSuccessStatusCode)
+                return new DisabledScan(DisabledScanStatus.Failed);
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                return new DisabledScan(DisabledScanStatus.Failed);
+
+            var count = 0;
+            foreach (var user in doc.RootElement.EnumerateArray())
             {
-                var first = page * DisabledScanPageSize;
-                using var request = new HttpRequestMessage(HttpMethod.Get, BuildKeycloakUri(
-                    $"{_keycloakSettings.UserUrl}?enabled=false&briefRepresentation=true&first={first}&max={DisabledScanPageSize}"));
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
-                using var response = await _adminHttp.SendAsync(request, ct);
-                if (!response.IsSuccessStatusCode)
-                    return new DisabledScan(DisabledScanStatus.Failed);
-
-                var json = await response.Content.ReadAsStringAsync(ct);
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                    return new DisabledScan(DisabledScanStatus.Failed);
-
-                var count = 0;
-                foreach (var user in doc.RootElement.EnumerateArray())
-                {
-                    count++;
-                    // Filtre gerçekten uygulandı mı: her satır açıkça enabled=false olmalı. Değilse bu Keycloak sürümü
-                    // "enabled" parametresini desteklemiyor — "listede yok = etkin" çıkarımı güvenilmez.
-                    if (!user.TryGetProperty("enabled", out var enabledEl) || enabledEl.ValueKind != JsonValueKind.False)
-                        return new DisabledScan(DisabledScanStatus.Inconclusive);
-                    if (user.TryGetProperty("id", out var idEl) && idEl.GetString() is { Length: > 0 } id)
-                        disabled.Add(id);
-                }
-
-                if (count < DisabledScanPageSize)
-                    return new DisabledScan(DisabledScanStatus.Complete, disabled);
+                count++;
+                // Filtre gerçekten uygulandı mı: her satır açıkça enabled=false olmalı. Değilse bu Keycloak sürümü
+                // "enabled" parametresini desteklemiyor — "listede yok = etkin" çıkarımı güvenilmez.
+                if (!user.TryGetProperty("enabled", out var enabledEl) || enabledEl.ValueKind != JsonValueKind.False)
+                    return new DisabledScan(DisabledScanStatus.Inconclusive);
+                if (user.TryGetProperty("id", out var idEl) && idEl.GetString() is { Length: > 0 } id)
+                    disabled.Add(id);
             }
 
-            return new DisabledScan(DisabledScanStatus.Inconclusive);
+            return count < DisabledScanPageSize
+                ? new DisabledScan(DisabledScanStatus.Complete, disabled)
+                : new DisabledScan(DisabledScanStatus.Inconclusive); // tek sayfaya sığmadı → kullanıcı başı yol
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or OperationCanceledException
                                    or Polly.ExecutionRejectedException or KeycloakException)

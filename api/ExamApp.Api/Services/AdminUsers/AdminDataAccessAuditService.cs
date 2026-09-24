@@ -42,6 +42,10 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
     public Task RecordDetailAccessAsync(AdminDetailAccessRecord record, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(record);
+        if (record.Outcome is not (AdminDataAccessOutcome.Served or AdminDataAccessOutcome.NotFound))
+            throw new ArgumentException("Detail access outcome must be Served or NotFound.", nameof(record));
+
+        var found = record.Outcome == AdminDataAccessOutcome.Served ? 1 : 0;
         return AddAsync(new AdminDataAccessLog
         {
             ActorKeycloakId = RequireActor(record.ActorKeycloakId),
@@ -49,9 +53,9 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             TargetId = record.TargetId,
             Page = 1,
             PageSize = 1,
-            ReturnedCount = 1,
-            TotalCount = 1,
-            Outcome = AdminDataAccessOutcome.Served
+            ReturnedCount = found,
+            TotalCount = found,
+            Outcome = record.Outcome
         });
     }
 

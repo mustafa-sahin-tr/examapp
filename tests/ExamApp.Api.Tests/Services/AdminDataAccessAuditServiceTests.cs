@@ -100,6 +100,32 @@ public class AdminDataAccessAuditServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Not_found_detail_is_persisted_with_target_and_zero_counts()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await new AdminDataAccessAuditService(ctx).RecordDetailAccessAsync(new AdminDetailAccessRecord(
+                "kc-admin", AdminDataAccessResource.TeacherApplicationDetail, 99, AdminDataAccessOutcome.NotFound));
+        }
+
+        await using var read = _db.NewContext();
+        var row = await read.AdminDataAccessLogs.SingleAsync();
+        row.Outcome.ShouldBe(AdminDataAccessOutcome.NotFound);
+        row.TargetId.ShouldBe(99);
+        row.ReturnedCount.ShouldBe(0);
+        var raw = await read.Database.SqlQueryRaw<string>("SELECT \"Outcome\" AS \"Value\" FROM \"AdminDataAccessLogs\"").SingleAsync();
+        raw.ShouldBe("NotFound");
+    }
+
+    [Fact]
+    public async Task Detail_record_rejects_rate_limited_outcome()
+    {
+        await using var ctx = _db.NewContext();
+        await Should.ThrowAsync<ArgumentException>(() => new AdminDataAccessAuditService(ctx).RecordDetailAccessAsync(
+            new AdminDetailAccessRecord("kc", AdminDataAccessResource.TeacherApplicationDetail, 1, AdminDataAccessOutcome.RateLimited)));
+    }
+
+    [Fact]
     public async Task Rate_limited_request_is_persisted_with_outcome_and_no_counts()
     {
         await using (var ctx = _db.NewContext())

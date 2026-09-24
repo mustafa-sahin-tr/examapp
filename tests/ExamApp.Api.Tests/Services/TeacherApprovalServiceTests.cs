@@ -86,11 +86,17 @@ public class TeacherApprovalServiceTests : IDisposable
 
         detail.ShouldNotBeNull();
         detail.TeacherId.ShouldBe(teacherId);
-        detail.UserId.ShouldBe(12);
         detail.FullName.ShouldBe("Ayşe Yılmaz");
         detail.Email.ShouldBe("ayse@okul.k12.tr");
         detail.IsIndependentTutor.ShouldBeFalse();
         detail.RequestedSchoolName.ShouldBe("Konya Lisesi");
+    }
+
+    [Fact]
+    public void Issue262_application_dtos_do_not_expose_the_internal_user_id()
+    {
+        typeof(PendingTeacherApplicationDto).GetProperty("UserId").ShouldBeNull();
+        typeof(TeacherApplicationDetailDto).GetProperty("UserId").ShouldBeNull();
     }
 
     [Fact]
@@ -153,7 +159,8 @@ public class TeacherApprovalServiceTests : IDisposable
         var result = await NewService(check).GetPendingApplicationsAsync();
 
         result.Count.ShouldBe(1);
-        result[0].UserId.ShouldBe(1);
+        await using var ids = _db.NewContext();
+        result[0].TeacherId.ShouldBe(await ids.Teachers.Where(t => t.UserId == 1).Select(t => t.Id).SingleAsync());
     }
 
     [Fact]

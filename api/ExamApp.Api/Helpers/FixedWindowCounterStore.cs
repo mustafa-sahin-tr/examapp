@@ -7,10 +7,15 @@ using StackExchange.Redis;
 
 namespace ExamApp.Api.Helpers;
 
-/// <summary>Sabit pencere sayacının kararı. <see cref="RetryAfter"/> reddedilince pencerenin kalan süresi.</summary>
-public readonly record struct FixedWindowDecision(bool Allowed, TimeSpan? RetryAfter)
+/// <summary>
+/// Sabit pencere sayacının kararı. <see cref="RetryAfter"/> reddedilince pencerenin kalan süresi. <see cref="Count"/> bu
+/// artıştan SONRAKİ sayaç değeri (issue #262 review: pencere başına yalnızca İLK reddi audit'lemek için —
+/// <c>Count - permits == limit</c> ⇔ bu istek limiti ilk aşan istek).
+/// </summary>
+public readonly record struct FixedWindowDecision(bool Allowed, TimeSpan? RetryAfter, long Count)
 {
-    public static FixedWindowDecision Allow => new(true, null);
+    /// <summary>Bu istek pencerede limiti İLK aşan istek mi (sayaç tam limit + permits).</summary>
+    public bool IsFirstRejection(int permits, int limit) => !Allowed && Count - permits == limit;
 }
 
 /// <summary>
@@ -30,9 +35,10 @@ public interface IFixedWindowCounterStore
 /// <summary>
 /// Redis sabit pencere: tek Lua betiğiyle atomik <c>INCRBY</c> + (TTL yoksa) <c>PEXPIRE</c>; tüm replica'lar ortak sayaç.
 ///
-/// FAIL-OPEN (ürün kararı, issue #262): Redis erişilemez / zaman aşımı / beklenmeyen hata → istek GEÇER ve uyarı loglanır
-/// (uyarı en fazla <see cref="WarningInterval"/>'da bir; kesinti boyunca log seli olmasın). Gerekçe: rate limit ikincil
-/// savunma; asıl kontrol [Authorize(Roles="Admin")] + her erişimin audit'i. Redis kesintisi admin panelini kilitlememeli.
+/// FAIL-OPEN, ama limitsiz DEĞİL (issue #262 + güvenlik review'u): Redis erişilemez / zaman aşımı / beklenmeyen hata →
+/// sayaç süreç içi <see cref="InMemoryFixedWindowCounterStore"/>'a düşer (replica başına limit — eski #246 davranışı) ve
+/// uyarı loglanır (en fazla <see cref="WarningInterval"/>'da bir; kesinti boyunca log seli olmasın). Redis kesintisi admin
+/// panelini kilitlemez, ama Redis'i düşürmek limiti de kaldırmaz; etkin limit en fazla N replica × limit olur.
 /// </summary>
 public sealed class RedisFixedWindowCounterStore : IFixedWindowCounterStore
 {
@@ -52,13 +58,17 @@ public sealed class RedisFixedWindowCounterStore : IFixedWindowCounterStore
     private readonly IRedisConnectionProvider _connection;
     private readonly TimeSpan _timeout;
     private readonly ILogger<RedisFixedWindowCounterStore> _logger;
+    private readonly IFixedWindowCounterStore _fallback;
     private long _lastWarningTicks = long.MinValue;
 
-    public RedisFixedWindowCounterStore(IRedisConnectionProvider connection, TimeSpan timeout, ILogger<RedisFixedWindowCounterStore> logger)
+    /// <param name="fallback">Redis hatasında kullanılan süreç içi sayaç; verilmezse yeni bir <see cref="InMemoryFixedWindowCounterStore"/>.</param>
+    public RedisFixedWindowCounterStore(IRedisConnectionProvider connection, TimeSpan timeout, ILogger<RedisFixedWindowCounterStore> logger,
+        IFixedWindowCounterStore? fallback = null)
     {
         _connection = connection;
         _timeout = timeout;
         _logger = logger;
+        _fallback = fallback ?? new InMemoryFixedWindowCounterStore();
     }
 
     public async ValueTask<FixedWindowDecision> TryAcquireAsync(string key, int permits, int limit, TimeSpan window, CancellationToken ct = default)
@@ -75,13 +85,13 @@ public sealed class RedisFixedWindowCounterStore : IFixedWindowCounterStore
             var current = (long)values[0];
             var ttlMs = Math.Max(1, (long)values[1]);
             return current <= limit
-                ? FixedWindowDecision.Allow
-                : new FixedWindowDecision(false, TimeSpan.FromMilliseconds(ttlMs));
+                ? new FixedWindowDecision(true, null, current)
+                : new FixedWindowDecision(false, TimeSpan.FromMilliseconds(ttlMs), current);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             WarnFailOpen(ex, key);
-            return FixedWindowDecision.Allow;
+            return await _fallback.TryAcquireAsync(key, permits, limit, window, ct);
         }
     }
 
@@ -95,7 +105,7 @@ public sealed class RedisFixedWindowCounterStore : IFixedWindowCounterStore
             return;
 
         _logger.LogWarning(ex,
-            "[RateLimit] Redis sayacına erişilemedi; FAIL-OPEN — istek limitsiz geçiriliyor (key={Key}). Uyarı en fazla {Interval}s'de bir.",
+            "[RateLimit] Redis sayacına erişilemedi; FAIL-OPEN — süreç içi (replica başına) sayaca düşüldü (key={Key}). Uyarı en fazla {Interval}s'de bir.",
             key, WarningInterval.TotalSeconds);
     }
 }
@@ -142,8 +152,8 @@ public sealed class InMemoryFixedWindowCounterStore : IFixedWindowCounterStore
 
             entry.Count += permits;
             return ValueTask.FromResult(entry.Count <= limit
-                ? FixedWindowDecision.Allow
-                : new FixedWindowDecision(false, entry.EndsAt - now));
+                ? new FixedWindowDecision(true, null, entry.Count)
+                : new FixedWindowDecision(false, entry.EndsAt - now, entry.Count));
         }
     }
 }

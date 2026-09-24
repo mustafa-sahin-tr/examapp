@@ -59,7 +59,7 @@ public sealed class AdminUserListRateLimitOptions
 /// issue #262: sayaç artık DAĞITIK — <see cref="IFixedWindowCounterStore"/> (üretimde Redis, tüm replica'lar ortak sayaç;
 /// önceden instance başına bellekteydi ve N replica'da etkin limit N×30/dk'ydı). Redis kesintisinde FAIL-OPEN (uyarı logu).
 /// <c>Redis:Configuration</c> boşsa süreç içi sayaç (lokal/test). Reddedilen istekler (429) <c>AdminDataAccessLogs</c>'a
-/// <c>Outcome=RateLimited</c> olarak da yazılır (kaynak: endpoint'teki <see cref="AdminDataAccessAttribute"/>).
+/// <c>Outcome=RateLimited</c> olarak da yazılır — pencere başına yalnızca ilk red (kaynak: endpoint'teki <see cref="AdminDataAccessAttribute"/>).
 /// Kova artık öğretmen başvurusu listesi + detayını da kapsar (<c>GET api/admin/teacher-applications[/{id}]</c>).
 ///
 /// Reddetme metni policy'ye özgüdür (<see cref="AdminUserListRateLimitPolicy.OnRejected"/>); ileride eklenecek
@@ -181,7 +181,10 @@ public sealed class AdminUserListRateLimitPolicy : IRateLimiterPolicy<string>
         _logger.LogWarning("[AdminUserList] Rate limit aşıldı: sub={Sub} path={Path}",
             AdminUserListRateLimiting.PartitionKey(context.HttpContext), context.HttpContext.Request.Path.Value);
 
-        await AuditRejectionAsync(context.HttpContext);
+        // issue #262 review: pencere başına yalnızca İLK red audit'lenir (sonraki 429'lar tabloyu şişirmesin / DB'ye
+        // yazma yükü bindirmesin). Log her red için kalır.
+        if (context.Lease.TryGetMetadata(DistributedFixedWindowRateLimiter.FirstRejectionMetadataName, out var first) && first is true)
+            await AuditRejectionAsync(context.HttpContext);
 
         await AdminUserListRateLimiting.WriteRejectionAsync(
             context, "admin.userList.rateLimited", _options.CurrentValue.WindowSeconds, cancellationToken);
@@ -233,8 +236,13 @@ public sealed class AdminUserListRateLimitPolicy : IRateLimiterPolicy<string>
 /// </summary>
 internal sealed class DistributedFixedWindowRateLimiter : RateLimiter
 {
-    private static readonly RateLimitLease Acquired = new Lease(true, null);
-    private static readonly RateLimitLease NotYet = new Lease(false, null);
+    /// <summary>
+    /// Lease metadata'sı: bu red pencerede limiti İLK aşan istek mi (<see cref="bool"/>). 429 audit'i yalnızca bunda yazılır.
+    /// </summary>
+    internal const string FirstRejectionMetadataName = "ExamApp.FirstRejection";
+
+    private static readonly RateLimitLease Acquired = new Lease(true, null, false);
+    private static readonly RateLimitLease NotYet = new Lease(false, null, false);
 
     private readonly IFixedWindowCounterStore _store;
     private readonly string _key;
@@ -263,29 +271,47 @@ internal sealed class DistributedFixedWindowRateLimiter : RateLimiter
 
         Interlocked.Exchange(ref _lastUsedTimestamp, Stopwatch.GetTimestamp());
         var decision = await _store.TryAcquireAsync(_key, permitCount, _permitLimit, _window, cancellationToken);
-        return decision.Allowed ? Acquired : new Lease(false, decision.RetryAfter);
+        return decision.Allowed
+            ? Acquired
+            : new Lease(false, decision.RetryAfter, decision.IsFirstRejection(permitCount, _permitLimit));
     }
 
     private sealed class Lease : RateLimitLease
     {
         private readonly TimeSpan? _retryAfter;
+        private readonly bool _firstRejection;
 
-        public Lease(bool isAcquired, TimeSpan? retryAfter)
+        public Lease(bool isAcquired, TimeSpan? retryAfter, bool firstRejection)
         {
             IsAcquired = isAcquired;
             _retryAfter = retryAfter;
+            _firstRejection = firstRejection;
         }
 
         public override bool IsAcquired { get; }
 
-        public override IEnumerable<string> MetadataNames =>
-            _retryAfter.HasValue ? [MetadataName.RetryAfter.Name] : [];
+        public override IEnumerable<string> MetadataNames
+        {
+            get
+            {
+                if (_retryAfter.HasValue)
+                    yield return MetadataName.RetryAfter.Name;
+                if (!IsAcquired)
+                    yield return FirstRejectionMetadataName;
+            }
+        }
 
         public override bool TryGetMetadata(string metadataName, out object? metadata)
         {
             if (_retryAfter.HasValue && metadataName == MetadataName.RetryAfter.Name)
             {
                 metadata = _retryAfter.Value;
+                return true;
+            }
+
+            if (!IsAcquired && metadataName == FirstRejectionMetadataName)
+            {
+                metadata = _firstRejection;
                 return true;
             }
 

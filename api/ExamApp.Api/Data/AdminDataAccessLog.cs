@@ -78,6 +78,12 @@ public enum AdminDataAccessOutcome
     /// <summary>Veri döndü.</summary>
     Served = 1,
 
-    /// <summary>Kullanıcı başına rate limit aşıldı (429); veri dönmedi. Kötüye kullanım incelemesi için saklanır.</summary>
-    RateLimited = 2
+    /// <summary>
+    /// Kullanıcı başına rate limit aşıldı (429); veri dönmedi. Kötüye kullanım incelemesi için saklanır — pencere başına
+    /// yalnızca İLK red yazılır (sonraki 429'lar log'da).
+    /// </summary>
+    RateLimited = 2,
+
+    /// <summary>issue #262 review: detay ucunda kayıt bulunamadı (404); veri dönmedi. Id tarama denemeleri görünür olsun.</summary>
+    NotFound = 3
 }

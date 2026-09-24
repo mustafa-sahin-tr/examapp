@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
@@ -34,6 +35,7 @@ public class StudyItemsController : BaseController
 
     [Authorize(Roles = "Teacher,Student")]
     [HttpGet]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetPaged([FromQuery] StudyItemFilterDto filter)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -43,6 +45,7 @@ public class StudyItemsController : BaseController
 
     [Authorize(Roles = "Teacher,Student")]
     [HttpGet("{id}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetById(int id)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -56,6 +59,7 @@ public class StudyItemsController : BaseController
 
     [Authorize(Roles = "Teacher")]
     [HttpPost]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     public async Task<IActionResult> Create([FromForm] CreateStudyItemRequestDto request, [FromForm] List<IFormFile> images)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -74,6 +78,7 @@ public class StudyItemsController : BaseController
 
     [Authorize(Roles = "Teacher")]
     [HttpPut("{id}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     public async Task<IActionResult> Update(int id, [FromForm] UpdateStudyItemRequestDto request, [FromForm] List<IFormFile> images)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -96,6 +101,7 @@ public class StudyItemsController : BaseController
 
     [Authorize(Policy = "TeacherOrService")]
     [HttpPost("attach-image-by-subtopics")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     public async Task<IActionResult> AttachImageBySubTopics([FromBody] AttachStudyItemImageBySubTopicsRequestDto request)
     {
         if (string.IsNullOrWhiteSpace(request.ImageUrl))
@@ -121,6 +127,7 @@ public class StudyItemsController : BaseController
 
     [Authorize(Roles = "Teacher")]
     [HttpDelete("{id}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     public async Task<IActionResult> Delete(int id)
     {
         var user = await GetAuthenticatedUserAsync();

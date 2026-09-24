@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.QuestionTransfer;
 using ExamApp.Api.Helpers;
@@ -19,6 +20,8 @@ namespace ExamApp.Api.Controllers;
 [ApiController]
 [Route("api/question-transfer")]
 [Authorize(Roles = "Teacher,Admin")]
+// issue #287: tüm uçlar öğretmen (soru bankası/aktarım) yeteneği — Teacher rolündeki çağıranın hesabı onaylı olmalı.
+[Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 public class QuestionTransferController : ControllerBase
 {
     private readonly IQuestionTransferService _service;

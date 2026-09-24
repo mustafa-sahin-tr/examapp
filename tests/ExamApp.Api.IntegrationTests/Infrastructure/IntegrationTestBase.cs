@@ -52,6 +52,17 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     protected Task WithDbAsync(Func<AppDbContext, Task> work) =>
         WithDbAsync(async db => { await work(db); return 0; });
 
+    /// <summary>
+    /// issue #287: öğretmen özellikleri (ApprovedTeacher policy) yalnızca hesabı onaylı öğretmene açık. Teacher
+    /// rolüyle öğretmen uçlarını çağıran testler önce bu kaydı açar (okulsuz, onaylı hesap).
+    /// </summary>
+    protected Task SeedApprovedTeacherAsync(int userId, int? schoolId = null) =>
+        WithDbAsync(async db =>
+        {
+            db.Teachers.Add(new Teacher { UserId = userId, SchoolId = schoolId, AccountApprovedAt = DateTime.UtcNow });
+            await db.SaveChangesAsync();
+        });
+
     // ---- HTTP clients ----
 
     protected HttpClient Anonymous() => Factory.CreateClient();

@@ -102,7 +102,8 @@ public class TeacherApprovalService : ITeacherApprovalService
                     RequestedSchoolName = r.RequestedSchoolName,
                     Status = r.Status.ToString(),
                     RejectionReason = r.RejectionReason,
-                    DecidedAt = r.DecidedAt
+                    DecidedAt = r.DecidedAt,
+                    RequiresAccountApproval = r.RequiresAccountApproval
                 };
             }).ToList()
         };
@@ -132,7 +133,8 @@ public class TeacherApprovalService : ITeacherApprovalService
             RequestedSchoolName = row.RequestedSchoolName,
             Status = row.Status.ToString(),
             RejectionReason = row.RejectionReason,
-            DecidedAt = row.DecidedAt
+            DecidedAt = row.DecidedAt,
+            RequiresAccountApproval = row.RequiresAccountApproval
         };
     }
 
@@ -151,6 +153,7 @@ public class TeacherApprovalService : ITeacherApprovalService
         public TeacherApprovalStatus Status { get; init; }
         public string? RejectionReason { get; init; }
         public DateTime? DecidedAt { get; init; }
+        public bool RequiresAccountApproval { get; init; }
     }
 
     private IQueryable<ApplicationRow> Project(IQueryable<Teacher> query) => query
@@ -172,6 +175,7 @@ public class TeacherApprovalService : ITeacherApprovalService
                     : t.ApprovalStatus == TeacherApprovalStatus.Approved && t.School != null ? t.School.Name : null,
             Status = t.ApprovalStatus,
             RejectionReason = t.ApprovalStatus == TeacherApprovalStatus.Rejected ? t.RejectionReason : null,
+            RequiresAccountApproval = t.AccountApprovedAt == null,
             // issue #187: karar anı = mevcut durumla eşleşen EN SON başarılı admin kararı (#157 audit). Teacher.UpdateTime
             // güvenilir değil (sonraki her profil kaydında SaveChanges onu da günceller).
             DecidedAt = t.ApprovalStatus == TeacherApprovalStatus.Pending
@@ -200,11 +204,14 @@ public class TeacherApprovalService : ITeacherApprovalService
         .ThenByDescending(r => r.AppliedAt)
         .ThenBy(r => r.TeacherId);
 
-    /// <summary>Onay bekleyen başvurular: bağımsız öğretmen (#94) ya da okul bağlantısı talebi (#234). Soft-deleted hariç (global filtre).</summary>
+    /// <summary>
+    /// Onay bekleyen başvurular: bağımsız öğretmen (#94), okul bağlantısı talebi (#234) ya da hesabı henüz onaylanmamış
+    /// ilk öğretmen kaydı (#287 — okul talebi olmayan, bağımsız da olmayan kayıt). Soft-deleted hariç (global filtre).
+    /// </summary>
     private IQueryable<Teacher> PendingApplications() => _context.Teachers
         .AsNoTracking()
         .Where(t => t.ApprovalStatus == TeacherApprovalStatus.Pending
-                    && (t.IsIndependentTutor || t.RequestedSchoolId != null));
+                    && (t.IsIndependentTutor || t.RequestedSchoolId != null || t.AccountApprovedAt == null));
 
     /// <summary>
     /// issue #187: her durumdaki başvurular. Bağımsız öğretmen (her durumda) ya da okul talebi olan öğretmen (Pending;
@@ -216,6 +223,8 @@ public class TeacherApprovalService : ITeacherApprovalService
         .AsNoTracking()
         .Where(t => t.IsIndependentTutor
                     || t.RequestedSchoolId != null
+                    // issue #287: hesabı onaylanmamış (bekleyen ya da reddedilmiş) ilk öğretmen kaydı.
+                    || t.AccountApprovedAt == null
                     || _context.AdminUserActionLogs.Any(l =>
                         l.TargetType == AdminUserTargetType.Teacher
                         && l.TargetId == t.Id
@@ -230,9 +239,10 @@ public class TeacherApprovalService : ITeacherApprovalService
             return guardError;
 
         // issue #234: okul bağlantısı talebinde okul bağı YALNIZCA burada kurulur (RequestedSchoolId → SchoolId).
+        // issue #287: okul talebi olmayan, bağımsız da olmayan ilk hesap başvurusunda okul bağı kurulmaz.
         var isIndependent = teacher!.IsIndependentTutor;
         var expectedRequestedSchoolId = teacher.RequestedSchoolId;
-        var linksSchool = !isIndependent;
+        var linksSchool = !isIndependent && expectedRequestedSchoolId.HasValue;
         var newSchoolId = teacher.SchoolId;
         var newRequestedSchoolId = teacher.RequestedSchoolId;
         if (linksSchool)
@@ -274,6 +284,9 @@ public class TeacherApprovalService : ITeacherApprovalService
                     .SetProperty(t => t.RejectionReason, (string?)null)
                     .SetProperty(t => t.SchoolId, newSchoolId)
                     .SetProperty(t => t.RequestedSchoolId, newRequestedSchoolId)
+                    // issue #287: İLK başarılı onay öğretmen hesabını açar; önceden onaylı hesabın tarihi korunur
+                    // (sonraki bağımsız/okul başvurusunun onayı AccountApprovedAt'i değiştirmez).
+                    .SetProperty(t => t.AccountApprovedAt, t => t.AccountApprovedAt ?? now)
                     .SetProperty(t => t.UpdateTime, now)
                     .SetProperty(t => t.UpdateUserId, adminUserId), ct);
 
@@ -442,16 +455,17 @@ public class TeacherApprovalService : ITeacherApprovalService
     };
 
     /// <summary>
-    /// Karar alabilen başvurular: bağımsız öğretmen (issue #94) ya da okul bağlantısı talebi olan öğretmen
-    /// (RequestedSchoolId dolu, issue #234) — ikisi de Pending olmalı. Talebi olmayan okula bağlı öğretmen uygun
-    /// değildir; zaten karar verilmiş başvuru tekrar onaylanamaz/reddedilemez (idempotency).
+    /// Karar alabilen başvurular: bağımsız öğretmen (issue #94), okul bağlantısı talebi olan öğretmen
+    /// (RequestedSchoolId dolu, issue #234) ya da hesabı henüz onaylanmamış ilk öğretmen kaydı (issue #287) — hepsi
+    /// Pending olmalı. Talebi olmayan, hesabı zaten onaylı okula bağlı öğretmen uygun değildir; zaten karar verilmiş
+    /// başvuru tekrar onaylanamaz/reddedilemez (idempotency).
     /// </summary>
     private ResponseBaseDto? GuardPendingApplication(Teacher? teacher)
     {
         if (teacher == null)
             return new ResponseBaseDto { Success = false, NotFound = true, Message = _localizer["admin.teacherApplication.notFound"] };
 
-        if (!teacher.IsIndependentTutor && !teacher.RequestedSchoolId.HasValue)
+        if (!teacher.IsIndependentTutor && !teacher.RequestedSchoolId.HasValue && teacher.AccountApprovedAt != null)
             return Fail(_localizer["admin.teacherApplication.noPendingApplication"]);
 
         if (teacher.ApprovalStatus != TeacherApprovalStatus.Pending)

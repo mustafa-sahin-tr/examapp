@@ -325,6 +325,7 @@ public sealed class TeacherSeedService : ITeacherSeedService
                     SchoolId = p.School.Id,
                     IsIndependentTutor = false,
                     ApprovalStatus = TeacherApprovalStatus.Approved,
+                    AccountApprovedAt = DateTime.UtcNow, // issue #287: seed öğretmenler onaylı hesapla başlar
                     IsSeedData = true
                 };
                 created.TeacherSubjects.Add(new TeacherSubject { SubjectId = p.SubjectId });

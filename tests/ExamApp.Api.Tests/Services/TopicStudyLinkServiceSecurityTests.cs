@@ -46,8 +46,8 @@ public class TopicStudyLinkServiceSecurityTests : IDisposable
         var subject = new Subject { Name = "Matematik" };
         ctx.AddRange(grade, subject);
         ctx.Teachers.AddRange(
-            new Teacher { UserId = OwnerUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "a" },
-            new Teacher { UserId = OtherTeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "b" },
+            new Teacher { UserId = OwnerUserId, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow, Bio = "a" },
+            new Teacher { UserId = OtherTeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow, Bio = "b" },
             new Teacher { UserId = PendingUserId, ApprovalStatus = TeacherApprovalStatus.Pending, Bio = "c" },
             new Teacher { UserId = RejectedUserId, ApprovalStatus = TeacherApprovalStatus.Rejected, Bio = "d" });
         await ctx.SaveChangesAsync();

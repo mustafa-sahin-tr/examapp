@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Controllers;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
@@ -19,6 +20,8 @@ using System.Threading.Tasks;
 
 [ApiController]
 [Route("api/questions")]
+// issue #287: tüm uçlar öğretmen (soru bankası/aktarım) yeteneği — Teacher rolündeki çağıranın hesabı onaylı olmalı.
+[Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)]
 public class QuestionsController : BaseController
 {
     private readonly IMinIoService _minioService;

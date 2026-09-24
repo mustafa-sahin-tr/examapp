@@ -21,6 +21,10 @@ public class AdminStudentListItemDto
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
+    /// <summary>
+    /// KISMİ öğrenci numarası (issue #262): yalnızca son 4 karakter, <c>****1234</c>; 4 karakter veya daha kısa numara
+    /// tamamen gizli (<c>****</c>); numara yoksa boş string. Bkz. <see cref="ExamApp.Api.Helpers.StudentNumberMask"/>.
+    /// </summary>
     public string StudentNumber { get; set; } = string.Empty;
 
     /// <summary>Bağlı okul; okulsuz öğrenci için null.</summary>

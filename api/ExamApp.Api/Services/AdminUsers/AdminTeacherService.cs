@@ -69,7 +69,6 @@ public class AdminTeacherService : IAdminTeacherService
                 return new AdminTeacherListItemDto
                 {
                     Id = r.Id,
-                    UserId = r.UserId,
                     FullName = user?.FullName ?? string.Empty,
                     // issue #246: liste görünümünde tam e-posta dönülmez (KVKK veri minimizasyonu).
                     Email = EmailMask.Apply(user?.Email),

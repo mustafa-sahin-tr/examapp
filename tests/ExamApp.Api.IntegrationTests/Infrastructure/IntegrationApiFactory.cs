@@ -103,6 +103,11 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
             services.RemoveAll<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
             services.AddDistributedMemoryCache();
 
+            // issue #262: admin veri uçlarının rate limit sayacı üretimde Redis'te (fail-open). Test ortamında Redis yok
+            // ("unused") → fail-open her isteği geçirirdi; süreç içi sayaçla limit davranışı uçtan uca doğrulanır.
+            services.RemoveAll<ExamApp.Api.Helpers.IFixedWindowCounterStore>();
+            services.AddSingleton<ExamApp.Api.Helpers.IFixedWindowCounterStore, ExamApp.Api.Helpers.InMemoryFixedWindowCounterStore>();
+
             // issue #225: RabbitMQ:Host test ortamında yok → Program.cs bus kurmaz. Consumer'ları gerçek
             // MassTransit pipeline'ı (retry definition dahil) üzerinden, in-memory test harness ile çalıştır.
             services.AddMassTransitTestHarness(x =>

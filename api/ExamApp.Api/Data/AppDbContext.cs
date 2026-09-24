@@ -604,8 +604,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AdminDataAccessLog>(e =>
         {
             e.Property(a => a.Resource).HasConversion<string>().HasMaxLength(32);
+            // issue #262: mevcut satırlar veri döndürmüş erişimlerdir → DB varsayılanı Served. Sentinel da Served:
+            // değer Served ise EF kolonu göndermez ve DB varsayılanı (yine Served) yazılır; RateLimited her zaman gönderilir.
+            e.Property(a => a.Outcome).HasConversion<string>().HasMaxLength(16)
+                .HasDefaultValue(AdminDataAccessOutcome.Served)
+                .HasSentinel(AdminDataAccessOutcome.Served);
             e.HasIndex(a => new { a.ActorKeycloakId, a.OccurredAtUtc });
-            e.HasIndex(a => a.OccurredAtUtc);
+            e.HasIndex(a => a.OccurredAtUtc); // saklama süresi temizliği (issue #262) de bu index'i kullanır
         });
 
         // Admin hesap aksiyonu kaydı (issue #156, şifre sıfırlama). #246 ile aynı: enum'lar string; yalnızca Outcome güncellenir.

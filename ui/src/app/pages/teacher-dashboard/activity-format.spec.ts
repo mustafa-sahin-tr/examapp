@@ -74,10 +74,19 @@ describe('activity-format (issue #56)', () => {
       expect(formatActivityPeriod(1, new Date(Date.UTC(2026, 8, 23, 12)), 'tr')).toBe('23 Eylül 2026');
     });
 
-    it('formatActivityPeriod_NearUtcMidnight_UsesUtcCalendarDayLikeBackend', () => {
-      // Yerel saat dilimi ne olursa olsun pencere UTC gününe göre kapanır.
-      expect(formatActivityPeriod(1, new Date(Date.UTC(2026, 8, 23, 23, 59)), 'tr')).toBe('23 Eylül 2026');
-      expect(formatActivityPeriod(1, new Date(Date.UTC(2026, 8, 24, 0, 1)), 'tr')).toBe('24 Eylül 2026');
+    it('formatActivityPeriod_AfterTurkeyMidnight_UsesTurkeyLocalDayLikeBackend', () => {
+      // 2026-09-24T22:30Z = 25 Eylül 01:30 (Europe/Istanbul, UTC+3) → pencere 25 Eylül'de kapanır (#265).
+      expect(formatActivityPeriod(1, new Date(Date.UTC(2026, 8, 24, 22, 30)), 'tr')).toBe('25 Eylül 2026');
+
+      const week = formatActivityPeriod(7, new Date(Date.UTC(2026, 8, 24, 22, 30)), 'tr');
+      expect(week).toContain('19');
+      expect(week).toContain('25 Eylül 2026');
+    });
+
+    it('formatActivityPeriod_BeforeTurkeyMidnight_StaysOnSameLocalDay', () => {
+      // 20:59Z = 23:59 TR → hâlâ 24 Eylül; 21:00Z = 00:00 TR → 25 Eylül.
+      expect(formatActivityPeriod(1, new Date(Date.UTC(2026, 8, 24, 20, 59)), 'tr')).toBe('24 Eylül 2026');
+      expect(formatActivityPeriod(1, new Date(Date.UTC(2026, 8, 24, 21, 0)), 'tr')).toBe('25 Eylül 2026');
     });
   });
 });

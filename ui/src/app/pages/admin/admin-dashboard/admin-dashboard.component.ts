@@ -27,6 +27,7 @@ import {
   AdminDashboardTrendPoint,
   AdminDashboardTrends,
 } from '../../../models/admin-dashboard.model';
+import { dashboardIsoDate } from '../../../shared/utils/dashboard-time-zone.util';
 
 type SummaryCardKey = 'teachers' | 'students' | 'worksheets' | 'questions';
 
@@ -272,45 +273,51 @@ function buildBarScheme(name: string, tokenName: string): Color {
   };
 }
 
-/** `yyyy-MM-dd` → yerel gece yarısı Date (saat dilimi kayması olmadan takvim günü). */
+/*
+ * Takvim günü temsili (issue #265): backend gün kovaları Türkiye yerel günüdür (`DASHBOARD_TIME_ZONE`).
+ * Bileşen içinde bir takvim günü, o günün **UTC gece yarısı** `Date`'i ile temsil edilir; tüm aritmetik
+ * `*UTC*` metotlarıyla, tüm biçimleme `timeZone: 'UTC'` ile yapılır. Böylece sonuç tarayıcının saat
+ * diliminden (ve DST'den) bağımsızdır. "Bugün" yalnızca `todayCalendarDate()` ile, dashboard saat
+ * diliminden türetilir.
+ */
+
+/** `yyyy-MM-dd` → o takvim gününün UTC gece yarısı temsili. */
 function parseIsoDate(isoDate: string): Date {
   const [y, m, d] = isoDate.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(Date.UTC(y, m - 1, d));
 }
 
-function normalizeDate(date: Date): Date {
-  const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
-  return normalized;
+/** Dashboard saat dilimine (backend `Dashboard:TimeZone`) göre bugünün takvim günü. */
+function todayCalendarDate(): Date {
+  return parseIsoDate(dashboardIsoDate(new Date()));
 }
 
 function toIsoDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  result.setHours(0, 0, 0, 0);
+  result.setUTCDate(result.getUTCDate() + days);
   return result;
 }
 
 /** x ekseni etiketi: "10 Ağu" (aktif dile göre) */
 function formatWeekLabel(weekStart: Date, locale: string): string {
-  return weekStart.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  return weekStart.toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
 /** y ekseni etiketi: "Pzt" (aktif dile göre) */
 function formatDayLabel(date: Date, locale: string): string {
-  return date.toLocaleDateString(locale, { weekday: 'short' });
+  return date.toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' });
 }
 
 /** Tooltip tarihi: "10 Ağu 2026" (aktif dile göre) */
 function formatTooltipDate(date: Date, locale: string): string {
-  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
 /**
@@ -366,13 +373,13 @@ function pickTickNames(points: LoginBarPoint[], step: number): string[] {
 }
 
 /**
- * `yyyy-MM-dd` → bugünden kaç gün önce (0 = bugün). Yerel takvim günü ile karşılaştırılır — `parseIsoDate`
- * ve heatmap ızgarasıyla aynı gün tanımı; UTC kullanılsaydı yerel gece yarısından sonraki ilk saatlerde
- * "bugün"/"dün" kayardı.
+ * `yyyy-MM-dd` → bugünden kaç gün önce (0 = bugün). "Bugün" backend gün kovalarıyla aynı tanımdır: dashboard
+ * saat dilimindeki (Türkiye, #265) takvim günü — tarayıcının saat dilimi değil. Aksi hâlde TR gece yarısı
+ * civarında ya da farklı dilimdeki bir tarayıcıda "bugün"/"dün" backend'e göre kayardı.
  */
 function daysAgo(isoDate: string): number {
   const then = parseIsoDate(isoDate).getTime();
-  const today = normalizeDate(new Date()).getTime();
+  const today = todayCalendarDate().getTime();
   return Math.max(0, Math.round((today - then) / MS_PER_DAY));
 }
 
@@ -718,7 +725,7 @@ export class AdminDashboardComponent implements OnInit {
    * (`buildHeatThresholds`); gerçek sayı tooltip/özet için `extra.count`'a yazılır.
    */
   private transformToHeatmap(points: AdminDashboardTrendPoint[], verb: string): HeatmapWeek[] {
-    const endDate = points.length > 0 ? parseIsoDate(points[points.length - 1].date) : normalizeDate(new Date());
+    const endDate = points.length > 0 ? parseIsoDate(points[points.length - 1].date) : todayCalendarDate();
     const startDate = addDays(endDate, -(TOTAL_WEEKS * DAYS_PER_WEEK - 1));
 
     const countByDate = new Map(points.map((p) => [p.date, p.count]));

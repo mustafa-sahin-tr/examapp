@@ -216,14 +216,16 @@ export class BadgeDefinitionsComponent {
     ref.afterClosed().subscribe((saved) => {
       this.dialogOpen.set(false);
       if (!saved) return;
-      this.upsert(saved);
+      // Oluşturmada sayfa yeniden yüklenir (sunucu sırası ve sayfa boyutu korunur); düzenlemede satır yerinde güncellenir.
+      if (data.definition) this.upsert(saved);
+      else this.load();
       this.snack.open(this.text(data.definition ? 'messages.updated' : 'messages.created', { name: saved.name }), this.close, {
         duration: 3000,
       });
     });
   }
 
-  /** Sunucunun döndürdüğü DTO'yu listeye yazar; "aktif" filtresinde pasifleşen satır listeden çıkar. */
+  /** Sunucunun döndürdüğü DTO'yu mevcut satıra yazar; "aktif" filtresinde pasifleşen satır listeden çıkar. */
   private upsert(saved: BadgeDefinitionAdmin): void {
     const hide = this.statusFilter() === 'active' && !saved.isActive;
     const exists = this.items().some((i) => i.id === saved.id);
@@ -236,9 +238,6 @@ export class BadgeDefinitionsComponent {
     }
     if (exists) {
       this.items.update((items) => items.map((i) => (i.id === saved.id ? saved : i)));
-    } else {
-      this.items.update((items) => [saved, ...items]);
-      this.totalCount.update((n) => n + 1);
     }
   }
 

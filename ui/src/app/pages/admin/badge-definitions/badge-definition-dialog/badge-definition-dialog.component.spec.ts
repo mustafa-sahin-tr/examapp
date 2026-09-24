@@ -213,6 +213,15 @@ describe('BadgeDefinitionDialogComponent', () => {
     expect(component.ruleForm.valid).toBeTrue();
   });
 
+  it('edit_LegacyAliasConfig_PrefillsTarget_AndSavesCanonicalTarget', () => {
+    init({ definition: dto({ ruleType: 'AnswerCount', ruleConfigJson: '{"count":75}' }) });
+    service.update.and.returnValue(of(dto()));
+
+    expect(component.ruleForm.getRawValue()).toEqual({ target: 75 });
+    component.save();
+    expect(service.update.calls.mostRecent().args[1].ruleConfigJson).toBe('{"target":75}');
+  });
+
   it('save_Edit_PutsWithoutCode', () => {
     init({ definition: dto() });
     service.update.and.returnValue(of(dto()));

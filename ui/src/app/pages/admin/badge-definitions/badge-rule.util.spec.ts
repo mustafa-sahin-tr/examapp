@@ -5,6 +5,7 @@ import {
   findRuleTypeSchema,
   normalizeErrorKey,
   ruleFieldValues,
+  readTarget,
   ruleSummary,
   serverFieldErrors,
 } from './badge-rule.util';
@@ -55,6 +56,31 @@ describe('badge-rule.util', () => {
     expect(legacy.key).toBeNull();
     expect(legacy.raw).toBe('StudyStreak {"target":3}');
     expect(ruleSummary({ ruleType: 'AnswerCount', ruleConfigJson: 'not json' }).params.target).toBe('?');
+  });
+
+  it('readTarget_FallsBackToEvaluatorLegacyAliasesPerRuleType', () => {
+    expect(readTarget('AnswerCount', { count: 50 })).toBe(50);
+    expect(readTarget('CorrectStreak', { streak: 5 })).toBe(5);
+    expect(readTarget('TotalStudyTimeMinutes', { targetMinutes: 90 })).toBe(90);
+    expect(readTarget('TotalCorrectAnswers', { correct: 30 })).toBe(30);
+    expect(readTarget('ActiveDays', { days: 7 })).toBe(7);
+    expect(readTarget('StudyStreak', { days: 3 })).toBe(3);
+    expect(readTarget('AnswerCount', { target: 10, count: 50 })).withContext('target önceliklidir').toBe(10);
+    expect(readTarget('AnswerCount', { days: 7 })).withContext('başka tipin alias\'ı okunmaz').toBeUndefined();
+  });
+
+  it('ruleSummary_LegacyAliasRow_ShowsTarget', () => {
+    const summary = ruleSummary({ ruleType: 'SubjectStudyTimeMinutes', ruleConfigJson: '{"subjectName":"Türkçe","minutes":300}' });
+    expect(summary.key).toBe('SubjectStudyTimeMinutes');
+    expect(summary.params).toEqual({ target: '300', subject: 'Türkçe' });
+  });
+
+  it('ruleFieldValues_LegacyAlias_PrefillsTarget', () => {
+    expect(ruleFieldValues(subject, { count: 40, subjectName: 'Matematik' })).toEqual({
+      target: 40,
+      subjectId: null,
+      subjectName: 'Matematik',
+    });
   });
 
   it('serverFieldErrors_NormalizesKeys', () => {

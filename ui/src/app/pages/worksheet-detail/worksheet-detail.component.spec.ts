@@ -12,7 +12,7 @@ import { WorksheetDetailComponent } from './worksheet-detail.component';
 import { TestService } from '../../services/test.service';
 import { GradesService } from '../../services/grades.service';
 import { AuthService, UserProfile } from '../../services/auth.service';
-import { Test } from '../../models/test-instance';
+import { Test, TestInstance } from '../../models/test-instance';
 import { WorksheetDetail } from '../../models/worksheet-detail';
 import { WorksheetAssignmentDialogData } from './components/assignment-dialog/worksheet-assignment-dialog.component';
 import { StudentService } from '../../services/student.service';
@@ -76,6 +76,25 @@ describe('WorksheetDetailComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('study link suggestions (issue #61)', () => {
+    it('currentQuestionHelpers_FollowCurrentIndex', () => {
+      component.results = { testInstanceQuestions: [{ id: 501 }, { id: 502 }] } as unknown as TestInstance;
+      component.questions = [{ status: 'correct' }, { status: 'incorrect' }];
+
+      expect(component['currentTestInstanceQuestionId']()).toBe(501);
+      expect(component['isCurrentQuestionWrong']()).toBeFalse();
+
+      component.questionSelected(1);
+      expect(component['currentTestInstanceQuestionId']()).toBe(502);
+      expect(component['isCurrentQuestionWrong']()).toBeTrue();
+    });
+
+    it('currentQuestionHelpers_NoResults_ReturnNullAndFalse', () => {
+      expect(component['currentTestInstanceQuestionId']()).toBeNull();
+      expect(component['isCurrentQuestionWrong']()).toBeFalse();
+    });
   });
 
   describe('copyWorksheet', () => {

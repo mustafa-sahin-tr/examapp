@@ -72,9 +72,18 @@
 
 .columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  // Issue #61: 4. panel (çalışma linkleri) satır ve aksiyonları sığsın diye biraz daha geniş.
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr);
   gap: 16px;
   align-items: start;
+
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    .column--links {
+      grid-column: 1 / -1;
+    }
+  }
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;

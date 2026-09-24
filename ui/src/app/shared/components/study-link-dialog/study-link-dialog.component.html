@@ -1,0 +1,78 @@
+<div class="sl-dialog" *transloco="let t; prefix: 'study-links'">
+  <h2 mat-dialog-title>{{ isEdit ? t('dialog.editTitle') : t('dialog.createTitle') }}</h2>
+
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <mat-dialog-content class="sl-content">
+      @if (data.scopeName) {
+        <p class="sl-scope">{{ t('dialog.scopeLabel', { name: data.scopeName }) }}</p>
+      }
+
+      @if (error(); as message) {
+        <div class="sl-error" role="alert" data-testid="dialog-error">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ message }}</span>
+        </div>
+      }
+
+      <mat-form-field appearance="outline" class="sl-field">
+        <mat-label>{{ t('dialog.titleLabel') }}</mat-label>
+        <input
+          matInput
+          formControlName="title"
+          data-testid="title-input"
+          [placeholder]="t('dialog.titlePlaceholder')"
+          [maxlength]="titleMax"
+        />
+        @if (form.controls.title.hasError('required')) {
+          <mat-error>{{ t('dialog.errors.titleRequired') }}</mat-error>
+        } @else if (form.controls.title.hasError('maxlength')) {
+          <mat-error>{{ t('dialog.errors.titleTooLong', { max: titleMax }) }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="sl-field">
+        <mat-label>{{ t('dialog.urlLabel') }}</mat-label>
+        <input
+          matInput
+          type="url"
+          inputmode="url"
+          formControlName="url"
+          data-testid="url-input"
+          [placeholder]="t('dialog.urlPlaceholder')"
+        />
+        <mat-hint>{{ t('dialog.urlHint') }}</mat-hint>
+        @if (form.controls.url.hasError('required')) {
+          <mat-error>{{ t('dialog.errors.urlRequired') }}</mat-error>
+        } @else if (form.controls.url.hasError('maxlength')) {
+          <mat-error>{{ t('dialog.errors.urlTooLong', { max: urlMax }) }}</mat-error>
+        } @else if (form.controls.url.hasError('url')) {
+          <mat-error data-testid="url-error">{{ t('dialog.errors.urlInvalid') }}</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="sl-source">
+        <span class="sl-label" id="sl-source-label">{{ t('dialog.sourceLabel') }}</span>
+        <mat-radio-group formControlName="sourceType" aria-labelledby="sl-source-label" class="sl-radios">
+          @for (type of sourceTypes; track type) {
+            <mat-radio-button [value]="type">{{ t('source.' + type) }}</mat-radio-button>
+          }
+        </mat-radio-group>
+      </div>
+
+      <mat-slide-toggle formControlName="isActive" data-testid="active-toggle">{{ t('dialog.activeLabel') }}</mat-slide-toggle>
+      @if (activationBlocked) {
+        <p class="sl-limit-hint" role="status">{{ t('dialog.activeLimitHint', { max: data.maxActiveLinks }) }}</p>
+      }
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end" class="sl-actions">
+      <button mat-stroked-button type="button" (click)="cancel()" [disabled]="submitting()">{{ t('dialog.cancel') }}</button>
+      <button mat-flat-button color="primary" type="submit" data-testid="save" [disabled]="submitting()">
+        @if (submitting()) {
+          <mat-spinner diameter="18"></mat-spinner>
+        }
+        {{ t('dialog.save') }}
+      </button>
+    </mat-dialog-actions>
+  </form>
+</div>

@@ -270,5 +270,15 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapDefaultEndpoints();
 
+// issue #277 review (NIT): exam API'nin Program.cs'indeki aynı desen — RabbitMQ:Host tanımlı
+// değilse (entegrasyon testleri / RabbitMQ'suz lokal çalıştırma) sessizce değil, açıkça uyarı
+// loglanır ki eksik yapılandırma fark edilmeden Users.Role senkronunun çalışmadığı durum
+// üretimde atlanmasın.
+if (!rabbitMqEnabled)
+{
+    app.Logger.LogWarning(
+        "RabbitMQ:Host tanımlı değil — auth-api consumer'ı (UserRoleChangedEvent, issue #277) çalışmıyor; Users.Role senkronlanmaz.");
+}
+
 app.Run();
 return 0;

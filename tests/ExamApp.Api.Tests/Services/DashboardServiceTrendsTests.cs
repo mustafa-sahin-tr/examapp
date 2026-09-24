@@ -423,35 +423,61 @@ public class DashboardServiceTrendsTests : IDisposable
         result.StudentLogin.ShouldAllBe(p => p.Count == 0);
     }
 
+    // ---- pencere sınırları (issue #265 review: yerel gece yarısı = önceki gün 21:00 UTC) ----
+
+    /// <summary><see cref="NewService"/> ile aynı sabit saatteki 7 günlük pencere: [StartUtc, EndUtc).</summary>
+    private static LocalDayWindow SevenDayWindow => IstanbulAt(Today.AddHours(12)).LastDays(7);
+
     [Fact]
-    public async Task GetTrendsAsync_QuestionCreatedOnCutoffBoundary_IsIncluded()
+    public async Task GetTrendsAsync_RowAtWindowStart_IsCountedOnFirstDay_AndOneTickEarlierIsExcluded()
     {
-        // cutoff = today - (days - 1); the boundary day itself must be included (>=).
+        // StartUtc = ilk günün TR 00:00'ı (inclusive, >=). Bir tick öncesi önceki TR günüdür → pencere dışı.
+        var window = SevenDayWindow;
+        window.StartUtc.ShouldBe(Today.AddDays(-7).AddHours(21));
         await using (var ctx = _db.NewContext())
         {
-            var q = await AddQuestionAsync(ctx);
-            await SetQuestionCreateTimeAsync(ctx, q, Today.AddDays(-6)); // exact cutoff for days=7
+            var inside = await AddQuestionAsync(ctx);
+            await SetQuestionCreateTimeAsync(ctx, inside, window.StartUtc);
+            var outside = await AddQuestionAsync(ctx);
+            await SetQuestionCreateTimeAsync(ctx, outside, window.StartUtc.AddTicks(-1));
+            await AddLoginEventAsync(ctx, window.StartUtc, "Student", success: true);
+            await AddLoginEventAsync(ctx, window.StartUtc.AddTicks(-1), "Student", success: true);
         }
 
         await using var check = _db.NewContext();
         var result = await NewService(check).GetTrendsAsync(7);
 
+        result.QuestionCreated.First().Date.ShouldBe(window.FirstDay);
         result.QuestionCreated.First().Count.ShouldBe(1);
+        result.QuestionCreated.Sum(p => p.Count).ShouldBe(1);
+        result.StudentLogin.First().Count.ShouldBe(1);
+        result.StudentLogin.Sum(p => p.Count).ShouldBe(1);
     }
 
     [Fact]
-    public async Task GetTrendsAsync_StudentLoginOnCutoffBoundary_IsIncluded()
+    public async Task GetTrendsAsync_RowOneTickBeforeWindowEnd_IsCountedOnLastDay_AndAtEndIsExcluded()
     {
-        // cutoff = today - (days - 1); the boundary day itself must be included (>=).
+        // EndUtc = yarının TR 00:00'ı (exclusive, <). Bir tick öncesi bugünün son anı.
+        var window = SevenDayWindow;
+        window.EndUtc.ShouldBe(Today.AddHours(21));
         await using (var ctx = _db.NewContext())
         {
-            await AddLoginEventAsync(ctx, Today.AddDays(-6), "Student", success: true); // exact cutoff for days=7
+            var inside = await AddQuestionAsync(ctx);
+            await SetQuestionCreateTimeAsync(ctx, inside, window.EndUtc.AddTicks(-1));
+            var outside = await AddQuestionAsync(ctx);
+            await SetQuestionCreateTimeAsync(ctx, outside, window.EndUtc);
+            await AddLoginEventAsync(ctx, window.EndUtc.AddTicks(-1), "Student", success: true);
+            await AddLoginEventAsync(ctx, window.EndUtc, "Student", success: true);
         }
 
         await using var check = _db.NewContext();
         var result = await NewService(check).GetTrendsAsync(7);
 
-        result.StudentLogin.First().Count.ShouldBe(1);
+        result.QuestionCreated.Last().Date.ShouldBe(window.LastDay);
+        result.QuestionCreated.Last().Count.ShouldBe(1);
+        result.QuestionCreated.Sum(p => p.Count).ShouldBe(1);
+        result.StudentLogin.Last().Count.ShouldBe(1);
+        result.StudentLogin.Sum(p => p.Count).ShouldBe(1);
     }
 
     // ---- issue #265: yerel (Europe/Istanbul) gün kovaları ----

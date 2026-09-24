@@ -559,4 +559,47 @@ public class TeacherServiceActivitySummaryTests : IDisposable
         two.TotalQuestionsSolved.ShouldBe(11);
         other.TotalQuestionsSolved.ShouldBe(50);
     }
+
+    [Fact]
+    public async Task Activity_window_start_is_inclusive_at_local_midnight_and_one_tick_earlier_is_excluded()
+    {
+        // review: pencere başlangıcı = ilk günün TR 00:00'ı = önceki gün 21:00 UTC (>=). Öğretmen uçlarında üst sınır yok.
+        var calendar = new LocalDayCalendar(LocalDayCalendar.DefaultTimeZoneId, new FixedTimeProvider(new DateTimeOffset(Utc(2026, 9, 25, 10, 0))));
+        var start = calendar.LastDays(7).StartUtc;
+        start.ShouldBe(Utc(2026, 9, 18, 21, 0));
+
+        var seed = await SeedSchoolScenarioAsync();
+        await AddAnswersAsync(seed.W1, seed.StudentA, count: 2, correct: 0, timeEach: 1, answeredAt: start);
+        await AddAnswersAsync(seed.W1, seed.StudentB, count: 5, correct: 0, timeEach: 1, answeredAt: start.AddTicks(-1));
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx, calendar).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 7);
+
+        result.TotalQuestionsSolved.ShouldBe(2);
+        result.TopStudents.ShouldHaveSingleItem().StudentId.ShouldBe(seed.StudentA);
+    }
+
+    [Fact]
+    public async Task Cache_key_follows_the_teacher_record_scope_not_just_the_token()
+    {
+        // security LOW-1: kapsam öğretmen KAYDINDAN çözülür. Token kapsamı (TeacherId, S1) aynı kalsa da öğretmenin okulu
+        // TTL içinde kaldırılırsa (kayıt SchoolId=null → dar kapsam) önceki okul kapsamlı sonuç dönmemeli.
+        var seed = await SeedSchoolScenarioAsync();
+        await SeedAnswersAsync(seed);
+        using var cache = new TeacherActivityCache(TimeSpan.FromSeconds(60));
+
+        await using (var ctx = _db.NewContext())
+        {
+            var before = await NewService(ctx, LocalDayCalendar.Default, cache).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 7);
+            before.TotalQuestionsSolved.ShouldBe(16);
+        }
+
+        await using (var ctx = _db.NewContext())
+            await ctx.Teachers.Where(t => t.UserId == TeacherId).ExecuteUpdateAsync(u => u.SetProperty(t => t.SchoolId, (int?)null));
+
+        await using var check = _db.NewContext();
+        var after = await NewService(check, LocalDayCalendar.Default, cache).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 7);
+
+        after.TotalQuestionsSolved.ShouldBe(0); // dar kapsam: sınıf ataması genişletilmez, Approved Booking yok
+    }
 }

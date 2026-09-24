@@ -13,6 +13,8 @@ public class TeacherActivityCacheTests
         public int Value { get; } = value;
     }
 
+    private static int Count(Box _) => 1;
+
     [Fact]
     public async Task Concurrent_callers_share_one_in_flight_computation()
     {
@@ -27,8 +29,8 @@ public class TeacherActivityCacheTests
             return new Box(42);
         }
 
-        var first = cache.GetOrCreateAsync("k", Factory);
-        var second = cache.GetOrCreateAsync("k", Factory);
+        var first = cache.GetOrCreateAsync("k", Factory, Count);
+        var second = cache.GetOrCreateAsync("k", Factory, Count);
         gate.SetResult();
 
         (await first).Value.ShouldBe(42);
@@ -36,7 +38,7 @@ public class TeacherActivityCacheTests
         calls.ShouldBe(1);
 
         // Tamamlanmış sonuç TTL boyunca döner.
-        (await cache.GetOrCreateAsync("k", Factory)).Value.ShouldBe(42);
+        (await cache.GetOrCreateAsync("k", Factory, Count)).Value.ShouldBe(42);
         calls.ShouldBe(1);
     }
 
@@ -47,8 +49,8 @@ public class TeacherActivityCacheTests
         var calls = 0;
         Task<Box> Factory(CancellationToken _) => Task.FromResult(new Box(Interlocked.Increment(ref calls)));
 
-        (await cache.GetOrCreateAsync("a", Factory)).Value.ShouldBe(1);
-        (await cache.GetOrCreateAsync("b", Factory)).Value.ShouldBe(2);
+        (await cache.GetOrCreateAsync("a", Factory, Count)).Value.ShouldBe(1);
+        (await cache.GetOrCreateAsync("b", Factory, Count)).Value.ShouldBe(2);
     }
 
     [Fact]
@@ -62,8 +64,8 @@ public class TeacherActivityCacheTests
                 ? Task.FromException<Box>(new InvalidOperationException("db down"))
                 : Task.FromResult(new Box(7));
 
-        await Should.ThrowAsync<InvalidOperationException>(() => cache.GetOrCreateAsync("k", Factory));
-        (await cache.GetOrCreateAsync("k", Factory)).Value.ShouldBe(7);
+        await Should.ThrowAsync<InvalidOperationException>(() => cache.GetOrCreateAsync("k", Factory, Count));
+        (await cache.GetOrCreateAsync("k", Factory, Count)).Value.ShouldBe(7);
         calls.ShouldBe(2);
     }
 
@@ -85,9 +87,9 @@ public class TeacherActivityCacheTests
             return new Box(5);
         }
 
-        var owner = cache.GetOrCreateAsync("k", Factory, ownerCts.Token);
+        var owner = cache.GetOrCreateAsync("k", Factory, Count, ownerCts.Token);
         await ownerStarted.Task;
-        var waiter = cache.GetOrCreateAsync("k", Factory);
+        var waiter = cache.GetOrCreateAsync("k", Factory, Count);
         ownerCts.Cancel();
 
         await Should.ThrowAsync<OperationCanceledException>(() => owner);
@@ -102,7 +104,41 @@ public class TeacherActivityCacheTests
         var calls = 0;
         Task<Box> Factory(CancellationToken _) => Task.FromResult(new Box(Interlocked.Increment(ref calls)));
 
-        (await cache.GetOrCreateAsync("k", Factory)).Value.ShouldBe(1);
-        (await cache.GetOrCreateAsync("k", Factory)).Value.ShouldBe(2);
+        (await cache.GetOrCreateAsync("k", Factory, Count)).Value.ShouldBe(1);
+        (await cache.GetOrCreateAsync("k", Factory, Count)).Value.ShouldBe(2);
     }
+
+    [Fact]
+    public async Task Waiter_cancelling_its_own_request_stops_waiting_without_affecting_the_owner()
+    {
+        // review NIT: devralma döngüsü yalnızca SAHİBİN iptalinde döner; bekleyenin kendi iptali döngüden çıkarır.
+        using var cache = new TeacherActivityCache(TimeSpan.FromSeconds(60));
+        using var waiterCts = new CancellationTokenSource();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var calls = 0;
+
+        async Task<Box> Factory(CancellationToken _)
+        {
+            Interlocked.Increment(ref calls);
+            await gate.Task;
+            return new Box(3);
+        }
+
+        var owner = cache.GetOrCreateAsync("k", Factory, Count);
+        var waiter = cache.GetOrCreateAsync("k", Factory, Count, waiterCts.Token);
+        waiterCts.Cancel();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => waiter);
+        gate.SetResult();
+        (await owner).Value.ShouldBe(3);
+        calls.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(99, 1)]
+    [InlineData(100, 2)]
+    [InlineData(1_000, 11)]
+    public void Entry_size_is_proportional_to_result_rows(int rows, long expected)
+        => TeacherActivityCache.EntrySize(rows).ShouldBe(expected);
 }

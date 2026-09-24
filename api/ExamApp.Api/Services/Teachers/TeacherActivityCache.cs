@@ -20,16 +20,27 @@ namespace ExamApp.Api.Services.Teachers;
 /// </summary>
 public interface ITeacherActivityCache
 {
-    Task<T> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<T>> factory, CancellationToken ct = default)
+    /// <param name="itemCount">
+    /// Sonucun eleman sayısı — önbellek girdisinin boyutu buna orantılıdır (<c>1 + count/100</c>), böylece
+    /// <c>SizeLimit</c> girdi SAYISINI değil toplam belleği sınırlar (security review LOW-2).
+    /// </param>
+    Task<T> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<T>> factory, Func<T, int> itemCount,
+        CancellationToken ct = default)
         where T : class;
 }
 
 public sealed class TeacherActivityCache : ITeacherActivityCache, IDisposable
 {
-    // Öğretmen başına birkaç anahtar (days/kapsam); üst sınır bellek büyümesine karşı emniyet.
-    private const int MaxEntries = 10_000;
+    /// <summary>
+    /// Toplam boyut birimi üst sınırı. 1 birim ≈ 100 öğrenci satırı (+1 girdi başı) → en kötü ~1M küçük kayıt.
+    /// Dolunca yeni sonuç önbelleğe alınmaz / eskiler sıkıştırılır; istek yine hesaplanıp döner.
+    /// </summary>
+    internal const long SizeLimit = 10_000;
 
-    private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = MaxEntries });
+    /// <summary>Girdi boyutu: öğrenci satırı sayısıyla orantılı (security review LOW-2).</summary>
+    internal static long EntrySize(int itemCount) => 1 + Math.Max(0, itemCount) / 100;
+
+    private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = SizeLimit });
     private readonly object _gate = new();
     private readonly TimeSpan _ttl;
 
@@ -40,13 +51,16 @@ public sealed class TeacherActivityCache : ITeacherActivityCache, IDisposable
 
     public TeacherActivityCache(TimeSpan ttl) => _ttl = ttl < TimeSpan.Zero ? TimeSpan.Zero : ttl;
 
-    public async Task<T> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<T>> factory, CancellationToken ct = default)
+    public async Task<T> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<T>> factory, Func<T, int> itemCount,
+        CancellationToken ct = default)
         where T : class
     {
-        // En fazla bir yeniden deneme: beklediğimiz hesabın sahibi isteği iptal edildiyse (tarayıcı sekmeyi kapattı vb.)
-        // hesabı bu istek üstlenir.
-        for (var attempt = 0; ; attempt++)
+        // Beklediğimiz hesabın sahibi isteği iptal edilirse (tarayıcı sekmeyi kapattı vb.) hesabı üstlenmeyi deneriz;
+        // kendi isteğimiz iptal edilene dek tekrarlanır (sahip biz olursak döngü factory sonucuyla biter).
+        while (true)
         {
+            ct.ThrowIfCancellationRequested();
+
             TaskCompletionSource<T>? owner = null;
             Task<T> shared;
             lock (_gate)
@@ -59,12 +73,9 @@ public sealed class TeacherActivityCache : ITeacherActivityCache, IDisposable
                 {
                     owner = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
                     shared = owner.Task;
-                    // Süren hesap da girdi olarak durur (paylaşım için); TTL 0 ise tamamlanınca silinir.
-                    _cache.Set(key, shared, new MemoryCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = _ttl > TimeSpan.Zero ? _ttl : TimeSpan.FromMinutes(5),
-                        Size = 1
-                    });
+                    // Süren hesap da girdi olarak durur (paylaşım için; boyutu henüz bilinmiyor → 1). Tamamlanınca gerçek
+                    // boyutla yeniden yazılır; TTL 0 ise silinir.
+                    _cache.Set(key, shared, EntryOptions(1, _ttl > TimeSpan.Zero ? _ttl : TimeSpan.FromMinutes(5)));
                 }
             }
 
@@ -75,7 +86,9 @@ public sealed class TeacherActivityCache : ITeacherActivityCache, IDisposable
                 {
                     var value = await factory(ct);
                     owner.SetResult(value);
-                    if (_ttl <= TimeSpan.Zero)
+                    if (_ttl > TimeSpan.Zero)
+                        Replace(key, shared, EntrySize(itemCount(value)));
+                    else
                         Remove(key, shared);
                     return value;
                 }
@@ -98,10 +111,22 @@ public sealed class TeacherActivityCache : ITeacherActivityCache, IDisposable
             {
                 return await shared.WaitAsync(ct);
             }
-            catch (OperationCanceledException) when (!ct.IsCancellationRequested && attempt == 0)
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                // Sahibin isteği iptal edildi, bizimki değil → yeniden dene (bu kez büyük olasılıkla sahip biziz).
+                // Sahibin isteği iptal edildi, bizimki değil → yeniden dene (sahip girdiyi zaten sildi).
             }
+        }
+    }
+
+    private MemoryCacheEntryOptions EntryOptions(long size, TimeSpan ttl)
+        => new() { AbsoluteExpirationRelativeToNow = ttl, Size = size };
+
+    private void Replace<T>(string key, Task<T> expected, long size)
+    {
+        lock (_gate)
+        {
+            if (_cache.TryGetValue(key, out Task<T>? current) && ReferenceEquals(current, expected))
+                _cache.Set(key, expected, EntryOptions(size, _ttl));
         }
     }
 

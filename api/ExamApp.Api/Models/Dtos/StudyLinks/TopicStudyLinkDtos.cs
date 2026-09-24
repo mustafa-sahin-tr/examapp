@@ -165,13 +165,28 @@ public class QuestionStudyLinkSuggestionDto
     /// <summary>WorksheetInstanceQuestion kimliği (sonuç ekranındaki test-instance-question ile eşleştirme için).</summary>
     public int TestInstanceQuestionId { get; set; }
 
-    public List<SubTopicStudyLinkGroupDto> Groups { get; set; } = new();
+    /// <summary>Önce alt konu grupları (Kind=SubTopic), ardından konu seviyesi yedek gruplar (Kind=Topic).</summary>
+    public List<StudyLinkGroupDto> Groups { get; set; } = new();
 }
 
-public class SubTopicStudyLinkGroupDto
+/// <summary>Grup türü — JSON'da "SubTopic" | "Topic".</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<StudyLinkGroupKind>))]
+public enum StudyLinkGroupKind
 {
-    public int SubTopicId { get; set; }
-    public string SubTopicName { get; set; } = string.Empty;
+    SubTopic = 0,
+    Topic = 1
+}
+
+/// <summary>
+/// Link grubu. Kind=SubTopic → SubTopicId dolu (TopicId alt konunun üst konusu); Kind=Topic → yalnızca TopicId dolu,
+/// grup konunun konu seviyesi (SubTopicId boş) linklerini taşır. <see cref="Name"/> alt konu veya konu adıdır.
+/// </summary>
+public class StudyLinkGroupDto
+{
+    public StudyLinkGroupKind Kind { get; set; }
+    public int? SubTopicId { get; set; }
+    public int? TopicId { get; set; }
+    public string Name { get; set; } = string.Empty;
     public List<StudyLinkSummaryDto> Links { get; set; } = new();
 }
 

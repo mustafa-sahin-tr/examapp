@@ -244,47 +244,93 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         var questionSubTopics = await _context.QuestionSubTopics.AsNoTracking()
             .Where(qst => questionIds.Contains(qst.QuestionId))
             .OrderBy(qst => qst.Id)
-            .Select(qst => new { qst.QuestionId, qst.SubTopicId, SubTopicName = qst.SubTopic.Name })
+            .Select(qst => new { qst.QuestionId, qst.SubTopicId, SubTopicName = qst.SubTopic.Name, qst.SubTopic.TopicId })
             .ToListAsync(ct);
 
+        // Sorunun konu(ları): önce Question.TopicId (opsiyonel, doğrudan bağ), ardından alt konularının üst konuları.
+        var questionTopicIds = await _context.Questions.AsNoTracking()
+            .Where(q => questionIds.Contains(q.Id) && q.TopicId != null)
+            .Select(q => new { q.Id, TopicId = q.TopicId!.Value })
+            .ToDictionaryAsync(x => x.Id, x => x.TopicId, ct);
+
+        var subTopicsByQuestion = questionSubTopics
+            .GroupBy(x => x.QuestionId)
+            .ToDictionary(g => g.Key, g => g.GroupBy(x => x.SubTopicId).Select(sg => sg.First()).ToList());
+
+        var topicsByQuestion = questionIds.ToDictionary(qid => qid, qid =>
+        {
+            var ids = new List<int>();
+            if (questionTopicIds.TryGetValue(qid, out var direct))
+                ids.Add(direct);
+            if (subTopicsByQuestion.TryGetValue(qid, out var sts))
+                ids.AddRange(sts.Select(st => st.TopicId));
+            return ids.Distinct().ToList();
+        });
+
         var subTopicIds = questionSubTopics.Select(x => x.SubTopicId).Distinct().ToList();
-        if (subTopicIds.Count == 0)
+        var topicIds = topicsByQuestion.Values.SelectMany(v => v).Distinct().ToList();
+        if (subTopicIds.Count == 0 && topicIds.Count == 0)
             return new StudyLinkSuggestionsResultDto { Success = true };
 
+        // Tek sorgu: alt konu linkleri + konu seviyesi (SubTopicId boş) linkler.
         var links = await _context.TopicStudyLinks.AsNoTracking()
-            .Where(l => l.IsActive && l.SubTopicId != null && subTopicIds.Contains(l.SubTopicId.Value))
+            .Where(l => l.IsActive
+                && ((l.SubTopicId != null && subTopicIds.Contains(l.SubTopicId.Value))
+                    || (l.SubTopicId == null && l.TopicId != null && topicIds.Contains(l.TopicId.Value))))
             .OrderBy(l => l.SortOrder).ThenBy(l => l.Id)
             .Select(l => new
             {
-                SubTopicId = l.SubTopicId!.Value,
+                l.SubTopicId,
+                l.TopicId,
                 Link = new StudyLinkSummaryDto { Id = l.Id, Title = l.Title, Url = l.Url, SourceType = l.SourceType }
             })
             .ToListAsync(ct);
 
         // Savunma: eşzamanlılık kenar durumunda 7'yi aşan aktif link olsa bile öğrenciye en fazla 7 gösterilir.
         var linksBySubTopic = links
-            .GroupBy(x => x.SubTopicId)
+            .Where(x => x.SubTopicId != null)
+            .GroupBy(x => x.SubTopicId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Link).Take(TopicStudyLinkLimits.MaxActiveLinksPerScope).ToList());
+        var linksByTopic = links
+            .Where(x => x.SubTopicId == null)
+            .GroupBy(x => x.TopicId!.Value)
             .ToDictionary(g => g.Key, g => g.Select(x => x.Link).Take(TopicStudyLinkLimits.MaxActiveLinksPerScope).ToList());
 
-        var subTopicsByQuestion = questionSubTopics
-            .GroupBy(x => x.QuestionId)
-            .ToDictionary(g => g.Key, g => g.GroupBy(x => x.SubTopicId).Select(sg => sg.First()).ToList());
+        var topicNames = linksByTopic.Count == 0
+            ? new Dictionary<int, string>()
+            : await _context.Topics.AsNoTracking()
+                .Where(t => linksByTopic.Keys.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id, t => t.Name, ct);
 
         var items = new List<QuestionStudyLinkSuggestionDto>();
         foreach (var q in wrongQuestions)
         {
-            if (!subTopicsByQuestion.TryGetValue(q.QuestionId, out var subTopics))
-                continue;
+            var groups = new List<StudyLinkGroupDto>();
 
-            var groups = subTopics
-                .Where(st => linksBySubTopic.ContainsKey(st.SubTopicId))
-                .Select(st => new SubTopicStudyLinkGroupDto
+            if (subTopicsByQuestion.TryGetValue(q.QuestionId, out var subTopics))
+            {
+                groups.AddRange(subTopics
+                    .Where(st => linksBySubTopic.ContainsKey(st.SubTopicId))
+                    .Select(st => new StudyLinkGroupDto
+                    {
+                        Kind = StudyLinkGroupKind.SubTopic,
+                        SubTopicId = st.SubTopicId,
+                        TopicId = st.TopicId,
+                        Name = st.SubTopicName,
+                        Links = linksBySubTopic[st.SubTopicId],
+                    }));
+            }
+
+            // Alt konu gruplarından sonra, sorunun her farklı konusu için tek bir konu seviyesi yedek grup.
+            groups.AddRange(topicsByQuestion[q.QuestionId]
+                .Where(tid => linksByTopic.ContainsKey(tid) && topicNames.ContainsKey(tid))
+                .Select(tid => new StudyLinkGroupDto
                 {
-                    SubTopicId = st.SubTopicId,
-                    SubTopicName = st.SubTopicName,
-                    Links = linksBySubTopic[st.SubTopicId],
-                })
-                .ToList();
+                    Kind = StudyLinkGroupKind.Topic,
+                    TopicId = tid,
+                    Name = topicNames[tid],
+                    Links = linksByTopic[tid],
+                }));
 
             if (groups.Count == 0)
                 continue;

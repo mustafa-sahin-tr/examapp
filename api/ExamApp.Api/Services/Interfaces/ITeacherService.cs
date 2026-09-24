@@ -8,9 +8,7 @@ namespace ExamApp.Api.Services.Interfaces;
 
 public interface ITeacherService
 {
-    /// <param name="roleChange">issue #277 (madde 4): verilirse ve rol Teacher'a değişiyorsa aynı transaction'da
-    /// UserRoleChangedEvent outbox satırı yazılır.</param>
-    Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto, ExamApp.Api.Helpers.UserRoleChangeRequest? roleChange = null);
+    Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto);
 
     Task<Teacher?> GetTeacher(int userId);
 

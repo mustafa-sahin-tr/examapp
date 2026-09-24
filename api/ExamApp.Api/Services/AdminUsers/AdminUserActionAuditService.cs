@@ -35,7 +35,9 @@ public class AdminUserActionAuditService : IAdminUserActionAuditService
             TargetType = record.TargetType,
             TargetId = record.TargetId,
             Outcome = outcome,
-            OccurredAtUtc = DateTime.UtcNow
+            OccurredAtUtc = DateTime.UtcNow,
+            FromSchoolId = record.FromSchoolId,
+            ToSchoolId = record.ToSchoolId
         };
         _context.AdminUserActionLogs.Add(row);
 

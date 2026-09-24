@@ -50,4 +50,6 @@ public sealed record AdminUserActionRecord(
     string ActorKeycloakId,
     AdminUserAction Action,
     AdminUserTargetType TargetType,
-    int TargetId);
+    int TargetId,
+    int? FromSchoolId = null,  // issue #277 review (security L5): okul değişikliğinde önceki okul (PII değil, id)
+    int? ToSchoolId = null);   // issue #277 review (security L5): istenen/yeni okul

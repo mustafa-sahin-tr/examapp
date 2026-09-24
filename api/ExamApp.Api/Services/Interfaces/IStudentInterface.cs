@@ -11,9 +11,7 @@ public interface IStudentService
 
     Task<StudentProfileDto> GetStudentProfile(int userId);
 
-    /// <param name="roleChange">issue #277 (madde 4): verilirse ve rol Student'a değişiyorsa aynı transaction'da
-    /// UserRoleChangedEvent outbox satırı yazılır.</param>
-    Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto, ExamApp.Api.Helpers.UserRoleChangeRequest? roleChange = null);
+    Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto);
 
     Task<ResponseBaseDto> UpdateStudentGrade(int studentId, int gradeId);
 

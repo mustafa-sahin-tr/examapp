@@ -506,6 +506,8 @@ public class WorksheetDetailService : IWorksheetDetailService
         if (!hasAssignment)
             return null;
 
+        var studentSchoolId = studentScope?.SchoolId;
+
         var studentScoped = await _context.WorksheetAssignments.AsNoTracking()
             .Where(a => a.WorksheetId == worksheetId && a.StudentId != null)
             .Select(a => a.StudentId!.Value)
@@ -515,7 +517,15 @@ public class WorksheetDetailService : IWorksheetDetailService
         List<int> cohort;
         if (studentScoped.Contains(studentId))
         {
-            cohort = studentScoped;
+            // issue #277 review: öğrenci hedefli grup da okullu öğrencide kendi okuluyla sınırlı (sınıf grubuyla aynı kural) —
+            // bağımsız öğretmen/admin farklı okullardan öğrenciye aynı testi atamış olsa bile başka okulun skorları
+            // sıralama/ortalamaya girmez. Okulsuz öğrencide grup atama kümesinin tamamı kalır.
+            cohort = studentSchoolId.HasValue
+                ? await _context.Students.AsNoTracking()
+                    .Where(s => studentScoped.Contains(s.Id) && s.SchoolId == studentSchoolId.Value)
+                    .Select(s => s.Id)
+                    .ToListAsync(ct)
+                : studentScoped;
         }
         else if (gradeId.HasValue)
         {
@@ -525,7 +535,6 @@ public class WorksheetDetailService : IWorksheetDetailService
             // atamasıyla (IsPlatformWide, #277 madde 7) buraya ulaşabilir; o atamanın hedef kitlesi tüm okullar olduğu için
             // grubu da platform geneli kalır. (Policy'nin okulsuz Student dalı — Approved Booking — ÖĞRETMEN istek sahibi
             // içindir, burada uygulanamaz; bu yüzden filtre doğrudan yazıldı.) Yalnızca toplamlar döner, PII yok.
-            var studentSchoolId = studentScope?.SchoolId;
             var gradeCohort = _context.Students.AsNoTracking()
                 .Where(s => s.GradeId == gradeId.Value);
             if (studentSchoolId.HasValue)

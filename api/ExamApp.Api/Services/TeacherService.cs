@@ -100,7 +100,7 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync();
     }
 
-    public async Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto, UserRoleChangeRequest? roleChange = null)
+    public async Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto)
     {
         // issue #277 (madde 1): okul adı, talep bildirimi (TeacherSchoolRequestSubmittedEvent) metni için aynı sorguda okunur.
         string? requestedSchoolName = null;
@@ -284,14 +284,6 @@ public class TeacherService : ITeacherService
         var schoolRequestEventId = Guid.NewGuid();
         var schoolRequestSubmittedAt = DateTime.UtcNow;
 
-        // issue #277 (madde 4): rol Teacher'a değişiyorsa UserRoleChangedEvent bu kaydın transaction'ında yazılır (exam DB'de
-        // yerel Users tablosu yok). Sıra: DB commit → controller Keycloak SetRoleAsync. SetRole başarısız olursa istek 500
-        // döner ama event yayınlanmış olur; auth-api bir sonraki login'de rolü Keycloak'tan yeniden senkronlar ve kullanıcının
-        // register tekrarı (profil rolü hâlâ eski → yeni event) Keycloak'ı da düzeltir. EventId/an lambda dışında sabit.
-        var publishRoleChange = UserRoleChangeOutbox.IsChange(roleChange, UserRole.Teacher);
-        var roleChangeEventId = Guid.NewGuid();
-        var roleChangedAt = DateTime.UtcNow;
-
         // issue #277 takip (retry güvenliği): execution strategy (Aspire Npgsql retry-on-failure) geçici bir hatada —
         // özellikle SaveChanges'ler başarılı olup COMMIT düştüğünde — lambda'yı baştan çalıştırır. Önceki denemenin
         // SaveChanges'i değişiklikleri "kabul etmiş" olur (Unchanged + DB'de geri alınmış Id), bu yüzden eskiden retry'da
@@ -308,8 +300,16 @@ public class TeacherService : ITeacherService
                 .ToList()
             : null;
 
+        // issue #277 review (NIT 4): karar (bağımsıza geçiş / yeni okul talebi) kilitsiz okunan duruma göre verildi. Aynı
+        // kullanıcının eşzamanlı iki isteği (ör. iki paralel okul talebi → iki admin bildirimi, son yazan kazanır) aynı kararı
+        // verebilirdi. Geçiş varsa karar girdileri kilidin ALTINDA yeniden okunan satırla karşılaştırılır; değişmişse yazmadan
+        // 409 (registrationConflict) — ikinci istek, birincinin commit'inden sonra güncel durumla tekrar denenebilir.
+        (bool IsIndependentTutor, TeacherApprovalStatus ApprovalStatus, int? RequestedSchoolId, int? SchoolId)? decisionSnapshot =
+            isUpdate && modifiedTeacherValues!.Count > 0 ? DecisionInputs(_context.Entry(teacher), original: true) : null;
+
         var teacherId = 0;
         var studentRecordRace = false;
+        var concurrentDecisionChange = false;
         var strategy = _context.Database.CreateExecutionStrategy();
         try
         {
@@ -317,6 +317,7 @@ public class TeacherService : ITeacherService
             {
                 _context.ChangeTracker.Clear();
                 studentRecordRace = false;
+                concurrentDecisionChange = false;
 
                 await using var tx = await _context.Database.BeginTransactionAsync();
 
@@ -334,6 +335,12 @@ public class TeacherService : ITeacherService
                 {
                     var tracked = await _context.Teachers.AsTracking().FirstAsync(t => t.Id == teacher.Id);
                     var entry = _context.Entry(tracked);
+                    if (decisionSnapshot is { } expected && expected != DecisionInputs(entry, original: false))
+                    {
+                        concurrentDecisionChange = true;
+                        return; // commit yok → dispose'da rollback
+                    }
+
                     foreach (var (name, value) in modifiedTeacherValues!)
                         entry.Property(name).CurrentValue = value;
                 }
@@ -388,11 +395,7 @@ public class TeacherService : ITeacherService
                     });
                 }
 
-                if (publishRoleChange)
-                    _context.OutboxMessages.Add(UserRoleChangeOutbox.Create(roleChange!, UserRole.Teacher, roleChangeEventId, roleChangedAt));
-
-                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || shouldPublishSchoolRequestEvent
-                    || publishRoleChange)
+                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || shouldPublishSchoolRequestEvent)
                 {
                     await _context.SaveChangesAsync();
                 }
@@ -406,6 +409,16 @@ public class TeacherService : ITeacherService
             // issue #259: eşzamanlı ilk kayıt — diğer istek aynı kullanıcı için canlı Teachers satırını önce yazdı
             // (filtreli unique index). Transaction geri alındı (outbox satırı da yazılmadı); ikinci satır açılmaz, #234
             // okul kilidi çift satırla aşılamaz. Unique ihlali geçici hata değil → execution strategy retry etmez.
+            return new TeacherRegistrationResultDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["teacher.registrationConflict"]
+            };
+        }
+
+        if (concurrentDecisionChange)
+        {
             return new TeacherRegistrationResultDto
             {
                 Success = false,
@@ -436,6 +449,17 @@ public class TeacherService : ITeacherService
             ApprovalStatus = teacher.ApprovalStatus,
             AccountApproved = teacher.AccountApprovedAt != null
         };
+    }
+
+    /// <summary>issue #277 review (NIT 4): Save'in kararını belirleyen alanlar (orijinal ya da mevcut değerleriyle).</summary>
+    private static (bool IsIndependentTutor, TeacherApprovalStatus ApprovalStatus, int? RequestedSchoolId, int? SchoolId)
+        DecisionInputs(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Teacher> entry, bool original)
+    {
+        T Get<T>(string name) => (T)(original ? entry.Property(name).OriginalValue : entry.Property(name).CurrentValue)!;
+        return (Get<bool>(nameof(Teacher.IsIndependentTutor)),
+            Get<TeacherApprovalStatus>(nameof(Teacher.ApprovalStatus)),
+            (int?)(original ? entry.Property(nameof(Teacher.RequestedSchoolId)).OriginalValue : entry.Property(nameof(Teacher.RequestedSchoolId)).CurrentValue),
+            (int?)(original ? entry.Property(nameof(Teacher.SchoolId)).OriginalValue : entry.Property(nameof(Teacher.SchoolId)).CurrentValue));
     }
 
     /// <summary>

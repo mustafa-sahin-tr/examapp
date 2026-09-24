@@ -6,7 +6,8 @@ using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
-using ExamApp.Api.Services.Tenancy;
+using ExamApp.Api.Services.Parents;
+using ExamApp.Api.Services.UserRoles;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Foundation.Contracts;
 using Microsoft.AspNetCore.Http;
@@ -16,20 +17,21 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ExamApp.Api.Tests.Services;
 
 /// <summary>
-/// issue #277 (madde 4): register akışları rol gerçekten değiştiğinde <see cref="UserRoleChangedEvent"/> outbox satırını
-/// kayıtla AYNI transaction/SaveChanges'te yazar (exam DB'de yerel Users tablosu yok); rol aynıysa yazmaz; retry-safe.
+/// issue #277 (madde 4) + review: <see cref="UserRoleChangedEvent"/> yalnızca Keycloak rolü BAŞARIYLA atandıktan sonra ve rol
+/// gerçekten değiştiyse yazılır (<see cref="UserRoleChangeRecorder"/>; veli akışında <see cref="ParentService"/> satırla tek
+/// SaveChanges'te). Tek SaveChanges retry-safe.
 /// </summary>
 public class UserRoleChangedOutboxTests : IDisposable
 {
     private const string Sub = "kc-sub-1";
 
     private readonly TestDb _db = TestDb.Create();
-    private readonly IAuthApiClient _authApi = Substitute.For<IAuthApiClient>();
 
     public void Dispose() => _db.Dispose();
 
@@ -43,16 +45,7 @@ public class UserRoleChangedOutboxTests : IDisposable
             .ToList();
     }
 
-    private async Task<int> SeedGradeAsync()
-    {
-        await using var ctx = _db.NewContext();
-        var g = new Grade { Name = "7" };
-        ctx.Grades.Add(g);
-        await ctx.SaveChangesAsync();
-        return g.Id;
-    }
-
-    // ---- helper ----
+    // ---- IsChange ----
 
     [Theory]
     [InlineData(null, true)]
@@ -69,180 +62,210 @@ public class UserRoleChangedOutboxTests : IDisposable
         UserRoleChangeOutbox.IsChange(new UserRoleChangeRequest(" ", 1, null), UserRole.Teacher).ShouldBeFalse();
     }
 
-    // ---- Teacher ----
+    // ---- Recorder (Teacher/Student akışları) ----
 
-    [Fact]
-    public async Task Teacher_registration_with_a_role_change_writes_exactly_one_event()
+    [Theory]
+    [InlineData(UserRole.Teacher)]
+    [InlineData(UserRole.Student)]
+    public async Task Recorder_writes_exactly_one_event_on_a_role_change(UserRole role)
     {
         await using (var ctx = _db.NewContext())
-            (await new TeacherService(ctx, _authApi).Save(10, new RegisterTeacherDto(), new UserRoleChangeRequest(Sub, 10, null)))
-                .Success.ShouldBeTrue();
+            (await new UserRoleChangeRecorder(ctx).RecordIfChangedAsync(new UserRoleChangeRequest(Sub, 10, null), role)).ShouldBeTrue();
 
         var e = (await RoleEventsAsync()).ShouldHaveSingleItem();
         e.KeycloakId.ShouldBe(Sub);
         e.UserId.ShouldBe(10);
-        e.NewRole.ShouldBe("Teacher");
+        e.NewRole.ShouldBe(role.ToString());
         e.EventId.ShouldNotBe(Guid.Empty);
     }
 
     [Fact]
-    public async Task Teacher_registration_without_a_role_change_writes_no_event()
+    public async Task Recorder_writes_nothing_when_the_role_is_unchanged()
     {
         await using (var ctx = _db.NewContext())
-            (await new TeacherService(ctx, _authApi).Save(11, new RegisterTeacherDto(), new UserRoleChangeRequest(Sub, 11, "Teacher")))
-                .Success.ShouldBeTrue();
-        await using (var ctx = _db.NewContext())
-            (await new TeacherService(ctx, _authApi).Save(11, new RegisterTeacherDto())).Success.ShouldBeTrue();
+            (await new UserRoleChangeRecorder(ctx).RecordIfChangedAsync(new UserRoleChangeRequest(Sub, 11, "Teacher"), UserRole.Teacher))
+                .ShouldBeFalse();
 
         (await RoleEventsAsync()).ShouldBeEmpty();
     }
 
     [Fact]
-    public async Task Rejected_teacher_registration_writes_no_event()
+    public async Task Recorder_is_retry_safe_on_a_transient_failure()
     {
-        var gradeId = await SeedGradeAsync();
-        await using (var ctx = _db.NewContext())
-        {
-            ctx.Students.Add(new Student { UserId = 12, StudentNumber = "n", GradeId = gradeId });
-            await ctx.SaveChangesAsync();
-        }
-
-        await using (var ctx = _db.NewContext())
-            (await new TeacherService(ctx, _authApi).Save(12, new RegisterTeacherDto(), new UserRoleChangeRequest(Sub, 12, "Student")))
-                .Conflict.ShouldBeTrue();
-
-        (await RoleEventsAsync()).ShouldBeEmpty();
-    }
-
-    [Fact]
-    public async Task Teacher_role_event_survives_a_transient_commit_failure_with_a_stable_event_id()
-    {
-        var interceptor = new FailFirstCommitInterceptor();
+        // Tek ifadelik SaveChanges'i EF açık transaction'sız çalıştırır → COMMIT yerine INSERT'in kendisi geçici hatayla düşer.
+        var interceptor = new FailFirstCommandInterceptor("INSERT INTO \"OutboxMessages\"");
         await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
-            (await new TeacherService(ctx, _authApi).Save(13, new RegisterTeacherDto { IsIndependentTutor = true },
-                new UserRoleChangeRequest(Sub, 13, "Student"))).Success.ShouldBeTrue();
+            await new UserRoleChangeRecorder(ctx).RecordIfChangedAsync(new UserRoleChangeRequest(Sub, 12, "Student"), UserRole.Teacher);
 
         interceptor.Failures.ShouldBe(1);
         (await RoleEventsAsync()).ShouldHaveSingleItem().NewRole.ShouldBe("Teacher");
     }
 
     [Fact]
-    public async Task Teacher_registration_runs_under_the_retrying_strategy_guard()
+    public async Task Recorder_works_under_the_retrying_strategy_guard()
     {
         await using (var ctx = _db.NewContextWithRetryingExecutionStrategy())
-            (await new TeacherService(ctx, _authApi).Save(14, new RegisterTeacherDto(), new UserRoleChangeRequest(Sub, 14, null)))
-                .Success.ShouldBeTrue();
+            await new UserRoleChangeRecorder(ctx).RecordIfChangedAsync(new UserRoleChangeRequest(Sub, 13, null), UserRole.Student);
 
         (await RoleEventsAsync()).Count.ShouldBe(1);
     }
 
-    // ---- Student ----
-
-    private StudentService NewStudentService(AppDbContext ctx) => new(ctx, _authApi, new SchoolAccessPolicy(ctx));
-
-    [Fact]
-    public async Task New_student_with_a_role_change_writes_exactly_one_event()
-    {
-        var gradeId = await SeedGradeAsync();
-        await using (var ctx = _db.NewContext())
-            (await NewStudentService(ctx).Save(20, new RegisterStudentDto { StudentNumber = "n", GradeId = gradeId },
-                new UserRoleChangeRequest(Sub, 20, null))).Success.ShouldBeTrue();
-
-        var e = (await RoleEventsAsync()).ShouldHaveSingleItem();
-        e.KeycloakId.ShouldBe(Sub);
-        e.NewRole.ShouldBe("Student");
-    }
-
-    [Fact]
-    public async Task Existing_student_update_writes_an_event_only_when_the_role_changes()
-    {
-        var gradeId = await SeedGradeAsync();
-        await using (var ctx = _db.NewContext())
-            (await NewStudentService(ctx).Save(21, new RegisterStudentDto { StudentNumber = "n", GradeId = gradeId })).Success.ShouldBeTrue();
-
-        await using (var ctx = _db.NewContext())
-            (await NewStudentService(ctx).Save(21, new RegisterStudentDto { StudentNumber = "n2", GradeId = gradeId },
-                new UserRoleChangeRequest(Sub, 21, "Student"))).Success.ShouldBeTrue();
-        (await RoleEventsAsync()).ShouldBeEmpty();
-
-        await using (var ctx = _db.NewContext())
-            (await NewStudentService(ctx).Save(21, new RegisterStudentDto { StudentNumber = "n3", GradeId = gradeId },
-                new UserRoleChangeRequest(Sub, 21, ""))).Success.ShouldBeTrue();
-        (await RoleEventsAsync()).ShouldHaveSingleItem().NewRole.ShouldBe("Student");
-    }
-
-    [Fact]
-    public async Task New_student_role_event_survives_a_transient_commit_failure()
-    {
-        var gradeId = await SeedGradeAsync();
-        var interceptor = new FailFirstCommitInterceptor();
-        await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
-            (await NewStudentService(ctx).Save(22, new RegisterStudentDto { StudentNumber = "n", GradeId = gradeId },
-                new UserRoleChangeRequest(Sub, 22, null))).Success.ShouldBeTrue();
-
-        interceptor.Failures.ShouldBe(1);
-        (await RoleEventsAsync()).Count.ShouldBe(1);
-        await using var check = _db.NewContext();
-        (await check.Students.CountAsync(s => s.UserId == 22)).ShouldBe(1);
-    }
-
-    // ---- Parent (controller: satır + event tek SaveChanges) ----
-
-    private ParentController NewParentController(AppDbContext ctx, string? currentRole, IKeycloakService keycloak)
-    {
-        var profiles = Substitute.For<IUserProfileProvider>();
-        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new UserProfileDto { Id = 30, KeycloakId = Sub, Role = currentRole! });
-
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-        services.AddSingleton(profiles);
-        services.AddSingleton<IDistributedCache>(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())));
-        services.AddSingleton<UserProfileCacheService>();
-
-        var http = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, Sub)], "Test")),
-            RequestServices = services.BuildServiceProvider()
-        };
-        http.Request.Headers.Cookie = "refresh_token=rt";
-        return new ParentController(ctx, keycloak) { ControllerContext = new ControllerContext { HttpContext = http } };
-    }
+    // ---- ParentService ----
 
     [Theory]
     [InlineData(null, 1)]
     [InlineData("Parent", 0)]
-    public async Task Parent_registration_writes_the_parent_row_and_an_event_only_on_role_change(string? currentRole, int expectedEvents)
+    public async Task Parent_registration_writes_the_row_and_an_event_only_on_role_change(string? currentRole, int expectedEvents)
     {
-        var keycloak = Substitute.For<IKeycloakService>();
-        keycloak.RefreshTokenAsync(Arg.Any<string>()).Returns(new TokenResponseDto { AccessToken = "at", RefreshToken = "" });
-
+        int parentId;
         await using (var ctx = _db.NewContext())
-            (await NewParentController(ctx, currentRole, keycloak).RegisterParent()).ShouldBeOfType<OkObjectResult>();
+            parentId = await new ParentService(ctx).RegisterAsync(30, new UserRoleChangeRequest(Sub, 30, currentRole));
 
         await using var check = _db.NewContext();
-        (await check.Parents.CountAsync(p => p.UserId == 30)).ShouldBe(1);
+        (await check.Parents.SingleAsync(p => p.UserId == 30)).Id.ShouldBe(parentId);
         var events = await RoleEventsAsync();
         events.Count.ShouldBe(expectedEvents);
         if (expectedEvents == 1)
-        {
-            events[0].KeycloakId.ShouldBe(Sub);
             events[0].NewRole.ShouldBe("Parent");
-        }
     }
 
     [Fact]
-    public async Task Parent_keycloak_failure_writes_nothing()
+    public async Task Parent_re_registration_is_idempotent_for_the_row()
     {
-        var keycloak = Substitute.For<IKeycloakService>();
-        keycloak.SetRoleAsync(Arg.Any<string>(), Arg.Any<UserRole>()).Returns(_ => throw new HttpRequestException("kc down"));
-
         await using (var ctx = _db.NewContext())
-            await Should.ThrowAsync<HttpRequestException>(() => NewParentController(ctx, null, keycloak).RegisterParent());
+            await new ParentService(ctx).RegisterAsync(31, new UserRoleChangeRequest(Sub, 31, null));
+        await using (var ctx = _db.NewContext())
+        {
+            await new ParentService(ctx).RegisterAsync(31, new UserRoleChangeRequest(Sub, 31, "Parent"));
+            (await new ParentService(ctx).HasParentRecordAsync(31)).ShouldBeTrue();
+            (await new ParentService(ctx).HasParentRecordAsync(999)).ShouldBeFalse();
+        }
 
         await using var check = _db.NewContext();
-        (await check.Parents.CountAsync()).ShouldBe(0);
-        (await RoleEventsAsync()).ShouldBeEmpty();
+        (await check.Parents.CountAsync(p => p.UserId == 31)).ShouldBe(1);
+        (await RoleEventsAsync()).Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task Parent_row_and_event_are_retry_safe_on_a_transient_commit_failure()
+    {
+        var interceptor = new FailFirstCommitInterceptor();
+        await using (var ctx = _db.NewContextWithTransientRetry(interceptor))
+            await new ParentService(ctx).RegisterAsync(32, new UserRoleChangeRequest(Sub, 32, null));
+
+        interceptor.Failures.ShouldBe(1);
+        await using var check = _db.NewContext();
+        (await check.Parents.CountAsync(p => p.UserId == 32)).ShouldBe(1);
+        (await RoleEventsAsync()).Count.ShouldBe(1);
+    }
+
+    // ---- Controller sırası: event yalnızca SetRoleAsync BAŞARILI olduktan sonra ----
+
+    private static DefaultHttpContext Http(IServiceProvider services, params string[] jwtRoles)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, Sub) };
+        claims.AddRange(jwtRoles.Select(r => new Claim(ClaimTypes.Role, r)));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test")),
+            RequestServices = services
+        };
+        http.Request.Headers.Cookie = "refresh_token=rt";
+        return http;
+    }
+
+    private static ServiceProvider Services(IUserRoleChangeRecorder recorder, string? profileRole)
+    {
+        var profiles = Substitute.For<IUserProfileProvider>();
+        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new UserProfileDto { Id = 40, KeycloakId = Sub, Role = profileRole! });
+        var resolver = Substitute.For<ISchoolContextResolver>();
+        return new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
+            .AddSingleton(profiles)
+            .AddSingleton(resolver)
+            .AddSingleton(recorder)
+            .AddSingleton<IDistributedCache>(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())))
+            .AddSingleton<UserProfileCacheService>()
+            .BuildServiceProvider();
+    }
+
+    [Fact]
+    public async Task Teacher_controller_records_the_role_change_after_a_successful_keycloak_role_assignment()
+    {
+        var recorder = Substitute.For<IUserRoleChangeRecorder>();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.RefreshTokenAsync(Arg.Any<string>()).Returns(new TokenResponseDto { AccessToken = "at", RefreshToken = "" });
+        var teacherService = Substitute.For<ITeacherService>();
+        teacherService.Save(40, Arg.Any<RegisterTeacherDto>()).Returns(new TeacherRegistrationResultDto { Success = true });
+        var services = Services(recorder, profileRole: "Student");
+        var controller = new TeacherController(teacherService, services.GetRequiredService<UserProfileCacheService>(), keycloak,
+            Substitute.For<ILogger<TeacherController>>())
+        { ControllerContext = new ControllerContext { HttpContext = Http(services, "Student") } };
+
+        (await controller.RegisterTeacher(new RegisterTeacherDto())).ShouldBeOfType<OkObjectResult>();
+
+        Received.InOrder(() =>
+        {
+            keycloak.SetRoleAsync(Sub, UserRole.Teacher);
+            recorder.RecordIfChangedAsync(
+                Arg.Is<UserRoleChangeRequest>(r => r.KeycloakId == Sub && r.UserId == 40 && r.CurrentRole == "Student"),
+                UserRole.Teacher, Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task Teacher_controller_records_nothing_when_keycloak_role_assignment_fails()
+    {
+        var recorder = Substitute.For<IUserRoleChangeRecorder>();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.SetRoleAsync(Arg.Any<string>(), Arg.Any<UserRole>()).Returns(_ => throw new HttpRequestException("kc down"));
+        var teacherService = Substitute.For<ITeacherService>();
+        teacherService.Save(40, Arg.Any<RegisterTeacherDto>()).Returns(new TeacherRegistrationResultDto { Success = true });
+        var services = Services(recorder, profileRole: null);
+        var controller = new TeacherController(teacherService, services.GetRequiredService<UserProfileCacheService>(), keycloak,
+            Substitute.For<ILogger<TeacherController>>())
+        { ControllerContext = new ControllerContext { HttpContext = Http(services) } };
+
+        await Should.ThrowAsync<HttpRequestException>(() => controller.RegisterTeacher(new RegisterTeacherDto()));
+
+        await recorder.DidNotReceiveWithAnyArgs().RecordIfChangedAsync(default!, default, default);
+    }
+
+    [Fact]
+    public async Task Parent_controller_writes_nothing_when_keycloak_role_assignment_fails()
+    {
+        var parentService = Substitute.For<IParentService>();
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.SetRoleAsync(Arg.Any<string>(), Arg.Any<UserRole>()).Returns(_ => throw new HttpRequestException("kc down"));
+        var services = Services(Substitute.For<IUserRoleChangeRecorder>(), profileRole: null);
+        var controller = new ParentController(parentService, keycloak)
+        { ControllerContext = new ControllerContext { HttpContext = Http(services) } };
+
+        await Should.ThrowAsync<HttpRequestException>(() => controller.RegisterParent());
+
+        await parentService.DidNotReceiveWithAnyArgs().RegisterAsync(default, default!, default);
+    }
+
+    [Fact]
+    public async Task Parent_controller_registers_via_the_service_after_keycloak_and_returns_the_parent_id()
+    {
+        var parentService = Substitute.For<IParentService>();
+        parentService.RegisterAsync(40, Arg.Any<UserRoleChangeRequest>(), Arg.Any<CancellationToken>()).Returns(77);
+        var keycloak = Substitute.For<IKeycloakService>();
+        keycloak.RefreshTokenAsync(Arg.Any<string>()).Returns(new TokenResponseDto { AccessToken = "at", RefreshToken = "" });
+        var services = Services(Substitute.For<IUserRoleChangeRecorder>(), profileRole: null);
+        var controller = new ParentController(parentService, keycloak)
+        { ControllerContext = new ControllerContext { HttpContext = Http(services) } };
+
+        var ok = (await controller.RegisterParent()).ShouldBeOfType<OkObjectResult>();
+
+        ok.Value!.GetType().GetProperty("profileId")!.GetValue(ok.Value).ShouldBe(77);
+        Received.InOrder(() =>
+        {
+            keycloak.SetRoleAsync(Sub, UserRole.Parent);
+            parentService.RegisterAsync(40, Arg.Is<UserRoleChangeRequest>(r => r.KeycloakId == Sub), Arg.Any<CancellationToken>());
+        });
     }
 }

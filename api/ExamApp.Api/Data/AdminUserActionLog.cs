@@ -34,6 +34,15 @@ public class AdminUserActionLog
 
     /// <summary>Aksiyon (istek) anı (UTC).</summary>
     public DateTime OccurredAtUtc { get; set; }
+
+    /// <summary>
+    /// issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> için önceki okul (Schools.Id;
+    /// okulsuzsa null). Diğer aksiyonlarda null. PII değil — yalnızca exam DB id'si.
+    /// </summary>
+    public int? FromSchoolId { get; set; }
+
+    /// <summary>issue #277 review (security L5): <see cref="AdminUserAction.StudentSchoolChanged"/> için istenen/yeni okul.</summary>
+    public int? ToSchoolId { get; set; }
 }
 
 /// <summary>Audit'lenen admin hesap aksiyonları. Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>
@@ -69,7 +78,9 @@ public enum AdminUserActionOutcome
     /// <summary>issue #155: Keycloak hesap durumunu (enabled) değiştiremedi — yan etki yok.</summary>
     StatusChangeFailed = 7,
     /// <summary>issue #277 (madde 8): okuma ile koşullu yazma arasında hedef başka bir istekle değişti — yan etki yok.</summary>
-    Conflict = 8
+    Conflict = 8,
+    /// <summary>issue #277 review (security L5): okul değişikliğinde istenen okul yok — yan etki yok (<see cref="AdminUserActionLog.ToSchoolId"/> dolu).</summary>
+    SchoolNotFound = 9
 }
 
 /// <summary>Admin hesap aksiyonunun hedef türü. Kalıcı değer string'dir.</summary>

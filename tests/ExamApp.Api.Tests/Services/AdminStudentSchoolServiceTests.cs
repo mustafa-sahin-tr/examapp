@@ -95,6 +95,8 @@ public class AdminStudentSchoolServiceTests : IDisposable
         log.TargetId.ShouldBe(s.StudentId);
         log.ActorKeycloakId.ShouldBe(ActorSub);
         log.Outcome.ShouldBe(AdminUserActionOutcome.Succeeded);
+        log.FromSchoolId.ShouldBe(s.SchoolA); // issue #277 review (security L5)
+        log.ToSchoolId.ShouldBe(s.SchoolB);
 
         await _keycloak.Received(1).SetSchoolIdAttributeAsync(TargetSub, s.SchoolB);
         await _targets.Received(1).ResolveAsync(AdminUserTargetType.Student, s.StudentId, ActorSub, Arg.Any<CancellationToken>());
@@ -167,6 +169,10 @@ public class AdminStudentSchoolServiceTests : IDisposable
         (await RunAsync(s.StudentId, 424242)).Status.ShouldBe(AdminStudentSchoolChangeStatus.SchoolNotFound);
 
         (await SchoolOfAsync(s.StudentId)).ShouldBe(s.SchoolA);
+        var log = (await AuditAsync()).ShouldHaveSingleItem(); // issue #277 review: SchoolNotFound da audit'lenir
+        log.Outcome.ShouldBe(AdminUserActionOutcome.SchoolNotFound);
+        log.FromSchoolId.ShouldBe(s.SchoolA);
+        log.ToSchoolId.ShouldBe(424242);
         await _targets.DidNotReceiveWithAnyArgs().ResolveAsync(default, default, default!, default);
     }
 
@@ -226,7 +232,10 @@ public class AdminStudentSchoolServiceTests : IDisposable
 
         interceptor.Fired.ShouldBeTrue();
         r.Status.ShouldBe(AdminStudentSchoolChangeStatus.Conflict);
-        (await AuditAsync()).ShouldHaveSingleItem().Outcome.ShouldBe(AdminUserActionOutcome.Conflict);
+        var conflictLog = (await AuditAsync()).ShouldHaveSingleItem();
+        conflictLog.Outcome.ShouldBe(AdminUserActionOutcome.Conflict);
+        conflictLog.FromSchoolId.ShouldBe(s.SchoolA);
+        conflictLog.ToSchoolId.ShouldBe(s.SchoolB);
         await _keycloak.DidNotReceiveWithAnyArgs().SetSchoolIdAttributeAsync(default!, default);
     }
 

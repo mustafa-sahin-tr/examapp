@@ -13,19 +13,28 @@ namespace ExamApp.Api.Migrations
     /// <c>a.IsPlatformWide || a.SchoolId == okul</c> olur. Davranışı korumak için bugün "okul kısıtı yok" sayılan satırlar —
     /// öğrenci hedefi yok + sınıf hedefi var + <c>SchoolId IS NULL</c> (#259 backfill'inin bilinçli olarak dokunmadığı
     /// admin/belirsiz sınıf atamaları) — <c>IsPlatformWide = true</c> olarak işaretlenir. Öğrenci hedefli satırlar false
-    /// kalır (predikatta zaten StudentId eşleşmesiyle görünür). Silinmiş satırlar da kapsamda (yeniden açılırlarsa tutarlı
-    /// kalsın). İdempotent: yalnızca false satırları günceller. Down kolonu düşürür (eski predikat null'a bakıyordu).
+    /// kalır (predikatta zaten StudentId eşleşmesiyle görünür).
+    /// <para>
+    /// Review (security L4) daraltması — fail-closed: (1) silinmiş satırlar işaretlenmez (yeniden açılırlarsa okul kısıtsız
+    /// olarak DEĞİL kapalı döner); (2) oluşturanı bir öğretmen olan satırlar (herhangi bir <c>Teachers</c> satırı, silinmiş
+    /// dahil — ör. #259 backfill'inin belirsiz bıraktığı çift satırlı ya da okulsuz öğretmen ataması) işaretlenmez: platform
+    /// geneli atamayı yalnızca admin yapar; admin'in exam DB'de Teachers satırı yoktur (CreateUserId'si null/0 olan legacy
+    /// satırlar da admin sayılır). Bu satırlar migration sonrası yalnızca kendi okul koşuluyla (SchoolId null → hiç) görünür.
+    /// </para>
+    /// İdempotent: yalnızca false satırları günceller. Down kolonu düşürür (eski predikat null'a bakıyordu).
     /// </para>
     /// </summary>
     public partial class AddWorksheetAssignmentIsPlatformWide : Migration
     {
         internal const string BackfillSql = """
-                UPDATE "WorksheetAssignments"
+                UPDATE "WorksheetAssignments" AS a
                 SET "IsPlatformWide" = TRUE
-                WHERE "IsPlatformWide" = FALSE
-                  AND "SchoolId" IS NULL
-                  AND "StudentId" IS NULL
-                  AND "GradeId" IS NOT NULL;
+                WHERE a."IsPlatformWide" = FALSE
+                  AND NOT a."IsDeleted"
+                  AND a."SchoolId" IS NULL
+                  AND a."StudentId" IS NULL
+                  AND a."GradeId" IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM "Teachers" t WHERE t."UserId" = a."CreateUserId");
                 """;
 
         /// <inheritdoc />

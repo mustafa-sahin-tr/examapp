@@ -1,11 +1,11 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Parents;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers
@@ -14,7 +14,7 @@ namespace ExamApp.Api.Controllers
     [ApiController]
     public class ParentController : BaseController
     {
-        private readonly AppDbContext _context;
+        private readonly IParentService _parentService;
         private readonly IKeycloakService _keycloakService;
 
         // Client'a dönen tüm metinler mesaj sözlüğünden gelir (issue #184).
@@ -22,9 +22,9 @@ namespace ExamApp.Api.Controllers
     // senaryolarda varsayılan dile düşebilmek için opsiyonel.
         private readonly IStringLocalizer<Messages> _localizer;
 
-        public ParentController(AppDbContext context, IKeycloakService keycloakService, IStringLocalizer<Messages>? localizer = null) : base()
+        public ParentController(IParentService parentService, IKeycloakService keycloakService, IStringLocalizer<Messages>? localizer = null) : base()
         {
-            _context = context;
+            _parentService = parentService;
             _keycloakService = keycloakService;
             _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         }
@@ -40,29 +40,15 @@ namespace ExamApp.Api.Controllers
                 return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
             }
 
-            // issue #277 (madde 4): rol değişiyor mu — profil rolü (auth-api Users.Role) ile karşılaştırılır, Keycloak çağrısından
-            // ÖNCE (aşağıda user.Role üzerine yazılıyor).
+            // issue #277 (madde 4): rol değişikliği bağlamı Keycloak çağrısından ÖNCE alınır (aşağıda user.Role üzerine yazılıyor).
             var roleChange = new UserRoleChangeRequest(user.KeycloakId, user.Id, user.Role);
-            var publishRoleChange = UserRoleChangeOutbox.IsChange(roleChange, UserRole.Parent);
 
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Parent);
 
-            // issue #277 (madde 4): Parent satırı + UserRoleChangedEvent outbox satırı TEK SaveChanges'te (atomik; EF bunu
-            // execution strategy altında kendi transaction'ında çalıştırır, değişiklikler commit'e kadar kabul edilmediği için
-            // retry güvenli). Veli akışında sıra bilinçli olarak Keycloak → DB (mevcut akış): SetRoleAsync başarısız olursa
-            // hiçbir şey yazılmaz; DB yazımı başarısız olursa Keycloak rolü atanmış ama event yok → auth-api rolü bir sonraki
-            // login'de Keycloak'tan senkronlar (#277 öncesi davranış). Satır eskiden token yenilemeden SONRA yazılıyordu;
-            // geçersiz refresh token'da rol atanmış ama satır/event yazılmamış kalmasın diye öne alındı.
-            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == user.Id);
-            if (parent == null)
-            {
-                parent = new Parent { UserId = user.Id };
-                _context.Parents.Add(parent);
-            }
-            if (publishRoleChange)
-                _context.OutboxMessages.Add(UserRoleChangeOutbox.Create(roleChange, UserRole.Parent, Guid.NewGuid(), DateTime.UtcNow));
-            if (_context.ChangeTracker.HasChanges())
-                await _context.SaveChangesAsync();
+            // issue #277 (madde 3/4): Parent satırı + rol event'i servis katmanında tek SaveChanges'te, Keycloak rolü ATANDIKTAN
+            // sonra (sıra/hata davranışı: ParentService). Satır eskiden token yenilemeden SONRA yazılıyordu; geçersiz refresh
+            // token'da rol atanmış ama satır/event yazılmamış kalmasın diye öne alındı.
+            var parentId = await _parentService.RegisterAsync(user.Id, roleChange, HttpContext.RequestAborted);
 
             // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
             // (Role boş) haliyle Redis'e cache'lemiş olabilir. Cache'i güncel rolle tazele
@@ -93,7 +79,7 @@ namespace ExamApp.Api.Controllers
             {
                 accessToken = tokenData.AccessToken,
                 expiresIn = tokenData.ExpiresIn,
-                profileId = parent.Id
+                profileId = parentId
             });
         }
 
@@ -103,7 +89,7 @@ namespace ExamApp.Api.Controllers
         {
             var user = await GetAuthenticatedUserAsync();
             var hasRecord = user != null && user.Id > 0
-                && await _context.Parents.AnyAsync(p => p.UserId == user.Id);
+                && await _parentService.HasParentRecordAsync(user.Id, HttpContext.RequestAborted);
             return Ok(new { HasParentRecord = hasRecord });
         }
     }

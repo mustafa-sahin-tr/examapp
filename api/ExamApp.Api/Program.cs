@@ -238,6 +238,9 @@ builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionQueryService,
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionOwnershipGuard, ExamApp.Api.Services.Questions.QuestionOwnershipGuard>(); // issue #287 H1
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
+// issue #277 (madde 3/4): veli kaydı servisi + register sonrası UserRoleChangedEvent yazıcısı.
+builder.Services.AddScoped<ExamApp.Api.Services.Parents.IParentService, ExamApp.Api.Services.Parents.ParentService>();
+builder.Services.AddScoped<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder, ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder>();
 builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddScoped<UserProfileCacheService>();
 builder.Services.AddScoped<ISchoolContextResolver, SchoolContextResolver>(); // issue #189

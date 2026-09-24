@@ -455,6 +455,31 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         rank!.TotalStudents.ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData(true, 1)]   // okullu öğrenci: B okulundaki st2 sayılmaz
+    [InlineData(false, 2)]  // okulsuz öğrenci: atama kümesinin tamamı
+    public async Task Issue277_StudentTargetedRank_IsScopedToTheStudentsSchool(bool st1HasSchool, int expectedTotal)
+    {
+        // issue #277 review: öğrenci hedefli grup da okulla sınırlı (ör. bağımsız öğretmen iki okuldan öğrenciye atadı).
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+        await PutStudentsInSchoolsAsync(w);
+        if (!st1HasSchool)
+        {
+            await using var ctx0 = _db.NewContext();
+            await ctx0.Students.Where(s => s.Id == w.St1)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null));
+        }
+        await AddAssignmentAsync(w.WorksheetId, studentId: w.St1, gradeId: null);
+        await AddAssignmentAsync(w.WorksheetId, studentId: w.St2, gradeId: null);
+
+        await using var ctx = _db.NewContext();
+        var rank = (await AsStudent(ctx, w, w.St1))!.CompletedResult!.Rank;
+
+        rank.ShouldNotBeNull();
+        rank!.TotalStudents.ShouldBe(expectedTotal);
+    }
+
     [Fact]
     public async Task Issue277_GradeRank_ForIndependentStudent_StaysPlatformWide()
     {

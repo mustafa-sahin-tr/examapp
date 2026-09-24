@@ -99,7 +99,7 @@ public class StudentService : IStudentService
 
     }
 
-    public async Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto, UserRoleChangeRequest? roleChange = null)
+    public async Task<ResponseBaseDto> Save(int userId, RegisterStudentDto dto)
     {
         if (dto.SchoolId.HasValue &&
             !await _context.Schools.AnyAsync(s => s.Id == dto.SchoolId.Value))
@@ -191,13 +191,6 @@ public class StudentService : IStudentService
             };
         }
 
-        // issue #277 (madde 4): rol Student'a değişiyorsa UserRoleChangedEvent öğrenci satırıyla AYNI SaveChanges/transaction'da
-        // yazılır (exam DB'de yerel Users tablosu yok). Sıra ve SetRoleAsync hatası: TeacherService.Save ile aynı. Nesne bir
-        // kez kurulur (EventId sabit) ve retry'da yalnızca takip edilmiyorsa eklenir.
-        var roleChangeOutbox = UserRoleChangeOutbox.IsChange(roleChange, UserRole.Student)
-            ? UserRoleChangeOutbox.Create(roleChange!, UserRole.Student, Guid.NewGuid(), DateTime.UtcNow)
-            : null;
-
         var isNew = student.Id == 0;
         var teacherRecordRace = false;
         try
@@ -223,8 +216,6 @@ public class StudentService : IStudentService
 
                     if (_context.Entry(student).State == EntityState.Detached)
                         _context.Students.Add(student);
-                    if (roleChangeOutbox != null && _context.Entry(roleChangeOutbox).State == EntityState.Detached)
-                        _context.OutboxMessages.Add(roleChangeOutbox);
 
                     await _context.SaveChangesAsync(acceptAllChangesOnSuccess: false);
                     await tx.CommitAsync();
@@ -233,10 +224,6 @@ public class StudentService : IStudentService
             }
             else
             {
-                // Tek SaveChanges = öğrenci güncellemesi + rol event'i atomik (EF kendi transaction'ını execution strategy
-                // altında açar; retry'da değişiklikler henüz kabul edilmemiş olduğundan yeniden yazılır).
-                if (roleChangeOutbox != null)
-                    _context.OutboxMessages.Add(roleChangeOutbox);
                 await _context.SaveChangesAsync();
             }
         }

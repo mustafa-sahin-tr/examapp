@@ -18,9 +18,9 @@ public class Issue277MigrationBackfillTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     [Fact]
-    public async Task IsPlatformWide_backfill_marks_only_null_school_grade_assignments_and_is_idempotent()
+    public async Task IsPlatformWide_backfill_marks_only_live_admin_created_null_school_grade_assignments_and_is_idempotent()
     {
-        int grade, school, student, ws;
+        const int teacherUserId = 500, deletedTeacherUserId = 501, adminUserId = 99;
         await using (var ctx = _db.NewContext())
         {
             var g = new Grade { Name = "8" };
@@ -29,17 +29,27 @@ public class Issue277MigrationBackfillTests : IDisposable
             await ctx.SaveChangesAsync();
             var st = new Student { UserId = 1, StudentNumber = "n", GradeId = g.Id, SchoolId = s.Id };
             var w = new Worksheet { Name = "W", Description = "", GradeId = g.Id };
-            ctx.AddRange(st, w);
+            ctx.AddRange(st, w,
+                new Teacher { UserId = teacherUserId, IsIndependentTutor = true },
+                new Teacher { UserId = deletedTeacherUserId, IsDeleted = true });
             await ctx.SaveChangesAsync();
-            (grade, school, student, ws) = (g.Id, s.Id, st.Id, w.Id);
 
             var start = DateTime.UtcNow.AddDays(-1);
             ctx.WorksheetAssignments.AddRange(
-                new WorksheetAssignment { Id = 1, WorksheetId = ws, GradeId = grade, StartAt = start },                      // admin/legacy → true
-                new WorksheetAssignment { Id = 2, WorksheetId = ws, GradeId = grade, SchoolId = school, StartAt = start },   // okullu → false
-                new WorksheetAssignment { Id = 3, WorksheetId = ws, StudentId = student, StartAt = start },                  // öğrenci → false
-                new WorksheetAssignment { Id = 4, WorksheetId = ws, GradeId = grade, StartAt = start, IsDeleted = true });   // silinmiş → true
+                new WorksheetAssignment { Id = 1, WorksheetId = w.Id, GradeId = g.Id, StartAt = start },                      // admin → true
+                new WorksheetAssignment { Id = 2, WorksheetId = w.Id, GradeId = g.Id, SchoolId = s.Id, StartAt = start },     // okullu → false
+                new WorksheetAssignment { Id = 3, WorksheetId = w.Id, StudentId = st.Id, StartAt = start },                   // öğrenci → false
+                new WorksheetAssignment { Id = 4, WorksheetId = w.Id, GradeId = g.Id, StartAt = start, IsDeleted = true },    // silinmiş → false
+                new WorksheetAssignment { Id = 5, WorksheetId = w.Id, GradeId = g.Id, StartAt = start },                      // öğretmen oluşturdu → false
+                new WorksheetAssignment { Id = 6, WorksheetId = w.Id, GradeId = g.Id, StartAt = start },                      // silinmiş öğretmen → false
+                new WorksheetAssignment { Id = 7, WorksheetId = w.Id, GradeId = g.Id, StartAt = start });                     // oluşturan bilinmiyor (legacy) → true
             await ctx.SaveChangesAsync();
+
+            // Audit interceptor CreateUserId'yi o anki kullanıcıyla ezer; senaryo sahiplerini sabitle.
+            await ctx.Database.ExecuteSqlRawAsync($"""
+                UPDATE "WorksheetAssignments" SET "CreateUserId" = CASE "Id"
+                    WHEN 5 THEN {teacherUserId} WHEN 6 THEN {deletedTeacherUserId} WHEN 7 THEN NULL ELSE {adminUserId} END
+                """);
         }
 
         await using (var ctx = _db.NewContext())
@@ -50,10 +60,13 @@ public class Issue277MigrationBackfillTests : IDisposable
 
         await using var check = _db.NewContext();
         var rows = await check.WorksheetAssignments.IgnoreQueryFilters().AsNoTracking().ToDictionaryAsync(a => a.Id, a => a.IsPlatformWide);
-        rows[1].ShouldBeTrue();
-        rows[2].ShouldBeFalse();
-        rows[3].ShouldBeFalse();
-        rows[4].ShouldBeTrue();
+        rows[1].ShouldBeTrue("admin (Teachers satırı yok) → platform geneli");
+        rows[2].ShouldBeFalse("okullu atama");
+        rows[3].ShouldBeFalse("öğrenci hedefli");
+        rows[4].ShouldBeFalse("silinmiş satır fail-closed kalır");
+        rows[5].ShouldBeFalse("öğretmen oluşturdu → platform geneli sayılmaz");
+        rows[6].ShouldBeFalse("silinmiş Teachers satırı da öğretmen sayılır");
+        rows[7].ShouldBeTrue("oluşturanı bilinmeyen legacy satır → admin varsayımı");
     }
 
     [Fact]

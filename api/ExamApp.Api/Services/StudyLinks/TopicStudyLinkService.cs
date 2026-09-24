@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.StudyLinks;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Foundation.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -20,40 +22,54 @@ namespace ExamApp.Api.Services.StudyLinks;
 /// <summary>
 /// Konu / alt konu harici çalışma linkleri (issue #61).
 ///
+/// <para><b>Yetki:</b> Admin her şeyi yapabilir. Teacher yalnızca ONAYLI ise (<see cref="IApprovedTeacherGuard"/>)
+/// listeleyebilir/ekleyebilir/sıralayabilir; güncelleme ve silmede yalnızca KENDİ oluşturduğu linke dokunabilir.
+/// Sıralama yalnızca SortOrder değiştirir (içerik değil); bu yüzden onaylı her öğretmene açıktır ve denetim kaydına düşer.
+/// Moderasyon yoktur — link eklendiği an yayındadır; her değişiklik <see cref="TopicStudyLinkAudit"/>'e yazılır.</para>
+///
 /// <para><b>Kapsam anahtarı:</b> SubTopicId doluysa alt konu, değilse konu (TopicId dolu, SubTopicId boş).
 /// Alt konu linkinde TopicId alt konunun üst konusuyla doldurulur ama sayım/listeleme alt konu üzerinden yapılır.</para>
 ///
-/// <para><b>7 aktif link limiti ve eşzamanlılık:</b> "say → ekle/aktifleştir" iki ayrı SQL ifadesi olduğu için
-/// iki yönetici aynı anda 7. linki eklerse ikisi de 6 görüp 8'e çıkabilirdi (write skew). Bu yüzden sayım ve yazma
-/// <see cref="IsolationLevel.Serializable"/> transaction içinde yapılır: PostgreSQL SSI çakışan ikinci transaction'ı
-/// serialization_failure (40001) ile düşürür; Npgsql execution strategy'si (Aspire AddNpgsqlDbContext → retry açık)
-/// bunu geçici hata sayıp işlemi baştan dener, ikinci denemede sayım 7'yi görür ve limit hatası döner. Retry
-/// tükenirse istemciye 409 (concurrentModification) döner. Öğrenci tarafı savunma amaçlı alt konu başına en fazla
-/// 7 link gösterir.</para>
+/// <para><b>Limitler ve eşzamanlılık:</b> kapsam başına en fazla 7 aktif ve 30 toplam (aktif + pasif) link.
+/// "say → ekle/aktifleştir" iki ayrı SQL ifadesi olduğu için iki yönetici aynı anda son hakkı kullanırsa ikisi de
+/// limitin altında görüp limiti aşabilirdi (write skew). Bu yüzden sayım ve yazma <see cref="IsolationLevel.Serializable"/>
+/// transaction içinde yapılır: PostgreSQL SSI çakışan ikinci transaction'ı serialization_failure (40001) ile düşürür;
+/// Npgsql execution strategy'si (Aspire AddNpgsqlDbContext → retry açık) işlemi baştan dener, ikinci denemede sayım
+/// limiti görür ve limit hatası döner. Retry tükenirse 409 (concurrentModification). Öğrenci tarafı savunma amaçlı
+/// grup başına en fazla 7 link gösterir.</para>
+///
+/// <para><b>URL:</b> yalnızca mutlak http/https, DNS host (IP literal ve localhost yok), kullanıcı bilgisi yok.
+/// Saklanan değer normalize edilmiş <c>AbsoluteUri</c>'dir (IDN host punycode'a çevrilir).</para>
 /// </summary>
 public class TopicStudyLinkService : ITopicStudyLinkService
 {
     private readonly AppDbContext _context;
+    private readonly IApprovedTeacherGuard _teacherGuard;
     private readonly ILogger<TopicStudyLinkService> _logger;
 
-    // Client'a ulaşan tüm metinler mesaj sözlüğünden gelir (issue #184). Parametre yalnızca DI'sız
-    // (birim test) kurulum için opsiyonel; DI her zaman gerçek localizer'ı verir.
+    // Client'a ulaşan tüm metinler mesaj sözlüğünden gelir (issue #184). Opsiyonel parametreler yalnızca DI'sız
+    // (birim test) kurulum için; DI her zaman gerçek bağımlılıkları verir.
     private readonly IStringLocalizer<Messages> _localizer;
 
     public TopicStudyLinkService(
         AppDbContext context,
+        IApprovedTeacherGuard? teacherGuard = null,
         ILogger<TopicStudyLinkService>? logger = null,
         IStringLocalizer<Messages>? localizer = null)
     {
         _context = context;
+        _teacherGuard = teacherGuard ?? new ApprovedTeacherGuard(context);
         _logger = logger ?? NullLogger<TopicStudyLinkService>.Instance;
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    // ---------------- Yönetim (Admin / Teacher) ----------------
+    // ---------------- Yönetim (Admin / onaylı Teacher) ----------------
 
-    public async Task<TopicStudyLinkListResultDto> ListAsync(TopicStudyLinkQueryDto query, CancellationToken ct = default)
+    public async Task<TopicStudyLinkListResultDto> ListAsync(TopicStudyLinkQueryDto query, StudyLinkActor actor, CancellationToken ct = default)
     {
+        if (await AuthorizeManagerAsync<TopicStudyLinkListResultDto>(actor, ct) is { } denied)
+            return denied;
+
         var scope = await ResolveExactScopeAsync(query.TopicId, query.SubTopicId, ct);
         if (scope.Error != null)
             return Fail<TopicStudyLinkListResultDto>(scope.Error, notFound: scope.NotFound);
@@ -61,8 +77,11 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         return await BuildListAsync(scope.Scope, query.IncludeInactive, query.Skip, query.Take, ct);
     }
 
-    public async Task<TopicStudyLinkResultDto> GetByIdAsync(int id, CancellationToken ct = default)
+    public async Task<TopicStudyLinkResultDto> GetByIdAsync(int id, StudyLinkActor actor, CancellationToken ct = default)
     {
+        if (await AuthorizeManagerAsync<TopicStudyLinkResultDto>(actor, ct) is { } denied)
+            return denied;
+
         var link = await _context.TopicStudyLinks.AsNoTracking()
             .Where(l => l.Id == id)
             .Select(ToDtoExpression)
@@ -73,8 +92,11 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             : new TopicStudyLinkResultDto { Success = true, ObjectId = link.Id, Link = link };
     }
 
-    public async Task<TopicStudyLinkResultDto> CreateAsync(CreateTopicStudyLinkDto dto, UserProfileDto user, CancellationToken ct = default)
+    public async Task<TopicStudyLinkResultDto> CreateAsync(CreateTopicStudyLinkDto dto, StudyLinkActor actor, CancellationToken ct = default)
     {
+        if (await AuthorizeManagerAsync<TopicStudyLinkResultDto>(actor, ct) is { } denied)
+            return denied;
+
         var fields = ValidateFields(dto.Title, dto.Url, dto.SourceType);
         if (fields.Error != null)
             return Fail<TopicStudyLinkResultDto>(fields.Error);
@@ -85,8 +107,11 @@ public class TopicStudyLinkService : ITopicStudyLinkService
 
         return await RunSerializableAsync<TopicStudyLinkResultDto>(async () =>
         {
+            if (await InScope(scope.Scope).CountAsync(ct) >= TopicStudyLinkLimits.MaxTotalLinksPerScope)
+                return LimitReached(TopicStudyLinkErrorCodes.TotalLimitReached, "studyLinks.totalLimitReached", TopicStudyLinkLimits.MaxTotalLinksPerScope);
+
             if (dto.IsActive && await CountActiveAsync(scope.Scope, excludeId: null, ct) >= TopicStudyLinkLimits.MaxActiveLinksPerScope)
-                return LimitReached();
+                return LimitReached(TopicStudyLinkErrorCodes.ActiveLimitReached, "studyLinks.activeLimitReached", TopicStudyLinkLimits.MaxActiveLinksPerScope);
 
             var sortOrder = dto.SortOrder
                 ?? (await InScope(scope.Scope).MaxAsync(l => (int?)l.SortOrder, ct) ?? -1) + 1;
@@ -100,13 +125,15 @@ public class TopicStudyLinkService : ITopicStudyLinkService
                 SourceType = fields.SourceType,
                 SortOrder = sortOrder,
                 IsActive = dto.IsActive,
-                CreatedByUserId = user.Id,
-                CreatedByName = Truncate(user.FullName, 200),
-                CreatedByRole = Truncate(user.Role, 50),
+                CreatedByUserId = actor.UserId,
+                CreatedByName = Truncate(actor.Name, 200),
+                CreatedByRole = Truncate(actor.Role, 50),
             };
 
-            _context.SetCurrentUser(user.Id);
+            _context.SetCurrentUser(actor.UserId);
             _context.TopicStudyLinks.Add(entity);
+            // Link + denetim kaydı aynı SaveChanges (ve serializable transaction) içinde.
+            AddAudit(entity, TopicStudyLinkAuditAction.Create, actor, oldUrl: null, oldTitle: null);
             await _context.SaveChangesAsync(ct);
 
             return new TopicStudyLinkResultDto
@@ -119,8 +146,11 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         }, ct);
     }
 
-    public async Task<TopicStudyLinkResultDto> UpdateAsync(int id, UpdateTopicStudyLinkDto dto, int userId, CancellationToken ct = default)
+    public async Task<TopicStudyLinkResultDto> UpdateAsync(int id, UpdateTopicStudyLinkDto dto, StudyLinkActor actor, CancellationToken ct = default)
     {
+        if (await AuthorizeManagerAsync<TopicStudyLinkResultDto>(actor, ct) is { } denied)
+            return denied;
+
         var fields = ValidateFields(dto.Title, dto.Url, dto.SourceType);
         if (fields.Error != null)
             return Fail<TopicStudyLinkResultDto>(fields.Error);
@@ -131,12 +161,19 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             if (link == null)
                 return Fail<TopicStudyLinkResultDto>("studyLinks.notFound", notFound: true);
 
+            if (DenyIfNotOwner(link, actor) is { } notOwner)
+                return notOwner;
+
+            var wasActive = link.IsActive;
             var willBeActive = dto.IsActive ?? link.IsActive;
-            if (willBeActive && !link.IsActive
+            if (willBeActive && !wasActive
                 && await CountActiveAsync(ScopeOf(link), excludeId: link.Id, ct) >= TopicStudyLinkLimits.MaxActiveLinksPerScope)
             {
-                return LimitReached();
+                return LimitReached(TopicStudyLinkErrorCodes.ActiveLimitReached, "studyLinks.activeLimitReached", TopicStudyLinkLimits.MaxActiveLinksPerScope);
             }
+
+            var oldUrl = link.Url;
+            var oldTitle = link.Title;
 
             link.Title = fields.Title;
             link.Url = fields.Url;
@@ -144,8 +181,17 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             link.IsActive = willBeActive;
             if (dto.SortOrder.HasValue)
                 link.SortOrder = dto.SortOrder.Value;
+            link.UpdatedByName = Truncate(actor.Name, 200);
 
-            _context.SetCurrentUser(userId);
+            var action = (wasActive, willBeActive) switch
+            {
+                (false, true) => TopicStudyLinkAuditAction.Activate,
+                (true, false) => TopicStudyLinkAuditAction.Deactivate,
+                _ => TopicStudyLinkAuditAction.Update,
+            };
+
+            _context.SetCurrentUser(actor.UserId);
+            AddAudit(link, action, actor, oldUrl, oldTitle);
             await _context.SaveChangesAsync(ct);
 
             return new TopicStudyLinkResultDto
@@ -158,22 +204,34 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         }, ct);
     }
 
-    public async Task<ResponseBaseDto> DeleteAsync(int id, int userId, CancellationToken ct = default)
+    public async Task<TopicStudyLinkResultDto> DeleteAsync(int id, StudyLinkActor actor, CancellationToken ct = default)
     {
+        if (await AuthorizeManagerAsync<TopicStudyLinkResultDto>(actor, ct) is { } denied)
+            return denied;
+
         var link = await _context.TopicStudyLinks.FirstOrDefaultAsync(l => l.Id == id, ct);
         if (link == null)
-            return Fail<ResponseBaseDto>("studyLinks.notFound", notFound: true);
+            return Fail<TopicStudyLinkResultDto>("studyLinks.notFound", notFound: true);
 
-        // AppDbContext Remove'u soft delete'e çevirir; silinen link global filtre sayesinde limite sayılmaz.
-        _context.SetCurrentUser(userId);
+        if (DenyIfNotOwner(link, actor) is { } notOwner)
+            return notOwner;
+
+        // AppDbContext Remove'u soft delete'e çevirir; silinen link global filtre sayesinde limitlere sayılmaz.
+        // Soft delete + denetim kaydı tek SaveChanges → tek transaction.
+        _context.SetCurrentUser(actor.UserId);
+        link.UpdatedByName = Truncate(actor.Name, 200);
         _context.TopicStudyLinks.Remove(link);
+        AddAudit(link, TopicStudyLinkAuditAction.Delete, actor, link.Url, link.Title, includeNew: false);
         await _context.SaveChangesAsync(ct);
 
-        return new ResponseBaseDto { Success = true, ObjectId = id, Message = _localizer["studyLinks.deleted"] };
+        return new TopicStudyLinkResultDto { Success = true, ObjectId = id, Message = _localizer["studyLinks.deleted"] };
     }
 
-    public async Task<TopicStudyLinkListResultDto> ReorderAsync(ReorderTopicStudyLinksDto dto, int userId, CancellationToken ct = default)
+    public async Task<TopicStudyLinkListResultDto> ReorderAsync(ReorderTopicStudyLinksDto dto, StudyLinkActor actor, CancellationToken ct = default)
     {
+        if (await AuthorizeManagerAsync<TopicStudyLinkListResultDto>(actor, ct) is { } denied)
+            return denied;
+
         var items = dto.Items ?? new List<TopicStudyLinkOrderItemDto>();
         if (items.Count == 0)
             return Fail<TopicStudyLinkListResultDto>("studyLinks.reorder.itemsRequired");
@@ -192,10 +250,14 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             return Fail<TopicStudyLinkListResultDto>("studyLinks.reorder.linkNotInScope");
 
         var orderById = items.ToDictionary(i => i.Id, i => i.SortOrder);
-        foreach (var link in links)
+        foreach (var link in links.Where(l => l.SortOrder != orderById[l.Id]))
+        {
             link.SortOrder = orderById[link.Id];
+            link.UpdatedByName = Truncate(actor.Name, 200);
+            AddAudit(link, TopicStudyLinkAuditAction.Reorder, actor, oldUrl: null, oldTitle: null, includeNew: false);
+        }
 
-        _context.SetCurrentUser(userId);
+        _context.SetCurrentUser(actor.UserId);
         await _context.SaveChangesAsync(ct);
 
         var list = await BuildListAsync(scope.Scope, includeInactive: true, skip: 0, take: 100, ct);
@@ -346,6 +408,53 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         return new StudyLinkSuggestionsResultDto { Success = true, Items = items };
     }
 
+    // ---------------- Yetki / denetim ----------------
+
+    /// <summary>Admin → null (izin). Teacher → onaylı değilse Forbidden + TeacherNotApproved.</summary>
+    private async Task<T?> AuthorizeManagerAsync<T>(StudyLinkActor actor, CancellationToken ct) where T : StudyLinkResponseDto, new()
+    {
+        if (actor.IsAdmin)
+            return null;
+
+        if (await _teacherGuard.CheckAsync(actor.UserId, ct) == TeacherApprovalCheck.Approved)
+            return null;
+
+        _logger.LogWarning("Onaylı olmayan öğretmen çalışma linki yönetimi denedi. UserId={UserId}", actor.UserId);
+        var result = Fail<T>("studyLinks.teacherNotApproved");
+        result.Forbidden = true;
+        result.ErrorCode = TopicStudyLinkErrorCodes.TeacherNotApproved;
+        return result;
+    }
+
+    /// <summary>Teacher yalnızca kendi linkini güncelleyebilir/silebilir; Admin her linki.</summary>
+    private TopicStudyLinkResultDto? DenyIfNotOwner(TopicStudyLink link, StudyLinkActor actor)
+    {
+        if (actor.IsAdmin || link.CreatedByUserId == actor.UserId)
+            return null;
+
+        var result = Fail<TopicStudyLinkResultDto>("studyLinks.notOwner");
+        result.Forbidden = true;
+        result.ErrorCode = TopicStudyLinkErrorCodes.NotOwner;
+        return result;
+    }
+
+    private void AddAudit(TopicStudyLink link, TopicStudyLinkAuditAction action, StudyLinkActor actor,
+        string? oldUrl, string? oldTitle, bool includeNew = true)
+    {
+        _context.TopicStudyLinkAudits.Add(new TopicStudyLinkAudit
+        {
+            Link = link,
+            Action = action,
+            ActorUserId = actor.UserId,
+            ActorRole = Truncate(actor.Role, 50),
+            OccurredAtUtc = DateTime.UtcNow,
+            OldUrl = oldUrl,
+            OldTitle = oldTitle,
+            NewUrl = includeNew ? link.Url : null,
+            NewTitle = includeNew ? link.Title : null,
+        });
+    }
+
     // ---------------- Yardımcılar ----------------
 
     private readonly record struct LinkScope(int? TopicId, int? SubTopicId);
@@ -432,28 +541,39 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             return new FieldValidation(string.Empty, string.Empty, default, "studyLinks.urlRequired");
         if (url.Length > TopicStudyLinkLimits.UrlMaxLength)
             return new FieldValidation(string.Empty, string.Empty, default, "studyLinks.urlTooLong");
-        if (!TryParseSafeUrl(url, out var uri))
+        if (!TryNormalizeSafeUrl(url, out var normalizedUrl, out var host))
             return new FieldValidation(string.Empty, string.Empty, default, "studyLinks.invalidUrl");
+        // Normalizasyon (punycode, yüzde-kodlama) uzatabilir — sınır saklanan değer için de geçerli.
+        if (normalizedUrl.Length > TopicStudyLinkLimits.UrlMaxLength)
+            return new FieldValidation(string.Empty, string.Empty, default, "studyLinks.urlTooLong");
 
         if (requestedSource.HasValue && !Enum.IsDefined(requestedSource.Value))
             return new FieldValidation(string.Empty, string.Empty, default, "studyLinks.invalidSourceType");
 
-        var isYouTube = IsYouTubeHost(uri.Host);
+        var isYouTube = IsYouTubeHost(host);
         if (requestedSource == TopicStudyLinkSourceType.YouTube && !isYouTube)
             return new FieldValidation(string.Empty, string.Empty, default, "studyLinks.sourceTypeMismatch");
 
         var source = requestedSource ?? (isYouTube ? TopicStudyLinkSourceType.YouTube : TopicStudyLinkSourceType.Other);
-        return new FieldValidation(title, url, source, null);
+        return new FieldValidation(title, normalizedUrl, source, null);
     }
 
     /// <summary>
-    /// Yalnızca mutlak http/https URL kabul edilir (javascript:, data:, vbscript:, file:, göreli yol vb. reddedilir).
-    /// Boşluk/kontrol karakteri içeren ve kullanıcı bilgisi (<c>https://youtube.com@evil.example</c> gibi
-    /// oltalama) taşıyan URL'ler de reddedilir. Link öğrenciye tıklanabilir olarak gösterildiği için güvenlik sınırıdır.
+    /// Güvenlik sınırı — link öğrenciye tıklanabilir olarak gösterilir. Kabul koşulları:
+    /// <list type="bullet">
+    ///   <item>mutlak <c>http</c>/<c>https</c> (javascript:, data:, vbscript:, file:, ftp:, göreli yol reddedilir);</item>
+    ///   <item>boşluk/kontrol karakteri yok; kullanıcı bilgisi yok (<c>https://youtube.com@evil.example</c> oltalaması);</item>
+    ///   <item>host bir DNS adı: IPv4 (ondalık/hex/oktal/tamsayı yazımları dahil — Uri bunları IPv4'e çözer) ve IPv6
+    ///   literal'leri ile <c>localhost</c> / <c>*.localhost</c> reddedilir;</item>
+    ///   <item>IDN host punycode'a çevrilir (<see cref="Uri.IdnHost"/>) ve normalize sonrası ASCII olmayan host reddedilir.</item>
+    /// </list>
+    /// <paramref name="normalized"/> saklanacak değerdir: punycode host ile yeniden kurulmuş <see cref="Uri.AbsoluteUri"/>.
     /// </summary>
-    private static bool TryParseSafeUrl(string url, out Uri uri)
+    private static bool TryNormalizeSafeUrl(string url, out string normalized, out string host)
     {
-        uri = null!;
+        normalized = string.Empty;
+        host = string.Empty;
+
         if (url.Any(c => char.IsWhiteSpace(c) || char.IsControl(c)))
             return false;
         if (!Uri.TryCreate(url, UriKind.Absolute, out var parsed))
@@ -462,8 +582,24 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             return false;
         if (string.IsNullOrEmpty(parsed.Host) || !string.IsNullOrEmpty(parsed.UserInfo))
             return false;
+        if (parsed.HostNameType != UriHostNameType.Dns)
+            return false; // IPv4 / IPv6 / Basic / Unknown
 
-        uri = parsed;
+        var idnHost = parsed.IdnHost.TrimEnd('.').ToLowerInvariant();
+        if (idnHost.Length == 0 || idnHost.Any(c => c > 0x7F))
+            return false;
+        if (idnHost == "localhost" || idnHost.EndsWith(".localhost", StringComparison.Ordinal))
+            return false;
+        // Savunma: Uri'nin DNS saydığı ama IPAddress'in (inet_aton tarzı: hex/oktal/tamsayı) IP olarak çözdüğü yazımlar.
+        if (IPAddress.TryParse(idnHost, out _))
+            return false;
+
+        var builder = new UriBuilder(parsed) { Host = idnHost };
+        if (parsed.IsDefaultPort)
+            builder.Port = -1;
+
+        normalized = builder.Uri.AbsoluteUri;
+        host = idnHost;
         return true;
     }
 
@@ -528,12 +664,12 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         };
     }
 
-    private TopicStudyLinkResultDto LimitReached() => new()
+    private TopicStudyLinkResultDto LimitReached(string errorCode, string messageKey, int limit) => new()
     {
         Success = false,
         Conflict = true,
-        ErrorCode = TopicStudyLinkErrorCodes.ActiveLimitReached,
-        Message = _localizer["studyLinks.activeLimitReached", TopicStudyLinkLimits.MaxActiveLinksPerScope],
+        ErrorCode = errorCode,
+        Message = _localizer[messageKey, limit],
     };
 
     private T Fail<T>(string key, bool notFound = false, bool conflict = false) where T : ResponseBaseDto, new() => new()
@@ -564,6 +700,8 @@ public class TopicStudyLinkService : ITopicStudyLinkService
         CreatedByName = l.CreatedByName,
         CreatedByRole = l.CreatedByRole,
         CreateTime = l.CreateTime,
+        UpdatedByUserId = l.UpdateUserId,
+        UpdatedByName = l.UpdatedByName,
         UpdateTime = l.UpdateTime,
     };
 

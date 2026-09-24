@@ -26,6 +26,10 @@
       "tooManyItems": "At most 100 links can be reordered at once.",
       "duplicateIds": "The same link was sent more than once.",
       "linkNotInScope": "Some of the links were not found or do not belong to the selected topic/subtopic."
-    }
+    },
+    "teacherNotApproved": "Your teacher account must be approved to manage study links.",
+    "notOwner": "You can only edit or delete study links that you added.",
+    "totalLimitReached": "A topic or subtopic can have at most {0} study links (active + inactive). Delete an unused link to add a new one.",
+    "rateLimited": "Too many study link changes in a short time. Please wait a moment and try again."
   }
 }

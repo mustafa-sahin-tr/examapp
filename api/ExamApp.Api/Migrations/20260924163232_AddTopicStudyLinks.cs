@@ -28,6 +28,7 @@ namespace ExamApp.Api.Migrations
                     CreatedByUserId = table.Column<int>(type: "integer", nullable: false),
                     CreatedByName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     CreatedByRole = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    UpdatedByName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                     CreateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CreateUserId = table.Column<int>(type: "integer", nullable: true),
                     UpdateTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -52,6 +53,37 @@ namespace ExamApp.Api.Migrations
                         principalColumn: "Id");
                 });
 
+            migrationBuilder.CreateTable(
+                name: "TopicStudyLinkAudits",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    LinkId = table.Column<int>(type: "integer", nullable: false),
+                    Action = table.Column<int>(type: "integer", nullable: false),
+                    ActorUserId = table.Column<int>(type: "integer", nullable: false),
+                    ActorRole = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    OccurredAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    OldUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    NewUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    OldTitle = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    NewTitle = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TopicStudyLinkAudits", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TopicStudyLinkAudits_TopicStudyLinks_LinkId",
+                        column: x => x.LinkId,
+                        principalTable: "TopicStudyLinks",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TopicStudyLinkAudits_LinkId_OccurredAtUtc",
+                table: "TopicStudyLinkAudits",
+                columns: new[] { "LinkId", "OccurredAtUtc" });
+
             migrationBuilder.CreateIndex(
                 name: "IX_TopicStudyLinks_SubTopicId_IsActive",
                 table: "TopicStudyLinks",
@@ -66,6 +98,9 @@ namespace ExamApp.Api.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "TopicStudyLinkAudits");
+
             migrationBuilder.DropTable(
                 name: "TopicStudyLinks");
         }

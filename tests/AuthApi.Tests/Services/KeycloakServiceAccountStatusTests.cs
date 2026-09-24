@@ -289,38 +289,40 @@ public class KeycloakServiceAccountStatusTests
     }
 
     [Fact]
-    public async Task Scan_pages_until_a_short_page()
+    public async Task Full_first_page_of_disabled_users_falls_back_to_per_user_reads_without_a_second_page()
     {
-        var firstPage = Enumerable.Range(0, KeycloakService.DisabledScanPageSize).Select(i => "kc-off-" + i).ToList();
-        var (service, handler) = Build(NoPerUserGet, scanResponse: req => Json(HttpStatusCode.OK,
-            req.RequestUri!.Query.Contains("first=0") ? DisabledPage(firstPage) : DisabledPage(["kc-off-last"])));
-
-        var result = await service.GetUsersEnabledAsync(["kc-off-5", "kc-off-last", "kc-on-1", "kc-on-2", "kc-on-3"]);
-
-        result["kc-off-5"].ShouldBeFalse();
-        result["kc-off-last"].ShouldBeFalse();
-        result["kc-on-1"].ShouldBeTrue();
-        var scans = handler.Requests.Where(IsScan).ToList();
-        scans.Count.ShouldBe(2);
-        scans[1].RequestUri!.Query.ShouldContain($"first={KeycloakService.DisabledScanPageSize}");
-    }
-
-    [Fact]
-    public async Task Too_many_disabled_users_falls_back_to_per_user_reads()
-    {
-        var (service, handler) = Build(EnabledOk, scanResponse: req =>
-        {
-            var first = req.RequestUri!.Query.Split('&').First(p => p.StartsWith("first=") || p.StartsWith("?first="));
-            return Json(HttpStatusCode.OK, DisabledPage(Enumerable.Range(0, KeycloakService.DisabledScanPageSize).Select(i => $"off-{first}-{i}")));
-        });
-        var ids = Enumerable.Range(1, 10).Select(i => "kc-" + i).ToList();
+        // #262 güvenlik review'u: > 1 sayfa devre dışı kullanıcı → offset sayfalaması yerine kullanıcı başı yol
+        // (sayfalar arası enable/disable yarışı devre dışı bir kullanıcıyı atlayıp "etkin" gösterebilirdi).
+        var fullPage = Enumerable.Range(0, KeycloakService.DisabledScanPageSize).Select(i => "kc-off-" + i).ToList();
+        var (service, handler) = Build((id, _) => Task.FromResult(
+                Json(HttpStatusCode.OK, $$"""{"id":"{{id}}","enabled":{{(id.StartsWith("kc-off") ? "false" : "true")}}}""")),
+            scanResponse: _ => Json(HttpStatusCode.OK, DisabledPage(fullPage)));
+        var ids = new List<string> { "kc-off-5", "kc-off-999", "kc-on-1", "kc-on-2", "kc-on-3" };
 
         var result = await service.GetUsersEnabledAsync(ids);
 
-        handler.Requests.Count(IsScan).ShouldBe(KeycloakService.DisabledScanMaxPages);
-        handler.Requests.Count(IsPerUserGet).ShouldBe(10);
-        result.Count.ShouldBe(10);
-        result.Values.ShouldAllBe(v => v);
+        var scans = handler.Requests.Where(IsScan).ToList();
+        scans.Count.ShouldBe(1);
+        scans[0].RequestUri!.Query.ShouldContain("first=0");
+        handler.Requests.Count(IsPerUserGet).ShouldBe(ids.Count);
+        result["kc-off-5"].ShouldBeFalse();
+        result["kc-off-999"].ShouldBeFalse(); // ilk sayfada yoktu — toplu çıkarım "true" derdi, kullanıcı başı okuma doğru
+        result["kc-on-1"].ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Short_page_is_trusted_and_ids_outside_the_disabled_set_are_enabled()
+    {
+        var almostFull = Enumerable.Range(0, KeycloakService.DisabledScanPageSize - 1).Select(i => "kc-off-" + i).ToList();
+        var (service, handler) = Build(NoPerUserGet, scanResponse: _ => Json(HttpStatusCode.OK, DisabledPage(almostFull)));
+
+        var result = await service.GetUsersEnabledAsync(["kc-off-0", "kc-off-98", "kc-on-1", "kc-deleted-in-keycloak", "kc-on-2"]);
+
+        handler.Requests.Count(IsScan).ShouldBe(1);
+        result["kc-off-0"].ShouldBeFalse();
+        result["kc-off-98"].ShouldBeFalse();
+        result["kc-on-1"].ShouldBeTrue();
+        result["kc-deleted-in-keycloak"].ShouldBeTrue(); // sözleşme: toplu yolda listede olmayan → true
     }
 
     [Fact]

@@ -187,7 +187,8 @@ public class AdminController : BaseController
 
     /// <summary>
     /// GET api/admin/teacher-applications/{id} → tek bekleyen başvurunun detayı, TAM e-posta ile (issue #262).
-    /// Bekleyen başvuru yoksa 404. Her başarılı çağrı audit'lenir (TargetId = teacherId; veri dönmeden önce, fail-closed);
+    /// Bekleyen başvuru yoksa 404. Her çağrı audit'lenir (TargetId = teacherId; veri dönmeden önce, fail-closed; 404 →
+    /// Outcome=NotFound);
     /// liste uçlarıyla aynı rate limit kovası.
     /// </summary>
     [HttpGet("teacher-applications/{id:int}")]
@@ -197,12 +198,13 @@ public class AdminController : BaseController
     public async Task<ActionResult<TeacherApplicationDetailDto>> GetTeacherApplication(int id, CancellationToken ct)
     {
         var detail = await _teacherApprovals.GetPendingApplicationAsync(id, ct);
-        if (detail == null)
-            return NotFound();
 
+        // 404 da audit'lenir (Outcome=NotFound): id tarama denemeleri iz bıraksın.
         await _dataAccessAudit.RecordDetailAccessAsync(new AdminDetailAccessRecord(
-            KeyCloakId ?? string.Empty, AdminDataAccessResource.TeacherApplicationDetail, id), ct);
-        return Ok(detail);
+            KeyCloakId ?? string.Empty, AdminDataAccessResource.TeacherApplicationDetail, id,
+            detail == null ? AdminDataAccessOutcome.NotFound : AdminDataAccessOutcome.Served), ct);
+
+        return detail == null ? NotFound() : Ok(detail);
     }
 
     /// <summary>

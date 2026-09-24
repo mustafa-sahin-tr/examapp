@@ -20,7 +20,8 @@ namespace ExamApp.Api.Tests.Helpers;
 /// <summary>
 /// Issue #262: admin veri uçlarının rate limit'i — (1) sayaç dağıtık depoda: aynı depoyu paylaşan iki "replica" toplamda
 /// limit kadar geçirir (N×limit değil); (2) 429 reddi audit tablosuna <c>RateLimited</c> olarak yazılır (kaynak endpoint
-/// metadata'sından, filtre/hedef id istekten); audit hatası 429'u bozmaz; (3) Redis erişilemezse fail-open.
+/// metadata'sından, filtre/hedef id istekten), pencere başına yalnızca İLK red; audit hatası 429'u bozmaz; (3) Redis
+/// erişilemezse fail-open ama limitsiz değil: süreç içi sayaca düşer; (4) bağlantı sağlayıcısı hatadan sonra yeniden dener.
 /// </summary>
 public class AdminDataAccessRateLimitTests
 {
@@ -198,23 +199,28 @@ public class AdminDataAccessRateLimitTests
     }
 
     [Fact]
-    public async Task Redis_store_fails_open_with_a_warning_when_redis_is_unreachable()
+    public async Task Redis_outage_falls_back_to_the_in_memory_limit_with_a_throttled_warning()
     {
+        // #262 güvenlik review'u: fail-open limiti KALDIRMAZ — süreç içi (replica başına) sayaca düşer.
         var provider = Substitute.For<IRedisConnectionProvider>();
         provider.GetConnectionAsync().Returns(Task.FromException<IConnectionMultiplexer>(
             new RedisConnectionException(ConnectionFailureType.UnableToConnect, "No connection is available")));
         var logger = new ListLogger<RedisFixedWindowCounterStore>();
         var store = new RedisFixedWindowCounterStore(provider, TimeSpan.FromMilliseconds(200), logger);
 
+        var decisions = new List<FixedWindowDecision>();
         for (var i = 0; i < 5; i++)
-            (await store.TryAcquireAsync("k", 1, 1, TimeSpan.FromMinutes(1))).Allowed.ShouldBeTrue();
+            decisions.Add(await store.TryAcquireAsync("k", 1, 2, TimeSpan.FromMinutes(1)));
 
+        decisions.Select(d => d.Allowed).ShouldBe([true, true, false, false, false]);
+        decisions[2].RetryAfter.ShouldNotBeNull();
+        (await store.TryAcquireAsync("other", 1, 2, TimeSpan.FromMinutes(1))).Allowed.ShouldBeTrue(); // anahtar başına
         // Uyarı loglanır ama kesinti boyunca her istekte değil (throttle).
         logger.Entries.Count(e => e.Level == LogLevel.Warning && e.Message.Contains("FAIL-OPEN")).ShouldBe(1);
     }
 
     [Fact]
-    public async Task Redis_store_fails_open_when_redis_is_slow()
+    public async Task Slow_redis_falls_back_to_the_in_memory_limit()
     {
         var provider = Substitute.For<IRedisConnectionProvider>();
         provider.GetConnectionAsync().Returns(new TaskCompletionSource<IConnectionMultiplexer>().Task); // hiç tamamlanmaz
@@ -222,6 +228,135 @@ public class AdminDataAccessRateLimitTests
             NullLogger<RedisFixedWindowCounterStore>.Instance);
 
         (await store.TryAcquireAsync("k", 1, 1, TimeSpan.FromMinutes(1))).Allowed.ShouldBeTrue();
+        (await store.TryAcquireAsync("k", 1, 1, TimeSpan.FromMinutes(1))).Allowed.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Redis_outage_through_the_pipeline_still_rejects_and_audits_once()
+    {
+        var provider = Substitute.For<IRedisConnectionProvider>();
+        provider.GetConnectionAsync().Returns(Task.FromException<IConnectionMultiplexer>(
+            new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down")));
+        var store = new RedisFixedWindowCounterStore(provider, TimeSpan.FromMilliseconds(200),
+            NullLogger<RedisFixedWindowCounterStore>.Instance);
+        var audit = Substitute.For<IAdminDataAccessAuditService>();
+        using var host = await StartHostAsync(store, audit);
+        using var client = host.GetTestClient();
+
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        await audit.ReceivedWithAnyArgs(1).RecordRateLimitedAsync(default!, default);
+    }
+
+    // ---- İlk red audit'i (#262 review) ----
+
+    [Fact]
+    public async Task Only_the_first_rejection_per_window_is_audited()
+    {
+        var audit = Substitute.For<IAdminDataAccessAuditService>();
+        using var host = await StartHostAsync(new InMemoryFixedWindowCounterStore(), audit, permitLimit: 2);
+        using var client = host.GetTestClient();
+
+        for (var i = 0; i < 2; i++)
+            (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        for (var i = 0; i < 5; i++)
+            (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await GetAsync(client, "/students", "kc-b")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, "/students", "kc-b")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, "/students", "kc-b")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        // Her partition (sub) için pencere başına TEK satır.
+        await audit.ReceivedWithAnyArgs(2).RecordRateLimitedAsync(default!, default);
+        await audit.Received(1).RecordRateLimitedAsync(Arg.Is<AdminRateLimitedAccessRecord>(r => r.ActorKeycloakId == "kc-a"), Arg.Any<CancellationToken>());
+        await audit.Received(1).RecordRateLimitedAsync(Arg.Is<AdminRateLimitedAccessRecord>(r => r.ActorKeycloakId == "kc-b"), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task First_rejection_is_audited_again_in_the_next_window()
+    {
+        var clock = new ManualClock(new DateTimeOffset(2026, 9, 24, 10, 0, 0, TimeSpan.Zero));
+        var audit = Substitute.For<IAdminDataAccessAuditService>();
+        using var host = await StartHostAsync(new InMemoryFixedWindowCounterStore(clock), audit);
+        using var client = host.GetTestClient();
+
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        clock.Now = clock.Now.AddSeconds(601); // pencere (600 sn) doldu
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        await audit.ReceivedWithAnyArgs(2).RecordRateLimitedAsync(default!, default);
+    }
+
+    [Theory]
+    [InlineData(3, 2, true)]   // limit+1 → ilk red
+    [InlineData(4, 2, false)]  // sonraki red
+    [InlineData(2, 2, false)]  // izinli (Allowed=true)
+    public void IsFirstRejection_is_count_equals_limit_plus_permits(long count, int limit, bool expected)
+        => new FixedWindowDecision(count <= limit, null, count).IsFirstRejection(1, limit).ShouldBe(expected);
+
+    [Fact]
+    public async Task In_memory_store_reports_the_counter_value()
+    {
+        var store = new InMemoryFixedWindowCounterStore();
+        (await store.TryAcquireAsync("k", 1, 1, TimeSpan.FromMinutes(1))).Count.ShouldBe(1);
+        var second = await store.TryAcquireAsync("k", 1, 1, TimeSpan.FromMinutes(1));
+        second.Count.ShouldBe(2);
+        second.IsFirstRejection(1, 1).ShouldBeTrue();
+        (await store.TryAcquireAsync("k", 1, 1, TimeSpan.FromMinutes(1))).IsFirstRejection(1, 1).ShouldBeFalse();
+    }
+
+    // ---- RedisConnectionProvider (#262 review NIT) ----
+
+    [Fact]
+    public async Task Connection_provider_retries_after_a_failed_connect()
+    {
+        var calls = 0;
+        var multiplexer = Substitute.For<IConnectionMultiplexer>();
+        using var provider = new RedisConnectionProvider(() =>
+        {
+            calls++;
+            return calls == 1
+                ? Task.FromException<IConnectionMultiplexer>(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"))
+                : Task.FromResult(multiplexer);
+        });
+
+        await Should.ThrowAsync<RedisConnectionException>(() => provider.GetConnectionAsync());
+        (await provider.GetConnectionAsync()).ShouldBeSameAs(multiplexer); // hatalı görev önbellekte kalmadı
+        (await provider.GetConnectionAsync()).ShouldBeSameAs(multiplexer); // başarılı bağlantı paylaşılır
+        calls.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Connection_provider_retries_after_a_synchronous_factory_exception()
+    {
+        var calls = 0;
+        var multiplexer = Substitute.For<IConnectionMultiplexer>();
+        using var provider = new RedisConnectionProvider(() =>
+        {
+            if (++calls == 1)
+                throw new InvalidOperationException("bad config");
+            return Task.FromResult(multiplexer);
+        });
+
+        await Should.ThrowAsync<InvalidOperationException>(() => provider.GetConnectionAsync());
+        (await provider.GetConnectionAsync()).ShouldBeSameAs(multiplexer);
+    }
+
+    [Fact]
+    public async Task Connection_provider_shares_a_pending_connect()
+    {
+        var calls = 0;
+        var tcs = new TaskCompletionSource<IConnectionMultiplexer>();
+        using var provider = new RedisConnectionProvider(() => { calls++; return tcs.Task; });
+
+        var first = provider.GetConnectionAsync();
+        var second = provider.GetConnectionAsync();
+        tcs.SetResult(Substitute.For<IConnectionMultiplexer>());
+
+        (await first).ShouldBeSameAs(await second);
+        calls.ShouldBe(1);
     }
 
     [Fact]

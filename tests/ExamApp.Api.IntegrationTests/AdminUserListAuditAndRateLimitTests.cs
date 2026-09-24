@@ -186,16 +186,22 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
 
         var rows = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
             .Where(r => r.ActorKeycloakId == sub).OrderBy(r => r.Id).ToListAsync());
-        rows.Count.ShouldBe(2); // 404 veri döndürmez → audit yok
+        rows.Count.ShouldBe(3);
         rows[0].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationList);
         rows[0].ReturnedCount.ShouldBe(1);
+        rows[0].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
         rows[1].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
         rows[1].TargetId.ShouldBe(teacherId);
-        rows.ShouldAllBe(r => r.Outcome == AdminDataAccessOutcome.Served);
+        rows[1].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
+        // #262 review: 404 de iz bırakır (id tarama)
+        rows[2].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        rows[2].TargetId.ShouldBe(int.MaxValue);
+        rows[2].Outcome.ShouldBe(AdminDataAccessOutcome.NotFound);
+        rows[2].ReturnedCount.ShouldBe(0);
     }
 
     [Fact]
-    public async Task Issue262_teacher_application_detail_shares_the_bucket_and_its_429_is_audited_with_target()
+    public async Task Issue262_teacher_application_detail_shares_the_bucket_and_only_its_first_429_is_audited_with_target()
     {
         var limits = Limits;
         var sub = NewSub();
@@ -207,13 +213,12 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         (await admin.GetAsync("/api/admin/teacher-applications/77")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         (await admin.GetAsync("/api/admin/teacher-applications")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
 
+        // #262 review: pencere başına yalnızca İLK red audit'lenir (ikinci 429 yalnızca log'da).
         var rejected = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
             .Where(r => r.ActorKeycloakId == sub && r.Outcome == AdminDataAccessOutcome.RateLimited)
-            .OrderBy(r => r.Id).ToListAsync());
-        rejected.Count.ShouldBe(2);
-        rejected[0].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
-        rejected[0].TargetId.ShouldBe(77);
-        rejected[1].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationList);
-        rejected[1].TargetId.ShouldBeNull();
+            .ToListAsync());
+        var only = rejected.ShouldHaveSingleItem();
+        only.Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        only.TargetId.ShouldBe(77);
     }
 }

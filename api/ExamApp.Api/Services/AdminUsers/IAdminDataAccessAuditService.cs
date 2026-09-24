@@ -15,7 +15,10 @@ public interface IAdminDataAccessAuditService
     /// </summary>
     Task RecordListAccessAsync(AdminListAccessRecord record, CancellationToken ct = default);
 
-    /// <summary>issue #262: detay ucu erişimi. <see cref="RecordListAccessAsync"/> ile aynı fail-closed sözleşme.</summary>
+    /// <summary>
+    /// issue #262: detay ucu erişimi (<c>Served</c>) ya da bulunamayan id (<c>NotFound</c>, 404).
+    /// <see cref="RecordListAccessAsync"/> ile aynı fail-closed sözleşme.
+    /// </summary>
     Task RecordDetailAccessAsync(AdminDetailAccessRecord record, CancellationToken ct = default);
 
     /// <summary>

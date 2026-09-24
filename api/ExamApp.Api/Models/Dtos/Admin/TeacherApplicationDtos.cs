@@ -7,7 +7,8 @@ namespace ExamApp.Api.Models.Dtos.Admin;
 public class PendingTeacherApplicationDto
 {
     public int TeacherId { get; set; }
-    public int UserId { get; set; }
+
+    // issue #262 (güvenlik review'u): auth-api iç kullanıcı id'si (UserId) dönülmez; UI ad fallback'i için teacherId kullanır.
 
     /// <summary>auth-api'den çözümlenir; erişilemezse boş string.</summary>
     public string FullName { get; set; } = string.Empty;
@@ -36,14 +37,14 @@ public class PendingTeacherApplicationDto
 
 /// <summary>
 /// issue #262: <c>GET api/admin/teacher-applications/{id}</c> yanıtı — liste satırıyla aynı alanlar, fark: <see cref="Email"/> TAM.
-/// Her başarılı çağrı <c>AdminDataAccessLogs</c>'a (Resource=TeacherApplicationDetail, TargetId=TeacherId) yazılır.
+/// Her çağrı <c>AdminDataAccessLogs</c>'a (Resource=TeacherApplicationDetail, TargetId=TeacherId) yazılır; bulunamayan id
+/// de <c>Outcome=NotFound</c> ile (id tarama denemeleri görünür olsun).
 /// </summary>
 public class TeacherApplicationDetailDto
 {
     public int TeacherId { get; set; }
 
-    /// <summary>auth-api kullanıcı id'si (UI ad çözülemediğinde ayırt edici fallback olarak kullanıyor).</summary>
-    public int UserId { get; set; }
+    // issue #262: UserId dönülmez (bkz. PendingTeacherApplicationDto).
 
     /// <summary>auth-api'den çözümlenir; erişilemezse boş string.</summary>
     public string FullName { get; set; } = string.Empty;

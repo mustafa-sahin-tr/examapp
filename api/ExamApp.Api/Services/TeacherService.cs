@@ -121,7 +121,7 @@ public class TeacherService : ITeacherService
             };
         }
 
-        // Teachers.UserId unique değil — deterministik kayıt (ResolveTeacherRecordAsync ile aynı sıra).
+        // Canlı satır tektir (#259 filtreli unique index); OrderBy ResolveTeacherRecordAsync ile aynı deterministik sıra.
         var existingTeacher = await _context.Teachers
             .OrderBy(t => t.Id)
             .FirstOrDefaultAsync(s => s.UserId == userId);
@@ -226,48 +226,63 @@ public class TeacherService : ITeacherService
 
         var teacherId = 0;
         var strategy = _context.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
+        try
         {
-            await using var tx = await _context.Database.BeginTransactionAsync();
-
-            if (!isUpdate)
+            await strategy.ExecuteAsync(async () =>
             {
-                // Retry'da aynı instance tekrar Add edilir; zaten Added state'te olduğu için no-op.
-                _context.Teachers.Add(teacher);
-            }
+                await using var tx = await _context.Database.BeginTransactionAsync();
 
-            await _context.SaveChangesAsync();
-
-            if (shouldPublishIndependentTeacherEvent)
-            {
-                // Aynı Pending başvuru için iki ayrı tüketici ucu var:
-                //  - IndependentTeacherRegisteredEvent (issue #92, bilgi amaçlı log consumer'ı)
-                //  - TeacherApplicationSubmittedEvent (issue #94, admin bildirimi + SignalR)
-                // Her ikisi de Teacher.Id identity ile üretildiği için ilk SaveChanges'ten sonra yazılır.
-                var now = DateTime.UtcNow;
-                _context.OutboxMessages.Add(new OutboxMessage
+                if (!isUpdate)
                 {
-                    Type = OutboxEventRegistry.NameFor<IndependentTeacherRegisteredEvent>(),
-                    Content = JsonSerializer.Serialize(new IndependentTeacherRegisteredEvent
-                    {
-                        TeacherId = teacher.Id,
-                        UserId = userId,
-                        IsNewRegistration = !isUpdate,
-                        RegisteredAt = now
-                    }),
-                    CreatedAt = now
-                });
-                AddTeacherApplicationSubmittedOutbox(teacher.Id, userId, applicantName);
-            }
+                    // Retry'da aynı instance tekrar Add edilir; zaten Added state'te olduğu için no-op.
+                    _context.Teachers.Add(teacher);
+                }
 
-            if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)
-            {
                 await _context.SaveChangesAsync();
-            }
 
-            await tx.CommitAsync();
-            teacherId = teacher.Id;
-        });
+                if (shouldPublishIndependentTeacherEvent)
+                {
+                    // Aynı Pending başvuru için iki ayrı tüketici ucu var:
+                    //  - IndependentTeacherRegisteredEvent (issue #92, bilgi amaçlı log consumer'ı)
+                    //  - TeacherApplicationSubmittedEvent (issue #94, admin bildirimi + SignalR)
+                    // Her ikisi de Teacher.Id identity ile üretildiği için ilk SaveChanges'ten sonra yazılır.
+                    var now = DateTime.UtcNow;
+                    _context.OutboxMessages.Add(new OutboxMessage
+                    {
+                        Type = OutboxEventRegistry.NameFor<IndependentTeacherRegisteredEvent>(),
+                        Content = JsonSerializer.Serialize(new IndependentTeacherRegisteredEvent
+                        {
+                            TeacherId = teacher.Id,
+                            UserId = userId,
+                            IsNewRegistration = !isUpdate,
+                            RegisteredAt = now
+                        }),
+                        CreatedAt = now
+                    });
+                    AddTeacherApplicationSubmittedOutbox(teacher.Id, userId, applicantName);
+                }
+
+                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent)
+                {
+                    await _context.SaveChangesAsync();
+                }
+
+                await tx.CommitAsync();
+                teacherId = teacher.Id;
+            });
+        }
+        catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
+        {
+            // issue #259: eşzamanlı ilk kayıt — diğer istek aynı kullanıcı için canlı Teachers satırını önce yazdı
+            // (filtreli unique index). Transaction geri alındı (outbox satırı da yazılmadı); ikinci satır açılmaz, #234
+            // okul kilidi çift satırla aşılamaz. Unique ihlali geçici hata değil → execution strategy retry etmez.
+            return new TeacherRegistrationResultDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["teacher.registrationConflict"]
+            };
+        }
 
         return new TeacherRegistrationResultDto
         {

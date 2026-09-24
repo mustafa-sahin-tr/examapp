@@ -200,6 +200,20 @@ public class AppDbContext : DbContext
             .HasForeignKey(t => t.RequestedSchoolId)
             .OnDelete(DeleteBehavior.ClientNoAction);
 
+        // issue #259: kullanıcı başına tek CANLI öğretmen / öğrenci kaydı. Register uçlarındaki okul kilitleri (#234
+        // öğretmen, #259 öğrenci) "mevcut satır" üzerinden karar verir; eşzamanlı ilk kayıtla ikinci bir satır
+        // açılabilseydi kilit o satır üzerinden aşılırdı. Soft-delete edilmiş satırlar hariç (global !IsDeleted filtresi
+        // ile aynı küme). İhlal register akışlarında 409'a eşlenir.
+        modelBuilder.Entity<Teacher>()
+            .HasIndex(t => t.UserId)
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
+
+        modelBuilder.Entity<Student>()
+            .HasIndex(s => s.UserId)
+            .IsUnique()
+            .HasFilter("NOT \"IsDeleted\"");
+
         // İl / ilçe referans tabloları + okul adresi (issue #91).
         // Referans kayıtlar silinemez (Restrict) — okul FK'leri nullable, mevcut satırlar etkilenmez.
         modelBuilder.Entity<Province>()

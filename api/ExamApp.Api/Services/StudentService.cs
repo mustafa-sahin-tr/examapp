@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Api.Services.Tenancy;
@@ -118,11 +119,59 @@ public class StudentService : IStudentService
             };
         }
 
-        var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
+        // Canlı satır tektir (#259 filtreli unique index); OrderBy yalnız deterministiklik için.
+        var student = await _context.Students.OrderBy(s => s.Id).FirstOrDefaultAsync(s => s.UserId == userId);
         if (student != null)
         {
+            // issue #259 (security): okul kilidi. Okul bir kez atandıktan sonra bu uçla DEĞİŞTİRİLEMEZ — aksi halde
+            // öğrenci register'ı tekrar çağırıp istediği okulun sınıf atamalarını görüp başlatabilirdi. Okulu
+            // boşaltmak (null) da değişikliktir: X → null → Y ile kilit aşılamasın. Okulsuz kayıtta ilk atama serbest;
+            // aynı okul idempotent (diğer alanlar güncellenir).
+            if (student.SchoolId.HasValue && dto.SchoolId != student.SchoolId)
+            {
+                return new ResponseBaseDto
+                {
+                    Success = false,
+                    Conflict = true,
+                    Message = _localizer["student.schoolLocked"]
+                };
+            }
+
+            // issue #259 (security review): okulsuz kayda İLK okul ataması koşullu UPDATE ile yapılır — yukarıdaki okuma
+            // ile yazma arasında eşzamanlı bir istek başka bir okul yazdıysa ("son yazan kazanır") kilit aşılmasın.
+            // SchoolId tracked entity üzerinden YAZILMAZ; yalnız bu atomik ifade yazar.
+            if (!student.SchoolId.HasValue && dto.SchoolId.HasValue)
+            {
+                var requestedSchoolId = dto.SchoolId.Value;
+                var claimed = await _context.Students
+                    .Where(s => s.Id == student.Id && s.SchoolId == null)
+                    .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, requestedSchoolId));
+
+                if (claimed == 0)
+                {
+                    var currentSchoolId = await _context.Students.AsNoTracking()
+                        .Where(s => s.Id == student.Id)
+                        .Select(s => s.SchoolId)
+                        .FirstOrDefaultAsync();
+                    if (currentSchoolId != requestedSchoolId)
+                    {
+                        return new ResponseBaseDto
+                        {
+                            Success = false,
+                            Conflict = true,
+                            Message = _localizer["student.schoolLocked"]
+                        };
+                    }
+                }
+
+                // Tracked kopyayı DB ile hizala ama değiştirilmiş işaretleme — SaveChanges SchoolId'yi tekrar yazmasın.
+                var schoolEntry = _context.Entry(student).Property(s => s.SchoolId);
+                schoolEntry.CurrentValue = requestedSchoolId;
+                schoolEntry.OriginalValue = requestedSchoolId;
+                schoolEntry.IsModified = false;
+            }
+
             student.StudentNumber = dto.StudentNumber;
-            student.SchoolId = dto.SchoolId;
             student.GradeId = dto.GradeId;
         }
         else
@@ -138,7 +187,22 @@ public class StudentService : IStudentService
             _context.Students.Add(student);
         }
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))
+        {
+            // issue #259: eşzamanlı ilk kayıt — diğer istek aynı kullanıcı için canlı satırı önce yazdı. İkinci satır
+            // açılmaz (kilit çift satırla aşılamaz); istemci tekrar denerse mevcut satır üzerinden kilit kuralı işler.
+            return new ResponseBaseDto
+            {
+                Success = false,
+                Conflict = true,
+                Message = _localizer["student.registrationConflict"]
+            };
+        }
+
         return new ResponseBaseDto
         {
             Success = true,

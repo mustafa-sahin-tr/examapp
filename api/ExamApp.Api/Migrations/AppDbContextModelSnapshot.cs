@@ -106,6 +106,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<int?>("FromSchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("OccurredAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -121,6 +124,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("ToSchoolId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -2094,6 +2100,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<bool>("IsSeedData")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastRejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -2702,6 +2711,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPlatformWide")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("SchoolId")

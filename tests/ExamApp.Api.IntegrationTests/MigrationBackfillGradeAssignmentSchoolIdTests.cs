@@ -57,9 +57,15 @@ public class MigrationBackfillGradeAssignmentSchoolIdTests : IntegrationTestBase
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>
+    /// Yalnızca bu migration'ların bildiği kolonları okuyan projeksiyon — tam entity SELECT'i güncel modelin sonradan
+    /// eklenen kolonlarını (ör. IsPlatformWide) da isterdi ve eski şemada düşerdi.
+    /// </summary>
     private static async Task<Dictionary<int, (int? SchoolId, DateTime? UpdateTime, int? UpdateUserId)>> AssignmentsAsync(AppDbContext ctx)
-        => await ctx.WorksheetAssignments.IgnoreQueryFilters().AsNoTracking()
-            .ToDictionaryAsync(a => a.Id, a => (a.SchoolId, a.UpdateTime, a.UpdateUserId));
+        => (await ctx.WorksheetAssignments.IgnoreQueryFilters().AsNoTracking()
+                .Select(a => new { a.Id, a.SchoolId, a.UpdateTime, a.UpdateUserId })
+                .ToListAsync())
+            .ToDictionary(a => a.Id, a => (a.SchoolId, a.UpdateTime, a.UpdateUserId));
 
     [Fact]
     public async Task Backfill_scopes_unambiguous_school_teacher_assignments_is_idempotent_and_unique_index_guards_duplicates()
@@ -74,47 +80,39 @@ public class MigrationBackfillGradeAssignmentSchoolIdTests : IntegrationTestBase
                 await ctx.GetService<IMigrator>().MigrateAsync(PreviousMigration);
             }
 
-            int schoolA, schoolB;
+            // Seed HAM SQL ile: bu şema (PreviousMigration) güncel EF modelinden eski — sonradan eklenen kolonlar
+            // (#287 Teachers.AccountApprovedAt, #277 Teachers.LastRejectedAt / WorksheetAssignments.IsPlatformWide) burada yok;
+            // EF entity'si ile INSERT/SELECT bu kolonları da yazmaya/okumaya çalışıp düşerdi.
+            const int schoolA = 100, schoolB = 101;
             using (var ctx = new AppDbContext(options))
             {
-                var grade = new Grade { Id = 1, Name = "8" };
-                var a = new School { Name = "School A" };
-                var b = new School { Name = "School B" };
-                ctx.AddRange(grade, a, b);
-                await ctx.SaveChangesAsync();
-                schoolA = a.Id;
-                schoolB = b.Id;
-
-                // Bu şemada (unique index henüz yok) çift canlı Teachers satırı yazılabilir — eski veri böyle.
-                ctx.Teachers.AddRange(
-                    new Teacher { UserId = 10, SchoolId = schoolA },                              // okullu, tek aktif satır
-                    new Teacher { UserId = 11, SchoolId = null, IsIndependentTutor = true },      // bağımsız
-                    new Teacher { UserId = 12, SchoolId = schoolA },                              // belirsiz: iki aktif satır
-                    new Teacher { UserId = 12, SchoolId = schoolB },
-                    new Teacher { UserId = 13, SchoolId = schoolB, IsDeleted = true },            // silinmiş satır sayılmaz
-                    new Teacher { UserId = 13, SchoolId = schoolA });
-                var student = new Student { UserId = 20, StudentNumber = "s", SchoolId = schoolA, GradeId = 1 };
-                ctx.Students.Add(student);
-                ctx.Worksheets.Add(new Worksheet { Id = 1, Name = "W", Description = "", GradeId = 1 });
-                await ctx.SaveChangesAsync();
-
-                var start = DateTime.UtcNow.AddDays(-1);
-                ctx.WorksheetAssignments.AddRange(
-                    new WorksheetAssignment { Id = 1, WorksheetId = 1, GradeId = 1, StartAt = start },                    // U10 → A
-                    new WorksheetAssignment { Id = 2, WorksheetId = 1, GradeId = 1, StartAt = start },                    // U11 → null
-                    new WorksheetAssignment { Id = 3, WorksheetId = 1, GradeId = 1, StartAt = start },                    // U12 → null (belirsiz)
-                    new WorksheetAssignment { Id = 4, WorksheetId = 1, GradeId = 1, StartAt = start },                    // U13 → A
-                    new WorksheetAssignment { Id = 5, WorksheetId = 1, GradeId = 1, StartAt = start },                    // admin (99) → null
-                    new WorksheetAssignment { Id = 6, WorksheetId = 1, StudentId = student.Id, StartAt = start },         // öğrenci hedefli → null
-                    new WorksheetAssignment { Id = 7, WorksheetId = 1, GradeId = 1, SchoolId = schoolB, StartAt = start },// zaten okullu → B
-                    new WorksheetAssignment { Id = 8, WorksheetId = 1, GradeId = 1, StartAt = start, IsDeleted = true }); // silinmiş, U10 → A
-                await ctx.SaveChangesAsync();
-
-                // Audit interceptor CreateUserId'yi o anki kullanıcıyla ezer; senaryo sahiplerini SQL ile sabitle.
                 await ctx.Database.ExecuteSqlRawAsync("""
-                    UPDATE "WorksheetAssignments" SET "CreateUserId" = CASE "Id"
-                        WHEN 1 THEN 10 WHEN 2 THEN 11 WHEN 3 THEN 12 WHEN 4 THEN 13 WHEN 5 THEN 99
-                        WHEN 6 THEN 10 WHEN 7 THEN 10 WHEN 8 THEN 10 END
+                    INSERT INTO "Grades" ("Id", "Name") VALUES (1, '8');
+                    INSERT INTO "Schools" ("Id", "Name", "CreateTime", "IsDeleted") VALUES
+                        (100, 'School A', now(), FALSE),
+                        (101, 'School B', now(), FALSE);
+                    -- Bu şemada (unique index henüz yok) çift canlı Teachers satırı yazılabilir — eski veri böyle.
+                    -- Id identity'den gelir (sonradaki çift-satır INSERT'i PK yerine UserId index'ine takılsın).
+                    INSERT INTO "Teachers" ("UserId", "SchoolId", "IsIndependentTutor", "IsDeleted", "CreateTime") VALUES
+                        (10, 100, FALSE, FALSE, now()),   -- okullu, tek aktif satır
+                        (11, NULL, TRUE, FALSE, now()),   -- bağımsız
+                        (12, 100, FALSE, FALSE, now()),   -- belirsiz: iki aktif satır
+                        (12, 101, FALSE, FALSE, now()),
+                        (13, 101, FALSE, TRUE, now()),    -- silinmiş satır sayılmaz
+                        (13, 100, FALSE, FALSE, now());
+                    INSERT INTO "Students" ("Id", "UserId", "StudentNumber", "SchoolId", "GradeId") VALUES (1, 20, 's', 100, 1);
+                    INSERT INTO "Worksheets" ("Id", "Name", "Description", "GradeId", "MaxDurationSeconds", "IsPracticeTest")
+                        VALUES (1, 'W', '', 1, 0, FALSE);
+                    INSERT INTO "WorksheetAssignments"
+                        ("Id", "WorksheetId", "StudentId", "GradeId", "SchoolId", "StartAt", "CreateTime", "CreateUserId", "IsDeleted") VALUES
+                        (1, 1, NULL, 1, NULL, now() - interval '1 day', now(), 10, FALSE),  -- U10 → A
+                        (2, 1, NULL, 1, NULL, now() - interval '1 day', now(), 11, FALSE),  -- U11 → null
+                        (3, 1, NULL, 1, NULL, now() - interval '1 day', now(), 12, FALSE),  -- U12 → null (belirsiz)
+                        (4, 1, NULL, 1, NULL, now() - interval '1 day', now(), 13, FALSE),  -- U13 → A
+                        (5, 1, NULL, 1, NULL, now() - interval '1 day', now(), 99, FALSE),  -- admin (99) → null
+                        (6, 1, 1, NULL, NULL, now() - interval '1 day', now(), 10, FALSE),  -- öğrenci hedefli → null
+                        (7, 1, NULL, 1, 101, now() - interval '1 day', now(), 10, FALSE),   -- zaten okullu → B
+                        (8, 1, NULL, 1, NULL, now() - interval '1 day', now(), 10, TRUE);   -- silinmiş, U10 → A
                     """);
             }
 
@@ -191,10 +189,11 @@ public class MigrationBackfillGradeAssignmentSchoolIdTests : IntegrationTestBase
 
             using (var ctx = new AppDbContext(options))
             {
-                // Silinmiş satırın yanında canlı satır serbest (U13), ikinci canlı satır reddedilir.
-                ctx.Teachers.Add(new Teacher { UserId = 10, SchoolId = schoolB });
-                var dup = await Should.ThrowAsync<DbUpdateException>(() => ctx.SaveChangesAsync());
-                dup.InnerException.ShouldBeOfType<PostgresException>().SqlState.ShouldBe(PostgresErrorCodes.UniqueViolation);
+                // Silinmiş satırın yanında canlı satır serbest (U13), ikinci canlı satır reddedilir. (Ham SQL: eski şema.)
+                var dup = await Should.ThrowAsync<PostgresException>(() => ctx.Database.ExecuteSqlRawAsync(
+                    """INSERT INTO "Teachers" ("UserId", "SchoolId", "IsDeleted", "CreateTime") VALUES (10, {0}, FALSE, now())""",
+                    schoolB));
+                dup.SqlState.ShouldBe(PostgresErrorCodes.UniqueViolation);
             }
 
             // Down: index düşer, backfill geri ALINMAZ (bilinçli no-op).

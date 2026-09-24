@@ -7,6 +7,7 @@ using ExamApp.Api.Services.TeacherApprovals;
 using ExamApp.Api.Tests.Support;
 using ExamApp.Foundation.Contracts;
 using ExamApp.Foundation.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -939,6 +940,24 @@ public class SimpleServiceTests : IDisposable
             teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Rejected);
             teacher.RequestedSchoolId.ShouldBe(schoolA);
             teacher.RejectionReason.ShouldBe("Insufficient credentials");
+            teacher.LastRejectedAt.ShouldNotBeNull(); // issue #277: bekleme süresi bu andan sayılır
+        }
+
+        // issue #277 (madde 2): varsayılan 24 saatlik bekleme süresi dolmadan yeni talep açılamaz.
+        await using (var ctx = _db.NewContext())
+        {
+            var tooSoon = await NewTeacherService(ctx).Save(
+                userId: 202,
+                new RegisterTeacherDto { SchoolId = schoolB, IsIndependentTutor = false });
+            tooSoon.Success.ShouldBeFalse();
+            tooSoon.TooManyRequests.ShouldBeTrue();
+        }
+
+        // Bekleme süresi doldu (ret 25 saat önce).
+        await using (var ctx = _db.NewContext())
+        {
+            await ctx.Teachers.Where(t => t.Id == teacherId)
+                .ExecuteUpdateAsync(set => set.SetProperty(t => t.LastRejectedAt, DateTime.UtcNow.AddHours(-25)));
         }
 
         // Now request new school (School B)

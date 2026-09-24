@@ -109,7 +109,8 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         await ctx.SaveChangesAsync();
     }
 
-    private async Task AddAssignmentAsync(int worksheetId, int? studentId, int? gradeId, int? createUserId = null)
+    private async Task AddAssignmentAsync(int worksheetId, int? studentId, int? gradeId, int? createUserId = null,
+        int? schoolId = null, bool isPlatformWide = false)
     {
         await using var ctx = _db.NewContext();
         if (createUserId.HasValue)
@@ -119,6 +120,8 @@ public class WorksheetDetailServiceDetailTests : IDisposable
             WorksheetId = worksheetId,
             StudentId = studentId,
             GradeId = gradeId,
+            SchoolId = schoolId,
+            IsPlatformWide = isPlatformWide,
             StartAt = DateTime.UtcNow.AddDays(-1),
         });
         await ctx.SaveChangesAsync();
@@ -392,7 +395,8 @@ public class WorksheetDetailServiceDetailTests : IDisposable
     {
         var w = await SeedAsync();
         await SeedStandardAttemptsAsync(w);
-        await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId);
+        // Okulsuz öğrenciler yalnızca platform geneli (admin) sınıf atamasını görür (issue #277 madde 7).
+        await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId, isPlatformWide: true);
 
         await using var ctx = _db.NewContext();
         var dto = await AsStudent(ctx, w, w.St1);
@@ -401,6 +405,101 @@ public class WorksheetDetailServiceDetailTests : IDisposable
         rank.ShouldNotBeNull();
         rank!.TotalStudents.ShouldBe(2);   // st1 + st2 completed; st3 in-progress excluded
         rank.Position.ShouldBe(2);         // st1 (50%) trails st2 (100%)
+    }
+
+    private async Task<(int SchoolA, int SchoolB)> PutStudentsInSchoolsAsync(World w)
+    {
+        // st1 + st3 → A okulu, st2 → B okulu (st2 aynı sınıfta %100 ile birinci).
+        await using var ctx = _db.NewContext();
+        var a = new School { Name = "A Okulu" };
+        var b = new School { Name = "B Okulu" };
+        ctx.Schools.AddRange(a, b);
+        await ctx.SaveChangesAsync();
+        await ctx.Students.Where(s => s.Id == w.St1 || s.Id == w.St3)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, a.Id));
+        await ctx.Students.Where(s => s.Id == w.St2)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, b.Id));
+        return (a.Id, b.Id);
+    }
+
+    [Fact]
+    public async Task Issue277_GradeRank_ForSchoolStudent_IsScopedToTheStudentsSchool()
+    {
+        // issue #277 (madde 5): platform geneli sınıf ataması bile olsa okullu öğrencinin sıralama grubu kendi okulu.
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+        await PutStudentsInSchoolsAsync(w);
+        await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId, isPlatformWide: true);
+
+        await using var ctx = _db.NewContext();
+        var rank = (await AsStudent(ctx, w, w.St1))!.CompletedResult!.Rank;
+
+        rank.ShouldNotBeNull();
+        rank!.TotalStudents.ShouldBe(1);          // st2 (B okulu) sayılmaz; st3 tamamlamadı
+        rank.Position.ShouldBe(1);
+        rank.ClassAveragePercent.ShouldBe(50);    // B okulunun %100'ü ortalamaya girmez
+    }
+
+    [Fact]
+    public async Task Issue277_GradeRank_ForSchoolScopedAssignment_ExcludesOtherSchoolsSameGrade()
+    {
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+        var (schoolA, _) = await PutStudentsInSchoolsAsync(w);
+        await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId, schoolId: schoolA);
+
+        await using var ctx = _db.NewContext();
+        var rank = (await AsStudent(ctx, w, w.St1))!.CompletedResult!.Rank;
+
+        rank.ShouldNotBeNull();
+        rank!.TotalStudents.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(true, 1)]   // okullu öğrenci: B okulundaki st2 sayılmaz
+    [InlineData(false, 2)]  // okulsuz öğrenci: atama kümesinin tamamı
+    public async Task Issue277_StudentTargetedRank_IsScopedToTheStudentsSchool(bool st1HasSchool, int expectedTotal)
+    {
+        // issue #277 review: öğrenci hedefli grup da okulla sınırlı (ör. bağımsız öğretmen iki okuldan öğrenciye atadı).
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+        await PutStudentsInSchoolsAsync(w);
+        if (!st1HasSchool)
+        {
+            await using var ctx0 = _db.NewContext();
+            await ctx0.Students.Where(s => s.Id == w.St1)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null));
+        }
+        await AddAssignmentAsync(w.WorksheetId, studentId: w.St1, gradeId: null);
+        await AddAssignmentAsync(w.WorksheetId, studentId: w.St2, gradeId: null);
+
+        await using var ctx = _db.NewContext();
+        var rank = (await AsStudent(ctx, w, w.St1))!.CompletedResult!.Rank;
+
+        rank.ShouldNotBeNull();
+        rank!.TotalStudents.ShouldBe(expectedTotal);
+    }
+
+    [Fact]
+    public async Task Issue277_GradeRank_ForIndependentStudent_StaysPlatformWide()
+    {
+        // Okulsuz öğrenci: yalnızca platform geneli atamayla gelir, grubu da platform geneli (tüm okulların aynı sınıfı).
+        var w = await SeedAsync();
+        await SeedStandardAttemptsAsync(w);
+        await PutStudentsInSchoolsAsync(w);
+        await using (var ctx0 = _db.NewContext())
+        {
+            await ctx0.Students.Where(s => s.Id == w.St1)
+                .ExecuteUpdateAsync(set => set.SetProperty(s => s.SchoolId, (int?)null));
+        }
+        await AddAssignmentAsync(w.WorksheetId, studentId: null, gradeId: w.GradeId, isPlatformWide: true);
+
+        await using var ctx = _db.NewContext();
+        var rank = (await AsStudent(ctx, w, w.St1))!.CompletedResult!.Rank;
+
+        rank.ShouldNotBeNull();
+        rank!.TotalStudents.ShouldBe(2);          // st1 (okulsuz) + st2 (B okulu)
+        rank.Position.ShouldBe(2);
     }
 
     [Fact]

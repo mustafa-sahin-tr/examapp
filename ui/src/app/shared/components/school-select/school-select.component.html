@@ -1,0 +1,67 @@
+<div class="ss" *transloco="let t; prefix: 'shared.schoolSelect'">
+  @if (loadFailed()) {
+    <div class="ss__state ss__state--error" role="alert" data-testid="school-select-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ t('loadFailed') }}</span>
+      <button mat-stroked-button type="button" (click)="retry()" data-testid="school-select-retry">
+        {{ t('retry') }}
+      </button>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="ss__state" role="status" data-testid="school-select-empty">
+      <mat-icon aria-hidden="true">domain_disabled</mat-icon>
+      <span>{{ t('empty') }}</span>
+    </div>
+  } @else {
+    <mat-form-field appearance="outline" class="ss__field" subscriptSizing="dynamic">
+      <mat-label>{{ label() ?? t('label') }}</mat-label>
+      <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+      <input
+        #schoolInput
+        matInput
+        type="text"
+        autocomplete="off"
+        data-testid="school-select-input"
+        [placeholder]="loading() ? t('loading') : t('placeholder')"
+        [value]="query()"
+        [required]="required()"
+        [disabled]="disabled() || loading()"
+        [matAutocomplete]="auto"
+        (input)="onInput(schoolInput.value)"
+      />
+      @if (loading()) {
+        <mat-spinner matSuffix diameter="18" class="ss__spinner" aria-hidden="true"></mat-spinner>
+      } @else if (query() && !disabled()) {
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          data-testid="school-select-clear"
+          [attr.aria-label]="t('clear')"
+          (click)="clear()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+      <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayWith" (optionSelected)="onSelected($event)">
+        @for (school of filtered(); track school.id) {
+          <mat-option [value]="school.id">
+            <span class="ss__name">{{ school.name }}</span>
+            @if (optionSubtitle(school); as subtitle) {
+              <small class="ss__sub">{{ subtitle }}</small>
+            }
+          </mat-option>
+        } @empty {
+          <mat-option disabled>{{ t('noMatch') }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (loading()) {
+        <mat-hint>{{ t('loading') }}</mat-hint>
+      } @else if (unmatchedText()) {
+        <mat-hint class="ss__warn" data-testid="school-select-unmatched">{{ t('pickFromList') }}</mat-hint>
+      } @else if (hint()) {
+        <mat-hint>{{ hint() }}</mat-hint>
+      }
+    </mat-form-field>
+  }
+</div>

@@ -18,7 +18,7 @@ import {
   TranslocoService,
   provideTranslocoScope,
 } from '@jsverse/transloco';
-import { Observable, Subject, auditTime, catchError, finalize, map, of, switchMap, take, tap } from 'rxjs';
+import { Observable, Subject, auditTime, catchError, finalize, map, merge, of, switchMap, take, tap } from 'rxjs';
 import { AdminService } from '../../../services/admin.service';
 import { adminListErrorMessage } from '../../../shared/utils/school-paged-list';
 import { adminActionErrorMessage } from '../../../shared/utils/admin-action-error.util';
@@ -183,10 +183,11 @@ export class TeacherApprovalsComponent implements OnInit {
   ngOnInit(): void {
     this.load();
 
-    // Yeni başvuru push'u (SignalR TeacherApplicationSubmitted) gelince mevcut filtre/sayfa yeniden çekilir;
+    // Yeni başvuru push'u (SignalR TeacherApplicationSubmitted) veya okul bağlantısı talebi push'u
+    // (TeacherSchoolRequestSubmitted, issue #277) gelince mevcut filtre/sayfa yeniden çekilir;
     // admin sayfayı elle yenilemek zorunda kalmasın. Issue #262: liste ucu adminin paylaşımlı rate limit
-    // kovasını (30/dk) harcar → push patlamaları tek yüklemede birleştirilir.
-    this.signalR.teacherApplicationSubmitted$
+    // kovasını (30/dk) harcar → iki akışın push patlamaları birlikte tek yüklemede birleştirilir.
+    merge(this.signalR.teacherApplicationSubmitted$, this.signalR.teacherSchoolRequestSubmitted$)
       .pipe(auditTime(PUSH_RELOAD_AUDIT_MS), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.load());
   }

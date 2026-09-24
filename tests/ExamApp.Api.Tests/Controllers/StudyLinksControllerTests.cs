@@ -247,10 +247,12 @@ public class StudyLinksControllerTests
         var profiles = controller.HttpContext.RequestServices.GetRequiredService<IUserProfileProvider>();
         profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns<UserProfileDto>(_ => throw new HttpRequestException("auth-api down"));
 
-        (await controller.Update(1, new UpdateTopicStudyLinkDto(), CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
-        (await controller.Delete(1, CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
-        (await controller.Reorder(new ReorderTopicStudyLinksDto(), CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
-        (await controller.List(new TopicStudyLinkQueryDto(), CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
+        // issue #277 security re-review: provider hatası artık sahte "Service"/Id=0 profili değil, fail-closed istisna
+        // (UserProfileUnavailableFilter → 503). Servis hiçbir yolda çağrılmaz.
+        await Should.ThrowAsync<ExamApp.Api.Helpers.UserProfileUnavailableException>(() => controller.Update(1, new UpdateTopicStudyLinkDto(), CancellationToken.None));
+        await Should.ThrowAsync<ExamApp.Api.Helpers.UserProfileUnavailableException>(() => controller.Delete(1, CancellationToken.None));
+        await Should.ThrowAsync<ExamApp.Api.Helpers.UserProfileUnavailableException>(() => controller.Reorder(new ReorderTopicStudyLinksDto(), CancellationToken.None));
+        await Should.ThrowAsync<ExamApp.Api.Helpers.UserProfileUnavailableException>(() => controller.List(new TopicStudyLinkQueryDto(), CancellationToken.None));
 
         await service.DidNotReceiveWithAnyArgs().UpdateAsync(default, default!, default!, default);
         await service.DidNotReceiveWithAnyArgs().DeleteAsync(default, default!, default);

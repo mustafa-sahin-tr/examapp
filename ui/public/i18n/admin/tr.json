@@ -395,5 +395,32 @@
       "rateLimitedSeconds": "Kısa sürede çok fazla hesap durumu değişikliği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
       "generic": "Hesap durumu değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin."
     }
+  },
+  "studentSchool": {
+    "action": "Okulu değiştir",
+    "actionFor": "{{name}} öğrencisinin okulunu değiştir",
+    "title": "Öğrencinin okulu değiştirilsin mi?",
+    "currentSchool": "Mevcut okul: {{school}}",
+    "noSchool": "Okulsuz",
+    "newSchool": "Yeni okul",
+    "effectsTitle": "Bu değişikliğin etkileri",
+    "effectAssignments": "Öğrenci yeni okulun sınıf ve sınav atamalarını görecek.",
+    "effectOldTeachers": "Eski okulun öğretmenleri bu öğrenciye ve sonuçlarına erişimi kaybedecek.",
+    "effectLock": "Öğrenci okulunu kendisi değiştiremez; sonraki değişiklikler de yalnızca yönetici tarafından yapılabilir.",
+    "confirm": "Okulu değiştir",
+    "submitting": "Kaydediliyor...",
+    "cancel": "İptal",
+    "retry": "Tekrar dene",
+    "reload": "Listeyi yenile",
+    "errors": {
+      "forbidden": "Bu öğrencinin okulunu değiştirme yetkiniz yok.",
+      "notFound": "Öğrenci bulunamadı.",
+      "upstream": "Kimlik sunucusuna ulaşılamadı; okul değiştirilmedi. Lütfen daha sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitedSeconds": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
+      "invalidSchool": "Seçilen okul bulunamadı. Lütfen listeden başka bir okul seçin.",
+      "conflict": "Öğrencinin okulu bu arada değiştirildi. Listeyi yenileyip tekrar deneyin.",
+      "generic": "Okul değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin."
+    }
   }
 }

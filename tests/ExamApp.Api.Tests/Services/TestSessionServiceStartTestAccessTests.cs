@@ -95,6 +95,7 @@ public class TestSessionServiceStartTestAccessTests : IDisposable
                 WorksheetId = worksheetId,
                 StudentId = null,
                 GradeId = gradeA,
+                IsPlatformWide = true, // issue #277: okulsuz öğrenci yalnızca platform geneli sınıf atamasını görür
                 StartAt = DateTime.UtcNow.AddDays(-1)
             });
             await seed.SaveChangesAsync();

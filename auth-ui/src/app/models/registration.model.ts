@@ -48,6 +48,16 @@ export interface RegisterErrorBody {
   message?: string;
 }
 
+/**
+ * Issue #277 — öğretmen kaydında 429 gövdesi: reddedilen okul talebinden sonra 24 saat dolmadan yeni okul talebi.
+ * `Retry-After` başlığı da saniye cinsinden aynı değeri taşır.
+ */
+export interface RegisterCooldownErrorBody extends RegisterErrorBody {
+  retryAfterSeconds?: number;
+  /** ISO-8601 UTC. */
+  retryAfterUtc?: string | null;
+}
+
 export interface RegisterStudentPayload {
   studentNumber: string;
   schoolId: number | null;

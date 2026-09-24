@@ -215,6 +215,10 @@ public class WorksheetAssignmentService : IWorksheetAssignmentService
             StudentId = student?.Id,
             GradeId = grade?.Id,
             SchoolId = grade != null ? assignmentSchoolId : null,
+            // issue #277 (madde 7): platform geneli (tüm okulların o sınıfı) sınıf ataması YALNIZCA admin'den (Unrestricted)
+            // gelir; öğretmenin sınıf ataması her zaman kendi (doğrulanmış) okuluna yazılır, bağımsız öğretmen sınıf
+            // ataması yapamaz (#222). Öğrenci hedefli atama platform geneli değildir.
+            IsPlatformWide = isAdmin && grade != null,
             StartAt = startAtUtc,
             EndAt = endAtUtc
         };

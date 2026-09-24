@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.IdentityModel.Tokens;
+using MassTransit;
 
 // Komut modu (issue #267): `dotnet run -- audit-privileged-users [--format table|csv|json]` — salt okunur yetkili
 // hesap denetimi. Web host KURULMAZ (Kestrel/Redis/migration yok); yalnızca yapılandırma okunur, komut çalışır, çıkılır.
@@ -169,19 +170,51 @@ builder.Services.AddSingleton<ImageHelper>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// builder.Services.AddHostedService<OutboxPublisher>();
-// var rabbitConfig = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
-// builder.Services.AddMassTransit(x =>
-// {
-//     x.UsingRabbitMq((context, cfg) =>
-//     {
-//         cfg.Host(rabbitConfig.Host, "/", h =>
-//          {
-//              h.Username(rabbitConfig.Username);
-//              h.Password(rabbitConfig.Password);
-//          }); 
-//     });
-// });
+// Issue #277 (madde 4): auth-api artık bir MassTransit consumer'ı barındırıyor (kuyruk
+// "auth-api": exam API'nin outbox'ından UserRoleChangedEvent → Users.Role). Aynı opt-in desen
+// exam API'nin Program.cs'indeki StudentPointsChangedConsumer kaydıyla (issue #225): Host
+// tanımlıysa Username/Password de zorunlu (fail-fast), tanımlı değilse Production'da başlangıçta
+// hata verir — sessizce "bus kurulmadı" ile devam etmez. EF design-time ("dotnet ef") bu
+// kontrolden muaf.
+var rabbitMqHost = builder.Configuration["RabbitMQ:Host"];
+var rabbitMqEnabled = !string.IsNullOrWhiteSpace(rabbitMqHost);
+if (!rabbitMqEnabled && builder.Environment.IsProduction() && !Microsoft.EntityFrameworkCore.EF.IsDesignTime)
+{
+    throw new InvalidOperationException(
+        "RabbitMQ:Host tanımlı değil. Production'da auth-api consumer'ı (UserRoleChangedEvent, issue #277) zorunlu.");
+}
+if (rabbitMqEnabled)
+{
+    var rabbitMqUsername = builder.Configuration["RabbitMQ:Username"];
+    var rabbitMqPassword = builder.Configuration["RabbitMQ:Password"];
+    if (string.IsNullOrWhiteSpace(rabbitMqUsername) || string.IsNullOrWhiteSpace(rabbitMqPassword))
+    {
+        throw new InvalidOperationException("RabbitMQ:Host tanımlı ama RabbitMQ:Username/RabbitMQ:Password eksik.");
+    }
+
+    builder.Services.AddMassTransit(x =>
+    {
+        x.AddConsumer<ExamApp.Api.Consumers.UserRoleChangedConsumer, ExamApp.Api.Consumers.UserRoleChangedConsumerDefinition>();
+
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(rabbitMqHost, "/", h =>
+            {
+                h.Username(rabbitMqUsername);
+                h.Password(rabbitMqPassword);
+            });
+
+            cfg.ReceiveEndpoint("auth-api", e =>
+            {
+                // issue #279 review deseni (least privilege): fault mesajları ayrıca publish
+                // edilmesin — hatalar zaten bu endpoint'in kendi `_error` (dead-letter) kuyruğuna gider.
+                e.PublishFaults = false;
+
+                e.ConfigureConsumer<ExamApp.Api.Consumers.UserRoleChangedConsumer>(context);
+            });
+        });
+    });
+}
 
 
 
@@ -236,6 +269,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapDefaultEndpoints();
+
+// issue #277 review (NIT): exam API'nin Program.cs'indeki aynı desen — RabbitMQ:Host tanımlı
+// değilse (entegrasyon testleri / RabbitMQ'suz lokal çalıştırma) sessizce değil, açıkça uyarı
+// loglanır ki eksik yapılandırma fark edilmeden Users.Role senkronunun çalışmadığı durum
+// üretimde atlanmasın.
+if (!rabbitMqEnabled)
+{
+    app.Logger.LogWarning(
+        "RabbitMQ:Host tanımlı değil — auth-api consumer'ı (UserRoleChangedEvent, issue #277) çalışmıyor; Users.Role senkronlanmaz.");
+}
 
 app.Run();
 return 0;

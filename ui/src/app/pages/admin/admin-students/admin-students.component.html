@@ -97,6 +97,17 @@
             >
               <mat-icon>lock_reset</mat-icon>
             </button>
+            <button
+              mat-icon-button
+              type="button"
+              data-testid="change-school"
+              [matTooltip]="'admin.studentSchool.action' | transloco"
+              [attr.aria-label]="'admin.studentSchool.actionFor' | transloco: { name: rowDisplayName(row) }"
+              [disabled]="schoolDialogOpen()"
+              (click)="changeSchool(row)"
+            >
+              <mat-icon>swap_horiz</mat-icon>
+            </button>
             @if (row.accountStatus !== 'unknown') {
               @let enable = row.accountStatus === 'inactive';
               <button

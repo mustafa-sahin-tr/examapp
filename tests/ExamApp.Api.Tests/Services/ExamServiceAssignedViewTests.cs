@@ -39,6 +39,8 @@ public class ExamServiceAssignedViewTests : IDisposable
         ctx.WorksheetAssignments.Add(new WorksheetAssignment
         {
             WorksheetId = worksheetId, StudentId = studentId, GradeId = gradeId, StartAt = start, EndAt = end,
+            // Okulsuz öğrenci sınıf atamasını yalnızca platform geneli (admin) atamayla görür (issue #277 madde 7).
+            IsPlatformWide = studentId == null && gradeId != null,
         });
         await ctx.SaveChangesAsync();
     }

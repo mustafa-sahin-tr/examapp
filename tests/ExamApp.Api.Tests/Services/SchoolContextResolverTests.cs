@@ -117,6 +117,27 @@ public class SchoolContextResolverTests : IDisposable
     }
 
     [Fact]
+    public async Task ResolveSchoolIdAsync_ProfileTeacher_WithoutTeacherRow_FallsBackToStudentRow()
+    {
+        // issue #277 review (security HIGH): profil rolü (auth-api) JWT'den geri kalabilir — Teacher/Student ayrımı okul
+        // çözümünde karar vermez; öğretmen kaydı yoksa öğrenci kaydının okulu esas alınır.
+        var schoolId = await SeedSchoolAsync("Öğrenci Okulu 2");
+        await using (var ctx = _db.NewContext())
+        {
+            var grade = new Grade { Name = "6" };
+            ctx.Grades.Add(grade);
+            await ctx.SaveChangesAsync();
+            ctx.Students.Add(new Student { UserId = 277, StudentNumber = "S277", SchoolId = schoolId, GradeId = grade.Id });
+            await ctx.SaveChangesAsync();
+        }
+
+        await using var testCtx = _db.NewContext();
+        var result = await NewResolver(testCtx).ResolveSchoolIdAsync(new UserProfileDto { Id = 277, KeycloakId = "kc-277", Role = "Teacher" });
+
+        result.ShouldBe(schoolId);
+    }
+
+    [Fact]
     public async Task ResolveSchoolIdAsync_Student_WithNullSchoolId_ReturnsNull()
     {
         int gradeId;

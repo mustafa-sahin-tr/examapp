@@ -68,6 +68,8 @@ namespace ExamApp.Api.Controllers
 
             if (profile != null)
             {
+                // issue #277 review (security HIGH): dal ve UI'a dönen rol JWT ile doğrulanmış etkin rol (EffectiveRole).
+                profile.Role = EffectiveRole.Resolve(profile.Role, User);
                 if (profile.Role == "Student")
                 {
                     // issue #243 review: XP aynı sorguda (ek round-trip yok) toplanır; Level okuma anında XP'den

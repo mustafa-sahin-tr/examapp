@@ -57,6 +57,21 @@ public sealed class TestDb : IDisposable
         return new AppDbContext(builder.Options);
     }
 
+    /// <summary>
+    /// issue #277 takip: a context whose execution strategy RETRIES on <see cref="TransientTestException"/> (see
+    /// <see cref="TransientFailureRetryingExecutionStrategy"/>), plus interceptors — e.g. one that throws that exception on
+    /// the first COMMIT to prove a service's strategy delegate is retry-safe (a second attempt must write everything again).
+    /// </summary>
+    public AppDbContext NewContextWithTransientRetry(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
+    {
+        var builder = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(_connection, o => o.ExecutionStrategy(d => new TransientFailureRetryingExecutionStrategy(d)))
+            .EnableSensitiveDataLogging();
+        if (interceptors.Length > 0)
+            builder.AddInterceptors(interceptors);
+        return new AppDbContext(builder.Options);
+    }
+
     private static DbContextOptions<AppDbContext> Options(
         SqliteConnection connection, params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
     {

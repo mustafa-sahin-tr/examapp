@@ -609,6 +609,8 @@ public class AppDbContext : DbContext
             e.Property(a => a.Outcome).HasConversion<string>().HasMaxLength(16)
                 .HasDefaultValue(AdminDataAccessOutcome.Served)
                 .HasSentinel(AdminDataAccessOutcome.Served);
+            // issue #187: yalnızca öğretmen başvurusu listesinde dolu (nullable; eski satırlar null kalır).
+            e.Property(a => a.StatusFilter).HasConversion<string>().HasMaxLength(16);
             e.HasIndex(a => new { a.ActorKeycloakId, a.OccurredAtUtc });
             e.HasIndex(a => a.OccurredAtUtc); // saklama süresi temizliği (issue #262) de bu index'i kullanır
         });

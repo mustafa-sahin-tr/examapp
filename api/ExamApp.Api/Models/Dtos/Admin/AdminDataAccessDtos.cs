@@ -15,7 +15,8 @@ public sealed record AdminListAccessRecord(
     int Page,
     int PageSize,
     int ReturnedCount,
-    int TotalCount);
+    int TotalCount,
+    TeacherApplicationStatusFilter? StatusFilter = null); // issue #187: yalnızca öğretmen başvurusu listesinde
 
 /// <summary>
 /// Admin detay ucu erişiminin audit girdisi (issue #262; ilk kullanım: <c>GET api/admin/teacher-applications/{id}</c>).
@@ -37,7 +38,8 @@ public sealed record AdminRateLimitedAccessRecord(
     AdminDataAccessResource Resource,
     int? SchoolIdFilter,
     bool UnassignedFilter,
-    int? TargetId);
+    int? TargetId,
+    TeacherApplicationStatusFilter? StatusFilter = null); // issue #187: yalnızca öğretmen başvurusu listesinde
 
 /// <summary>
 /// Admin hesap aksiyonunun audit girdisi (issue #156). HTTP'ye açılmaz. Sır/PII alanı yok ve eklenmemeli

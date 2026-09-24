@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -12,6 +13,7 @@ import { ApiResult, TaxonomyFilter, TaxonomySubject, TaxonomyTree } from '../../
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
 import { StudyLinkService } from '../../../services/study-link.service';
+import { AuthService } from '../../../services/auth.service';
 import { TopicStudyLinkManagerComponent } from '../../../shared/components/topic-study-link-manager/topic-study-link-manager.component';
 
 describe('TaxonomyManagerComponent', () => {
@@ -109,6 +111,8 @@ describe('TaxonomyManagerComponent', () => {
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
         { provide: StudyLinkService, useValue: studyLinkService },
+        // Çalışma linki paneli sahiplik kararı için AuthService okur (HTTP'ye çıkmasın).
+        { provide: AuthService, useValue: { hasRealmRole: () => false, hasRole: () => false, user: signal({ id: 1 }) } },
         provideNoopAnimations(),
       ],
     });

@@ -1,8 +1,15 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
-import { StudyLinkService, isActiveLimitError, studyLinkErrorMessage } from './study-link.service';
+import {
+  StudyLinkService,
+  isActiveLimitError,
+  isTeacherNotApprovedError,
+  rateLimitRetryAfter,
+  studyLinkErrorCode,
+  studyLinkErrorMessage,
+} from './study-link.service';
 
 describe('StudyLinkService (issue #61)', () => {
   let service: StudyLinkService;
@@ -96,6 +103,33 @@ describe('StudyLinkService (issue #61)', () => {
       const err = new HttpErrorResponse({ status: 409, error: { success: false, conflict: true, errorCode: 'ActiveLimitReached' } });
       expect(isActiveLimitError(err)).toBeTrue();
       expect(isActiveLimitError(new HttpErrorResponse({ status: 400, error: {} }))).toBeFalse();
+    });
+
+    it('isActiveLimitError_TotalLimitOrCodelessConflict_False', () => {
+      const total = new HttpErrorResponse({ status: 409, error: { conflict: true, errorCode: 'TotalLimitReached' } });
+      expect(isActiveLimitError(total)).toBeFalse();
+      expect(studyLinkErrorCode(total)).toBe('TotalLimitReached');
+      expect(isActiveLimitError(new HttpErrorResponse({ status: 409, error: { conflict: true } }))).toBeFalse();
+    });
+
+    it('isTeacherNotApprovedError_Only403WithCode', () => {
+      expect(
+        isTeacherNotApprovedError(new HttpErrorResponse({ status: 403, error: { errorCode: 'TeacherNotApproved' } }))
+      ).toBeTrue();
+      expect(isTeacherNotApprovedError(new HttpErrorResponse({ status: 403, error: { errorCode: 'NotOwner' } }))).toBeFalse();
+      expect(isTeacherNotApprovedError(new HttpErrorResponse({ status: 403, error: null }))).toBeFalse();
+    });
+
+    it('rateLimitRetryAfter_ReadsHeaderOnlyFor429', () => {
+      const withHeader = new HttpErrorResponse({ status: 429, headers: new HttpHeaders({ 'Retry-After': '42' }) });
+      expect(rateLimitRetryAfter(withHeader)).toBe(42);
+      expect(rateLimitRetryAfter(new HttpErrorResponse({ status: 429 }))).toBeNull();
+      expect(rateLimitRetryAfter(new HttpErrorResponse({ status: 409 }))).toBeUndefined();
+    });
+
+    it('studyLinkErrorMessage_PlainText429Body_ReturnsText', () => {
+      expect(studyLinkErrorMessage(new HttpErrorResponse({ status: 429, error: 'Çok fazla istek.' }))).toBe('Çok fazla istek.');
+      expect(studyLinkErrorMessage(new HttpErrorResponse({ status: 429, error: '  ' }))).toBeNull();
     });
 
     it('studyLinkErrorMessage_PrefersMessageThenValidationErrors', () => {

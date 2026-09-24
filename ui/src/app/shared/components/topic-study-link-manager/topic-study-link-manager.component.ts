@@ -8,15 +8,23 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { DatePipe } from '@angular/common';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { EMPTY, catchError, firstValueFrom, map, of, switchMap, take, tap } from 'rxjs';
 import {
   MAX_ACTIVE_STUDY_LINKS,
+  MAX_TOTAL_STUDY_LINKS,
   StudyLink,
   StudyLinkListResponse,
   StudyLinkScope,
 } from '../../../models/study-link';
-import { StudyLinkService, studyLinkErrorMessage } from '../../../services/study-link.service';
+import {
+  StudyLinkService,
+  isTeacherNotApprovedError,
+  rateLimitRetryAfter,
+  studyLinkErrorMessage,
+} from '../../../services/study-link.service';
+import { AuthService } from '../../../services/auth.service';
 import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
 import { StudyLinkDialogComponent, StudyLinkDialogData } from '../study-link-dialog/study-link-dialog.component';
 
@@ -46,6 +54,7 @@ const PAGE_SIZE = 50;
     MatSlideToggleModule,
     MatSnackBarModule,
     MatTooltipModule,
+    DatePipe,
     TranslocoDirective,
     TranslocoPipe,
   ],
@@ -58,6 +67,12 @@ export class TopicStudyLinkManagerComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snack = inject(MatSnackBar);
   private readonly transloco = inject(TranslocoService);
+  private readonly auth = inject(AuthService);
+
+  /** Admin tüm linkleri, öğretmen yalnız kendi eklediklerini değiştirebilir (backend `NotOwner` ile aynı kural). */
+  readonly isAdmin = this.auth.hasRealmRole('Admin') || this.auth.hasRole('Admin');
+  /** `createdByUserId` ile aynı kimlik uzayı: exam API profil sağlayıcısının döndürdüğü kullanıcı kimliği. */
+  private readonly currentUserId = computed(() => this.auth.user()?.id ?? null);
 
   readonly topicId = input<number | null>(null);
   readonly subTopicId = input<number | null>(null);
@@ -75,14 +90,26 @@ export class TopicStudyLinkManagerComponent {
   readonly links = signal<StudyLink[]>([]);
   readonly activeCount = signal(0);
   readonly maxActive = signal(MAX_ACTIVE_STUDY_LINKS);
+  readonly totalCount = signal(0);
+  readonly maxTotal = MAX_TOTAL_STUDY_LINKS;
+  /**
+   * 403 `TeacherNotApproved`: onaysız öğretmen hiçbir yönetim ucunu (liste dahil) kullanamaz. Doluysa genel hata
+   * bandı yerine bilgilendirme gösterilir ve tüm ekleme/düzenleme kontrolleri gizlenir.
+   */
+  readonly notApproved = signal<string | null>(null);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   /** Bir yazma isteği sürüyor (çift tıklama / eşzamanlı sıralama engeli). */
   readonly busy = signal(false);
 
   readonly limitReached = computed(() => this.activeCount() >= this.maxActive());
+  /** Aktif + pasif toplam sınır (30) doldu mu — yeni link eklenemez. */
+  readonly totalLimitReached = computed(() => this.totalCount() >= this.maxTotal);
+  readonly addBlocked = computed(() => this.limitReached() || this.totalLimitReached());
   readonly showSkeleton = computed(() => this.loading() && this.links().length === 0);
-  readonly isEmpty = computed(() => !this.loading() && !this.error() && this.links().length === 0);
+  readonly isEmpty = computed(
+    () => !this.loading() && !this.error() && !this.notApproved() && this.links().length === 0
+  );
 
   private readonly reloadTick = signal(0);
 
@@ -95,6 +122,7 @@ export class TopicStudyLinkManagerComponent {
       .pipe(
         switchMap(({ scope }) => {
           this.error.set(null);
+          this.notApproved.set(null);
           if (!scope) {
             this.links.set([]);
             this.activeCount.set(0);
@@ -105,7 +133,9 @@ export class TopicStudyLinkManagerComponent {
           return this.service.list({ ...scope, includeInactive: true, skip: 0, take: PAGE_SIZE }).pipe(
             map((res): StudyLinkListResponse | null => res),
             catchError((err: unknown) => {
-              this.error.set(studyLinkErrorMessage(err) ?? this.text('loadFailed'));
+              this.links.set([]);
+              if (isTeacherNotApprovedError(err)) this.markNotApproved(err);
+              else this.error.set(studyLinkErrorMessage(err) ?? this.text('loadFailed'));
               return of(null);
             }),
             tap(() => this.loading.set(false))
@@ -122,6 +152,14 @@ export class TopicStudyLinkManagerComponent {
     this.reloadTick.update((n) => n + 1);
   }
 
+  /** Öğretmen yalnız kendi eklediği linki düzenleyebilir / aktif-pasif yapabilir / silebilir. */
+  canModify(link: StudyLink): boolean {
+    if (this.notApproved()) return false;
+    if (this.isAdmin) return true;
+    const userId = this.currentUserId();
+    return userId != null && link.createdByUserId === userId;
+  }
+
   sourceIcon(link: Pick<StudyLink, 'sourceType'>): string {
     return link.sourceType === 'YouTube' ? 'smart_display' : 'link';
   }
@@ -130,13 +168,13 @@ export class TopicStudyLinkManagerComponent {
 
   async openCreate(): Promise<void> {
     const scope = this.scope();
-    if (!scope || this.limitReached() || this.busy()) return;
+    if (!scope || this.addBlocked() || this.notApproved() || this.busy()) return;
     await this.openDialog({ scope }, 'created');
   }
 
   async openEdit(link: StudyLink): Promise<void> {
     const scope = this.scope();
-    if (!scope || this.busy()) return;
+    if (!scope || this.busy() || !this.canModify(link)) return;
     await this.openDialog({ scope, link }, 'updated');
   }
 
@@ -164,6 +202,10 @@ export class TopicStudyLinkManagerComponent {
   // ---- active toggle ----
 
   toggleActive(link: StudyLink, event: MatSlideToggleChange): void {
+    if (!this.canModify(link)) {
+      event.source.checked = link.isActive;
+      return;
+    }
     const isActive = event.checked;
     this.busy.set(true);
     this.service
@@ -187,7 +229,7 @@ export class TopicStudyLinkManagerComponent {
   // ---- delete ----
 
   async remove(link: StudyLink): Promise<void> {
-    if (this.busy()) return;
+    if (this.busy() || !this.canModify(link)) return;
     const data: ConfirmDialogData = {
       title: this.text('deleteTitle'),
       message: this.text('deleteMessage', { title: link.title }),
@@ -230,7 +272,7 @@ export class TopicStudyLinkManagerComponent {
   private move(from: number, to: number): void {
     const scope = this.scope();
     const previous = this.links();
-    if (!scope || this.busy() || from === to || to < 0 || to >= previous.length) return;
+    if (!scope || this.busy() || this.notApproved() || from === to || to < 0 || to >= previous.length) return;
 
     const next = [...previous];
     moveItemInArray(next, from, to);
@@ -258,10 +300,28 @@ export class TopicStudyLinkManagerComponent {
     this.links.set([...res.items].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id));
     this.activeCount.set(res.activeCount);
     this.maxActive.set(res.maxActiveLinks || MAX_ACTIVE_STUDY_LINKS);
+    this.totalCount.set(res.totalCount);
   }
 
+  private markNotApproved(err: unknown): void {
+    this.notApproved.set(studyLinkErrorMessage(err) ?? this.text('notApproved'));
+  }
+
+  /**
+   * Yazma hatası → snackbar. Sunucu metni (409 ActiveLimitReached/TotalLimitReached, 403 NotOwner, 429 düz metin)
+   * önceliklidir; 429 gövdesi boşsa Retry-After ile yerel metin. Onay kaldırıldıysa (403 TeacherNotApproved)
+   * kontroller de gizlenir.
+   */
   private showError(err: unknown): void {
-    this.snack.open(studyLinkErrorMessage(err) ?? this.text('actionFailed'), this.text('close'), { duration: 5000 });
+    if (isTeacherNotApprovedError(err)) this.markNotApproved(err);
+    const retryAfter = rateLimitRetryAfter(err);
+    const fallback =
+      retryAfter === undefined
+        ? this.text('actionFailed')
+        : retryAfter === null
+          ? this.text('rateLimitedNoWait')
+          : this.text('rateLimited', { seconds: retryAfter });
+    this.snack.open(studyLinkErrorMessage(err) ?? fallback, this.text('close'), { duration: 5000 });
   }
 
   private notify(key: string): void {

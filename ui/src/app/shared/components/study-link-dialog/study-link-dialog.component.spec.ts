@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -29,6 +30,8 @@ const link: StudyLink = {
   createdByName: 'Admin',
   createdByRole: 'Admin',
   createTime: '2026-01-01T00:00:00Z',
+  updatedByUserId: null,
+  updatedByName: null,
   updateTime: null,
 };
 
@@ -38,12 +41,14 @@ describe('StudyLinkDialogComponent (issue #61)', () => {
   let component: StudyLinkDialogComponent;
   let service: jasmine.SpyObj<StudyLinkService>;
   let dialogRef: jasmine.SpyObj<MatDialogRef<StudyLinkDialogComponent, StudyLink>>;
+  let snack: jasmine.SpyObj<MatSnackBar>;
 
   function configure(data: Partial<StudyLinkDialogData> = {}): void {
     service = jasmine.createSpyObj<StudyLinkService>('StudyLinkService', ['create', 'update']);
     service.create.and.returnValue(of(link));
     service.update.and.returnValue(of(link));
     dialogRef = jasmine.createSpyObj<MatDialogRef<StudyLinkDialogComponent, StudyLink>>('MatDialogRef', ['close']);
+    snack = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
     TestBed.configureTestingModule({
       imports: [StudyLinkDialogComponent, translocoTestingModule({ langs: { 'study-links/tr': studyLinksTr } })],
@@ -56,6 +61,10 @@ describe('StudyLinkDialogComponent (issue #61)', () => {
           useValue: { scope: { subTopicId: 2 }, activeLimitReached: false, maxActiveLinks: 7, ...data },
         },
       ],
+    });
+    // Komponent MatSnackBarModule import ettiği için mock komponent seviyesinde verilir.
+    TestBed.overrideComponent(StudyLinkDialogComponent, {
+      add: { providers: [{ provide: MatSnackBar, useValue: snack }] },
     });
     fixture = TestBed.createComponent(StudyLinkDialogComponent);
     component = fixture.componentInstance;
@@ -164,6 +173,62 @@ describe('StudyLinkDialogComponent (issue #61)', () => {
 
     expect(el().querySelector('[data-testid="dialog-error"]')?.textContent).toContain('En fazla 7 aktif link olabilir.');
     expect(component.form.controls.isActive.value).toBeFalse();
+    expect(dialogRef.close).not.toHaveBeenCalled();
+    expect(component.submitting()).toBeFalse();
+  });
+
+  it('save_409TotalLimit_ShowsServerMessageInlineAndKeepsActiveValue', () => {
+    configure();
+    service.create.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { success: false, conflict: true, errorCode: 'TotalLimitReached', message: 'En fazla 30 link olabilir.' },
+          })
+      )
+    );
+    component.form.controls.title.setValue('A');
+    component.form.controls.url.setValue('https://a.com');
+    component.save();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-testid="dialog-error"]')?.textContent).toContain('En fazla 30 link olabilir.');
+    expect(component.form.controls.isActive.value).toBeTrue();
+    expect(dialogRef.close).not.toHaveBeenCalled();
+  });
+
+  it('save_403NotOwner_ShowsServerMessageInline', () => {
+    configure({ link });
+    service.update.and.returnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 403, error: { success: false, forbidden: true, errorCode: 'NotOwner', message: 'Bu link size ait değil.' } })
+      )
+    );
+    component.save();
+    fixture.detectChanges();
+
+    expect(el().querySelector('[data-testid="dialog-error"]')?.textContent).toContain('Bu link size ait değil.');
+  });
+
+  it('save_429_ShowsSnackbarKeepsDialogOpenWithoutInlineError', () => {
+    configure();
+    service.create.and.returnValue(
+      throwError(
+        () => new HttpErrorResponse({ status: 429, error: '', headers: new HttpHeaders({ 'Retry-After': '20' }) })
+      )
+    );
+    component.form.controls.title.setValue('A');
+    component.form.controls.url.setValue('https://a.com');
+    component.save();
+    fixture.detectChanges();
+
+    expect(snack.open).toHaveBeenCalledWith(
+      'Çok fazla işlem yapıldı. 20 saniye sonra tekrar deneyin.',
+      studyLinksTr.manager.close,
+      jasmine.any(Object)
+    );
+    expect(el().querySelector('[data-testid="dialog-error"]')).toBeNull();
     expect(dialogRef.close).not.toHaveBeenCalled();
     expect(component.submitting()).toBeFalse();
   });

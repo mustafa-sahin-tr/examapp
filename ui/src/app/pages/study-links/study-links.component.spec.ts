@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -51,6 +52,8 @@ describe('StudyLinksComponent (issue #61, teacher page)', () => {
           useValue: { getGrades: () => of([{ id: 5, name: '5. Sınıf' }, { id: 11, name: '11. Sınıf' }]) },
         },
         { provide: StudyLinkService, useValue: studyLinkService },
+        // Çalışma linki paneli sahiplik kararı için AuthService okur (HTTP'ye çıkmasın).
+        { provide: AuthService, useValue: { hasRealmRole: () => false, hasRole: () => false, user: signal({ id: 1 }) } },
       ],
     });
     fixture = TestBed.createComponent(StudyLinksComponent);

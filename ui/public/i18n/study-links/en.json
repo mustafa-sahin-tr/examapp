@@ -37,7 +37,16 @@
     "deactivated": "Link deactivated.",
     "reordered": "Order updated.",
     "actionFailed": "The action could not be completed. Please try again.",
-    "close": "Close"
+    "close": "Close",
+    "notApproved": "You can manage study links once your application has been approved.",
+    "totalLimitWarning": "This scope can have at most {{max}} links (active + inactive). Delete a link before adding a new one.",
+    "addDisabledTotalTooltip": "Total link limit ({{max}}) reached. Delete a link to add a new one.",
+    "totalCount": "Total {{total}} / {{max}}",
+    "updatedBy": "Last updated by: {{name}}, {{date}}",
+    "createdBy": "Added by: {{name}}, {{date}}",
+    "notOwned": "You can only edit, activate/deactivate or delete links you added.",
+    "rateLimited": "Too many actions. Please try again in {{seconds}} seconds.",
+    "rateLimitedNoWait": "Too many actions. Please try again shortly."
   },
   "dialog": {
     "createTitle": "Add study link",

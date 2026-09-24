@@ -10,7 +10,10 @@
         <span class="sl-crumb"> — {{ scopeName() }}</span>
       }
     </h3>
-    @if (scope()) {
+    @if (scope() && !notApproved()) {
+      <span class="sl-total" data-testid="total-counter" [class.sl-total--full]="totalLimitReached()">{{
+        t('manager.totalCount', { total: totalCount(), max: maxTotal })
+      }}</span>
       <span
         class="sl-counter"
         data-testid="active-counter"
@@ -26,6 +29,12 @@
       <p class="sl-empty-title">{{ t('manager.noScopeTitle') }}</p>
       <p class="sl-empty-hint">{{ t('manager.noScopeHint') }}</p>
     </div>
+  } @else if (notApproved()) {
+    <!-- 403 TeacherNotApproved: genel hata bandı değil, bloklamayan bilgilendirme; yönetim kontrolleri gizli. -->
+    <div class="sl-notice" role="status" aria-live="polite" data-testid="not-approved">
+      <mat-icon>hourglass_top</mat-icon>
+      <span>{{ notApproved() }}</span>
+    </div>
   } @else {
     @if (isTopicLevel()) {
       <p class="sl-hint">{{ t('manager.topicLevelHint') }}</p>
@@ -33,8 +42,12 @@
 
     <span
       class="sl-add-wrap"
-      [matTooltip]="limitReached() ? t('manager.addDisabledTooltip', { max: maxActive() }) : ''"
-      [matTooltipDisabled]="!limitReached()"
+      [matTooltip]="
+        totalLimitReached()
+          ? t('manager.addDisabledTotalTooltip', { max: maxTotal })
+          : t('manager.addDisabledTooltip', { max: maxActive() })
+      "
+      [matTooltipDisabled]="!addBlocked()"
     >
       <button
         mat-flat-button
@@ -42,7 +55,7 @@
         type="button"
         class="sl-add"
         data-testid="add-link"
-        [disabled]="limitReached() || busy() || loading() || !!error()"
+        [disabled]="addBlocked() || busy() || loading() || !!error()"
         (click)="openCreate()"
       >
         <mat-icon>add</mat-icon>
@@ -52,7 +65,10 @@
 
     <!-- Kalıcı uyarı şeridi: role=status + aria-live, sınır dolduğunda ekran okuyucuya duyurulur. -->
     <div class="sl-limit" role="status" aria-live="polite" data-testid="limit-warning">
-      @if (limitReached()) {
+      @if (totalLimitReached()) {
+        <mat-icon>warning_amber</mat-icon>
+        <span>{{ t('manager.totalLimitWarning', { max: maxTotal }) }}</span>
+      } @else if (limitReached()) {
         <mat-icon>warning_amber</mat-icon>
         <span>{{ t('manager.limitWarning', { max: maxActive() }) }}</span>
       }
@@ -118,6 +134,13 @@
                 rel="noopener noreferrer"
                 [attr.aria-label]="t('manager.openLink') + ': ' + link.title"
               >{{ link.url }}</a>
+              <span class="sl-meta" data-testid="link-meta">
+                @if (link.updateTime && link.updatedByName) {
+                  {{ t('manager.updatedBy', { name: link.updatedByName, date: (link.updateTime | date: 'short') }) }}
+                } @else {
+                  {{ t('manager.createdBy', { name: link.createdByName, date: (link.createTime | date: 'short') }) }}
+                }
+              </span>
             </div>
 
             <div class="sl-actions">
@@ -141,40 +164,50 @@
               >
                 <mat-icon>arrow_downward</mat-icon>
               </button>
-              <span
-                class="sl-toggle-wrap"
-                [matTooltip]="t('manager.activateDisabledTooltip', { max: maxActive() })"
-                [matTooltipDisabled]="link.isActive || !limitReached()"
-              >
-                <mat-slide-toggle
-                  data-testid="active-toggle"
-                  [checked]="link.isActive"
-                  [disabled]="busy() || (!link.isActive && limitReached())"
-                  [aria-label]="t('manager.activeToggleAria', { title: link.title })"
-                  (change)="toggleActive(link, $event)"
-                ></mat-slide-toggle>
-              </span>
-              <button
-                mat-icon-button
-                type="button"
-                data-testid="edit"
-                [disabled]="busy()"
-                [attr.aria-label]="t('manager.edit')"
-                (click)="openEdit(link)"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                type="button"
-                class="sl-danger"
-                data-testid="delete"
-                [disabled]="busy()"
-                [attr.aria-label]="t('manager.delete')"
-                (click)="remove(link)"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
+              @if (canModify(link)) {
+                <span
+                  class="sl-toggle-wrap"
+                  [matTooltip]="t('manager.activateDisabledTooltip', { max: maxActive() })"
+                  [matTooltipDisabled]="link.isActive || !limitReached()"
+                >
+                  <mat-slide-toggle
+                    data-testid="active-toggle"
+                    [checked]="link.isActive"
+                    [disabled]="busy() || (!link.isActive && limitReached())"
+                    [aria-label]="t('manager.activeToggleAria', { title: link.title })"
+                    (change)="toggleActive(link, $event)"
+                  ></mat-slide-toggle>
+                </span>
+                <button
+                  mat-icon-button
+                  type="button"
+                  data-testid="edit"
+                  [disabled]="busy()"
+                  [attr.aria-label]="t('manager.edit')"
+                  (click)="openEdit(link)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="sl-danger"
+                  data-testid="delete"
+                  [disabled]="busy()"
+                  [attr.aria-label]="t('manager.delete')"
+                  (click)="remove(link)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              } @else {
+                <mat-icon
+                  class="sl-lock"
+                  data-testid="not-owned"
+                  [matTooltip]="t('manager.notOwned')"
+                  [attr.aria-label]="t('manager.notOwned')"
+                  >lock</mat-icon
+                >
+              }
             </div>
           </li>
         }

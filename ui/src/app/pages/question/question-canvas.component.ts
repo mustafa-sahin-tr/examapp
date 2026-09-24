@@ -840,6 +840,11 @@ export class QuestionCanvasComponent implements OnInit {
       error: (err) => {
         this.saving.set(false);
         console.log(err);
+        // Issue #287: yetkisiz rol / başkasının sorusu → gövdesiz 403; sessiz kalmasın.
+        if (err?.status === 403) {
+          this.notify('common.forbidden', 4000);
+          return;
+        }
         for (const key in err?.error?.errors) {
           if (key.startsWith('$.')) {
             this.snackBar.open(this.tr('canvas.invalidFieldPath'), key);

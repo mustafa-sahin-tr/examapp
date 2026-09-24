@@ -67,16 +67,21 @@ export class AuthService {
   /**
    * Issue #287: Teacher realm rolü var ve öğretmen hesabı onaysız (profil `teacherAccountApproved=false` diyor ya da
    * sunucu 403 `TeacherNotApproved` döndü). Bilinmeyen durum (alan yok) onaysız SAYILMAZ — asıl kapı backend'de.
-   * Öğrenci/admin için her zaman false. Rol token'dan okunur; token değişimi her zaman `setUser` ile birlikte olur.
+   * Öğrenci ve Admin/SuperAdmin (backend'de muaf) için her zaman false. Rol token'dan okunur; token değişimi her zaman `setUser` ile birlikte olur.
    */
   readonly isUnapprovedTeacher = computed(() => {
     const profile = this.user();
     const flaggedByServer = this.teacherNotApprovedByServer();
-    if (!this.hasRealmRole('Teacher')) {
+    if (!this.hasRealmRole('Teacher') || this.isTeacherApprovalExempt()) {
       return false;
     }
     return flaggedByServer || teacherAccountApprovalOf(profile) === false;
   });
+
+  /** Issue #287: Admin/SuperAdmin öğretmen onay kapısından muaftır (backend `ApprovedTeacherRequirement.AdminRoles`). */
+  isTeacherApprovalExempt(): boolean {
+    return this.hasRealmRole('Admin') || this.hasRealmRole('SuperAdmin');
+  }
 
   /** Issue #287: öğretmen özellikleri açık mı (Teacher değilse true). Bkz. `isUnapprovedTeacher`. */
   readonly teacherAccountApproved = computed(() => !this.isUnapprovedTeacher());
@@ -353,7 +358,7 @@ export class AuthService {
    * durum sayfası öğretmen uçlarını çağırmadığı için döngü oluşmaz. Teacher rolü olmayanlar etkilenmez.
    */
   handleTeacherNotApproved(): void {
-    if (!this.hasRealmRole('Teacher')) {
+    if (!this.hasRealmRole('Teacher') || this.isTeacherApprovalExempt()) {
       return;
     }
     this.teacherNotApprovedByServer.set(true);

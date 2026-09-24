@@ -10,7 +10,9 @@
   "pending": {
     "title": "Your application is under review",
     "body": "Your teacher registration was received and is being reviewed by an administrator. Until it is approved, exam authoring, study content, question transfer, bookings and the teacher dashboard are unavailable.",
-    "hint": "You will be notified once a decision is made; you can refresh the status on this page at any time."
+    "hint": "You will be notified once a decision is made; you can refresh the status on this page at any time.",
+    "tutorProfileHint": "If you applied as an independent tutor, you can prepare your tutor profile while you wait:",
+    "tutorProfileLink": "My tutor profile"
   },
   "rejected": {
     "title": "Your application was rejected",

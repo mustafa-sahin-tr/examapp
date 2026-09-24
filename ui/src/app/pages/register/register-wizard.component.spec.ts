@@ -176,7 +176,7 @@ describe('RegisterWizardComponent (Issue #234)', () => {
       localStorage.removeItem('user');
     });
 
-    function registerTeacher(schoolApprovalPending: boolean): void {
+    function registerTeacher(schoolApprovalPending: boolean, message?: string): void {
       teacherService.register.and.returnValue(
         of({
           accessToken: 'token',
@@ -186,9 +186,27 @@ describe('RegisterWizardComponent (Issue #234)', () => {
           requestedSchoolId: schoolApprovalPending ? 1 : null,
           schoolApprovalPending,
           teacherAccountApproved: false,
+          message,
         }),
       );
     }
+
+    it('submit_TeacherAccountNotApprovedWithServerMessage_ShowsServerMessage', fakeAsync(() => {
+      createComponent('teacher');
+      fixture.detectChanges();
+      component.teacherForm.setValue({ schoolName: 'Okul Adı' });
+      registerTeacher(false, 'Sunucu: hesabınız onay bekliyor.');
+      const internals = component as unknown as { notify: (k: string) => void; notifyText: (m: string) => void };
+      const notify = spyOn(internals, 'notify');
+      const notifyText = spyOn(internals, 'notifyText');
+
+      component.submit();
+      flush();
+
+      expect(notifyText).toHaveBeenCalledOnceWith('Sunucu: hesabınız onay bekliyor.');
+      expect(notify).not.toHaveBeenCalled();
+      expect(router.navigate).toHaveBeenCalledOnceWith(['/teacher-approval-pending']);
+    }));
 
     for (const schoolApprovalPending of [false, true]) {
       it(`submit_TeacherAccountNotApproved_schoolPending=${schoolApprovalPending}_NavigatesToPendingPageWithMessage`, fakeAsync(() => {

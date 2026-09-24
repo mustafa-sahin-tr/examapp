@@ -33,6 +33,8 @@ interface RegistrationResult {
   schoolApprovalPending?: boolean;
   /** Yalnız öğretmen ucu (issue #287): false → hesap admin onayı bekliyor (yeni kayıtta her zaman). */
   teacherAccountApproved?: boolean;
+  /** Yalnız öğretmen ucu (issue #287): yerelleştirilmiş sunucu mesajı. */
+  message?: string;
 }
 
 @Component({
@@ -171,8 +173,13 @@ export class RegisterWizardComponent implements OnInit {
         }
         if (accountApprovalPending) {
           // Issue #287: yeni öğretmen hesabı admin onayı bekler — teacher dashboard yerine başvuru durumu sayfası.
-          // Kayıt yanıtı `message` taşımadığı için bilgilendirme metni scope sözlüğünden gelir.
-          this.notify('wizard.teacherAccountPending');
+          // Sunucu mesajı varsa o gösterilir; yoksa (eski sunucu) scope sözlüğündeki metin.
+          const serverMessage = val?.message?.trim();
+          if (serverMessage) {
+            this.notifyText(serverMessage);
+          } else {
+            this.notify('wizard.teacherAccountPending');
+          }
           this.router.navigate([TEACHER_APPROVAL_PENDING_URL]);
           return;
         }
@@ -203,6 +210,14 @@ export class RegisterWizardComponent implements OnInit {
    * Snackbar metni ve aksiyon etiketi şablon dışında üretildiği için ikisi de `selectTranslate`
    * ile okunur; bu çağrı scope sözlüğünü yükler ve dil değişiminde doğru metni verir.
    */
+  /** Sunucudan gelen (zaten yerelleştirilmiş) metni snackbar'da gösterir; yalnız aksiyon etiketi çevrilir. */
+  private notifyText(message: string): void {
+    this.transloco
+      .selectTranslate<string>('actions.ok', {}, REGISTER_SCOPE)
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe((action) => this.snackBar.open(message, action, { duration: 5000 }));
+  }
+
   private notify(messageKey: string): void {
     combineLatest([
       this.transloco.selectTranslate<string>(messageKey, {}, REGISTER_SCOPE),

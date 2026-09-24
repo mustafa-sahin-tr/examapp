@@ -53,6 +53,8 @@ export class CompleteProfileComponent implements OnInit {
   readonly schoolApprovalPending = signal(false);
   /** Issue #287: öğretmen hesabı yönetici onayı bekliyor — öğretmen özellikleri onaya kadar kapalı. */
   readonly accountApprovalPending = signal(false);
+  /** Issue #287 (review): kayıt yanıtındaki sunucu mesajı; yoksa şablondaki varsayılan metin. */
+  readonly accountApprovalMessage = signal<string | null>(null);
   /** Issue #234: 409 (kayıt değişikliğine izin yok) backend mesajı; form kullanılabilir kalır. */
   readonly submitError = signal<string | null>(null);
 
@@ -181,6 +183,7 @@ export class CompleteProfileComponent implements OnInit {
         if (role === 'Teacher' && 'teacherAccountApproved' in res && res.teacherAccountApproved === false) {
           // Issue #287: yeni öğretmen hesabı yönetici onayı bekler; okul talebi varsa o da kartta belirtilir.
           this.accountApprovalPending.set(true);
+          this.accountApprovalMessage.set(res.message?.trim() || null);
           this.schoolApprovalPending.set(res.schoolApprovalPending === true);
           return;
         }

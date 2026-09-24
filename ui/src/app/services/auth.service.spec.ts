@@ -456,6 +456,18 @@ describe('AuthService — teacher account approval (issue #287)', () => {
     expect(service.isUnapprovedTeacher()).toBeFalse();
   });
 
+  for (const adminRole of ['Admin', 'SuperAdmin']) {
+    it(`isUnapprovedTeacher_TeacherAnd${adminRole}_ExemptLikeBackend`, () => {
+      setup(['Teacher', adminRole], profile({ teacherAccountApproved: false }));
+      expect(service.isTeacherApprovalExempt()).toBeTrue();
+      expect(service.isUnapprovedTeacher()).toBeFalse();
+
+      service.handleTeacherNotApproved();
+      expect(navigateByUrl).not.toHaveBeenCalled();
+      httpMock.expectNone('/api/exam/auth/refresh');
+    });
+  }
+
   it('refreshProfile_ConcurrentCalls_SingleRequest_UpdatesUserSignal', () => {
     setup(['Teacher'], profile({}));
     const results: (UserProfile | null)[] = [];

@@ -122,7 +122,6 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     '/booking-requests',
     '/assignment-permission-requests',
     '/my-calendar',
-    '/tutor-profile',
     '/students',
   ];
 
@@ -141,6 +140,15 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     expect(routesShown).toContain('/student-profile');
     expect(items[0].type).toBe('menu');
     expect(items[items.length - 1].type).toBe('menu');
+  });
+
+  it('visibleMenuItems_UnapprovedTeacher_KeepsTutorProfileApplicationForm', () => {
+    const component = create(['Teacher'], true);
+    expect(component.visibleMenuItems().map((i) => i.route)).toContain('/tutor-profile');
+
+    TestBed.resetTestingModule();
+    const student = create(['Student'], false);
+    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/tutor-profile');
   });
 
   it('visibleBottomNavItems_UnapprovedTeacher_StatusEntryInsteadOfDashboardAndExams', () => {

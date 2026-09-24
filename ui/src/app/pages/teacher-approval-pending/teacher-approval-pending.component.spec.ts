@@ -78,6 +78,8 @@ describe('TeacherApprovalPendingComponent (issue #287)', () => {
     expect(el().querySelector('[data-view="pending"]')).not.toBeNull();
     expect(text()).toContain('Başvurunuz inceleniyor');
     expect(el().querySelector('[data-testid="refresh"]')).not.toBeNull();
+    // Bağımsız öğretmen başvurusunun formu onay beklerken de açık.
+    expect(el().querySelector('[data-testid="tutor-profile-link"]')?.getAttribute('href')).toBe('/tutor-profile');
   });
 
   it('init_Rejected_ShowsReasonAndNextSteps', () => {

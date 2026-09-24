@@ -95,7 +95,10 @@ minio-data/
 pgadmin-data/
 n8n-data/
 jitsi-data/
-rabbitmq/
+rabbitmq/*
+!rabbitmq/definitions.json
+!rabbitmq/rabbitmq.conf
+!rabbitmq/generate-password-hashes.py
 postgres/examdata/
 postgres/examdata*
 nuget-packages/

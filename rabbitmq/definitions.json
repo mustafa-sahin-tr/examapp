@@ -1,0 +1,110 @@
+{
+  "_comment": "Issue #279 item 1 — per-service RabbitMQ users/permissions. Loaded via load_definitions (docker-compose: rabbitmq/rabbitmq.conf; Aspire: bind mount, see AppHost.cs). DEV-ONLY password hashes — regenerate with rabbitmq/generate-password-hashes.py if you change a dev password in .env.example / AppHost/appsettings.json. Never reuse these hashes/passwords outside local dev.",
+  "rabbit_version": "3.13.0",
+  "rabbitmq_version": "3.13.0",
+  "product_name": "RabbitMQ",
+  "product_version": "3.13.0",
+  "users": [
+    {
+      "name": "rabbituser",
+      "password_hash": "3h4vARlfrJd3WKjiza0+FlLIRPH1B08ONC9jmWsgYv0rWVbe",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"],
+      "limits": {}
+    },
+    {
+      "name": "exam_outbox_pub",
+      "password_hash": "obLD1ES5wxG10eq7GPFTjRo1IscydCgkH2NmZJgkRT49CyFl",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [],
+      "limits": {}
+    },
+    {
+      "name": "identity_outbox_pub",
+      "password_hash": "ssPU5epkaiOG/w7/w4nyM6rWu376xj7+5QTYoAsxWzVC7xex",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [],
+      "limits": {}
+    },
+    {
+      "name": "badge_outbox_pub",
+      "password_hash": "w9Tl9kgADD9kKkdAf7A7aAttxbEkI3ZVyaylLk3qso2T+98X",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [],
+      "limits": {}
+    },
+    {
+      "name": "badge_service",
+      "password_hash": "1OX2BwaXn2WTAFowTqxZ4FsBPeTWYOQdPrLkb8TbW2Xt8ZDQ",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [],
+      "limits": {}
+    },
+    {
+      "name": "exam_api",
+      "password_hash": "5fYHGJBneruYEyRP+3H5uCK/qOM6Y8CO0hdR2Ahs7+pXda+L",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [],
+      "limits": {}
+    }
+  ],
+  "vhosts": [
+    { "name": "/" }
+  ],
+  "permissions": [
+    {
+      "user": "rabbituser",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "_comment": "exam-outbox-publisher: relays worksheet-DB outbox rows via IPublishEndpoint.Publish — never binds/consumes anything, so it only ever needs configure (exchange.declare) + write (basic.publish) on its own message-type exchanges, never read. Exchange name format is MassTransit's default RabbitMQ formatter: '<Namespace>:<TypeName>' (colon, not dot) — verified no SetEntityNameFormatter/custom MessageTopology override in the codebase. List matches OutboxEventRegistry entries actually written by api/ExamApp.Api.",
+      "user": "exam_outbox_pub",
+      "vhost": "/",
+      "configure": "^ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent)$",
+      "write": "^ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent)$",
+      "read": "^$"
+    },
+    {
+      "_comment": "identity-outbox-publisher: relays auth-api's identity-DB outbox rows. Only LoginAttemptedEvent/UserPreferredLocaleChangedEvent are ever written there (auth-api/Controllers/AuthController.cs). Publisher only — no read.",
+      "user": "identity_outbox_pub",
+      "vhost": "/",
+      "configure": "^ExamApp\\.Foundation\\.Contracts:(LoginAttemptedEvent|UserPreferredLocaleChangedEvent)$",
+      "write": "^ExamApp\\.Foundation\\.Contracts:(LoginAttemptedEvent|UserPreferredLocaleChangedEvent)$",
+      "read": "^$"
+    },
+    {
+      "_comment": "badge-outbox-publisher: relays BadgeService's badge-DB outbox rows. Only StudentPointsChangedEvent is written there (Services/BadgeService/Services/StudentPointsOutbox.cs) — this is the ONLY user allowed to configure/write that exchange, closing the fake-StudentPointsChangedEvent risk from issue #279. Publisher only — no read.",
+      "user": "badge_outbox_pub",
+      "vhost": "/",
+      "configure": "^ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent$",
+      "write": "^ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent$",
+      "read": "^$"
+    },
+    {
+      "_comment": "BadgeService (exam-badge-api): consumes everything except StudentPointsChangedEvent on its own 'badge-service' queue (Services/BadgeService/Program.cs ReceiveEndpoint; badge-service_error/_skipped are MassTransit's fault/skip queue+exchange for this endpoint — no explicit PublishFaults/Fault<T> publish configured, only UseMessageRetry, so no MassTransit.Fault:* exchange access is needed). RabbitMQ binding semantics: exchange.declare/queue.declare need 'configure'; binding a message-type exchange (source) to this endpoint's own exchange (destination), and this endpoint's own exchange (source) to its queue (destination), needs 'write' on the destination + 'read' on the source. Consumers must NEVER get 'write' on message-type exchanges — that would let them publish/forge events, not just consume them. So: configure = own queue/exchange/error/skipped + every message-type exchange it binds (to declare them); write = own queue/exchange/error/skipped ONLY; read = same as configure (it needs to read from the message exchanges as bind source, and its own queue to actually consume).",
+      "user": "badge_service",
+      "vhost": "/",
+      "configure": "^(badge-service(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent))$",
+      "write": "^badge-service(_error|_skipped)?$",
+      "read": "^(badge-service(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|LoginAttemptedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent))$"
+    },
+    {
+      "_comment": "exam-dotnet-api: consumes only StudentPointsChangedEvent on its own 'exam-api' queue (api/ExamApp.Api/Program.cs ReceiveEndpoint, issue #225). Same binding semantics as badge_service above: write is restricted to its own queue/exchange/error/skipped, never the message-type exchange — it can read (subscribe to) StudentPointsChangedEvent but can never publish/forge one, and it has zero permission on any other event exchange (AnswerSubmittedEvent, TeacherApplicationDecidedEvent, etc.).",
+      "user": "exam_api",
+      "vhost": "/",
+      "configure": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent)$",
+      "write": "^exam-api(_error|_skipped)?$",
+      "read": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent)$"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [],
+  "policies": [],
+  "queues": [],
+  "exchanges": [],
+  "bindings": []
+}

@@ -422,5 +422,164 @@
       "conflict": "The student's school was changed in the meantime. Reload the list and try again.",
       "generic": "Something went wrong while changing the school. Please try again."
     }
+  },
+  "badgeDefinitions": {
+    "title": "Badge Definitions",
+    "subtitle": "Create and edit badges; activate or deactivate them.",
+    "refresh": "Refresh",
+    "create": "New badge",
+    "loading": "Loading badges...",
+    "empty": "No badge definitions found",
+    "emptyActiveHint": "Choose the \"All\" filter to see deactivated badges.",
+    "filter": {
+      "label": "Status filter",
+      "active": "Active",
+      "all": "All"
+    },
+    "columns": {
+      "icon": "Icon",
+      "name": "Name",
+      "code": "Code",
+      "category": "Category",
+      "rule": "Rule",
+      "status": "Status",
+      "updated": "Last change",
+      "actions": "Actions"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "actions": {
+      "edit": "Edit",
+      "editFor": "Edit badge {{name}}",
+      "activate": "Activate",
+      "activateFor": "Activate badge {{name}}",
+      "deactivate": "Deactivate",
+      "deactivateFor": "Deactivate badge {{name}}"
+    },
+    "deactivateDialog": {
+      "title": "Deactivate badge?",
+      "message": "\"{{name}}\" will no longer be awarded to students; badges already earned are kept.",
+      "confirm": "Deactivate"
+    },
+    "messages": {
+      "created": "\"{{name}}\" created.",
+      "updated": "\"{{name}}\" updated.",
+      "activated": "\"{{name}}\" activated.",
+      "deactivated": "\"{{name}}\" deactivated.",
+      "close": "Close"
+    },
+    "errors": {
+      "loadFailed": "Could not load badge definitions.",
+      "forbidden": "You are not allowed to do this.",
+      "notFound": "Badge not found; refreshing the list.",
+      "activeLimit": "The maximum number of active badges has been reached. Deactivate another badge first.",
+      "actionFailed": "The action failed. Please try again."
+    },
+    "ruleTypes": {
+      "AnswerCount": {
+        "label": "Questions answered",
+        "hint": "Total number of questions answered.",
+        "summary": "Answer {{target}} questions"
+      },
+      "CorrectStreak": {
+        "label": "Correct answer streak",
+        "hint": "Best streak of consecutive correct answers.",
+        "summary": "{{target}} correct answers in a row"
+      },
+      "TotalStudyTimeMinutes": {
+        "label": "Total study time",
+        "hint": "Total study time (minutes).",
+        "summary": "Study {{target}} minutes in total"
+      },
+      "TotalCorrectAnswers": {
+        "label": "Total correct answers",
+        "hint": "Total number of correct answers.",
+        "summary": "{{target}} correct answers in total"
+      },
+      "ActiveDays": {
+        "label": "Active days",
+        "hint": "Total number of active days.",
+        "summary": "Be active on {{target}} days"
+      },
+      "DailyStreak": {
+        "label": "Daily streak",
+        "hint": "Number of consecutive active days.",
+        "summary": "Be active {{target}} days in a row"
+      },
+      "SubjectAnswerCount": {
+        "label": "Questions in a subject",
+        "hint": "Questions answered in a specific subject.",
+        "summary": "Answer {{target}} questions in {{subject}}"
+      },
+      "SubjectCorrectCount": {
+        "label": "Correct answers in a subject",
+        "hint": "Correct answers in a specific subject.",
+        "summary": "{{target}} correct answers in {{subject}}"
+      },
+      "SubjectStudyTimeMinutes": {
+        "label": "Study time in a subject",
+        "hint": "Time studied in a specific subject (minutes).",
+        "summary": "Study {{target}} minutes of {{subject}}"
+      }
+    },
+    "dialog": {
+      "createTitle": "New badge",
+      "editTitle": "Edit badge",
+      "save": "Save",
+      "cancel": "Cancel",
+      "retry": "Retry",
+      "iconPreview": "Icon preview",
+      "ruleTypesLoading": "Loading rule types...",
+      "ruleTypesFailed": "Could not load rule types.",
+      "subjectsLoading": "Loading subjects...",
+      "subjectsFailed": "Could not load subjects.",
+      "legacyRuleType": "This badge's rule type (\"{{ruleType}}\") is no longer offered; choose a rule type to save.",
+      "sections": {
+        "identity": "Badge details",
+        "path": "Badge path (optional)",
+        "rule": "Earning rule"
+      },
+      "fields": {
+        "code": "Code",
+        "name": "Name",
+        "description": "Description",
+        "category": "Category",
+        "iconUrl": "Icon path",
+        "pathKey": "Path key",
+        "pathName": "Path name",
+        "pathOrder": "Order",
+        "ruleType": "Rule type"
+      },
+      "rule": {
+        "target": "Target",
+        "subject": "Subject"
+      },
+      "hints": {
+        "code": "Lowercase letters, digits and hyphens; e.g. subject-math-mastery. Cannot be changed later.",
+        "codeImmutable": "The code cannot be changed after creation.",
+        "category": "Pick from the list or type a new category.",
+        "iconUrl": "Format achievements/<file>.svg; may be left empty.",
+        "path": "Badges sharing a path key are shown to students as an ordered path.",
+        "range": "{{min}} – {{max}}",
+        "subjectUnmatched": "Saved subject: \"{{name}}\" (not found in the list; pick a subject to change it)."
+      },
+      "errors": {
+        "required": "This field is required.",
+        "min": "Must be at least {{min}}.",
+        "max": "Must be at most {{max}}.",
+        "maxLength": "At most {{max}} characters.",
+        "integer": "Must be a whole number.",
+        "invalid": "Invalid value.",
+        "codePattern": "Only lowercase letters, digits and single hyphens (e.g. question-hunter-1).",
+        "iconPattern": "Must be in the format achievements/<file>.svg.",
+        "subjectRequired": "Please choose a subject.",
+        "codeTaken": "A badge with this code already exists.",
+        "notFound": "Badge not found; it may have been changed by another admin.",
+        "forbidden": "You are not allowed to do this.",
+        "saveFailed": "Could not save. Please try again."
+      }
+    }
   }
 }

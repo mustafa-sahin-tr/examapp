@@ -422,5 +422,164 @@
       "conflict": "Öğrencinin okulu bu arada değiştirildi. Listeyi yenileyip tekrar deneyin.",
       "generic": "Okul değiştirilirken bir sorun oluştu. Lütfen tekrar deneyin."
     }
+  },
+  "badgeDefinitions": {
+    "title": "Rozet Tanımları",
+    "subtitle": "Rozetleri oluştur, düzenle; aktifleştir veya devre dışı bırak.",
+    "refresh": "Yenile",
+    "create": "Yeni rozet",
+    "loading": "Rozetler yükleniyor...",
+    "empty": "Rozet tanımı bulunamadı",
+    "emptyActiveHint": "Devre dışı rozetleri görmek için \"Tümü\" filtresini seç.",
+    "filter": {
+      "label": "Durum filtresi",
+      "active": "Aktif",
+      "all": "Tümü"
+    },
+    "columns": {
+      "icon": "İkon",
+      "name": "Ad",
+      "code": "Kod",
+      "category": "Kategori",
+      "rule": "Kural",
+      "status": "Durum",
+      "updated": "Son değişiklik",
+      "actions": "İşlemler"
+    },
+    "status": {
+      "active": "Aktif",
+      "inactive": "Devre dışı"
+    },
+    "actions": {
+      "edit": "Düzenle",
+      "editFor": "{{name}} rozetini düzenle",
+      "activate": "Aktifleştir",
+      "activateFor": "{{name}} rozetini aktifleştir",
+      "deactivate": "Devre dışı bırak",
+      "deactivateFor": "{{name}} rozetini devre dışı bırak"
+    },
+    "deactivateDialog": {
+      "title": "Rozet devre dışı bırakılsın mı?",
+      "message": "\"{{name}}\" öğrencilere artık verilmeyecek; kazanılmış rozetler kalır.",
+      "confirm": "Devre dışı bırak"
+    },
+    "messages": {
+      "created": "\"{{name}}\" oluşturuldu.",
+      "updated": "\"{{name}}\" güncellendi.",
+      "activated": "\"{{name}}\" aktifleştirildi.",
+      "deactivated": "\"{{name}}\" devre dışı bırakıldı.",
+      "close": "Kapat"
+    },
+    "errors": {
+      "loadFailed": "Rozet tanımları yüklenemedi.",
+      "forbidden": "Bu işlem için yetkiniz yok.",
+      "notFound": "Rozet bulunamadı; liste yenileniyor.",
+      "activeLimit": "Aktif rozet sayısı üst sınıra ulaştı. Önce başka bir rozeti devre dışı bırakın.",
+      "actionFailed": "İşlem başarısız. Lütfen tekrar deneyin."
+    },
+    "ruleTypes": {
+      "AnswerCount": {
+        "label": "Çözülen soru sayısı",
+        "hint": "Toplam çözülen soru sayısı.",
+        "summary": "{{target}} soru çöz"
+      },
+      "CorrectStreak": {
+        "label": "Doğru cevap serisi",
+        "hint": "Arka arkaya en iyi doğru cevap serisi.",
+        "summary": "Art arda {{target}} doğru cevap"
+      },
+      "TotalStudyTimeMinutes": {
+        "label": "Toplam çalışma süresi",
+        "hint": "Toplam çalışma süresi (dakika).",
+        "summary": "Toplam {{target}} dakika çalış"
+      },
+      "TotalCorrectAnswers": {
+        "label": "Toplam doğru cevap",
+        "hint": "Toplam doğru cevap sayısı.",
+        "summary": "Toplam {{target}} doğru cevap"
+      },
+      "ActiveDays": {
+        "label": "Aktif gün sayısı",
+        "hint": "Toplam aktif gün sayısı.",
+        "summary": "{{target}} gün aktif ol"
+      },
+      "DailyStreak": {
+        "label": "Günlük seri",
+        "hint": "Üst üste aktif olunan gün sayısı.",
+        "summary": "Üst üste {{target}} gün aktif ol"
+      },
+      "SubjectAnswerCount": {
+        "label": "Derste çözülen soru",
+        "hint": "Belirli bir derste çözülen soru sayısı.",
+        "summary": "{{subject}} dersinde {{target}} soru çöz"
+      },
+      "SubjectCorrectCount": {
+        "label": "Derste doğru cevap",
+        "hint": "Belirli bir derste verilen doğru cevap sayısı.",
+        "summary": "{{subject}} dersinde {{target}} doğru cevap"
+      },
+      "SubjectStudyTimeMinutes": {
+        "label": "Derste çalışma süresi",
+        "hint": "Belirli bir derste çalışılan süre (dakika).",
+        "summary": "{{subject}} dersinde {{target}} dakika çalış"
+      }
+    },
+    "dialog": {
+      "createTitle": "Yeni rozet",
+      "editTitle": "Rozeti düzenle",
+      "save": "Kaydet",
+      "cancel": "Vazgeç",
+      "retry": "Tekrar dene",
+      "iconPreview": "İkon önizleme",
+      "ruleTypesLoading": "Kural tipleri yükleniyor...",
+      "ruleTypesFailed": "Kural tipleri yüklenemedi.",
+      "subjectsLoading": "Dersler yükleniyor...",
+      "subjectsFailed": "Dersler yüklenemedi.",
+      "legacyRuleType": "Bu rozetin kural tipi (\"{{ruleType}}\") artık sunulmuyor; kaydetmek için bir kural tipi seç.",
+      "sections": {
+        "identity": "Rozet bilgileri",
+        "path": "Rozet yolu (opsiyonel)",
+        "rule": "Kazanma kuralı"
+      },
+      "fields": {
+        "code": "Kod",
+        "name": "Ad",
+        "description": "Açıklama",
+        "category": "Kategori",
+        "iconUrl": "İkon yolu",
+        "pathKey": "Yol anahtarı",
+        "pathName": "Yol adı",
+        "pathOrder": "Sıra",
+        "ruleType": "Kural tipi"
+      },
+      "rule": {
+        "target": "Hedef",
+        "subject": "Ders"
+      },
+      "hints": {
+        "code": "Küçük harf, rakam ve tire; ör. subject-matematik-mastery. Sonradan değiştirilemez.",
+        "codeImmutable": "Kod oluşturulduktan sonra değiştirilemez.",
+        "category": "Listeden seç veya yeni kategori yaz.",
+        "iconUrl": "achievements/<dosya>.svg biçiminde; boş bırakılabilir.",
+        "path": "Aynı yol anahtarına sahip rozetler öğrenci ekranında sırayla bir yol olarak gösterilir.",
+        "range": "{{min}} – {{max}}",
+        "subjectUnmatched": "Kayıtlı ders: \"{{name}}\" (listede bulunamadı; değiştirmek için yeni ders seç)."
+      },
+      "errors": {
+        "required": "Bu alan zorunludur.",
+        "min": "En az {{min}} olmalıdır.",
+        "max": "En fazla {{max}} olmalıdır.",
+        "maxLength": "En fazla {{max}} karakter olabilir.",
+        "integer": "Tam sayı olmalıdır.",
+        "invalid": "Geçersiz değer.",
+        "codePattern": "Yalnız küçük harf, rakam ve tek tire (ör. question-hunter-1).",
+        "iconPattern": "achievements/<dosya>.svg biçiminde olmalıdır.",
+        "subjectRequired": "Ders seçimi zorunludur.",
+        "codeTaken": "Bu koda sahip bir rozet zaten var.",
+        "notFound": "Rozet bulunamadı; başka bir yönetici tarafından değiştirilmiş olabilir.",
+        "forbidden": "Bu işlem için yetkiniz yok.",
+        "saveFailed": "Kaydedilemedi. Lütfen tekrar deneyin."
+      }
+    }
   }
 }

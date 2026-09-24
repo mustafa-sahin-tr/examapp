@@ -1,0 +1,166 @@
+<section class="al" *transloco="let t; prefix: 'admin.badgeDefinitions'">
+  <header class="al__head">
+    <div class="al__title">
+      <mat-icon>military_tech</mat-icon>
+      <div>
+        <h1>{{ t('title') }}</h1>
+        <p>{{ t('subtitle') }}</p>
+      </div>
+    </div>
+    <div class="al__tools">
+      <mat-button-toggle-group
+        [value]="statusFilter()"
+        (change)="onFilterChange($event.value)"
+        [attr.aria-label]="t('filter.label')"
+        hideSingleSelectionIndicator
+        data-testid="status-filter"
+      >
+        <mat-button-toggle value="active">{{ t('filter.active') }}</mat-button-toggle>
+        <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
+        <mat-icon>sync</mat-icon> {{ t('refresh') }}
+      </button>
+      <button mat-flat-button color="primary" type="button" data-testid="create" (click)="openCreate()" [disabled]="dialogOpen()">
+        <mat-icon>add</mat-icon> {{ t('create') }}
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="al__state al__state--error" role="alert" data-testid="error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button type="button" (click)="load()">{{ 'common.retry' | transloco }}</button>
+    </div>
+  } @else if (showSpinner()) {
+    <div class="al__state" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="al__state al__state--empty" data-testid="empty">
+      <mat-icon class="al__empty-icon">military_tech</mat-icon>
+      <span>{{ t('empty') }}</span>
+      @if (statusFilter() === 'active') {
+        <small>{{ t('emptyActiveHint') }}</small>
+      }
+    </div>
+  } @else {
+    <div class="al__table-wrap" [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <mat-progress-bar class="al__progress" mode="indeterminate"></mat-progress-bar>
+      }
+      <table mat-table [dataSource]="rows()" class="al__table" [class.al__table--stale]="loading()">
+        <ng-container matColumnDef="icon">
+          <th mat-header-cell *matHeaderCellDef>
+            <span class="cdk-visually-hidden">{{ t('columns.icon') }}</span>
+          </th>
+          <td mat-cell *matCellDef="let row" class="bd-icon-cell">
+            @if (row.iconSrc) {
+              <img class="bd-icon" [src]="row.iconSrc" alt="" loading="lazy" />
+            } @else {
+              <mat-icon class="bd-icon bd-icon--placeholder">military_tech</mat-icon>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.name') }}</th>
+          <td mat-cell *matCellDef="let row">
+            {{ row.name }}
+            @if (row.source.pathName) {
+              <span class="al__sub">{{ row.source.pathName }}@if (row.source.pathOrder != null) { · #{{ row.source.pathOrder }} }</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="code">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.code') }}</th>
+          <td mat-cell *matCellDef="let row"><code class="bd-code">{{ row.code }}</code></td>
+        </ng-container>
+
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.category') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.category }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="rule">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.rule') }}</th>
+          <td mat-cell *matCellDef="let row" data-testid="rule-summary">
+            @if (row.rule.key) {
+              {{ t('ruleTypes.' + row.rule.key + '.summary', row.rule.params) }}
+            } @else {
+              <span class="al__muted">{{ row.rule.raw }}</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.status') }}</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="al__chip" [class]="row.isActive ? 'al__chip--active' : 'al__chip--inactive'" data-testid="status-chip">
+              {{ row.isActive ? t('status.active') : t('status.inactive') }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="updated">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.updated') }}</th>
+          <td mat-cell *matCellDef="let row">
+            {{ row.changedAtUtc | date: 'dd.MM.yyyy HH:mm' }}
+            <span class="al__sub">{{ row.changedBy ?? '—' }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="al__actions-cell">
+            <span class="cdk-visually-hidden">{{ t('columns.actions') }}</span>
+          </th>
+          <td mat-cell *matCellDef="let row" class="al__actions-cell">
+            <button
+              mat-icon-button
+              type="button"
+              data-testid="edit"
+              [matTooltip]="t('actions.edit')"
+              [attr.aria-label]="t('actions.editFor', { name: row.name })"
+              [disabled]="dialogOpen()"
+              (click)="openEdit(row)"
+            >
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              class="al__status-action"
+              data-testid="toggle-active"
+              [class.al__status-action--enable]="!row.isActive"
+              [matTooltip]="row.isActive ? t('actions.deactivate') : t('actions.activate')"
+              [attr.aria-label]="(row.isActive ? t('actions.deactivateFor', { name: row.name }) : t('actions.activateFor', { name: row.name }))"
+              [disabled]="busyId() !== null"
+              (click)="toggleActive(row)"
+            >
+              <mat-icon>{{ row.isActive ? 'block' : 'check_circle' }}</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns" [class.bd-row--inactive]="!row.isActive"></tr>
+      </table>
+    </div>
+  }
+
+  @if (!error() && totalCount() > 0) {
+    <mat-paginator
+      class="al__paginator"
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      [disabled]="loading()"
+      showFirstLastButtons
+      (page)="onPage($event)"
+    ></mat-paginator>
+  }
+</section>

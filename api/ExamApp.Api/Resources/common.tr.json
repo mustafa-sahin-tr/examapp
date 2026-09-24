@@ -1,6 +1,7 @@
 {
   "common": {
     "invalidData": "Geçersiz veri.",
-    "tooManyRequests": "Çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    "tooManyRequests": "Çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+    "profileUnavailable": "Kullanıcı bilgileriniz şu anda doğrulanamıyor. Lütfen biraz sonra tekrar deneyin."
   }
 }

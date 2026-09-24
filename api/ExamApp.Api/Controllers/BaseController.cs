@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 namespace ExamApp.Api.Controllers;
 
 [Authorize]
+[UserProfileUnavailableFilter] // issue #277 security re-review: profil sağlayıcı hatası → 503 (fail-closed)
 public class BaseController : ControllerBase
 {
     protected string? KeyCloakId => User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -54,16 +55,13 @@ public class BaseController : ControllerBase
         {
             return WithEffectiveRole(await userProfileProvider.GetAsync(KeyCloakId, ct));
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            return new UserProfileDto
-            {
-                Id = 0,
-                KeycloakId = KeyCloakId ?? string.Empty,
-                FullName = preferredUsername ?? User.Identity?.Name ?? "Authenticated User",
-                Email = string.Empty,
-                Role = "Service"
-            };
+            // issue #277 security re-review: fail-closed. Kullanıcı token'ı için "Service" rollü sahte profil ÜRETİLMEZ —
+            // servis muafiyetli kontroller (ör. StudyItemService sahiplik) atlanıyordu. "Service" rolünü yalnızca yukarıdaki
+            // gerçek servis principal'ı (client-credentials, ServicePrincipal.IsService — ApprovedTeacher muafiyetiyle aynı
+            // tespit) alır. Provider hatası → 503 (UserProfileUnavailableFilter); profil yoksa (null) çağıran UserNotResolved.
+            throw new UserProfileUnavailableException(ex);
         }
     }
 

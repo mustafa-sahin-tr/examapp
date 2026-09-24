@@ -1,3 +1,4 @@
+import { By } from '@angular/platform-browser';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -10,6 +11,8 @@ import { GradesService } from '../../../services/grades.service';
 import { ApiResult, TaxonomyFilter, TaxonomySubject, TaxonomyTree } from '../../../models/taxonomy';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
+import { StudyLinkService } from '../../../services/study-link.service';
+import { TopicStudyLinkManagerComponent } from '../../../shared/components/topic-study-link-manager/topic-study-link-manager.component';
 
 describe('TaxonomyManagerComponent', () => {
   let fixture: ComponentFixture<TaxonomyManagerComponent>;
@@ -18,6 +21,7 @@ describe('TaxonomyManagerComponent', () => {
   let gradesService: jasmine.SpyObj<GradesService>;
   let dialog: jasmine.SpyObj<MatDialog>;
   let snackBar: jasmine.SpyObj<MatSnackBar>;
+  let studyLinkService: jasmine.SpyObj<StudyLinkService>;
 
   const okResult: ApiResult = { success: true, message: 'İşlem başarılı' };
 
@@ -87,6 +91,12 @@ describe('TaxonomyManagerComponent', () => {
 
     snackBar = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
+    // Issue #61: 4. panel (çalışma linkleri) kendi servisini kullanır; HTTP'ye çıkmasın.
+    studyLinkService = jasmine.createSpyObj<StudyLinkService>('StudyLinkService', ['list']);
+    studyLinkService.list.and.returnValue(
+      of({ success: true, items: [], totalCount: 0, activeCount: 0, maxActiveLinks: 7 })
+    );
+
     TestBed.configureTestingModule({
       imports: [TaxonomyManagerComponent, translocoTestingModule({
         langs: { 'admin/tr': adminTr },
@@ -98,6 +108,7 @@ describe('TaxonomyManagerComponent', () => {
         { provide: GradesService, useValue: gradesService },
         { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: snackBar },
+        { provide: StudyLinkService, useValue: studyLinkService },
         provideNoopAnimations(),
       ],
     });
@@ -670,5 +681,64 @@ describe('TaxonomyManagerComponent', () => {
     expect(el.querySelector('.schools-list')).toBeNull();
     expect(el.textContent).not.toContain('Okullar');
     expect(el.textContent).not.toContain('Yeni okul adı');
+  });
+  // ── Çalışma linkleri paneli (Issue #61) ───────────────────────────────────
+
+  function linkManager(): TopicStudyLinkManagerComponent {
+    return fixture.debugElement.query(By.directive(TopicStudyLinkManagerComponent)).componentInstance;
+  }
+
+  it('studyLinks_NoTopicSelected_PanelHasNoScopeAndSendsNoRequest', () => {
+    fixture = configureWithGrade();
+    fixture.detectChanges();
+
+    expect(linkManager().scope()).toBeNull();
+    expect(studyLinkService.list).not.toHaveBeenCalled();
+  });
+
+  it('studyLinks_TopicSelected_ManagesTopicLevelLinks', () => {
+    fixture = configureWithGrade();
+    component = fixture.componentInstance;
+    component.selectSubject(1);
+    component.selectTopic(10);
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(linkManager().scope()).toEqual({ topicId: 10 });
+    expect(linkManager().scopeName()).toBe('Kesirler');
+    expect(studyLinkService.list).toHaveBeenCalledWith(jasmine.objectContaining({ topicId: 10 }));
+  });
+
+  it('studyLinks_SubTopicClicked_SwitchesToSubTopicScopeAndToggleOffReturnsToTopic', () => {
+    fixture = configureWithGrade();
+    component = fixture.componentInstance;
+    component.selectSubject(1);
+    component.selectTopic(10);
+    fixture.detectChanges();
+
+    const item: HTMLElement = fixture.nativeElement.querySelector('.column:nth-child(3) .item');
+    item.click();
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(item.getAttribute('aria-pressed')).toBe('true');
+    expect(linkManager().scope()).toEqual({ subTopicId: 100 });
+    expect(linkManager().scopeName()).toBe('Basit Kesirler');
+    expect(studyLinkService.list).toHaveBeenCalledWith(jasmine.objectContaining({ subTopicId: 100 }));
+
+    item.click();
+    fixture.detectChanges();
+    expect(linkManager().scope()).toEqual({ topicId: 10 });
+  });
+
+  it('studyLinks_ChangingTopicClearsSubTopicSelection', () => {
+    fixture = configureWithGrade();
+    component = fixture.componentInstance;
+    component.selectSubject(1);
+    component.selectTopic(10);
+    component.selectSubTopic(100);
+    component.selectTopic(11);
+
+    expect(component.selectedSubTopicId()).toBeNull();
   });
 });

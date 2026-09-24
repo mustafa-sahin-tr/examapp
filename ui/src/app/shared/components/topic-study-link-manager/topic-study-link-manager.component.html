@@ -1,0 +1,184 @@
+<section class="sl-manager" *transloco="let t; prefix: 'study-links'" [attr.aria-busy]="loading() || busy()">
+  @if ((loading() && links().length > 0) || busy()) {
+    <mat-progress-bar mode="indeterminate" class="sl-top-bar"></mat-progress-bar>
+  }
+
+  <header class="sl-header">
+    <h3>
+      {{ t('manager.title') }}
+      @if (scope() && scopeName()) {
+        <span class="sl-crumb"> — {{ scopeName() }}</span>
+      }
+    </h3>
+    @if (scope()) {
+      <span
+        class="sl-counter"
+        data-testid="active-counter"
+        [class.sl-counter--full]="limitReached()"
+        [attr.aria-label]="t('manager.activeCountAria', { active: activeCount(), max: maxActive() })"
+      >{{ t('manager.activeCount', { active: activeCount(), max: maxActive() }) }}</span>
+    }
+  </header>
+
+  @if (!scope()) {
+    <div class="sl-empty">
+      <mat-icon>arrow_back</mat-icon>
+      <p class="sl-empty-title">{{ t('manager.noScopeTitle') }}</p>
+      <p class="sl-empty-hint">{{ t('manager.noScopeHint') }}</p>
+    </div>
+  } @else {
+    @if (isTopicLevel()) {
+      <p class="sl-hint">{{ t('manager.topicLevelHint') }}</p>
+    }
+
+    <span
+      class="sl-add-wrap"
+      [matTooltip]="limitReached() ? t('manager.addDisabledTooltip', { max: maxActive() }) : ''"
+      [matTooltipDisabled]="!limitReached()"
+    >
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        class="sl-add"
+        data-testid="add-link"
+        [disabled]="limitReached() || busy() || loading() || !!error()"
+        (click)="openCreate()"
+      >
+        <mat-icon>add</mat-icon>
+        {{ t('manager.add') }}
+      </button>
+    </span>
+
+    <!-- Kalıcı uyarı şeridi: role=status + aria-live, sınır dolduğunda ekran okuyucuya duyurulur. -->
+    <div class="sl-limit" role="status" aria-live="polite" data-testid="limit-warning">
+      @if (limitReached()) {
+        <mat-icon>warning_amber</mat-icon>
+        <span>{{ t('manager.limitWarning', { max: maxActive() }) }}</span>
+      }
+    </div>
+
+    @if (error(); as message) {
+      <div class="sl-error" role="alert" data-testid="load-error">
+        <mat-icon>error_outline</mat-icon>
+        <p>{{ message }}</p>
+        <button mat-stroked-button type="button" (click)="reload()" [disabled]="loading()">
+          {{ 'common.retry' | transloco }}
+        </button>
+      </div>
+    } @else if (showSkeleton()) {
+      <ul class="sl-list" aria-hidden="true" data-testid="skeleton">
+        @for (i of [1, 2, 3]; track i) {
+          <li class="sl-row sl-row--skeleton"><span class="sl-bone"></span></li>
+        }
+      </ul>
+    } @else if (isEmpty()) {
+      <div class="sl-empty" data-testid="empty">
+        <mat-icon>video_library</mat-icon>
+        <p class="sl-empty-title">{{ t('manager.emptyTitle') }}</p>
+        <p class="sl-empty-hint">{{ t('manager.emptyHint') }}</p>
+      </div>
+    } @else {
+      <ul
+        class="sl-list"
+        cdkDropList
+        [cdkDropListData]="links()"
+        [cdkDropListDisabled]="busy()"
+        (cdkDropListDropped)="drop($event)"
+        [attr.aria-label]="t('manager.listAria')"
+      >
+        @for (link of links(); track link.id; let i = $index, first = $first, last = $last) {
+          <li class="sl-row" cdkDrag [class.sl-row--inactive]="!link.isActive" data-testid="link-row">
+            <button
+              mat-icon-button
+              type="button"
+              class="sl-handle"
+              cdkDragHandle
+              tabindex="-1"
+              [attr.aria-label]="t('manager.drag')"
+              [matTooltip]="t('manager.drag')"
+            >
+              <mat-icon>drag_indicator</mat-icon>
+            </button>
+
+            <div class="sl-body">
+              <div class="sl-title-row">
+                <span class="sl-title">{{ link.title }}</span>
+                <span class="sl-badge" [class.sl-badge--yt]="link.sourceType === 'YouTube'">
+                  <mat-icon>{{ sourceIcon(link) }}</mat-icon>{{ t('source.' + link.sourceType) }}
+                </span>
+                @if (!link.isActive) {
+                  <span class="sl-badge sl-badge--muted">{{ t('manager.inactive') }}</span>
+                }
+              </div>
+              <a
+                class="sl-url"
+                [href]="link.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                [attr.aria-label]="t('manager.openLink') + ': ' + link.title"
+              >{{ link.url }}</a>
+            </div>
+
+            <div class="sl-actions">
+              <button
+                mat-icon-button
+                type="button"
+                data-testid="move-up"
+                [disabled]="first || busy()"
+                [attr.aria-label]="t('manager.moveUp')"
+                (click)="moveUp(i)"
+              >
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                data-testid="move-down"
+                [disabled]="last || busy()"
+                [attr.aria-label]="t('manager.moveDown')"
+                (click)="moveDown(i)"
+              >
+                <mat-icon>arrow_downward</mat-icon>
+              </button>
+              <span
+                class="sl-toggle-wrap"
+                [matTooltip]="t('manager.activateDisabledTooltip', { max: maxActive() })"
+                [matTooltipDisabled]="link.isActive || !limitReached()"
+              >
+                <mat-slide-toggle
+                  data-testid="active-toggle"
+                  [checked]="link.isActive"
+                  [disabled]="busy() || (!link.isActive && limitReached())"
+                  [aria-label]="t('manager.activeToggleAria', { title: link.title })"
+                  (change)="toggleActive(link, $event)"
+                ></mat-slide-toggle>
+              </span>
+              <button
+                mat-icon-button
+                type="button"
+                data-testid="edit"
+                [disabled]="busy()"
+                [attr.aria-label]="t('manager.edit')"
+                (click)="openEdit(link)"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="sl-danger"
+                data-testid="delete"
+                [disabled]="busy()"
+                [attr.aria-label]="t('manager.delete')"
+                (click)="remove(link)"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

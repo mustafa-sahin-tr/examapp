@@ -1,0 +1,72 @@
+{
+  "source": {
+    "YouTube": "YouTube",
+    "Other": "Diğer"
+  },
+  "manager": {
+    "title": "Çalışma Linkleri",
+    "activeCount": "{{active}} / {{max}} aktif",
+    "activeCountAria": "{{max}} aktif link sınırının {{active}} tanesi kullanılıyor",
+    "add": "Link Ekle",
+    "addDisabledTooltip": "En fazla {{max}} aktif link olabilir. Yeni link eklemek için birini pasifleştirin.",
+    "limitWarning": "Aktif link sınırına ulaşıldı ({{max}}/{{max}}). Yeni link eklemek veya bir linki aktifleştirmek için önce bir linki pasifleştirin.",
+    "noScopeTitle": "Konu veya alt konu seçin",
+    "noScopeHint": "Linkler seçili alt konuya; yalnız konu seçiliyse konunun genel linklerine eklenir.",
+    "topicLevelHint": "Konu seviyesi linkler — alt konuya özel link eklemek için bir alt konu seçin.",
+    "emptyTitle": "Henüz çalışma linki yok",
+    "emptyHint": "Öğrencilere bu konuyu pekiştirecek bir video veya makale ekleyin.",
+    "loadFailed": "Çalışma linkleri yüklenemedi.",
+    "listAria": "Çalışma linkleri",
+    "inactive": "Pasif",
+    "drag": "Sürükleyerek sırala",
+    "moveUp": "Yukarı taşı",
+    "moveDown": "Aşağı taşı",
+    "activeToggle": "Aktif",
+    "activeToggleAria": "{{title}} linkini aktif/pasif yap",
+    "activateDisabledTooltip": "Aktif link sınırı dolu ({{max}}).",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "openLink": "Linki yeni sekmede aç",
+    "deleteTitle": "Çalışma linkini sil",
+    "deleteMessage": "\"{{title}}\" linki silinecek. Bu işlem geri alınamaz.",
+    "deleteConfirm": "Sil",
+    "created": "Çalışma linki eklendi.",
+    "updated": "Çalışma linki güncellendi.",
+    "deleted": "Çalışma linki silindi.",
+    "activated": "Link aktifleştirildi.",
+    "deactivated": "Link pasifleştirildi.",
+    "reordered": "Sıralama güncellendi.",
+    "actionFailed": "İşlem tamamlanamadı. Lütfen tekrar deneyin.",
+    "close": "Kapat"
+  },
+  "dialog": {
+    "createTitle": "Çalışma linki ekle",
+    "editTitle": "Çalışma linkini düzenle",
+    "scopeLabel": "Kapsam: {{name}}",
+    "titleLabel": "Başlık",
+    "titlePlaceholder": "Örn. Kesirlerde toplama – konu anlatımı",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://",
+    "urlHint": "Yalnızca http:// veya https:// ile başlayan adresler",
+    "sourceLabel": "Kaynak tipi",
+    "activeLabel": "Aktif (öğrencilere gösterilsin)",
+    "activeLimitHint": "Aktif link sınırı ({{max}}) dolu; link pasif olarak kaydedilecek.",
+    "cancel": "Vazgeç",
+    "save": "Kaydet",
+    "saveFailed": "Link kaydedilemedi. Lütfen tekrar deneyin.",
+    "errors": {
+      "titleRequired": "Başlık zorunludur.",
+      "titleTooLong": "Başlık en fazla {{max}} karakter olabilir.",
+      "urlRequired": "URL zorunludur.",
+      "urlInvalid": "Geçerli bir http:// veya https:// adresi girin.",
+      "urlTooLong": "URL en fazla {{max}} karakter olabilir."
+    }
+  },
+  "suggestions": {
+    "title": "Bu soruyla ilgili çalışma önerileri",
+    "loading": "Çalışma önerileri yükleniyor",
+    "loadFailed": "Çalışma önerileri şu anda yüklenemedi.",
+    "topicGroup": "{{name}} (genel)",
+    "opensInNewTab": "yeni sekmede açılır"
+  }
+}

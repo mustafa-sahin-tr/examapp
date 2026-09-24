@@ -1,0 +1,72 @@
+{
+  "source": {
+    "YouTube": "YouTube",
+    "Other": "Other"
+  },
+  "manager": {
+    "title": "Study Links",
+    "activeCount": "{{active}} / {{max}} active",
+    "activeCountAria": "{{active}} of {{max}} active link slots used",
+    "add": "Add Link",
+    "addDisabledTooltip": "At most {{max}} links can be active. Deactivate one to add a new link.",
+    "limitWarning": "Active link limit reached ({{max}}/{{max}}). Deactivate a link before adding or activating another one.",
+    "noScopeTitle": "Select a topic or subtopic",
+    "noScopeHint": "Links are added to the selected subtopic, or to the topic's general links when only a topic is selected.",
+    "topicLevelHint": "Topic-level links — select a subtopic to add subtopic-specific links.",
+    "emptyTitle": "No study links yet",
+    "emptyHint": "Add a video or article that helps students reinforce this topic.",
+    "loadFailed": "Study links could not be loaded.",
+    "listAria": "Study links",
+    "inactive": "Inactive",
+    "drag": "Drag to reorder",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "activeToggle": "Active",
+    "activeToggleAria": "Toggle link {{title}} active/inactive",
+    "activateDisabledTooltip": "Active link limit reached ({{max}}).",
+    "edit": "Edit",
+    "delete": "Delete",
+    "openLink": "Open link in a new tab",
+    "deleteTitle": "Delete study link",
+    "deleteMessage": "The link \"{{title}}\" will be deleted. This cannot be undone.",
+    "deleteConfirm": "Delete",
+    "created": "Study link added.",
+    "updated": "Study link updated.",
+    "deleted": "Study link deleted.",
+    "activated": "Link activated.",
+    "deactivated": "Link deactivated.",
+    "reordered": "Order updated.",
+    "actionFailed": "The action could not be completed. Please try again.",
+    "close": "Close"
+  },
+  "dialog": {
+    "createTitle": "Add study link",
+    "editTitle": "Edit study link",
+    "scopeLabel": "Scope: {{name}}",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Adding fractions – lesson",
+    "urlLabel": "URL",
+    "urlPlaceholder": "https://",
+    "urlHint": "Only addresses starting with http:// or https://",
+    "sourceLabel": "Source type",
+    "activeLabel": "Active (visible to students)",
+    "activeLimitHint": "The active link limit ({{max}}) is reached; the link will be saved as inactive.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saveFailed": "The link could not be saved. Please try again.",
+    "errors": {
+      "titleRequired": "Title is required.",
+      "titleTooLong": "Title can be at most {{max}} characters.",
+      "urlRequired": "URL is required.",
+      "urlInvalid": "Enter a valid http:// or https:// address.",
+      "urlTooLong": "URL can be at most {{max}} characters."
+    }
+  },
+  "suggestions": {
+    "title": "Study suggestions for this question",
+    "loading": "Loading study suggestions",
+    "loadFailed": "Study suggestions could not be loaded right now.",
+    "topicGroup": "{{name}} (general)",
+    "opensInNewTab": "opens in a new tab"
+  }
+}

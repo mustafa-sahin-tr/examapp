@@ -313,7 +313,8 @@ namespace ExamApp.Api.Controllers
             var distinctIds = request.UserIds.Distinct().ToList();
             if (request.IncludeAccountStatus && distinctIds.Count > MaxAccountStatusLookupIds)
             {
-                // Hesap durumu Keycloak'a kullanıcı başı GET demek; sayfalı admin listeleri (≤ 100) dışında izin verme.
+                // Hesap durumu toplu okunur (#262: devre dışı kullanıcı taraması), ama tarama sonuçsuzsa kullanıcı başı GET'e
+                // düşer; sayfalı admin listeleri (≤ 100) dışında izin verme.
                 return BadRequest(new { message = _localizer["auth.usersLookup.accountStatusTooManyIds", MaxAccountStatusLookupIds].Value });
             }
 

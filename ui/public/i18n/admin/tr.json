@@ -205,7 +205,7 @@
       "appliedAt": "Başvuru Tarihi",
       "actions": "İşlem"
     },
-    "unnamed": "İsimsiz (kullanıcı #{{userId}})",
+    "unnamed": "İsimsiz (başvuru #{{teacherId}})",
     "approve": "Onayla",
     "reject": "Reddet",
     "acting": "İşleniyor",
@@ -213,6 +213,20 @@
     "approved": "Başvuru onaylandı.",
     "rejected": "Başvuru reddedildi.",
     "actionFailed": "İşlem tamamlanamadı.",
+    "forbidden": "Bu listeyi görüntüleme yetkiniz yok.",
+    "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+    "showEmail": "E-postayı göster",
+    "showEmailFor": "{{name}} için tam e-postayı göster",
+    "revealingEmail": "E-posta alınıyor",
+    "emailUnavailable": "Bu başvurunun e-posta adresi şu anda alınamıyor.",
+    "emailErrors": {
+      "forbidden": "Bu bilgiyi görüntüleme yetkiniz yok.",
+      "notFound": "Başvuru artık onay beklemiyor; liste yenilendi.",
+      "upstream": "Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
+      "rateLimitedSeconds": "Kısa sürede çok fazla istek yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
+      "generic": "E-posta adresi alınamadı."
+    },
     "close": "Kapat",
     "rejectDialog": {
       "title": "Başvuruyu Reddet",

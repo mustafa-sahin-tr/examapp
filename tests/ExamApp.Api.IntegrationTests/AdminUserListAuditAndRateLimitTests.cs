@@ -11,6 +11,7 @@ namespace ExamApp.Api.IntegrationTests;
 /// <summary>
 /// Issue #246: GET api/admin/students|teachers — gerçek pipeline + Postgres üzerinde
 /// (1) her başarılı çağrının PII'siz audit satırı, (2) kullanıcı (sub) başına rate limit, 429 + Retry-After.
+/// issue #262: 429'lar da audit'lenir; öğretmen başvuru listesi (maskeli) + detayı (tam e-posta) aynı audit/kova kapsamında.
 /// </summary>
 public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) : IntegrationTestBase(factory)
 {
@@ -96,9 +97,13 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         // Limit yalnızca bu iki uca uygulanır; aynı admin diğer admin uçlarını kullanmaya devam eder.
         (await first.GetAsync("/api/admin/schools")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        // Reddedilen istek veri döndürmediği için audit'lenmez.
-        (await WithDbAsync(db => db.AdminDataAccessLogs.CountAsync(r => r.ActorKeycloakId == firstSub)))
-            .ShouldBe(limits.PermitLimit);
+        // issue #262: veri dönen çağrılar Served; reddedilen istek de kötüye kullanım incelemesi için RateLimited satırı.
+        var rows = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
+            .Where(r => r.ActorKeycloakId == firstSub).ToListAsync());
+        rows.Count(r => r.Outcome == AdminDataAccessOutcome.Served).ShouldBe(limits.PermitLimit);
+        var rejectedRow = rows.Single(r => r.Outcome == AdminDataAccessOutcome.RateLimited);
+        rejectedRow.Resource.ShouldBe(AdminDataAccessResource.TeacherList);
+        rejectedRow.ReturnedCount.ShouldBe(0);
     }
 
     [Fact]
@@ -147,5 +152,73 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         studentsJson.ShouldNotContain("ali.veli@");
         teachersJson.ShouldContain("\"email\":\"a***@okul.k12.tr\"");
         teachersJson.ShouldNotContain("ayse@");
+    }
+
+    [Fact]
+    public async Task Issue262_teacher_applications_list_is_masked_detail_is_full_and_both_are_audited()
+    {
+        var baseId = 800_000 + Random.Shared.Next(0, 90_000) * 10;
+        var directory = Factory.Services.GetRequiredService<FakeUserDirectory>();
+        directory.Add(new() { Id = baseId, FullName = "Başvuran Öğretmen", Email = "basvuran@okul.k12.tr", Enabled = true });
+        var teacherId = await WithDbAsync(async db =>
+        {
+            var t = new Teacher { UserId = baseId, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Pending };
+            db.Teachers.Add(t);
+            await db.SaveChangesAsync();
+            return t.Id;
+        });
+        var sub = NewSub();
+        var admin = await ClientAsAsync(2, "Admin", sub, realmRoles: "Admin");
+
+        var list = await admin.GetAsync("/api/admin/teacher-applications");
+        list.StatusCode.ShouldBe(HttpStatusCode.OK);
+        list.Headers.CacheControl!.NoStore.ShouldBeTrue();
+        var listJson = await list.Content.ReadAsStringAsync();
+        listJson.ShouldContain("\"email\":\"b***@okul.k12.tr\"");
+        listJson.ShouldNotContain("basvuran@");
+
+        var detail = await admin.GetAsync($"/api/admin/teacher-applications/{teacherId}");
+        detail.StatusCode.ShouldBe(HttpStatusCode.OK);
+        detail.Headers.CacheControl!.NoStore.ShouldBeTrue();
+        (await detail.Content.ReadAsStringAsync()).ShouldContain("\"email\":\"basvuran@okul.k12.tr\"");
+
+        (await admin.GetAsync("/api/admin/teacher-applications/2147483647")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+
+        var rows = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
+            .Where(r => r.ActorKeycloakId == sub).OrderBy(r => r.Id).ToListAsync());
+        rows.Count.ShouldBe(3);
+        rows[0].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationList);
+        rows[0].ReturnedCount.ShouldBe(1);
+        rows[0].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
+        rows[1].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        rows[1].TargetId.ShouldBe(teacherId);
+        rows[1].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
+        // #262 review: 404 de iz bırakır (id tarama)
+        rows[2].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        rows[2].TargetId.ShouldBe(int.MaxValue);
+        rows[2].Outcome.ShouldBe(AdminDataAccessOutcome.NotFound);
+        rows[2].ReturnedCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Issue262_teacher_application_detail_shares_the_bucket_and_only_its_first_429_is_audited_with_target()
+    {
+        var limits = Limits;
+        var sub = NewSub();
+        var admin = await ClientAsAsync(2, "Admin", sub, realmRoles: "Admin");
+
+        for (var i = 0; i < limits.PermitLimit; i++)
+            (await admin.GetAsync("/api/admin/students")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        (await admin.GetAsync("/api/admin/teacher-applications/77")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await admin.GetAsync("/api/admin/teacher-applications")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        // #262 review: pencere başına yalnızca İLK red audit'lenir (ikinci 429 yalnızca log'da).
+        var rejected = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
+            .Where(r => r.ActorKeycloakId == sub && r.Outcome == AdminDataAccessOutcome.RateLimited)
+            .ToListAsync());
+        var only = rejected.ShouldHaveSingleItem();
+        only.Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        only.TargetId.ShouldBe(77);
     }
 }

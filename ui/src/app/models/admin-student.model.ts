@@ -14,7 +14,10 @@ export interface AdminStudentListItem {
    * arama/kopyalama/mailto için kullanılamaz. auth-api'den çözümlenemezse boş string.
    */
   email: string;
-  /** Numara yoksa boş string (null gelmez). */
+  /**
+   * Sunucuda KISMEN MASKELENMİŞ öğrenci numarası (issue #262): son 4 hane görünür, ör. `****1234`;
+   * 4 karakter veya daha kısaysa `****`. Numara yoksa boş string (null gelmez). Tam numara bu listede gelmez.
+   */
   studentNumber: string;
   /** Okula bağlı olmayan öğrenci için null. */
   schoolId: number | null;

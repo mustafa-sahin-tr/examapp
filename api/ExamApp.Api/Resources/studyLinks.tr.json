@@ -25,7 +25,8 @@
       "itemsRequired": "Sıralanacak en az bir link gönderilmelidir.",
       "tooManyItems": "Tek seferde en fazla 100 link sıralanabilir.",
       "duplicateIds": "Aynı link birden fazla kez gönderildi.",
-      "linkNotInScope": "Gönderilen linklerden bazıları bulunamadı veya seçilen konu/alt konuya ait değil."
+      "linkNotInScope": "Gönderilen linklerden bazıları bulunamadı veya seçilen konu/alt konuya ait değil.",
+      "duplicateSortOrders": "Aynı sıra numarası birden fazla linke verilemez."
     },
     "teacherNotApproved": "Çalışma linklerini yönetmek için öğretmen hesabınızın onaylanmış olması gerekir.",
     "notOwner": "Yalnızca kendi eklediğiniz çalışma linklerini düzenleyebilir veya silebilirsiniz.",

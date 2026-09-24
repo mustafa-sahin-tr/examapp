@@ -25,7 +25,8 @@
       "itemsRequired": "At least one link must be provided for reordering.",
       "tooManyItems": "At most 100 links can be reordered at once.",
       "duplicateIds": "The same link was sent more than once.",
-      "linkNotInScope": "Some of the links were not found or do not belong to the selected topic/subtopic."
+      "linkNotInScope": "Some of the links were not found or do not belong to the selected topic/subtopic.",
+      "duplicateSortOrders": "The same sort order cannot be assigned to more than one link."
     },
     "teacherNotApproved": "Your teacher account must be approved to manage study links.",
     "notOwner": "You can only edit or delete study links that you added.",

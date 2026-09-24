@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -239,6 +238,8 @@ public class TopicStudyLinkService : ITopicStudyLinkService
             return Fail<TopicStudyLinkListResultDto>("studyLinks.reorder.tooManyItems");
         if (items.Select(i => i.Id).Distinct().Count() != items.Count)
             return Fail<TopicStudyLinkListResultDto>("studyLinks.reorder.duplicateIds");
+        if (items.Select(i => i.SortOrder).Distinct().Count() != items.Count)
+            return Fail<TopicStudyLinkListResultDto>("studyLinks.reorder.duplicateSortOrders");
 
         var scope = await ResolveExactScopeAsync(dto.TopicId, dto.SubTopicId, ct);
         if (scope.Error != null)
@@ -631,11 +632,34 @@ public class TopicStudyLinkService : ITopicStudyLinkService
                 return result;
             });
         }
-        catch (Exception ex) when (ex is DbUpdateException or RetryLimitExceededException or DbException { IsTransient: true })
+        catch (Exception ex) when (IsSerializationConflict(ex))
         {
+            // Yalnızca eşzamanlılık çakışması 409'a çevrilir; diğer DB hataları (kısıt ihlali, bağlantı vb.) yukarı
+            // fırlar ve 500 olarak loglanır — gerçek hataları "tekrar deneyin" mesajının arkasına saklamayalım.
             _logger.LogWarning(ex, "Çalışma linki yazılamadı (eşzamanlı değişiklik / serialization failure).");
             return Fail<T>("studyLinks.concurrentModification", conflict: true);
         }
+    }
+
+    /// <summary>
+    /// Serializable transaction çakışması mı? PostgreSQL <c>40001</c> (serialization_failure) / <c>40P01</c>
+    /// (deadlock_detected) — doğrudan (commit/sorgu), <see cref="DbUpdateException"/> içinde (SaveChanges) ya da
+    /// execution strategy'nin retry'leri tükettiğinde fırlattığı <see cref="RetryLimitExceededException"/>.
+    /// </summary>
+    internal static bool IsSerializationConflict(Exception? ex)
+    {
+        for (var current = ex; current != null; current = current.InnerException)
+        {
+            switch (current)
+            {
+                case RetryLimitExceededException:
+                    return true;
+                case Npgsql.PostgresException { SqlState: Npgsql.PostgresErrorCodes.SerializationFailure or Npgsql.PostgresErrorCodes.DeadlockDetected }:
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<TopicStudyLinkListResultDto> BuildListAsync(LinkScope scope, bool includeInactive, int skip, int take, CancellationToken ct)

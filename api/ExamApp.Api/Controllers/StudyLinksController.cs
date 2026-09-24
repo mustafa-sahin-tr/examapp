@@ -129,7 +129,7 @@ public class StudyLinksController : BaseController
     public async Task<IActionResult> GetForResult(int testInstanceId, CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
-        if (user == null)
+        if (!IsResolvedUser(user))
             return UserNotResolved(new { message = _localizer["studyLinks.unauthorized"].Value });
 
         var result = await _service.GetSuggestionsForResultAsync(testInstanceId, user.Id, ct);
@@ -138,17 +138,24 @@ public class StudyLinksController : BaseController
 
     /// <summary>
     /// Yönetim işlemini yapan kullanıcı. IsAdmin yalnızca token'daki Admin rolünden gelir. Rol adı audit/CreatedByRole
-    /// için normalize edilir ("Admin" | "Teacher"). Profil çözülemezse null (→ 401/404).
+    /// için normalize edilir ("Admin" | "Teacher"). Profil çözülemezse null (→ <see cref="BaseController.UserNotResolved"/>).
     /// </summary>
     private async Task<StudyLinkActor?> ResolveActorAsync(CancellationToken ct)
     {
         var user = await GetAuthenticatedUserAsync(ct);
-        if (user == null)
+        if (!IsResolvedUser(user))
             return null;
 
         var isAdmin = IsAdmin;
         return new StudyLinkActor(user.Id, user.FullName ?? string.Empty, isAdmin ? "Admin" : "Teacher", isAdmin);
     }
+
+    /// <summary>
+    /// <see cref="BaseController.GetAuthenticatedUserAsync()"/> profil servisi hata verdiğinde exception yerine
+    /// Id=0 / Role="Service" sahte profil döner. O profille yazma yapılırsa (özellikle Admin rolüyle — onay/sahiplik
+    /// kontrolü atlanır) işlem kullanıcı 0'a atfedilirdi; bu yüzden Id &lt;= 0 "çözülemedi" sayılır.
+    /// </summary>
+    internal static bool IsResolvedUser(UserProfileDto? user) => user != null && user.Id > 0;
 
     /// <summary>ResponseBaseDto bayraklarını HTTP koduna çevirir (404 / 403 / 409 / 400).</summary>
     private IActionResult MapFailure(ResponseBaseDto result)

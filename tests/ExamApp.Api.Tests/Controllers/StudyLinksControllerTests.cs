@@ -214,4 +214,58 @@ public class StudyLinksControllerTests
 
         (await NewController(service).Delete(3, CancellationToken.None)).ShouldBeOfType<NoContentResult>();
     }
+
+    // Profil servisi hata verince BaseController Id=0 / Role=Service sahte profil döner — yazma kullanıcı 0'a atfedilmemeli.
+    [Fact]
+    public async Task Create_WhenProfileUnresolved_Id0_DoesNotCallService_EvenForAdmin()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+
+        var result = await NewController(service, userId: 0, role: "Admin").Create(new CreateTopicStudyLinkDto(), CancellationToken.None);
+
+        // sub claim'i var → #255 kuralı: oturumu kapattırmamak için 404 (sub yoksa 401).
+        result.ShouldBeOfType<NotFoundObjectResult>();
+        await service.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Writes_WhenProfileProviderThrows_AreRejectedWithoutCallingService()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        var controller = NewController(service, role: "Admin");
+        var profiles = controller.HttpContext.RequestServices.GetRequiredService<IUserProfileProvider>();
+        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns<UserProfileDto>(_ => throw new HttpRequestException("auth-api down"));
+
+        (await controller.Update(1, new UpdateTopicStudyLinkDto(), CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
+        (await controller.Delete(1, CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
+        (await controller.Reorder(new ReorderTopicStudyLinksDto(), CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
+        (await controller.List(new TopicStudyLinkQueryDto(), CancellationToken.None)).ShouldBeOfType<NotFoundObjectResult>();
+
+        await service.DidNotReceiveWithAnyArgs().UpdateAsync(default, default!, default!, default);
+        await service.DidNotReceiveWithAnyArgs().DeleteAsync(default, default!, default);
+        await service.DidNotReceiveWithAnyArgs().ReorderAsync(default!, default!, default);
+        await service.DidNotReceiveWithAnyArgs().ListAsync(default!, default!, default);
+    }
+
+    [Fact]
+    public async Task Writes_WithoutSubClaim_Return401()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        var controller = NewController(service, userId: 0, role: "Admin");
+        controller.ControllerContext.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
+            new[] { new Claim(ClaimTypes.Role, "Admin") }, "Test"));
+
+        (await controller.Create(new CreateTopicStudyLinkDto(), CancellationToken.None)).ShouldBeOfType<UnauthorizedObjectResult>();
+    }
+
+    [Fact]
+    public async Task ForResult_WhenProfileUnresolved_Id0_DoesNotQuery()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+
+        var result = await NewController(service, userId: 0, role: "Student").GetForResult(10, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+        await service.DidNotReceiveWithAnyArgs().GetSuggestionsForResultAsync(default, default, default);
+    }
 }

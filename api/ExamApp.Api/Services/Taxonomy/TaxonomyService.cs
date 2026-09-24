@@ -346,6 +346,17 @@ public class TaxonomyService : ITaxonomyService
 
         _context.SetCurrentUser(userId);
         subTopic.Name = name;
+        if (subTopic.TopicId != dto.TopicId)
+        {
+            // issue #61: TopicStudyLink.TopicId, alt konu linklerinde üst konunun denormalize kopyasıdır — alt konu
+            // başka konuya taşınınca aynı SaveChanges (tek transaction) içinde güncellenir. Soft-delete edilmiş linkler
+            // de (IgnoreQueryFilters) — geri alınırsa tutarsız kalmasınlar.
+            var links = await _context.TopicStudyLinks.IgnoreQueryFilters()
+                .Where(l => l.SubTopicId == subTopic.Id)
+                .ToListAsync(ct);
+            foreach (var link in links)
+                link.TopicId = dto.TopicId;
+        }
         subTopic.TopicId = dto.TopicId;
         await _context.SaveChangesAsync(ct);
         return Ok(_localizer["taxonomy.subTopic.updated"], subTopic.Id, userId);

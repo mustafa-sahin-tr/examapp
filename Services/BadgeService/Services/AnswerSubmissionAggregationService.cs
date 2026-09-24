@@ -36,19 +36,31 @@ public class AnswerSubmissionAggregationService
     ///
     /// Idempotency katman 2 / çift puan düzeltmesi (issue #279, item 4 — ürün kararı "soru başına bir kez,
     /// son cevap sayılır"): (TestInstanceId, QuestionId) başına en son uygulanan puan ve revizyon
-    /// <see cref="AnswerPointAward"/>'da tutulur. Revizyon = mesajın <c>SubmittedAt</c>'ı (ayrı bir alan
-    /// eklemeye gerek yok — <c>TestSessionService.SaveAnswer</c> her çağrıda bunu DateTime.UtcNow ile yeniden
-    /// üretir, dolayısıyla doğal bir monoton "cevabın güncellenme anı"dır). Gelen mesajın revizyonu
-    /// kayıttakinden DAHA YENİ değilse (sırasız teslim / tekrar teslim / EventId'siz eski üretici tekrarı)
-    /// TÜM aggregate güncellemesi atlanır (yalnızca puan değil — bkz. <see cref="ResolvePointAwardAsync"/>).
-    /// Daha yeniyse yeni puan (yanlışsa 0, doğruysa cap'lenmiş QuestionPoint) ile önceki uygulanan puan
+    /// <see cref="AnswerPointAward"/>'da tutulur. Revizyon KAYNAĞI (issue #279 review, blocker — güncellendi):
+    /// BİRİNCİL olarak <c>AnswerSubmittedEvent.Revision</c> (exam API'de <c>WorksheetInstanceQuestion.AnswerRevision</c>,
+    /// DB tarafında atomik artan bir sayaç — istemci saatine bağlı değil, iki SaveAnswer çağrısı için asla
+    /// aynı değeri üretmez). Revision &gt; 0 ise karşılaştırma TAM SAYI olarak yapılır: mesaj &lt;= kayıttaki
+    /// değer ⇒ sırasız/tekrar teslim. Revision == 0 (yalnızca bu alandan ÖNCE üretilmiş/kuyrukta kalmış eski
+    /// mesajlar) ise YEDEK olarak <c>SubmittedAt</c> (mikrosaniyeye yuvarlanmış, <c>EventVersion.Normalize</c>)
+    /// kullanılır — VE gelecekte >5 dk olan bir SubmittedAt reddedilir (log + atla): istemci saat kaymasının ya
+    /// da sahte bir mesajın revizyon korumasını kalıcı olarak kilitlemesini önler. Gelen mesaj (hangi modla
+    /// olursa olsun) stale ise TÜM aggregate güncellemesi atlanır (yalnızca puan değil — bkz.
+    /// <see cref="ResolvePointAwardAsync"/>). Kullanıcı uyuşmazlığı (issue #279 review): kayıttaki
+    /// <see cref="AnswerPointAward.UserId"/> mesajınkiyle eşleşmiyorsa mesaj reddedilir/loglanır, hiçbir
+    /// güncelleme yapılmaz (savunma amaçlı — normalde TestInstanceId zaten tek öğrenciye bağlıdır).
+    ///
+    /// Stale değilse yeni puan (yanlışsa 0, doğruysa cap'lenmiş QuestionPoint) ile önceki uygulanan puan
     /// arasındaki FARK (delta, negatif olabilir) aggregate'lere uygulanır — böylece doğru→yanlış→doğru gibi
     /// cevap değişiklikleri puanı katlamak yerine yalnızca son cevabı yansıtır. Bu katman EventId'den
-    /// bağımsızdır: Guid.Empty (eski üretici) mesajları da SubmittedAt doluysa korunur.
+    /// bağımsızdır: Guid.Empty (eski üretici) mesajları da SubmittedAt/Revision doluysa korunur.
     ///
-    /// Not: yalnızca PUAN (TotalPoints alanları) bu şekilde tekilleştirilir; TotalQuestions/CorrectQuestions/
-    /// streak/QuestionCount gibi diğer sayaçlar kasıtlı olarak DEĞİŞMEDİ — her yeni (daha yeni revizyonlu)
-    /// mesaj hâlâ ayrı bir "deneme" olarak sayılır (issue #279 item 4'ün kapsamı yalnızca çift puan).
+    /// Sayaç semantiği (issue #279 review — netleştirme): yalnızca PUAN (TotalPoints alanları) "son cevap
+    /// sayılır" kuralına tabidir. TotalQuestions/CorrectQuestions/CurrentCorrectStreak/BestCorrectStreak/
+    /// QuestionCount/CorrectCount gibi diğer TÜM sayaçlar her stale-olmayan mesajda hâlâ artırılır — yani
+    /// bunların nihai değeri MESAJLARIN VARIŞ SIRASINA bağlıdır (ör. sırasız teslim edilip sonradan stale
+    /// sayılan bir mesaj için sayaçlar da atlanır, ama normal sırayla gelen her farklı revizyon ayrı bir
+    /// "deneme" olarak sayılmaya devam eder). Bu kasıtlı: issue #279 item 4'ün kapsamı yalnızca çift puan,
+    /// deneme/streak sayaçlarının "son cevap" kuralına tabi tutulması ayrı bir ürün kararı gerektirir.
     ///
     /// Yatay ölçekleme (issue #279, item 1): tüm işlem <see cref="ConcurrencyRetry"/> ile sarılır — birden
     /// fazla BadgeService instance'ı aynı aggregate satırını eşzamanlı güncellerse xmin concurrency token'ı
@@ -154,13 +166,46 @@ public class AnswerSubmissionAggregationService
     /// </summary>
     private async Task<PointAwardResolution> ResolvePointAwardAsync(AnswerSubmittedEvent message, CancellationToken cancellationToken)
     {
-        var revision = message.SubmittedAt;
+        var normalizedSubmittedAt = EventVersion.Normalize(message.SubmittedAt);
         var award = await _context.AnswerPointAwards
             .FirstOrDefaultAsync(
                 a => a.TestInstanceId == message.TestInstanceId && a.QuestionId == message.QuestionId,
                 cancellationToken);
 
-        if (award != null && revision <= award.LastAppliedRevisionUtc)
+        // issue #279 review (blocker): kullanıcı uyuşmazlığı — bu (TestInstanceId, QuestionId) kaydı
+        // başka bir kullanıcıya ait. Normalde imkânsız (TestInstanceId tek öğrenciye bağlı) ama savunma
+        // amaçlı: reddet/logla, HİÇBİR güncelleme yapma.
+        if (award != null && award.UserId != message.UserId)
+        {
+            _logger.LogWarning(
+                "[AnswerSubmission] UserId uyuşmazlığı — (TestInstanceId={TestInstanceId}, QuestionId={QuestionId}) " +
+                "AwardUserId={AwardUserId} kaydına ait, mesaj UserId={MessageUserId}; mesaj reddedildi.",
+                message.TestInstanceId, message.QuestionId, award.UserId, message.UserId);
+            return new PointAwardResolution(true, 0);
+        }
+
+        bool isStale;
+        if (message.Revision > 0)
+        {
+            // Birincil yol: DB tarafında atomik artan tam sayı revizyon (bkz. AnswerPointAward XML doc).
+            isStale = award != null && message.Revision <= award.LastAppliedRevision;
+        }
+        else
+        {
+            // Yedek yol (Revision=0 — #279'dan önceki/kuyrukta kalmış eski mesajlar): SubmittedAt.
+            var now = DateTime.UtcNow;
+            if (normalizedSubmittedAt > now.AddMinutes(5))
+            {
+                _logger.LogWarning(
+                    "[AnswerSubmission] Revision yok ve SubmittedAt gelecekte (>5dk) — mesaj reddedildi " +
+                    "(UserId={UserId}, TestInstanceId={TestInstanceId}, QuestionId={QuestionId}, SubmittedAt={SubmittedAt:o}).",
+                    message.UserId, message.TestInstanceId, message.QuestionId, normalizedSubmittedAt);
+                return new PointAwardResolution(true, 0);
+            }
+            isStale = award != null && normalizedSubmittedAt <= award.LastAppliedRevisionUtc;
+        }
+
+        if (isStale)
         {
             return new PointAwardResolution(true, 0);
         }
@@ -189,8 +234,16 @@ public class AnswerSubmissionAggregationService
             _context.AnswerPointAwards.Add(award);
         }
 
+        award.TestInstanceQuestionId = message.TestInstanceQuestionId;
         award.PointsAwarded = newPoints;
-        award.LastAppliedRevisionUtc = revision;
+        // LastAppliedRevisionUtc her zaman güncellenir (denetim/yedek kıyas); LastAppliedRevision yalnızca
+        // mesaj gerçek bir Revision taşıyorsa güncellenir — 0 ile ezilirse, revizyon izleyen bir kayıt daha
+        // sonra gelen eski-formatlı (Revision=0) bir mesajla geriye sıfırlanırdı (bkz. AnswerPointAward XML doc).
+        if (message.Revision > 0)
+        {
+            award.LastAppliedRevision = message.Revision;
+        }
+        award.LastAppliedRevisionUtc = normalizedSubmittedAt;
         award.UpdatedAtUtc = DateTime.UtcNow;
 
         return new PointAwardResolution(false, delta);

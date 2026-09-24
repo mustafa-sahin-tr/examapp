@@ -30,10 +30,16 @@ namespace BadgeService.Migrations
                     b.Property<int>("QuestionId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("LastAppliedRevision")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("LastAppliedRevisionUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("PointsAwarded")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TestInstanceQuestionId")
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAtUtc")
@@ -201,6 +207,8 @@ namespace BadgeService.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("EventId");
+
+                    b.HasIndex("ProcessedAt");
 
                     b.HasIndex("UserId");
 

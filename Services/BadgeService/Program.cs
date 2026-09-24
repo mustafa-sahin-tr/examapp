@@ -227,6 +227,11 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint("badge-service", e =>
         {
+            // issue #279 review (SHOULD-FIX, least privilege): consumer hataları RabbitMQ fault mesajı
+            // olarak AYRICA yayınlanmasın (varsayılan MassTransit davranışı publish izni gerektirir) —
+            // hatalar zaten bu endpoint'in kendi `_error` (dead-letter) kuyruğuna gider, bu yeterli.
+            e.PublishFaults = false;
+
             // Kullanıcı bazlı sıralı işleme (partitioner) AnswerSubmittedConsumerDefinition'da (issue #225).
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);

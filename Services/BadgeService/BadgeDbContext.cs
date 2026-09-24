@@ -123,10 +123,15 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<ProcessedAnswerSubmission>()
             .Property(x => x.EventId)
             .ValueGeneratedNever();
-        // issue #279 (item 3): retention taraması (ProcessedAt < cutoff) ve öğrenci reset/KVKK silmesi
-        // (UserId = X) bu index'i kullanır — PK EventId'ye göre olduğundan aksi halde tam tablo taraması olurdu.
+        // issue #279 (item 3): öğrenci reset/KVKK silmesi (UserId = X, bkz. UserResetService) bu index'i
+        // kullanır — PK EventId'ye göre olduğundan aksi halde tam tablo taraması olurdu.
         modelBuilder.Entity<ProcessedAnswerSubmission>()
             .HasIndex(x => x.UserId);
+        // issue #279 review (item 5, yorum düzeltmesi): retention taraması (ProcessedAt < cutoff,
+        // ProcessedAnswerSubmissionRetentionJob) UserId değil BU index'i kullanır — yukarıdaki UserId
+        // index'i retention için işe yaramaz (WHERE/ORDER BY ProcessedAt'a göre).
+        modelBuilder.Entity<ProcessedAnswerSubmission>()
+            .HasIndex(x => x.ProcessedAt);
 
         // issue #279 (item 4): "soru başına bir kez, son cevap sayılır" — bkz. AnswerPointAward XML doc.
         modelBuilder.Entity<AnswerPointAward>()

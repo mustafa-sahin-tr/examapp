@@ -3299,6 +3299,9 @@ namespace ExamApp.Api.Migrations
                     b.Property<string>("AnswerPayload")
                         .HasColumnType("text");
 
+                    b.Property<int>("AnswerRevision")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");
 

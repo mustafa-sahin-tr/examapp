@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 
@@ -13,6 +14,12 @@ public class QuestionDto
     public int? SubjectId { get; set; }
 
     public int? TopicId { get; set; } // Konu ID'si
+
+    // issue #279 review (security L2): UI zaten 1-20 aralığına kısıtlıyor (question.component.html,
+    // client-side) ama sunucu tarafında bir üst sınır yoktu — BadgeService'teki
+    // AnswerPointOptions.MaxQuestionPoint (varsayılan 100) ile aynı tavan kullanıldı. Mevcut veride/UI'da
+    // 100'ü aşan bir Point kullanımı bulunamadı (grep ile kontrol edildi).
+    [Range(0, 100)]
     public int Point { get; set; }
     public int DifficultyLevel { get; set; }
 

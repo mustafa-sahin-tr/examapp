@@ -23,7 +23,7 @@ public class AnswerPointAwardTests : IDisposable
 
     private static AnswerSubmittedEvent Answer(
         int userId, int testInstanceId, int questionId, bool correct, int point, DateTime submittedAt,
-        Guid? eventId = null) => new()
+        Guid? eventId = null, int revision = 0) => new()
     {
         EventId = eventId ?? Guid.Empty,
         UserId = userId,
@@ -35,6 +35,7 @@ public class AnswerPointAwardTests : IDisposable
         SubjectId = 1,
         Subject = "Matematik",
         SubmittedAt = submittedAt,
+        Revision = revision,
     };
 
     [Fact]
@@ -140,6 +141,126 @@ public class AnswerPointAwardTests : IDisposable
 
         await using var check = _db.NewContext();
         (await check.StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(20);
+    }
+
+    // ---- issue #279 review (blocker): DB-generated int Revision as the primary ordering source ----
+
+    [Fact]
+    public async Task Int_revision_ordering_wins_over_SubmittedAt_when_Revision_is_set()
+    {
+        var t0 = DateTime.UtcNow;
+        // Revision=2 applies first; a later-arriving message with Revision=1 but a NEWER SubmittedAt must
+        // still be treated as stale — Revision (not the wall clock) is the source of truth once populated.
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: true, point: 10, t0, revision: 2));
+
+        bool applied;
+        await using (var ctx = _db.NewContext())
+            applied = await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: false, point: 10, t0.AddSeconds(5), revision: 1));
+
+        applied.ShouldBeFalse();
+        await using var check = _db.NewContext();
+        (await check.StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(10);
+        (await check.AnswerPointAwards.SingleAsync()).LastAppliedRevision.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task A_higher_int_revision_applies_even_with_an_earlier_SubmittedAt()
+    {
+        var t0 = DateTime.UtcNow;
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: false, point: 10, t0.AddSeconds(5), revision: 1));
+
+        bool applied;
+        await using (var ctx = _db.NewContext())
+            applied = await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: true, point: 10, t0, revision: 2));
+
+        applied.ShouldBeTrue();
+        (await _db.NewContext().StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task Equal_int_revision_redelivery_is_a_no_op()
+    {
+        var e = Answer(1, 5, 42, correct: true, point: 10, DateTime.UtcNow, revision: 7);
+
+        bool first, second;
+        await using (var ctx = _db.NewContext())
+            first = await NewService(ctx).ProcessAsync(e);
+        await using (var ctx = _db.NewContext())
+            second = await NewService(ctx).ProcessAsync(e); // exact redelivery, same Revision
+
+        first.ShouldBeTrue();
+        second.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Sub_microsecond_SubmittedAt_redelivery_is_still_recognised_as_stale_via_the_fallback_path()
+    {
+        // Revision=0 (legacy fallback): two ticks within the same microsecond truncate to an IDENTICAL
+        // normalized timestamp (EventVersion.Normalize truncates to 1µs) — must be treated as the same
+        // revision (stale on redelivery), not accidentally "newer".
+        var t0 = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(5); // < 1 tick of a microsecond
+        var e1 = Answer(1, 5, 42, correct: true, point: 10, t0);
+        var e2 = Answer(1, 5, 42, correct: false, point: 10, t0.AddTicks(4)); // still same µs after truncation
+
+        bool first, second;
+        await using (var ctx = _db.NewContext())
+            first = await NewService(ctx).ProcessAsync(e1);
+        await using (var ctx = _db.NewContext())
+            second = await NewService(ctx).ProcessAsync(e2);
+
+        first.ShouldBeTrue();
+        second.ShouldBeFalse();
+        (await _db.NewContext().StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(10);
+    }
+
+    [Fact]
+    public async Task A_future_SubmittedAt_beyond_the_clock_skew_tolerance_is_rejected_when_there_is_no_revision()
+    {
+        var future = DateTime.UtcNow.AddMinutes(10);
+
+        bool applied;
+        await using (var ctx = _db.NewContext())
+            applied = await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: true, point: 10, future));
+
+        applied.ShouldBeFalse();
+        (await _db.NewContext().StudentQuestionAggregates.AnyAsync()).ShouldBeFalse();
+        (await _db.NewContext().AnswerPointAwards.AnyAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task A_SubmittedAt_within_the_five_minute_clock_skew_tolerance_is_accepted()
+    {
+        var withinTolerance = DateTime.UtcNow.AddMinutes(4);
+
+        bool applied;
+        await using (var ctx = _db.NewContext())
+            applied = await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: true, point: 10, withinTolerance));
+
+        applied.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task User_mismatch_on_an_existing_award_is_rejected_without_any_update()
+    {
+        var t0 = DateTime.UtcNow;
+        // Same (TestInstanceId, QuestionId) but a DIFFERENT UserId than the one already recorded — should
+        // never happen legitimately (TestInstanceId is bound to a single student), defense in depth.
+        await using (var ctx = _db.NewContext())
+            await NewService(ctx).ProcessAsync(Answer(1, 5, 42, correct: true, point: 10, t0, revision: 1));
+
+        bool applied;
+        await using (var ctx = _db.NewContext())
+            applied = await NewService(ctx).ProcessAsync(Answer(999, 5, 42, correct: true, point: 50, t0.AddSeconds(1), revision: 2));
+
+        applied.ShouldBeFalse();
+        await using var check = _db.NewContext();
+        (await check.StudentQuestionAggregates.AnyAsync(x => x.UserId == 999)).ShouldBeFalse();
+        var award = await check.AnswerPointAwards.SingleAsync();
+        award.UserId.ShouldBe(1);
+        award.PointsAwarded.ShouldBe(10); // untouched
+        award.LastAppliedRevision.ShouldBe(1); // untouched
     }
 
     // ---- item 6: QuestionPoint cap ----

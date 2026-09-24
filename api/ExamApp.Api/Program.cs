@@ -365,6 +365,10 @@ if (rabbitMqEnabled)
 
             cfg.ReceiveEndpoint("exam-api", e =>
             {
+                // issue #279 review (SHOULD-FIX, least privilege): fault mesajları ayrıca publish
+                // edilmesin — hatalar zaten bu endpoint'in kendi `_error` (dead-letter) kuyruğuna gider.
+                e.PublishFaults = false;
+
                 e.ConfigureConsumer<ExamApp.Api.Consumers.StudentPointsChangedConsumer>(context);
             });
         });

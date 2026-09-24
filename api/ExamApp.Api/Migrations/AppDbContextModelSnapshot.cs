@@ -62,6 +62,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("SchoolIdFilter")
                         .HasColumnType("integer");
 
+                    b.Property<string>("StatusFilter")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<int?>("TargetId")
                         .HasColumnType("integer");
 

@@ -58,33 +58,60 @@ public class TeacherApprovalService : ITeacherApprovalService
         _audit = auditService;
     }
 
-    public async Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default)
+    public async Task<Paged<TeacherApplicationListItemDto>> ListApplicationsAsync(
+        TeacherApplicationStatusFilter status, int page, int pageSize, CancellationToken ct = default)
     {
-        var rows = await ProjectPending(PendingApplications().OrderBy(t => t.CreateTime)).ToListAsync(ct);
-        if (rows.Count == 0)
-            return new List<PendingTeacherApplicationDto>();
+        (page, pageSize) = AdminListPaging.Normalize(page, pageSize);
+
+        var query = status switch
+        {
+            TeacherApplicationStatusFilter.Pending => PendingApplications(),
+            TeacherApplicationStatusFilter.All => AllApplications(),
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown teacher application status filter.")
+        };
+
+        var totalCount = await query.CountAsync(ct);
+
+        // Toplamı aşan sayfa boş döner (AdminTeacherService ile aynı: ikinci sorgu ve auth-api çağrısı yok).
+        if (!AdminListPaging.TryGetOffset(page, pageSize, totalCount, out var offset))
+            return AdminListPaging.EmptyPage<TeacherApplicationListItemDto>(page, pageSize, totalCount);
+
+        var rows = await OrderForList(Project(query))
+            .Skip(offset)
+            .Take(pageSize)
+            .ToListAsync(ct);
 
         var users = await ResolveUsersAsync(rows.Select(r => r.UserId).Distinct().ToList(), ct);
-        return rows.Select(r =>
+        return new Paged<TeacherApplicationListItemDto>
         {
-            users.TryGetValue(r.UserId, out var user);
-            return new PendingTeacherApplicationDto
+            PageNumber = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            Items = rows.Select(r =>
             {
-                TeacherId = r.TeacherId,
-                FullName = user?.FullName ?? string.Empty,
-                // issue #262: listede tam e-posta dönülmez (KVKK veri minimizasyonu); tam adres detay ucunda.
-                Email = user is null ? string.Empty : EmailMask.Apply(user.Email),
-                AppliedAt = r.AppliedAt,
-                IsIndependentTutor = r.IsIndependentTutor,
-                RequestedSchoolId = r.RequestedSchoolId,
-                RequestedSchoolName = r.RequestedSchoolName
-            };
-        }).ToList();
+                users.TryGetValue(r.UserId, out var user);
+                return new TeacherApplicationListItemDto
+                {
+                    TeacherId = r.TeacherId,
+                    FullName = user?.FullName ?? string.Empty,
+                    // issue #262: listede tam e-posta dönülmez (KVKK veri minimizasyonu); tam adres detay ucunda.
+                    Email = user is null ? string.Empty : EmailMask.Apply(user.Email),
+                    AppliedAt = r.AppliedAt,
+                    IsIndependentTutor = r.IsIndependentTutor,
+                    RequestedSchoolId = r.RequestedSchoolId,
+                    RequestedSchoolName = r.RequestedSchoolName,
+                    Status = r.Status.ToString(),
+                    RejectionReason = r.RejectionReason,
+                    DecidedAt = r.DecidedAt
+                };
+            }).ToList()
+        };
     }
 
-    public async Task<TeacherApplicationDetailDto?> GetPendingApplicationAsync(int teacherId, CancellationToken ct = default)
+    public async Task<TeacherApplicationDetailDto?> GetApplicationAsync(int teacherId, CancellationToken ct = default)
     {
-        var row = await ProjectPending(PendingApplications().Where(t => t.Id == teacherId)).FirstOrDefaultAsync(ct);
+        // issue #187: her durumdaki başvuru (Pending/Approved/Rejected); başvuru olmayan öğretmen null → 404.
+        var row = await Project(AllApplications().Where(t => t.Id == teacherId)).FirstOrDefaultAsync(ct);
         if (row == null)
             return null;
 
@@ -98,28 +125,98 @@ public class TeacherApprovalService : ITeacherApprovalService
             AppliedAt = row.AppliedAt,
             IsIndependentTutor = row.IsIndependentTutor,
             RequestedSchoolId = row.RequestedSchoolId,
-            RequestedSchoolName = row.RequestedSchoolName
+            RequestedSchoolName = row.RequestedSchoolName,
+            Status = row.Status.ToString(),
+            RejectionReason = row.RejectionReason,
+            DecidedAt = row.DecidedAt
         };
     }
 
-    /// <summary>Başvuru satırı + lookup için iç UserId (issue #262: UserId DTO'ya çıkmaz).</summary>
-    private sealed record PendingApplicationRow(
-        int TeacherId, int UserId, DateTime AppliedAt, bool IsIndependentTutor, int? RequestedSchoolId, string? RequestedSchoolName);
+    /// <summary>
+    /// Başvuru satırı + lookup için iç UserId (issue #262: UserId DTO'ya çıkmaz). Üye-atamalı sınıf (positional record
+    /// değil): EF, projeksiyon SONRASI OrderBy'ı (<see cref="OrderForList"/>) yalnızca üye atamasında SQL'e çevirebilir.
+    /// </summary>
+    private sealed class ApplicationRow
+    {
+        public int TeacherId { get; init; }
+        public int UserId { get; init; }
+        public DateTime AppliedAt { get; init; }
+        public bool IsIndependentTutor { get; init; }
+        public int? RequestedSchoolId { get; init; }
+        public string? RequestedSchoolName { get; init; }
+        public TeacherApprovalStatus Status { get; init; }
+        public string? RejectionReason { get; init; }
+        public DateTime? DecidedAt { get; init; }
+    }
 
-    private static IQueryable<PendingApplicationRow> ProjectPending(IQueryable<Teacher> query) => query
-        .Select(t => new PendingApplicationRow(
-            t.Id,
-            t.UserId,
-            t.CreateTime,
-            t.IsIndependentTutor,
-            t.IsIndependentTutor ? null : t.RequestedSchoolId,
-            t.IsIndependentTutor || t.RequestedSchool == null ? null : t.RequestedSchool.Name));
+    private IQueryable<ApplicationRow> Project(IQueryable<Teacher> query) => query
+        .Select(t => new ApplicationRow
+        {
+            TeacherId = t.Id,
+            UserId = t.UserId,
+            AppliedAt = t.CreateTime,
+            IsIndependentTutor = t.IsIndependentTutor,
+            // issue #187: onay, okul talebini RequestedSchoolId → SchoolId'ye taşıyıp temizler; onaylı okul talebinde
+            // talep edilen okul = öğretmenin okulu. Bağımsız başvuruda okul alanları her zaman null.
+            RequestedSchoolId = t.IsIndependentTutor
+                ? null
+                : t.RequestedSchoolId ?? (t.ApprovalStatus == TeacherApprovalStatus.Approved ? t.SchoolId : null),
+            RequestedSchoolName = t.IsIndependentTutor
+                ? null
+                : t.RequestedSchool != null
+                    ? t.RequestedSchool.Name
+                    : t.ApprovalStatus == TeacherApprovalStatus.Approved && t.School != null ? t.School.Name : null,
+            Status = t.ApprovalStatus,
+            RejectionReason = t.ApprovalStatus == TeacherApprovalStatus.Rejected ? t.RejectionReason : null,
+            // issue #187: karar anı = mevcut durumla eşleşen EN SON başarılı admin kararı (#157 audit). Teacher.UpdateTime
+            // güvenilir değil (sonraki her profil kaydında SaveChanges onu da günceller).
+            DecidedAt = t.ApprovalStatus == TeacherApprovalStatus.Pending
+                ? null
+                : _context.AdminUserActionLogs
+                    .Where(l => l.TargetType == AdminUserTargetType.Teacher
+                                && l.TargetId == t.Id
+                                && l.Outcome == AdminUserActionOutcome.Succeeded
+                                && ((t.ApprovalStatus == TeacherApprovalStatus.Approved && l.Action == AdminUserAction.TeacherApproved)
+                                    || (t.ApprovalStatus == TeacherApprovalStatus.Rejected && l.Action == AdminUserAction.TeacherRejected)))
+                    .OrderByDescending(l => l.OccurredAtUtc)
+                    .Select(l => (DateTime?)l.OccurredAtUtc)
+                    .FirstOrDefault()
+        });
+
+    /// <summary>
+    /// issue #187: önce bekleyenler (en eski başvuru önce — eski davranış), sonra karar verilmişler (en yeni karar önce;
+    /// karar anı bilinmeyenler en sonda, başvuru tarihine göre yeniden eskiye). Son anahtar TeacherId: sayfalar kararlı.
+    /// Null sıralaması sağlayıcıya göre değiştiği için (Postgres DESC → NULLS FIRST) null'lar açık anahtarla ayrılır.
+    /// </summary>
+    private static IQueryable<ApplicationRow> OrderForList(IQueryable<ApplicationRow> rows) => rows
+        .OrderBy(r => r.Status == TeacherApprovalStatus.Pending ? 0 : 1)
+        .ThenBy(r => r.Status == TeacherApprovalStatus.Pending ? (DateTime?)r.AppliedAt : null)
+        .ThenBy(r => r.DecidedAt == null ? 1 : 0)
+        .ThenByDescending(r => r.DecidedAt)
+        .ThenByDescending(r => r.AppliedAt)
+        .ThenBy(r => r.TeacherId);
 
     /// <summary>Onay bekleyen başvurular: bağımsız öğretmen (#94) ya da okul bağlantısı talebi (#234). Soft-deleted hariç (global filtre).</summary>
     private IQueryable<Teacher> PendingApplications() => _context.Teachers
         .AsNoTracking()
         .Where(t => t.ApprovalStatus == TeacherApprovalStatus.Pending
                     && (t.IsIndependentTutor || t.RequestedSchoolId != null));
+
+    /// <summary>
+    /// issue #187: her durumdaki başvurular. Bağımsız öğretmen (her durumda) ya da okul talebi olan öğretmen (Pending;
+    /// Rejected'da RequestedSchoolId korunur). ONAYLANMIŞ okul talebinde RequestedSchoolId temizlendiği için satır yalnızca
+    /// admin karar audit'inden (#157, <c>AdminUserActionLogs</c>) tanınır — #157 öncesi onaylanmış ya da audit'i yazılamamış
+    /// okul talepleri sıradan okul öğretmeninden ayırt edilemez ve listede görünmez.
+    /// </summary>
+    private IQueryable<Teacher> AllApplications() => _context.Teachers
+        .AsNoTracking()
+        .Where(t => t.IsIndependentTutor
+                    || t.RequestedSchoolId != null
+                    || _context.AdminUserActionLogs.Any(l =>
+                        l.TargetType == AdminUserTargetType.Teacher
+                        && l.TargetId == t.Id
+                        && l.Outcome == AdminUserActionOutcome.Succeeded
+                        && (l.Action == AdminUserAction.TeacherApproved || l.Action == AdminUserAction.TeacherRejected)));
 
     public async Task<ResponseBaseDto> ApproveAsync(int teacherId, int adminUserId, string actorAdminKeycloakId, CancellationToken ct = default)
     {

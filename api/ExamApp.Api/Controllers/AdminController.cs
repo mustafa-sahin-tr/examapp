@@ -166,29 +166,38 @@ public class AdminController : BaseController
     // ---- Öğretmen başvuruları: bağımsız öğretmen (issue #94) + okul bağlantısı talebi (issue #234) ----
 
     /// <summary>
-    /// GET api/admin/teacher-applications → Pending başvurular (en eski önce): bağımsız öğretmen başvuruları ve okul
-    /// bağlantısı talepleri (<c>isIndependentTutor=false</c>, <c>requestedSchoolId</c>/<c>requestedSchoolName</c> dolu).
-    /// issue #262: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir; admin liste uçlarıyla AYNI
-    /// kullanıcı başına rate limit kovası (429, reddedilen istek de audit'lenir).
+    /// GET api/admin/teacher-applications?status=pending&amp;page=1&amp;pageSize=20 → sayfalı (<c>Paged&lt;T&gt;</c>) başvuru listesi:
+    /// bağımsız öğretmen başvuruları ve okul bağlantısı talepleri (<c>isIndependentTutor=false</c>,
+    /// <c>requestedSchoolId</c>/<c>requestedSchoolName</c> dolu).
+    /// issue #187: <c>status</c> = <c>pending</c> (varsayılan; yalnızca bekleyenler, en eski önce) | <c>all</c> (her durum: önce
+    /// bekleyenler en eski önce, sonra karar verilmişler en yeni karar önce). Başka değer → 400. pageSize 1..100'e kırpılır.
+    /// issue #262: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir (durum filtresi dahil); admin liste
+    /// uçlarıyla AYNI kullanıcı başına rate limit kovası (429, reddedilen istek de audit'lenir).
     /// </summary>
     [HttpGet("teacher-applications")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri
     [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
     [AdminDataAccess(AdminDataAccessResource.TeacherApplicationList)]
-    public async Task<ActionResult<List<PendingTeacherApplicationDto>>> GetTeacherApplications(CancellationToken ct)
+    public async Task<ActionResult<Paged<TeacherApplicationListItemDto>>> GetTeacherApplications(
+        [FromQuery] string? status = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = AdminListPaging.DefaultPageSize,
+        CancellationToken ct = default)
     {
-        var result = await _teacherApprovals.GetPendingApplicationsAsync(ct);
-        // Liste sayfalı değil: tek "sayfa", boyut = dönen satır sayısı.
+        if (!TeacherApplicationStatusQuery.TryParse(status, out var filter))
+            return BadRequest(_localizer["admin.teacherApplication.invalidStatusFilter"].Value);
+
+        var result = await _teacherApprovals.ListApplicationsAsync(filter, page, pageSize, ct);
         await _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
             KeyCloakId ?? string.Empty, AdminDataAccessResource.TeacherApplicationList, null, false,
-            1, result.Count, result.Count, result.Count), ct);
+            result.PageNumber, result.PageSize, result.Items?.Count ?? 0, result.TotalCount, filter), ct);
         return Ok(result);
     }
 
     /// <summary>
-    /// GET api/admin/teacher-applications/{id} → tek bekleyen başvurunun detayı, TAM e-posta ile (issue #262).
-    /// Bekleyen başvuru yoksa 404. Her çağrı audit'lenir (TargetId = teacherId; veri dönmeden önce, fail-closed; 404 →
-    /// Outcome=NotFound);
+    /// GET api/admin/teacher-applications/{id} → tek başvurunun detayı, TAM e-posta ile (issue #262). issue #187: her durumdaki
+    /// (Pending/Approved/Rejected) başvuru; başvuru olmayan öğretmen / bilinmeyen id → 404. Her çağrı audit'lenir
+    /// (TargetId = teacherId; veri dönmeden önce, fail-closed; 404 → Outcome=NotFound);
     /// liste uçlarıyla aynı rate limit kovası.
     /// </summary>
     [HttpGet("teacher-applications/{id:int}")]
@@ -197,7 +206,7 @@ public class AdminController : BaseController
     [AdminDataAccess(AdminDataAccessResource.TeacherApplicationDetail)]
     public async Task<ActionResult<TeacherApplicationDetailDto>> GetTeacherApplication(int id, CancellationToken ct)
     {
-        var detail = await _teacherApprovals.GetPendingApplicationAsync(id, ct);
+        var detail = await _teacherApprovals.GetApplicationAsync(id, ct);
 
         // 404 da audit'lenir (Outcome=NotFound): id tarama denemeleri iz bıraksın.
         await _dataAccessAudit.RecordDetailAccessAsync(new AdminDetailAccessRecord(

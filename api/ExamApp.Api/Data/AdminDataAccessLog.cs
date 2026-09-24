@@ -32,6 +32,12 @@ public class AdminDataAccessLog
     /// <summary>Filtre: yalnızca okulsuz kullanıcılar istendi mi.</summary>
     public bool UnassignedFilter { get; set; }
 
+    /// <summary>
+    /// issue #187: öğretmen başvurusu listesinin durum filtresi (<c>?status=pending|all</c>); diğer uçlarda null.
+    /// Kalıcı değer string'dir.
+    /// </summary>
+    public TeacherApplicationStatusFilter? StatusFilter { get; set; }
+
     /// <summary>Normalize edilmiş (kırpılmış) sayfa numarası.</summary>
     public int Page { get; set; }
 
@@ -70,6 +76,17 @@ public enum AdminDataAccessResource
 
     /// <summary>issue #262: <c>GET api/admin/teacher-applications/{id}</c> (tam e-posta).</summary>
     TeacherApplicationDetail = 4
+}
+
+/// <summary>
+/// issue #187: <c>GET api/admin/teacher-applications?status=</c> filtresi. <see cref="Pending"/> (varsayılan) yalnızca
+/// onay bekleyenler; <see cref="All"/> her durumdaki (Pending/Approved/Rejected) başvurular. Audit'te string saklanır;
+/// yeniden adlandırma geçmiş kayıtları bozar.
+/// </summary>
+public enum TeacherApplicationStatusFilter
+{
+    Pending = 1,
+    All = 2
 }
 
 /// <summary>issue #262: audit satırının sonucu. Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>

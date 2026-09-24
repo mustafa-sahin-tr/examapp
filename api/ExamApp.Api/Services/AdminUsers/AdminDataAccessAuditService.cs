@@ -35,6 +35,7 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             PageSize = record.PageSize,
             ReturnedCount = record.ReturnedCount,
             TotalCount = record.TotalCount,
+            StatusFilter = record.StatusFilter,
             Outcome = AdminDataAccessOutcome.Served
         });
     }
@@ -69,6 +70,7 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             SchoolIdFilter = record.SchoolIdFilter,
             UnassignedFilter = record.UnassignedFilter,
             TargetId = record.TargetId,
+            StatusFilter = record.StatusFilter,
             Outcome = AdminDataAccessOutcome.RateLimited
         });
     }

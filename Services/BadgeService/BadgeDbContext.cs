@@ -18,6 +18,7 @@ public class BadgeDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProcessedLoginAttempt> ProcessedLoginAttempts => Set<ProcessedLoginAttempt>();
     public DbSet<ProcessedAnswerSubmission> ProcessedAnswerSubmissions => Set<ProcessedAnswerSubmission>();
+    public DbSet<AnswerPointAward> AnswerPointAwards => Set<AnswerPointAward>();
     public DbSet<UserLocalePreference> UserLocalePreferences => Set<UserLocalePreference>();
 
     /// <summary>
@@ -51,6 +52,21 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<StudentDailyActivity>()
             .HasIndex(x => new { x.UserId, x.ActivityDate })
             .IsUnique();
+
+        // issue #279 (item 1, yatay ölçekleme): birden fazla BadgeService instance'ı aynı aggregate satırını
+        // eşzamanlı güncelleyebilir (AnswerSubmittedConsumerDefinition'ın partitioner'ı yalnızca TEK instance
+        // içinde UserId'ye göre sıralama garantisi verir). Postgres'in sistem sütunu xmin'i concurrency token
+        // olarak kullanmak, ayrı bir versiyon kolonu eklemeden "kaybolan güncelleme"yi DbUpdateConcurrencyException
+        // olarak yüzeye çıkarır; AnswerSubmissionAggregationService bunu ConcurrencyRetry ile sınırlı sayıda dener.
+        // Yalnızca Npgsql'de uygulanır: xmin gerçek bir Postgres sistem sütunudur, test sağlayıcısı (sqlite,
+        // BadgeTestDb) bunu tanımaz — concurrency retry yolu bu yüzden testlerde sahte bir DbUpdateConcurrencyException
+        // ile (ConcurrencyRetry üzerinden, DB'den bağımsız) doğrulanır.
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.Entity<StudentQuestionAggregate>().Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+            modelBuilder.Entity<StudentSubjectAggregate>().Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+            modelBuilder.Entity<StudentDailyActivity>().Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+        }
 
         modelBuilder.Entity<StudentBadgeProgress>().HasKey(x => x.Id);
         modelBuilder.Entity<StudentBadgeProgress>()
@@ -107,6 +123,21 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<ProcessedAnswerSubmission>()
             .Property(x => x.EventId)
             .ValueGeneratedNever();
+        // issue #279 (item 3): öğrenci reset/KVKK silmesi (UserId = X, bkz. UserResetService) bu index'i
+        // kullanır — PK EventId'ye göre olduğundan aksi halde tam tablo taraması olurdu.
+        modelBuilder.Entity<ProcessedAnswerSubmission>()
+            .HasIndex(x => x.UserId);
+        // issue #279 review (item 5, yorum düzeltmesi): retention taraması (ProcessedAt < cutoff,
+        // ProcessedAnswerSubmissionRetentionJob) UserId değil BU index'i kullanır — yukarıdaki UserId
+        // index'i retention için işe yaramaz (WHERE/ORDER BY ProcessedAt'a göre).
+        modelBuilder.Entity<ProcessedAnswerSubmission>()
+            .HasIndex(x => x.ProcessedAt);
+
+        // issue #279 (item 4): "soru başına bir kez, son cevap sayılır" — bkz. AnswerPointAward XML doc.
+        modelBuilder.Entity<AnswerPointAward>()
+            .HasKey(x => new { x.TestInstanceId, x.QuestionId });
+        modelBuilder.Entity<AnswerPointAward>()
+            .HasIndex(x => x.UserId);
 
         // UserId doğal PK: upsert "var mı" kontrolüne gerek bırakmadan tek satır garantiler.
         // ValueGeneratedNever ŞART — UserId auth-api'den (dış kaynak) geliyor, EF'in kendi

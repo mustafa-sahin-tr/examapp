@@ -116,6 +116,21 @@ builder.Services.AddSingleton<IServiceTokenProvider, ServiceTokenProvider>();
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection(GeminiOptions.SectionName));
 builder.Services.AddScoped<IQuestionClassifier, GeminiQuestionClassifier>();
 
+// issue #279 item 6: QuestionPoint üst sınırı (consumer tarafında sahte event ile puan şişirmeye karşı).
+builder.Services.AddOptions<AnswerPointOptions>()
+    .BindConfiguration(AnswerPointOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// issue #279 item 3: ProcessedAnswerSubmissions saklama süresi + periyodik temizleme (BadgeService'te
+// Hangfire yok — hafif BackgroundService, bkz. ProcessedAnswerSubmissionRetentionService XML doc).
+builder.Services.AddOptions<ProcessedAnswerSubmissionRetentionOptions>()
+    .BindConfiguration(ProcessedAnswerSubmissionRetentionOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<IProcessedAnswerSubmissionRetentionJob, ProcessedAnswerSubmissionRetentionJob>();
+builder.Services.AddHostedService<ProcessedAnswerSubmissionRetentionService>();
+
 // Bildirim lokalizasyonu (issue #185): notifications.<dil>.json altında toplanan metinler +
 // hedef kullanıcının UserLocalePreference'tan çözülen dili. IStringLocalizer değil doğrudan
 // JsonResourceStore kullanılır — consumer'larda istek bağlamı (CurrentUICulture) yok, bkz.
@@ -212,6 +227,11 @@ builder.Services.AddMassTransit(x =>
 
         cfg.ReceiveEndpoint("badge-service", e =>
         {
+            // issue #279 review (SHOULD-FIX, least privilege): consumer hataları RabbitMQ fault mesajı
+            // olarak AYRICA yayınlanmasın (varsayılan MassTransit davranışı publish izni gerektirir) —
+            // hatalar zaten bu endpoint'in kendi `_error` (dead-letter) kuyruğuna gider, bu yeterli.
+            e.PublishFaults = false;
+
             // Kullanıcı bazlı sıralı işleme (partitioner) AnswerSubmittedConsumerDefinition'da (issue #225).
             e.ConfigureConsumer<AnswerSubmittedConsumer>(context);
             e.ConfigureConsumer<QuestionCreatedConsumer>(context);

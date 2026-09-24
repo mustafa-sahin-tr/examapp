@@ -49,9 +49,10 @@ public interface IStudentPointsSyncService
 ///
 /// Soft-delete: <c>StudentResetJob</c> satırı siler (soft). UNIQUE index filtresiz olduğundan yeni satır
 /// eklenemez; bu yüzden sorgular <c>IgnoreQueryFilters</c> ile çalışır ve daha yeni bir event satırı
-/// canlandırır (IsDeleted=false, Level=0 — reset sonrası seviye taşınmaz).
+/// canlandırır (IsDeleted=false).
 ///
-/// Level: BadgeService'te seviye formülü yok (kapsam dışı) → event taşımaz; mevcut Level korunur, yeni satır 0.
+/// Level (issue #279 item 2): <c>StudentPoints.Level</c> kolonu düşürüldü — artık okunmuyor, seviye okuma
+/// anında <c>StudentLevel.FromXp(XP)</c> ile hesaplanır (issue #243).
 /// </summary>
 public sealed class StudentPointsSyncService : IStudentPointsSyncService
 {
@@ -100,7 +101,6 @@ public sealed class StudentPointsSyncService : IStudentPointsSyncService
                 .Where(p => p.StudentId == studentId.Value
                     && (p.SourceUpdatedAtUtc == null || p.SourceUpdatedAtUtc < version))
                 .ExecuteUpdateAsync(s => s
-                    .SetProperty(p => p.Level, p => p.IsDeleted ? 0 : p.Level)
                     .SetProperty(p => p.XP, xp)
                     .SetProperty(p => p.SourceUpdatedAtUtc, (DateTime?)version)
                     .SetProperty(p => p.LastUpdated, now)
@@ -133,7 +133,6 @@ public sealed class StudentPointsSyncService : IStudentPointsSyncService
             {
                 StudentId = studentId.Value,
                 XP = xp,
-                Level = 0,
                 LastUpdated = now,
                 SourceUpdatedAtUtc = version,
             });

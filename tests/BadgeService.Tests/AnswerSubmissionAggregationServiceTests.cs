@@ -12,9 +12,17 @@ public class AnswerSubmissionAggregationServiceTests : IDisposable
 
     private AnswerSubmissionAggregationService NewService(BadgeDbContext ctx) => new(ctx);
 
+    // issue #279 item 4: puan artık (TestInstanceId, QuestionId) başına tekilleştiriliyor. Bu dosyanın
+    // testleri her Answer() çağrısını BAĞIMSIZ bir soru olarak ele alır (önceki davranış) — bu yüzden
+    // aksi belirtilmedikçe her çağrı kendi benzersiz QuestionId'sini alır. Aynı soruya tekrar cevap
+    // verme senaryosu (double-points) ayrıca testInstanceId/questionId AÇIKÇA eşleştirilerek test edilir
+    // (bkz. AnswerPointAwardTests.cs).
+    private static int _questionSeq;
+
     private static AnswerSubmittedEvent Answer(
         int userId = 1, bool correct = true, int seconds = 30, int point = 10,
-        int? subjectId = 5, string subject = "Matematik", DateTime? submittedAt = null) => new()
+        int? subjectId = 5, string subject = "Matematik", DateTime? submittedAt = null,
+        int testInstanceId = 1, int? questionId = null) => new()
     {
         UserId = userId,
         IsCorrect = correct,
@@ -23,6 +31,8 @@ public class AnswerSubmissionAggregationServiceTests : IDisposable
         SubjectId = subjectId,
         Subject = subject,
         SubmittedAt = submittedAt ?? DateTime.UtcNow,
+        TestInstanceId = testInstanceId,
+        QuestionId = questionId ?? System.Threading.Interlocked.Increment(ref _questionSeq),
     };
 
     private async Task ProcessAsync(params AnswerSubmittedEvent[] events)

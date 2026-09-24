@@ -118,18 +118,18 @@ spec:
             # Issue #225: exam API hosts a MassTransit consumer (queue "exam-api")
             # for BadgeService's StudentPointsChangedEvent. In Production a
             # missing RabbitMQ__Host fails startup.
+            # Issue #279: dedicated least-privilege user (created by the
+            # rabbitmq-init Job below) — read-only on its own "exam-api"
+            # queue, cannot publish/forge StudentPointsChangedEvent.
             - name: RabbitMQ__Host
               value: rabbitmq.examapp.svc.cluster.local
             - name: RabbitMQ__Username
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: RABBITMQ_USER
+              value: exam_api
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: RABBITMQ_PASS
+                  key: RABBITMQ_EXAM_API_PASSWORD
 ---
 apiVersion: v1
 kind: Service
@@ -314,18 +314,18 @@ spec:
                 configMapKeyRef:
                   name: examapp-config
                   key: PUBLIC_BASE_URL
+            # Issue #279: dedicated least-privilege user (created by the
+            # rabbitmq-init Job below) — every outbox event except
+            # StudentPointsChangedEvent, never write access to it.
             - name: RabbitMQ__Host
               value: rabbitmq.examapp.svc.cluster.local
             - name: RabbitMQ__Username
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: RABBITMQ_USER
+              value: badge_service
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: RABBITMQ_PASS
+                  key: RABBITMQ_BADGE_SERVICE_PASSWORD
             - name: Keycloak__Authority
               valueFrom:
                 configMapKeyRef:
@@ -462,18 +462,18 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: CONNECTIONSTRINGS_EXAM
+            # Issue #279: dedicated least-privilege user (created by the
+            # rabbitmq-init Job below) — write access only to the
+            # worksheet-DB outbox event exchanges, no queue/read access.
             - name: RabbitMQ__Host
               value: rabbitmq.examapp.svc.cluster.local
             - name: RabbitMQ__Username
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: RABBITMQ_USER
+              value: exam_outbox_pub
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: RABBITMQ_PASS
+                  key: RABBITMQ_EXAM_OUTBOX_PASSWORD
 
 ---
 # Issue #84 / #243: second instance of the OutboxPublisher code (same image as
@@ -509,18 +509,19 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: CONNECTIONSTRINGS_AUTH
+            # Issue #279: dedicated least-privilege user (created by the
+            # rabbitmq-init Job below) — write access only to
+            # LoginAttemptedEvent/UserPreferredLocaleChangedEvent, no
+            # queue/read access.
             - name: RabbitMQ__Host
               value: rabbitmq.examapp.svc.cluster.local
             - name: RabbitMQ__Username
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: RABBITMQ_USER
+              value: identity_outbox_pub
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: RABBITMQ_PASS
+                  key: RABBITMQ_IDENTITY_OUTBOX_PASSWORD
 
 ---
 # Issue #225: third instance of the OutboxPublisher code (same image as
@@ -556,18 +557,18 @@ spec:
                 secretKeyRef:
                   name: examapp-secrets
                   key: CONNECTIONSTRINGS_BADGE
+            # Issue #279: dedicated least-privilege user (created by the
+            # rabbitmq-init Job below) — the ONLY user allowed to write
+            # StudentPointsChangedEvent (closes the fake-event risk).
             - name: RabbitMQ__Host
               value: rabbitmq.examapp.svc.cluster.local
             - name: RabbitMQ__Username
-              valueFrom:
-                secretKeyRef:
-                  name: examapp-secrets
-                  key: RABBITMQ_USER
+              value: badge_outbox_pub
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:
                   name: examapp-secrets
-                  key: RABBITMQ_PASS
+                  key: RABBITMQ_BADGE_OUTBOX_PASSWORD
 
 ---
 apiVersion: apps/v1

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using ExamApp.Api.Data;
+using ExamApp.Foundation.Contracts;
 
 public class WorksheetInstanceQuestion : BaseEntity
 {
@@ -31,4 +32,14 @@ public class WorksheetInstanceQuestion : BaseEntity
     public int TimeTaken { get; set; } // Kaç saniyede çözüldü
     public bool ShowCorrectAnswer { get; set; } // Kullanıcı "Sonucu Gör" yaptı mı?
 
+    /// <summary>
+    /// issue #279 review (blocker + security M1/L3): DB-generated monoton revizyon — her
+    /// <c>TestSessionService.SaveAnswer</c> çağrısında atomik olarak artırılır (bkz. o metodun XML doc'u)
+    /// ve <see cref="AnswerSubmittedEvent"/> ile taşınır. BadgeService'te
+    /// <c>AnswerPointAward</c>'ın revizyon karşılaştırmasının birincil kaynağı budur — istemci saatine
+    /// bağlı olmayan, DB tarafında UPDATE sırasına göre kesin sıralı bir sayaçtır (eski
+    /// <c>AnswerSubmittedEvent.SubmittedAt</c> mikrosaniye altı çakışmalarda/istemci saat kaymasında
+    /// sıra karıştırabiliyordu). Varsayılan 0 = henüz hiç cevaplanmamış satır.
+    /// </summary>
+    public int AnswerRevision { get; set; }
 }

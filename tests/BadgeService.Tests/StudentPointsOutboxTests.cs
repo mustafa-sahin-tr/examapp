@@ -21,7 +21,11 @@ public class StudentPointsOutboxTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
-    private static AnswerSubmittedEvent Answer(int userId = 7, bool correct = true, int point = 10) => new()
+    // issue #279 item 4: her çağrı, aksi belirtilmedikçe kendi benzersiz QuestionId'sini alır — bu dosyanın
+    // testleri "her Answer() bağımsız bir soru" varsayımını korur (önceki toplamsal davranış).
+    private static int _questionSeq;
+
+    private static AnswerSubmittedEvent Answer(int userId = 7, bool correct = true, int point = 10, int? questionId = null) => new()
     {
         UserId = userId,
         IsCorrect = correct,
@@ -30,6 +34,8 @@ public class StudentPointsOutboxTests : IDisposable
         SubjectId = 1,
         Subject = "Matematik",
         SubmittedAt = DateTime.UtcNow,
+        TestInstanceId = 1,
+        QuestionId = questionId ?? System.Threading.Interlocked.Increment(ref _questionSeq),
     };
 
     private async Task ProcessAsync(params AnswerSubmittedEvent[] events)

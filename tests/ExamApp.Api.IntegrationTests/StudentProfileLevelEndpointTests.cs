@@ -26,8 +26,7 @@ public class StudentProfileLevelEndpointTests(IntegrationApiFactory factory) : I
             var student = new Student { UserId = userId, StudentNumber = "L1" };
             db.Students.Add(student);
             await db.SaveChangesAsync();
-            // Kolon bilerek formülle çelişir (yeni satırda 0 kalan eski davranış).
-            db.StudentPoints.Add(new StudentPoint { StudentId = student.Id, XP = xp, Level = 0 });
+            db.StudentPoints.Add(new StudentPoint { StudentId = student.Id, XP = xp });
             await db.SaveChangesAsync();
         });
         var client = await ClientAsAsync(userId, "Student", "kc-level-1", "Student");

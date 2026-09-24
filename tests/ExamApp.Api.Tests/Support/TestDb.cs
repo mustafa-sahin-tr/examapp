@@ -39,6 +39,24 @@ public sealed class TestDb : IDisposable
     public AppDbContext NewContext(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
         => new(Options(_connection, interceptors));
 
+    /// <summary>
+    /// issue #279 review: a context configured with <see cref="TestRetryingExecutionStrategy"/> (a
+    /// retries-on-failure strategy — SQLite's default never retries). Use this to catch a service method
+    /// that opens <c>Database.BeginTransactionAsync()</c> OUTSIDE <c>CreateExecutionStrategy().ExecuteAsync</c>:
+    /// against a normal <see cref="NewContext()"/> that bug is invisible (SQLite doesn't enforce the guard
+    /// without a retrying strategy attached); against this one it throws the same
+    /// <see cref="InvalidOperationException"/> production would hit against Postgres with Aspire's
+    /// retry-on-failure Npgsql client integration.
+    /// </summary>
+    public AppDbContext NewContextWithRetryingExecutionStrategy()
+    {
+        var builder = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(_connection, o => o.ExecutionStrategy(d => new TestRetryingExecutionStrategy(d)))
+            .EnableSensitiveDataLogging();
+
+        return new AppDbContext(builder.Options);
+    }
+
     private static DbContextOptions<AppDbContext> Options(
         SqliteConnection connection, params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
     {

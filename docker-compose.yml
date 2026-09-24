@@ -31,9 +31,12 @@ services:
       - Video__Jitsi__RoomSecret=${JITSI_ROOM_SECRET:?JITSI_ROOM_SECRET .env icinde tanimli olmali}
       # Issue #225: exam API artık RabbitMQ consumer'ı barındırıyor (kuyruk "exam-api":
       # BadgeService'in StudentPointsChangedEvent'i → StudentPoints). Host yoksa bus kurulmaz.
+      # Issue #279: paylaşılan RABBITMQ_DEFAULT_USER/PASS admin hesabı yerine servise özel,
+      # en az yetkili kullanıcı — bkz. rabbitmq/definitions.json (yalnız "exam-api" kuyruğunu
+      # okuyabilir, yalnız StudentPointsChangedEvent exchange'ine configure/write yapabilir).
       - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
-      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - RabbitMQ__Username=exam_api
+      - RabbitMQ__Password=${RABBITMQ_EXAM_API_PASSWORD:?RABBITMQ_EXAM_API_PASSWORD .env icinde tanimli olmali}
     volumes:
       - ./api:/app
     depends_on:
@@ -100,9 +103,12 @@ services:
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - MinioConfig__AccessKey=${MINIO_ROOT_USER}
       - MinioConfig__SecretKey=${MINIO_ROOT_PASSWORD}
+      # Issue #279: servise özel RabbitMQ kullanıcısı — bkz. rabbitmq/definitions.json
+      # (BadgeService "badge-service" kuyruğunu okuyabilir; StudentPointsChangedEvent
+      # HARİÇ tüm outbox event exchange'lerine configure/write yapabilir).
       - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
-      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - RabbitMQ__Username=badge_service
+      - RabbitMQ__Password=${RABBITMQ_BADGE_SERVICE_PASSWORD:?RABBITMQ_BADGE_SERVICE_PASSWORD .env icinde tanimli olmali}
       - Keycloak__ClientSecret=${KEYCLOAK_CLIENT_SECRET:?KEYCLOAK_CLIENT_SECRET .env icinde tanimli olmali}
       - Keycloak__AdminClientSecret=${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET .env icinde tanimli olmali}
     volumes:
@@ -127,12 +133,22 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8007
+      # Issue #279: servise özel RabbitMQ kullanıcısı — bkz. rabbitmq/definitions.json
+      # (worksheet DB'nin outbox'ından yalnız o event tipi exchange'lerine
+      # configure/write; kuyruğu yok, hiçbir şey okumaz). Daha önce bu üç env var
+      # burada eksikti (RabbitMQ:Host boş kalıyordu) — servise özel kimlik bilgisi
+      # eklerken diğer iki publisher'la aynı şekle getirildi.
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Username=exam_outbox_pub
+      - RabbitMQ__Password=${RABBITMQ_EXAM_OUTBOX_PASSWORD:?RABBITMQ_EXAM_OUTBOX_PASSWORD .env icinde tanimli olmali}
     volumes:
       - ./Services/OutboxPublisher:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
     depends_on:
       exam-pg-container:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     networks:
       - mynetwork
 
@@ -154,9 +170,12 @@ services:
       # Same host (exam_pg_container) as exam-outbox-publisher, but the
       # "identity" database — matches auth-api's ConnectionStrings:DefaultConnection.
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=identity;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Issue #279: servise özel RabbitMQ kullanıcısı — bkz. rabbitmq/definitions.json
+      # (identity DB'nin outbox'ından yalnız LoginAttemptedEvent/UserPreferredLocaleChangedEvent
+      # exchange'lerine configure/write; kuyruğu yok, hiçbir şey okumaz).
       - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
-      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - RabbitMQ__Username=identity_outbox_pub
+      - RabbitMQ__Password=${RABBITMQ_IDENTITY_OUTBOX_PASSWORD:?RABBITMQ_IDENTITY_OUTBOX_PASSWORD .env icinde tanimli olmali}
     volumes:
       - ./Services/OutboxPublisher:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
@@ -184,9 +203,13 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8009
       - ConnectionStrings__DefaultConnection=Host=exam_pg_container;Port=5432;Database=badge;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Issue #279: servise özel RabbitMQ kullanıcısı — bkz. rabbitmq/definitions.json
+      # (badge DB'nin outbox'ından yalnız StudentPointsChangedEvent exchange'ine
+      # configure/write yapabilen TEK kullanıcı — sahte StudentPointsChangedEvent riski
+      # bununla kapanır). Kuyruğu yok, hiçbir şey okumaz.
       - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
-      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+      - RabbitMQ__Username=badge_outbox_pub
+      - RabbitMQ__Password=${RABBITMQ_BADGE_OUTBOX_PASSWORD:?RABBITMQ_BADGE_OUTBOX_PASSWORD .env icinde tanimli olmali}
     volumes:
       - ./Services/OutboxPublisher:/app
       - ./api/ExamApp.Foundation:/api/ExamApp.Foundation
@@ -325,13 +348,27 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - '5672:5672' # AMQP portu (backend ile iletişim)
-      - '15672:15672' # Yönetim paneli (browser'dan erişim için)
+      # Issue #279: yalnızca 127.0.0.1'e publish edilir — LAN'dan AMQP/yönetim
+      # arayüzüne erişilip per-service kullanıcı parolalarının brute-force
+      # edilmesi/keşfedilmesi mümkün olmasın (bkz. auth-api'nin #100'deki aynı
+      # deseni, docker-compose.yml'de auth-api servisi).
+      - '127.0.0.1:5672:5672' # AMQP portu (backend ile iletişim)
+      - '127.0.0.1:15672:15672' # Yönetim paneli (browser'dan erişim için)
+    # Issue #279: RABBITMQ_DEFAULT_USER/PASS artık yalnızca dokümantasyon amaçlı —
+    # rabbitmq.conf'taki management.load_definitions devrede olduğu için resmi
+    # rabbitmq imajı bu iki env var'ı YOK SAYAR (definitions.json zaten "rabbituser"
+    # adminini + her serviste ayrı, en az yetkili kullanıcıyı tanımlıyor, bkz.
+    # rabbitmq/definitions.json). .env'de RABBITMQ_DEFAULT_USER/PASS hâlâ tanımlı
+    # kalmalı: definitions.json'daki "rabbituser" parolasıyla eşleşmesi gerekiyor
+    # (değiştirirsen ikisini birden değiştir + rabbitmq/generate-password-hashes.py
+    # ile yeni password_hash'i üret — bkz. .claude/rules/local-dev.md).
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     volumes:
       - ./rabbitmq/data:/var/lib/rabbitmq
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     networks:
       - mynetwork
 

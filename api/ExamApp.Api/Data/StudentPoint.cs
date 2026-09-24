@@ -9,7 +9,9 @@ public class StudentPoint : BaseEntity
     public int Id { get; set; }
     public int StudentId { get; set; } // Öğrenci FK
     public int XP { get; set; } // Kazanılan toplam puan
-    public int Level { get; set; } // Seviyesi
+
+    // issue #279 item 2: Level kolonu düşürüldü — artık hiçbir yerde okunmuyor. Seviye okuma anında
+    // StudentLevel.FromXp(XP) ile hesaplanır (issue #243). Bkz. Migrations/*_DropStudentPointsLevel.
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 
     /// <summary>

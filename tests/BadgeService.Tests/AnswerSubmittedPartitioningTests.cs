@@ -43,10 +43,16 @@ public class AnswerSubmittedPartitioningTests : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
+    // issue #279 item 4: her yayınlanan cevap FARKLI bir soruyu temsil eder (TestInstanceId, QuestionId) —
+    // aksi halde aynı anahtara sahip 15 "cevap" birbirinin puanını ezerdi (bu test aggregate additivity'yi
+    // ölçüyor, tek soruya tekrar cevap verme senaryosunu değil).
+    private static int _questionSeq;
+
     private static AnswerSubmittedEvent Answer(int userId) => new()
     {
         UserId = userId, IsCorrect = true, QuestionPoint = PointPerAnswer, TimeTakenInSeconds = 1,
         SubjectId = 1, Subject = "Matematik", SubmittedAt = DateTime.UtcNow, ClientId = "kc",
+        TestInstanceId = 1, QuestionId = System.Threading.Interlocked.Increment(ref _questionSeq),
     };
 
     [Fact]

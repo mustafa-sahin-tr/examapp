@@ -26,8 +26,10 @@ public static class ApprovedTeacherPolicies
     public const string TeacherCapability = "ApprovedTeacher";
 
     /// <summary>
-    /// "Teacher,Student" uçları ve öğrenci akışıyla paylaşılan genel uçlar: <see cref="TeacherCapability"/> + Student
-    /// rolü de muaf (öğrenci yeteneği kullanılıyor; exam API öğretmen/öğrenci kaydını birbirini dışlar, #234).
+    /// "Teacher,Student" uçları ve öğrenci akışıyla paylaşılan genel uçlar. Öğrenci (Teacher rolü olmayan) zaten
+    /// gereksinimin kapsamı dışında olduğu için geçer. security review L4: çağıranda HEM Teacher HEM Student rolü varsa
+    /// Student muafiyet SAĞLAMAZ — onaysız öğretmen öğrenci rolüyle kapıyı aşamaz. Davranış bu yüzden
+    /// <see cref="TeacherCapability"/> ile aynıdır; ayrı ad, ucun öğrencilerle paylaşıldığını belgelemek için korunur.
     /// </summary>
     public const string TeacherOrStudentCapability = "ApprovedTeacherOrStudent";
 
@@ -44,7 +46,7 @@ public sealed class ApprovedTeacherRequirement : IAuthorizationRequirement
         ExemptRoles = exemptRoles ?? Array.Empty<string>();
     }
 
-    /// <summary>Bu rollerden birine sahip çağıran gereksinimden muaftır (ör. Admin; karma uçlarda Student).</summary>
+    /// <summary>Bu rollerden birine sahip çağıran gereksinimden muaftır (Admin, SuperAdmin).</summary>
     public IReadOnlyList<string> ExemptRoles { get; }
 
     /// <summary>Bu gereksinim çağıran için geçerli mi? Teacher rolü yoksa ya da muaf bir rolü varsa false.</summary>

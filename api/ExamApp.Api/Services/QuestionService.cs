@@ -39,8 +39,12 @@ public class QuestionService : IQuestionService
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
     }
 
-    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto)
+    public async Task<QuestionSavedDto> CreateOrUpdateQuestion(QuestionDto questionDto, int actingUserId = 0)
     {
+        // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
+        if (actingUserId > 0)
+            _context.SetCurrentUser(actingUserId);
+
         try
         {
             Question question;
@@ -408,8 +412,12 @@ public class QuestionService : IQuestionService
         }
     }
 
-    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto)
+    public async Task<ResponseBaseDto> SaveBulkQuestion(BulkQuestionCreateDto soruDto, int actingUserId = 0)
     {
+        // issue #287 H1: audit alanları (CreateUserId = soru sahibi) istek sahibine damgalanır.
+        if (actingUserId > 0)
+            _context.SetCurrentUser(actingUserId);
+
         // Wrapped in CreateExecutionStrategy so EF Core's retry-on-failure
         // (enabled by the Aspire Npgsql client integration) can retry the
         // whole transaction as one unit instead of rejecting it outright.

@@ -218,6 +218,57 @@ public class TeacherAccountApprovalTests : IDisposable
         result.Conflict.ShouldBeFalse();
     }
 
+    // ---------------- security review L5: rolling deploy artığı (Approved + AccountApprovedAt null) ----------------
+
+    [Fact]
+    public async Task Approved_row_without_account_approval_is_a_pending_account_application_and_can_be_approved()
+    {
+        // Eski kod (deploy sırasında) okulsuz kaydı Approved başlattı; migration sonrası yazıldığı için backfill görmedi.
+        var seeded = await SeedTeacherAsync(new Teacher { UserId = 120, ApprovalStatus = TeacherApprovalStatus.Approved });
+
+        await using (var ctx = _db.NewContext())
+        {
+            var page = await new TeacherApprovalService(ctx, _authApi)
+                .ListApplicationsAsync(TeacherApplicationStatusFilter.Pending, 1, 20);
+            var item = page.Items.ShouldHaveSingleItem();
+            item.TeacherId.ShouldBe(seeded.Id);
+            item.Status.ShouldBe("Pending");
+            item.RequiresAccountApproval.ShouldBeTrue();
+            item.DecidedAt.ShouldBeNull();
+        }
+
+        (await ApproveAsync(seeded.Id)).Success.ShouldBeTrue();
+
+        var teacher = await TeacherOfAsync(120);
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Approved);
+        teacher.AccountApprovedAt.ShouldNotBeNull();
+        (await GuardAsync(120)).ShouldBe(TeacherApprovalCheck.Approved);
+
+        // Artık karar verilmiş (hesabı onaylı, talebi yok): tekrar onaylanamaz.
+        (await ApproveAsync(seeded.Id)).Success.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task Approved_row_without_account_approval_can_also_be_rejected()
+    {
+        var seeded = await SeedTeacherAsync(new Teacher { UserId = 121, ApprovalStatus = TeacherApprovalStatus.Approved });
+
+        (await RejectAsync(seeded.Id)).Success.ShouldBeTrue();
+
+        var teacher = await TeacherOfAsync(121);
+        teacher.ApprovalStatus.ShouldBe(TeacherApprovalStatus.Rejected);
+        teacher.AccountApprovedAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Rejected_first_time_application_stays_final()
+    {
+        // Rejected kararı kesindir (#187 idempotency) — AccountApprovedAt null olsa bile yeniden onaylanmaz.
+        var seeded = await SeedTeacherAsync(new Teacher { UserId = 122, ApprovalStatus = TeacherApprovalStatus.Rejected, RejectionReason = "x" });
+
+        (await ApproveAsync(seeded.Id)).Conflict.ShouldBeTrue();
+    }
+
     // ---------------- Okul → bağımsız geçişi hesabı kapatmaz ----------------
 
     [Fact]

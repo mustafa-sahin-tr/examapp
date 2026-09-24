@@ -9,6 +9,7 @@ using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Questions;
 using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Tests.Support;
@@ -253,6 +254,19 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
     }
 
     [Fact]
+    public async Task Teacher_and_student_dual_role_gets_no_student_exemption()
+    {
+        // security review L4: onaysız öğretmen Student rolüyle kapıyı aşamaz.
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var denied = await GetAsync(client, "/teacher-student", PendingTeacherId, "Teacher,Student");
+        denied.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await denied.Content.ReadFromJsonAsync<NotApprovedBody>())!.ErrorCode.ShouldBe("TeacherNotApproved");
+        (await GetAsync(client, "/teacher-student", ApprovedTeacherId, "Teacher,Student")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Generic_endpoint_only_gates_the_teacher_role()
     {
         using var host = await StartHostAsync();
@@ -303,7 +317,7 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
         var teacherRoleActions = ControllerActions()
             .Where(m => AuthorizeAttributesOf(m).Any(a =>
                 (a.Roles ?? string.Empty).Split(',').Select(r => r.Trim()).Contains("Teacher")
-                || a.Policy == "TeacherOrService"))
+                || a.Policy is "TeacherOrService" or QuestionAccessPolicies.TeacherAdminOrService))
             .ToList();
 
         teacherRoleActions.Count.ShouldBeGreaterThan(40);
@@ -312,6 +326,31 @@ public class ApprovedTeacherAuthorizationTests : IDisposable
             .Select(m => $"{m.DeclaringType!.Name}.{m.Name}")
             .ToList();
         missing.ShouldBeEmpty();
+    }
+
+    /// <summary>Kendisi rol gerektiren policy'ler (ApprovedTeacher* rol kısıtı DEĞİLDİR — Teacher olmayanı geçirir).</summary>
+    private static readonly string[] RoleRequiringPolicies =
+    {
+        "TeacherOrService", "ServiceToService",
+        QuestionAccessPolicies.TeacherAdminOrService, QuestionAccessPolicies.AdminOrService,
+    };
+
+    /// <summary>
+    /// security review H1: ApprovedTeacher / ApprovedTeacherOrStudent tek başına bir rol kapısı değildir (öğretmen
+    /// olmayan herkesi geçirir — öğrenci/veli dahil). Bu policy'yi taşıyan her uçta (method ya da controller düzeyinde)
+    /// ayrıca bir Roles attribute'u ya da rol gerektiren bir policy OLMALI.
+    /// </summary>
+    [Fact]
+    public void Approved_teacher_policies_are_never_used_without_a_role_restriction()
+    {
+        var unrestricted = ControllerActions()
+            .Where(IsGated)
+            .Where(m => !AuthorizeAttributesOf(m).Any(a =>
+                !string.IsNullOrWhiteSpace(a.Roles) || RoleRequiringPolicies.Contains(a.Policy)))
+            .Select(m => $"{m.DeclaringType!.Name}.{m.Name}")
+            .ToList();
+
+        unrestricted.ShouldBeEmpty();
     }
 
     [Theory]

@@ -1,0 +1,402 @@
+:host {
+  display: block;
+}
+
+.sl-manager {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: var(--paragraphFontFamily);
+}
+
+.sl-top-bar {
+  position: absolute;
+  inset-inline: 0;
+  top: -16px;
+}
+
+.sl-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  h3 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--heading-on-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.sl-crumb {
+  font-weight: 400;
+  color: var(--ms-text-medium);
+}
+
+.sl-counter {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  padding: 0 10px;
+  border-radius: 11px;
+  white-space: nowrap;
+  background: var(--ms-action-background-weak);
+  color: var(--ms-action-text);
+  border: 1px solid var(--ms-action-border);
+
+  &--full {
+    background: var(--ms-warning-surface-weak);
+    color: var(--ms-warning-text);
+    border-color: var(--ms-warning-border);
+  }
+}
+
+.sl-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ms-text-medium);
+}
+
+.sl-add-wrap {
+  display: inline-flex;
+  align-self: flex-start;
+}
+
+.sl-add {
+  min-height: 40px;
+}
+
+.sl-limit {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+
+  &:empty {
+    display: none;
+  }
+
+  &:not(:empty) {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--ms-warning-border);
+    background: var(--ms-warning-surface-weak);
+    color: var(--ms-warning-text);
+  }
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.sl-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+
+  p {
+    flex: 1;
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+.sl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 32px 16px;
+  color: var(--ms-text-medium);
+
+  mat-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: var(--ms-text-weak);
+  }
+
+  .sl-empty-title {
+    margin: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ms-text);
+  }
+
+  .sl-empty-hint {
+    margin: 0;
+    font-size: 12px;
+  }
+}
+
+.sl-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.sl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 56px;
+  padding: 6px 6px 6px 2px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-border-weak);
+  background: var(--ms-surface);
+  color: var(--ms-text);
+  font-size: 13px;
+
+  &--inactive {
+    background: var(--ms-surface-weak);
+
+    .sl-title,
+    .sl-url {
+      color: var(--ms-text-medium);
+    }
+  }
+
+  &--skeleton {
+    border-color: transparent;
+    background: var(--ms-surface-medium);
+  }
+
+  &.cdk-drag-preview {
+    box-shadow: var(--ms-shadow-overlay);
+  }
+
+  &.cdk-drag-placeholder {
+    opacity: 0.4;
+  }
+}
+
+.cdk-drop-list-dragging .sl-row:not(.cdk-drag-placeholder) {
+  transition: transform 200ms ease;
+}
+
+.sl-bone {
+  display: block;
+  width: 70%;
+  height: 12px;
+  margin-inline-start: 12px;
+  border-radius: 6px;
+  background: var(--ms-surface-strong);
+  animation: sl-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sl-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.sl-handle {
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--ms-text-weak);
+}
+
+.sl-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sl-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sl-title {
+  min-width: 0;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  border: 1px solid var(--ms-info-border);
+
+  mat-icon {
+    font-size: 12px;
+    width: 12px;
+    height: 12px;
+  }
+
+  &--yt {
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text);
+    border-color: var(--ms-danger-border);
+  }
+
+  &--muted {
+    background: var(--ms-surface-medium);
+    color: var(--ms-text-medium);
+    border-color: var(--ms-border-weak);
+  }
+}
+
+.sl-url {
+  font-size: 12px;
+  color: var(--ms-action-navigation);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--ms-action-navigation-hover);
+  }
+}
+
+.sl-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0;
+
+  button {
+    color: var(--ms-text-medium);
+
+    &:hover:not([disabled]) {
+      color: var(--ms-text-strong);
+    }
+
+    &.sl-danger:hover:not([disabled]) {
+      color: var(--ms-danger-text-medium);
+    }
+  }
+}
+
+.sl-toggle-wrap {
+  display: inline-flex;
+  padding: 0 4px;
+}
+
+// Mobil: tam genişlik, dokunmatik hedefler 44×44, aksiyonlar alt satıra iner.
+@media (max-width: 768px) {
+  .sl-add-wrap,
+  .sl-add {
+    width: 100%;
+  }
+
+  .sl-add {
+    min-height: 44px;
+  }
+
+  .sl-row {
+    flex-wrap: wrap;
+  }
+
+  .sl-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+
+    button {
+      width: 44px;
+      height: 44px;
+    }
+  }
+
+  .sl-handle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .sl-toggle-wrap {
+    min-height: 44px;
+    align-items: center;
+  }
+}
+
+// ---- Issue #61 güvenlik: toplam sınır, onay bekleyen öğretmen, sahiplik, denetim bilgisi ----
+
+.sl-total {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ms-text-medium);
+  white-space: nowrap;
+
+  &--full {
+    color: var(--ms-warning-text);
+    font-weight: 600;
+  }
+}
+
+.sl-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-size: 13px;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.sl-meta {
+  font-size: 11px;
+  color: var(--ms-text-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-lock {
+  margin: 0 10px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--ms-text-weak);
+}

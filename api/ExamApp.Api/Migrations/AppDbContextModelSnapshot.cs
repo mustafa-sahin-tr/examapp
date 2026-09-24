@@ -2226,6 +2226,137 @@ namespace ExamApp.Api.Migrations
                     b.ToTable("TeacherSubjects");
                 });
 
+            modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLink", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("CreateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CreatedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CreatedByRole")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DeleteTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("DeleteUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SubTopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int?>("TopicId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdateTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("UpdateUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UpdatedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubTopicId", "IsActive");
+
+                    b.HasIndex("TopicId", "SubTopicId", "IsActive");
+
+                    b.ToTable("TopicStudyLinks", t =>
+                        {
+                            t.HasCheckConstraint("CK_TopicStudyLinks_TopicOrSubTopic", "\"TopicId\" IS NOT NULL OR \"SubTopicId\" IS NOT NULL");
+                        });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLinkAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("ActorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LinkId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NewTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NewUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OldTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OldUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LinkId", "OccurredAtUtc");
+
+                    b.ToTable("TopicStudyLinkAudits");
+                });
+
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
                 {
                     b.Property<int>("Id")
@@ -3728,6 +3859,32 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("Subject");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLink", b =>
+                {
+                    b.HasOne("SubTopic", "SubTopic")
+                        .WithMany()
+                        .HasForeignKey("SubTopicId");
+
+                    b.HasOne("Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId");
+
+                    b.Navigation("SubTopic");
+
+                    b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLinkAudit", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.TopicStudyLink", "Link")
+                        .WithMany()
+                        .HasForeignKey("LinkId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.Navigation("Link");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>

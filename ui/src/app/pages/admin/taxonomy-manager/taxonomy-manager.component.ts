@@ -27,6 +27,7 @@ import {
   ManageSubjectGradesDialogComponent,
   ManageSubjectGradesDialogData,
 } from './manage-subject-grades-dialog/manage-subject-grades-dialog.component';
+import { TopicStudyLinkManagerComponent } from '../../../shared/components/topic-study-link-manager/topic-study-link-manager.component';
 
 type Level = 'subject' | 'topic' | 'subtopic';
 
@@ -51,6 +52,7 @@ const ADMIN_SCOPE = 'admin';
     MatSnackBarModule,
     TranslocoDirective,
     TranslocoPipe,
+    TopicStudyLinkManagerComponent,
   ],
   providers: [provideTranslocoScope(ADMIN_SCOPE)],
 })
@@ -70,6 +72,8 @@ export class TaxonomyManagerComponent implements OnInit {
 
   readonly selectedSubjectId = signal<number | null>(null);
   readonly selectedTopicId = signal<number | null>(null);
+  /** Issue #61: çalışma linkleri paneli için seçili alt konu (yoksa konu seviyesi linkler yönetilir). */
+  readonly selectedSubTopicId = signal<number | null>(null);
 
   /**
    * Issue #151: Sınıf filtresi her zaman belirli bir sınıftır ("Tüm Sınıflar"/"Sınıf atanmamış" yok).
@@ -89,6 +93,13 @@ export class TaxonomyManagerComponent implements OnInit {
     () => this.topics().find((t) => t.id === this.selectedTopicId()) ?? null
   );
   readonly subTopics = computed(() => this.selectedTopic()?.subTopics ?? []);
+  readonly selectedSubTopic = computed(
+    () => this.subTopics().find((st) => st.id === this.selectedSubTopicId()) ?? null
+  );
+  /** Çalışma linkleri paneline verilen kapsam adı: alt konu seçiliyse alt konu, değilse konu. */
+  readonly studyLinkScopeName = computed(
+    () => this.selectedSubTopic()?.name ?? this.selectedTopic()?.name ?? ''
+  );
 
   // inline add fields
   newSubjectName = '';
@@ -166,12 +177,19 @@ export class TaxonomyManagerComponent implements OnInit {
   selectSubject(id: number): void {
     this.selectedSubjectId.set(id);
     this.selectedTopicId.set(null);
+    this.selectedSubTopicId.set(null);
     this.cancelEdit();
   }
 
   selectTopic(id: number): void {
+    if (this.selectedTopicId() !== id) this.selectedSubTopicId.set(null);
     this.selectedTopicId.set(id);
     this.cancelEdit();
+  }
+
+  /** Issue #61: alt konu seçimi çalışma linkleri panelinin kapsamını belirler; tekrar tıklamak seçimi kaldırır. */
+  selectSubTopic(id: number): void {
+    this.selectedSubTopicId.set(this.selectedSubTopicId() === id ? null : id);
   }
 
   gradeName(id: number): string {
@@ -188,6 +206,7 @@ export class TaxonomyManagerComponent implements OnInit {
     this.subjects.set([]);
     this.selectedSubjectId.set(null);
     this.selectedTopicId.set(null);
+    this.selectedSubTopicId.set(null);
     this.newTopicName = '';
     this.newSubTopicName = '';
     this.cancelEdit();
@@ -331,6 +350,7 @@ export class TaxonomyManagerComponent implements OnInit {
       if (this.selectedTopicId() === item.id) this.selectedTopicId.set(null);
     } else {
       await this.run(() => firstValueFrom(this.admin.deleteSubTopic(item.id)));
+      if (this.selectedSubTopicId() === item.id) this.selectedSubTopicId.set(null);
     }
   }
 

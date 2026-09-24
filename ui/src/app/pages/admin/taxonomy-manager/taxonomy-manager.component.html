@@ -328,18 +328,27 @@
         } @else {
           <ul class="list">
             @for (st of subTopics(); track st.id) {
-              <li class="item static">
+              <li
+                class="item"
+                role="button"
+                tabindex="0"
+                [class.selected]="st.id === selectedSubTopicId()"
+                [attr.aria-pressed]="st.id === selectedSubTopicId()"
+                (click)="selectSubTopic(st.id)"
+                (keydown.enter)="selectSubTopic(st.id)"
+                (keydown.space)="selectSubTopic(st.id); $event.preventDefault()"
+              >
                 @if (!isEditing('subtopic', st.id)) {
                   <span class="name">{{ st.name }}</span>
                   @if (st.questionCount) {
                     <span class="meta">{{ t('subTopics.questionCount', { count: st.questionCount }) }}</span>
                   }
-                  <span class="actions">
+                  <span class="actions" (keydown)="$event.stopPropagation()">
                     <button
                       mat-icon-button
                       type="button"
                       [attr.aria-label]="t('subTopics.edit')"
-                      (click)="startEdit('subtopic', st)"
+                      (click)="startEdit('subtopic', st); $event.stopPropagation()"
                     >
                       <mat-icon>edit</mat-icon>
                     </button>
@@ -348,13 +357,17 @@
                       type="button"
                       class="danger"
                       [attr.aria-label]="t('subTopics.delete')"
-                      (click)="remove('subtopic', st)"
+                      (click)="remove('subtopic', st); $event.stopPropagation()"
                     >
                       <mat-icon>delete</mat-icon>
                     </button>
                   </span>
                 } @else {
-                  <span class="edit-row">
+                  <span
+                    class="edit-row"
+                    (click)="$event.stopPropagation()"
+                    (keydown)="$event.stopPropagation()"
+                  >
                     <input
                       class="inline-edit"
                       [attr.aria-label]="t('subTopics.nameAria')"
@@ -386,6 +399,15 @@
           <p class="empty-hint">{{ t('subTopics.noTopicHint') }}</p>
         </div>
       }
+    </mat-card>
+
+    <!-- Study links (Issue #61): seçili alt konunun, yoksa konunun genel linkleri -->
+    <mat-card class="column column--links" appearance="outlined" [class.disabled]="!selectedTopic()">
+      <app-topic-study-link-manager
+        [topicId]="selectedTopic()?.id ?? null"
+        [subTopicId]="selectedSubTopic()?.id ?? null"
+        [scopeName]="studyLinkScopeName()"
+      />
     </mat-card>
   </div>
 </div>

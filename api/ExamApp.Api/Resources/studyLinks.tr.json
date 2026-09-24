@@ -1,0 +1,36 @@
+{
+  "studyLinks": {
+    "unauthorized": "Kullanıcı doğrulanamadı.",
+    "notFound": "Çalışma linki bulunamadı.",
+    "titleRequired": "Başlık zorunludur.",
+    "titleTooLong": "Başlık en fazla 200 karakter olabilir.",
+    "urlRequired": "URL zorunludur.",
+    "urlTooLong": "URL en fazla 2048 karakter olabilir.",
+    "invalidUrl": "Geçerli bir http/https URL giriniz.",
+    "invalidSourceType": "Geçersiz kaynak tipi. 'YouTube' veya 'Other' beklenmektedir.",
+    "sourceTypeMismatch": "Kaynak tipi YouTube seçildi ancak URL bir YouTube adresi değil.",
+    "scopeRequired": "Konu veya alt konu seçilmelidir.",
+    "scopeExactlyOne": "Konu (topicId) veya alt konudan (subTopicId) yalnızca biri verilmelidir.",
+    "topicNotFound": "Konu bulunamadı.",
+    "subTopicNotFound": "Alt konu bulunamadı.",
+    "subTopicTopicMismatch": "Alt konu seçilen konuya ait değil.",
+    "activeLimitReached": "Bir konu veya alt konu için en fazla {0} aktif çalışma linki olabilir. Yeni link eklemek için mevcut bir linki pasife alın veya silin.",
+    "concurrentModification": "Link aynı anda başka bir kullanıcı tarafından değiştirildi. Lütfen listeyi yenileyip tekrar deneyin.",
+    "created": "Çalışma linki eklendi.",
+    "updated": "Çalışma linki güncellendi.",
+    "deleted": "Çalışma linki silindi.",
+    "reordered": "Link sırası güncellendi.",
+    "testInstanceNotFound": "Sınav oturumu bulunamadı.",
+    "reorder": {
+      "itemsRequired": "Sıralanacak en az bir link gönderilmelidir.",
+      "tooManyItems": "Tek seferde en fazla 100 link sıralanabilir.",
+      "duplicateIds": "Aynı link birden fazla kez gönderildi.",
+      "linkNotInScope": "Gönderilen linklerden bazıları bulunamadı veya seçilen konu/alt konuya ait değil.",
+      "duplicateSortOrders": "Aynı sıra numarası birden fazla linke verilemez."
+    },
+    "teacherNotApproved": "Çalışma linklerini yönetmek için öğretmen hesabınızın onaylanmış olması gerekir.",
+    "notOwner": "Yalnızca kendi eklediğiniz çalışma linklerini düzenleyebilir veya silebilirsiniz.",
+    "totalLimitReached": "Bir konu veya alt konu için en fazla {0} çalışma linki (aktif + pasif) olabilir. Yeni link eklemek için kullanılmayan bir linki silin.",
+    "rateLimited": "Kısa sürede çok fazla çalışma linki değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+  }
+}

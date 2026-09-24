@@ -340,6 +340,13 @@
                           [correctChoice]="correctChoices().get(region.id)">
                         </app-question-canvas-view>
                       </div>
+                      <!-- Issue #61: yanlış cevaplanan soru için alt konu çalışma linkleri (async, sonucu bloklamaz) -->
+                      <app-study-link-suggestions
+                        [testInstanceId]="result.instanceId"
+                        [questionId]="region.id"
+                        [testInstanceQuestionId]="currentTestInstanceQuestionId()"
+                        [answeredWrong]="isCurrentQuestionWrong()"
+                      />
                     }
                   </mat-expansion-panel>
                 </mat-accordion>

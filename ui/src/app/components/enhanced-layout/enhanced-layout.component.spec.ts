@@ -97,4 +97,14 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
       expect(childPaths).toContain(entry.route);
     }
   });
+  it('visibleMenuItems_StudyLinksEntry_OnlyForTeacherWithTranslatedLabel (issue #61)', () => {
+    const component = create(['Teacher']);
+    const item = component.visibleMenuItems.find((i) => i.id === 'study-links');
+    expect(item?.route).toBe('/study-links');
+    expect(TestBed.inject(TranslocoService).translate('layout.menu.studyLinks')).toBe('Çalışma Linkleri');
+
+    TestBed.resetTestingModule();
+    const student = create(['Student']);
+    expect(student.visibleMenuItems.map((i) => i.route)).not.toContain('/study-links');
+  });
 });

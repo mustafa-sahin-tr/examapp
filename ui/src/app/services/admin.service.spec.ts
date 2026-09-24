@@ -7,7 +7,7 @@ import { AdminTeacherListItem } from '../models/admin-teacher.model';
 import { AdminStudentListItem } from '../models/admin-student.model';
 import { Paged } from '../models/test-instance';
 import { AdminPasswordResetResponse } from '../models/admin-password-reset.model';
-import { TeacherApplicationDetail } from '../models/teacher-application.model';
+import { TeacherApplicationDetail, TeacherApplicationListItem } from '../models/teacher-application.model';
 
 // Test fixture only — not a real credential (kept out of gitleaks' generic-api-key literal match).
 const FAKE_PW = ['fake', 'reset', 'value'].join('-');
@@ -283,6 +283,9 @@ describe('AdminService.getTeacherApplication (issue #262)', () => {
       isIndependentTutor: false,
       requestedSchoolId: 5,
       requestedSchoolName: 'Ankara Lisesi',
+      status: 'Rejected',
+      rejectionReason: 'Belge eksik',
+      decidedAt: '2026-09-21T08:00:00Z',
     };
     let result: TeacherApplicationDetail | undefined;
 
@@ -311,5 +314,65 @@ describe('AdminService.getTeacherApplication (issue #262)', () => {
       .flush('Too many requests', { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '30' } });
     expect(status).toBe(429);
     expect(retryAfter).toBe('30');
+  });
+});
+
+describe('AdminService.getTeacherApplications (issue #187)', () => {
+  let service: AdminService;
+  let httpMock: HttpTestingController;
+
+  const response: Paged<TeacherApplicationListItem> = {
+    pageNumber: 2,
+    pageSize: 10,
+    totalCount: 11,
+    items: [
+      {
+        teacherId: 12,
+        fullName: 'Ayşe Yılmaz',
+        email: 'a***@okul.k12.tr',
+        appliedAt: '2026-09-20T10:00:00Z',
+        isIndependentTutor: false,
+        requestedSchoolId: 5,
+        requestedSchoolName: 'Ankara Lisesi',
+        status: 'Rejected',
+        rejectionReason: 'Belge eksik',
+        decidedAt: '2026-09-21T08:00:00Z',
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(AdminService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('getTeacherApplications_Pending_SendsStatusPageAndPageSize', () => {
+    service.getTeacherApplications({ status: 'pending', page: 1, pageSize: 20 }).subscribe();
+
+    const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/teacher-applications');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('status')).toBe('pending');
+    expect(req.request.params.get('page')).toBe('1');
+    expect(req.request.params.get('pageSize')).toBe('20');
+    req.flush({ pageNumber: 1, pageSize: 20, totalCount: 0, items: [] });
+  });
+
+  it('getTeacherApplications_All_SendsStatusAllAndReturnsPagedShape', () => {
+    let result: Paged<TeacherApplicationListItem> | undefined;
+    service.getTeacherApplications({ status: 'all', page: 2, pageSize: 10 }).subscribe((r) => (result = r));
+
+    const req = httpMock.expectOne((r) => r.url === '/api/exam/admin/teacher-applications');
+    expect(req.request.params.get('status')).toBe('all');
+    expect(req.request.params.get('page')).toBe('2');
+    expect(req.request.params.get('pageSize')).toBe('10');
+    req.flush(response);
+
+    expect(result).toEqual(response);
+    expect(result?.items[0].status).toBe('Rejected');
   });
 });

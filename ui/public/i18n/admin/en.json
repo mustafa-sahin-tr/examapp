@@ -194,15 +194,23 @@
   },
   "approvals": {
     "title": "Teacher Applications",
-    "subtitle": "Pending independent-teacher applications and school membership requests. Until a school membership is approved, the teacher cannot see the school’s students or classes.",
+    "subtitle": "Independent-teacher applications and school membership requests. Until a school membership is approved, the teacher cannot see the school’s students or classes.",
     "refresh": "Refresh",
     "loading": "Loading applications...",
     "empty": "No pending applications",
+    "emptyAll": "No applications yet",
+    "filter": {
+      "label": "Application filter",
+      "pending": "Pending approval",
+      "all": "All"
+    },
     "columns": {
       "fullName": "Full Name",
       "type": "Application Type",
       "email": "Email",
       "appliedAt": "Application Date",
+      "status": "Status",
+      "decidedAt": "Decision Date",
       "actions": "Action"
     },
     "unnamed": "Unnamed (application #{{teacherId}})",
@@ -221,7 +229,7 @@
     "emailUnavailable": "The email address for this application is currently unavailable.",
     "emailErrors": {
       "forbidden": "You do not have permission to view this information.",
-      "notFound": "This application is no longer pending; the list has been refreshed.",
+      "notFound": "Application not found; the list has been refreshed.",
       "upstream": "The identity server could not be reached. Please try again later.",
       "rateLimited": "Too many requests in a short time. Please wait a moment and try again.",
       "rateLimitedSeconds": "Too many requests in a short time. Please try again in {{seconds}} seconds.",
@@ -242,7 +250,14 @@
       "independent": "Independent",
       "school": "School: {{schoolName}}",
       "schoolUnknown": "School #{{schoolId}}"
-    }
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "rejectionReason": "Reason: {{reason}}",
+    "noAction": "No action"
   },
   "schoolFilter": {
     "label": "School",

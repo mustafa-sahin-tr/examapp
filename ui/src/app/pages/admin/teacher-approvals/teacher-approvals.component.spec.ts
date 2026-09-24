@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed, discardPeriodicTasks, fakeAsync, tick } from '@angular/core/testing';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 
@@ -7,11 +9,16 @@ import { PUSH_RELOAD_AUDIT_MS, TeacherApprovalsComponent } from './teacher-appro
 import { AdminService } from '../../../services/admin.service';
 import { SignalRService } from '../../../services/signalr.service';
 import {
-  PendingTeacherApplication,
   TeacherApplicationDetail,
+  TeacherApplicationListItem,
 } from '../../../models/teacher-application.model';
+import { Paged } from '../../../models/test-instance';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
+
+function paged(items: TeacherApplicationListItem[], totalCount = items.length, pageNumber = 1): Paged<TeacherApplicationListItem> {
+  return { pageNumber, pageSize: 20, totalCount, items };
+}
 
 describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
   let component: TeacherApprovalsComponent;
@@ -20,13 +27,13 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
 
   function createComponent(): void {
     adminService = jasmine.createSpyObj('AdminService', [
-      'getPendingTeacherApplications',
+      'getTeacherApplications',
       'approveTeacherApplication',
       'rejectTeacherApplication',
     ]);
     signalR = jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: of(undefined) });
 
-    adminService.getPendingTeacherApplications.and.returnValue(of([]));
+    adminService.getTeacherApplications.and.returnValue(of(paged([])));
 
     TestBed.configureTestingModule({
       imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
@@ -34,6 +41,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
         { provide: AdminService, useValue: adminService },
         { provide: SignalRService, useValue: signalR },
         { provide: MatSnackBar, useValue: jasmine.createSpyObj('MatSnackBar', ['open']) },
+        provideNoopAnimations(),
       ],
     });
 
@@ -50,7 +58,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
   it('typeLabel_IndependentTutor_ReturnsIndependentLabel', () => {
     createComponent();
 
-    const app: PendingTeacherApplication = {
+    const app: TeacherApplicationListItem = {
       teacherId: 1,
       fullName: 'Ali Öğretmen',
       email: 'ali@test.com',
@@ -58,6 +66,9 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       isIndependentTutor: true,
       requestedSchoolId: null,
       requestedSchoolName: null,
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
     };
 
     const label = component.typeLabel(app);
@@ -68,7 +79,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
   it('typeLabel_SchoolConnectionWithSchoolName_ReturnsOkulWithSchoolName', () => {
     createComponent();
 
-    const app: PendingTeacherApplication = {
+    const app: TeacherApplicationListItem = {
       teacherId: 2,
       fullName: 'Ayşe Öğretmen',
       email: 'ayse@test.com',
@@ -76,6 +87,9 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       isIndependentTutor: false,
       requestedSchoolId: 5,
       requestedSchoolName: 'Atatürk Lisesi',
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
     };
 
     const label = component.typeLabel(app);
@@ -86,7 +100,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
   it('typeLabel_SchoolConnectionWithoutSchoolName_UsesSchoolIdFallback', () => {
     createComponent();
 
-    const app: PendingTeacherApplication = {
+    const app: TeacherApplicationListItem = {
       teacherId: 3,
       fullName: 'Mehmet Öğretmen',
       email: 'mehmet@test.com',
@@ -94,6 +108,9 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       isIndependentTutor: false,
       requestedSchoolId: 42,
       requestedSchoolName: null,
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
     };
 
     const label = component.typeLabel(app);
@@ -104,7 +121,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
   it('typeLabel_SchoolConnectionWithBlankSchoolName_UsesFallback', () => {
     createComponent();
 
-    const app: PendingTeacherApplication = {
+    const app: TeacherApplicationListItem = {
       teacherId: 4,
       fullName: 'Fatma Öğretmen',
       email: 'fatma@test.com',
@@ -112,6 +129,9 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       isIndependentTutor: false,
       requestedSchoolId: 99,
       requestedSchoolName: '   ',
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
     };
 
     const label = component.typeLabel(app);
@@ -122,7 +142,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
   it('typeLabel_TwoApplicationsDifferentTypes_ReturnCorrectLabelsForEach', () => {
     createComponent();
 
-    const independent: PendingTeacherApplication = {
+    const independent: TeacherApplicationListItem = {
       teacherId: 1,
       fullName: 'Ali Bağımsız',
       email: 'ali@test.com',
@@ -130,9 +150,12 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       isIndependentTutor: true,
       requestedSchoolId: null,
       requestedSchoolName: null,
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
     };
 
-    const schoolBased: PendingTeacherApplication = {
+    const schoolBased: TeacherApplicationListItem = {
       teacherId: 2,
       fullName: 'Ayşe Okul',
       email: 'ayse@test.com',
@@ -140,6 +163,9 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       isIndependentTutor: false,
       requestedSchoolId: 7,
       requestedSchoolName: 'Cumhuriyet Ortaokulu',
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
     };
 
     const independentLabel = component.typeLabel(independent);
@@ -159,7 +185,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
 
   const approvals = adminTr.approvals;
 
-  function application(overrides: Partial<PendingTeacherApplication> = {}): PendingTeacherApplication {
+  function application(overrides: Partial<TeacherApplicationListItem> = {}): TeacherApplicationListItem {
     return {
       teacherId: 7,
       fullName: 'Ali Öğretmen',
@@ -168,6 +194,9 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
       isIndependentTutor: true,
       requestedSchoolId: null,
       requestedSchoolName: null,
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
       ...overrides,
     };
   }
@@ -181,17 +210,17 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   }
 
   function createComponent(
-    list: PendingTeacherApplication[] | Observable<PendingTeacherApplication[]> = [application()],
+    list: TeacherApplicationListItem[] | Observable<Paged<TeacherApplicationListItem>> = [application()],
     push$: Observable<unknown> = EMPTY,
   ): ComponentFixture<TeacherApprovalsComponent> {
     adminService = jasmine.createSpyObj('AdminService', [
-      'getPendingTeacherApplications',
+      'getTeacherApplications',
       'getTeacherApplication',
       'approveTeacherApplication',
       'rejectTeacherApplication',
     ]);
     snackBar = jasmine.createSpyObj('MatSnackBar', ['open']);
-    adminService.getPendingTeacherApplications.and.returnValue(Array.isArray(list) ? of(list) : list);
+    adminService.getTeacherApplications.and.returnValue(Array.isArray(list) ? of(paged(list)) : list);
 
     TestBed.configureTestingModule({
       imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
@@ -199,6 +228,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
         { provide: AdminService, useValue: adminService },
         { provide: SignalRService, useValue: jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: push$ }) },
         { provide: MatSnackBar, useValue: snackBar },
+        provideNoopAnimations(),
       ],
     });
 
@@ -226,7 +256,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
     createComponent();
     adminService.getTeacherApplication.and.returnValue(of(detail()));
     component.revealEmail(application());
-    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(429)));
+    adminService.getTeacherApplications.and.returnValue(throwError(() => httpError(429)));
 
     component.load();
 
@@ -239,7 +269,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
 
   it('load_500AfterSuccessfulLoad_ClearsListAndShowsInlineError', () => {
     createComponent();
-    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(500)));
+    adminService.getTeacherApplications.and.returnValue(throwError(() => httpError(500)));
 
     component.load();
 
@@ -250,16 +280,16 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   it('signalRPushBurst_IsCoalescedIntoSingleReload', fakeAsync(() => {
     const push$ = new Subject<void>();
     createComponent([application()], push$);
-    adminService.getPendingTeacherApplications.calls.reset();
+    adminService.getTeacherApplications.calls.reset();
 
     push$.next();
     push$.next();
     tick(1000);
     push$.next();
-    expect(adminService.getPendingTeacherApplications).not.toHaveBeenCalled();
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
 
     tick(PUSH_RELOAD_AUDIT_MS);
-    expect(adminService.getPendingTeacherApplications).toHaveBeenCalledTimes(1);
+    expect(adminService.getTeacherApplications).toHaveBeenCalledTimes(1);
 
     discardPeriodicTasks();
   }));
@@ -274,7 +304,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
 
   it('load_403_ShowsForbiddenMessage', () => {
     createComponent();
-    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(403)));
+    adminService.getTeacherApplications.and.returnValue(throwError(() => httpError(403)));
 
     component.load();
 
@@ -283,7 +313,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
 
   it('load_500_ShowsGenericLoadFailed', () => {
     createComponent();
-    adminService.getPendingTeacherApplications.and.returnValue(throwError(() => httpError(500)));
+    adminService.getTeacherApplications.and.returnValue(throwError(() => httpError(500)));
 
     component.load();
 
@@ -342,13 +372,13 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   it('revealEmail_404_ShowsSnackbarAndReloadsList', () => {
     createComponent();
     adminService.getTeacherApplication.and.returnValue(throwError(() => httpError(404)));
-    adminService.getPendingTeacherApplications.calls.reset();
-    adminService.getPendingTeacherApplications.and.returnValue(of([]));
+    adminService.getTeacherApplications.calls.reset();
+    adminService.getTeacherApplications.and.returnValue(of(paged([])));
 
     component.revealEmail(application());
 
     expect(snackBar.open).toHaveBeenCalledWith(approvals.emailErrors.notFound, approvals.close, jasmine.any(Object));
-    expect(adminService.getPendingTeacherApplications).toHaveBeenCalledTimes(1);
+    expect(adminService.getTeacherApplications).toHaveBeenCalledTimes(1);
     expect(component.applications()).toEqual([]);
     expect(component.isRevealing(7)).toBeFalse();
   });
@@ -356,13 +386,13 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
   it('revealEmail_429WithRetryAfter_ShowsSecondsMessage_NoReload', () => {
     createComponent();
     adminService.getTeacherApplication.and.returnValue(throwError(() => httpError(429, { 'Retry-After': '42' })));
-    adminService.getPendingTeacherApplications.calls.reset();
+    adminService.getTeacherApplications.calls.reset();
 
     component.revealEmail(application());
 
     const expected = approvals.emailErrors.rateLimitedSeconds.replace('{{seconds}}', '42');
     expect(snackBar.open).toHaveBeenCalledWith(expected, approvals.close, jasmine.any(Object));
-    expect(adminService.getPendingTeacherApplications).not.toHaveBeenCalled();
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
     expect(component.isEmailRevealed(7)).toBeFalse();
   });
 
@@ -401,6 +431,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
     adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
 
     component.revealEmail(application());
+    adminService.getTeacherApplications.and.returnValue(of(paged([])));
     component.approve(application());
 
     expect(component.revealedEmails().has(7)).toBeFalse();
@@ -415,9 +446,307 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
     component.revealEmail(application());
     component.revealEmail(application({ teacherId: 8 }));
 
-    adminService.getPendingTeacherApplications.and.returnValue(of([application({ teacherId: 8 })]));
+    adminService.getTeacherApplications.and.returnValue(of(paged([application({ teacherId: 8 })])));
     component.load();
 
     expect([...component.revealedEmails().keys()]).toEqual([8]);
+  });
+});
+
+describe('TeacherApprovalsComponent — status filter & paging (issue #187)', () => {
+  let fixture: ComponentFixture<TeacherApprovalsComponent>;
+  let component: TeacherApprovalsComponent;
+  let adminService: jasmine.SpyObj<AdminService>;
+  let snackBar: jasmine.SpyObj<MatSnackBar>;
+  let dialog: jasmine.SpyObj<MatDialog>;
+  let push$: Subject<void>;
+
+  const approvals = adminTr.approvals;
+
+  function app(overrides: Partial<TeacherApplicationListItem> = {}): TeacherApplicationListItem {
+    return {
+      teacherId: 7,
+      fullName: 'Ali Öğretmen',
+      email: 'a***@okul.k12.tr',
+      appliedAt: '2026-09-20T10:00:00Z',
+      isIndependentTutor: true,
+      requestedSchoolId: null,
+      requestedSchoolName: null,
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
+      ...overrides,
+    };
+  }
+
+  const approved = app({ teacherId: 8, status: 'Approved', decidedAt: '2026-09-22T09:30:00Z' });
+  const rejected = app({
+    teacherId: 9,
+    status: 'Rejected',
+    rejectionReason: 'Belge eksik',
+    decidedAt: '2026-09-21T08:00:00Z',
+  });
+
+  function create(first: Paged<TeacherApplicationListItem> = paged([app()])): void {
+    adminService = jasmine.createSpyObj('AdminService', [
+      'getTeacherApplications',
+      'getTeacherApplication',
+      'approveTeacherApplication',
+      'rejectTeacherApplication',
+    ]);
+    snackBar = jasmine.createSpyObj('MatSnackBar', ['open']);
+    dialog = jasmine.createSpyObj('MatDialog', ['open']);
+    push$ = new Subject<void>();
+    adminService.getTeacherApplications.and.returnValue(of(first));
+
+    TestBed.configureTestingModule({
+      imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
+      providers: [
+        { provide: AdminService, useValue: adminService },
+        { provide: SignalRService, useValue: jasmine.createSpyObj('SignalRService', [], { teacherApplicationSubmitted$: push$ }) },
+        { provide: MatSnackBar, useValue: snackBar },
+        provideNoopAnimations(),
+      ],
+    });
+    // MatDialog komponent import'u (MatDialogModule) üzerinden sağlandığı için komponent seviyesinde override edilir.
+    TestBed.overrideProvider(MatDialog, { useValue: dialog });
+
+    fixture = TestBed.createComponent(TeacherApprovalsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  }
+
+  function el(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  function lastQuery(): { status: string; page: number; pageSize: number } {
+    return adminService.getTeacherApplications.calls.mostRecent().args[0];
+  }
+
+  function toggleButtons(): HTMLButtonElement[] {
+    return Array.from(el().querySelectorAll<HTMLButtonElement>('mat-button-toggle button'));
+  }
+
+  it('init_DefaultsToPendingFilterFirstPage', () => {
+    create();
+
+    expect(component.filter()).toBe('pending');
+    expect(lastQuery()).toEqual({ status: 'pending', page: 1, pageSize: 20 });
+    const group = el().querySelector('mat-button-toggle-group')!;
+    expect(group.getAttribute('aria-label')).toBe(approvals.filter.label);
+    expect(toggleButtons().map((b) => b.textContent?.trim())).toEqual([approvals.filter.pending, approvals.filter.all]);
+    const toggles = el().querySelectorAll('mat-button-toggle');
+    expect(toggles[0].classList).toContain('mat-button-toggle-checked');
+    expect(toggles[1].classList).not.toContain('mat-button-toggle-checked');
+  });
+
+  it('filterToggle_ClickAll_ResetsToFirstPageAndReloadsWithStatusAll', () => {
+    create(paged([app()], 45));
+    component.onPage({ pageIndex: 2, pageSize: 20, length: 45, previousPageIndex: 0 });
+    expect(lastQuery().page).toBe(3);
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved, rejected], 3)));
+
+    toggleButtons()[1].click();
+    fixture.detectChanges();
+
+    expect(component.filter()).toBe('all');
+    expect(component.pageIndex()).toBe(0);
+    expect(lastQuery()).toEqual({ status: 'all', page: 1, pageSize: 20 });
+    expect(component.applications().length).toBe(3);
+  });
+
+  it('setFilter_SameValue_DoesNotReload', () => {
+    create();
+    adminService.getTeacherApplications.calls.reset();
+
+    component.setFilter('pending');
+
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
+  });
+
+  it('paginator_RenderedWithTotalCount_AndPageEventLoadsRequestedPage', () => {
+    create(paged([app()], 45));
+
+    const paginator = el().querySelector('mat-paginator');
+    expect(paginator).not.toBeNull();
+
+    component.onPage({ pageIndex: 1, pageSize: 50, length: 45, previousPageIndex: 0 });
+
+    expect(lastQuery()).toEqual({ status: 'pending', page: 2, pageSize: 50 });
+    expect(component.totalCount()).toBe(45);
+  });
+
+  it('emptyList_HidesPaginatorAndShowsEmptyTextPerFilter', () => {
+    create(paged([]));
+    expect(el().querySelector('mat-paginator')).toBeNull();
+    expect(el().textContent).toContain(approvals.empty);
+
+    adminService.getTeacherApplications.and.returnValue(of(paged([])));
+    component.setFilter('all');
+    fixture.detectChanges();
+
+    expect(el().textContent).toContain(approvals.emptyAll);
+  });
+
+  it('statusChips_RenderPerRow_WithRejectionReasonAndDecidedAt', () => {
+    create();
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved, rejected])));
+    component.setFilter('all');
+    fixture.detectChanges();
+
+    const chips = Array.from(el().querySelectorAll('[data-testid="status-chip"]'));
+    expect(chips.map((c) => c.textContent?.trim())).toEqual([
+      approvals.status.pending,
+      approvals.status.approved,
+      approvals.status.rejected,
+    ]);
+    expect(chips[0].classList).toContain('ta__status--pending');
+    expect(chips[1].classList).toContain('ta__status--approved');
+    expect(chips[2].classList).toContain('ta__status--rejected');
+
+    const reasons = el().querySelectorAll('[data-testid="rejection-reason"]');
+    expect(reasons.length).toBe(1);
+    expect(reasons[0].textContent?.trim()).toBe(approvals.rejectionReason.replace('{{reason}}', 'Belge eksik'));
+
+    expect(el().querySelectorAll('th.mat-column-decidedAt').length).toBe(1);
+    expect(el().querySelectorAll('td.mat-column-decidedAt')[0].textContent?.trim()).toBe('—');
+    expect(el().querySelectorAll('td.mat-column-decidedAt')[1].textContent?.trim()).not.toBe('—');
+  });
+
+  it('pendingFilter_HidesDecidedAtColumn', () => {
+    create();
+    expect(el().querySelector('th.mat-column-decidedAt')).toBeNull();
+    expect(el().querySelector('th.mat-column-status')).not.toBeNull();
+  });
+
+  it('actions_OnlyForPendingRows', () => {
+    create();
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved, rejected])));
+    component.setFilter('all');
+    fixture.detectChanges();
+
+    const rows = Array.from(el().querySelectorAll('tr.mat-mdc-row'));
+    expect(rows.length).toBe(3);
+    expect(rows[0].querySelector('[data-testid="approve"]')).not.toBeNull();
+    expect(rows[0].querySelector('[data-testid="reject"]')).not.toBeNull();
+    for (const row of rows.slice(1)) {
+      expect(row.querySelector('[data-testid="approve"]')).toBeNull();
+      expect(row.querySelector('[data-testid="reject"]')).toBeNull();
+    }
+  });
+
+  it('approve_DecidedRow_IsIgnored', () => {
+    create();
+
+    component.approve(approved);
+    component.reject(rejected);
+
+    expect(adminService.approveTeacherApplication).not.toHaveBeenCalled();
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('approve_PendingView_ReloadsCurrentPageAndRowDisappears', () => {
+    create(paged([app(), app({ teacherId: 10 })], 2));
+    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.calls.reset();
+    adminService.getTeacherApplications.and.returnValue(of(paged([app({ teacherId: 10 })], 1)));
+
+    component.approve(app());
+
+    expect(adminService.getTeacherApplications).toHaveBeenCalledOnceWith({ status: 'pending', page: 1, pageSize: 20 });
+    expect(component.applications().map((a) => a.teacherId)).toEqual([10]);
+    expect(snackBar.open).toHaveBeenCalledWith(approvals.approved, approvals.close, jasmine.any(Object));
+  });
+
+  it('approve_LastRowOnLastPage_GoesToPreviousPage', () => {
+    create(paged([app()], 21));
+    adminService.getTeacherApplications.and.returnValue(of(paged([app()], 21, 2)));
+    component.onPage({ pageIndex: 1, pageSize: 20, length: 21, previousPageIndex: 0 });
+    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.calls.reset();
+    const prevPage = Array.from({ length: 20 }, (_, i) => app({ teacherId: 100 + i }));
+    adminService.getTeacherApplications.and.returnValues(of(paged([], 20, 2)), of(paged(prevPage, 20, 1)));
+
+    component.approve(app());
+
+    const pages = adminService.getTeacherApplications.calls.allArgs().map(([q]) => q.page);
+    expect(pages).toEqual([2, 1]);
+    expect(component.pageIndex()).toBe(0);
+    expect(component.applications().length).toBe(20);
+  });
+
+  it('reject_AllView_ReloadsSoStatusUpdates', () => {
+    create();
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved])));
+    component.setFilter('all');
+    dialog.open.and.returnValue({ afterClosed: () => of('Belge eksik') } as ReturnType<MatDialog['open']>);
+    adminService.rejectTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    const updated = app({ status: 'Rejected', rejectionReason: 'Belge eksik', decidedAt: '2026-09-24T10:00:00Z' });
+    adminService.getTeacherApplications.calls.reset();
+    adminService.getTeacherApplications.and.returnValue(of(paged([approved, updated])));
+
+    component.reject(app());
+    fixture.detectChanges();
+
+    expect(adminService.rejectTeacherApplication).toHaveBeenCalledOnceWith(7, 'Belge eksik');
+    expect(adminService.getTeacherApplications).toHaveBeenCalledOnceWith({ status: 'all', page: 1, pageSize: 20 });
+    expect(component.applications().find((a) => a.teacherId === 7)?.status).toBe('Rejected');
+  });
+
+  it('approve_409_ReloadsList', () => {
+    create();
+    adminService.approveTeacherApplication.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { success: false, message: 'Zaten karar verildi' } })),
+    );
+    adminService.getTeacherApplications.calls.reset();
+    adminService.getTeacherApplications.and.returnValue(of(paged([])));
+
+    component.approve(app());
+
+    expect(snackBar.open).toHaveBeenCalledWith('Zaten karar verildi', approvals.close, jasmine.any(Object));
+    expect(adminService.getTeacherApplications).toHaveBeenCalledTimes(1);
+  });
+
+  it('signalRPush_ReloadsCurrentFilterAndPage', fakeAsync(() => {
+    create(paged([app()], 45));
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved], 45, 2)));
+    component.setFilter('all');
+    component.onPage({ pageIndex: 1, pageSize: 20, length: 45, previousPageIndex: 0 });
+    adminService.getTeacherApplications.calls.reset();
+
+    push$.next();
+    tick(PUSH_RELOAD_AUDIT_MS);
+
+    expect(adminService.getTeacherApplications).toHaveBeenCalledOnceWith({ status: 'all', page: 2, pageSize: 20 });
+    discardPeriodicTasks();
+  }));
+
+  it('filterChange_429AfterFirstLoad_KeepsListAndRestoresPreviousFilter', () => {
+    create();
+    adminService.getTeacherApplications.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429 })));
+
+    component.setFilter('all');
+
+    expect(component.filter()).toBe('pending');
+    expect(component.applications().map((a) => a.teacherId)).toEqual([7]);
+    expect(component.error()).toBeNull();
+    expect(snackBar.open).toHaveBeenCalledWith(approvals.rateLimited, approvals.close, jasmine.any(Object));
+  });
+
+  it('revealEmail_WorksForDecidedRows', () => {
+    create();
+    adminService.getTeacherApplications.and.returnValue(of(paged([approved])));
+    component.setFilter('all');
+    adminService.getTeacherApplication.and.returnValue(
+      of({ ...approved, email: 'ali@okul.k12.tr' }),
+    );
+    fixture.detectChanges();
+
+    el().querySelector<HTMLButtonElement>('button.ta__reveal')!.click();
+    fixture.detectChanges();
+
+    expect(adminService.getTeacherApplication).toHaveBeenCalledOnceWith(8);
+    expect(el().textContent).toContain('ali@okul.k12.tr');
   });
 });

@@ -48,11 +48,83 @@
   color: var(--ms-text-weak);
 }
 
+// Issue #187: filtre (Onay bekleyenler / Tümü) + yenile.
+.ta__tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ta__table-wrap {
+  position: relative;
+  overflow-x: auto;
+  border-radius: 10px;
+}
+
+.ta__progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+
 .ta__table {
   width: 100%;
   background: var(--main-foreground-color);
-  border-radius: 10px;
-  overflow: hidden;
+  transition: opacity 0.15s ease;
+
+  &--stale {
+    opacity: 0.6;
+  }
+}
+
+.ta__paginator {
+  background: transparent;
+}
+
+// Issue #187: başvuru durumu chip'i (admin öğretmen listesindeki onay chip'iyle aynı token'lar).
+.ta__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--ms-text-medium);
+  background: var(--ms-surface-weak);
+
+  &--pending {
+    color: var(--ms-warning-text);
+    background: var(--ms-warning-surface-weak);
+    border-color: var(--ms-warning-border);
+  }
+
+  &--approved {
+    color: var(--ms-success-text);
+    background: var(--ms-success-surface-weak);
+    border-color: var(--ms-success-border);
+  }
+
+  &--rejected {
+    color: var(--ms-danger-text);
+    background: var(--ms-danger-surface-weak);
+    border-color: var(--ms-danger-border);
+  }
+}
+
+// Issue #187: ret gerekçesi (chip'in altında ikincil satır).
+.ta__reason {
+  display: block;
+  margin-top: 0.25rem;
+  max-width: 22rem;
+  font-size: 0.75rem;
+  color: var(--ms-text-medium);
+  overflow-wrap: anywhere;
 }
 
 .ta__muted {

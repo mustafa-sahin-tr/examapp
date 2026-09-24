@@ -4,12 +4,22 @@
       <h2>{{ t('title') }}</h2>
       <p>{{ t('subtitle') }}</p>
     </div>
-    <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
-      <mat-icon>sync</mat-icon> {{ t('refresh') }}
-    </button>
+    <div class="ta__tools">
+      <mat-button-toggle-group
+        [value]="filter()"
+        (change)="setFilter($event.value)"
+        [attr.aria-label]="t('filter.label')"
+      >
+        <mat-button-toggle value="pending">{{ t('filter.pending') }}</mat-button-toggle>
+        <mat-button-toggle value="all">{{ t('filter.all') }}</mat-button-toggle>
+      </mat-button-toggle-group>
+      <button mat-stroked-button type="button" (click)="load()" [disabled]="loading()">
+        <mat-icon>sync</mat-icon> {{ t('refresh') }}
+      </button>
+    </div>
   </header>
 
-  @if (loading()) {
+  @if (showSpinner()) {
     <div class="ta__state" aria-busy="true" aria-live="polite">
       <mat-spinner diameter="36"></mat-spinner>
       <span>{{ t('loading') }}</span>
@@ -23,88 +33,140 @@
   } @else if (isEmpty()) {
     <div class="ta__state">
       <mat-icon class="ta__empty-icon">how_to_reg</mat-icon>
-      <span>{{ t('empty') }}</span>
+      <span>{{ filter() === 'all' ? t('emptyAll') : t('empty') }}</span>
     </div>
   } @else {
-    <table mat-table [dataSource]="applications()" class="ta__table" [trackBy]="trackByTeacherId">
-      <ng-container matColumnDef="fullName">
-        <th mat-header-cell *matHeaderCellDef>{{ t('columns.fullName') }}</th>
-        <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.fullName?.trim()">
-          {{ displayName(row) }}
-        </td>
-      </ng-container>
+    <div class="ta__table-wrap" [attr.aria-busy]="loading()">
+      @if (loading()) {
+        <mat-progress-bar class="ta__progress" mode="indeterminate"></mat-progress-bar>
+      }
+      <table
+        mat-table
+        [dataSource]="applications()"
+        class="ta__table"
+        [class.ta__table--stale]="loading()"
+        [trackBy]="trackByTeacherId"
+      >
+        <ng-container matColumnDef="fullName">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.fullName') }}</th>
+          <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.fullName?.trim()">
+            {{ displayName(row) }}
+          </td>
+        </ng-container>
 
-      <ng-container matColumnDef="type">
-        <th mat-header-cell *matHeaderCellDef>{{ t('columns.type') }}</th>
-        <td mat-cell *matCellDef="let row">
-          <span class="ta__type" [class.ta__type--school]="!row.isIndependentTutor">
-            <mat-icon aria-hidden="true">{{ row.isIndependentTutor ? 'person' : 'school' }}</mat-icon>
-            {{ typeLabel(row) }}
-          </span>
-        </td>
-      </ng-container>
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.type') }}</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="ta__type" [class.ta__type--school]="!row.isIndependentTutor">
+              <mat-icon aria-hidden="true">{{ row.isIndependentTutor ? 'person' : 'school' }}</mat-icon>
+              {{ typeLabel(row) }}
+            </span>
+          </td>
+        </ng-container>
 
-      <ng-container matColumnDef="email">
-        <th mat-header-cell *matHeaderCellDef>{{ t('columns.email') }}</th>
-        <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.email">
-          <div class="ta__email">
-            <span [class.ta__email--full]="isEmailRevealed(row.teacherId)">{{ emailFor(row) || '—' }}</span>
-            @if (row.email && !isEmailRevealed(row.teacherId)) {
-              @if (isRevealing(row.teacherId)) {
-                <mat-spinner diameter="18" [attr.aria-label]="t('revealingEmail')"></mat-spinner>
-              } @else {
-                <button
-                  mat-icon-button
-                  type="button"
-                  class="ta__reveal"
-                  (click)="revealEmail(row)"
-                  [matTooltip]="t('showEmail')"
-                  [attr.aria-label]="t('showEmailFor', { name: displayName(row) })"
-                >
-                  <mat-icon>visibility</mat-icon>
-                </button>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.email') }}</th>
+          <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.email">
+            <div class="ta__email">
+              <span [class.ta__email--full]="isEmailRevealed(row.teacherId)">{{ emailFor(row) || '—' }}</span>
+              @if (row.email && !isEmailRevealed(row.teacherId)) {
+                @if (isRevealing(row.teacherId)) {
+                  <mat-spinner diameter="18" [attr.aria-label]="t('revealingEmail')"></mat-spinner>
+                } @else {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="ta__reveal"
+                    (click)="revealEmail(row)"
+                    [matTooltip]="t('showEmail')"
+                    [attr.aria-label]="t('showEmailFor', { name: displayName(row) })"
+                  >
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                }
               }
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="appliedAt">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.appliedAt') }}</th>
+          <td mat-cell *matCellDef="let row">{{ row.appliedAt | date: 'short' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.status') }}</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="ta__status" [class]="'ta__status--' + statusKey(row)" data-testid="status-chip">
+              {{ t('status.' + statusKey(row)) }}
+            </span>
+            @if (row.status === 'Rejected' && row.rejectionReason?.trim()) {
+              <span class="ta__reason" data-testid="rejection-reason">
+                {{ t('rejectionReason', { reason: row.rejectionReason }) }}
+              </span>
             }
-          </div>
-        </td>
-      </ng-container>
+          </td>
+        </ng-container>
 
-      <ng-container matColumnDef="appliedAt">
-        <th mat-header-cell *matHeaderCellDef>{{ t('columns.appliedAt') }}</th>
-        <td mat-cell *matCellDef="let row">{{ row.appliedAt | date: 'short' }}</td>
-      </ng-container>
+        <ng-container matColumnDef="decidedAt">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.decidedAt') }}</th>
+          <td mat-cell *matCellDef="let row" [class.ta__muted]="!row.decidedAt">
+            {{ row.decidedAt ? (row.decidedAt | date: 'short') : '—' }}
+          </td>
+        </ng-container>
 
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>{{ t('columns.actions') }}</th>
-        <td mat-cell *matCellDef="let row">
-          <div class="ta__actions">
-            <button
-              mat-flat-button
-              color="primary"
-              type="button"
-              (click)="approve(row)"
-              [disabled]="isActing(row.teacherId)"
-            >
-              {{ t('approve') }}
-            </button>
-            <button
-              mat-stroked-button
-              type="button"
-              class="ta__reject"
-              (click)="reject(row)"
-              [disabled]="isActing(row.teacherId)"
-            >
-              {{ t('reject') }}
-            </button>
-            @if (isActing(row.teacherId)) {
-              <mat-spinner diameter="18" [attr.aria-label]="t('acting')"></mat-spinner>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>{{ t('columns.actions') }}</th>
+          <td mat-cell *matCellDef="let row">
+            @if (isPending(row)) {
+              <div class="ta__actions">
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  data-testid="approve"
+                  (click)="approve(row)"
+                  [disabled]="isActing(row.teacherId)"
+                >
+                  {{ t('approve') }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="ta__reject"
+                  data-testid="reject"
+                  (click)="reject(row)"
+                  [disabled]="isActing(row.teacherId)"
+                >
+                  {{ t('reject') }}
+                </button>
+                @if (isActing(row.teacherId)) {
+                  <mat-spinner diameter="18" [attr.aria-label]="t('acting')"></mat-spinner>
+                }
+              </div>
+            } @else {
+              <span class="ta__muted" aria-hidden="true">—</span>
+              <span class="cdk-visually-hidden">{{ t('noAction') }}</span>
             }
-          </div>
-        </td>
-      </ng-container>
+          </td>
+        </ng-container>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-    </table>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
+      </table>
+    </div>
+  }
+
+  @if (!error() && totalCount() > 0) {
+    <mat-paginator
+      class="ta__paginator"
+      [length]="totalCount()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      [disabled]="loading()"
+      showFirstLastButtons
+      (page)="onPage($event)"
+    ></mat-paginator>
   }
 </section>

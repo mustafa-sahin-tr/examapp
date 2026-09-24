@@ -581,6 +581,23 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Booking>()
             .HasIndex(b => new { b.StudentId, b.Status });
 
+        // issue #265: "çözülen soru" okumaları — admin dashboard trendleri (DashboardService.GetTrendsAsync, gün kovası) ve
+        // öğretmen aktivite uçları (TeacherService.GetStudentActivityAsync, TestInstances join'i). İkisi de aynı yüklemi
+        // taşır: NOT IsDeleted AND (SelectedAnswerId IS NOT NULL OR AnswerPayload IS NOT NULL) AND UpdateTime IS NOT NULL
+        // AND UpdateTime >= @from [AND < @to]. Kısmi index bu yüklemi birebir filtre olarak içerir (planner implication'ı
+        // sağlar; cevapsız/silinmiş satırlar index dışı → küçük index). INCLUDE ile join anahtarı + toplanan kolonlar:
+        //  - trends: Index Only Scan (UpdateTime aralığı) → HashAggregate; heap'e gidilmez (visibility map güncelse).
+        //  - öğretmen: Index Only Scan (UpdateTime aralığı; WorksheetInstanceId/IsCorrect/TimeTaken index'ten) →
+        //    Hash Join TestInstances (WorksheetId = ANY / StudentId = ANY; mevcut IX_TestInstances_WorksheetId/StudentId).
+        //    Öğretmenin instance sayısı azsa planner mevcut IX_TestInstanceQuestions_WorksheetInstanceId ile nested loop'u
+        //    seçebilir; ikisi de tam tablo taramasından (önceki plan: Seq Scan TestInstanceQuestions) iyidir.
+        // Yazma maliyeti: cevap kaydı zaten indexli SelectedAnswerId'yi değiştirdiği için HOT update değildi; bir index daha.
+        modelBuilder.Entity<WorksheetInstanceQuestion>()
+            .HasIndex(q => q.UpdateTime)
+            .HasDatabaseName("IX_TestInstanceQuestions_UpdateTime_Answered")
+            .HasFilter("NOT \"IsDeleted\" AND (\"SelectedAnswerId\" IS NOT NULL OR \"AnswerPayload\" IS NOT NULL) AND \"UpdateTime\" IS NOT NULL")
+            .IncludeProperties(q => new { q.WorksheetInstanceId, q.IsCorrect, q.TimeTaken });
+
         // Pratik oturumu (issue #62)
         modelBuilder.Entity<PracticeSession>()
             .HasOne(ps => ps.Student)

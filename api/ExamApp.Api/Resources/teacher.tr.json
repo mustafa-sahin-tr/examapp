@@ -21,7 +21,8 @@
     "fallbackTeacherName": "Öğretmen #{0}",
 
     "activity": {
-      "invalidDays": "days 1 ile 90 arasında olmalı."
+      "invalidDays": "days 1 ile 90 arasında olmalı.",
+      "rateLimited": "Aktivite özeti kısa sürede çok fazla istendi. Lütfen biraz bekleyip tekrar deneyin."
     },
 
     "search": {

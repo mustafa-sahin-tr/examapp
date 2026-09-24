@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using System.Threading;
 using System.Threading.Tasks;
 using ExamApp.Api.Models.Dtos;
@@ -38,6 +39,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmen kendi adına bir müsaitlik aralığı tanımlar.</summary>
     [HttpPost("slots")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> CreateSlot([FromBody] CreateAvailabilitySlotDto request, CancellationToken ct)
     {
@@ -54,6 +56,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmenin kendi müsaitlik aralıkları (geçmiş + gelecek), aktif randevu durumuyla.</summary>
     [HttpGet("slots/mine")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> GetMySlots([FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
     {
@@ -67,6 +70,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmen kendi, aktif randevusu olmayan müsaitlik aralığını siler.</summary>
     [HttpDelete("slots/{id:int}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> DeleteSlot(int id, CancellationToken ct)
     {
@@ -85,6 +89,7 @@ public class BookingController : BaseController
     /// Çakışan haftalar atlanır ve yanıtta <c>skippedDates</c> olarak döner.
     /// </summary>
     [HttpPost("recurring-rules")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> CreateRecurringRule(
         [FromBody] CreateRecurringAvailabilityRuleDto request, CancellationToken ct)
@@ -102,6 +107,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmenin aktif tekrarlayan kuralları.</summary>
     [HttpGet("recurring-rules/mine")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> GetMyRecurringRules([FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
     {
@@ -119,6 +125,7 @@ public class BookingController : BaseController
     /// mevcut <c>DELETE slots/{id}</c> kullanılır.
     /// </summary>
     [HttpDelete("recurring-rules/{id:int}")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> DeleteRecurringRule(int id, CancellationToken ct)
     {
@@ -163,6 +170,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmene gelen randevu talepleri.</summary>
     [HttpGet("requests/teacher")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> GetTeacherRequests([FromQuery] int skip, [FromQuery] int take, CancellationToken ct)
     {
@@ -189,6 +197,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmen kendi slotuna gelen talebi onaylar.</summary>
     [HttpPost("requests/{id:int}/approve")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> ApproveRequest(int id, CancellationToken ct)
     {
@@ -202,6 +211,7 @@ public class BookingController : BaseController
 
     /// <summary>Öğretmen kendi slotuna gelen talebi reddeder. Gövde (gerekçe) opsiyoneldir.</summary>
     [HttpPost("requests/{id:int}/reject")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     [Authorize(Roles = "Teacher")]
     public async Task<IActionResult> RejectRequest(int id, [FromBody] RejectBookingDto? request, CancellationToken ct)
     {
@@ -220,6 +230,7 @@ public class BookingController : BaseController
     /// öğrenci aynı ucu çağırır; token'daki moderatör yetkisini servis katmanı belirler.
     /// </summary>
     [HttpPost("requests/{id:int}/video-session")]
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     [Authorize(Roles = "Teacher,Student")]
     public async Task<IActionResult> CreateVideoSession(int id, CancellationToken ct)
     {

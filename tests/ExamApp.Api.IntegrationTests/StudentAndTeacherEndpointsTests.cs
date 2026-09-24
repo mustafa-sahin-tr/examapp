@@ -99,7 +99,7 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
         {
             var approved = new Student { UserId = 20, StudentNumber = "200", SchoolName = "S", GradeId = gradeId };
             var pending = new Student { UserId = 22, StudentNumber = "220", SchoolName = "S", GradeId = gradeId };
-            var tutor = new Teacher { UserId = 21, SchoolId = null, IsIndependentTutor = true };
+            var tutor = new Teacher { UserId = 21, SchoolId = null, IsIndependentTutor = true, AccountApprovedAt = DateTime.UtcNow };
             db.AddRange(approved, pending, tutor);
             await db.SaveChangesAsync();
             return (approved.Id, pending.Id, tutor.Id);
@@ -202,6 +202,7 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
     [Fact]
     public async Task Dashboard_summary_returns_zeros_for_a_teacher_with_no_worksheets()
     {
+        await SeedApprovedTeacherAsync(40); // issue #287
         var client = await ClientAsAsync(40, "Teacher", "kc-40", "Teacher");
 
         var summary = await client.GetFromJsonAsync<TeacherDashboardSummaryDto>(
@@ -225,7 +226,7 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
             var student = new Student { UserId = 900, StudentNumber = "900", SchoolName = "S", GradeId = gradeId };
             // issue #222: test profili okulsuz (bağımsız) öğretmen; direkt atanan öğrencisi yalnızca Approved Booking
             // ile kapsamdadır (#192) — gerçekçi "öğretmenin öğrencisi" ilişkisi seed edilir.
-            var ownerTeacher = new Teacher { UserId = ownerId, SchoolId = null, IsIndependentTutor = true };
+            var ownerTeacher = new Teacher { UserId = ownerId, SchoolId = null, IsIndependentTutor = true, AccountApprovedAt = DateTime.UtcNow };
             db.AddRange(ws, student, ownerTeacher);
             await db.SaveChangesAsync();
 
@@ -259,6 +260,7 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
         ownerSummary!.TotalWorksheets.ShouldBe(1);
         ownerSummary.TotalUniqueStudents.ShouldBe(1);
 
+        await SeedApprovedTeacherAsync(otherTeacherId); // issue #287
         var otherClient = await ClientAsAsync(otherTeacherId, "Teacher", "kc-42", "Teacher");
         var otherSummary = await otherClient.GetFromJsonAsync<TeacherDashboardSummaryDto>(
             "/api/teacher/dashboard-summary", Json);
@@ -280,6 +282,7 @@ public class StudentAndTeacherEndpointsTests(IntegrationApiFactory factory) : In
             db.Teachers.Add(new Teacher
             {
                 UserId = teacherUserId, SchoolId = school?.Id, IsIndependentTutor = !withSchool,
+                AccountApprovedAt = DateTime.UtcNow, // issue #287
             });
             db.SetCurrentUser(teacherUserId);
             var ws = new Worksheet { Name = "Atanacak", Description = "", GradeId = grade.Id };

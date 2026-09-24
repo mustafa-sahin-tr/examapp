@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Data;
 using ExamApp.Api.Services;
 using ExamApp.Api.Helpers;
@@ -239,7 +240,9 @@ builder.Services.AddScoped<IUserProfileProvider, UserProfileProvider>(); // issu
 builder.Services.AddScoped<ISchoolAccessPolicy, SchoolAccessPolicy>(); // issue #190
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 builder.Services.AddScoped<IStudyItemService, StudyItemService>();
-builder.Services.AddScoped<ExamApp.Api.Services.Teachers.IApprovedTeacherGuard, ExamApp.Api.Services.Teachers.ApprovedTeacherGuard>(); // issue #61 (#287 tüm öğretmen uçlarında yeniden kullanacak)
+builder.Services.AddScoped<ExamApp.Api.Services.Teachers.IApprovedTeacherGuard, ExamApp.Api.Services.Teachers.ApprovedTeacherGuard>(); // issue #61, #287
+// issue #287: onaysız öğretmen kapısı — "ApprovedTeacher" / "ApprovedTeacherOrStudent" policy'leri + TeacherNotApproved 403 gövdesi.
+builder.Services.AddApprovedTeacherAuthorization();
 builder.Services.AddScoped<ExamApp.Api.Services.StudyLinks.ITopicStudyLinkService, ExamApp.Api.Services.StudyLinks.TopicStudyLinkService>(); // issue #61
 
 // Admin: taxonomy management + question-classifier (Gemini) cache

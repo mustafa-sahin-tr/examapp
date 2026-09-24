@@ -52,6 +52,7 @@ public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : In
     [Fact]
     public async Task StartExport_passes_the_authorization_gate_for_a_teacher()
     {
+        await SeedApprovedTeacherAsync(4); // issue #287
         var teacher = await ClientAsAsync(4, "Teacher", "kc-qt-4", "Teacher");
 
         var response = await teacher.PostAsJsonAsync(
@@ -78,6 +79,7 @@ public class RoleAuthorizationEndpointsTests(IntegrationApiFactory factory) : In
     [Fact]
     public async Task ListJobs_and_ListSources_pass_the_authorization_gate_for_a_teacher()
     {
+        await SeedApprovedTeacherAsync(6); // issue #287
         var teacher = await ClientAsAsync(6, "Teacher", "kc-qt-6", "Teacher");
 
         (await teacher.GetAsync("/api/question-transfer/jobs")).StatusCode.ShouldBe(HttpStatusCode.OK);

@@ -31,8 +31,19 @@ public class StudyLinksControllerTests
     private static string[] RolesOf(string action)
     {
         var method = typeof(StudyLinksController).GetMethod(action)!;
-        var attribute = method.GetCustomAttributes<AuthorizeAttribute>(inherit: false).Single();
+        // issue #287: yönetim uçlarında rol attribute'unun yanında ApprovedTeacher policy attribute'u da var.
+        var attribute = method.GetCustomAttributes<AuthorizeAttribute>(inherit: false).Single(a => !string.IsNullOrEmpty(a.Roles));
         return attribute.Roles!.Split(',').Select(r => r.Trim()).OrderBy(r => r).ToArray();
+    }
+
+    [Fact]
+    public void ManagementEndpoints_RequireApprovedTeacherPolicy()
+    {
+        foreach (var action in ManagementActions)
+            typeof(StudyLinksController).GetMethod(action)!
+                .GetCustomAttributes<AuthorizeAttribute>(inherit: false)
+                .ShouldContain(a => a.Policy == ExamApp.Api.Services.Teachers.Authorization.ApprovedTeacherPolicies.TeacherCapability,
+                    $"{action} onaysız öğretmene kapalı olmalı (#287)");
     }
 
     [Fact]

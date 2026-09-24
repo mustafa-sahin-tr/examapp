@@ -7,6 +7,7 @@ using System.Text.Json;
 using ExamApp.Api.Data;
 using ExamApp.Api.Helpers;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -100,6 +101,7 @@ namespace ExamApp.Api.Controllers
                     .FirstOrDefaultAsync(t => t.UserId == profile.Id);
                     if (teacher == null)
                         return Ok(profile);
+                    var approval = TeacherApprovalState.From(teacher);
                     profile.Teacher = new TeacherDto
                     {
                         Id = teacher.Id,
@@ -108,7 +110,11 @@ namespace ExamApp.Api.Controllers
                         SchoolName = teacher.SchoolName,
                         SchoolId = teacher.SchoolId,
                         ThemePreset = teacher.ThemePreset,
-                        ThemeCustomConfig = teacher.ThemeCustomConfig
+                        ThemeCustomConfig = teacher.ThemeCustomConfig,
+                        // issue #287: UI onaysız öğretmene öğretmen menülerini kapatıp "onay bekleniyor" gösterir.
+                        TeacherAccountApproved = approval.TeacherAccountApproved,
+                        TeacherApplicationStatus = approval.TeacherApplicationStatus,
+                        RejectionReason = approval.RejectionReason
                     };
                 }
             }

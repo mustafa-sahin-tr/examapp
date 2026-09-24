@@ -52,6 +52,14 @@ public class TeacherApplicationListItemDto
     /// (audit best-effort). <c>Teacher.UpdateTime</c> KULLANILMAZ — sonraki her profil güncellemesinde değişir.
     /// </summary>
     public DateTime? DecidedAt { get; set; }
+
+    /// <summary>
+    /// issue #287: öğretmen hesabı henüz onaylanmamış (Teachers.AccountApprovedAt null) — bu başvurunun onayı öğretmen
+    /// özelliklerini açar. Okul talebi olmayan, bağımsız da olmayan ilk kayıtta <see cref="IsIndependentTutor"/>=false ve
+    /// <see cref="RequestedSchoolId"/>=null olur; başvuru türü "öğretmen hesabı onayı"dır. Hesabı zaten onaylı öğretmenin
+    /// sonraki (bağımsız/okul) başvurusunda false.
+    /// </summary>
+    public bool RequiresAccountApproval { get; set; }
 }
 
 /// <summary>
@@ -91,6 +99,14 @@ public class TeacherApplicationDetailDto
 
     /// <summary>issue #187: bkz. <see cref="TeacherApplicationListItemDto.DecidedAt"/>.</summary>
     public DateTime? DecidedAt { get; set; }
+
+    /// <summary>
+    /// issue #287: öğretmen hesabı henüz onaylanmamış (Teachers.AccountApprovedAt null) — bu başvurunun onayı öğretmen
+    /// özelliklerini açar. Okul talebi olmayan, bağımsız da olmayan ilk kayıtta <see cref="IsIndependentTutor"/>=false ve
+    /// <see cref="RequestedSchoolId"/>=null olur; başvuru türü "öğretmen hesabı onayı"dır. Hesabı zaten onaylı öğretmenin
+    /// sonraki (bağımsız/okul) başvurusunda false.
+    /// </summary>
+    public bool RequiresAccountApproval { get; set; }
 }
 
 public class TeacherRejectRequestDto

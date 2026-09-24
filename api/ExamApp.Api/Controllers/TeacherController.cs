@@ -1,5 +1,7 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
@@ -123,7 +125,9 @@ namespace ExamApp.Api.Controllers
                 schoolId = response.SchoolId,
                 requestedSchoolId = response.RequestedSchoolId,
                 approvalStatus = response.ApprovalStatus,
-                schoolApprovalPending = response.SchoolApprovalPending
+                schoolApprovalPending = response.SchoolApprovalPending,
+                // issue #287: yeni kayıt her zaman onay bekler — UI "onay bekleniyor" ekranına geçer.
+                teacherAccountApproved = response.AccountApproved
             });
         }
 
@@ -142,7 +146,16 @@ namespace ExamApp.Api.Controllers
 
             if (teacher != null)
             {
-                return Ok(new { HasTeacherRecord = true, Teacher = teacher });
+                // issue #287: onay durumu üst seviyede (teacherAccountApproved / teacherApplicationStatus / rejectionReason).
+                var approval = TeacherApprovalState.From(teacher);
+                return Ok(new
+                {
+                    HasTeacherRecord = true,
+                    Teacher = teacher,
+                    approval.TeacherAccountApproved,
+                    approval.TeacherApplicationStatus,
+                    approval.RejectionReason
+                });
             }
 
             return Ok(new { HasTeacherRecord = false });
@@ -169,6 +182,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("dashboard-summary")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<TeacherDashboardSummaryDto>> GetDashboardSummary(CancellationToken ct)
         {
             // issue #222: bağımsız öğretmen kapsamı için tenant bağlamı #190 yolundan (fail-closed).
@@ -183,6 +197,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("worksheets-overview")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<List<TeacherWorksheetOverviewDto>>> GetWorksheetsOverview(CancellationToken ct)
         {
             var scope = await GetSchoolScopeAsync(ct);
@@ -197,6 +212,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("lagging-students")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<List<TeacherLaggingStudentDto>>> GetLaggingStudents(CancellationToken ct)
         {
             var scope = await GetSchoolScopeAsync(ct);
@@ -210,6 +226,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("own-activity-summary")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<TeacherOwnActivitySummaryDto>> GetOwnActivitySummary(
             [FromQuery] int days = 7, CancellationToken ct = default)
         {
@@ -226,6 +243,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("students-activity-summary")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<TeacherStudentsActivitySummaryDto>> GetStudentsActivitySummary(
             [FromQuery] int days = 7, CancellationToken ct = default)
         {

@@ -46,6 +46,13 @@
       "hashing_algorithm": "rabbit_password_hashing_sha256",
       "tags": [],
       "limits": {}
+    },
+    {
+      "name": "auth_api",
+      "password_hash": "3qb9Hh89x5Z8SNYdIJPMIDsK6GthFKnk47hN0cvZqOYxvI0P",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [],
+      "limits": {}
     }
   ],
   "vhosts": [
@@ -60,11 +67,11 @@
       "read": ".*"
     },
     {
-      "_comment": "exam-outbox-publisher: relays worksheet-DB outbox rows via IPublishEndpoint.Publish — never binds/consumes anything, so it only ever needs configure (exchange.declare) + write (basic.publish) on its own message-type exchanges, never read. Exchange name format is MassTransit's default RabbitMQ formatter: '<Namespace>:<TypeName>' (colon, not dot) — verified no SetEntityNameFormatter/custom MessageTopology override in the codebase. List matches OutboxEventRegistry entries actually written by api/ExamApp.Api.",
+      "_comment": "exam-outbox-publisher: relays worksheet-DB outbox rows via IPublishEndpoint.Publish — never binds/consumes anything, so it only ever needs configure (exchange.declare) + write (basic.publish) on its own message-type exchanges, never read. Exchange name format is MassTransit's default RabbitMQ formatter: '<Namespace>:<TypeName>' (colon, not dot) — verified no SetEntityNameFormatter/custom MessageTopology override in the codebase. List matches OutboxEventRegistry entries actually written by api/ExamApp.Api. UserRoleChangedEvent added issue #277 item 4 (exam API's Teacher/Student/ParentController write it after SetRoleAsync).",
       "user": "exam_outbox_pub",
       "vhost": "/",
-      "configure": "^ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent)$",
-      "write": "^ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent)$",
+      "configure": "^ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent|UserRoleChangedEvent)$",
+      "write": "^ExamApp\\.Foundation\\.Contracts:(AnswerSubmittedEvent|QuestionCreatedEvent|WorksheetReminderDueEvent|WorksheetAccessRequestedEvent|WorksheetAccessRequestApprovedEvent|WorksheetAccessRequestRejectedEvent|TeacherApplicationSubmittedEvent|TeacherApplicationDecidedEvent|TeacherSchoolRequestSubmittedEvent|IndependentTeacherRegisteredEvent|BookingRequestCreatedEvent|BookingDecisionEvent|UserPreferredLocaleChangedEvent|UserRoleChangedEvent)$",
       "read": "^$"
     },
     {
@@ -98,6 +105,14 @@
       "configure": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent)$",
       "write": "^exam-api(_error|_skipped)?$",
       "read": "^(exam-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:StudentPointsChangedEvent)$"
+    },
+    {
+      "_comment": "auth-api: consumes only UserRoleChangedEvent on its own 'auth-api' queue (auth-api/Program.cs ReceiveEndpoint, issue #277 item 4 — exam API's Teacher/Student/ParentController write this to worksheet-DB outbox after SetRoleAsync so auth-api's own Users.Role stays in sync without waiting for the next login). Same binding semantics as exam_api/badge_service above: write is restricted to its own queue/exchange/error/skipped, never the message-type exchange.",
+      "user": "auth_api",
+      "vhost": "/",
+      "configure": "^(auth-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:UserRoleChangedEvent)$",
+      "write": "^auth-api(_error|_skipped)?$",
+      "read": "^(auth-api(_error|_skipped)?|ExamApp\\.Foundation\\.Contracts:UserRoleChangedEvent)$"
     }
   ],
   "topic_permissions": [],

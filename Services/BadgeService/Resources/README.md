@@ -28,8 +28,8 @@ ayrı dosya ayrımına şu an ihtiyaç yok (tüm bildirimler tek yerde, event t�
   **birebir aynı** string olmalı (`Notification.Type` kolonuyla da aynı değer — DB'de neyi
   filtrelediğini JSON'da da görürsün).
 - Varsayılan/yer tutucu adlar (gönderen adı bilinmiyorsa vb.) `notifications.common.*` altında:
-  `defaultTeacher`, `defaultStudent`, `defaultApplicant`, `defaultRequester`, `unnamedWorksheet`,
-  `worksheetFallback`, `rejectionReasonSuffix`.
+  `defaultTeacher`, `defaultStudent`, `defaultApplicant`, `defaultRequester`, `defaultSchool`,
+  `unnamedWorksheet`, `worksheetFallback`, `rejectionReasonSuffix`.
 - Parametreler `string.Format` sırasıyla (`{0}`, `{1}`, ...), tıpkı exam API sözlüğünde olduğu gibi.
 - Her anahtar hem `tr` hem `en` dosyasında bulunur. Eksik anahtar `tr`'ye düşer (aynı fallback
   zinciri: tam kültür → dil kodu → `tr`), consumer asla boş/patlamış bir bildirim üretmez.

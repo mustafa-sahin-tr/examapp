@@ -35,6 +35,7 @@ DEV_PASSWORDS = {
     "badge_outbox_pub": "devOnlyBadgeOutboxPubPasswordChangeMe123",
     "badge_service": "devOnlyBadgeServicePasswordChangeMe123",
     "exam_api": "devOnlyExamApiPasswordChangeMe123",
+    "auth_api": "devOnlyAuthApiPasswordChangeMe123",
 }
 
 

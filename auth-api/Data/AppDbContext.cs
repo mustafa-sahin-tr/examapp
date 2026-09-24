@@ -53,6 +53,17 @@ public abstract class BaseEntity
     /// akışıyla açılan hesaplarda false.
     /// </summary>
     public bool IsSeedData { get; set; }
+
+    /// <summary>
+    /// Issue #277 (madde 4): <see cref="Role"/>'ün en son ne zaman güncellendiği (UTC).
+    /// <c>UserRoleChangedConsumer</c>'ın sırasız/tekrar teslim edilen event'lere karşı tazelik
+    /// koruması burada tutulur (aynı desen <c>UserLocalePreference.UpdatedAtUtc</c> ile,
+    /// bkz. <c>UserPreferredLocaleChangedConsumer</c> BadgeService'te) — geç gelen eski bir event,
+    /// sonradan işlenmiş daha yeni bir rol değişikliğini geri almasın. Login/register/complete-profile
+    /// gibi yerel yazımlar bu kolonu DOKUNMAZ (yalnızca event kaynaklı güncellemeler); null ise
+    /// henüz hiç <c>UserRoleChangedEvent</c> işlenmemiş demektir.
+    /// </summary>
+    public DateTime? RoleUpdatedAtUtc { get; set; }
 }
 
 public enum UserRole

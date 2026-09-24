@@ -36,7 +36,6 @@ describe('AdminTeachersComponent', () => {
   function teacher(overrides: Partial<AdminTeacherListItem> = {}): AdminTeacherListItem {
     return {
       id: 12,
-      userId: 1042,
       fullName: 'Ayşe Yılmaz',
       email: 'a***@okul.k12.tr', // issue #246: backend listede maskeli döner
       schoolId: 5,

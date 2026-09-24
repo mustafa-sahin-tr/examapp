@@ -32,6 +32,16 @@ public class WorksheetAssignment : BaseEntity
     [ForeignKey(nameof(SchoolId))]
     public School? School { get; set; }
 
+    /// <summary>
+    /// issue #277 (madde 7): sınıf hedefli atamanın BİLİNÇLİ olarak tüm okulların o sınıfına açık olduğunu belirtir.
+    /// Öğrenci görünürlük predikatı (<c>WorksheetStudentAccess.AssignmentVisibleTo</c>) artık
+    /// <c>IsPlatformWide || SchoolId == öğrencinin okulu</c> kuralını uygular — <c>SchoolId == null</c> tek başına
+    /// "herkese açık" anlamına GELMEZ (fail-closed). Yalnızca admin'in (Unrestricted) sınıf ataması true yazılır
+    /// (<c>WorksheetAssignmentService.AssignWorksheetAsync</c>). Mevcut SchoolId=null sınıf atamaları migration
+    /// <c>AddWorksheetAssignmentIsPlatformWide</c> ile true'ya çekildi (davranış korunur). Öğrenci hedefli atamalarda false.
+    /// </summary>
+    public bool IsPlatformWide { get; set; }
+
     [Required]
     public DateTime StartAt { get; set; }
 

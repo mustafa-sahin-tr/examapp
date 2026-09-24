@@ -43,11 +43,12 @@ public class AdminController : BaseController
     private readonly IAdminDataAccessAuditService _dataAccessAudit;
     private readonly IAdminPasswordResetService _passwordReset;
     private readonly IAdminAccountStatusService _accountStatus;
+    private readonly IAdminStudentSchoolService? _studentSchool;
 
     // Client'a donen tum metinler mesaj sozlugunden gelir (issue #184).
     private readonly IStringLocalizer<Messages> _localizer;
 
-    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null)
+    public AdminController(ITaxonomyService taxonomy, IClassifierCacheService classifierCache, ISchoolService schools, IDashboardService dashboard, ILocationService locations, ITeacherApprovalService teacherApprovals, IAdminTeacherService adminTeachers, IAdminStudentService adminStudents, IAdminDataAccessAuditService dataAccessAudit, IAdminPasswordResetService passwordReset, IAdminAccountStatusService accountStatus, IStringLocalizer<Messages>? localizer = null, IAdminStudentSchoolService? studentSchool = null)
     {
         _localizer = localizer ?? FallbackMessageLocalizer.Instance;
         _taxonomy = taxonomy;
@@ -61,6 +62,8 @@ public class AdminController : BaseController
         _dataAccessAudit = dataAccessAudit;
         _passwordReset = passwordReset;
         _accountStatus = accountStatus;
+        // DI her zaman verir; parametre yalnızca mevcut (DI'siz) controller testleri derlenmeye devam etsin diye opsiyonel.
+        _studentSchool = studentSchool;
     }
 
     private async Task<int> CurrentUserIdAsync()
@@ -410,6 +413,50 @@ public class AdminController : BaseController
             AdminAccountStatusChangeStatus.SessionRevokeFailed =>
                 StatusCode(StatusCodes.Status502BadGateway, Message("admin.accountStatus.sessionRevokeFailed")),
             _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.accountStatus.upstreamFailed"))
+        };
+    }
+
+    // ---- Öğrenci okul değişikliği (issue #277 madde 8) ----
+
+    /// <summary>
+    /// PUT api/admin/students/{id}/school, gövde <c>{ "schoolId": int }</c> → öğrencinin (Student.Id) okulunu değiştirir
+    /// (öğrenci okulu kayıttan sonra kilitlidir, #259). Yanıt <c>200 { studentId, schoolId, previousSchoolId, changed }</c>;
+    /// zaten o okuldaysa da 200 (<c>changed=false</c>, yan etkisiz). schoolId eksik veya okul yok → 400; öğrenci/hesap yok
+    /// → 404; hedef admin/servis hesabı ya da çağıranın kendisi → 403; eşzamanlı değişiklik → 409; auth-api/Keycloak
+    /// hatası → 502 (okul değişmez). AdminUserActionLogs'a audit'lenir; admin başına rate limit (429).
+    /// </summary>
+    [HttpPut("students/{id:int}/school")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [EnableRateLimiting(AdminStudentSchoolRateLimiting.Policy)]
+    public async Task<IActionResult> ChangeStudentSchool(int id, [FromBody] AdminStudentSchoolRequestDto request, CancellationToken ct)
+    {
+        var actor = KeyCloakId;
+        if (string.IsNullOrWhiteSpace(actor))
+            return Forbid();
+        if (request?.SchoolId is not int schoolId)
+            return BadRequest(Message("admin.studentSchool.schoolIdRequired"));
+
+        var service = _studentSchool
+            ?? throw new InvalidOperationException("IAdminStudentSchoolService is not registered.");
+        var result = await service.ChangeSchoolAsync(id, schoolId, actor, ct);
+        return result.Status switch
+        {
+            AdminStudentSchoolChangeStatus.Success => Ok(new AdminStudentSchoolResponseDto
+            {
+                StudentId = id,
+                SchoolId = result.SchoolId ?? schoolId,
+                PreviousSchoolId = result.PreviousSchoolId,
+                Changed = result.Changed
+            }),
+            AdminStudentSchoolChangeStatus.TargetNotFound => NotFound(Message("admin.studentSchool.studentNotFound")),
+            AdminStudentSchoolChangeStatus.SchoolNotFound => BadRequest(Message("admin.studentSchool.schoolNotFound")),
+            AdminStudentSchoolChangeStatus.AccountNotFound => NotFound(Message("admin.studentSchool.accountNotFound")),
+            AdminStudentSchoolChangeStatus.ForbiddenSelf =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.studentSchool.self")),
+            AdminStudentSchoolChangeStatus.ForbiddenProtectedRole =>
+                StatusCode(StatusCodes.Status403Forbidden, Message("admin.studentSchool.protectedRole")),
+            AdminStudentSchoolChangeStatus.Conflict => Conflict(Message("admin.studentSchool.concurrentChange")),
+            _ => StatusCode(StatusCodes.Status502BadGateway, Message("admin.studentSchool.upstreamFailed"))
         };
     }
 

@@ -151,21 +151,16 @@ public class WorksheetAssignmentServiceIndependentGradeTests : IDisposable
         r.Message.ShouldBe(missing.Message);
     }
 
-    [Fact]
-    public async Task Issue236_LegacyIndependentGradeAssignmentBehavior_DocumentsRequirementForMigrationSoftDelete()
+    [Theory]
+    [InlineData(false, false)] // issue #277 (madde 7): SchoolId=null tek başına artık "herkese açık" DEĞİL (fail-closed)
+    [InlineData(true, true)]   // yalnızca açıkça platform geneli işaretli satır tüm okullara açık
+    public async Task Issue277_NullSchoolGradeAssignment_IsVisibleAcrossSchoolsOnlyWhenExplicitlyPlatformWide(
+        bool isPlatformWide, bool expectVisible)
     {
-        // issue #236 — DATA CLEANUP via migration, not filtering logic:
-        // Legacy SchoolId=null grade assignments created by independent teachers (before AC enforcement)
-        // are VISIBLE to all students in the grade because SchoolId=null means "no school restriction"
-        // (same as admin platform-wide assignments). This is the current pre-fix behavior.
-        //
-        // The migration 20260923103501_SoftDeleteIndependentTeacherGradeAssignments fixes this by:
-        // 1. Soft-deleting these assignments (IsDeleted=true)
-        // 2. Cancelling related Pending reminders when no other visible access exists
-        //
-        // This unit test documents that pre-migration, SchoolId=null assignments ARE visible.
-        // After migration runs in production, they won't appear because IsDeleted filter excludes them.
-        // See MigrationSoftDeleteIndependentGradeAssignmentsTests for migration verification.
+        // issue #236: bağımsız öğretmenin #222 öncesi SchoolId=null sınıf atamaları migration ile soft-delete edildi.
+        // issue #277 (madde 7): predikat daraltıldı — SchoolId=null ve IsPlatformWide=false satır (ör. migration'ın
+        // kaçırdığı/elle yazılmış legacy satır) başka okulun öğrencisine SIZMAZ. Mevcut null satırlar
+        // AddWorksheetAssignmentIsPlatformWide migration'ında IsPlatformWide=true'ya çekildi (davranış korunur).
         var seed = await SeedAsync();
         var activeStart = DateTime.UtcNow.AddDays(-1);
         await using (var setup = _db.NewContext())
@@ -173,7 +168,8 @@ public class WorksheetAssignmentServiceIndependentGradeTests : IDisposable
             setup.SetCurrentUser(TutorUserId);
             setup.WorksheetAssignments.Add(new WorksheetAssignment
             {
-                WorksheetId = seed.TutorWs, GradeId = seed.GradeId, SchoolId = null, StartAt = activeStart,
+                WorksheetId = seed.TutorWs, GradeId = seed.GradeId, SchoolId = null, IsPlatformWide = isPlatformWide,
+                StartAt = activeStart,
             });
             await setup.SaveChangesAsync();
         }
@@ -182,10 +178,10 @@ public class WorksheetAssignmentServiceIndependentGradeTests : IDisposable
         var forStudentB = await NewService(read).GetActiveAssignmentsForStudentAsync(
             new StudentProfileDto { Id = seed.StudentB, GradeId = seed.GradeId, SchoolId = seed.SchoolB });
 
-        // Pre-migration: StudentB in SchoolB CAN see tutor's SchoolId=null assignment
-        // because SchoolId=null means "no school restriction" (platform-wide, like admin assignments).
-        // Post-migration: these assignments are soft-deleted, so they won't appear.
-        forStudentB.ShouldHaveSingleItem().WorksheetId.ShouldBe(seed.TutorWs);
+        if (expectVisible)
+            forStudentB.ShouldHaveSingleItem().WorksheetId.ShouldBe(seed.TutorWs);
+        else
+            forStudentB.ShouldBeEmpty();
     }
 
     // ---- (b) okullu öğretmen grade ataması değişmedi ----

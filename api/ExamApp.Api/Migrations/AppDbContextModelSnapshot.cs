@@ -106,6 +106,9 @@ namespace ExamApp.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<int?>("FromSchoolId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("OccurredAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -121,6 +124,9 @@ namespace ExamApp.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("ToSchoolId")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

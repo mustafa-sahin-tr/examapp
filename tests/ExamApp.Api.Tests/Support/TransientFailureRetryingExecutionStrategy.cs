@@ -42,3 +42,35 @@ public sealed class FailFirstCommitInterceptor : DbTransactionInterceptor
         return ValueTask.FromResult(result);
     }
 }
+
+/// <summary>
+/// Throws <see cref="TransientTestException"/> on the first command whose SQL contains <paramref name="sqlFragment"/> —
+/// for single-statement SaveChanges calls, which EF runs without an explicit transaction (so no COMMIT to fail).
+/// </summary>
+public sealed class FailFirstCommandInterceptor(string sqlFragment) : DbCommandInterceptor
+{
+    public int Failures { get; private set; }
+
+    private void MaybeFail(DbCommand command)
+    {
+        if (Failures == 0 && command.CommandText.Contains(sqlFragment, StringComparison.Ordinal))
+        {
+            Failures++;
+            throw new TransientTestException("simulated transient failure on command");
+        }
+    }
+
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+        DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+    {
+        MaybeFail(command);
+        return ValueTask.FromResult(result);
+    }
+
+    public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+        DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    {
+        MaybeFail(command);
+        return ValueTask.FromResult(result);
+    }
+}

@@ -55,6 +55,7 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
             .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
             .AddSingleton(profileProvider)
             .AddSingleton<ISchoolContextResolver>(new SchoolContextResolver(ctx))
+            .AddSingleton<ExamApp.Api.Services.UserRoles.IUserRoleChangeRecorder>(new ExamApp.Api.Services.UserRoles.UserRoleChangeRecorder(ctx))
             .BuildServiceProvider();
 
         var controller = new StudentController(
@@ -117,7 +118,7 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
         // school_id ipucu DB değerini (A) almalı — istek gövdesindeki okul (B) kapsama taşınmamalı.
         var (schoolA, schoolB, gradeId) = await SeedAsync(existingStudentInSchoolA: true);
         var studentService = Substitute.For<IStudentService>();
-        studentService.Save(UserId, Arg.Any<RegisterStudentDto>(), Arg.Any<ExamApp.Api.Helpers.UserRoleChangeRequest?>()).Returns(new ResponseBaseDto { Success = true });
+        studentService.Save(UserId, Arg.Any<RegisterStudentDto>()).Returns(new ResponseBaseDto { Success = true });
         await using var ctx = _db.NewContext();
         var controller = NewController(ctx, studentService);
 

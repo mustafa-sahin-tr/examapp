@@ -59,8 +59,10 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
         if (string.IsNullOrWhiteSpace(actorKeycloakId))
             throw new InvalidOperationException("Admin student school change requires the actor's Keycloak subject.");
 
+        // issue #277 review (security L5): audit satırı istenen okulu (ToSchoolId) her sonuçta, önceki okulu (FromSchoolId)
+        // öğrenci okunduktan sonra taşır.
         var record = new AdminUserActionRecord(actorKeycloakId, AdminUserAction.StudentSchoolChanged,
-            AdminUserTargetType.Student, studentId);
+            AdminUserTargetType.Student, studentId, ToSchoolId: schoolId);
 
         // Soft-delete edilmiş öğrenci global filtre ile dışarıda → 404.
         var current = await _context.Students.AsNoTracking()
@@ -73,10 +75,15 @@ public class AdminStudentSchoolService : IAdminStudentSchoolService
             return new(AdminStudentSchoolChangeStatus.TargetNotFound);
         }
 
-        if (!await _context.Schools.AsNoTracking().AnyAsync(s => s.Id == schoolId, ct))
-            return new(AdminStudentSchoolChangeStatus.SchoolNotFound);
-
         var previousSchoolId = current.SchoolId;
+        record = record with { FromSchoolId = previousSchoolId };
+
+        if (!await _context.Schools.AsNoTracking().AnyAsync(s => s.Id == schoolId, ct))
+        {
+            await _audit.TryRecordAsync(record, AdminUserActionOutcome.SchoolNotFound);
+            return new(AdminStudentSchoolChangeStatus.SchoolNotFound);
+        }
+
         if (previousSchoolId == schoolId)
             return new(AdminStudentSchoolChangeStatus.Success, previousSchoolId, schoolId, Changed: false);
 

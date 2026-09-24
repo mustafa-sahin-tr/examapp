@@ -21,7 +21,8 @@
     "fallbackTeacherName": "Teacher #{0}",
 
     "activity": {
-      "invalidDays": "days must be between 1 and 90."
+      "invalidDays": "days must be between 1 and 90.",
+      "rateLimited": "Activity summary was requested too many times in a short period. Please wait a moment and try again."
     },
 
     "search": {

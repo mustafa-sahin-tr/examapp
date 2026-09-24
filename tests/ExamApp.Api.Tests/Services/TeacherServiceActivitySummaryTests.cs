@@ -1,10 +1,14 @@
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using System.Data.Common;
 using ExamApp.Api.Services;
+using ExamApp.Api.Services.Dashboard;
 using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.Teachers;
 using ExamApp.Api.Services.Tenancy;
 using ExamApp.Api.Tests.Support;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ExamApp.Api.Tests.Services;
 
@@ -469,5 +473,90 @@ public class TeacherServiceActivitySummaryTests : IDisposable
         students.TopStudents.ShouldHaveSingleItem().StudentId.ShouldBe(studentBooked);
         students.TotalQuestionsSolved.ShouldBe(2);
         own.ActiveStudents.ShouldBe(1);
+    }
+
+    // ---- issue #265: yerel (Europe/Istanbul) gün sınırı ----
+
+    private TeacherService NewService(AppDbContext ctx, ILocalDayCalendar calendar, ITeacherActivityCache? cache = null)
+        => new(ctx, _authApi, schoolAccessPolicy: new SchoolAccessPolicy(ctx), dayCalendar: calendar, activityCache: cache);
+
+    private static DateTime Utc(int y, int mo, int d, int h, int mi = 0) => new(y, mo, d, h, mi, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task Activity_window_uses_istanbul_day_boundary_not_utc()
+    {
+        var seed = await SeedSchoolScenarioAsync();
+        // 2026-09-24 22:30 UTC = 25 Eylül 01:30 TR → "bugün" (25 Eylül) sayılır.
+        await AddAnswersAsync(seed.W1, seed.StudentA, count: 2, correct: 1, timeEach: 10, answeredAt: Utc(2026, 9, 24, 22, 30));
+        // 2026-09-24 20:59 UTC = 24 Eylül 23:59 TR → dün; days=1 penceresinin dışında. (Eski UTC hesabında "şimdi"
+        // 25 Eylül 10:00 UTC iken days=1 = 25 Eylül 00:00 UTC'den sonrası → 22:30'luk cevap da dışarıda kalırdı.)
+        await AddAnswersAsync(seed.W1, seed.StudentB, count: 3, correct: 3, timeEach: 10, answeredAt: Utc(2026, 9, 24, 20, 59));
+        var calendar = new LocalDayCalendar(LocalDayCalendar.DefaultTimeZoneId, new FixedTimeProvider(new DateTimeOffset(Utc(2026, 9, 25, 10, 0))));
+        await using var ctx = _db.NewContext();
+
+        var students = await NewService(ctx, calendar).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 1);
+        var own = await NewService(ctx, calendar).GetOwnActivitySummaryAsync(SchoolTeacher(seed), 1);
+        var twoDays = await NewService(ctx, calendar).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 2);
+
+        students.TopStudents.ShouldHaveSingleItem().StudentId.ShouldBe(seed.StudentA);
+        students.TotalQuestionsSolved.ShouldBe(2);
+        own.ActiveStudents.ShouldBe(1);
+        twoDays.TotalQuestionsSolved.ShouldBe(5); // 24 Eylül TR de pencerede
+    }
+
+    // ---- issue #265: iki uç tek toplama ----
+
+    /// <summary><c>TestInstanceQuestions</c>'a giden sorguları sayar (ağır toplamanın kaç kez çalıştığı).</summary>
+    private sealed class AggregationCounter : DbCommandInterceptor
+    {
+        public int Count;
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("FROM \"TestInstanceQuestions\"", StringComparison.Ordinal))
+                Interlocked.Increment(ref Count);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task Own_and_students_summaries_share_one_aggregation_through_the_cache()
+    {
+        var seed = await SeedSchoolScenarioAsync();
+        await SeedAnswersAsync(seed);
+        var counter = new AggregationCounter();
+        using var cache = new TeacherActivityCache(TimeSpan.FromSeconds(60));
+
+        // İki ayrı istek kapsamı (ayrı context + servis) — tek singleton önbellek.
+        await using var ctx1 = _db.NewContext(counter);
+        var own = await NewService(ctx1, LocalDayCalendar.Default, cache).GetOwnActivitySummaryAsync(SchoolTeacher(seed), 7);
+        await using var ctx2 = _db.NewContext(counter);
+        var students = await NewService(ctx2, LocalDayCalendar.Default, cache).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 7);
+
+        counter.Count.ShouldBe(1);
+        own.ActiveStudents.ShouldBe(3);                 // yanıt sözleşmeleri değişmedi
+        students.TotalQuestionsSolved.ShouldBe(16);
+        students.TopStudents.Select(s => s.StudentId).ShouldBe(new[] { seed.StudentB, seed.StudentA, seed.StudentC });
+    }
+
+    [Fact]
+    public async Task Cache_key_separates_teachers_and_windows()
+    {
+        var seed = await SeedSchoolScenarioAsync();
+        await SeedAnswersAsync(seed);
+        var counter = new AggregationCounter();
+        using var cache = new TeacherActivityCache(TimeSpan.FromSeconds(60));
+        await using var ctx = _db.NewContext(counter);
+
+        var seven = await NewService(ctx, LocalDayCalendar.Default, cache).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 7);
+        var two = await NewService(ctx, LocalDayCalendar.Default, cache).GetStudentsActivitySummaryAsync(SchoolTeacher(seed), 2);
+        var other = await NewService(ctx, LocalDayCalendar.Default, cache)
+            .GetStudentsActivitySummaryAsync(SchoolScope.For(OtherTeacherId, seed.SchoolId), 7);
+
+        counter.Count.ShouldBe(3);
+        seven.TotalQuestionsSolved.ShouldBe(16);
+        two.TotalQuestionsSolved.ShouldBe(11);
+        other.TotalQuestionsSolved.ShouldBe(50);
     }
 }

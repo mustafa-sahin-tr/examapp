@@ -9,6 +9,6 @@ public interface IDashboardService
 {
     Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken ct = default);
 
-    /// <summary>Bugün dahil son <paramref name="days"/> gün için günlük trend serileri.</summary>
+    /// <summary>Bugün dahil son <paramref name="days"/> YEREL takvim günü (Dashboard:TimeZone, issue #265) için günlük trend serileri.</summary>
     Task<DashboardTrendsDto> GetTrendsAsync(int days, CancellationToken ct = default);
 }

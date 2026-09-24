@@ -1,6 +1,9 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { AuthService } from './auth.service';
+import { HttpClientTestingModule, HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { Router, provideRouter } from '@angular/router';
+import { AuthService, UserProfile } from './auth.service';
+import { Teacher } from '../models/teacher';
 
 /**
  * Helper: base64url encode (JWT format)
@@ -384,5 +387,127 @@ describe('AuthService (ui)', () => {
       requestCount++;
       firstReq.error(new ProgressEvent('error'), { status: 401 });
     });
+  });
+});
+
+/** Issue #287: öğretmen hesabı onay durumu (computed + profil yenileme + 403 TeacherNotApproved işleme). */
+describe('AuthService — teacher account approval (issue #287)', () => {
+  let service: AuthService;
+  let httpMock: HttpTestingController;
+  let navigateByUrl: jasmine.Spy;
+  let router: Router;
+
+  function tokenWithRoles(roles: string[]): string {
+    const payload = { sub: 'kc-1', exp: Math.floor(Date.now() / 1000) + 3600, realm_access: { roles } };
+    return `${base64urlEncode(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))}.${base64urlEncode(
+      JSON.stringify(payload)
+    )}.${base64urlEncode('sig')}`;
+  }
+
+  function profile(teacher?: Partial<Teacher>): UserProfile {
+    return {
+      email: 't@x.com',
+      avatar: '',
+      fullName: 'T',
+      id: 1,
+      keycloakId: 'kc-1',
+      profileId: 1,
+      role: 'Teacher',
+      teacher: teacher ? ({ id: 5, userId: 1, schoolName: '', ...teacher } as Teacher) : undefined,
+    };
+  }
+
+  function setup(roles: string[], cached: UserProfile | null): void {
+    localStorage.clear();
+    localStorage.setItem('auth_token', tokenWithRoles(roles));
+    if (cached) localStorage.setItem('user', JSON.stringify(cached));
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+    });
+    service = TestBed.inject(AuthService);
+    httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    navigateByUrl = spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
+  }
+
+  afterEach(() => {
+    httpMock.verify();
+    localStorage.clear();
+  });
+
+  it('isUnapprovedTeacher_TeacherWithApprovedFalse_True', () => {
+    setup(['Teacher'], profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Pending' }));
+    expect(service.isUnapprovedTeacher()).toBeTrue();
+    expect(service.teacherAccountApproved()).toBeFalse();
+  });
+
+  it('isUnapprovedTeacher_TeacherApprovedWithLaterPendingApplication_False (school → independent switch)', () => {
+    setup(['Teacher'], profile({ teacherAccountApproved: true, teacherApplicationStatus: 'Pending' }));
+    expect(service.isUnapprovedTeacher()).toBeFalse();
+  });
+
+  it('isUnapprovedTeacher_TeacherWithoutApprovalField_FalseUntilKnown', () => {
+    setup(['Teacher'], profile({}));
+    expect(service.isUnapprovedTeacher()).toBeFalse();
+  });
+
+  it('isUnapprovedTeacher_StudentOrAdmin_AlwaysFalse', () => {
+    setup(['Student', 'Admin'], profile({ teacherAccountApproved: false }));
+    expect(service.isUnapprovedTeacher()).toBeFalse();
+  });
+
+  it('refreshProfile_ConcurrentCalls_SingleRequest_UpdatesUserSignal', () => {
+    setup(['Teacher'], profile({}));
+    const results: (UserProfile | null)[] = [];
+    service.refreshProfile().subscribe((p) => results.push(p));
+    service.refreshProfile().subscribe((p) => results.push(p));
+
+    const req = httpMock.expectOne('/api/exam/auth/refresh');
+    req.flush(profile({ teacherAccountApproved: false, teacherApplicationStatus: 'Rejected', rejectionReason: 'Eksik' }));
+
+    expect(results.length).toBe(2);
+    expect(service.user()?.teacher?.rejectionReason).toBe('Eksik');
+    expect(service.isUnapprovedTeacher()).toBeTrue();
+  });
+
+  it('handleTeacherNotApproved_NavigatesOnceAndRefreshesProfile_EvenForBurstOf403s', () => {
+    setup(['Teacher'], profile({}));
+
+    service.handleTeacherNotApproved();
+    service.handleTeacherNotApproved();
+    service.handleTeacherNotApproved();
+
+    expect(service.isUnapprovedTeacher()).withContext('menu closes immediately').toBeTrue();
+    expect(navigateByUrl).toHaveBeenCalledOnceWith('/teacher-approval-pending');
+    httpMock.expectOne('/api/exam/auth/refresh').flush(profile({ teacherAccountApproved: false }));
+    expect(service.isUnapprovedTeacher()).toBeTrue();
+  });
+
+  it('handleTeacherNotApproved_AlreadyOnPendingPage_DoesNotNavigate', () => {
+    setup(['Teacher'], profile({}));
+    spyOnProperty(router, 'url', 'get').and.returnValue('/teacher-approval-pending?x=1');
+
+    service.handleTeacherNotApproved();
+
+    expect(navigateByUrl).not.toHaveBeenCalled();
+    httpMock.expectOne('/api/exam/auth/refresh').flush(profile({ teacherAccountApproved: false }));
+  });
+
+  it('handleTeacherNotApproved_RefreshSaysApproved_ClearsServerFlag', () => {
+    setup(['Teacher'], profile({}));
+
+    service.handleTeacherNotApproved();
+    httpMock.expectOne('/api/exam/auth/refresh').flush(profile({ teacherAccountApproved: true }));
+
+    expect(service.isUnapprovedTeacher()).toBeFalse();
+  });
+
+  it('handleTeacherNotApproved_NonTeacher_Ignored', () => {
+    setup(['Student'], null);
+
+    service.handleTeacherNotApproved();
+
+    expect(navigateByUrl).not.toHaveBeenCalled();
+    httpMock.expectNone('/api/exam/auth/refresh');
   });
 });

@@ -15,6 +15,12 @@ export interface TeacherRegistrationResult {
   requestedSchoolId: number | null;
   /** true → okul bağlantısı admin onayı bekliyor; o zamana kadar öğretmen okulsuz sayılır. */
   schoolApprovalPending: boolean;
+  /**
+   * Issue #287: öğretmen hesabı onaylı mı. Yeni kayıtta her zaman false — UI teacher dashboard yerine
+   * "başvuru durumu" sayfasına geçer. NOT: bu yanıtta `message` alanı YOK (sunucunun `teacher.savedApprovalPending`
+   * metni yalnız servis katmanında kalıyor); bilgilendirme metni istemci sözlüğünden gelir.
+   */
+  teacherAccountApproved: boolean;
 }
 
 /** 400 / 409 hata gövdesi: `{ message }` (409 → teacher.registrationChangeNotAllowed, localize). */

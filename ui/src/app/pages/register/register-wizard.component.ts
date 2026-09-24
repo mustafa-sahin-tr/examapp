@@ -21,6 +21,7 @@ import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
 import { TeacherRegistrationError } from '../../models/teacher-registration.model';
 import { REGISTER_SCOPE } from './register-scope';
+import { TEACHER_APPROVAL_PENDING_URL } from '../../models/teacher-approval.model';
 
 type Role = 'student' | 'teacher' | 'parent';
 
@@ -30,6 +31,8 @@ interface RegistrationResult {
   profileId?: number;
   /** Yalnız öğretmen ucu (issue #234): okul bağlantısı admin onayı bekliyor. */
   schoolApprovalPending?: boolean;
+  /** Yalnız öğretmen ucu (issue #287): false → hesap admin onayı bekliyor (yeni kayıtta her zaman). */
+  teacherAccountApproved?: boolean;
 }
 
 @Component({
@@ -148,16 +151,30 @@ export class RegisterWizardComponent implements OnInit {
           // Onbellekteki kayit baska bir kullaniciya ait; merge etmek yerine at.
           this.authService.clearCachedUser();
         }
+        const accountApprovalPending = role === 'teacher' && val?.teacherAccountApproved === false;
         const raw = localStorage.getItem('user');
         if (raw) {
           try {
             const u = JSON.parse(raw);
             u.role = roleName;
             if (val?.profileId) u[role] = { id: val.profileId };
-            localStorage.setItem('user', JSON.stringify(u));
+            if (role === 'teacher' && u.teacher && typeof val?.teacherAccountApproved === 'boolean') {
+              // Issue #287: menü/guard onay durumunu refresh beklemeden bilsin.
+              u.teacher.teacherAccountApproved = val.teacherAccountApproved;
+              if (accountApprovalPending) u.teacher.teacherApplicationStatus = 'Pending';
+            }
+            // `user` signal'ı da güncellensin (issue #191/#287: menü ve guard reaktif okur).
+            this.authService.setUser(u);
           } catch {
             /* ignore */
           }
+        }
+        if (accountApprovalPending) {
+          // Issue #287: yeni öğretmen hesabı admin onayı bekler — teacher dashboard yerine başvuru durumu sayfası.
+          // Kayıt yanıtı `message` taşımadığı için bilgilendirme metni scope sözlüğünden gelir.
+          this.notify('wizard.teacherAccountPending');
+          this.router.navigate([TEACHER_APPROVAL_PENDING_URL]);
+          return;
         }
         this.notify('wizard.success');
         if (role === 'teacher' && val?.schoolApprovalPending) {

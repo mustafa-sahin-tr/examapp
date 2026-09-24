@@ -6,14 +6,22 @@
     </div>
 
     <div class="auth-form-col">
-      @if (schoolApprovalPending()) {
+      @if (accountApprovalPending() || schoolApprovalPending()) {
       <div class="auth-form-header">
         <h3>Kaydın Tamamlandı</h3>
       </div>
+      @if (accountApprovalPending()) {
+      <div class="notice" role="status" data-testid="account-approval-pending">
+        <strong>Öğretmen hesabın yönetici onayı bekliyor</strong>
+        <p>Öğretmen kaydın alındı. Hesabın bir yönetici tarafından onaylanana kadar sınav oluşturma, çalışma içerikleri ve öğretmen paneli gibi öğretmen özellikleri kapalıdır. Başvurunun durumunu bir sonraki sayfadan takip edebilirsin.</p>
+      </div>
+      }
+      @if (schoolApprovalPending()) {
       <div class="notice" role="status">
         <strong>Okul bağlantın yönetici onayı bekliyor</strong>
         <p>Okul bağlantın bir yönetici tarafından onaylanana kadar okulun öğrencilerini ve sınıflarını göremezsin.</p>
       </div>
+      }
       <div class="auth-submit">
         <button type="button" class="default-btn" (click)="continueAfterPending()">Devam Et</button>
       </div>

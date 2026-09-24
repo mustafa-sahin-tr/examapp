@@ -1,0 +1,35 @@
+{
+  "title": "Öğretmen Başvuru Durumu",
+  "subtitle": "Öğretmen hesabınız yönetici onayından sonra öğretmen özelliklerine açılır.",
+  "loading": "Başvuru durumunuz alınıyor...",
+  "loadFailed": "Başvuru durumunuz alınamadı.",
+  "refreshFailed": "Durum yenilenemedi. Lütfen biraz sonra tekrar deneyin.",
+  "retry": "Tekrar dene",
+  "refresh": "Durumu yenile",
+  "refreshing": "Yenileniyor...",
+  "pending": {
+    "title": "Başvurunuz inceleniyor",
+    "body": "Öğretmen kaydınız alındı ve bir yönetici tarafından inceleniyor. Onaylanana kadar sınav oluşturma, çalışma içerikleri, soru transferi, randevular ve öğretmen paneli kapalıdır.",
+    "hint": "Karar verildiğinde bildirim alırsınız; durumu dilediğiniz zaman bu sayfadan yenileyebilirsiniz."
+  },
+  "rejected": {
+    "title": "Başvurunuz reddedildi",
+    "body": "Öğretmen hesabı başvurunuz bir yönetici tarafından reddedildi. Öğretmen özellikleri bu hesapta kapalı kalır.",
+    "reasonLabel": "Gerekçe:",
+    "noReason": "Gerekçe belirtilmedi.",
+    "nextTitle": "Ne yapabilirsiniz?",
+    "stepReview": "Gerekçeyi inceleyin; eksik ya da hatalı bilgi varsa hazırlayın.",
+    "stepContact": "Başvurunuzun yeniden değerlendirilmesi için okulunuzun yöneticisi veya platform yöneticisiyle iletişime geçin.",
+    "meanwhile": "Bu sırada ayarlar gibi öğretmen özelliği gerektirmeyen sayfaları kullanmaya devam edebilirsiniz."
+  },
+  "approved": {
+    "title": "Hesabınız onaylandı",
+    "body": "Öğretmen hesabınız onaylandı; tüm öğretmen özelliklerini kullanabilirsiniz.",
+    "cta": "Öğretmen paneline git"
+  },
+  "noRecord": {
+    "title": "Öğretmen kaydınız bulunamadı",
+    "body": "Hesabınız için tamamlanmış bir öğretmen kaydı yok. Devam etmek için öğretmen kaydını tamamlayın.",
+    "cta": "Öğretmen kaydını tamamla"
+  }
+}

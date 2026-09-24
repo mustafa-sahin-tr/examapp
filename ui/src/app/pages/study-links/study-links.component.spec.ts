@@ -14,6 +14,7 @@ import { TopicStudyLinkManagerComponent } from '../../shared/components/topic-st
 import { translocoTestingModule } from '../../shared/testing/transloco-testing';
 import { routes } from '../../app.routes';
 import { authGuard } from '../../shared/guards/auth.guard';
+import { approvedTeacherGuard } from '../../shared/guards/approved-teacher.guard';
 import studyLinksTr from '../../../../public/i18n/study-links/tr.json';
 import { Topic } from '../../models/topic';
 
@@ -190,12 +191,14 @@ describe('StudyLinksComponent (issue #61, teacher page)', () => {
       );
     }
 
-    it('studyLinksRoute_IsLazyAndGuardedByAuthThenRole', () => {
+    it('studyLinksRoute_IsLazyAndGuardedByAuthThenRoleThenApprovedTeacher', () => {
       const route = studyLinksRoute();
       expect(route).withContext('route tanımı bulunamadı').toBeDefined();
       expect(route?.loadComponent).toBeDefined();
-      expect(route?.canActivate?.length).toBe(2);
+      // Issue #287: onaysız öğretmen başvuru durumu sayfasına yönlendirilir.
+      expect(route?.canActivate?.length).toBe(3);
       expect(route?.canActivate?.[0]).toBe(authGuard);
+      expect(route?.canActivate?.[2]).toBe(approvedTeacherGuard);
     });
 
     it('studyLinksRoute_TeacherAllowed', () => {

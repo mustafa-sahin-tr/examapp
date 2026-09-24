@@ -225,7 +225,7 @@ public class TeacherApprovalServiceListTests : IDisposable
     }
 
     [Fact]
-    public async Task Detail_returns_a_rejected_application_with_full_email_status_and_reason()
+    public async Task Detail_returns_a_rejected_application_with_masked_email_status_and_reason()
     {
         var ids = await SeedMixedAsync();
 
@@ -234,7 +234,7 @@ public class TeacherApprovalServiceListTests : IDisposable
 
         detail.ShouldNotBeNull();
         detail.TeacherId.ShouldBe(ids["rejectedMid"]);
-        detail.Email.ShouldBe("u4@okul.k12.tr"); // tam adres
+        detail.Email.ShouldBe("u***@okul.k12.tr"); // security review #187: karar verilmişte maskeli
         detail.Status.ShouldBe("Rejected");
         detail.RejectionReason.ShouldBe("Belge eksik");
         detail.DecidedAt.ShouldBe(T0.AddDays(20));
@@ -252,9 +252,24 @@ public class TeacherApprovalServiceListTests : IDisposable
         var approved = await service.GetApplicationAsync(ids["approvedSchool"]);
         approved.ShouldNotBeNull();
         approved.Status.ShouldBe("Approved");
+        approved.Email.ShouldBe("u***@okul.k12.tr"); // karar verilmiş → maskeli
 
         (await service.GetApplicationAsync(ids["ordinary"])).ShouldBeNull();
         (await service.GetApplicationAsync(ids["passwordReset"])).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Detail_returns_the_full_email_only_while_the_application_is_pending()
+    {
+        var ids = await SeedMixedAsync();
+
+        await using var ctx = _db.NewContext();
+        var service = NewService(ctx);
+
+        (await service.GetApplicationAsync(ids["pendingOld"]))!.Email.ShouldBe("u2@okul.k12.tr");
+        (await service.GetApplicationAsync(ids["pendingNew"]))!.Email.ShouldBe("u1@okul.k12.tr");
+        (await service.GetApplicationAsync(ids["approvedLate"]))!.Email.ShouldBe("u***@okul.k12.tr");
+        (await service.GetApplicationAsync(ids["rejectedNoLog"]))!.Email.ShouldBe("u***@okul.k12.tr");
     }
 
     [Fact]

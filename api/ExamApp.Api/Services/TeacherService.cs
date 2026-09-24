@@ -279,17 +279,26 @@ public class TeacherService : ITeacherService
             ? await ResolveApplicantNameAsync(userId)
             : null;
 
-        // issue #277 (madde 1): okul talebi outbox satırı lambda DIŞINDA bir kez kurulur (EventId sabit); içerik Teacher.Id
-        // belli olunca lambda içinde doldurulur. Retry'da aynı instance tekrar Add edilir (Added state'te no-op) —
-        // aynı talep için ikinci bir event satırı oluşmaz.
-        var schoolRequestOutbox = shouldPublishSchoolRequestEvent
-            ? new OutboxMessage
-            {
-                Type = OutboxEventRegistry.NameFor<TeacherSchoolRequestSubmittedEvent>(),
-                CreatedAt = DateTime.UtcNow
-            }
-            : null;
+        // issue #277 (madde 1): okul talebi event'inin kimliği ve anı lambda DIŞINDA bir kez belirlenir — retry'da aynı talep
+        // için aynı EventId yazılır (tüketici tekilleştirmesi). Outbox satırı her denemede yeniden kurulur (aşağıya bkz.).
         var schoolRequestEventId = Guid.NewGuid();
+        var schoolRequestSubmittedAt = DateTime.UtcNow;
+
+        // issue #277 takip (retry güvenliği): execution strategy (Aspire Npgsql retry-on-failure) geçici bir hatada —
+        // özellikle SaveChanges'ler başarılı olup COMMIT düştüğünde — lambda'yı baştan çalıştırır. Önceki denemenin
+        // SaveChanges'i değişiklikleri "kabul etmiş" olur (Unchanged + DB'de geri alınmış Id), bu yüzden eskiden retry'da
+        // teacher/outbox satırları sessizce YAZILMADAN commit edilebiliyordu. Artık her deneme temiz başlar:
+        //  - ChangeTracker temizlenir;
+        //  - güncellemede kayıt transaction içinde yeniden okunur ve YALNIZCA kararla değişen alanlar (aşağıdaki anlık
+        //    görüntü) üzerine yazılır — karar mantığı lambda dışında kalır (retry'da "değişti mi" karşılaştırması bozulmasın);
+        //  - yeni kayıtta geri alınmış denemenin Id'si sıfırlanıp entity yeniden eklenir;
+        //  - outbox satırları her denemede yeni nesnelerle eklenir.
+        var modifiedTeacherValues = isUpdate
+            ? _context.Entry(teacher).Properties
+                .Where(p => p.IsModified)
+                .Select(p => (Name: p.Metadata.Name, Value: p.CurrentValue))
+                .ToList()
+            : null;
 
         var teacherId = 0;
         var studentRecordRace = false;
@@ -298,6 +307,9 @@ public class TeacherService : ITeacherService
         {
             await strategy.ExecuteAsync(async () =>
             {
+                _context.ChangeTracker.Clear();
+                studentRecordRace = false;
+
                 await using var tx = await _context.Database.BeginTransactionAsync();
 
                 // issue #277 (madde 9): öğretmen/öğrenci kaydı birbirini dışlar; yukarıdaki kontrol kilitsizdir. Eşzamanlı
@@ -310,13 +322,21 @@ public class TeacherService : ITeacherService
                     return; // commit yok → dispose'da rollback
                 }
 
-                if (!isUpdate)
+                if (isUpdate)
                 {
-                    // Retry'da aynı instance tekrar Add edilir; zaten Added state'te olduğu için no-op.
+                    var tracked = await _context.Teachers.AsTracking().FirstAsync(t => t.Id == teacher.Id);
+                    var entry = _context.Entry(tracked);
+                    foreach (var (name, value) in modifiedTeacherValues!)
+                        entry.Property(name).CurrentValue = value;
+                }
+                else
+                {
+                    teacher.Id = 0; // geri alınmış önceki denemenin identity değeri taşınmasın
                     _context.Teachers.Add(teacher);
                 }
 
                 await _context.SaveChangesAsync();
+                var savedTeacherId = teacher.Id; // güncellemede kayıt Id'si değişmez; yeni kayıtta identity burada set edildi
 
                 if (shouldPublishIndependentTeacherEvent)
                 {
@@ -330,39 +350,43 @@ public class TeacherService : ITeacherService
                         Type = OutboxEventRegistry.NameFor<IndependentTeacherRegisteredEvent>(),
                         Content = JsonSerializer.Serialize(new IndependentTeacherRegisteredEvent
                         {
-                            TeacherId = teacher.Id,
+                            TeacherId = savedTeacherId,
                             UserId = userId,
                             IsNewRegistration = !isUpdate,
                             RegisteredAt = now
                         }),
                         CreatedAt = now
                     });
-                    AddTeacherApplicationSubmittedOutbox(teacher.Id, userId, applicantName);
+                    AddTeacherApplicationSubmittedOutbox(savedTeacherId, userId, applicantName);
                 }
 
-                if (schoolRequestOutbox != null)
+                if (shouldPublishSchoolRequestEvent)
                 {
-                    schoolRequestOutbox.Content = JsonSerializer.Serialize(new TeacherSchoolRequestSubmittedEvent
+                    _context.OutboxMessages.Add(new OutboxMessage
                     {
-                        EventId = schoolRequestEventId,
-                        TeacherId = teacher.Id,
-                        UserId = userId,
-                        RequestedSchoolId = teacher.RequestedSchoolId!.Value,
-                        RequestedSchoolName = requestedSchoolName,
-                        ApplicantName = applicantName,
-                        IsNewRegistration = !isUpdate,
-                        SubmittedAtUtc = schoolRequestOutbox.CreatedAt
+                        Type = OutboxEventRegistry.NameFor<TeacherSchoolRequestSubmittedEvent>(),
+                        CreatedAt = schoolRequestSubmittedAt,
+                        Content = JsonSerializer.Serialize(new TeacherSchoolRequestSubmittedEvent
+                        {
+                            EventId = schoolRequestEventId,
+                            TeacherId = savedTeacherId,
+                            UserId = userId,
+                            RequestedSchoolId = teacher.RequestedSchoolId!.Value,
+                            RequestedSchoolName = requestedSchoolName,
+                            ApplicantName = applicantName,
+                            IsNewRegistration = !isUpdate,
+                            SubmittedAtUtc = schoolRequestSubmittedAt
+                        })
                     });
-                    _context.OutboxMessages.Add(schoolRequestOutbox);
                 }
 
-                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || schoolRequestOutbox != null)
+                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || shouldPublishSchoolRequestEvent)
                 {
                     await _context.SaveChangesAsync();
                 }
 
                 await tx.CommitAsync();
-                teacherId = teacher.Id;
+                teacherId = savedTeacherId;
             });
         }
         catch (DbUpdateException ex) when (DbUpdateExceptionClassifier.IsUniqueViolation(ex))

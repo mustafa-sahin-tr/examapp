@@ -1,0 +1,172 @@
+using System.Reflection;
+using System.Security.Claims;
+using ExamApp.Api.Controllers;
+using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.StudyLinks;
+using ExamApp.Api.Services.Interfaces;
+using ExamApp.Api.Services.StudyLinks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace ExamApp.Api.Tests.Controllers;
+
+/// <summary>
+/// Issue #61 — rol kısıtları (yönetim uçları yalnızca Admin + Teacher, öğrenci ucu yalnızca Student; diğer roller
+/// ASP.NET yetkilendirmesiyle 403 alır) ve servis sonucu → HTTP kodu eşlemesi.
+/// </summary>
+public class StudyLinksControllerTests
+{
+    private static readonly string[] ManagementActions =
+    {
+        nameof(StudyLinksController.List),
+        nameof(StudyLinksController.GetById),
+        nameof(StudyLinksController.Create),
+        nameof(StudyLinksController.Update),
+        nameof(StudyLinksController.Delete),
+        nameof(StudyLinksController.Reorder),
+    };
+
+    private static string[] RolesOf(string action)
+    {
+        var method = typeof(StudyLinksController).GetMethod(action)!;
+        var attribute = method.GetCustomAttributes<AuthorizeAttribute>(inherit: false).Single();
+        return attribute.Roles!.Split(',').Select(r => r.Trim()).OrderBy(r => r).ToArray();
+    }
+
+    [Fact]
+    public void ManagementEndpoints_AreRestrictedToAdminAndTeacher()
+    {
+        foreach (var action in ManagementActions)
+            RolesOf(action).ShouldBe(new[] { "Admin", "Teacher" }, $"{action} yalnızca Admin/Teacher'a açık olmalı");
+    }
+
+    [Fact]
+    public void ManagementEndpoints_DoNotAllowStudentOrParent()
+    {
+        foreach (var action in ManagementActions)
+        {
+            RolesOf(action).ShouldNotContain("Student");
+            RolesOf(action).ShouldNotContain("Parent");
+        }
+    }
+
+    [Fact]
+    public void ForResultEndpoint_IsRestrictedToStudent()
+    {
+        RolesOf(nameof(StudyLinksController.GetForResult)).ShouldBe(new[] { "Student" });
+    }
+
+    [Fact]
+    public void Controller_HasNoClassLevelRoleRestriction_SoMethodRolesAreNotAnded()
+    {
+        typeof(StudyLinksController).GetCustomAttributes<AuthorizeAttribute>(inherit: false)
+            .ShouldAllBe(a => string.IsNullOrEmpty(a.Roles));
+    }
+
+    // ---------------- HTTP eşlemesi ----------------
+
+    private static StudyLinksController NewController(ITopicStudyLinkService service, int userId = 42, string role = "Teacher")
+    {
+        var profiles = Substitute.For<IUserProfileProvider>();
+        profiles.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new UserProfileDto { Id = userId, FullName = "U", Role = role });
+
+        var services = new ServiceCollection();
+        services.AddSingleton(profiles);
+        services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
+            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+
+        var identity = new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, "kc-1"),
+            new Claim(ClaimTypes.Role, role),
+        }, "Test");
+
+        return new StudyLinksController(service)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(identity),
+                    RequestServices = services.BuildServiceProvider(),
+                }
+            }
+        };
+    }
+
+    [Fact]
+    public async Task Create_LimitReached_Returns409WithErrorCode()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        service.CreateAsync(Arg.Any<CreateTopicStudyLinkDto>(), Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(new TopicStudyLinkResultDto { Success = false, Conflict = true, ErrorCode = TopicStudyLinkErrorCodes.ActiveLimitReached, Message = "limit" });
+
+        var result = await NewController(service).Create(new CreateTopicStudyLinkDto(), CancellationToken.None);
+
+        var conflict = result.ShouldBeOfType<ConflictObjectResult>();
+        conflict.Value.ShouldBeOfType<TopicStudyLinkResultDto>().ErrorCode.ShouldBe(TopicStudyLinkErrorCodes.ActiveLimitReached);
+    }
+
+    [Fact]
+    public async Task Create_Success_Returns201WithLink()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        service.CreateAsync(Arg.Any<CreateTopicStudyLinkDto>(), Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(new TopicStudyLinkResultDto { Success = true, ObjectId = 5, Link = new TopicStudyLinkDto { Id = 5 } });
+
+        var result = await NewController(service).Create(new CreateTopicStudyLinkDto(), CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(StudyLinksController.GetById));
+        created.Value.ShouldBeOfType<TopicStudyLinkDto>().Id.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task Create_ValidationFailure_Returns400()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        service.CreateAsync(Arg.Any<CreateTopicStudyLinkDto>(), Arg.Any<UserProfileDto>(), Arg.Any<CancellationToken>())
+            .Returns(new TopicStudyLinkResultDto { Success = false, Message = "invalid url" });
+
+        (await NewController(service).Create(new CreateTopicStudyLinkDto(), CancellationToken.None))
+            .ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task ForResult_PassesCallerUserId_AndMapsNotOwnedTo404()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        service.GetSuggestionsForResultAsync(10, 77, Arg.Any<CancellationToken>())
+            .Returns(new StudyLinkSuggestionsResultDto { Success = false, NotFound = true });
+
+        var result = await NewController(service, userId: 77, role: "Student").GetForResult(10, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+        await service.Received(1).GetSuggestionsForResultAsync(10, 77, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ForResult_Success_ReturnsBareArray()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        var items = new List<QuestionStudyLinkSuggestionDto> { new() { QuestionId = 1 } };
+        service.GetSuggestionsForResultAsync(10, 77, Arg.Any<CancellationToken>())
+            .Returns(new StudyLinkSuggestionsResultDto { Success = true, Items = items });
+
+        var result = await NewController(service, userId: 77, role: "Student").GetForResult(10, CancellationToken.None);
+
+        result.ShouldBeOfType<OkObjectResult>().Value.ShouldBeSameAs(items);
+    }
+
+    [Fact]
+    public async Task Delete_Success_Returns204()
+    {
+        var service = Substitute.For<ITopicStudyLinkService>();
+        service.DeleteAsync(3, 42, Arg.Any<CancellationToken>()).Returns(new ResponseBaseDto { Success = true });
+
+        (await NewController(service).Delete(3, CancellationToken.None)).ShouldBeOfType<NoContentResult>();
+    }
+}

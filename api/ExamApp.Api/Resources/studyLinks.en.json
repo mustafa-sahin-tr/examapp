@@ -1,0 +1,31 @@
+{
+  "studyLinks": {
+    "unauthorized": "User could not be authenticated.",
+    "notFound": "Study link not found.",
+    "titleRequired": "Title is required.",
+    "titleTooLong": "Title can be at most 200 characters.",
+    "urlRequired": "URL is required.",
+    "urlTooLong": "URL can be at most 2048 characters.",
+    "invalidUrl": "Please enter a valid http/https URL.",
+    "invalidSourceType": "Invalid source type. Expected 'YouTube' or 'Other'.",
+    "sourceTypeMismatch": "Source type is YouTube but the URL is not a YouTube address.",
+    "scopeRequired": "A topic or subtopic must be selected.",
+    "scopeExactlyOne": "Provide exactly one of topic (topicId) or subtopic (subTopicId).",
+    "topicNotFound": "Topic not found.",
+    "subTopicNotFound": "Subtopic not found.",
+    "subTopicTopicMismatch": "The subtopic does not belong to the selected topic.",
+    "activeLimitReached": "A topic or subtopic can have at most {0} active study links. Deactivate or delete an existing link to add a new one.",
+    "concurrentModification": "The link was modified by another user at the same time. Please refresh the list and try again.",
+    "created": "Study link added.",
+    "updated": "Study link updated.",
+    "deleted": "Study link deleted.",
+    "reordered": "Link order updated.",
+    "testInstanceNotFound": "Test session not found.",
+    "reorder": {
+      "itemsRequired": "At least one link must be provided for reordering.",
+      "tooManyItems": "At most 100 links can be reordered at once.",
+      "duplicateIds": "The same link was sent more than once.",
+      "linkNotInScope": "Some of the links were not found or do not belong to the selected topic/subtopic."
+    }
+  }
+}

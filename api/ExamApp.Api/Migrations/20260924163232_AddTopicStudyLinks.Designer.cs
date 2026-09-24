@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExamApp.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260924131507_AddTopicStudyLinks")]
+    [Migration("20260924163232_AddTopicStudyLinks")]
     partial class AddTopicStudyLinks
     {
         /// <inheritdoc />
@@ -2291,6 +2291,10 @@ namespace ExamApp.Api.Migrations
                     b.Property<int?>("UpdateUserId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("UpdatedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -2306,6 +2310,54 @@ namespace ExamApp.Api.Migrations
                         {
                             t.HasCheckConstraint("CK_TopicStudyLinks_TopicOrSubTopic", "\"TopicId\" IS NOT NULL OR \"SubTopicId\" IS NOT NULL");
                         });
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLinkAudit", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("ActorUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LinkId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NewTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NewUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OldTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OldUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LinkId", "OccurredAtUtc");
+
+                    b.ToTable("TopicStudyLinkAudits");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgram", b =>
@@ -3825,6 +3877,17 @@ namespace ExamApp.Api.Migrations
                     b.Navigation("SubTopic");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("ExamApp.Api.Data.TopicStudyLinkAudit", b =>
+                {
+                    b.HasOne("ExamApp.Api.Data.TopicStudyLink", "Link")
+                        .WithMany()
+                        .HasForeignKey("LinkId")
+                        .OnDelete(DeleteBehavior.ClientNoAction)
+                        .IsRequired();
+
+                    b.Navigation("Link");
                 });
 
             modelBuilder.Entity("ExamApp.Api.Data.UserProgramSchedule", b =>

@@ -121,23 +121,30 @@ public class TopicStudyLinkDto
     public string CreatedByName { get; set; } = string.Empty;
     public string CreatedByRole { get; set; } = string.Empty;
     public DateTime CreateTime { get; set; }
+
+    /// <summary>Son değiştiren kullanıcı (BaseEntity.UpdateUserId); hiç değişmediyse null.</summary>
+    public int? UpdatedByUserId { get; set; }
+
+    public string? UpdatedByName { get; set; }
+
     public DateTime? UpdateTime { get; set; }
 }
 
-/// <summary>Servisten controller'a tekil link sonucu; ResponseBaseDto bayrakları HTTP koduna eşlenir.</summary>
-public class TopicStudyLinkResultDto : ResponseBaseDto
+/// <summary>Yönetim uçlarının ortak yanıt tabanı: ResponseBaseDto + makine tarafından okunabilir hata kodu.</summary>
+public abstract class StudyLinkResponseDto : ResponseBaseDto
 {
-    /// <summary>
-    /// Makine tarafından okunabilir hata kodu (UI özel davranışı için). Şu an yalnızca
-    /// <see cref="TopicStudyLinkErrorCodes.ActiveLimitReached"/> kullanılır.
-    /// </summary>
+    /// <summary>Hata durumunda UI özel davranışı için kod — bkz. <see cref="TopicStudyLinkErrorCodes"/>. Başarıda null.</summary>
     public string? ErrorCode { get; set; }
+}
 
+/// <summary>Servisten controller'a tekil link sonucu; ResponseBaseDto bayrakları HTTP koduna eşlenir.</summary>
+public class TopicStudyLinkResultDto : StudyLinkResponseDto
+{
     public TopicStudyLinkDto? Link { get; set; }
 }
 
 /// <summary>Yönetici liste sonucu. <see cref="ActiveCount"/> / <see cref="MaxActiveLinks"/> UI'da "ekle" butonunu kapatmak için.</summary>
-public class TopicStudyLinkListResultDto : ResponseBaseDto
+public class TopicStudyLinkListResultDto : StudyLinkResponseDto
 {
     public List<TopicStudyLinkDto> Items { get; set; } = new();
 
@@ -152,7 +159,17 @@ public class TopicStudyLinkListResultDto : ResponseBaseDto
 
 public static class TopicStudyLinkErrorCodes
 {
+    /// <summary>409 — kapsamda zaten 7 aktif link var.</summary>
     public const string ActiveLimitReached = "ActiveLimitReached";
+
+    /// <summary>409 — kapsamda zaten 30 (aktif + pasif) link var.</summary>
+    public const string TotalLimitReached = "TotalLimitReached";
+
+    /// <summary>403 — öğretmen kaydı yok veya onaylı değil.</summary>
+    public const string TeacherNotApproved = "TeacherNotApproved";
+
+    /// <summary>403 — öğretmen başkasının linkini güncellemeye/silmeye çalıştı.</summary>
+    public const string NotOwner = "NotOwner";
 }
 
 // ---- Öğrenci sonuç ekranı (GET /api/study-links/for-result/{testInstanceId}) ----

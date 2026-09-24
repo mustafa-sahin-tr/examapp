@@ -22,7 +22,7 @@ public class TopicStudyLinkServiceTests : IDisposable
 
     private static TopicStudyLinkService NewService(AppDbContext ctx) => new(ctx);
 
-    private static UserProfileDto Teacher() => new() { Id = TeacherUserId, FullName = "Öğretmen Bir", Role = "Teacher" };
+    private static readonly StudyLinkActor TeacherActor = new(TeacherUserId, "Öğretmen Bir", "Teacher", IsAdmin: false);
 
     public void Dispose() => _db.Dispose();
 
@@ -34,6 +34,8 @@ public class TopicStudyLinkServiceTests : IDisposable
         var grade = new Grade { Name = "5" };
         var subject = new Subject { Name = "Matematik" };
         ctx.AddRange(grade, subject);
+        // Yönetim işlemleri onaylı öğretmen ister (issue #61 güvenlik incelemesi).
+        ctx.Teachers.Add(new Teacher { UserId = TeacherUserId, ApprovalStatus = TeacherApprovalStatus.Approved, Bio = "t" });
         await ctx.SaveChangesAsync();
 
         var topic = new Topic { Name = "Sayılar", SubjectId = subject.Id, GradeId = grade.Id };
@@ -65,7 +67,7 @@ public class TopicStudyLinkServiceTests : IDisposable
     private async Task<TopicStudyLinkResultDto> CreateAsync(CreateTopicStudyLinkDto dto)
     {
         await using var ctx = _db.NewContext();
-        return await NewService(ctx).CreateAsync(dto, Teacher());
+        return await NewService(ctx).CreateAsync(dto, TeacherActor);
     }
 
     // ---------------- 7 aktif link limiti ----------------
@@ -132,7 +134,7 @@ public class TopicStudyLinkServiceTests : IDisposable
             ids.Add((await CreateAsync(NewLink(subTopicId: t.SubTopicA))).ObjectId);
 
         await using (var ctx = _db.NewContext())
-            (await NewService(ctx).DeleteAsync(ids[0], TeacherUserId)).Success.ShouldBeTrue();
+            (await NewService(ctx).DeleteAsync(ids[0], TeacherActor)).Success.ShouldBeTrue();
 
         (await CreateAsync(NewLink(subTopicId: t.SubTopicA))).Success.ShouldBeTrue();
     }
@@ -149,7 +151,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var activate = await NewService(ctx).UpdateAsync(inactiveId,
-                new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com", IsActive = true }, TeacherUserId);
+                new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com", IsActive = true }, TeacherActor);
             activate.Success.ShouldBeFalse();
             activate.Conflict.ShouldBeTrue();
             activate.ErrorCode.ShouldBe(TopicStudyLinkErrorCodes.ActiveLimitReached);
@@ -159,7 +161,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var edit = await NewService(ctx).UpdateAsync(activeIds[0],
-                new UpdateTopicStudyLinkDto { Title = "Yeni başlık", Url = "https://example.com/new", IsActive = true }, TeacherUserId);
+                new UpdateTopicStudyLinkDto { Title = "Yeni başlık", Url = "https://example.com/new", IsActive = true }, TeacherActor);
             edit.Success.ShouldBeTrue();
             edit.Link!.Title.ShouldBe("Yeni başlık");
         }
@@ -182,11 +184,11 @@ public class TopicStudyLinkServiceTests : IDisposable
 
         await using (var ctx = _db.NewContext())
             (await NewService(ctx).UpdateAsync(firstActive,
-                new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com", IsActive = false }, TeacherUserId)).Success.ShouldBeTrue();
+                new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com", IsActive = false }, TeacherActor)).Success.ShouldBeTrue();
 
         await using (var ctx = _db.NewContext())
             (await NewService(ctx).UpdateAsync(inactiveId,
-                new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com", IsActive = true }, TeacherUserId)).Success.ShouldBeTrue();
+                new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com", IsActive = true }, TeacherActor)).Success.ShouldBeTrue();
     }
 
     // ---------------- URL / alan doğrulama ----------------
@@ -223,7 +225,7 @@ public class TopicStudyLinkServiceTests : IDisposable
 
         await using var ctx = _db.NewContext();
         var result = await NewService(ctx).UpdateAsync(id,
-            new UpdateTopicStudyLinkDto { Title = "x", Url = "javascript:alert(1)" }, TeacherUserId);
+            new UpdateTopicStudyLinkDto { Title = "x", Url = "javascript:alert(1)" }, TeacherActor);
 
         result.Success.ShouldBeFalse();
         (await ctx.TopicStudyLinks.AsNoTracking().SingleAsync(l => l.Id == id)).Url.ShouldBe("https://example.com/video");
@@ -311,7 +313,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         await CreateAsync(NewLink(subTopicId: t.SubTopicA));
 
         await using var ctx = _db.NewContext();
-        var list = await NewService(ctx).ListAsync(new TopicStudyLinkQueryDto { TopicId = t.TopicId });
+        var list = await NewService(ctx).ListAsync(new TopicStudyLinkQueryDto { TopicId = t.TopicId }, TeacherActor);
 
         list.Success.ShouldBeTrue();
         list.Items.Count.ShouldBe(2);
@@ -319,7 +321,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         list.ActiveCount.ShouldBe(1);
         list.MaxActiveLinks.ShouldBe(7);
 
-        var activeOnly = await NewService(ctx).ListAsync(new TopicStudyLinkQueryDto { TopicId = t.TopicId, IncludeInactive = false });
+        var activeOnly = await NewService(ctx).ListAsync(new TopicStudyLinkQueryDto { TopicId = t.TopicId, IncludeInactive = false }, TeacherActor);
         activeOnly.Items.Count.ShouldBe(1);
     }
 
@@ -330,9 +332,9 @@ public class TopicStudyLinkServiceTests : IDisposable
         await using var ctx = _db.NewContext();
         var service = NewService(ctx);
 
-        (await service.ListAsync(new TopicStudyLinkQueryDto())).Success.ShouldBeFalse();
-        (await service.ListAsync(new TopicStudyLinkQueryDto { TopicId = t.TopicId, SubTopicId = t.SubTopicA })).Success.ShouldBeFalse();
-        (await service.ListAsync(new TopicStudyLinkQueryDto { SubTopicId = 99999 })).NotFound.ShouldBeTrue();
+        (await service.ListAsync(new TopicStudyLinkQueryDto(), TeacherActor)).Success.ShouldBeFalse();
+        (await service.ListAsync(new TopicStudyLinkQueryDto { TopicId = t.TopicId, SubTopicId = t.SubTopicA }, TeacherActor)).Success.ShouldBeFalse();
+        (await service.ListAsync(new TopicStudyLinkQueryDto { SubTopicId = 99999 }, TeacherActor)).NotFound.ShouldBeTrue();
     }
 
     [Fact]
@@ -349,7 +351,7 @@ public class TopicStudyLinkServiceTests : IDisposable
             {
                 SubTopicId = t.SubTopicA,
                 Items = { new() { Id = a, SortOrder = 1 }, new() { Id = foreign, SortOrder = 0 } }
-            }, TeacherUserId);
+            }, TeacherActor);
             bad.Success.ShouldBeFalse();
         }
 
@@ -359,7 +361,7 @@ public class TopicStudyLinkServiceTests : IDisposable
             {
                 SubTopicId = t.SubTopicA,
                 Items = { new() { Id = a, SortOrder = 1 }, new() { Id = b, SortOrder = 0 } }
-            }, TeacherUserId);
+            }, TeacherActor);
             ok.Success.ShouldBeTrue();
             ok.Items.Select(i => i.Id).ShouldBe(new[] { b, a });
         }
@@ -370,7 +372,7 @@ public class TopicStudyLinkServiceTests : IDisposable
     {
         await SeedTaxonomyAsync();
         await using var ctx = _db.NewContext();
-        (await NewService(ctx).DeleteAsync(12345, TeacherUserId)).NotFound.ShouldBeTrue();
+        (await NewService(ctx).DeleteAsync(12345, TeacherActor)).NotFound.ShouldBeTrue();
     }
 
     // ---------------- Öğrenci sonuç ekranı ----------------
@@ -409,7 +411,7 @@ public class TopicStudyLinkServiceTests : IDisposable
             {
                 SubTopicId = tax.SubTopicA,
                 Items = { new() { Id = linkA1, SortOrder = 0 }, new() { Id = linkA2, SortOrder = 1 } }
-            }, TeacherUserId);
+            }, TeacherActor);
         }
 
         await using var db = _db.NewContext();
@@ -546,7 +548,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         var w = await SeedResultWorldAsync();
         await using (var ctx = _db.NewContext())
             await NewService(ctx).UpdateAsync(w.LinkB1,
-                new UpdateTopicStudyLinkDto { Title = "B1", Url = "https://example.com/video", IsActive = false }, TeacherUserId);
+                new UpdateTopicStudyLinkDto { Title = "B1", Url = "https://example.com/video", IsActive = false }, TeacherActor);
 
         await using var read = _db.NewContext();
         var result = await NewService(read).GetSuggestionsForResultAsync(w.InstanceId, StudentUserId);
@@ -600,7 +602,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             var service = NewService(ctx);
-            await service.UpdateAsync(w.LinkTopic1, new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com/video", IsActive = false }, TeacherUserId);
+            await service.UpdateAsync(w.LinkTopic1, new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com/video", IsActive = false }, TeacherActor);
         }
 
         await using var read = _db.NewContext();

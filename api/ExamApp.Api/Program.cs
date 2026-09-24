@@ -239,6 +239,7 @@ builder.Services.AddScoped<IUserProfileProvider, UserProfileProvider>(); // issu
 builder.Services.AddScoped<ISchoolAccessPolicy, SchoolAccessPolicy>(); // issue #190
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 builder.Services.AddScoped<IStudyItemService, StudyItemService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Teachers.IApprovedTeacherGuard, ExamApp.Api.Services.Teachers.ApprovedTeacherGuard>(); // issue #61 (#287 tüm öğretmen uçlarında yeniden kullanacak)
 builder.Services.AddScoped<ExamApp.Api.Services.StudyLinks.ITopicStudyLinkService, ExamApp.Api.Services.StudyLinks.TopicStudyLinkService>(); // issue #61
 
 // Admin: taxonomy management + question-classifier (Gemini) cache
@@ -283,6 +284,8 @@ builder.Services.AddScoped<StudentResetJob>();
 // issue #243: self-reset tekilleştirme (bekleyen iş varsa yenisi açılmaz) + sub başına rate limit.
 builder.Services.AddScoped<IStudentResetScheduler, StudentResetScheduler>();
 builder.Services.AddStudentSelfResetRateLimiting();
+// issue #61: çalışma linki yazma uçları (POST/PUT/DELETE/reorder) için sub başına bellek içi sabit pencere.
+builder.Services.AddStudyLinkWriteRateLimiting();
 
 // PostgreSQL & EF Core (Aspire client integration — reads ConnectionStrings:DefaultConnection,
 // same key as before, so standalone `dotnet run` against appsettings.json is unaffected).

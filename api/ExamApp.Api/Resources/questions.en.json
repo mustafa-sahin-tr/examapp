@@ -7,6 +7,9 @@
     "passageNotFound": "Passage not found!",
     "imageNotFound": "Question or question image not found.",
     "imageNotFoundInStorage": "The question image was not found in storage.",
+    "forbidden": "You are not allowed to modify this question.",
+    "testNotFound": "Test not found!",
+    "testForbidden": "You are not allowed to modify this test.",
     "unknownName": "(not found)",
 
     "bulk": {

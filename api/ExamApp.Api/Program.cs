@@ -160,6 +160,10 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAssertion(context =>
             context.User.IsInRole("Teacher") ||
             ExamApp.Foundation.Security.ServicePrincipal.IsService(context.User, serviceClients)));
+
+    // issue #287 (security review H1): soru bankası uçları — öğretmen/admin ya da servis hesabı (BadgeService
+    // sınıflandırıcısı). Öğretmen ayrıca ApprovedTeacher policy'sinden geçer (servis/admin muaf).
+    ExamApp.Api.Services.Questions.QuestionAccessPolicies.AddTo(options, serviceClients);
 });
 
 var redisConfig = builder.Configuration.GetSection("Redis");
@@ -231,6 +235,7 @@ builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionClassificationService, ExamApp.Api.Services.Questions.QuestionClassificationService>();
 builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionQueryService, ExamApp.Api.Services.Questions.QuestionQueryService>();
+builder.Services.AddScoped<ExamApp.Api.Services.Questions.IQuestionOwnershipGuard, ExamApp.Api.Services.Questions.QuestionOwnershipGuard>(); // issue #287 H1
 builder.Services.AddScoped<IAuthApiClient, AuthApiClient>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddSingleton<ImageHelper>();
@@ -492,12 +497,14 @@ app.UseRequestLocalization(); // Ayarlar yukarıdaki Configure<RequestLocalizati
 // anahtarı kullanıcının sub'ıdır ve 401/403 alan istekler kovayı tüketmez; localization'dan sonra: 429 metni çevrilir.
 app.UseRateLimiter();
 
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
-{
-    Authorization = app.Environment.IsDevelopment()
-        ? new[] { new HangfireDashboardDevAuthFilter() }
-        : new[] { new HangfireDashboardAuthFilter() }
-});
+// issue #287 (security review L3): production filtresi async — öğretmenin HESAP onayını da doğrular.
+app.UseHangfireDashboard("/hangfire", app.Environment.IsDevelopment()
+    ? new DashboardOptions { Authorization = new[] { new HangfireDashboardDevAuthFilter() } }
+    : new DashboardOptions
+    {
+        Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>(),
+        AsyncAuthorization = new[] { new HangfireDashboardAuthFilter() }
+    });
 
 app.MapControllers();
 app.MapDefaultEndpoints();

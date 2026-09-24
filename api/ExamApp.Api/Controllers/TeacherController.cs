@@ -127,7 +127,9 @@ namespace ExamApp.Api.Controllers
                 approvalStatus = response.ApprovalStatus,
                 schoolApprovalPending = response.SchoolApprovalPending,
                 // issue #287: yeni kayıt her zaman onay bekler — UI "onay bekleniyor" ekranına geçer.
-                teacherAccountApproved = response.AccountApproved
+                teacherAccountApproved = response.AccountApproved,
+                // issue #287 (review): sunucu metni (ör. "hesabınız yönetici onayı bekliyor") UI'da gösterilir.
+                message = response.Message
             });
         }
 
@@ -265,6 +267,9 @@ namespace ExamApp.Api.Controllers
         /// Issue #95: authenticated kullanıcının kendi tutor profili. Teacher kaydı yoksa 404,
         /// bağımsız öğretmen değilse 400. Onay beklerken de döner (ApprovalStatus alanıyla).
         /// </summary>
+        // issue #287 (security review L2): ApprovedTeacher policy BİLEREK YOK — bağımsız öğretmen başvurusunun formu
+        // bu profildir; hesabı onay bekleyen öğretmen başvurusunu doldurup görebilmeli. Arama/public profil zaten
+        // yalnızca Approved tutor'ları döner; randevu uçları ayrıca kapılı.
         [Authorize(Roles = "Teacher")]
         [HttpGet("tutor-profile")]
         public async Task<ActionResult<TutorProfileDto>> GetTutorProfile(CancellationToken ct)
@@ -278,6 +283,7 @@ namespace ExamApp.Api.Controllers
         /// Issue #95: sadece kendi IsIndependentTutor=true kaydını günceller. En az 1 ders, en az 1 mod
         /// (online/yüz yüze) ve ücret &gt; 0 zorunlu; aksi halde 400.
         /// </summary>
+        // issue #287 (security review L2): bilerek onaysız öğretmene açık — başvuru formu (bkz. GET tutor-profile).
         [Authorize(Roles = "Teacher")]
         [HttpPut("tutor-profile")]
         public async Task<ActionResult<TutorProfileDto>> UpdateTutorProfile([FromBody] UpdateTutorProfileDto request, CancellationToken ct)

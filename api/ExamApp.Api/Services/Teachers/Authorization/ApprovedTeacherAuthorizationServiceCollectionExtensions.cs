@@ -19,7 +19,8 @@ public static class ApprovedTeacherAuthorizationServiceCollectionExtensions
 
             options.AddPolicy(ApprovedTeacherPolicies.TeacherOrStudentCapability, policy => policy
                 .RequireAuthenticatedUser()
-                .AddRequirements(new ApprovedTeacherRequirement([.. ApprovedTeacherPolicies.AdminRoles, "Student"])));
+                // security review L4: Student muafiyet DEĞİL (Teacher+Student çift rollü onaysız öğretmen kapıya takılır).
+                .AddRequirements(new ApprovedTeacherRequirement(ApprovedTeacherPolicies.AdminRoles)));
         });
 
         // Scoped: scoped guard'a (istek başı önbellek) ve profil sağlayıcısına bağlı.

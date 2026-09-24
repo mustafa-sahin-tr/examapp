@@ -10,6 +10,12 @@ namespace ExamApp.Api.Migrations
     /// (<c>ApprovalStatus</c>) ayrılır. Kolon şema tarafı EF tarafından üretildi; backfill SQL'i elle eklendi
     /// (#259 <c>BackfillGradeAssignmentSchoolIdFromCreatorTeacher</c> ile aynı desen).
     /// <para>
+    /// KABUL EDİLMİŞ KARAR (owner, #287 kararı 3: "bugüne kadarkilerin hepsi onaylı kabul edilsin"; security review M1
+    /// bulgusu bu karar gereği kabul edildi): #287 öncesi kayıtta kendiliğinden Approved başlamış (admin onayı görmemiş)
+    /// okulsuz öğretmenler dahil, bugün onaylı görünen TÜM öğretmenler onaylı hesap sayılır. Yeni kural yalnızca
+    /// #287 sonrası kayıtlara uygulanır.
+    /// </para>
+    /// <para>
     /// Backfill — hesabı bugün fiilen onaylı sayılan öğretmenler kesinti yaşamasın (owner kararı 3):
     /// <list type="bullet">
     /// <item><c>ApprovalStatus = Approved</c> (1): bugün onaylı her öğretmen.</item>

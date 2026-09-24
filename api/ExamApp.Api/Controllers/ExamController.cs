@@ -183,8 +183,8 @@ public class ExamController : BaseController
 
 
     [HttpGet("{id:int}")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
-    [Authorize]
     public async Task<IActionResult> GetWorksheet(int id)
     {
         var user = await GetAuthenticatedUserAsync();
@@ -439,6 +439,7 @@ public class ExamController : BaseController
     }
 
     [HttpGet("latest")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetLatestWorksheetsAsync(int pageNumber = 1, int pageSize = 10)
     {
@@ -547,7 +548,8 @@ public class ExamController : BaseController
 
     // 🟢 GET /api/exam/questions - Sınav için soruları getir
     [HttpGet("questions")]
-    [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
+    [Authorize(Roles = "Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
+    [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
     public async Task<IActionResult> GetExamQuestions()
     {
         var questions = await _examService.GetExamQuestionsAsync();
@@ -563,8 +565,8 @@ public class ExamController : BaseController
     //     return Ok(new { message = "Cevap başarıyla kaydedildi." });
     // }
 
-    [Authorize]
     [HttpPost("start-test/{testId}")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> StartTest(int testId)
     {
@@ -596,6 +598,7 @@ public class ExamController : BaseController
     }
 
     [HttpGet("test-instance/{testInstanceId}")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetTestInstanceQuestions(int testInstanceId)
     {
@@ -612,6 +615,7 @@ public class ExamController : BaseController
 
 
     [HttpGet("test-canvas-instance-result/{testInstanceId}")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetTestCanvasInstanceResults(int testInstanceId)
     {
@@ -622,6 +626,7 @@ public class ExamController : BaseController
 
 
     [HttpGet("test-canvas-instance/{testInstanceId}")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetTestCanvasInstanceQuestions(int testInstanceId)
     {
@@ -631,8 +636,8 @@ public class ExamController : BaseController
     }
 
 
-    [Authorize]
     [HttpPost("save-answer")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> SaveAnswer([FromBody] SaveAnswerDto dto)
     {
@@ -641,8 +646,8 @@ public class ExamController : BaseController
         return Ok(response);
     }
 
-    [Authorize]
     [HttpPut("end-test/{testInstanceId}")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> EndTest(int testInstanceId)
     {
@@ -708,6 +713,7 @@ public class ExamController : BaseController
 
 
     [HttpGet("student/statistics")]
+    [Authorize(Roles = "Student,Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherOrStudentCapability)] // issue #287
     public async Task<IActionResult> GetGroupedStudentStatistics()
     {
@@ -732,8 +738,8 @@ public class ExamController : BaseController
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Teacher,Admin")] // issue #287 review H1: ApprovedTeacher policy tek başına rol kapısı değil
     [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
-    [Authorize]
     public async Task<IActionResult> DeleteWorksheet(int id)
     {
         try

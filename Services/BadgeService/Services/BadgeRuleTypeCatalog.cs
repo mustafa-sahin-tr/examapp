@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace BadgeService.Services;
 
@@ -53,7 +54,8 @@ public static class BadgeRuleTypeCatalog
         string? ruleType,
         string? ruleConfigJson,
         out string normalizedRuleConfigJson,
-        out List<RuleValidationError> errors)
+        out List<RuleValidationError> errors,
+        ILogger? logger = null)
     {
         errors = new List<RuleValidationError>();
         normalizedRuleConfigJson = string.Empty;
@@ -138,7 +140,12 @@ public static class BadgeRuleTypeCatalog
         }
         catch (JsonException ex)
         {
-            errors.Add(new RuleValidationError("ruleConfigJson", $"RuleConfigJson geçersiz veya bilinmeyen alan içeriyor: {ex.Message}"));
+            // Security review follow-up (L2): JsonException.Message can echo back raw request content
+            // (e.g. the offending property value) — never put it in the API response. ex.Path narrows
+            // down the location without leaking content; the full exception goes to the log only.
+            logger?.LogWarning(ex, "RuleConfigJson doğrulaması başarısız (ruleType={RuleType}, path={Path})", ruleType, ex.Path);
+            var location = string.IsNullOrEmpty(ex.Path) ? string.Empty : $" (konum: {ex.Path})";
+            errors.Add(new RuleValidationError("ruleConfigJson", $"RuleConfigJson geçersiz veya bilinmeyen bir alan içeriyor{location}."));
             return false;
         }
     }

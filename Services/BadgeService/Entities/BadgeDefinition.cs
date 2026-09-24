@@ -30,8 +30,15 @@ public class BadgeDefinition
     /// </summary>
     public bool IsActive { get; set; } = true;
 
+    /// <summary>
+    /// Security review (#148 follow-up, L1): the stable actor identity is the Keycloak `sub` claim, not a
+    /// display name (usernames can be reassigned/changed) — <see cref="CreatedByName"/>/<see cref="UpdatedByName"/>
+    /// (from `preferred_username`, best-effort) are for display only, never the audit key.
+    /// </summary>
     public string? CreatedBy { get; set; }
+    public string? CreatedByName { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public string? UpdatedBy { get; set; }
+    public string? UpdatedByName { get; set; }
     public DateTime? UpdatedAtUtc { get; set; }
 }

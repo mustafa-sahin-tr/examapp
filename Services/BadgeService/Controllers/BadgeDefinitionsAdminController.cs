@@ -35,11 +35,19 @@ public class BadgeDefinitionsAdminController : ControllerBase
         return Ok(BadgeRuleTypeCatalog.All);
     }
 
+    /// <summary>
+    /// Security review #148 (M2, contract change): paged — was a bare array, now <c>{ items, totalCount }</c>.
+    /// <paramref name="take"/> is clamped to 1..200 (default 50) server-side even if the caller sends more.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<object>> ListAsync([FromQuery] bool includeInactive, CancellationToken cancellationToken)
+    public async Task<ActionResult<BadgeDefinitionAdminListResponse>> ListAsync(
+        [FromQuery] bool includeInactive,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = BadgeDefinitionAdminService.DefaultPageSize,
+        CancellationToken cancellationToken = default)
     {
-        var items = await _service.ListAsync(includeInactive, cancellationToken);
-        return Ok(items);
+        var page = await _service.ListAsync(includeInactive, skip, take, cancellationToken);
+        return Ok(new BadgeDefinitionAdminListResponse { Items = page.Items, TotalCount = page.TotalCount });
     }
 
     [HttpGet("{id:guid}")]
@@ -54,7 +62,12 @@ public class BadgeDefinitionsAdminController : ControllerBase
         [FromBody] CreateBadgeDefinitionRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _service.CreateAsync(request, GetActor(), cancellationToken);
+        if (!TryGetActor(out var actorId, out var actorName))
+        {
+            return Forbid();
+        }
+
+        var result = await _service.CreateAsync(request, actorId, actorName, cancellationToken);
         if (result.IsConflict)
         {
             return Conflict(ToErrorBody(result));
@@ -74,7 +87,12 @@ public class BadgeDefinitionsAdminController : ControllerBase
         [FromBody] UpdateBadgeDefinitionRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await _service.UpdateAsync(id, request, GetActor(), cancellationToken);
+        if (!TryGetActor(out var actorId, out var actorName))
+        {
+            return Forbid();
+        }
+
+        var result = await _service.UpdateAsync(id, request, actorId, actorName, cancellationToken);
         if (result.IsNotFound)
         {
             return NotFound();
@@ -92,22 +110,46 @@ public class BadgeDefinitionsAdminController : ControllerBase
     [HttpPost("{id:guid}/deactivate")]
     public async Task<ActionResult<BadgeDefinitionAdminDto>> DeactivateAsync(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.SetActiveAsync(id, isActive: false, GetActor(), cancellationToken);
+        if (!TryGetActor(out var actorId, out var actorName))
+        {
+            return Forbid();
+        }
+
+        var result = await _service.SetActiveAsync(id, isActive: false, actorId, actorName, cancellationToken);
         return result.IsNotFound ? NotFound() : Ok(result.Value);
     }
 
-    /// <summary>Idempotent — activating an already-active badge just returns 200.</summary>
+    /// <summary>Idempotent — activating an already-active badge just returns 200 unless the active cap (M2) is hit.</summary>
     [HttpPost("{id:guid}/activate")]
     public async Task<ActionResult<BadgeDefinitionAdminDto>> ActivateAsync(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _service.SetActiveAsync(id, isActive: true, GetActor(), cancellationToken);
+        if (!TryGetActor(out var actorId, out var actorName))
+        {
+            return Forbid();
+        }
+
+        var result = await _service.SetActiveAsync(id, isActive: true, actorId, actorName, cancellationToken);
+        if (result.IsConflict)
+        {
+            return Conflict(ToErrorBody(result));
+        }
+
         return result.IsNotFound ? NotFound() : Ok(result.Value);
     }
 
-    private string GetActor() =>
-        User.FindFirstValue("preferred_username")
-        ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? "unknown-admin";
+    /// <summary>
+    /// Security review #148 (L1): the audit id is the Keycloak `sub` claim (immutable, unlike a display
+    /// name) — mapped to <see cref="ClaimTypes.NameIdentifier"/> by the JwtBearer pipeline, same claim
+    /// <c>ReportsController</c> already treats as the caller's stable identity. Requests where it's
+    /// missing (malformed/service token) are rejected with 403 rather than falling back to a sentinel
+    /// "unknown-admin" string that would make the audit trail useless.
+    /// </summary>
+    private bool TryGetActor(out string actorId, out string? actorName)
+    {
+        actorId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub") ?? string.Empty;
+        actorName = User.FindFirstValue("preferred_username");
+        return !string.IsNullOrWhiteSpace(actorId);
+    }
 
     private ActionResult ValidationProblemFrom(BadgeDefinitionAdminResult result)
     {

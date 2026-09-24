@@ -94,6 +94,7 @@ public class AppDbContext : DbContext
     public DbSet<UserProgramStudyPageSchedule> UserProgramStudyPageSchedules { get; set; } // UserProgramStudyPageSchedule tablosu
     public DbSet<StudyItem> StudyItems { get; set; } // StudyItem tablosu
     public DbSet<StudyItemImage> StudyItemImages { get; set; } // StudyItemImage tablosu
+    public DbSet<TopicStudyLink> TopicStudyLinks { get; set; } // Konu/alt konu harici çalışma linkleri (issue #61)
     public DbSet<LearningOutcomeDetail> LearningOutcomeDetails { get; set; } // LearningOutcomeDetail tablosu
     public DbSet<LearningOutcome> LearningOutcomes { get; set; } // LearningOutcome tablosu
 
@@ -387,6 +388,22 @@ public class AppDbContext : DbContext
             .WithMany(p => p.Images)
             .HasForeignKey(i => i.StudyItemId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ---- Konu / alt konu çalışma linkleri (issue #61) ----
+
+        // En az bir kapsam (konu veya alt konu) dolu olmalı — servis doğrulamasının DB dayanağı.
+        modelBuilder.Entity<TopicStudyLink>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_TopicStudyLinks_TopicOrSubTopic",
+                "\"TopicId\" IS NOT NULL OR \"SubTopicId\" IS NOT NULL"));
+
+        // Öğrenci sonuç ekranı ve 7-aktif-link sayımı alt konu + IsActive ile filtreler.
+        modelBuilder.Entity<TopicStudyLink>()
+            .HasIndex(l => new { l.SubTopicId, l.IsActive });
+
+        // Konu seviyesi liste/sayım: TopicId + SubTopicId IS NULL + IsActive.
+        modelBuilder.Entity<TopicStudyLink>()
+            .HasIndex(l => new { l.TopicId, l.SubTopicId, l.IsActive });
 
         modelBuilder.Entity<UserProgramStudyPageSchedule>()
             .HasOne(s => s.UserProgram)

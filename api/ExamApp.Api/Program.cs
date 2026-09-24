@@ -239,6 +239,7 @@ builder.Services.AddScoped<IUserProfileProvider, UserProfileProvider>(); // issu
 builder.Services.AddScoped<ISchoolAccessPolicy, SchoolAccessPolicy>(); // issue #190
 builder.Services.AddScoped<IProgramService, ProgramService>(); // ProgramService DI
 builder.Services.AddScoped<IStudyItemService, StudyItemService>();
+builder.Services.AddScoped<ExamApp.Api.Services.StudyLinks.ITopicStudyLinkService, ExamApp.Api.Services.StudyLinks.TopicStudyLinkService>(); // issue #61
 
 // Admin: taxonomy management + question-classifier (Gemini) cache
 builder.Services.Configure<ExamApp.Api.Services.Classifier.GeminiCacheOptions>(

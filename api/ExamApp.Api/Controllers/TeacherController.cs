@@ -1,3 +1,4 @@
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
@@ -53,7 +54,9 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized(_localizer["teacher.refreshTokenMissing"].Value);
 
             // 🔹 Öğretmen zaten var mı?
-            var response = await _teacherService.Save(user.Id, request);
+            // issue #277 (madde 4): rol değişiyorsa UserRoleChangedEvent kayıtla aynı transaction'da outbox'a yazılır (auth-api senkronu).
+            var response = await _teacherService.Save(user.Id, request,
+                new UserRoleChangeRequest(user.KeycloakId, user.Id, user.Role));
             if (response == null)
             {
                 return BadRequest(new { message = _localizer["teacher.registerFailed"].Value });

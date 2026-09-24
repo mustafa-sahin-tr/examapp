@@ -9,13 +9,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace AuthApi.Tests.Consumers;
 
 /// <summary>
-/// Issue #277 (madde 4, review sonrası): exam API'nin register/complete-profile uçlarında
-/// yazdığı <see cref="UserRoleChangedEvent"/>'i tüketip auth-api'nin <c>Users.Role</c> kolonunu
-/// günceller. Event kör güvenilmez — yalnızca "Keycloak'ı yeniden oku" tetikleyicisidir; gerçek
-/// değer <see cref="IKeycloakService.GetUserRealmRoleNamesAsync"/> ile taze okunur ve allowlist
-/// (Student/Teacher/Parent) ile filtrelenir. Idempotent/sırasız-teslim güvenliği
-/// <see cref="ExamApp.Api.Data.User.RoleUpdatedAtUtc"/> ile (yalnızca gereksiz Keycloak
-/// çağrısını önleyen bir optimizasyon — doğruluk her zaman Keycloak'tan taze okumadan gelir).
+/// Issue #277 (madde 4, review sonrası + re-review LOW-1): exam API'nin register/complete-profile
+/// uçlarında yazdığı <see cref="UserRoleChangedEvent"/>'i tüketip auth-api'nin <c>Users.Role</c>
+/// kolonunu günceller. Event kör güvenilmez — yalnızca "Keycloak'ı yeniden oku" tetikleyicisidir;
+/// gerçek değer <see cref="IKeycloakService.GetUserRealmRoleNamesAsync"/> ile HER ZAMAN taze
+/// okunur ve allowlist (Student/Teacher/Parent) ile filtrelenir. KASITLI OLARAK bir "tazelik
+/// kısayolu" (event eskiyse Keycloak'a gitmeden atla) YOKTUR — <c>RoleUpdatedAtUtc</c>
+/// login/complete-profile'ın JWT/istek zaman damgalarından geldiği için Keycloak'a gerçek yazma
+/// anıyla sıralı değildir; böyle bir kısayol gerekli bir senkronu atlayabilirdi (LOW-1).
+/// <c>RoleUpdatedAtUtc</c> yalnızca TEŞHİS amaçlı damgalanır, karşılaştırma/atlamada kullanılmaz.
 /// </summary>
 public class UserRoleChangedConsumerTests : IDisposable
 {
@@ -119,17 +121,19 @@ public class UserRoleChangedConsumerTests : IDisposable
     }
 
     [Fact]
-    public async Task Consume_SameEventTwice_SecondCallIsFreshnessNoOpAndDoesNotCallKeycloakAgain()
+    public async Task Consume_SameEventTwice_BothCallsReReadKeycloakAndConverge()
     {
+        // No "already synced, skip" shortcut (issue #277 LOW-1) — every delivery, including an
+        // exact duplicate, re-reads Keycloak. Harmless/idempotent: both calls converge on the
+        // same current truth.
         await SeedUserAsync(keycloakId: "kc-1", role: "Student");
         var keycloak = KeycloakWithRoles("Teacher");
         var e = Evt(keycloakId: "kc-1");
 
         await NewConsumer(keycloak).Consume(Context(e));
-        keycloak.ClearReceivedCalls();
         await NewConsumer(keycloak).Consume(Context(e));
 
-        await keycloak.DidNotReceive().GetUserRealmRoleNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await keycloak.Received(2).GetUserRealmRoleNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
 
         await using var check = _db.NewContext();
         var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-1");
@@ -137,23 +141,27 @@ public class UserRoleChangedConsumerTests : IDisposable
     }
 
     [Fact]
-    public async Task Consume_OutOfOrderOlderEvent_SkipsKeycloakReReadAndKeepsExistingRole()
+    public async Task Consume_StaleOutOfOrderEvent_StillReSyncsFromKeycloak()
     {
+        // issue #277 re-review (LOW-1): RoleUpdatedAtUtc is stamped from login/complete-profile's
+        // JWT/request timestamps, not a fresh Keycloak read — it is NOT ordered against Keycloak's
+        // actual write time (concurrent complete-profile vs. exam API register, or clock skew
+        // between hosts). A "skip if event looks older" shortcut could therefore skip a needed
+        // sync. The consumer must always re-read Keycloak regardless of how old/out-of-order the
+        // triggering event's ChangedAtUtc is, and write whatever Keycloak says NOW.
         var now = DateTime.UtcNow;
         await SeedUserAsync(keycloakId: "kc-1", role: "Teacher", roleUpdatedAtUtc: now);
 
-        // A stale/reordered event with an older timestamp than what's already stored locally —
-        // the freshness guard should skip re-reading Keycloak entirely.
         var keycloak = KeycloakWithRoles("Student");
         var staleEvent = Evt(keycloakId: "kc-1", changedAtUtc: now.AddMinutes(-5));
 
         await NewConsumer(keycloak).Consume(Context(staleEvent));
 
-        await keycloak.DidNotReceive().GetUserRealmRoleNamesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await keycloak.Received(1).GetUserRealmRoleNamesAsync("kc-1", Arg.Any<CancellationToken>());
 
         await using var check = _db.NewContext();
         var user = await check.Users.SingleAsync(u => u.KeycloakId == "kc-1");
-        user.Role.ShouldBe("Teacher");
+        user.Role.ShouldBe("Student");
     }
 
     [Fact]

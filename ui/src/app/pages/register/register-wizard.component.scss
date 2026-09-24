@@ -87,6 +87,12 @@
     margin-bottom: 8px;
   }
 
+  .field-error {
+    margin: -4px 0 8px;
+    font-size: 13px;
+    color: var(--ms-danger-text);
+  }
+
   .teacher-mode {
     margin: 0 0 8px;
     padding: 0;

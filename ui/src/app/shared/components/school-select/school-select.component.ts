@@ -77,6 +77,12 @@ export class SchoolSelectComponent {
 
   /** Seçilen okulun tamamı (ad göstermek isteyen üst komponentler için); seçim düşünce null. */
   readonly selectionChange = output<School | null>();
+  /**
+   * "Metin yazıldı ama listeden okul seçilmedi" durumu değişince yayınlanır (bkz. `unmatchedText`). Üst form bu durumda
+   * gönderimi engelleyebilir — aksi halde yazılan okul sessizce `null` olarak giderdi.
+   */
+  readonly unmatchedChange = output<boolean>();
+  private lastUnmatched = false;
 
   private readonly reloadTick = signal(0);
   readonly state = toSignal(
@@ -144,6 +150,7 @@ export class SchoolSelectComponent {
       this.selectionChange.emit(null);
     }
     this.query.set(text);
+    this.emitUnmatched();
   }
 
   onSelected(event: MatAutocompleteSelectedEvent): void {
@@ -156,12 +163,21 @@ export class SchoolSelectComponent {
     this.value.set(school.id);
     this.query.set(school.name);
     this.selectionChange.emit(school);
+    this.emitUnmatched();
   }
 
   clear(): void {
     if (this.value() != null) this.selectionChange.emit(null);
     this.value.set(null);
     this.query.set('');
+    this.emitUnmatched();
+  }
+
+  private emitUnmatched(): void {
+    const unmatched = this.unmatchedText();
+    if (unmatched === this.lastUnmatched) return;
+    this.lastUnmatched = unmatched;
+    this.unmatchedChange.emit(unmatched);
   }
 
   optionSubtitle(school: School): string {

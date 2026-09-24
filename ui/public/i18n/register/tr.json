@@ -25,7 +25,8 @@
     "teacherAffiliated": "Bir okula bağlıyım",
     "teacherIndependent": "Bağımsız özel ders veriyorum",
     "teacherIndependentHint": "Bağımsız öğretmen hesapları yönetici onayından sonra etkinleşir.",
-    "teacherSchoolHint": "İsteğe bağlı. Okul bağlantınız yönetici onayından sonra etkinleşir."
+    "teacherSchoolHint": "İsteğe bağlı. Okul bağlantınız yönetici onayından sonra etkinleşir.",
+    "schoolNotPicked": "Yazdığınız okulu listeden seçin, alanı temizleyin ya da \"Bağımsız özel ders veriyorum\" seçeneğini işaretleyin."
   },
   "account": {
     "title": "Kayıt Ol",

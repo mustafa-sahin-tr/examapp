@@ -183,6 +183,10 @@ export class AdminStudentsComponent {
       });
   }
 
+  /**
+   * Ham liste öğesi güncellenir; `noSchool` dahil satır alanları `rows` computed'ında `toRow` ile yeniden türetilir
+   * (ayrı tutulan bir `noSchool` yok, bayat kalamaz).
+   */
   private applySchool(id: number, schoolId: number, schoolName: string | null): void {
     this.list.items.update((items) =>
       items.map((item) => (item.id === id ? { ...item, schoolId, schoolName } : item)),

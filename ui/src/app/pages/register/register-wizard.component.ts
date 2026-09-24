@@ -115,6 +115,18 @@ export class RegisterWizardComponent implements OnInit {
     schoolId: [null as number | null],
   });
 
+  /**
+   * Issue #277 (review): öğretmen okul alanına metin yazdı ama listeden okul seçmedi. "Okula bağlıyım" modunda gönderim
+   * engellenir; aksi halde yazılan okul sessizce `schoolId: null` olarak giderdi. (Öğrenci okulu backend'de opsiyonel —
+   * orada engellenmez; seçici "listeden seçin" ipucunu yine gösterir.)
+   */
+  readonly teacherSchoolUnmatched = signal(false);
+  /** Gönderim denendi ve okul seçilmemişti → hata metni gösterilir (seçim yapılınca/metin silinince kaybolur). */
+  readonly teacherSchoolErrorRequested = signal(false);
+  readonly teacherSchoolError = computed(
+    () => this.teacherSchoolErrorRequested() && this.teacherSchoolUnmatched() && !this.isIndependentTutor(),
+  );
+
   /** Şablonda okul alanını gizlemek için; form kontrolünün canlı değeri. */
   readonly isIndependentTutor = toSignal(this.teacherForm.controls.isIndependentTutor.valueChanges, {
     initialValue: this.teacherForm.controls.isIndependentTutor.value,
@@ -151,6 +163,12 @@ export class RegisterWizardComponent implements OnInit {
     this.retryAfterSeconds.set(null);
   }
 
+  /** Mod değişince okul seçici yeniden oluşur (boş metinle); önceki "seçilmedi" durumu taşınmaz. */
+  onTeacherModeChange(): void {
+    this.teacherSchoolUnmatched.set(false);
+    this.teacherSchoolErrorRequested.set(false);
+  }
+
   /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
   continueAfterPending() {
     this.router.navigate(['/tests']);
@@ -176,6 +194,10 @@ export class RegisterWizardComponent implements OnInit {
       request$ = this.studentService.register(this.buildStudentRequest());
     } else if (role === 'teacher') {
       if (this.teacherForm.invalid) return;
+      if (!this.teacherForm.controls.isIndependentTutor.value && this.teacherSchoolUnmatched()) {
+        this.teacherSchoolErrorRequested.set(true);
+        return;
+      }
       request$ = this.teacherService.register(this.buildTeacherRequest());
     } else {
       request$ = this.parentService.register();

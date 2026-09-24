@@ -3357,6 +3357,12 @@ namespace ExamApp.Api.Migrations
 
                     b.HasIndex("SelectedAnswerId");
 
+                    b.HasIndex("UpdateTime")
+                        .HasDatabaseName("IX_TestInstanceQuestions_UpdateTime_Answered")
+                        .HasFilter("NOT \"IsDeleted\" AND (\"SelectedAnswerId\" IS NOT NULL OR \"AnswerPayload\" IS NOT NULL) AND \"UpdateTime\" IS NOT NULL");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("UpdateTime"), new[] { "WorksheetInstanceId", "IsCorrect", "TimeTaken" });
+
                     b.HasIndex("WorksheetInstanceId");
 
                     b.HasIndex("WorksheetQuestionId");

@@ -11,6 +11,7 @@ using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Localization;
 
 namespace ExamApp.Api.Controllers
@@ -253,6 +254,7 @@ namespace ExamApp.Api.Controllers
         [Authorize(Roles = "Teacher")]
         [HttpGet("own-activity-summary")]
         [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
+        [EnableRateLimiting(TeacherActivityRateLimiting.Policy)] // issue #265: öğretmen (sub) başına, iki uç tek kova
         public async Task<ActionResult<TeacherOwnActivitySummaryDto>> GetOwnActivitySummary(
             [FromQuery] int days = 7, CancellationToken ct = default)
         {
@@ -270,6 +272,7 @@ namespace ExamApp.Api.Controllers
         [Authorize(Roles = "Teacher")]
         [HttpGet("students-activity-summary")]
         [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
+        [EnableRateLimiting(TeacherActivityRateLimiting.Policy)] // issue #265: öğretmen (sub) başına, iki uç tek kova
         public async Task<ActionResult<TeacherStudentsActivitySummaryDto>> GetStudentsActivitySummary(
             [FromQuery] int days = 7, CancellationToken ct = default)
         {

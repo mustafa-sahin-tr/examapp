@@ -61,6 +61,9 @@ public sealed class IntegrationApiFactory : WebApplicationFactory<Program>, IAsy
         // issue #155: hesap durumu rate limit'i — aynı gerekçe.
         Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__PermitLimit", "5");
         Environment.SetEnvironmentVariable("RateLimiting__AdminAccountStatus__WindowSeconds", "3600");
+        // issue #265: öğretmen aktivite toplaması önbelleği süreç içi singleton — Respawn DB'yi sıfırlasa da önceki testin
+        // sonucu (aynı UserId + aynı gün) 60 sn dönebilirdi. Testte kapalı (eşzamanlı istek paylaşımı yine aktif).
+        Environment.SetEnvironmentVariable("Dashboard__TeacherActivityCacheSeconds", "0");
     }
 
     public override async ValueTask DisposeAsync()

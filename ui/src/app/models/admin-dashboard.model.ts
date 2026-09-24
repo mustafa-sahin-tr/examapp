@@ -16,7 +16,8 @@ export interface AdminDashboardSummary {
 
 /**
  * Issue #87/#88 — günlük zaman serisinde tek nokta (DailyPointDto).
- * `date` ISO `yyyy-MM-dd` (saat bileşeni yok, UTC gün).
+ * `date` ISO `yyyy-MM-dd` (saat bileşeni yok). Gün kovası Türkiye yerel günüdür (issue #265; backend
+ * `Dashboard:TimeZone`, varsayılan Europe/Istanbul — UI tarafı `DASHBOARD_TIME_ZONE` ile eşleşmeli).
  */
 export interface AdminDashboardTrendPoint {
   date: string;

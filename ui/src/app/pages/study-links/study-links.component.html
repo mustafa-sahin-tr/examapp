@@ -1,0 +1,111 @@
+<section class="slp" *transloco="let t; prefix: 'study-links'">
+  <header class="slp-head">
+    <h1>{{ t('page.title') }}</h1>
+    <p class="slp-sub">{{ t('page.subtitle') }}</p>
+  </header>
+
+  <div class="slp-pickers">
+    <!-- Ders -->
+    <div class="slp-picker">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ t('page.subjectLabel') }}</mat-label>
+        <mat-select
+          data-testid="subject-select"
+          [value]="selectedSubjectId()"
+          [disabled]="subjects().loading || subjects().failed"
+          [placeholder]="subjects().loading ? t('page.loading') : t('page.subjectPlaceholder')"
+          (selectionChange)="selectSubject($event.value)"
+        >
+          @for (s of subjects().items ?? []; track s.id) {
+            <mat-option [value]="s.id">{{ s.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (subjects().failed) {
+        <p class="slp-error" role="alert" data-testid="subjects-error">
+          <mat-icon>error_outline</mat-icon>{{ t('page.subjectsLoadFailed') }}
+          <button mat-button type="button" (click)="retrySubjects()">{{ 'common.retry' | transloco }}</button>
+        </p>
+      }
+    </div>
+
+    <!-- Konu -->
+    <div class="slp-picker">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ t('page.topicLabel') }}</mat-label>
+        <mat-select
+          data-testid="topic-select"
+          [value]="selectedTopicId()"
+          [disabled]="selectedSubjectId() == null || topics().loading || topics().failed || !sortedTopics().length"
+          [placeholder]="
+            selectedSubjectId() == null
+              ? t('page.selectSubjectFirst')
+              : topics().loading
+                ? t('page.loading')
+                : sortedTopics().length
+                  ? t('page.topicPlaceholder')
+                  : t('page.noTopics')
+          "
+          (selectionChange)="selectTopic($event.value)"
+        >
+          @for (topic of sortedTopics(); track topic.id) {
+            <mat-option [value]="topic.id">
+              @if (gradeName(topic.gradeId); as grade) {
+                {{ t('page.topicOption', { name: topic.name, grade: grade }) }}
+              } @else {
+                {{ topic.name }}
+              }
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (topics().failed) {
+        <p class="slp-error" role="alert" data-testid="topics-error">
+          <mat-icon>error_outline</mat-icon>{{ t('page.topicsLoadFailed') }}
+          <button mat-button type="button" (click)="retryTopics()">{{ 'common.retry' | transloco }}</button>
+        </p>
+      }
+    </div>
+
+    <!-- Alt konu (opsiyonel: boş → konu seviyesi linkler) -->
+    <div class="slp-picker">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ t('page.subTopicLabel') }}</mat-label>
+        <mat-select
+          data-testid="subtopic-select"
+          [value]="selectedSubTopicId()"
+          [disabled]="selectedTopicId() == null || subTopics().loading || subTopics().failed || !(subTopics().items ?? []).length"
+          [placeholder]="
+            selectedTopicId() == null
+              ? t('page.selectTopicFirst')
+              : subTopics().loading
+                ? t('page.loading')
+                : (subTopics().items ?? []).length
+                  ? t('page.subTopicNone')
+                  : t('page.noSubTopics')
+          "
+          (selectionChange)="selectSubTopic($event.value)"
+        >
+          <mat-option [value]="null">{{ t('page.subTopicNone') }}</mat-option>
+          @for (st of subTopics().items ?? []; track st.id) {
+            <mat-option [value]="st.id">{{ st.name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      @if (subTopics().failed) {
+        <p class="slp-error" role="alert" data-testid="subtopics-error">
+          <mat-icon>error_outline</mat-icon>{{ t('page.subTopicsLoadFailed') }}
+          <button mat-button type="button" (click)="retrySubTopics()">{{ 'common.retry' | transloco }}</button>
+        </p>
+      }
+    </div>
+  </div>
+
+  <div class="slp-panel">
+    <app-topic-study-link-manager
+      [topicId]="selectedTopic()?.id ?? null"
+      [subTopicId]="selectedSubTopic()?.id ?? null"
+      [scopeName]="scopeName()"
+    />
+  </div>
+</section>

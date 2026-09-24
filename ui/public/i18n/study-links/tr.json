@@ -68,5 +68,24 @@
     "loadFailed": "Çalışma önerileri şu anda yüklenemedi.",
     "topicGroup": "{{name}} (genel)",
     "opensInNewTab": "yeni sekmede açılır"
+  },
+  "page": {
+    "title": "Çalışma Linkleri",
+    "subtitle": "Konu veya alt konu seçin; öğrenciler yanlış cevapladıkları sorunun konusu için bu linkleri görür.",
+    "subjectLabel": "Ders",
+    "topicLabel": "Konu",
+    "subTopicLabel": "Alt konu",
+    "subjectPlaceholder": "Ders seçin",
+    "topicPlaceholder": "Konu seçin",
+    "subTopicNone": "Tümü (konu seviyesi linkler)",
+    "topicOption": "{{name}} · {{grade}}",
+    "selectSubjectFirst": "Önce bir ders seçin",
+    "selectTopicFirst": "Önce bir konu seçin",
+    "noTopics": "Bu derste konu yok",
+    "noSubTopics": "Bu konuda alt konu yok",
+    "subjectsLoadFailed": "Dersler yüklenemedi.",
+    "topicsLoadFailed": "Konular yüklenemedi.",
+    "subTopicsLoadFailed": "Alt konular yüklenemedi.",
+    "loading": "Yükleniyor…"
   }
 }

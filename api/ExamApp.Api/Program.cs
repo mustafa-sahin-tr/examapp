@@ -168,6 +168,11 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = redisConfig["Configuration"];
     options.InstanceName = redisConfig["InstanceName"];
 });
+// issue #262: tek Redis multiplexer — IDistributedCache ile admin veri uçlarının dağıtık rate limit sayacı paylaşır.
+builder.Services.AddSingleton<ExamApp.Api.Helpers.IRedisConnectionProvider, ExamApp.Api.Helpers.RedisConnectionProvider>();
+builder.Services.AddOptions<Microsoft.Extensions.Caching.StackExchangeRedis.RedisCacheOptions>()
+    .Configure<ExamApp.Api.Helpers.IRedisConnectionProvider>((options, redis) =>
+        options.ConnectionMultiplexerFactory = redis.GetConnectionAsync);
 
 
 
@@ -254,7 +259,14 @@ builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminTeacherService,
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminStudentService, ExamApp.Api.Services.AdminUsers.AdminStudentService>();
 // issue #246: admin kişisel veri listeleri — erişim audit'i (DB) + kullanıcı (sub) başına rate limit.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminDataAccessAuditService, ExamApp.Api.Services.AdminUsers.AdminDataAccessAuditService>();
+// issue #262: rate limit sayacı Redis'te (dağıtık, fail-open); 429'lar da audit tablosuna yazılır.
 builder.Services.AddAdminUserListRateLimiting();
+// issue #262: audit saklama süresi (KVKK) — AdminDataAccessLog:RetentionDays (varsayılan 180), günlük Hangfire temizliği.
+builder.Services.AddOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>()
+    .BindConfiguration(ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminDataAccessLogRetentionJob, ExamApp.Api.Services.AdminUsers.AdminDataAccessLogRetentionJob>();
 // issue #156: admin şifre sıfırlama (geçici şifre) — audit AdminUserActionLogs'a, ayrı rate limit kovası.
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminAccountTargetResolver, ExamApp.Api.Services.AdminUsers.AdminAccountTargetResolver>();
 builder.Services.AddScoped<ExamApp.Api.Services.AdminUsers.IAdminUserActionAuditService, ExamApp.Api.Services.AdminUsers.AdminUserActionAuditService>();
@@ -495,6 +507,12 @@ RecurringJob.AddOrUpdate<ExamApp.Api.Services.Classifier.IClassifierCacheService
     "classifier-cache-reconcile",
     s => s.RefreshIfStaleAsync(0),
     app.Configuration.GetValue<string>("Classifier:ReconcileCron") ?? "0 * * * *");
+
+// issue #262: AdminDataAccessLogs saklama süresi (KVKK) — süresi dolan satırları günlük, parti parti siler.
+RecurringJob.AddOrUpdate<ExamApp.Api.Services.AdminUsers.IAdminDataAccessLogRetentionJob>(
+    ExamApp.Api.Services.AdminUsers.AdminDataAccessLogRetentionJob.RecurringJobId,
+    j => j.PurgeExpiredAsync(CancellationToken.None),
+    app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ExamApp.Api.Services.AdminUsers.AdminDataAccessLogOptions>>().Value.Cron);
 
 app.Run();
 return 0;

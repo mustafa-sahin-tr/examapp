@@ -49,11 +49,26 @@ public class KeycloakServiceAccountStatusTests
     private static (KeycloakService Service, FakeHandler Handler) Build(
         Func<string, CancellationToken, Task<HttpResponseMessage>> userResponse,
         Func<HttpResponseMessage>? tokenResponse = null,
-        KeycloakAdminTokenCache? tokenCache = null)
+        KeycloakAdminTokenCache? tokenCache = null,
+        Func<HttpRequestMessage, HttpResponseMessage>? scanResponse = null)
     {
-        var (service, adminHandler, _) = BuildWithDefaultClient(userResponse, tokenResponse, tokenCache);
+        var (service, adminHandler, _) = BuildWithDefaultClient(userResponse, tokenResponse, tokenCache, scanResponse);
         return (service, adminHandler);
     }
+
+    /// <summary>issue #262: toplu yol isteği — <c>GET /users?enabled=false...</c> (kullanıcı başı <c>/users/{id}</c> değil).</summary>
+    private static bool IsScan(HttpRequestMessage req)
+        => req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.EndsWith("/users") && req.RequestUri.Query.Contains("enabled=false");
+
+    private static bool IsPerUserGet(HttpRequestMessage req)
+        => req.Method == HttpMethod.Get && req.RequestUri!.AbsolutePath.StartsWith("/admin/realms/exam-realm/users/");
+
+    /// <summary>
+    /// Varsayılan tarama yanıtı: filtreyi YOK SAYAN Keycloak (etkin kullanıcı döner) → tarama sonuçsuz → kullanıcı başı yola
+    /// düşülür. Böylece #152'nin kullanıcı başı testleri id sayısından bağımsız aynı yolu doğrular.
+    /// </summary>
+    private static HttpResponseMessage FilterIgnoringScan(HttpRequestMessage _)
+        => Json(HttpStatusCode.OK, """[{"id":"someone","enabled":true}]""");
 
     /// <summary>
     /// Varsayılan client (token isteği; prod'da standart resilience'lı) ve retry'sız admin named client ayrı handler'larla,
@@ -62,13 +77,16 @@ public class KeycloakServiceAccountStatusTests
     private static (KeycloakService Service, FakeHandler AdminHandler, FakeHandler DefaultHandler) BuildWithDefaultClient(
         Func<string, CancellationToken, Task<HttpResponseMessage>> userResponse,
         Func<HttpResponseMessage>? tokenResponse = null,
-        KeycloakAdminTokenCache? tokenCache = null)
+        KeycloakAdminTokenCache? tokenCache = null,
+        Func<HttpRequestMessage, HttpResponseMessage>? scanResponse = null)
     {
         Task<HttpResponseMessage> Respond(HttpRequestMessage req, CancellationToken ct)
         {
             if (IsToken(req))
                 return Task.FromResult(tokenResponse?.Invoke()
                     ?? Json(HttpStatusCode.OK, """{"access_token":"admin-token-example","expires_in":300}"""));
+            if (IsScan(req))
+                return Task.FromResult((scanResponse ?? FilterIgnoringScan)(req));
             var id = Uri.UnescapeDataString(req.RequestUri!.AbsolutePath.Split('/').Last());
             return userResponse(id, ct);
         }
@@ -107,9 +125,9 @@ public class KeycloakServiceAccountStatusTests
         result["kc-on"].ShouldBeTrue();
         result["kc-off"].ShouldBeFalse();
 
-        var userGets = handler.Requests.Where(r => r.Method == HttpMethod.Get).ToList();
+        var userGets = handler.Requests.Where(IsPerUserGet).ToList();
         userGets.Count.ShouldBe(6); // tekrarlanan id bir kez okunur
-        userGets.ShouldAllBe(r => r.RequestUri!.AbsolutePath.StartsWith("/admin/realms/exam-realm/users/"));
+        handler.Requests.Count(IsScan).ShouldBe(1); // #262: önce toplu tarama denendi (sonuçsuz → kullanıcı başı)
         userGets.ShouldAllBe(r => r.Headers.Authorization!.Scheme == "Bearer" && r.Headers.Authorization.Parameter == "admin-token-example");
     }
 
@@ -236,5 +254,98 @@ public class KeycloakServiceAccountStatusTests
             tokenResponse: () => Json(HttpStatusCode.Unauthorized, """{"error":"unauthorized_client"}"""));
 
         await Should.ThrowAsync<KeycloakException>(() => service.GetUsersEnabledAsync(["kc-1"]));
+    }
+
+    // ---- issue #262: toplu hesap durumu (devre dışı kullanıcı taraması) ----
+
+    private static string DisabledPage(IEnumerable<string> ids)
+        => "[" + string.Join(",", ids.Select(id => $$"""{"id":"{{id}}","username":"{{id}}","enabled":false}""")) + "]";
+
+    private static Task<HttpResponseMessage> NoPerUserGet(string id, CancellationToken _)
+        => throw new InvalidOperationException($"per-user GET not expected ({id})");
+
+    [Fact]
+    public async Task Page_of_100_users_is_resolved_with_a_single_keycloak_get()
+    {
+        var ids = Enumerable.Range(1, 100).Select(i => "kc-" + i).ToList();
+        var (service, handler) = Build(NoPerUserGet, scanResponse: _ => Json(HttpStatusCode.OK, DisabledPage(["kc-3", "kc-77", "kc-outside-page"])));
+
+        var result = await service.GetUsersEnabledAsync(ids);
+
+        result.Count.ShouldBe(100);
+        result["kc-3"].ShouldBeFalse();
+        result["kc-77"].ShouldBeFalse();
+        result.Where(p => p.Key is not ("kc-3" or "kc-77")).ShouldAllBe(p => p.Value);
+        result.ContainsKey("kc-outside-page").ShouldBeFalse();
+
+        var gets = handler.Requests.Where(r => r.Method == HttpMethod.Get).ToList();
+        gets.Count.ShouldBe(1);
+        var query = gets[0].RequestUri!.Query;
+        query.ShouldContain("enabled=false");
+        query.ShouldContain("briefRepresentation=true");
+        query.ShouldContain("first=0");
+        query.ShouldContain($"max={KeycloakService.DisabledScanPageSize}");
+        gets[0].Headers.Authorization!.Parameter.ShouldBe("admin-token-example");
+    }
+
+    [Fact]
+    public async Task Full_first_page_of_disabled_users_falls_back_to_per_user_reads_without_a_second_page()
+    {
+        // #262 güvenlik review'u: > 1 sayfa devre dışı kullanıcı → offset sayfalaması yerine kullanıcı başı yol
+        // (sayfalar arası enable/disable yarışı devre dışı bir kullanıcıyı atlayıp "etkin" gösterebilirdi).
+        var fullPage = Enumerable.Range(0, KeycloakService.DisabledScanPageSize).Select(i => "kc-off-" + i).ToList();
+        var (service, handler) = Build((id, _) => Task.FromResult(
+                Json(HttpStatusCode.OK, $$"""{"id":"{{id}}","enabled":{{(id.StartsWith("kc-off") ? "false" : "true")}}}""")),
+            scanResponse: _ => Json(HttpStatusCode.OK, DisabledPage(fullPage)));
+        var ids = new List<string> { "kc-off-5", "kc-off-999", "kc-on-1", "kc-on-2", "kc-on-3" };
+
+        var result = await service.GetUsersEnabledAsync(ids);
+
+        var scans = handler.Requests.Where(IsScan).ToList();
+        scans.Count.ShouldBe(1);
+        scans[0].RequestUri!.Query.ShouldContain("first=0");
+        handler.Requests.Count(IsPerUserGet).ShouldBe(ids.Count);
+        result["kc-off-5"].ShouldBeFalse();
+        result["kc-off-999"].ShouldBeFalse(); // ilk sayfada yoktu — toplu çıkarım "true" derdi, kullanıcı başı okuma doğru
+        result["kc-on-1"].ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Short_page_is_trusted_and_ids_outside_the_disabled_set_are_enabled()
+    {
+        var almostFull = Enumerable.Range(0, KeycloakService.DisabledScanPageSize - 1).Select(i => "kc-off-" + i).ToList();
+        var (service, handler) = Build(NoPerUserGet, scanResponse: _ => Json(HttpStatusCode.OK, DisabledPage(almostFull)));
+
+        var result = await service.GetUsersEnabledAsync(["kc-off-0", "kc-off-98", "kc-on-1", "kc-deleted-in-keycloak", "kc-on-2"]);
+
+        handler.Requests.Count(IsScan).ShouldBe(1);
+        result["kc-off-0"].ShouldBeFalse();
+        result["kc-off-98"].ShouldBeFalse();
+        result["kc-on-1"].ShouldBeTrue();
+        result["kc-deleted-in-keycloak"].ShouldBeTrue(); // sözleşme: toplu yolda listede olmayan → true
+    }
+
+    [Fact]
+    public async Task Scan_error_is_fail_soft_without_per_user_storm()
+    {
+        var (service, handler) = Build(NoPerUserGet, scanResponse: _ => Json(HttpStatusCode.InternalServerError, "{}"));
+
+        var result = await service.GetUsersEnabledAsync(Enumerable.Range(1, 50).Select(i => "kc-" + i).ToList());
+
+        result.ShouldBeEmpty(); // çağıran (users/lookup) Enabled=null'a çevirir
+        handler.Requests.Count(IsPerUserGet).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Few_ids_skip_the_scan()
+    {
+        var (service, handler) = Build(EnabledOk, scanResponse: _ => throw new InvalidOperationException("scan not expected"));
+
+        var ids = Enumerable.Range(1, KeycloakService.AccountStatusBulkThreshold).Select(i => "kc-" + i).ToList();
+        var result = await service.GetUsersEnabledAsync(ids);
+
+        result.Count.ShouldBe(ids.Count);
+        handler.Requests.Count(IsScan).ShouldBe(0);
+        handler.Requests.Count(IsPerUserGet).ShouldBe(ids.Count);
     }
 }

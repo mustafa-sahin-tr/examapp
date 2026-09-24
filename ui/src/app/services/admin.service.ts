@@ -15,6 +15,7 @@ import { AdminDashboardSummary, AdminDashboardTrends } from '../models/admin-das
 import {
   PendingTeacherApplication,
   TeacherApplicationActionResult,
+  TeacherApplicationDetail,
   TeacherRejectRequest,
 } from '../models/teacher-application.model';
 import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-teacher.model';
@@ -138,6 +139,13 @@ export class AdminService {
   /** Pending durumdaki bağımsız öğretmen başvuruları, en eski önce. */
   getPendingTeacherApplications(): Observable<PendingTeacherApplication[]> {
     return this.http.get<PendingTeacherApplication[]>(`${this.baseUrl}/teacher-applications`);
+  }
+  /**
+   * Issue #262: tek bekleyen başvurunun detayı, TAM e-posta ile (listede maskeli). Her çağrı audit'lenir;
+   * 404 başvuru artık bekleyen değil, 429 rate limit (`Retry-After`, liste uçlarıyla ortak kova).
+   */
+  getTeacherApplication(teacherId: number): Observable<TeacherApplicationDetail> {
+    return this.http.get<TeacherApplicationDetail>(`${this.baseUrl}/teacher-applications/${teacherId}`);
   }
   /** 404 kayıt yok, 409 zaten karar verilmiş. */
   approveTeacherApplication(teacherId: number): Observable<TeacherApplicationActionResult> {

@@ -63,5 +63,100 @@ public class AdminDataAccessAuditServiceTests : IDisposable
         (await ctx.AdminDataAccessLogs.CountAsync()).ShouldBe(0);
     }
 
+    // ---- issue #262 ----
+
+    [Fact]
+    public async Task List_access_is_stored_as_served_without_target()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await new AdminDataAccessAuditService(ctx).RecordListAccessAsync(
+                new AdminListAccessRecord("kc", AdminDataAccessResource.TeacherApplicationList, null, false, 1, 3, 3, 3));
+        }
+
+        await using var read = _db.NewContext();
+        var row = await read.AdminDataAccessLogs.SingleAsync();
+        row.Outcome.ShouldBe(AdminDataAccessOutcome.Served);
+        row.TargetId.ShouldBeNull();
+        row.Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationList);
+    }
+
+    [Fact]
+    public async Task Detail_access_writes_the_target_id()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await new AdminDataAccessAuditService(ctx).RecordDetailAccessAsync(
+                new AdminDetailAccessRecord(" kc-admin ", AdminDataAccessResource.TeacherApplicationDetail, 42));
+        }
+
+        await using var read = _db.NewContext();
+        var row = await read.AdminDataAccessLogs.SingleAsync();
+        row.ActorKeycloakId.ShouldBe("kc-admin");
+        row.Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        row.TargetId.ShouldBe(42);
+        row.ReturnedCount.ShouldBe(1);
+        row.Outcome.ShouldBe(AdminDataAccessOutcome.Served);
+    }
+
+    [Fact]
+    public async Task Not_found_detail_is_persisted_with_target_and_zero_counts()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await new AdminDataAccessAuditService(ctx).RecordDetailAccessAsync(new AdminDetailAccessRecord(
+                "kc-admin", AdminDataAccessResource.TeacherApplicationDetail, 99, AdminDataAccessOutcome.NotFound));
+        }
+
+        await using var read = _db.NewContext();
+        var row = await read.AdminDataAccessLogs.SingleAsync();
+        row.Outcome.ShouldBe(AdminDataAccessOutcome.NotFound);
+        row.TargetId.ShouldBe(99);
+        row.ReturnedCount.ShouldBe(0);
+        var raw = await read.Database.SqlQueryRaw<string>("SELECT \"Outcome\" AS \"Value\" FROM \"AdminDataAccessLogs\"").SingleAsync();
+        raw.ShouldBe("NotFound");
+    }
+
+    [Fact]
+    public async Task Detail_record_rejects_rate_limited_outcome()
+    {
+        await using var ctx = _db.NewContext();
+        await Should.ThrowAsync<ArgumentException>(() => new AdminDataAccessAuditService(ctx).RecordDetailAccessAsync(
+            new AdminDetailAccessRecord("kc", AdminDataAccessResource.TeacherApplicationDetail, 1, AdminDataAccessOutcome.RateLimited)));
+    }
+
+    [Fact]
+    public async Task Rate_limited_request_is_persisted_with_outcome_and_no_counts()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            await new AdminDataAccessAuditService(ctx).RecordRateLimitedAsync(
+                new AdminRateLimitedAccessRecord("kc-admin", AdminDataAccessResource.StudentList, 5, false, null));
+        }
+
+        await using var read = _db.NewContext();
+        var row = await read.AdminDataAccessLogs.SingleAsync();
+        row.Outcome.ShouldBe(AdminDataAccessOutcome.RateLimited);
+        row.SchoolIdFilter.ShouldBe(5);
+        row.Page.ShouldBe(0);
+        row.ReturnedCount.ShouldBe(0);
+        row.TotalCount.ShouldBe(0);
+        var raw = await read.Database.SqlQueryRaw<string>("SELECT \"Outcome\" AS \"Value\" FROM \"AdminDataAccessLogs\"").SingleAsync();
+        raw.ShouldBe("RateLimited");
+    }
+
+    [Fact]
+    public async Task Detail_and_rate_limited_records_also_require_an_actor()
+    {
+        await using var ctx = _db.NewContext();
+        var service = new AdminDataAccessAuditService(ctx);
+
+        await Should.ThrowAsync<InvalidOperationException>(() => service.RecordDetailAccessAsync(
+            new AdminDetailAccessRecord(" ", AdminDataAccessResource.TeacherApplicationDetail, 1)));
+        await Should.ThrowAsync<InvalidOperationException>(() => service.RecordRateLimitedAsync(
+            new AdminRateLimitedAccessRecord("", AdminDataAccessResource.StudentList, null, false, null)));
+        (await ctx.AdminDataAccessLogs.CountAsync()).ShouldBe(0);
+    }
+
     public void Dispose() => _db.Dispose();
 }

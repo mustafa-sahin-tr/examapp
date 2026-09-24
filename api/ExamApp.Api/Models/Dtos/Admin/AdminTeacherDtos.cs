@@ -9,8 +9,8 @@ public class AdminTeacherListItemDto
     /// <summary>Teacher kaydının id'si.</summary>
     public int Id { get; set; }
 
-    /// <summary>auth-api kullanıcı id'si.</summary>
-    public int UserId { get; set; }
+    // issue #262: auth-api kullanıcı id'si (UserId) artık dönülmez — UI kullanmıyor (yalnızca spec fixture'larında vardı),
+    // iç kimliği gereksiz yere dışarı verir. Lookup için yalnızca sunucu tarafında kullanılır (öğrenci listesiyle aynı).
 
     /// <summary>auth-api'den çözümlenir; erişilemezse boş string.</summary>
     public string FullName { get; set; } = string.Empty;

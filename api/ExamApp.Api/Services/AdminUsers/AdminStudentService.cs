@@ -73,7 +73,8 @@ public class AdminStudentService : IAdminStudentService
                     FullName = user?.FullName ?? string.Empty,
                     // issue #246: liste görünümünde tam e-posta dönülmez (KVKK veri minimizasyonu).
                     Email = EmailMask.Apply(user?.Email),
-                    StudentNumber = r.StudentNumber ?? string.Empty,
+                    // issue #262: öğrenci numarası kısmi (yalnızca son 4 karakter) — tam numara listede dönülmez.
+                    StudentNumber = StudentNumberMask.Apply(r.StudentNumber),
                     SchoolId = r.SchoolId,
                     SchoolName = r.SchoolName,
                     GradeId = r.GradeId,

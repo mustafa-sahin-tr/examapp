@@ -18,6 +18,28 @@ public sealed record AdminListAccessRecord(
     int TotalCount);
 
 /// <summary>
+/// Admin detay ucu erişiminin audit girdisi (issue #262; ilk kullanım: <c>GET api/admin/teacher-applications/{id}</c>).
+/// HTTP'ye açılmaz. Yalnızca erişilen kaydın id'si — dönen e-posta/ad buraya KONMAZ.
+/// <paramref name="Outcome"/>: <c>Served</c> (veri döndü) ya da <c>NotFound</c> (404; veri dönmedi).
+/// </summary>
+public sealed record AdminDetailAccessRecord(
+    string ActorKeycloakId,
+    AdminDataAccessResource Resource,
+    int TargetId,
+    AdminDataAccessOutcome Outcome = AdminDataAccessOutcome.Served);
+
+/// <summary>
+/// Rate limit'e takılan (429) admin veri isteğinin audit girdisi (issue #262). Veri dönmediği için sayfa/sayı yok;
+/// filtreler query string'den en iyi çabayla okunur (geçersiz değer → null/false). <paramref name="TargetId"/> detay uçlarında.
+/// </summary>
+public sealed record AdminRateLimitedAccessRecord(
+    string ActorKeycloakId,
+    AdminDataAccessResource Resource,
+    int? SchoolIdFilter,
+    bool UnassignedFilter,
+    int? TargetId);
+
+/// <summary>
 /// Admin hesap aksiyonunun audit girdisi (issue #156). HTTP'ye açılmaz. Sır/PII alanı yok ve eklenmemeli
 /// (geçici şifre, e-posta, ad buraya KONMAZ).
 /// </summary>

@@ -168,10 +168,44 @@ public class AdminController : BaseController
     /// <summary>
     /// GET api/admin/teacher-applications → Pending başvurular (en eski önce): bağımsız öğretmen başvuruları ve okul
     /// bağlantısı talepleri (<c>isIndependentTutor=false</c>, <c>requestedSchoolId</c>/<c>requestedSchoolName</c> dolu).
+    /// issue #262: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir; admin liste uçlarıyla AYNI
+    /// kullanıcı başına rate limit kovası (429, reddedilen istek de audit'lenir).
     /// </summary>
     [HttpGet("teacher-applications")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri
+    [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
+    [AdminDataAccess(AdminDataAccessResource.TeacherApplicationList)]
     public async Task<ActionResult<List<PendingTeacherApplicationDto>>> GetTeacherApplications(CancellationToken ct)
-        => Ok(await _teacherApprovals.GetPendingApplicationsAsync(ct));
+    {
+        var result = await _teacherApprovals.GetPendingApplicationsAsync(ct);
+        // Liste sayfalı değil: tek "sayfa", boyut = dönen satır sayısı.
+        await _dataAccessAudit.RecordListAccessAsync(new AdminListAccessRecord(
+            KeyCloakId ?? string.Empty, AdminDataAccessResource.TeacherApplicationList, null, false,
+            1, result.Count, result.Count, result.Count), ct);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// GET api/admin/teacher-applications/{id} → tek bekleyen başvurunun detayı, TAM e-posta ile (issue #262).
+    /// Bekleyen başvuru yoksa 404. Her çağrı audit'lenir (TargetId = teacherId; veri dönmeden önce, fail-closed; 404 →
+    /// Outcome=NotFound);
+    /// liste uçlarıyla aynı rate limit kovası.
+    /// </summary>
+    [HttpGet("teacher-applications/{id:int}")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri
+    [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
+    [AdminDataAccess(AdminDataAccessResource.TeacherApplicationDetail)]
+    public async Task<ActionResult<TeacherApplicationDetailDto>> GetTeacherApplication(int id, CancellationToken ct)
+    {
+        var detail = await _teacherApprovals.GetPendingApplicationAsync(id, ct);
+
+        // 404 da audit'lenir (Outcome=NotFound): id tarama denemeleri iz bıraksın.
+        await _dataAccessAudit.RecordDetailAccessAsync(new AdminDetailAccessRecord(
+            KeyCloakId ?? string.Empty, AdminDataAccessResource.TeacherApplicationDetail, id,
+            detail == null ? AdminDataAccessOutcome.NotFound : AdminDataAccessOutcome.Served), ct);
+
+        return detail == null ? NotFound() : Ok(detail);
+    }
 
     /// <summary>
     /// POST api/admin/teacher-applications/{id}/approve → ApprovalStatus=Approved. Okul talebinde okul bağı burada kurulur
@@ -216,6 +250,7 @@ public class AdminController : BaseController
     [HttpGet("teachers")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri; ara katmanda/tarayıcıda saklanmasın
     [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
+    [AdminDataAccess(AdminDataAccessResource.TeacherList)]
     public async Task<ActionResult<Paged<AdminTeacherListItemDto>>> GetTeachers(
         [FromQuery, Range(1, int.MaxValue)] int? schoolId,
         [FromQuery] bool unassigned = false,
@@ -240,10 +275,12 @@ public class AdminController : BaseController
     /// schoolId ve unassigned birlikte kullanılamaz. pageSize 1..100 aralığına kırpılır. Ad/e-posta/hesap durumu
     /// auth-api'den sayfa başına tek çağrıyla gelir; erişilemezse liste yine döner (ad/e-posta boş, isEnabled null).
     /// issue #246: e-posta maskeli (<c>a***@x.com</c>); her başarılı çağrı audit'lenir; kullanıcı başına rate limit (429).
+    /// issue #262: öğrenci numarası kısmi (<c>****1234</c>).
     /// </summary>
     [HttpGet("students")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)] // kişisel veri; ara katmanda/tarayıcıda saklanmasın
     [EnableRateLimiting(AdminUserListRateLimiting.Policy)]
+    [AdminDataAccess(AdminDataAccessResource.StudentList)]
     public async Task<ActionResult<Paged<AdminStudentListItemDto>>> GetStudents(
         [FromQuery, Range(1, int.MaxValue)] int? schoolId,
         [FromQuery] bool unassigned = false,

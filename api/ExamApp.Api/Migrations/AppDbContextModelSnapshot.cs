@@ -38,6 +38,13 @@ namespace ExamApp.Api.Migrations
                     b.Property<DateTime>("OccurredAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("Served");
+
                     b.Property<int>("Page")
                         .HasColumnType("integer");
 
@@ -53,6 +60,9 @@ namespace ExamApp.Api.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int?>("SchoolIdFilter")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TargetId")
                         .HasColumnType("integer");
 
                     b.Property<int>("TotalCount")

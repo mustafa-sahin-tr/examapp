@@ -20,10 +20,18 @@ public interface IKeycloakService
     Task<List<KeycloakRoleDto>> GetRealmRolesAsync();
 
     /// <summary>
-    /// Issue #152: verilen Keycloak kullanıcılarının <c>enabled</c> bayrağı. Keycloak admin API id listesiyle toplu
-    /// filtre sunmadığı için kullanıcı başı <c>GET /users/{id}</c>, en fazla <see cref="KeycloakService.AccountStatusMaxParallelism"/>
-    /// eşzamanlı. Fail-soft: okunamayan (404, hata, zaman aşımı/iptal) kullanıcı sözlükte YER ALMAZ; admin token'ı
-    /// alınamazsa <see cref="KeycloakException"/> fırlatır.
+    /// Issue #152: verilen Keycloak kullanıcılarının <c>enabled</c> bayrağı.
+    /// Issue #262 (toplu): <see cref="KeycloakService.AccountStatusBulkThreshold"/>'dan fazla id için kullanıcı başı GET YERİNE
+    /// realm'in DEVRE DIŞI kullanıcıları TEK istekle okunur (<c>GET /users?enabled=false&amp;briefRepresentation=true&amp;first=0&amp;max=100</c>).
+    /// Toplu yolda: devre dışı listede olan id → false; listede OLMAYAN her id → <c>true</c>. Bu, Keycloak'ta artık bulunmayan
+    /// (silinmiş) kullanıcıyı da <c>true</c> gösterir — kullanıcı başı yolda böyle bir kullanıcı sözlükte yer almaz (bilinmiyor).
+    /// Sonuç bilgi amaçlıdır; yetkilendirme kararında KULLANILMAMALIDIR.
+    /// Tarama sonuçsuzsa kullanıcı başı <c>GET /users/{id}</c> yoluna düşer (en fazla
+    /// <see cref="KeycloakService.AccountStatusMaxParallelism"/> eşzamanlı): Keycloak filtreyi yok saydı ya da devre dışı kullanıcı
+    /// sayısı tek sayfaya (<see cref="KeycloakService.DisabledScanPageSize"/>) sığmadı — offset sayfalaması eşzamanlı
+    /// değişikliklerde kullanıcı atlayabileceği için ikinci sayfa istenmez. Az id'de doğrudan kullanıcı başı yol.
+    /// Fail-soft: okunamayan kullanıcı sözlükte YER ALMAZ (tarama hata verirse hiçbiri); admin token'ı alınamazsa
+    /// <see cref="KeycloakException"/> fırlatır.
     /// </summary>
     Task<IReadOnlyDictionary<string, bool>> GetUsersEnabledAsync(IReadOnlyCollection<string> keycloakUserIds, CancellationToken ct = default);
 

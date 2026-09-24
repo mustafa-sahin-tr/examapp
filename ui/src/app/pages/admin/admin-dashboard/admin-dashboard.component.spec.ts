@@ -15,6 +15,8 @@ import { routes } from '../../../app.routes';
 import { authGuard } from '../../../shared/guards/auth.guard';
 import { adminGuard } from '../../../shared/guards/admin.guard';
 import { translocoTestingModule } from '../../../shared/testing/transloco-testing';
+import { DASHBOARD_TIME_ZONE, dashboardIsoDate } from '../../../shared/utils/dashboard-time-zone.util';
+import { LocaleService } from '../../../services/locale.service';
 import adminTr from '../../../../../public/i18n/admin/tr.json';
 
 describe('AdminDashboardComponent', () => {
@@ -31,21 +33,15 @@ describe('AdminDashboardComponent', () => {
     aiClassifiedRatio: 0.75,
   };
 
-  /** Yerel takvim günü `yyyy-MM-dd` (bileşen `parseIsoDate`/`daysAgo` ile aynı gün tanımı). */
-  function toLocalIsoDate(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-
-  /** Bugünden geriye `days` günlük, `yyyy-MM-dd` tarihli seri; `counts[i]` i. güne (en eski → en yeni). */
-  function makeSeries(days: number, counts: (index: number) => number): AdminDashboardTrendPoint[] {
-    return Array.from({ length: days }, (_, i) => {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
-      d.setDate(d.getDate() - (days - 1 - i));
-      return { date: toLocalIsoDate(d), count: counts(i) };
+  /**
+   * Bugünden (dashboard saat dilimi, #265) geriye `days` günlük, `yyyy-MM-dd` tarihli seri; `counts[i]` i. güne
+   * (en eski → en yeni). Bileşenle aynı gün tanımı: tarayıcının saat dilimi değil, `DASHBOARD_TIME_ZONE`.
+   */
+  function makeSeries(days: number, counts: (index: number) => number, endIsoDate = dashboardIsoDate(new Date())) {
+    const [y, m, d] = endIsoDate.split('-').map(Number);
+    return Array.from({ length: days }, (_, i): AdminDashboardTrendPoint => {
+      const day = new Date(Date.UTC(y, m - 1, d - (days - 1 - i)));
+      return { date: day.toISOString().slice(0, 10), count: counts(i) };
     });
   }
 
@@ -496,6 +492,40 @@ describe('AdminDashboardComponent', () => {
     expect(created.scheme.domain.length).toBe(4);
     expect(created.scheme.domain.every((c) => c !== '')).toBeTrue();
     expect(new Set(created.scheme.domain).size).toBe(4);
+  });
+
+  it('trendCards_JustAfterTurkeyMidnight_TreatsTurkeyLocalDayAsTodayRegardlessOfBrowserZone', () => {
+    // Issue #265: 2026-09-24T22:30Z = 25 Eylül 01:30 (Europe/Istanbul). Backend'in son kovası 2026-09-25;
+    // "bugün" o gün olmalı (tarayıcı UTC'de olsa bile 24 Eylül'e kaymamalı).
+    jasmine.clock().install();
+    jasmine.clock().mockDate(new Date(Date.UTC(2026, 8, 24, 22, 30)));
+    try {
+      fixture = configure();
+      component = fixture.componentInstance;
+      const series = makeSeries(TREND_DAYS, (i) => (i === TREND_DAYS - 1 ? 7 : 1), '2026-09-25');
+      adminService.getDashboardTrends.and.returnValue(
+        of({ questionCreated: series, questionSolved: series, studentLogin: series }),
+      );
+
+      fixture.detectChanges();
+      useDesktopViewport();
+
+      const [created] = component.trendCards();
+      expect(created.summaryText).toContain('bugün, 7 soru');
+      const cells = created.results.flatMap((w) => w.series);
+      const peakCell = cells.find((c) => c.extra.count === 7);
+      expect(peakCell?.extra.date).toBe('2026-09-25');
+      // Beklenen etiketler, sahte "şimdi" anının doğrudan Europe/Istanbul'da biçimlenmesiyle üretilir
+      // (25 Eylül 2026 Cuma); bileşen tarayıcı dilimi UTC/başka olsa da aynısını vermeli.
+      const locale = TestBed.inject(LocaleService).localeDefinition().angularLocale;
+      const now = new Date();
+      const inZone = (opts: Intl.DateTimeFormatOptions): string =>
+        new Intl.DateTimeFormat(locale, { ...opts, timeZone: DASHBOARD_TIME_ZONE }).format(now);
+      expect(peakCell?.extra.label).toBe(inZone({ day: 'numeric', month: 'short', year: 'numeric' }));
+      expect(peakCell?.name).toBe(inZone({ weekday: 'short' }));
+    } finally {
+      jasmine.clock().uninstall();
+    }
   });
 
   it('xAxisTickFormatting_RepeatedMonth_CollapsesToSingleMonthLabel', () => {

@@ -3,6 +3,8 @@
  * Metin üretmez; Transloco anahtarı + parametre döndürür, çeviri şablonda yapılır (dil değişimine duyarlı).
  */
 
+import { dashboardIsoDate } from '../../shared/utils/dashboard-time-zone.util';
+
 /** Scope'a göreli çeviri anahtarı + parametreleri; şablonda `t(key, params)` ile çözülür. */
 export interface DurationLabel {
   key:
@@ -53,17 +55,24 @@ export function accuracyPercent(correctCount: number, questionsSolved: number): 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * Aktivite penceresinin okunur tarih aralığı: bugün (UTC) dahil son `days` UTC takvim günü (ör. "17–23 Eylül 2026").
- * Backend penceresi de UTC takvim günüdür; hesap ve biçimleme UTC'de yapıldığı için kullanıcının saat dilimi ve
- * sunucu/tarayıcı farkı (SSR hydration) sonucu değiştirmez. Aralık birleştirmesi `formatRange` ile dile göre yapılır.
+ * Aktivite penceresinin okunur tarih aralığı: bugün dahil son `days` Türkiye yerel takvim günü
+ * (ör. "17–23 Eylül 2026"). Backend penceresi de aynı tanımı kullanır (issue #265: son N yerel gün, bugün dahil,
+ * yerel gece yarısından başlar; saat dilimi `Dashboard:TimeZone` → `DASHBOARD_TIME_ZONE`).
+ *
+ * "Bugün" `now` anının `DASHBOARD_TIME_ZONE`'daki takvim günüdür; gün aritmetiği ve biçimleme o takvim
+ * gününün UTC gece yarısı temsili üzerinde yapılır. Böylece tarayıcının saat dilimi ve sunucu/tarayıcı farkı
+ * (SSR hydration) sonucu değiştirmez, DST geçişleri de gün sayısını kaydırmaz. Aralık birleştirmesi
+ * `formatRange` ile dile göre yapılır.
  */
 export function formatActivityPeriod(days: number, now: Date, locale: string): string {
-  const endMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const [y, m, d] = dashboardIsoDate(now).split('-').map(Number);
+  const endMs = Date.UTC(y, m - 1, d);
   const startMs = endMs - (Math.max(1, Math.floor(days)) - 1) * MS_PER_DAY;
   return new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    // Tarihler zaten yerel takvim gününün UTC gece yarısı temsili; burada UTC ile biçimlemek günü korur.
     timeZone: 'UTC',
   }).formatRange(new Date(startMs), new Date(endMs));
 }

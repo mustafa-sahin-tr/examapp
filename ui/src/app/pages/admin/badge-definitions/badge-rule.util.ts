@@ -66,6 +66,36 @@ export function readConfigField(config: Record<string, unknown>, name: string): 
   return key === undefined ? undefined : config[key];
 }
 
+/**
+ * Eski (legacy) hedef alan adları — `Services/BadgeService/Services/BadgeRuleEvaluator.cs` `TryReadInt` çağrılarıyla
+ * birebir (RuleType başına). Backend migration'ı bunları `target`'a çevirecek; yine de okuma tarafında `target`
+ * yoksa sırayla bu adlara bakılır ki eski satırlar listede ve düzenleme formunda doğru görünsün.
+ */
+const LEGACY_TARGET_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  answercount: ['count'],
+  correctstreak: ['streak'],
+  totalstudytimeminutes: ['minutes', 'targetMinutes'],
+  totalcorrectanswers: ['count', 'correct'],
+  subjectanswercount: ['count'],
+  subjectcorrectcount: ['count', 'correct'],
+  subjectstudytimeminutes: ['minutes', 'targetMinutes'],
+  activedays: ['days'],
+  dailystreak: ['days', 'streak'],
+  studystreak: ['days', 'streak'],
+  activitystreak: ['days', 'streak'],
+};
+
+/** `target`'ı okur; yoksa RuleType'ın legacy alias'larına düşer (evaluator ile aynı sıra). */
+export function readTarget(ruleType: string, config: Record<string, unknown>): unknown {
+  const direct = readConfigField(config, 'target');
+  if (direct !== undefined && direct !== null) return direct;
+  for (const alias of LEGACY_TARGET_ALIASES[ruleType.trim().toLowerCase()] ?? []) {
+    const value = readConfigField(config, alias);
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+}
+
 /** Mevcut config'ten şema alanlarının form başlangıç değerlerini çıkarır (şemada olmayanlar atılır). */
 export function ruleFieldValues(
   schema: BadgeRuleTypeSchema,
@@ -73,7 +103,7 @@ export function ruleFieldValues(
 ): Record<string, RuleFieldValue> {
   const values: Record<string, RuleFieldValue> = {};
   for (const field of schema.fields) {
-    const raw = readConfigField(config, field.name);
+    const raw = field.name === 'target' ? readTarget(schema.ruleType, config) : readConfigField(config, field.name);
     if (isIntegerField(field)) {
       const num = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() ? Number(raw) : NaN;
       values[field.name] = Number.isFinite(num) ? num : null;
@@ -115,7 +145,7 @@ export interface RuleSummary {
 
 export function ruleSummary(dto: Pick<BadgeDefinitionAdmin, 'ruleType' | 'ruleConfigJson'>): RuleSummary {
   const config = parseRuleConfig(dto.ruleConfigJson);
-  const target = readConfigField(config, 'target');
+  const target = readTarget(dto.ruleType, config);
   const subjectName = readConfigField(config, SUBJECT_NAME_FIELD);
   const subjectId = readConfigField(config, SUBJECT_ID_FIELD);
   const subject =

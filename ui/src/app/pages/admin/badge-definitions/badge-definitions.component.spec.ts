@@ -203,8 +203,10 @@ describe('BadgeDefinitionsComponent', () => {
 
   // ── oluştur / düzenle ───────────────────────────────────────────────────
 
-  it('create_OpensDialog_PrependsSavedRow', () => {
+  it('create_OpensDialog_ReloadsCurrentPage', () => {
     init();
+    component.onPage({ pageIndex: 1, pageSize: 25, length: 60 });
+    service.list.calls.reset();
     const created = dto({ id: 'b9', name: 'Yeni' });
     dialog.open.and.returnValue(dialogRef(created));
 
@@ -213,8 +215,18 @@ describe('BadgeDefinitionsComponent', () => {
     const [cmp, config] = dialog.open.calls.mostRecent().args;
     expect(cmp).toBe(BadgeDefinitionDialogComponent);
     expect(config?.data).toEqual({ categories: ['Çözüm'] });
-    expect(component.rows().map((r) => r.id)).toEqual(['b9', 'b1']);
-    expect(component.totalCount()).toBe(2);
+    expect(service.list).toHaveBeenCalledOnceWith(false, 25, 25);
+    expect(snack.open).toHaveBeenCalled();
+  });
+
+  it('create_Cancelled_DoesNotReload', () => {
+    init();
+    service.list.calls.reset();
+    dialog.open.and.returnValue(dialogRef(undefined));
+
+    component.openCreate();
+
+    expect(service.list).not.toHaveBeenCalled();
   });
 
   it('edit_PassesDefinition_ReplacesRow', () => {
@@ -225,5 +237,6 @@ describe('BadgeDefinitionsComponent', () => {
 
     expect(dialog.open.calls.mostRecent().args[1]?.data).toEqual(jasmine.objectContaining({ definition: dto() }));
     expect(component.rows()[0].name).toBe('Değişti');
+    expect(service.list).toHaveBeenCalledTimes(1); // yalnız ilk yükleme; düzenlemede yeniden yükleme yok
   });
 });

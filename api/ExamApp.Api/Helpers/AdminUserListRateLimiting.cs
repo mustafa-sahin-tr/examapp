@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.RateLimiting;
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos.Admin;
 using ExamApp.Api.Services.AdminUsers;
 using ExamApp.Foundation.Localization;
@@ -217,9 +218,15 @@ public sealed class AdminUserListRateLimitPolicy : IRateLimiterPolicy<string>
             int? targetId = int.TryParse(httpContext.GetRouteValue("id") as string, NumberStyles.None, CultureInfo.InvariantCulture, out var tid)
                 ? tid : null;
 
+            // issue #187: başvuru listesinin durum filtresi (yok → Pending; geçersiz değer → null).
+            TeacherApplicationStatusFilter? statusFilter =
+                resource.Value == AdminDataAccessResource.TeacherApplicationList
+                && TeacherApplicationStatusQuery.TryParse(query["status"], out var sf)
+                    ? sf : null;
+
             await audit.RecordRateLimitedAsync(new AdminRateLimitedAccessRecord(
                 httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty,
-                resource.Value, schoolId, unassigned, targetId), CancellationToken.None);
+                resource.Value, schoolId, unassigned, targetId, statusFilter), CancellationToken.None);
         }
         catch (Exception ex)
         {

@@ -32,6 +32,12 @@ public class AdminDataAccessLog
     /// <summary>Filtre: yalnızca okulsuz kullanıcılar istendi mi.</summary>
     public bool UnassignedFilter { get; set; }
 
+    /// <summary>
+    /// issue #187: öğretmen başvurusu listesinin durum filtresi (<c>?status=pending|all</c>); diğer uçlarda null.
+    /// Kalıcı değer string'dir.
+    /// </summary>
+    public TeacherApplicationStatusFilter? StatusFilter { get; set; }
+
     /// <summary>Normalize edilmiş (kırpılmış) sayfa numarası.</summary>
     public int Page { get; set; }
 
@@ -48,6 +54,14 @@ public class AdminDataAccessLog
     /// Detay uçlarında erişilen kaydın id'si (issue #262: öğretmen başvurusu detayı → Teacher.Id); liste uçlarında null.
     /// </summary>
     public int? TargetId { get; set; }
+
+    /// <summary>
+    /// issue #187 (security review): detay uçlarında erişim anında hedef kaydın durumu (öğretmen başvurusu:
+    /// <c>Pending</c>/<c>Approved</c>/<c>Rejected</c>) — tam e-posta yalnızca Pending'de döndüğünden hangi seviyede veri
+    /// görüldüğü audit'ten okunabilsin. Liste satırlarında ve 404/429'da null.
+    /// </summary>
+    [MaxLength(16)]
+    public string? TargetStatus { get; set; }
 
     /// <summary>
     /// issue #262: isteğin sonucu. <see cref="AdminDataAccessOutcome.RateLimited"/> satırlarında veri DÖNMEMİŞTİR;
@@ -70,6 +84,17 @@ public enum AdminDataAccessResource
 
     /// <summary>issue #262: <c>GET api/admin/teacher-applications/{id}</c> (tam e-posta).</summary>
     TeacherApplicationDetail = 4
+}
+
+/// <summary>
+/// issue #187: <c>GET api/admin/teacher-applications?status=</c> filtresi. <see cref="Pending"/> (varsayılan) yalnızca
+/// onay bekleyenler; <see cref="All"/> her durumdaki (Pending/Approved/Rejected) başvurular. Audit'te string saklanır;
+/// yeniden adlandırma geçmiş kayıtları bozar.
+/// </summary>
+public enum TeacherApplicationStatusFilter
+{
+    Pending = 1,
+    All = 2
 }
 
 /// <summary>issue #262: audit satırının sonucu. Kalıcı değer string'dir; yeniden adlandırma geçmiş kayıtları bozar.</summary>

@@ -63,6 +63,9 @@ public class AdminDataAccessRateLimitTests
                         e.MapGet("/students", () => Results.Ok("ok"))
                             .RequireRateLimiting(AdminUserListRateLimiting.Policy)
                             .WithMetadata(new AdminDataAccessAttribute(AdminDataAccessResource.StudentList));
+                        e.MapGet("/applications", () => Results.Ok("ok"))
+                            .RequireRateLimiting(AdminUserListRateLimiting.Policy)
+                            .WithMetadata(new AdminDataAccessAttribute(AdminDataAccessResource.TeacherApplicationList));
                         e.MapGet("/applications/{id:int}", (int id) => Results.Ok(id))
                             .RequireRateLimiting(AdminUserListRateLimiting.Policy)
                             .WithMetadata(new AdminDataAccessAttribute(AdminDataAccessResource.TeacherApplicationDetail));
@@ -95,6 +98,40 @@ public class AdminDataAccessRateLimitTests
         rejected.Headers.RetryAfter!.Delta!.Value.TotalSeconds.ShouldBeInRange(1, 600);
         await audit.Received(1).RecordRateLimitedAsync(
             new AdminRateLimitedAccessRecord("kc-a", AdminDataAccessResource.StudentList, 7, false, null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("/applications?status=all", TeacherApplicationStatusFilter.All)]
+    [InlineData("/applications", TeacherApplicationStatusFilter.Pending)]
+    [InlineData("/applications?status=bogus", null)]
+    public async Task Issue187_rejected_application_list_request_is_persisted_with_the_status_filter(
+        string path, TeacherApplicationStatusFilter? expected)
+    {
+        var audit = Substitute.For<IAdminDataAccessAuditService>();
+        using var host = await StartHostAsync(new InMemoryFixedWindowCounterStore(), audit);
+        using var client = host.GetTestClient();
+
+        (await GetAsync(client, "/applications", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, path, "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        await audit.Received(1).RecordRateLimitedAsync(
+            new AdminRateLimitedAccessRecord("kc-a", AdminDataAccessResource.TeacherApplicationList, null, false, null, expected),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Status_query_is_not_recorded_for_other_resources()
+    {
+        var audit = Substitute.For<IAdminDataAccessAuditService>();
+        using var host = await StartHostAsync(new InMemoryFixedWindowCounterStore(), audit);
+        using var client = host.GetTestClient();
+
+        (await GetAsync(client, "/students", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync(client, "/students?status=all", "kc-a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+
+        await audit.Received(1).RecordRateLimitedAsync(
+            new AdminRateLimitedAccessRecord("kc-a", AdminDataAccessResource.StudentList, null, false, null, null),
             Arg.Any<CancellationToken>());
     }
 

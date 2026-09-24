@@ -35,6 +35,7 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             PageSize = record.PageSize,
             ReturnedCount = record.ReturnedCount,
             TotalCount = record.TotalCount,
+            StatusFilter = record.StatusFilter,
             Outcome = AdminDataAccessOutcome.Served
         });
     }
@@ -51,6 +52,7 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             ActorKeycloakId = RequireActor(record.ActorKeycloakId),
             Resource = record.Resource,
             TargetId = record.TargetId,
+            TargetStatus = record.Outcome == AdminDataAccessOutcome.Served ? record.TargetStatus : null,
             Page = 1,
             PageSize = 1,
             ReturnedCount = found,
@@ -69,6 +71,7 @@ public class AdminDataAccessAuditService : IAdminDataAccessAuditService
             SchoolIdFilter = record.SchoolIdFilter,
             UnassignedFilter = record.UnassignedFilter,
             TargetId = record.TargetId,
+            StatusFilter = record.StatusFilter,
             Outcome = AdminDataAccessOutcome.RateLimited
         });
     }

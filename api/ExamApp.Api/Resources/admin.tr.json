@@ -39,6 +39,7 @@
     },
 
     "teacherApplication": {
+      "invalidStatusFilter": "\"status\" yalnızca \"pending\" veya \"all\" olabilir.",
       "notFound": "Başvuru bulunamadı.",
       "approved": "Başvuru onaylandı.",
       "rejected": "Başvuru reddedildi.",

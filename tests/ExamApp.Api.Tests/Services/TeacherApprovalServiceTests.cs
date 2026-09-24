@@ -58,7 +58,7 @@ public class TeacherApprovalServiceTests : IDisposable
         UserResolvesTo(11, "Ali Veli", "ali.veli@okul.k12.tr");
 
         await using var check = _db.NewContext();
-        var item = (await NewService(check).GetPendingApplicationsAsync()).Single();
+        var item = (await NewService(check).ListApplicationsAsync(TeacherApplicationStatusFilter.Pending, 1, 20)).Items.Single();
 
         item.FullName.ShouldBe("Ali Veli");
         item.Email.ShouldBe("a***@okul.k12.tr");
@@ -82,7 +82,7 @@ public class TeacherApprovalServiceTests : IDisposable
         UserResolvesTo(12, "Ayşe Yılmaz", "ayse@okul.k12.tr");
 
         await using var check = _db.NewContext();
-        var detail = await NewService(check).GetPendingApplicationAsync(teacherId);
+        var detail = await NewService(check).GetApplicationAsync(teacherId);
 
         detail.ShouldNotBeNull();
         detail.TeacherId.ShouldBe(teacherId);
@@ -95,25 +95,27 @@ public class TeacherApprovalServiceTests : IDisposable
     [Fact]
     public void Issue262_application_dtos_do_not_expose_the_internal_user_id()
     {
-        typeof(PendingTeacherApplicationDto).GetProperty("UserId").ShouldBeNull();
+        typeof(TeacherApplicationListItemDto).GetProperty("UserId").ShouldBeNull();
         typeof(TeacherApplicationDetailDto).GetProperty("UserId").ShouldBeNull();
     }
 
     [Fact]
-    public async Task Issue262_detail_is_null_for_unknown_or_already_decided_applications()
+    public async Task Issue187_detail_is_null_for_unknown_ids_and_for_teachers_that_never_applied()
     {
-        int decidedId;
+        // issue #187: karar verilmiş başvurular artık detayda döner (bkz. TeacherApprovalServiceListTests);
+        // başvuru olmayan (okula bağlı, talebi/audit kararı olmayan) öğretmen ise hâlâ 404.
+        int ordinaryId;
         await using (var ctx = _db.NewContext())
         {
-            var decided = new Teacher { UserId = 13, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved };
-            ctx.Teachers.Add(decided);
+            var ordinary = new Teacher { UserId = 13, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Approved };
+            ctx.Teachers.Add(ordinary);
             await ctx.SaveChangesAsync();
-            decidedId = decided.Id;
+            ordinaryId = ordinary.Id;
         }
 
         await using var check = _db.NewContext();
-        (await NewService(check).GetPendingApplicationAsync(decidedId)).ShouldBeNull();
-        (await NewService(check).GetPendingApplicationAsync(987_654)).ShouldBeNull();
+        (await NewService(check).GetApplicationAsync(ordinaryId)).ShouldBeNull();
+        (await NewService(check).GetApplicationAsync(987_654)).ShouldBeNull();
         await _authApi.DidNotReceiveWithAnyArgs().GetUsersByIdsAsync(default!, default);
     }
 
@@ -132,17 +134,17 @@ public class TeacherApprovalServiceTests : IDisposable
             .Returns(Task.FromException<IReadOnlyList<UserLookupResultDto>>(new HttpRequestException("down")));
 
         await using var check = _db.NewContext();
-        var detail = await NewService(check).GetPendingApplicationAsync(teacherId);
+        var detail = await NewService(check).GetApplicationAsync(teacherId);
 
         detail.ShouldNotBeNull();
         detail.FullName.ShouldBe(string.Empty);
         detail.Email.ShouldBe(string.Empty);
     }
 
-    // ---- GetPendingApplicationsAsync ----
+    // ---- ListApplicationsAsync(Pending) ----
 
     [Fact]
-    public async Task GetPendingApplicationsAsync_ReturnsOnlyIndependentPendingTeachers()
+    public async Task ListApplicationsAsync_Pending_ReturnsOnlyPendingApplications()
     {
         await using (var ctx = _db.NewContext())
         {
@@ -156,7 +158,7 @@ public class TeacherApprovalServiceTests : IDisposable
         }
 
         await using var check = _db.NewContext();
-        var result = await NewService(check).GetPendingApplicationsAsync();
+        var result = (await NewService(check).ListApplicationsAsync(TeacherApplicationStatusFilter.Pending, 1, 20)).Items;
 
         result.Count.ShouldBe(1);
         await using var ids = _db.NewContext();
@@ -164,12 +166,13 @@ public class TeacherApprovalServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetPendingApplicationsAsync_NoPendingApplications_ReturnsEmptyList()
+    public async Task ListApplicationsAsync_Pending_NoPendingApplications_ReturnsEmptyPage()
     {
         await using var ctx = _db.NewContext();
-        var result = await NewService(ctx).GetPendingApplicationsAsync();
+        var result = await NewService(ctx).ListApplicationsAsync(TeacherApplicationStatusFilter.Pending, 1, 20);
 
-        result.ShouldBeEmpty();
+        result.Items.ShouldBeEmpty();
+        result.TotalCount.ShouldBe(0);
     }
 
     // ---- ApproveAsync ----

@@ -63,6 +63,52 @@ public class AdminDataAccessAuditServiceTests : IDisposable
         (await ctx.AdminDataAccessLogs.CountAsync()).ShouldBe(0);
     }
 
+    // ---- issue #187 ----
+
+    [Fact]
+    public async Task Teacher_application_status_filter_is_stored_as_a_readable_string_and_null_elsewhere()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new AdminDataAccessAuditService(ctx);
+            await service.RecordListAccessAsync(new AdminListAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationList, null, false, 1, 20, 3, 3, TeacherApplicationStatusFilter.All));
+            await service.RecordRateLimitedAsync(new AdminRateLimitedAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationList, null, false, null, TeacherApplicationStatusFilter.Pending));
+            await service.RecordListAccessAsync(new AdminListAccessRecord(
+                "kc", AdminDataAccessResource.StudentList, null, false, 1, 20, 0, 0));
+        }
+
+        await using var read = _db.NewContext();
+        var rows = await read.AdminDataAccessLogs.OrderBy(r => r.Id).ToListAsync();
+        rows.Select(r => r.StatusFilter).ShouldBe(
+            [TeacherApplicationStatusFilter.All, TeacherApplicationStatusFilter.Pending, null]);
+
+        var raw = await read.Database
+            .SqlQueryRaw<string>("SELECT \"StatusFilter\" AS \"Value\" FROM \"AdminDataAccessLogs\" WHERE \"StatusFilter\" IS NOT NULL ORDER BY \"Id\"")
+            .ToListAsync();
+        raw.ShouldBe(["All", "Pending"]);
+    }
+
+    [Fact]
+    public async Task Detail_access_records_the_target_status_only_when_served()
+    {
+        await using (var ctx = _db.NewContext())
+        {
+            var service = new AdminDataAccessAuditService(ctx);
+            await service.RecordDetailAccessAsync(new AdminDetailAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationDetail, 5, AdminDataAccessOutcome.Served, "Rejected"));
+            await service.RecordDetailAccessAsync(new AdminDetailAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationDetail, 6, AdminDataAccessOutcome.NotFound, "Pending"));
+            await service.RecordListAccessAsync(new AdminListAccessRecord(
+                "kc", AdminDataAccessResource.TeacherApplicationList, null, false, 1, 20, 0, 0, TeacherApplicationStatusFilter.All));
+        }
+
+        await using var read = _db.NewContext();
+        var rows = await read.AdminDataAccessLogs.OrderBy(r => r.Id).ToListAsync();
+        rows.Select(r => r.TargetStatus).ShouldBe(["Rejected", null, null]);
+    }
+
     // ---- issue #262 ----
 
     [Fact]

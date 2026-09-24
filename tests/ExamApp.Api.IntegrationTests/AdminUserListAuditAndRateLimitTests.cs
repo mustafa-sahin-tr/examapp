@@ -176,6 +176,11 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         var listJson = await list.Content.ReadAsStringAsync();
         listJson.ShouldContain("\"email\":\"b***@okul.k12.tr\"");
         listJson.ShouldNotContain("basvuran@");
+        // issue #187: sayfalı yanıt (Paged<T>) + durum alanları
+        listJson.ShouldContain("\"pageNumber\":1");
+        listJson.ShouldContain("\"pageSize\":20");
+        listJson.ShouldContain("\"items\":[");
+        listJson.ShouldContain("\"status\":\"Pending\"");
 
         var detail = await admin.GetAsync($"/api/admin/teacher-applications/{teacherId}");
         detail.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -189,15 +194,70 @@ public class AdminUserListAuditAndRateLimitTests(IntegrationApiFactory factory) 
         rows.Count.ShouldBe(3);
         rows[0].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationList);
         rows[0].ReturnedCount.ShouldBe(1);
+        rows[0].StatusFilter.ShouldBe(TeacherApplicationStatusFilter.Pending);
         rows[0].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
         rows[1].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
         rows[1].TargetId.ShouldBe(teacherId);
+        rows[1].TargetStatus.ShouldBe("Pending");
         rows[1].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
         // #262 review: 404 de iz bırakır (id tarama)
         rows[2].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
         rows[2].TargetId.ShouldBe(int.MaxValue);
         rows[2].Outcome.ShouldBe(AdminDataAccessOutcome.NotFound);
+        rows[2].TargetStatus.ShouldBeNull();
         rows[2].ReturnedCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Issue187_teacher_applications_all_filter_includes_rejected_and_is_audited_and_invalid_status_is_400()
+    {
+        var baseId = 700_000 + Random.Shared.Next(0, 90_000) * 10;
+        var directory = Factory.Services.GetRequiredService<FakeUserDirectory>();
+        directory.Add(new() { Id = baseId, FullName = "Reddedilen Öğretmen", Email = "red@okul.k12.tr", Enabled = true });
+        var teacherId = await WithDbAsync(async db =>
+        {
+            var t = new Teacher
+            {
+                UserId = baseId, IsIndependentTutor = true,
+                ApprovalStatus = TeacherApprovalStatus.Rejected, RejectionReason = "Belge eksik"
+            };
+            db.Teachers.Add(t);
+            await db.SaveChangesAsync();
+            return t.Id;
+        });
+        var sub = NewSub();
+        var admin = await ClientAsAsync(2, "Admin", sub, realmRoles: "Admin");
+
+        // Pending filtresi reddedileni göstermez; all + yeterli sayfa boyutu gösterir.
+        var pendingJson = await (await admin.GetAsync("/api/admin/teacher-applications?status=pending&pageSize=100")).Content.ReadAsStringAsync();
+        pendingJson.ShouldNotContain($"\"teacherId\":{teacherId},");
+
+        var all = await admin.GetAsync("/api/admin/teacher-applications?status=all&pageSize=100");
+        all.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var allJson = await all.Content.ReadAsStringAsync();
+        allJson.ShouldContain("\"totalCount\":");
+        allJson.ShouldContain("\"rejectionReason\":\"Belge eksik\"");
+        allJson.ShouldContain("\"status\":\"Rejected\"");
+
+        (await admin.GetAsync("/api/admin/teacher-applications?status=approved")).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        // Detay: reddedilmiş başvuru da döner (#187) ama e-posta MASKELİ (security review — tam adres yalnızca Pending'de).
+        var detail = await admin.GetAsync($"/api/admin/teacher-applications/{teacherId}");
+        detail.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var detailJson = await detail.Content.ReadAsStringAsync();
+        detailJson.ShouldContain("\"email\":\"r***@okul.k12.tr\"");
+        detailJson.ShouldNotContain("red@okul");
+
+        var rows = await WithDbAsync(db => db.AdminDataAccessLogs.AsNoTracking()
+            .Where(r => r.ActorKeycloakId == sub).OrderBy(r => r.Id).ToListAsync());
+        rows.Count.ShouldBe(3); // 400 audit'lenmez (veri dönmedi)
+        rows[0].StatusFilter.ShouldBe(TeacherApplicationStatusFilter.Pending);
+        rows[0].PageSize.ShouldBe(100);
+        rows[1].StatusFilter.ShouldBe(TeacherApplicationStatusFilter.All);
+        rows[2].Resource.ShouldBe(AdminDataAccessResource.TeacherApplicationDetail);
+        rows[2].TargetId.ShouldBe(teacherId);
+        rows[2].TargetStatus.ShouldBe("Rejected");
+        rows[2].Outcome.ShouldBe(AdminDataAccessOutcome.Served);
     }
 
     [Fact]

@@ -15,6 +15,12 @@ description = "Example/template files with CHANGE_ME placeholders — not real s
 paths = [
   '''deploy/\.env\.prod\.example$''',
   '''deploy/gcp/k8s/secret\.example\.yaml$''',
+  # Issue #279: contains only base64 `password_hash` values (RabbitMQ's
+  # salted-SHA256 hash, not the plaintext) for the 6 dev-only RabbitMQ users
+  # below — never a real secret. Narrowly scoped to this one file, not the
+  # whole rabbitmq/ directory (rabbitmq/generate-password-hashes.py and
+  # rabbitmq/rabbitmq.conf are not allowlisted and still get scanned).
+  '''rabbitmq/definitions\.json$''',
 ]
 
 # Dev-only Keycloak/Jitsi secrets (issue #238) — intentionally checked in
@@ -30,6 +36,15 @@ regexes = [
   '''devOnlyExamAdminClientSecretChangeMe12345678''',
   '''devOnlyJitsiJwtSecretChangeMe1234''',
   '''devOnlyJitsiRoomSecretChangeMe12''',
+  # Issue #279: dev-only RabbitMQ per-service passwords (.env.example,
+  # AppHost/appsettings.json's rabbitmq-*-password Parameters). Rotating one
+  # means updating .env.example + AppHost/appsettings.json +
+  # rabbitmq/definitions.json's password_hash together — see local-dev.md.
+  '''devOnlyExamOutboxPubPasswordChangeMe123''',
+  '''devOnlyIdentityOutboxPubPasswordChangeMe123''',
+  '''devOnlyBadgeOutboxPubPasswordChangeMe123''',
+  '''devOnlyBadgeServicePasswordChangeMe123''',
+  '''devOnlyExamApiPasswordChangeMe123''',
   '''\*{10}''',
   '''CHANGE_ME[A-Z_]*''',
 ]

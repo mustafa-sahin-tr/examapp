@@ -108,19 +108,45 @@ if you change one, change both **and** regenerate that user's
 `python3 rabbitmq/generate-password-hashes.py` (usernames themselves are
 fixed, non-secret literals, not `.env` values).
 
-**`load_definitions` only imports on a fresh RabbitMQ node** — if you already
-have a local RabbitMQ volume/container from before this change (it was
-created with just `RABBITMQ_DEFAULT_USER`/`PASS` and no `definitions.json`),
-the new per-service users won't appear automatically and every consumer/
-publisher will fail to authenticate. Pick one:
-- **(a) Recreate the node (simplest for local dev)** — `docker-compose down`,
-  delete `./rabbitmq/data` (docker-compose) or the Aspire RabbitMQ volume,
-  then start again; definitions import fresh.
-- **(b) Import into the running node without wiping it** — RabbitMQ
-  management UI (http://localhost:15672, or the Aspire dashboard's RabbitMQ
-  management link) → Overview → **Import definitions** → upload
-  `rabbitmq/definitions.json`. This adds the new users/permissions without
-  touching existing queues/messages.
+**`load_definitions` actually runs on every node boot, not just a fresh
+node** (per RabbitMQ's own definitions-import docs; the `definitions.skip_if_unchanged`
+option added in 3.10+ — which lets a node skip reprocessing an unchanged file
+via checksum — only makes sense if import otherwise happens on every boot).
+Boot-time import **defines any users/vhosts/permissions/etc. from the file
+that don't already exist**; it does **not** delete objects that exist but
+aren't in the file, and it does **not** overwrite an existing user's password
+if that user already exists. So if you already have a local RabbitMQ
+volume/container from before this change (created with just
+`RABBITMQ_DEFAULT_USER`/`PASS`, no `definitions.json`):
+- **A plain restart is enough for the 5 new per-service users** —
+  `docker-compose restart rabbitmq` (or `docker-compose down` + `up -d`
+  *without* removing the volume) re-runs boot-time import, which creates
+  `exam_outbox_pub`/`identity_outbox_pub`/`badge_outbox_pub`/`badge_service`/
+  `exam_api` (they don't exist yet) and their permissions, without touching
+  existing queues/messages or the pre-existing `rabbituser`.
+- **Rotating `rabbituser`'s own password is the one case a restart doesn't
+  cover** — since it already exists, boot import won't update its password
+  even if you change `RABBITMQ_DEFAULT_PASS`/`definitions.json`'s hash for
+  it. Either delete that one user first (management UI → Admin → Users, or
+  `rabbitmqctl delete_user rabbituser`) and let the next boot recreate it
+  from the file, or update its password directly via the management UI.
+- If you'd rather not rely on any of the above, wiping the volume (delete
+  `./rabbitmq/data` / the Aspire RabbitMQ volume) and starting fresh always
+  works too — just loses existing queued messages.
+
+**The `rabbituser` admin password (management UI login, `:15672`) comes from
+`rabbitmq/definitions.json`'s `password_hash`, not from `.env`/`AppHost`
+directly** — changing `RABBITMQ_DEFAULT_PASS` in `.env` (or the
+`rabbitmq-password` parameter in `AppHost/appsettings.json`) alone does
+**not** change what you log in with, because `load_definitions` is what
+actually sets it, and (per the previous paragraph) it won't even do that for
+an already-existing user without deleting it first. To rotate it end-to-end:
+update `.env`'s `RABBITMQ_DEFAULT_PASS` (and/or `AppHost`'s
+`rabbitmq-password`), regenerate the hash with
+`python3 rabbitmq/generate-password-hashes.py` and paste it into
+`rabbitmq/definitions.json`'s `rabbituser` entry, **then** delete the
+existing `rabbituser` (management UI or `rabbitmqctl delete_user rabbituser`)
+so the next boot's import recreates it with the new hash.
 
 ## Port map (host → container)
 
@@ -138,8 +164,8 @@ publisher will fail to authenticate. Pick one:
 | keycloak | 8081 | admin console: http://localhost:8081 |
 | PostgreSQL | 5433 | bağlantı: localhost:5433 |
 | pgAdmin | 5051 | http://localhost:5051 |
-| RabbitMQ AMQP | 5672 | backend bağlantısı |
-| RabbitMQ UI | 15672 | http://localhost:15672 |
+| RabbitMQ AMQP | 5672 (`127.0.0.1` only, #279) | backend bağlantısı |
+| RabbitMQ UI | 15672 (`127.0.0.1` only, #279) | http://localhost:15672 |
 | Redis | 6379 | |
 | MinIO API | 9000 | S3-compat storage |
 | MinIO UI | 9001 | http://localhost:9001 |

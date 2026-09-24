@@ -69,9 +69,11 @@ var examApiRabbitPassword = builder.AddParameter("rabbitmq-exam-api-password", s
 // permissions — least privilege, e.g. only badge-outbox-publisher can write
 // the StudentPointsChangedEvent exchange) + rabbitmq.conf (which points
 // management.load_definitions at it), mirroring docker-compose.yml's
-// ./rabbitmq/{definitions.json,rabbitmq.conf} mounts. Definitions only
-// import on a fresh node — see .claude/rules/local-dev.md for the migration
-// note if you already have a local Aspire RabbitMQ volume.
+// ./rabbitmq/{definitions.json,rabbitmq.conf} mounts. load_definitions runs
+// on every node boot (defines missing users/permissions, never deletes or
+// overwrites an existing user's password) — see .claude/rules/local-dev.md
+// if you already have a local Aspire RabbitMQ volume and need to rotate the
+// admin ("rabbituser") password specifically.
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", userName: rabbitUser, password: rabbitPassword, port: 5672)
     .WithManagementPlugin()
     .WithBindMount("../rabbitmq/definitions.json", "/etc/rabbitmq/definitions.json", isReadOnly: true)

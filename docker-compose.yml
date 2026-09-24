@@ -348,8 +348,12 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - '5672:5672' # AMQP portu (backend ile iletişim)
-      - '15672:15672' # Yönetim paneli (browser'dan erişim için)
+      # Issue #279: yalnızca 127.0.0.1'e publish edilir — LAN'dan AMQP/yönetim
+      # arayüzüne erişilip per-service kullanıcı parolalarının brute-force
+      # edilmesi/keşfedilmesi mümkün olmasın (bkz. auth-api'nin #100'deki aynı
+      # deseni, docker-compose.yml'de auth-api servisi).
+      - '127.0.0.1:5672:5672' # AMQP portu (backend ile iletişim)
+      - '127.0.0.1:15672:15672' # Yönetim paneli (browser'dan erişim için)
     # Issue #279: RABBITMQ_DEFAULT_USER/PASS artık yalnızca dokümantasyon amaçlı —
     # rabbitmq.conf'taki management.load_definitions devrede olduğu için resmi
     # rabbitmq imajı bu iki env var'ı YOK SAYAR (definitions.json zaten "rabbituser"

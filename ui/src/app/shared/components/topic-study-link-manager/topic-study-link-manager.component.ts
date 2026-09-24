@@ -2,11 +2,11 @@ import { Component, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDropList, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DatePipe } from '@angular/common';
 import { TranslocoDirective, TranslocoPipe, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -48,11 +48,9 @@ const PAGE_SIZE = 50;
     CdkDrag,
     CdkDragHandle,
     MatButtonModule,
-    MatDialogModule,
     MatIconModule,
     MatProgressBarModule,
     MatSlideToggleModule,
-    MatSnackBarModule,
     MatTooltipModule,
     DatePipe,
     TranslocoDirective,
@@ -113,6 +111,17 @@ export class TopicStudyLinkManagerComponent {
 
   private readonly reloadTick = signal(0);
 
+  /** `links()`'in ait olduğu kapsam; girdi kapsamıyla eşleşmezse satırlar bayattır. */
+  private readonly loadedScopeKey = signal<string | null>(null);
+
+  /**
+   * Satır işlemleri (taşı/sürükle/düzenle/aktif-pasif/sil) kilitli mi: yazma sürüyor, liste yükleniyor ya da
+   * kapsam değişti ama yeni liste henüz gelmedi — önceki kapsamın id'leriyle istek gönderilmesin.
+   */
+  readonly locked = computed(
+    () => this.busy() || this.loading() || scopeKey(this.scope()) !== this.loadedScopeKey()
+  );
+
   constructor() {
     // Snackbar / confirm metinleri şablon dışında senkron `translate()` ile okunur; scope baştan yüklensin.
     this.transloco.load(`${STUDY_LINKS_SCOPE}/${this.transloco.getActiveLang()}`).pipe(take(1)).subscribe();
@@ -121,17 +130,20 @@ export class TopicStudyLinkManagerComponent {
     toObservable(computed(() => ({ scope: this.scope(), tick: this.reloadTick() })))
       .pipe(
         switchMap(({ scope }) => {
+          const key = scopeKey(scope);
           this.error.set(null);
           this.notApproved.set(null);
+          // Yeni kapsam: önceki kapsamın satırları ve sayaçları hemen temizlenir (bayat id'lerle işlem gönderilmesin).
+          // Aynı kapsamda yeniden yükleme (retry / yazma sonrası) listeyi korur, yalnız işlemler kilitlenir.
+          if (key !== this.loadedScopeKey()) this.resetList();
           if (!scope) {
-            this.links.set([]);
-            this.activeCount.set(0);
+            this.loadedScopeKey.set(key);
             this.loading.set(false);
             return EMPTY;
           }
           this.loading.set(true);
           return this.service.list({ ...scope, includeInactive: true, skip: 0, take: PAGE_SIZE }).pipe(
-            map((res): StudyLinkListResponse | null => res),
+            map((res): { key: string; res: StudyLinkListResponse } | null => ({ key, res })),
             catchError((err: unknown) => {
               this.links.set([]);
               if (isTeacherNotApprovedError(err)) this.markNotApproved(err);
@@ -143,8 +155,10 @@ export class TopicStudyLinkManagerComponent {
         }),
         takeUntilDestroyed()
       )
-      .subscribe((res) => {
-        if (res) this.applyList(res);
+      .subscribe((loaded) => {
+        if (!loaded) return;
+        this.applyList(loaded.res);
+        this.loadedScopeKey.set(loaded.key);
       });
   }
 
@@ -168,13 +182,13 @@ export class TopicStudyLinkManagerComponent {
 
   async openCreate(): Promise<void> {
     const scope = this.scope();
-    if (!scope || this.addBlocked() || this.notApproved() || this.busy()) return;
+    if (!scope || this.addBlocked() || this.notApproved() || this.locked()) return;
     await this.openDialog({ scope }, 'created');
   }
 
   async openEdit(link: StudyLink): Promise<void> {
     const scope = this.scope();
-    if (!scope || this.busy() || !this.canModify(link)) return;
+    if (!scope || this.locked() || !this.canModify(link)) return;
     await this.openDialog({ scope, link }, 'updated');
   }
 
@@ -202,7 +216,7 @@ export class TopicStudyLinkManagerComponent {
   // ---- active toggle ----
 
   toggleActive(link: StudyLink, event: MatSlideToggleChange): void {
-    if (!this.canModify(link)) {
+    if (this.locked() || !this.canModify(link)) {
       event.source.checked = link.isActive;
       return;
     }
@@ -229,7 +243,7 @@ export class TopicStudyLinkManagerComponent {
   // ---- delete ----
 
   async remove(link: StudyLink): Promise<void> {
-    if (this.busy() || !this.canModify(link)) return;
+    if (this.locked() || !this.canModify(link)) return;
     const data: ConfirmDialogData = {
       title: this.text('deleteTitle'),
       message: this.text('deleteMessage', { title: link.title }),
@@ -272,7 +286,7 @@ export class TopicStudyLinkManagerComponent {
   private move(from: number, to: number): void {
     const scope = this.scope();
     const previous = this.links();
-    if (!scope || this.busy() || this.notApproved() || from === to || to < 0 || to >= previous.length) return;
+    if (!scope || this.locked() || this.notApproved() || from === to || to < 0 || to >= previous.length) return;
 
     const next = [...previous];
     moveItemInArray(next, from, to);
@@ -295,6 +309,13 @@ export class TopicStudyLinkManagerComponent {
   }
 
   // ---- helpers ----
+
+  private resetList(): void {
+    this.links.set([]);
+    this.activeCount.set(0);
+    this.totalCount.set(0);
+    this.loadedScopeKey.set(null);
+  }
 
   private applyList(res: StudyLinkListResponse): void {
     this.links.set([...res.items].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id));
@@ -331,4 +352,10 @@ export class TopicStudyLinkManagerComponent {
   private text(key: string, params?: Record<string, unknown>): string {
     return this.transloco.translate<string>(`${STUDY_LINKS_SCOPE}.manager.${key}`, params) ?? '';
   }
+}
+
+/** Kapsamın karşılaştırma anahtarı (`null` → "none"). */
+function scopeKey(scope: StudyLinkScope | null): string {
+  if (!scope) return 'none';
+  return scope.subTopicId != null ? `subTopic:${scope.subTopicId}` : `topic:${scope.topicId}`;
 }

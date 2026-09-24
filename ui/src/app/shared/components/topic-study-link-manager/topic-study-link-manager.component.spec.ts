@@ -4,7 +4,7 @@ import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { TopicStudyLinkManagerComponent } from './topic-study-link-manager.component';
 import { StudyLinkService } from '../../../services/study-link.service';
@@ -384,5 +384,75 @@ describe('TopicStudyLinkManagerComponent (issue #61)', () => {
     const metas = Array.from(el().querySelectorAll('[data-testid="link-meta"]')).map((m) => m.textContent ?? '');
     expect(metas[0]).toContain('Son güncelleyen: Ayşe Öğretmen');
     expect(metas[1]).toContain('Ekleyen: Admin');
+  });
+
+  // ── Kapsam değişimi (code review: bayat satırlarla işlem gönderilmesin) ─────────────────────────
+
+  it('scopeSwitch_BeforeNewListArrives_RowsLockedAndNoReorderWithStaleIds', () => {
+    configure(listOf([makeLink(1, 0), makeLink(2, 1)]));
+    const pending = new Subject<StudyLinkListResponse>();
+    service.list.and.returnValue(pending.asObservable());
+
+    // Girdi değişti, liste efekti henüz çalışmadı: eski satırlar kilitli olmalı.
+    fixture.componentRef.setInput('subTopicId', 3);
+    expect(component.locked()).toBeTrue();
+    component.moveUp(1);
+    component.moveDown(0);
+    expect(service.reorder).not.toHaveBeenCalled();
+
+    // Yeni kapsamın yüklemesi başladı: önceki satırlar/sayaçlar temizlendi, butonlar da kilitli.
+    fixture.detectChanges();
+    fixture.detectChanges();
+    expect(service.list).toHaveBeenCalledWith(jasmine.objectContaining({ subTopicId: 3 }));
+    expect(component.links()).toEqual([]);
+    expect(component.totalCount()).toBe(0);
+    expect(component.activeCount()).toBe(0);
+    expect(rows().length).toBe(0);
+
+    pending.next(listOf([makeLink(5, 0), makeLink(6, 1)]));
+    pending.complete();
+    fixture.detectChanges();
+
+    service.reorder.and.returnValue(of(listOf([makeLink(6, 0), makeLink(5, 1)])));
+    q<HTMLButtonElement>('[data-testid="move-down"]')!.click();
+    expect(service.reorder).toHaveBeenCalledOnceWith({
+      subTopicId: 3,
+      items: [
+        { id: 6, sortOrder: 0 },
+        { id: 5, sortOrder: 1 },
+      ],
+    });
+  });
+
+  it('whileReloadingSameScope_RowActionsDisabled', () => {
+    configure(listOf([makeLink(1, 0), makeLink(2, 1)]));
+    const pending = new Subject<StudyLinkListResponse>();
+    service.list.and.returnValue(pending.asObservable());
+
+    component.reload();
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(component.loading()).toBeTrue();
+    expect(rows().length).toBe(2);
+    expect(q<HTMLButtonElement>('[data-testid="move-down"]')!.disabled).toBeTrue();
+    expect(q<HTMLButtonElement>('[data-testid="edit"]')!.disabled).toBeTrue();
+    expect(q<HTMLButtonElement>('[data-testid="delete"]')!.disabled).toBeTrue();
+    component.moveDown(0);
+    expect(service.reorder).not.toHaveBeenCalled();
+  });
+
+  it('scopeCleared_ResetsCounts', () => {
+    configure(listOf([makeLink(1, 0), makeLink(2, 1)]));
+    expect(component.totalCount()).toBe(2);
+
+    fixture.componentRef.setInput('subTopicId', null);
+    fixture.detectChanges();
+    fixture.detectChanges();
+
+    expect(component.scope()).toBeNull();
+    expect(component.totalCount()).toBe(0);
+    expect(component.activeCount()).toBe(0);
+    expect(component.links()).toEqual([]);
   });
 });

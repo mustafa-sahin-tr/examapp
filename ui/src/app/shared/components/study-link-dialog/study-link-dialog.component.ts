@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Observable, take } from 'rxjs';
 import {
@@ -87,7 +87,6 @@ export function detectSourceType(value: string): StudyLinkSourceType {
     MatProgressSpinnerModule,
     MatRadioModule,
     MatSlideToggleModule,
-    MatSnackBarModule,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(STUDY_LINKS_SCOPE)],

@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using BadgeService.Entities;
 using BadgeService.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BadgeService.Services;
 
@@ -29,6 +31,13 @@ public sealed class BadgeDefinitionAdminResult
     public static BadgeDefinitionAdminResult NotFound() => new() { IsNotFound = true };
 }
 
+/// <summary>Paged result for GET (list) — added by the #148 security review (M2, contract change).</summary>
+public sealed class BadgeDefinitionAdminPage
+{
+    public required IReadOnlyList<BadgeDefinitionAdminDto> Items { get; init; }
+    public required int TotalCount { get; init; }
+}
+
 /// <summary>
 /// Issue #148: CRUD for <see cref="BadgeDefinition"/> behind the admin-only controller. No hard delete —
 /// badges already awarded (<see cref="BadgeEarned"/>) must remain valid, so definitions are only ever
@@ -36,27 +45,62 @@ public sealed class BadgeDefinitionAdminResult
 /// </summary>
 public class BadgeDefinitionAdminService
 {
-    private readonly BadgeDbContext _context;
+    // Security review follow-up (M1) — mirrored by BadgeDbContext's HasMaxLength (DB-level backstop) and
+    // reported to the UI team so the admin form enforces the exact same limits client-side.
+    public const int MaxCodeLength = 64;
+    public const int MaxNameLength = 100;
+    public const int MaxDescriptionLength = 500;
+    public const int MaxCategoryLength = 100;
+    public const int MaxPathKeyLength = 100;
+    public const int MaxPathNameLength = 100;
+    public const int MinPathOrder = 1;
+    public const int MaxPathOrder = 1000;
 
-    public BadgeDefinitionAdminService(BadgeDbContext context)
+    /// <summary>Lowercase letters/digits, single hyphens between segments — matches every existing seeder Code.</summary>
+    public static readonly Regex CodePattern = new("^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.Compiled);
+
+    // Security review follow-up (M2) — arbitrary but deliberately generous cap so a runaway admin script
+    // (or bug) can't make BadgeEvaluator scan an unbounded table on every answer submission.
+    public const int MaxActiveDefinitions = 500;
+
+    public const int DefaultPageSize = 50;
+    public const int MaxPageSize = 200;
+
+    private readonly BadgeDbContext _context;
+    private readonly ILogger<BadgeDefinitionAdminService> _logger;
+
+    public BadgeDefinitionAdminService(BadgeDbContext context, ILogger<BadgeDefinitionAdminService> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
-    public async Task<List<BadgeDefinitionAdminDto>> ListAsync(bool includeInactive, CancellationToken cancellationToken)
+    /// <summary>
+    /// Security review follow-up (M2, contract change): now paged (<paramref name="skip"/>/<paramref name="take"/>,
+    /// <paramref name="take"/> clamped to 1..<see cref="MaxPageSize"/>, defaults to <see cref="DefaultPageSize"/>)
+    /// instead of returning every row.
+    /// </summary>
+    public async Task<BadgeDefinitionAdminPage> ListAsync(bool includeInactive, int skip, int take, CancellationToken cancellationToken)
     {
+        skip = Math.Max(0, skip);
+        take = take <= 0 ? DefaultPageSize : Math.Min(take, MaxPageSize);
+
         var query = _context.BadgeDefinitions.AsNoTracking().AsQueryable();
         if (!includeInactive)
         {
             query = query.Where(x => x.IsActive);
         }
 
+        var totalCount = await query.CountAsync(cancellationToken);
+
         var rows = await query
             .OrderBy(x => x.Category)
             .ThenBy(x => x.Name)
+            .Skip(skip)
+            .Take(take)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(ToDto).ToList();
+        return new BadgeDefinitionAdminPage { Items = rows.Select(ToDto).ToList(), TotalCount = totalCount };
     }
 
     public async Task<BadgeDefinitionAdminDto?> GetAsync(Guid id, CancellationToken cancellationToken)
@@ -65,32 +109,16 @@ public class BadgeDefinitionAdminService
         return entity is null ? null : ToDto(entity);
     }
 
-    public async Task<BadgeDefinitionAdminResult> CreateAsync(CreateBadgeDefinitionRequest request, string actor, CancellationToken cancellationToken)
+    public async Task<BadgeDefinitionAdminResult> CreateAsync(
+        CreateBadgeDefinitionRequest request, string actorId, string? actorName, CancellationToken cancellationToken)
     {
         var errors = new List<RuleValidationError>();
 
-        if (string.IsNullOrWhiteSpace(request.Code))
-        {
-            errors.Add(new RuleValidationError("code", "code zorunludur."));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            errors.Add(new RuleValidationError("name", "name zorunludur."));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Category))
-        {
-            errors.Add(new RuleValidationError("category", "category zorunludur."));
-        }
-
-        if (!BadgeIconValidator.IsValid(request.IconUrl))
-        {
-            errors.Add(new RuleValidationError("iconUrl", "iconUrl 'achievements/<dosya>.svg' biçiminde olmalıdır."));
-        }
+        ValidateCode(request.Code, errors);
+        ValidateCommonFields(request.Name, request.Description, request.IconUrl, request.Category, request.PathKey, request.PathName, request.PathOrder, errors);
 
         var ruleValid = BadgeRuleTypeCatalog.TryValidateAndNormalize(
-            request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors);
+            request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors, _logger);
         errors.AddRange(ruleErrors);
 
         if (errors.Count > 0)
@@ -98,19 +126,26 @@ public class BadgeDefinitionAdminService
             return BadgeDefinitionAdminResult.Invalid(errors);
         }
 
+        var trimmedCode = request.Code.Trim();
         var codeExists = await _context.BadgeDefinitions
             .AsNoTracking()
-            .AnyAsync(x => x.Code.ToLower() == request.Code.Trim().ToLower(), cancellationToken);
+            .AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower(), cancellationToken);
         if (codeExists)
         {
-            return BadgeDefinitionAdminResult.Conflict("code", $"'{request.Code}' koduna sahip bir rozet zaten var.");
+            return BadgeDefinitionAdminResult.Conflict("code", $"'{trimmedCode}' koduna sahip bir rozet zaten var.");
+        }
+
+        var activeCapResult = await CheckActiveCapAsync(cancellationToken);
+        if (activeCapResult is not null)
+        {
+            return activeCapResult;
         }
 
         var now = DateTime.UtcNow;
         var entity = new BadgeDefinition
         {
             Id = Guid.NewGuid(),
-            Code = request.Code.Trim(),
+            Code = trimmedCode,
             Name = request.Name.Trim(),
             Description = request.Description?.Trim() ?? string.Empty,
             IconUrl = string.IsNullOrWhiteSpace(request.IconUrl) ? null : request.IconUrl.Trim(),
@@ -121,17 +156,40 @@ public class BadgeDefinitionAdminService
             PathName = request.PathName,
             PathOrder = request.PathOrder,
             IsActive = true,
-            CreatedBy = actor,
+            CreatedBy = actorId,
+            CreatedByName = actorName,
             CreatedAtUtc = now,
         };
 
         _context.BadgeDefinitions.Add(entity);
-        await _context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Security review follow-up (L3): the pre-check above can lose a race to a concurrent create
+            // with the same Code — detect that here (provider-agnostic: re-query rather than branch on
+            // Npgsql/Sqlite exception types) and report 409, not a raw 500.
+            _context.Entry(entity).State = EntityState.Detached;
+            var stillExists = await _context.BadgeDefinitions
+                .AsNoTracking()
+                .AnyAsync(x => x.Code.ToLower() == trimmedCode.ToLower(), cancellationToken);
+            if (stillExists)
+            {
+                _logger.LogInformation(ex, "BadgeDefinition oluşturma, eşzamanlı Code çakışması nedeniyle 409'a düştü: {Code}", trimmedCode);
+                return BadgeDefinitionAdminResult.Conflict("code", $"'{trimmedCode}' koduna sahip bir rozet zaten var.");
+            }
+
+            throw;
+        }
 
         return BadgeDefinitionAdminResult.Ok(ToDto(entity));
     }
 
-    public async Task<BadgeDefinitionAdminResult> UpdateAsync(Guid id, UpdateBadgeDefinitionRequest request, string actor, CancellationToken cancellationToken)
+    public async Task<BadgeDefinitionAdminResult> UpdateAsync(
+        Guid id, UpdateBadgeDefinitionRequest request, string actorId, string? actorName, CancellationToken cancellationToken)
     {
         var entity = await _context.BadgeDefinitions.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
@@ -140,24 +198,10 @@ public class BadgeDefinitionAdminService
         }
 
         var errors = new List<RuleValidationError>();
-
-        if (string.IsNullOrWhiteSpace(request.Name))
-        {
-            errors.Add(new RuleValidationError("name", "name zorunludur."));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Category))
-        {
-            errors.Add(new RuleValidationError("category", "category zorunludur."));
-        }
-
-        if (!BadgeIconValidator.IsValid(request.IconUrl))
-        {
-            errors.Add(new RuleValidationError("iconUrl", "iconUrl 'achievements/<dosya>.svg' biçiminde olmalıdır."));
-        }
+        ValidateCommonFields(request.Name, request.Description, request.IconUrl, request.Category, request.PathKey, request.PathName, request.PathOrder, errors);
 
         var ruleValid = BadgeRuleTypeCatalog.TryValidateAndNormalize(
-            request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors);
+            request.RuleType, request.RuleConfigJson, out var normalizedConfig, out var ruleErrors, _logger);
         errors.AddRange(ruleErrors);
 
         if (errors.Count > 0)
@@ -177,7 +221,8 @@ public class BadgeDefinitionAdminService
         entity.PathKey = request.PathKey;
         entity.PathName = request.PathName;
         entity.PathOrder = request.PathOrder;
-        entity.UpdatedBy = actor;
+        entity.UpdatedBy = actorId;
+        entity.UpdatedByName = actorName;
         entity.UpdatedAtUtc = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -185,8 +230,11 @@ public class BadgeDefinitionAdminService
         return BadgeDefinitionAdminResult.Ok(ToDto(entity));
     }
 
-    /// <summary>Idempotent: setting IsActive to a value it already has is a no-op (still returns the DTO).</summary>
-    public async Task<BadgeDefinitionAdminResult> SetActiveAsync(Guid id, bool isActive, string actor, CancellationToken cancellationToken)
+    /// <summary>
+    /// Idempotent: setting IsActive to a value it already has is a no-op (still returns the DTO). Going
+    /// false→true is subject to <see cref="MaxActiveDefinitions"/> (M2) — going true→false never is.
+    /// </summary>
+    public async Task<BadgeDefinitionAdminResult> SetActiveAsync(Guid id, bool isActive, string actorId, string? actorName, CancellationToken cancellationToken)
     {
         var entity = await _context.BadgeDefinitions.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
@@ -194,15 +242,107 @@ public class BadgeDefinitionAdminService
             return BadgeDefinitionAdminResult.NotFound();
         }
 
-        if (entity.IsActive != isActive)
+        if (entity.IsActive == isActive)
         {
-            entity.IsActive = isActive;
-            entity.UpdatedBy = actor;
-            entity.UpdatedAtUtc = DateTime.UtcNow;
-            await _context.SaveChangesAsync(cancellationToken);
+            return BadgeDefinitionAdminResult.Ok(ToDto(entity));
         }
 
+        if (isActive)
+        {
+            var activeCapResult = await CheckActiveCapAsync(cancellationToken);
+            if (activeCapResult is not null)
+            {
+                return activeCapResult;
+            }
+        }
+
+        entity.IsActive = isActive;
+        entity.UpdatedBy = actorId;
+        entity.UpdatedByName = actorName;
+        entity.UpdatedAtUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
         return BadgeDefinitionAdminResult.Ok(ToDto(entity));
+    }
+
+    private async Task<BadgeDefinitionAdminResult?> CheckActiveCapAsync(CancellationToken cancellationToken)
+    {
+        var activeCount = await _context.BadgeDefinitions.CountAsync(x => x.IsActive, cancellationToken);
+        if (activeCount >= MaxActiveDefinitions)
+        {
+            return BadgeDefinitionAdminResult.Conflict(
+                "isActive", $"Aktif rozet sayısı üst sınıra ulaştı (en fazla {MaxActiveDefinitions}). Önce başka bir rozeti pasifleştirin.");
+        }
+
+        return null;
+    }
+
+    private static void ValidateCode(string code, List<RuleValidationError> errors)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            errors.Add(new RuleValidationError("code", "code zorunludur."));
+            return;
+        }
+
+        var trimmed = code.Trim();
+        if (trimmed.Length > MaxCodeLength)
+        {
+            errors.Add(new RuleValidationError("code", $"code en fazla {MaxCodeLength} karakter olabilir."));
+        }
+
+        if (!CodePattern.IsMatch(trimmed))
+        {
+            errors.Add(new RuleValidationError(
+                "code", "code yalnızca küçük harf, rakam ve segmentleri ayıran tek tireden oluşabilir (örn. 'subject-matematik-mastery')."));
+        }
+    }
+
+    private static void ValidateCommonFields(
+        string name, string? description, string? iconUrl, string category, string? pathKey, string? pathName, int? pathOrder, List<RuleValidationError> errors)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            errors.Add(new RuleValidationError("name", "name zorunludur."));
+        }
+        else if (name.Trim().Length > MaxNameLength)
+        {
+            errors.Add(new RuleValidationError("name", $"name en fazla {MaxNameLength} karakter olabilir."));
+        }
+
+        if ((description ?? string.Empty).Trim().Length > MaxDescriptionLength)
+        {
+            errors.Add(new RuleValidationError("description", $"description en fazla {MaxDescriptionLength} karakter olabilir."));
+        }
+
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            errors.Add(new RuleValidationError("category", "category zorunludur."));
+        }
+        else if (category.Trim().Length > MaxCategoryLength)
+        {
+            errors.Add(new RuleValidationError("category", $"category en fazla {MaxCategoryLength} karakter olabilir."));
+        }
+
+        if (!BadgeIconValidator.IsValid(iconUrl))
+        {
+            errors.Add(new RuleValidationError("iconUrl", "iconUrl 'achievements/<dosya>.svg' biçiminde olmalıdır."));
+        }
+
+        if (pathKey is { Length: > 0 } && pathKey.Length > MaxPathKeyLength)
+        {
+            errors.Add(new RuleValidationError("pathKey", $"pathKey en fazla {MaxPathKeyLength} karakter olabilir."));
+        }
+
+        if (pathName is { Length: > 0 } && pathName.Length > MaxPathNameLength)
+        {
+            errors.Add(new RuleValidationError("pathName", $"pathName en fazla {MaxPathNameLength} karakter olabilir."));
+        }
+
+        if (pathOrder.HasValue && (pathOrder.Value < MinPathOrder || pathOrder.Value > MaxPathOrder))
+        {
+            errors.Add(new RuleValidationError("pathOrder", $"pathOrder {MinPathOrder} ile {MaxPathOrder} arasında olmalıdır."));
+        }
     }
 
     private static string ResolveCanonicalRuleType(string ruleType) =>
@@ -223,8 +363,10 @@ public class BadgeDefinitionAdminService
         PathOrder = entity.PathOrder,
         IsActive = entity.IsActive,
         CreatedBy = entity.CreatedBy,
+        CreatedByName = entity.CreatedByName,
         CreatedAtUtc = entity.CreatedAtUtc,
         UpdatedBy = entity.UpdatedBy,
+        UpdatedByName = entity.UpdatedByName,
         UpdatedAtUtc = entity.UpdatedAtUtc,
     };
 }

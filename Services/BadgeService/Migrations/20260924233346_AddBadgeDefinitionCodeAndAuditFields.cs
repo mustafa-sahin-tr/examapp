@@ -11,12 +11,60 @@ namespace BadgeService.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AlterColumn<string>(
+                name: "PathName",
+                table: "BadgeDefinitions",
+                type: "character varying(100)",
+                maxLength: 100,
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "text",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "PathKey",
+                table: "BadgeDefinitions",
+                type: "character varying(100)",
+                maxLength: 100,
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "text",
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Name",
+                table: "BadgeDefinitions",
+                type: "character varying(100)",
+                maxLength: 100,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "text");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Description",
+                table: "BadgeDefinitions",
+                type: "character varying(500)",
+                maxLength: 500,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "text");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Category",
+                table: "BadgeDefinitions",
+                type: "character varying(100)",
+                maxLength: 100,
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "text");
+
             // Code starts nullable so we can backfill existing (pre-#148) seeder rows below, then gets
             // tightened to NOT NULL once every row has a value.
             migrationBuilder.AddColumn<string>(
                 name: "Code",
                 table: "BadgeDefinitions",
-                type: "text",
+                type: "character varying(64)",
+                maxLength: 64,
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
@@ -29,7 +77,15 @@ namespace BadgeService.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "CreatedBy",
                 table: "BadgeDefinitions",
-                type: "text",
+                type: "character varying(128)",
+                maxLength: 128,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "CreatedByName",
+                table: "BadgeDefinitions",
+                type: "character varying(128)",
+                maxLength: 128,
                 nullable: true);
 
             // Issue #148 owner decision #3/#4: pre-existing badges were already being evaluated for
@@ -51,7 +107,15 @@ namespace BadgeService.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "UpdatedBy",
                 table: "BadgeDefinitions",
-                type: "text",
+                type: "character varying(128)",
+                maxLength: 128,
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "UpdatedByName",
+                table: "BadgeDefinitions",
+                type: "character varying(128)",
+                maxLength: 128,
                 nullable: true);
 
             // Backfill Code for rows created by BadgeSeeder before this issue (#148) existed, matched by
@@ -59,7 +123,7 @@ namespace BadgeService.Migrations
             // going forward). Anything not matched below (should not happen — no admin-CRUD existed yet,
             // so every row was seeder-created) gets a generated fallback Code so the NOT NULL/unique
             // constraints added below can never fail the migration outright; such a row would need a
-            // manual look before trusting it, so it's tagged obviously ("legacy-<id>") rather than guessed.
+            // manual look before trusting it, so it's tagged obviously ("legacy-<hash>") rather than guessed.
             migrationBuilder.Sql(@"
                 UPDATE ""BadgeDefinitions"" SET ""Code"" = 'first-answer' WHERE ""Name"" = 'İlk Cevap';
                 UPDATE ""BadgeDefinitions"" SET ""Code"" = 'correct-streak-5' WHERE ""Name"" = '5 Doğru Üst Üste';
@@ -113,10 +177,12 @@ namespace BadgeService.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Code",
                 table: "BadgeDefinitions",
-                type: "text",
+                type: "character varying(64)",
+                maxLength: 64,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "text",
+                oldType: "character varying(64)",
+                oldMaxLength: 64,
                 oldNullable: true);
 
             migrationBuilder.CreateIndex(
@@ -146,6 +212,10 @@ namespace BadgeService.Migrations
                 table: "BadgeDefinitions");
 
             migrationBuilder.DropColumn(
+                name: "CreatedByName",
+                table: "BadgeDefinitions");
+
+            migrationBuilder.DropColumn(
                 name: "IsActive",
                 table: "BadgeDefinitions");
 
@@ -156,6 +226,57 @@ namespace BadgeService.Migrations
             migrationBuilder.DropColumn(
                 name: "UpdatedBy",
                 table: "BadgeDefinitions");
+
+            migrationBuilder.DropColumn(
+                name: "UpdatedByName",
+                table: "BadgeDefinitions");
+
+            migrationBuilder.AlterColumn<string>(
+                name: "PathName",
+                table: "BadgeDefinitions",
+                type: "text",
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "character varying(100)",
+                oldMaxLength: 100,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "PathKey",
+                table: "BadgeDefinitions",
+                type: "text",
+                nullable: true,
+                oldClrType: typeof(string),
+                oldType: "character varying(100)",
+                oldMaxLength: 100,
+                oldNullable: true);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Name",
+                table: "BadgeDefinitions",
+                type: "text",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "character varying(100)",
+                oldMaxLength: 100);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Description",
+                table: "BadgeDefinitions",
+                type: "text",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "character varying(500)",
+                oldMaxLength: 500);
+
+            migrationBuilder.AlterColumn<string>(
+                name: "Category",
+                table: "BadgeDefinitions",
+                type: "text",
+                nullable: false,
+                oldClrType: typeof(string),
+                oldType: "character varying(100)",
+                oldMaxLength: 100);
         }
     }
 }

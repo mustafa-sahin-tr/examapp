@@ -35,6 +35,18 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<BadgeDefinition>()
             .HasIndex(x => x.Code)
             .IsUnique();
+        // Security review follow-up (M1): DB-level backstop for the limits BadgeDefinitionAdminService
+        // already enforces (400 field errors) — see BadgeDefinitionAdminService.ValidateFieldLengths.
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Code).HasMaxLength(64);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Name).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Description).HasMaxLength(500);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.Category).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.PathKey).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.PathName).HasMaxLength(100);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedBy).HasMaxLength(128);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.UpdatedBy).HasMaxLength(128);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.CreatedByName).HasMaxLength(128);
+        modelBuilder.Entity<BadgeDefinition>().Property(x => x.UpdatedByName).HasMaxLength(128);
         modelBuilder.Entity<BadgeEarned>().HasKey(x => x.Id);
 
         modelBuilder.Entity<BadgeEarned>()

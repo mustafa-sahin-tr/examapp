@@ -392,4 +392,118 @@ public class TopicStudyLinkServiceSecurityTests : IDisposable
         o.PermitLimit.ShouldBe(30);
         o.WindowSeconds.ShouldBe(60);
     }
+
+    // ---------------- Code review düzeltmeleri ----------------
+
+    /// <summary>SaveChanges'te verilen exception'ı fırlatan interceptor — eşzamanlılık/DB hatası simülasyonu.</summary>
+    private sealed class ThrowingInterceptor(Func<Exception> factory) : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+            Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            => throw factory();
+    }
+
+    private static Npgsql.PostgresException Pg(string sqlState) => new("simulated", "ERROR", "ERROR", sqlState);
+
+    public static IEnumerable<object[]> ConcurrencyExceptions() => new[]
+    {
+        new object[] { (Func<Exception>)(() => new DbUpdateException("x", Pg(Npgsql.PostgresErrorCodes.SerializationFailure))) },
+        new object[] { (Func<Exception>)(() => new DbUpdateException("x", Pg(Npgsql.PostgresErrorCodes.DeadlockDetected))) },
+        new object[] { (Func<Exception>)(() => Pg(Npgsql.PostgresErrorCodes.SerializationFailure)) },
+        new object[] { (Func<Exception>)(() => new Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException("retries exhausted", Pg("40001"))) },
+        new object[] { (Func<Exception>)(() => new InvalidOperationException("wrapped", new DbUpdateException("x", Pg("40001")))) },
+    };
+
+    [Theory]
+    [MemberData(nameof(ConcurrencyExceptions))]
+    public async Task Create_SerializationConflict_MapsTo409ConcurrentModification(Func<Exception> exception)
+    {
+        var (_, st) = await SeedAsync();
+        await using var ctx = _db.NewContext(new ThrowingInterceptor(exception));
+
+        var result = await NewService(ctx).CreateAsync(
+            new CreateTopicStudyLinkDto { SubTopicId = st, Title = "x", Url = "https://example.com" }, Owner);
+
+        result.Success.ShouldBeFalse();
+        result.Conflict.ShouldBeTrue();
+        result.Message.ShouldBe("Link aynı anda başka bir kullanıcı tarafından değiştirildi. Lütfen listeyi yenileyip tekrar deneyin.");
+    }
+
+    [Fact]
+    public async Task Update_OtherDbUpdateException_IsNotSwallowedAs409()
+    {
+        var (_, st) = await SeedAsync();
+        var id = (await CreateAsync(Owner, st)).ObjectId;
+        await using var ctx = _db.NewContext(new ThrowingInterceptor(() =>
+            new DbUpdateException("constraint", Pg(Npgsql.PostgresErrorCodes.UniqueViolation))));
+
+        await Should.ThrowAsync<DbUpdateException>(() => NewService(ctx).UpdateAsync(id, Upd(), Owner));
+    }
+
+    [Fact]
+    public async Task Create_PlainDbUpdateException_Propagates()
+    {
+        var (_, st) = await SeedAsync();
+        await using var ctx = _db.NewContext(new ThrowingInterceptor(() => new DbUpdateException("boom")));
+
+        await Should.ThrowAsync<DbUpdateException>(() => NewService(ctx).CreateAsync(
+            new CreateTopicStudyLinkDto { SubTopicId = st, Title = "x", Url = "https://example.com" }, Owner));
+    }
+
+    [Fact]
+    public async Task Reorder_DuplicateSortOrders_IsRejected()
+    {
+        var (_, st) = await SeedAsync();
+        var a = (await CreateAsync(Owner, st)).ObjectId;
+        var b = (await CreateAsync(Owner, st)).ObjectId;
+
+        await using var ctx = _db.NewContext();
+        var result = await NewService(ctx).ReorderAsync(new ReorderTopicStudyLinksDto
+        {
+            SubTopicId = st,
+            Items = { new() { Id = a, SortOrder = 3 }, new() { Id = b, SortOrder = 3 } }
+        }, Owner);
+
+        result.Success.ShouldBeFalse();
+        result.NotFound.ShouldBeFalse();
+        result.Conflict.ShouldBeFalse();
+        result.Message.ShouldBe("Aynı sıra numarası birden fazla linke verilemez.");
+        (await ctx.TopicStudyLinks.AsNoTracking().Select(l => l.SortOrder).ToListAsync()).ShouldBe(new[] { 0, 1 }, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task MovingSubTopicToAnotherTopic_UpdatesDenormalizedTopicIdOfItsLinks_IncludingDeleted()
+    {
+        var (topicId, st) = await SeedAsync();
+        var live = (await CreateAsync(Owner, st)).ObjectId;
+        var deleted = (await CreateAsync(Owner, st)).ObjectId;
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).DeleteAsync(deleted, Owner)).Success.ShouldBeTrue();
+
+        int newTopicId;
+        await using (var ctx = _db.NewContext())
+        {
+            var t = await ctx.Topics.SingleAsync(x => x.Id == topicId);
+            var moved = new Topic { Name = "Cebir", SubjectId = t.SubjectId, GradeId = t.GradeId };
+            ctx.Topics.Add(moved);
+            await ctx.SaveChangesAsync();
+            newTopicId = moved.Id;
+        }
+
+        await using (var ctx = _db.NewContext())
+        {
+            var taxonomy = new ExamApp.Api.Services.Taxonomy.TaxonomyService(ctx, Substitute.For<Hangfire.IBackgroundJobClient>());
+            (await taxonomy.UpdateSubTopicAsync(st, new ExamApp.Api.Models.Dtos.Admin.UpsertSubTopicDto { Name = "Kesirler", TopicId = newTopicId }, AdminUserId))
+                .Success.ShouldBeTrue();
+        }
+
+        await using var read = _db.NewContext();
+        (await read.TopicStudyLinks.IgnoreQueryFilters().Where(l => l.SubTopicId == st).Select(l => l.TopicId).ToListAsync())
+            .ShouldAllBe(id => id == newTopicId);
+        // Eski konunun konu seviyesi listesine sızmaz, yeni alt konu listesi aynen çalışır.
+        var list = await NewService(read).ListAsync(new TopicStudyLinkQueryDto { SubTopicId = st }, Owner);
+        list.Items.Single().Id.ShouldBe(live);
+        list.Items.Single().TopicId.ShouldBe(newTopicId);
+    }
 }

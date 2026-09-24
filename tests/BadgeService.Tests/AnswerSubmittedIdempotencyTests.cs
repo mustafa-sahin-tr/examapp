@@ -23,8 +23,13 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
 
     private AnswerSubmissionAggregationService NewService(BadgeDbContext ctx) => new(ctx);
 
+    // issue #279 item 4: her Answer() çağrısı (aksi belirtilmedikçe) kendi benzersiz QuestionId'sini alır —
+    // bu dosyanın testleri EventId dedup'ını hedefler, (TestInstanceId, QuestionId) revizyon katmanının
+    // araya girmemesi gerekir.
+    private static int _questionSeq;
+
     private static AnswerSubmittedEvent Answer(
-        Guid eventId, int userId = 7, bool correct = true, int point = 10) => new()
+        Guid eventId, int userId = 7, bool correct = true, int point = 10, int? questionId = null) => new()
     {
         EventId = eventId,
         UserId = userId,
@@ -34,6 +39,8 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
         SubjectId = 1,
         Subject = "Matematik",
         SubmittedAt = DateTime.UtcNow,
+        TestInstanceId = 1,
+        QuestionId = questionId ?? System.Threading.Interlocked.Increment(ref _questionSeq),
     };
 
     public void Dispose() => _db.Dispose();
@@ -106,24 +113,48 @@ public class AnswerSubmittedIdempotencyTests : IDisposable
     }
 
     [Fact]
-    public async Task Empty_EventId_bypasses_dedup_and_keeps_the_legacy_at_least_once_behavior()
+    public async Task Empty_EventId_bypasses_the_EventId_ledger_but_is_still_protected_by_the_revision_layer()
     {
-        // Guid.Empty simulates a producer/message that predates issue #243 — dedup must be skipped
-        // entirely (no ledger row), and a genuine redelivery re-applies, exactly like before this change.
+        // Guid.Empty simulates a producer/message that predates issue #243 — the EventId ledger
+        // (ProcessedAnswerSubmission) is skipped entirely (no row written). Before issue #279 this meant a
+        // raw redelivery of the exact same message re-applied points (legacy at-least-once, double-count
+        // bug). issue #279 item 4/5 closes this gap with a SECOND, EventId-independent layer: the
+        // (TestInstanceId, QuestionId) revision (AnswerPointAward, keyed on SubmittedAt) — a redelivery
+        // carries the SAME SubmittedAt, so it is now recognised as stale and skipped even without an EventId.
         var e = Answer(Guid.Empty, point: 10);
 
         bool firstApplied, secondApplied;
         await using (var ctx = _db.NewContext())
             firstApplied = await NewService(ctx).ProcessAsync(e);
         await using (var ctx = _db.NewContext())
-            secondApplied = await NewService(ctx).ProcessAsync(e);
+            secondApplied = await NewService(ctx).ProcessAsync(e); // raw redelivery: identical SubmittedAt
 
         firstApplied.ShouldBeTrue();
-        secondApplied.ShouldBeTrue(); // legacy behavior: no dedup, both applied
+        secondApplied.ShouldBeFalse(); // issue #279: no longer double-counted
 
         await using var check = _db.NewContext();
-        (await check.StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(20);
-        check.ProcessedAnswerSubmissions.Count().ShouldBe(0);
+        (await check.StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(10);
+        check.ProcessedAnswerSubmissions.Count().ShouldBe(0); // still no EventId ledger row (EventId empty)
+    }
+
+    [Fact]
+    public async Task Empty_EventId_with_a_genuinely_later_revision_still_applies_as_a_new_answer()
+    {
+        // A real answer CHANGE (not a redelivery) for the same question — later SubmittedAt — must still
+        // go through, delta-applied against the previously awarded points (issue #279 item 4).
+        var first = Answer(Guid.Empty, correct: true, point: 10, questionId: 900);
+        var second = Answer(Guid.Empty, correct: true, point: 15, questionId: 900);
+        second.TestInstanceId = first.TestInstanceId;
+        second.SubmittedAt = first.SubmittedAt.AddSeconds(1);
+
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).ProcessAsync(first)).ShouldBeTrue();
+        await using (var ctx = _db.NewContext())
+            (await NewService(ctx).ProcessAsync(second)).ShouldBeTrue();
+
+        await using var check = _db.NewContext();
+        // Not 25 (additive) — same question, so only the LAST answer's points count.
+        (await check.StudentQuestionAggregates.SingleAsync()).TotalPoints.ShouldBe(15);
     }
 
     private static ConsumeContext<AnswerSubmittedEvent> Context(AnswerSubmittedEvent message)

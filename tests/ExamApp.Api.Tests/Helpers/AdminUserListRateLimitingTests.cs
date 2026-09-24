@@ -115,4 +115,20 @@ public class AdminUserListRateLimitingTests
         (await GetAsync(client, "/list", "a")).StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
         (await GetAsync(client, "/list", "b")).StatusCode.ShouldBe(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task Request_without_sub_is_rejected_with_401_and_does_not_share_a_bucket()
+    {
+        // issue #279 item 7: eskiden sub'sız istekler ortak "sub:unknown" kovasını paylaşıyordu (global
+        // DoS — biri kovayı tüketince diğer kimliksiz istekler de 429 alırdı). StudentSelfReset'teki aynı
+        // düzeltme (issue #243 review) burada da uygulandı: koşulsuz 401, kova paylaşılmaz.
+        using var host = await StartHostAsync();
+        using var client = host.GetTestClient();
+
+        var first = await client.GetAsync("/list"); // X-Sub header'ı yok
+        var second = await client.GetAsync("/list");
+
+        first.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        second.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
 }

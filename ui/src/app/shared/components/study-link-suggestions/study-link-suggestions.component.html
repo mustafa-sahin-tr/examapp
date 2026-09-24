@@ -1,0 +1,46 @@
+<ng-container *transloco="let t; prefix: 'study-links'">
+  @if (showLoading()) {
+    <div class="sls sls--loading" role="status" data-testid="suggestions-loading" [attr.aria-label]="t('suggestions.loading')">
+      <span class="sls-bone sls-bone--title"></span>
+      <span class="sls-bone"></span>
+      <span class="sls-bone"></span>
+    </div>
+  } @else if (showError()) {
+    <p class="sls-note" role="status" data-testid="suggestions-error">
+      <mat-icon>info</mat-icon>{{ t('suggestions.loadFailed') }}
+    </p>
+  } @else if (groups().length) {
+    <section class="sls" data-testid="study-suggestions" aria-labelledby="sls-title">
+      <h4 class="sls-title" id="sls-title">
+        <mat-icon>school</mat-icon>{{ t('suggestions.title') }}
+      </h4>
+      @for (group of groups(); track groupKey(group)) {
+        <div class="sls-group" data-testid="suggestion-group">
+          <h5 class="sls-group-name">
+            {{ group.kind === 'Topic' ? t('suggestions.topicGroup', { name: group.name }) : group.name }}
+          </h5>
+          <ul class="sls-links">
+            @for (link of group.links; track link.id) {
+              <li>
+                <a
+                  class="sls-chip"
+                  [class.sls-chip--yt]="link.sourceType === 'YouTube'"
+                  [href]="link.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="suggestion-link"
+                >
+                  <mat-icon class="sls-src" aria-hidden="true">{{ sourceIcon(link) }}</mat-icon>
+                  <span class="sls-link-title">{{ link.title }}</span>
+                  <span class="sls-badge">{{ t('source.' + link.sourceType) }}</span>
+                  <mat-icon class="sls-ext" aria-hidden="true">open_in_new</mat-icon>
+                  <span class="sls-sr">({{ t('suggestions.opensInNewTab') }})</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </section>
+  }
+</ng-container>

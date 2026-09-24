@@ -40,6 +40,7 @@ import {
 } from './components/assignment-permission-dialog/assignment-permission-dialog.component';
 import { QuestionCanvasViewComponent } from '../../shared/components/question-canvas-view/question-canvas-view.component';
 import { QuestionNavigatorComponent } from '../../shared/components/question-navigator/question-navigator.component';
+import { StudyLinkSuggestionsComponent } from '../../shared/components/study-link-suggestions/study-link-suggestions.component';
 import { WorksheetAttempt, WorksheetDetail, WorksheetReminder } from '../../models/worksheet-detail';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { LocaleService } from '../../services/locale.service';
@@ -70,6 +71,7 @@ const WORKSHEET_DETAIL_SCOPE = 'worksheet-detail';
     IsStudentDirective,
     QuestionCanvasViewComponent,
     QuestionNavigatorComponent,
+    StudyLinkSuggestionsComponent,
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -938,6 +940,16 @@ export class WorksheetDetailComponent implements OnInit {
 
   questionSelected(index: number) {
     this.currentIndex.set(index);
+  }
+
+  /** Issue #61: görüntülenen sorunun test-instance-question kimliği (regions ile aynı sırada). */
+  protected currentTestInstanceQuestionId(): number | null {
+    return this.results?.testInstanceQuestions?.[this.currentIndex()]?.id ?? null;
+  }
+
+  /** Issue #61: çalışma önerileri yalnız yanlış cevaplanan soruda gösterilir (boş/doğru → hiçbir şey). */
+  protected isCurrentQuestionWrong(): boolean {
+    return this.questions[this.currentIndex()]?.status === 'incorrect';
   }
 
   protected trackByTopicId = (_: number, topic: { topicId: number | null }): number =>

@@ -20,6 +20,7 @@ import { ThemeConfigService } from '../../services/theme-config.service';
 import { Subject } from 'rxjs';
 import { filter, map, takeUntil } from 'rxjs/operators';
 import { SidenavService } from '../../services/sidenav.service';
+import { TEACHER_APPROVAL_PENDING_URL, teacherAccountApprovalOf } from '../../models/teacher-approval.model';
 import { SignalRService } from '../../services/signalr.service';
 import { WorksheetAccessRequestService } from '../../services/worksheet-access-request.service';
 import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
@@ -35,6 +36,13 @@ interface MenuItem {
   type: 'menu' | 'divider';
   /** Realm roles allowed to see this item. Omitted = visible to every role. */
   roles?: string[];
+  /** Issue #287: yalnız hesabı onaylanmamış öğretmene görünür (başvuru durumu girişi). */
+  onlyUnapprovedTeacher?: boolean;
+  /**
+   * Issue #287: Teacher'a özel olduğu hâlde onay bekleyen öğretmene de açık (backend izin verir) — ör. özel ders
+   * profili, bağımsız öğretmen başvurusunun formudur. Başvuru türü profilde olmadığından tüm onaysızlara gösterilir.
+   */
+  allowUnapprovedTeacher?: boolean;
 }
 
 @Component({
@@ -158,6 +166,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   // Menu items — single source of truth. `roles` omitted = visible to every role.
   // `labelKey` kök sözlükteki `layout.*` anahtarıdır; metin şablonda çevrilir (issue #183).
   menuItems: MenuItem[] = [
+    // Issue #287: onaysız öğretmenin tek öğretmen girişi — öğretmene özel diğer tüm öğeler gizlenir.
+    { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'menu.dashboard', icon: 'dashboard', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'practice', labelKey: 'menu.practice', icon: 'bolt', route: '/practice', type: 'menu', roles: ['Student'] },
@@ -167,7 +177,7 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     { id: 'tutors', labelKey: 'menu.tutors', icon: 'person_search', route: '/tutors', type: 'menu', roles: ['Student'] },
     { id: 'my-bookings', labelKey: 'menu.myBookings', icon: 'event_available', route: '/my-bookings', type: 'menu', roles: ['Student'] },
     { id: 'students', labelKey: 'menu.students', icon: 'people', route: '/students', type: 'menu', roles: ['Teacher'] },
-    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'] },
+    { id: 'tutor-profile', labelKey: 'menu.tutorProfile', icon: 'cast_for_education', route: '/tutor-profile', type: 'menu', roles: ['Teacher'], allowUnapprovedTeacher: true },
     { id: 'availability', labelKey: 'menu.availability', icon: 'event_available', route: '/availability', type: 'menu', roles: ['Teacher'] },
     { id: 'booking-requests', labelKey: 'menu.bookingRequests', icon: 'inbox', route: '/booking-requests', type: 'menu', roles: ['Teacher'] },
     { id: 'access-requests', labelKey: 'menu.accessRequests', icon: 'how_to_reg', route: '/assignment-permission-requests', type: 'menu', roles: ['Teacher'] },
@@ -191,14 +201,27 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
   ];
   // Bottom navigation items for mobile (max 4 primary items + menu trigger)
   bottomNavItems: MenuItem[] = [
+    { id: 'teacher-approval-status', labelKey: 'menu.teacherApprovalStatus', icon: 'hourglass_top', route: TEACHER_APPROVAL_PENDING_URL, type: 'menu', onlyUnapprovedTeacher: true },
     { id: 'dashboard', labelKey: 'bottomNav.home', icon: 'home', route: '/dashboard', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'exams', labelKey: 'menu.exams', icon: 'quiz', route: '/tests', type: 'menu', roles: ['Student', 'Teacher'] },
     { id: 'study', labelKey: 'bottomNav.study', icon: 'school', route: '/study', type: 'menu', roles: ['Student'] },
     { id: 'settings', labelKey: 'menu.settings', icon: 'settings', route: '/student-profile', type: 'menu' },
   ];
 
-  private isItemAllowed(item: MenuItem): boolean {
-    return !item.roles || item.roles.some((r) => this.userRoles.includes(r));
+  /**
+   * Issue #287: onaysız öğretmende Teacher rolü öğe görünürlüğü için sayılmaz — yalnız Teacher'a (veya Teacher'la
+   * birlikte başka rollere) açılan öğeler, kullanıcının başka bir rolü onları açmıyorsa gizlenir.
+   */
+  private isItemAllowed(item: MenuItem, unapprovedTeacher: boolean): boolean {
+    if (item.onlyUnapprovedTeacher) {
+      return unapprovedTeacher;
+    }
+    if (!item.roles) {
+      return true;
+    }
+    const roles =
+      unapprovedTeacher && !item.allowUnapprovedTeacher ? this.userRoles.filter((r) => r !== 'Teacher') : this.userRoles;
+    return item.roles.some((r) => roles.includes(r));
   }
 
   /** Drop leading/trailing dividers and collapse consecutive ones. */
@@ -218,12 +241,39 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     return result;
   }
 
-  readonly visibleMenuItems: MenuItem[] = this.stripDividers(
-    this.menuItems.filter((item) => this.isItemAllowed(item))
-  );
-  readonly visibleBottomNavItems: MenuItem[] = this.bottomNavItems.filter((item) =>
-    this.isItemAllowed(item)
-  );
+  /** Onay durumu profil yenilenince değişebildiği için menü reaktif (issue #287). */
+  readonly visibleMenuItems = computed<MenuItem[]>(() => {
+    const unapprovedTeacher = this.authService.isUnapprovedTeacher();
+    return this.stripDividers(this.menuItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher)));
+  });
+  readonly visibleBottomNavItems = computed<MenuItem[]>(() => {
+    const unapprovedTeacher = this.authService.isUnapprovedTeacher();
+    return this.bottomNavItems.filter((item) => this.isItemAllowed(item, unapprovedTeacher));
+  });
+
+  /** Öğretmen ve hesabının onaylı olduğu profilden BİLİNİYOR (bilinmeyen durum onaysız gibi ele alınır). */
+  private isTeacherKnownApproved(): boolean {
+    return (
+      this.isTeacher &&
+      !this.authService.isUnapprovedTeacher() &&
+      teacherAccountApprovalOf(this.authService.user()) === true
+    );
+  }
+
+  /** Atama izin talebi sayacı istendi mi (issue #287: yalnız onaylı öğretmen için, bir kez). */
+  private accessRequestCountLoaded = false;
+
+  /**
+   * Sayaç ucu (access-requests/incoming/count) onaysız öğretmene 403 `TeacherNotApproved` döner ve interceptor
+   * kullanıcıyı durum sayfasına taşır — bu yüzden yalnız onayı BİLİNEN öğretmende çağrılır (issue #287).
+   */
+  private loadAccessRequestCountIfApproved(): void {
+    if (!this.isTeacherKnownApproved() || this.accessRequestCountLoaded) {
+      return;
+    }
+    this.accessRequestCountLoaded = true;
+    this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
+  }
 
   // Computed values
 
@@ -240,9 +290,8 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
     });
 
     if (this.isTeacher) {
-      this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
       this.signalR.accessRequestUpdates$.pipe(takeUntil(this.destroy$)).subscribe((update) => {
-        if (update.kind === 'requested') {
+        if (update.kind === 'requested' && this.isTeacherKnownApproved()) {
           this.accessRequestService.refreshPendingCount().subscribe({ error: () => {} });
         }
       });
@@ -289,20 +338,25 @@ export class EnhancedLayoutComponent implements OnInit, OnDestroy {
       this.userAvatarUrl.set('');
     } else {
       this.setUserInfo();
+      this.loadAccessRequestCountIfApproved();
     }
 
     var refresh =
       !cachedUserIsCurrent ||
       !user ||
       (profile == 'Student' && !JSON.parse(user).student) ||
-      (profile == 'Teacher' && !JSON.parse(user).teacher);
+      (profile == 'Teacher' && !JSON.parse(user).teacher) ||
+      // Issue #287: onay durumu yalnız refresh ile gelir; onaylı olduğu bilinmeyen öğretmende her açılışta tazelenir
+      // (admin onayı sonrası menü/erişim açılsın).
+      (profile == 'Teacher' && JSON.parse(user).teacher?.teacherAccountApproved !== true);
     if (refresh) {
-      this.authService.refresh().subscribe({
+      // Reaktif profil kaynağı (issue #191): schoolId ve öğretmen onay durumu (#287) yalnızca bu refresh ile gelir;
+      // `refreshProfile` sonucu `user` signal'ına yazar.
+      this.authService.refreshProfile().subscribe({
         next: (res) => {
           if (res) {
-            // Reaktif profil kaynağı (issue #191): schoolId yalnızca bu refresh ile gelir.
-            this.authService.setUser(res);
             this.setUserInfo();
+            this.loadAccessRequestCountIfApproved();
           }
           if (!res) {
             this.router.navigate(['/register']);

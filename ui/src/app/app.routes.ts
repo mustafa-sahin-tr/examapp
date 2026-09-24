@@ -4,6 +4,8 @@ import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
 import { studentGuard } from './shared/guards/student.guard';
 import { roleGuard } from './shared/guards/role.guard';
+import { approvedTeacherGuard } from './shared/guards/approved-teacher.guard';
+import { TEACHER_APPROVAL_PENDING_PATH } from './models/teacher-approval.model';
 import { QuestionComponent } from './pages/question/question.component';
 import { QuestionViewComponent } from './pages/question-view/question-view.component';
 import { StudentProfileComponent } from './pages/student-profile/student-profile.component';
@@ -54,11 +56,22 @@ export const routes: Routes = [
     component: EnhancedLayoutComponent,
     children: [
       // Issue #53: Teacher rolü → TeacherDashboardComponent, diğerleri → mevcut DashboardComponent.
-      { path: 'dashboard', component: DashboardSwitchComponent, canActivate: [authGuard] },
+      // Issue #287: onaysız öğretmen teacher dashboard yerine başvuru durumu sayfasına gider (öğrenci etkilenmez).
+      { path: 'dashboard', component: DashboardSwitchComponent, canActivate: [authGuard, approvedTeacherGuard] },
+      {
+        // Issue #287: öğretmen hesabı onay bekliyor / reddedildi — onaysız öğretmenin tek öğretmen ekranı.
+        path: TEACHER_APPROVAL_PENDING_PATH,
+        canActivate: [authGuard, roleGuard('Teacher')],
+        loadComponent: () =>
+          import('./pages/teacher-approval-pending/teacher-approval-pending.component').then(
+            (m) => m.TeacherApprovalPendingComponent
+          ),
+      },
       {
         path: 'tests',
         component: WorksheetListComponent,
-        canActivate: [authGuard],
+        // Issue #287: teacher girişi /tests'e düşer; onaysız öğretmen resolver (exam/list) çalışmadan durum sayfasına gider.
+        canActivate: [authGuard, approvedTeacherGuard],
         resolve: { worksheets: worksheetListResolver },
       },
       // Two-step onboarding: step 1 role picker (skipped when the role is known
@@ -78,16 +91,21 @@ export const routes: Routes = [
       {
         path: 'tests-enhanced',
         component: WorksheetListEnhancedComponent,
-        canActivate: [authGuard],
+        // Issue #287: teacher girişi /tests'e düşer; onaysız öğretmen resolver (exam/list) çalışmadan durum sayfasına gider.
+        canActivate: [authGuard, approvedTeacherGuard],
         resolve: { worksheets: worksheetListResolver },
       },
       { path: 'questions/view', component: QuestionViewComponent, canActivate: [authGuard] },
-      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard] },
-      { path: 'testsolve/v2/:testInstanceId', component: TestSolveCanvasComponentv2, canActivate: [authGuard] },
-      { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard] },
+      { path: 'testsolve/:testInstanceId', component: TestSolveCanvasComponentv3, canActivate: [authGuard, approvedTeacherGuard] },
+      {
+        path: 'testsolve/v2/:testInstanceId',
+        component: TestSolveCanvasComponentv2,
+        canActivate: [authGuard, approvedTeacherGuard],
+      },
+      { path: 'test/:testId', component: WorksheetDetailComponent, canActivate: [authGuard, approvedTeacherGuard] },
       { path: 'student-profile', component: StudentProfileComponent, canActivate: [authGuard] },
-      { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher')] },
-      { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher')] },
+      { path: 'exam', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
+      { path: 'exam/:id', component: TestCreateEnhancedComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       { path: 'programs', component: MyProgramsComponent, canActivate: [authGuard, roleGuard('Student')] },
       {
         path: 'programs/:id/detail',
@@ -98,24 +116,24 @@ export const routes: Routes = [
       { path: 'program-create', component: ProgramCreateComponent, canActivate: [authGuard, roleGuard('Student')] },
       { path: 'certificates', component: BadgeThropyComponent, canActivate: [authGuard] },
       { path: 'study', component: StudyPageComponent, canActivate: [authGuard, roleGuard('Student')] },
-      { path: 'study-pages', component: StudyPagesComponent, canActivate: [authGuard, roleGuard('Teacher')] },
-      { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher')] },
-      { path: 'study-pages/:id', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher')] },
+      { path: 'study-pages', component: StudyPagesComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
+      { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
+      { path: 'study-pages/:id', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard] },
       {
         // Issue #61: öğretmenin tüm konu/alt konular için çalışma linki yönetimi (admin taksonomi ekranından bağımsız).
         path: 'study-links',
-        canActivate: [authGuard, roleGuard('Teacher')],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/study-links/study-links.component').then((m) => m.StudyLinksComponent),
       },
       {
         path: 'question-transfer',
         component: QuestionTransferComponent,
-        canActivate: [authGuard, roleGuard('Teacher')],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
       },
       {
         path: 'assignment-permission-requests',
-        canActivate: [authGuard, roleGuard('Teacher')],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/assignment-permission-requests/assignment-permission-requests.component').then(
             (m) => m.AssignmentPermissionRequestsComponent
@@ -170,6 +188,7 @@ export const routes: Routes = [
       },
       {
         // Issue #95: bağımsız öğretmenin özel ders profili (dersler, ücret, online/yüz yüze).
+        // Issue #287: onay bekleyen öğretmene de açık — bağımsız öğretmen başvurusunun formu (backend izin verir).
         path: 'tutor-profile',
         canActivate: [authGuard, roleGuard('Teacher')],
         loadComponent: () =>
@@ -192,14 +211,14 @@ export const routes: Routes = [
       {
         // Issue #96: takvim öğretmene de açık — onaylı ders randevuları burada görünür.
         path: 'my-calendar',
-        canActivate: [authGuard, roleGuard('Student', 'Teacher')],
+        canActivate: [authGuard, roleGuard('Student', 'Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/my-calendar/my-calendar.component').then((m) => m.MyCalendarComponent),
       },
       {
         // Issue #96: öğretmenin müsaitlik aralıkları.
         path: 'availability',
-        canActivate: [authGuard, roleGuard('Teacher')],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/teacher-availability/teacher-availability.component').then(
             (m) => m.TeacherAvailabilityComponent
@@ -208,7 +227,7 @@ export const routes: Routes = [
       {
         // Issue #96: öğretmene gelen randevu talepleri.
         path: 'booking-requests',
-        canActivate: [authGuard, roleGuard('Teacher')],
+        canActivate: [authGuard, roleGuard('Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/teacher-booking-requests/teacher-booking-requests.component').then(
             (m) => m.TeacherBookingRequestsComponent
@@ -224,7 +243,7 @@ export const routes: Routes = [
       {
         // Issue #97: onaylı bir randevunun video görüşme odası (iki taraf da girer).
         path: 'lessons/:bookingId/video',
-        canActivate: [authGuard, roleGuard('Student', 'Teacher')],
+        canActivate: [authGuard, roleGuard('Student', 'Teacher'), approvedTeacherGuard],
         loadComponent: () =>
           import('./pages/lesson-video/lesson-video.component').then((m) => m.LessonVideoComponent),
       },

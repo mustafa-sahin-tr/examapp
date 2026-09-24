@@ -48,6 +48,12 @@ export interface TeacherApplicationListItem {
    * Issue #187: kararın verildiği an (ISO, UTC). Pending'de null; eski (#157 öncesi) kararlarda da null olabilir.
    */
   decidedAt: string | null;
+  /**
+   * Issue #287: öğretmen hesabı henüz onaylanmamış — bu başvurunun onayı öğretmen özelliklerini açar. Okul talebi
+   * olmayan, bağımsız da olmayan ilk kayıtta `isIndependentTutor=false` ve `requestedSchoolId=null` olur (tür:
+   * "öğretmen hesabı onayı"). Hesabı zaten onaylı öğretmenin sonraki (bağımsız/okul) başvurusunda false.
+   */
+  requiresAccountApproval: boolean;
 }
 
 /**
@@ -74,6 +80,8 @@ export interface TeacherApplicationDetail {
   rejectionReason: string | null;
   /** Issue #187: karar anı (ISO, UTC); Pending'de null. */
   decidedAt: string | null;
+  /** Issue #287: bkz. `TeacherApplicationListItem.requiresAccountApproval`. */
+  requiresAccountApproval: boolean;
 }
 
 /**

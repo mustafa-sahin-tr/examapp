@@ -7,6 +7,9 @@
     "passageNotFound": "Kapsam bulunamadı!",
     "imageNotFound": "Soru veya soru görseli bulunamadı.",
     "imageNotFoundInStorage": "Soru görseli depoda bulunamadı.",
+    "forbidden": "Bu soruyu değiştirme yetkiniz yok.",
+    "testNotFound": "Test bulunamadı!",
+    "testForbidden": "Bu testi değiştirme yetkiniz yok.",
     "unknownName": "(bulunamadı)",
 
     "bulk": {

@@ -117,6 +117,23 @@
   }
 }
 
+// Issue #287: "Hesap onayı" etiketi — bu başvurunun onayı öğretmen hesabını açar (tür etiketinin altında).
+.ta__account-chip {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  margin-top: 0.25rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ms-warning-border);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--ms-warning-text);
+  background: var(--ms-warning-surface-weak);
+}
+
 // Issue #187: ret gerekçesi (chip'in altında ikincil satır).
 .ta__reason {
   display: block;

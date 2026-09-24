@@ -167,7 +167,8 @@ public class TeacherService : ITeacherService
                     ObjectId = teacher.Id,
                     SchoolId = teacher.SchoolId,
                     RequestedSchoolId = teacher.RequestedSchoolId,
-                    ApprovalStatus = teacher.ApprovalStatus
+                    ApprovalStatus = teacher.ApprovalStatus,
+                    AccountApproved = teacher.AccountApprovedAt != null
                 };
             }
 
@@ -197,8 +198,10 @@ public class TeacherService : ITeacherService
         }
         else
         {
-            // Bağımsız öğretmen (issue #92) ve okul talebi olan öğretmen (issue #234) admin onayı bekler.
-            // Okul talebi olmayan, bağımsız da olmayan kayıt (geçiş dönemi) okulsuz ve onaylı başlar.
+            // issue #287: HER yeni öğretmen kaydı admin onayı bekler — bağımsız öğretmen (#92), okul talebi (#234) ve
+            // okul talebi olmayan/bağımsız olmayan kayıt (eskiden onaylı başlıyordu). Hesap onayı (AccountApprovedAt)
+            // null başlar; öğretmen özellikleri ilk admin onayına kadar kapalıdır (ApprovedTeacher policy). Keycloak
+            // Teacher rolü yine kayıtta verilir (TeacherController.RegisterTeacher).
             schoolApprovalPending = requestedSchoolId.HasValue;
             teacher = new Teacher
             {
@@ -206,9 +209,8 @@ public class TeacherService : ITeacherService
                 SchoolId = null,
                 RequestedSchoolId = requestedSchoolId,
                 IsIndependentTutor = dto.IsIndependentTutor,
-                ApprovalStatus = dto.IsIndependentTutor || schoolApprovalPending
-                    ? TeacherApprovalStatus.Pending
-                    : TeacherApprovalStatus.Approved
+                ApprovalStatus = TeacherApprovalStatus.Pending,
+                AccountApprovedAt = null
             };
 
             // Yeni bağımsız öğretmen kaydı hem yeni bağımsız kayıt event'ini hem Pending başvuru event'ini üretir.
@@ -289,11 +291,12 @@ public class TeacherService : ITeacherService
             Success = true,
             Message = schoolApprovalPending
                 ? _localizer["teacher.savedSchoolApprovalPending"]
-                : isUpdate ? _localizer["teacher.updated"] : _localizer["teacher.saved"],
+                : isUpdate ? _localizer["teacher.updated"] : _localizer["teacher.savedApprovalPending"],
             ObjectId = teacherId,
             SchoolId = teacher.SchoolId,
             RequestedSchoolId = teacher.RequestedSchoolId,
-            ApprovalStatus = teacher.ApprovalStatus
+            ApprovalStatus = teacher.ApprovalStatus,
+            AccountApproved = teacher.AccountApprovedAt != null
         };
     }
 

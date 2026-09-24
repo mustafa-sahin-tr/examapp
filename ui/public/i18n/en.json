@@ -42,6 +42,7 @@
     },
     "menu": {
       "dashboard": "Dashboard",
+      "teacherApprovalStatus": "Application status",
       "exams": "Exams",
       "practice": "Practice",
       "study": "Study",

@@ -24,10 +24,11 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     { id: 'admin-students', route: '/admin/students', labelKey: 'menu.adminStudents', tr: 'Öğrenciler' },
   ];
 
-  function create(roles: string[]): EnhancedLayoutComponent {
+  function create(roles: string[], unapprovedTeacher = false): EnhancedLayoutComponent {
     const authStub: Partial<AuthService> = {
       hasRealmRole: (role: string) => roles.includes(role),
       isAuthenticated: () => of(true),
+      isUnapprovedTeacher: signal(unapprovedTeacher),
     };
     TestBed.configureTestingModule({
       imports: [EnhancedLayoutComponent, translocoTestingModule()],
@@ -47,7 +48,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
     const component = create(['Admin']);
 
     for (const entry of ADMIN_LIST_ENTRIES) {
-      const item = component.visibleMenuItems.find((i) => i.id === entry.id);
+      const item = component.visibleMenuItems().find((i) => i.id === entry.id);
       expect(item).withContext(entry.id).toBeDefined();
       expect(item?.type).withContext(entry.id).toBe('menu');
       expect(item?.route).withContext(entry.id).toBe(entry.route);
@@ -59,7 +60,7 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
   for (const role of ['Teacher', 'Student']) {
     it(`visibleMenuItems_${role}Role_DoesNotContainAdminListEntries`, () => {
       const component = create([role]);
-      const routesShown = component.visibleMenuItems.map((i) => i.route);
+      const routesShown = component.visibleMenuItems().map((i) => i.route);
 
       for (const entry of ADMIN_LIST_ENTRIES) {
         expect(routesShown).withContext(role).not.toContain(entry.route);
@@ -99,12 +100,118 @@ describe('EnhancedLayoutComponent menu (issue #154)', () => {
   });
   it('visibleMenuItems_StudyLinksEntry_OnlyForTeacherWithTranslatedLabel (issue #61)', () => {
     const component = create(['Teacher']);
-    const item = component.visibleMenuItems.find((i) => i.id === 'study-links');
+    const item = component.visibleMenuItems().find((i) => i.id === 'study-links');
     expect(item?.route).toBe('/study-links');
     expect(TestBed.inject(TranslocoService).translate('layout.menu.studyLinks')).toBe('Çalışma Linkleri');
 
     TestBed.resetTestingModule();
     const student = create(['Student']);
-    expect(student.visibleMenuItems.map((i) => i.route)).not.toContain('/study-links');
+    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/study-links');
+  });
+
+  // ── Issue #287: onaysız öğretmen menüsü ─────────────────────────────────────
+
+  const TEACHER_ONLY_ROUTES = [
+    '/dashboard',
+    '/tests',
+    '/exam',
+    '/study-pages',
+    '/study-links',
+    '/question-transfer',
+    '/availability',
+    '/booking-requests',
+    '/assignment-permission-requests',
+    '/my-calendar',
+    '/students',
+  ];
+
+  it('visibleMenuItems_UnapprovedTeacher_HidesTeacherItemsAndShowsSingleStatusEntry', () => {
+    const component = create(['Teacher'], true);
+    const items = component.visibleMenuItems();
+    const routesShown = items.map((i) => i.route);
+
+    for (const route of TEACHER_ONLY_ROUTES) {
+      expect(routesShown).withContext(route).not.toContain(route);
+    }
+    const status = items.filter((i) => i.id === 'teacher-approval-status');
+    expect(status.length).toBe(1);
+    expect(status[0].route).toBe('/teacher-approval-pending');
+    // Rolsüz (herkese açık) öğeler kalır; baştaki/sondaki ayırıcılar temizlenir.
+    expect(routesShown).toContain('/student-profile');
+    expect(items[0].type).toBe('menu');
+    expect(items[items.length - 1].type).toBe('menu');
+  });
+
+  it('visibleMenuItems_UnapprovedTeacher_KeepsTutorProfileApplicationForm', () => {
+    const component = create(['Teacher'], true);
+    expect(component.visibleMenuItems().map((i) => i.route)).toContain('/tutor-profile');
+
+    TestBed.resetTestingModule();
+    const student = create(['Student'], false);
+    expect(student.visibleMenuItems().map((i) => i.route)).not.toContain('/tutor-profile');
+  });
+
+  it('visibleBottomNavItems_UnapprovedTeacher_StatusEntryInsteadOfDashboardAndExams', () => {
+    const component = create(['Teacher'], true);
+    const routesShown = component.visibleBottomNavItems().map((i) => i.route);
+
+    expect(routesShown).toContain('/teacher-approval-pending');
+    expect(routesShown).not.toContain('/dashboard');
+    expect(routesShown).not.toContain('/tests');
+  });
+
+  it('visibleMenuItems_ApprovedTeacher_ShowsTeacherItemsWithoutStatusEntry', () => {
+    const component = create(['Teacher'], false);
+    const ids = component.visibleMenuItems().map((i) => i.id);
+
+    expect(ids).toContain('exam');
+    expect(ids).toContain('study-pages');
+    expect(ids).not.toContain('teacher-approval-status');
+    expect(component.visibleBottomNavItems().map((i) => i.id)).not.toContain('teacher-approval-status');
+  });
+
+  for (const role of ['Student', 'Admin']) {
+    it(`visibleMenuItems_${role}_NeverShowsStatusEntry`, () => {
+      const component = create([role], false);
+      expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('teacher-approval-status');
+    });
+  }
+
+  it('visibleMenuItems_ReactsWhenApprovalChanges', () => {
+    const unapproved = signal(true);
+    const authStub: Partial<AuthService> = {
+      hasRealmRole: (role: string) => role === 'Teacher',
+      isAuthenticated: () => of(true),
+      isUnapprovedTeacher: unapproved,
+    };
+    TestBed.configureTestingModule({
+      imports: [EnhancedLayoutComponent, translocoTestingModule()],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authStub },
+        { provide: SignalRService, useValue: { accessRequestUpdates$: new Subject() } },
+        { provide: WorksheetAccessRequestService, useValue: { pendingCount: signal(0) } },
+        { provide: UserThemeService, useValue: {} },
+        { provide: ThemeConfigService, useValue: {} },
+      ],
+    });
+    const component = TestBed.createComponent(EnhancedLayoutComponent).componentInstance;
+    expect(component.visibleMenuItems().map((i) => i.id)).not.toContain('exam');
+
+    unapproved.set(false);
+
+    expect(component.visibleMenuItems().map((i) => i.id)).toContain('exam');
+  });
+
+  it('menuLabel_TeacherApprovalStatus_TranslatedTrAndEn', () => {
+    create(['Teacher'], true);
+    const transloco = TestBed.inject(TranslocoService);
+    expect(transloco.translate('layout.menu.teacherApprovalStatus')).toBe('Başvuru durumu');
+    expect(transloco.translate('layout.menu.teacherApprovalStatus', {}, 'en')).toBe('Application status');
+  });
+
+  it('routes_TeacherApprovalPendingRoute_Exists', () => {
+    const layoutRoute = routes.find((r) => Array.isArray(r.children));
+    expect(layoutRoute?.children?.map((r) => r.path)).toContain('teacher-approval-pending');
   });
 });

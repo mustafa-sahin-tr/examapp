@@ -91,6 +91,15 @@ public class TeacherDto
     public int? SchoolId { get; set; }
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi
     public string? ThemeCustomConfig { get; set; } // 🎨 Custom theme config (JSON)
+
+    /// <summary>issue #287: öğretmen hesabı admin tarafından onaylandı mı — false iken öğretmen özellikleri 403 TeacherNotApproved.</summary>
+    public bool TeacherAccountApproved { get; set; }
+
+    /// <summary>issue #287: mevcut başvurunun durumu: "Pending" | "Approved" | "Rejected".</summary>
+    public string TeacherApplicationStatus { get; set; } = string.Empty;
+
+    /// <summary>issue #287: yalnızca <see cref="TeacherApplicationStatus"/> == "Rejected" iken dolu.</summary>
+    public string? RejectionReason { get; set; }
 }
 
 public class StudentLookupDto

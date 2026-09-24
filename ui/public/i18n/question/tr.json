@@ -14,7 +14,9 @@
     "backToCanvas": "Tuvale dön",
     "previewTitle": "Ön İzleme",
     "saveError": "Soru kaydedilirken hata oluştu!",
-    "exampleAnswerRequired": "Lütfen örnek soru için doğru cevabı seçin!"
+    "exampleAnswerRequired": "Lütfen örnek soru için doğru cevabı seçin!",
+    "forbidden": "Bu soru üzerinde işlem yapma yetkiniz yok.",
+    "loadError": "Soru yüklenemedi."
   },
   "form": {
     "title": "Soru Oluştur",

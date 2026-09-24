@@ -1,3 +1,4 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -307,6 +308,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("lookup")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<IActionResult> GetStudentLookup(CancellationToken ct)
         {
             var scope = await GetSchoolScopeAsync(ct);

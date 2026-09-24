@@ -291,6 +291,8 @@ public sealed class TutorSeedService : ITutorSeedService
                     SchoolId = null,
                     IsIndependentTutor = true,
                     ApprovalStatus = p.Pending ? TeacherApprovalStatus.Pending : TeacherApprovalStatus.Approved,
+                    // issue #287: Pending tutor = ilk başvurusu bekleyen hesap (öğretmen özellikleri kapalı).
+                    AccountApprovedAt = p.Pending ? null : DateTime.UtcNow,
                     HourlyRate = p.Profile.HourlyRate,
                     TeachesOnline = p.Profile.TeachesOnline,
                     TeachesInPerson = p.Profile.TeachesInPerson,

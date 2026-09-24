@@ -48,8 +48,23 @@ public class Teacher : BaseEntity, ISchoolScoped
     /// <summary>Okula bağlı olmayan, bağımsız çalışan öğretmen (issue #92). SchoolId null olabilir.</summary>
     public bool IsIndependentTutor { get; set; }
 
-    /// <summary>Okula bağlı öğretmen için varsayılan Approved; bağımsız öğretmen kayıtta Pending başlar.</summary>
+    /// <summary>
+    /// MEVCUT başvurunun durumu (bağımsız öğretmen #92/#94, okul bağlantısı talebi #234, ilk hesap onayı #287).
+    /// issue #287: her yeni öğretmen kaydı Pending başlar (bkz. <c>TeacherService.Save</c>); CLR/DB varsayılanı Approved
+    /// yalnızca eski kayıtlar ve seed/test verisi içindir. Öğretmen özelliklerine erişim bu alana DEĞİL
+    /// <see cref="AccountApprovedAt"/>'a bakar — onaylı okul öğretmeni bağımsızlığa geçip yeniden Pending'e düştüğünde
+    /// erişimini kaybetmez.
+    /// </summary>
     public TeacherApprovalStatus ApprovalStatus { get; set; } = TeacherApprovalStatus.Approved;
+
+    /// <summary>
+    /// issue #287: öğretmen HESABININ ilk kez admin tarafından onaylandığı an (UTC). null = hesap henüz onaylanmadı →
+    /// öğretmen özellikleri kapalı (<c>IApprovedTeacherGuard</c> / <c>ApprovedTeacher</c> policy). İlk başarılı admin
+    /// onayında (<c>TeacherApprovalService.ApproveAsync</c>) set edilir; sonraki geçişlerde (bağımsızlığa geçiş, yeni okul
+    /// talebi, sonraki ret) ASLA temizlenmez. İlk başvurusu reddedilen öğretmende null kalır. Migration
+    /// <c>AddTeacherAccountApprovedAt</c> mevcut onaylı (ve okul bağı onaylanmış) kayıtları geri doldurur.
+    /// </summary>
+    public DateTime? AccountApprovedAt { get; set; }
 
     /// <summary>Admin başvuruyu reddettiğinde girdiği neden (issue #94). Sadece ApprovalStatus=Rejected iken dolu.</summary>
     [MaxLength(500)]

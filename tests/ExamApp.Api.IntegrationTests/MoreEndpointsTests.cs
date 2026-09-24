@@ -132,6 +132,7 @@ public class MoreEndpointsTests(IntegrationApiFactory factory) : IntegrationTest
     [Fact]
     public async Task Study_pages_alias_route_also_accepts_writes_not_just_reads()
     {
+        await SeedApprovedTeacherAsync(4); // issue #287
         var teacher = await ClientAsAsync(4, "Teacher", "kc-alias-t", "Teacher");
 
         using var createForm = new MultipartFormDataContent

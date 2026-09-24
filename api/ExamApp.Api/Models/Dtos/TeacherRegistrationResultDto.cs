@@ -17,6 +17,9 @@ public class TeacherRegistrationResultDto : ResponseBaseDto
 
     public TeacherApprovalStatus ApprovalStatus { get; set; }
 
+    /// <summary>issue #287: öğretmen hesabı onaylı mı (Teachers.AccountApprovedAt dolu). Yeni kayıtta her zaman false.</summary>
+    public bool AccountApproved { get; set; }
+
     /// <summary>Okul bağlantısı talebi admin onayı bekliyor mu (RequestedSchoolId dolu + Pending).</summary>
     public bool SchoolApprovalPending =>
         RequestedSchoolId.HasValue && ApprovalStatus == TeacherApprovalStatus.Pending;

@@ -2056,6 +2056,9 @@ namespace ExamApp.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AccountApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("ApprovalStatus")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")

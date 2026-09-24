@@ -334,15 +334,40 @@ export class TeacherApprovalsComponent implements OnInit {
     return name ? name : this.text('unnamed', { teacherId: row.teacherId });
   }
 
-  /** Issue #234: satırın başvuru türü etiketi — "Bağımsız" ya da "Okul: <ad>". */
+  /**
+   * Issue #234: satırın başvuru türü etiketi — "Bağımsız" ya da "Okul: <ad>".
+   * Issue #287: hesap onayı da gerekiyorsa "<tür> + hesap onayı"; okul talebi olmayan, bağımsız da olmayan ilk kayıt
+   * yalnız "Öğretmen hesabı".
+   */
   typeLabel(row: TeacherApplicationListItem): string {
+    const base = this.baseTypeLabel(row);
+    if (base === null) {
+      return this.text('types.account');
+    }
+    return row.requiresAccountApproval ? this.text('types.withAccountApproval', { type: base }) : base;
+  }
+
+  /** Bağımsız / okul talebi etiketi; ikisi de değilse (yalnız hesap onayı başvurusu) null. */
+  private baseTypeLabel(row: TeacherApplicationListItem): string | null {
     if (row.isIndependentTutor) {
       return this.text('types.independent');
     }
     const schoolName = row.requestedSchoolName?.trim();
-    return schoolName
-      ? this.text('types.school', { schoolName })
-      : this.text('types.schoolUnknown', { schoolId: row.requestedSchoolId ?? '—' });
+    if (schoolName) {
+      return this.text('types.school', { schoolName });
+    }
+    if (row.requestedSchoolId == null && row.requiresAccountApproval) {
+      return null;
+    }
+    return this.text('types.schoolUnknown', { schoolId: row.requestedSchoolId ?? '—' });
+  }
+
+  /** Issue #287: satır türü ikonu — bağımsız / okul talebi / yalnız hesap onayı. */
+  typeIcon(row: TeacherApplicationListItem): string {
+    if (row.isIndependentTutor) {
+      return 'person';
+    }
+    return row.requestedSchoolId == null && row.requiresAccountApproval ? 'badge' : 'school';
   }
 
   approve(row: TeacherApplicationListItem): void {

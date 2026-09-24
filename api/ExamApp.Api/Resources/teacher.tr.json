@@ -7,6 +7,8 @@
     "recordNotFound": "Öğretmen kaydı bulunamadı.",
     "schoolNotFound": "Seçilen okul bulunamadı.",
     "saved": "Öğretmen başarıyla kaydedildi.",
+    "savedApprovalPending": "Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.",
+    "notApproved": "Öğretmen özelliklerini kullanabilmek için öğretmen hesabınızın yönetici tarafından onaylanması gerekir.",
     "savedSchoolApprovalPending": "Öğretmen kaydedildi; okul bağlantınız yönetici onayı bekliyor.",
     "studentRecordExists": "Öğrenci kaydı olan bir hesap öğretmen olarak kaydolamaz.",
     "registrationChangeNotAllowed": "Mevcut öğretmen kaydının okul veya bağımsız öğretmen bilgisi bu adımla değiştirilemez.",

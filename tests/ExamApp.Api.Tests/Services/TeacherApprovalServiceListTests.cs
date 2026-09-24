@@ -82,7 +82,7 @@ public class TeacherApprovalServiceListTests : IDisposable
         { UserId = 2, IsIndependentTutor = false, RequestedSchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Pending }, T0.AddDays(1));
 
         ids["approvedLate"] = await TeacherAsync(new Teacher
-        { UserId = 3, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved }, T0);
+        { UserId = 3, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow }, T0);
         await DecisionLogAsync(ids["approvedLate"], AdminUserAction.TeacherApproved, T0.AddDays(30));
 
         // Okul talebi reddedildi: RequestedSchoolId korunur, gerekçe dolu.
@@ -96,7 +96,7 @@ public class TeacherApprovalServiceListTests : IDisposable
         // Onaylanmış okul talebi: onay RequestedSchoolId'yi temizleyip SchoolId'ye taşıdı → yalnızca audit'ten tanınır.
         // Önce reddedilmiş, sonra yeni talebi onaylanmış: karar anı ONAY log'udur (eşleşen en son karar).
         ids["approvedSchool"] = await TeacherAsync(new Teacher
-        { UserId = 5, IsIndependentTutor = false, SchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Approved }, T0);
+        { UserId = 5, IsIndependentTutor = false, SchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow }, T0);
         await DecisionLogAsync(ids["approvedSchool"], AdminUserAction.TeacherRejected, T0.AddDays(12));
         await DecisionLogAsync(ids["approvedSchool"], AdminUserAction.TeacherApproved, T0.AddDays(10));
 
@@ -108,9 +108,9 @@ public class TeacherApprovalServiceListTests : IDisposable
 
         // Başvuru OLMAYANLAR: sıradan okul öğretmeni, başka aksiyonun audit'i (şifre sıfırlama), başarısız karar kaydı.
         ids["ordinary"] = await TeacherAsync(new Teacher
-        { UserId = 7, IsIndependentTutor = false, SchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Approved }, T0);
+        { UserId = 7, IsIndependentTutor = false, SchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow }, T0);
         ids["passwordReset"] = await TeacherAsync(new Teacher
-        { UserId = 8, IsIndependentTutor = false, SchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Approved }, T0);
+        { UserId = 8, IsIndependentTutor = false, SchoolId = schoolA, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow }, T0);
         await DecisionLogAsync(ids["passwordReset"], AdminUserAction.PasswordReset, T0.AddDays(3));
         await DecisionLogAsync(ids["passwordReset"], AdminUserAction.TeacherApproved, T0.AddDays(3), AdminUserActionOutcome.Requested);
 

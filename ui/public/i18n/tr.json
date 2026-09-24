@@ -42,6 +42,7 @@
     },
     "menu": {
       "dashboard": "Dashboard",
+      "teacherApprovalStatus": "Başvuru durumu",
       "exams": "Sınavlar",
       "practice": "Soru Çöz",
       "study": "Ders Çalışma",

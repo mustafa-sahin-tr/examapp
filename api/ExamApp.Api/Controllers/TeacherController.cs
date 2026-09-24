@@ -1,5 +1,7 @@
+using ExamApp.Api.Services.Teachers.Authorization;
 using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
+using ExamApp.Api.Models.Dtos.Teachers;
 using ExamApp.Api.Models.Dtos.Tutors;
 using ExamApp.Api.Services;
 using ExamApp.Api.Services.Interfaces;
@@ -123,7 +125,11 @@ namespace ExamApp.Api.Controllers
                 schoolId = response.SchoolId,
                 requestedSchoolId = response.RequestedSchoolId,
                 approvalStatus = response.ApprovalStatus,
-                schoolApprovalPending = response.SchoolApprovalPending
+                schoolApprovalPending = response.SchoolApprovalPending,
+                // issue #287: yeni kayıt her zaman onay bekler — UI "onay bekleniyor" ekranına geçer.
+                teacherAccountApproved = response.AccountApproved,
+                // issue #287 (review): sunucu metni (ör. "hesabınız yönetici onayı bekliyor") UI'da gösterilir.
+                message = response.Message
             });
         }
 
@@ -142,7 +148,16 @@ namespace ExamApp.Api.Controllers
 
             if (teacher != null)
             {
-                return Ok(new { HasTeacherRecord = true, Teacher = teacher });
+                // issue #287: onay durumu üst seviyede (teacherAccountApproved / teacherApplicationStatus / rejectionReason).
+                var approval = TeacherApprovalState.From(teacher);
+                return Ok(new
+                {
+                    HasTeacherRecord = true,
+                    Teacher = teacher,
+                    approval.TeacherAccountApproved,
+                    approval.TeacherApplicationStatus,
+                    approval.RejectionReason
+                });
             }
 
             return Ok(new { HasTeacherRecord = false });
@@ -169,6 +184,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("dashboard-summary")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<TeacherDashboardSummaryDto>> GetDashboardSummary(CancellationToken ct)
         {
             // issue #222: bağımsız öğretmen kapsamı için tenant bağlamı #190 yolundan (fail-closed).
@@ -183,6 +199,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("worksheets-overview")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<List<TeacherWorksheetOverviewDto>>> GetWorksheetsOverview(CancellationToken ct)
         {
             var scope = await GetSchoolScopeAsync(ct);
@@ -197,6 +214,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("lagging-students")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<List<TeacherLaggingStudentDto>>> GetLaggingStudents(CancellationToken ct)
         {
             var scope = await GetSchoolScopeAsync(ct);
@@ -210,6 +228,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("own-activity-summary")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<TeacherOwnActivitySummaryDto>> GetOwnActivitySummary(
             [FromQuery] int days = 7, CancellationToken ct = default)
         {
@@ -226,6 +245,7 @@ namespace ExamApp.Api.Controllers
         /// </summary>
         [Authorize(Roles = "Teacher")]
         [HttpGet("students-activity-summary")]
+        [Authorize(Policy = ApprovedTeacherPolicies.TeacherCapability)] // issue #287
         public async Task<ActionResult<TeacherStudentsActivitySummaryDto>> GetStudentsActivitySummary(
             [FromQuery] int days = 7, CancellationToken ct = default)
         {
@@ -247,6 +267,9 @@ namespace ExamApp.Api.Controllers
         /// Issue #95: authenticated kullanıcının kendi tutor profili. Teacher kaydı yoksa 404,
         /// bağımsız öğretmen değilse 400. Onay beklerken de döner (ApprovalStatus alanıyla).
         /// </summary>
+        // issue #287 (security review L2): ApprovedTeacher policy BİLEREK YOK — bağımsız öğretmen başvurusunun formu
+        // bu profildir; hesabı onay bekleyen öğretmen başvurusunu doldurup görebilmeli. Arama/public profil zaten
+        // yalnızca Approved tutor'ları döner; randevu uçları ayrıca kapılı.
         [Authorize(Roles = "Teacher")]
         [HttpGet("tutor-profile")]
         public async Task<ActionResult<TutorProfileDto>> GetTutorProfile(CancellationToken ct)
@@ -260,6 +283,7 @@ namespace ExamApp.Api.Controllers
         /// Issue #95: sadece kendi IsIndependentTutor=true kaydını günceller. En az 1 ders, en az 1 mod
         /// (online/yüz yüze) ve ücret &gt; 0 zorunlu; aksi halde 400.
         /// </summary>
+        // issue #287 (security review L2): bilerek onaysız öğretmene açık — başvuru formu (bkz. GET tutor-profile).
         [Authorize(Roles = "Teacher")]
         [HttpPut("tutor-profile")]
         public async Task<ActionResult<TutorProfileDto>> UpdateTutorProfile([FromBody] UpdateTutorProfileDto request, CancellationToken ct)

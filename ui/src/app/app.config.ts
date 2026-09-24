@@ -18,6 +18,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './shared/interceptors/auth.interceptor';
 import { authErrorInterceptor } from './shared/interceptors/auth-error.interceptor';
+import { teacherNotApprovedInterceptor } from './shared/interceptors/teacher-not-approved.interceptor';
 import { cacheInterceptor } from './shared/interceptors/cache.interceptor';
 import { localeInterceptor } from './shared/interceptors/locale.interceptor';
 import { CoreModule } from './core/core.module';
@@ -52,7 +53,14 @@ export const TR_DATE_FORMATS: MatDateFormats = {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHttpClient(
-      withInterceptors([cacheInterceptor, localeInterceptor, authInterceptor, authErrorInterceptor])
+      withInterceptors([
+        cacheInterceptor,
+        localeInterceptor,
+        authInterceptor,
+        authErrorInterceptor,
+        // Issue #287: 403 TeacherNotApproved → başvuru durumu sayfası + profil yenileme.
+        teacherNotApprovedInterceptor,
+      ])
     ),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),

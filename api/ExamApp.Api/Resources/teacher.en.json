@@ -7,6 +7,8 @@
     "recordNotFound": "Teacher record not found.",
     "schoolNotFound": "The selected school was not found.",
     "saved": "Teacher saved successfully.",
+    "savedApprovalPending": "Your teacher registration was received; your account is awaiting administrator approval.",
+    "notApproved": "Your teacher account must be approved by an administrator before you can use teacher features.",
     "savedSchoolApprovalPending": "Teacher saved; your school membership is awaiting administrator approval.",
     "studentRecordExists": "An account with a student record cannot register as a teacher.",
     "registrationChangeNotAllowed": "The school or independent-teacher information of an existing teacher record cannot be changed in this step.",

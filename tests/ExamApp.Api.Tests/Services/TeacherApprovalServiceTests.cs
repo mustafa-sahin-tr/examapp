@@ -107,7 +107,7 @@ public class TeacherApprovalServiceTests : IDisposable
         int ordinaryId;
         await using (var ctx = _db.NewContext())
         {
-            var ordinary = new Teacher { UserId = 13, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Approved };
+            var ordinary = new Teacher { UserId = 13, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow };
             ctx.Teachers.Add(ordinary);
             await ctx.SaveChangesAsync();
             ordinaryId = ordinary.Id;
@@ -149,11 +149,12 @@ public class TeacherApprovalServiceTests : IDisposable
         await using (var ctx = _db.NewContext())
         {
             ctx.Teachers.Add(IndependentPending(1)); // eligible
-            ctx.Teachers.Add(new Teacher { UserId = 2, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved });
+            ctx.Teachers.Add(new Teacher { UserId = 2, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow });
             ctx.Teachers.Add(new Teacher { UserId = 3, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Rejected });
-            ctx.Teachers.Add(new Teacher { UserId = 4, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Approved });
-            // school-bound teacher somehow marked Pending should still be excluded (not independent)
-            ctx.Teachers.Add(new Teacher { UserId = 5, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Pending });
+            ctx.Teachers.Add(new Teacher { UserId = 4, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow });
+            // school-bound teacher somehow marked Pending should still be excluded (not independent, no school request,
+            // account already approved — issue #287: yalnızca hesabı onaylanmamış kayıt "hesap başvurusu" sayılır)
+            ctx.Teachers.Add(new Teacher { UserId = 5, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Pending, AccountApprovedAt = DateTime.UtcNow });
             await ctx.SaveChangesAsync();
         }
 
@@ -205,7 +206,7 @@ public class TeacherApprovalServiceTests : IDisposable
         int teacherId;
         await using (var ctx = _db.NewContext())
         {
-            var teacher = new Teacher { UserId = 11, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved };
+            var teacher = new Teacher { UserId = 11, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow };
             ctx.Teachers.Add(teacher);
             await ctx.SaveChangesAsync();
             teacherId = teacher.Id;
@@ -255,7 +256,8 @@ public class TeacherApprovalServiceTests : IDisposable
         int teacherId;
         await using (var ctx = _db.NewContext())
         {
-            var teacher = new Teacher { UserId = 13, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Pending };
+            // issue #287: hesabı onaylı (AccountApprovedAt dolu) — talebi olmayan bu kayıt bir başvuru değil.
+            var teacher = new Teacher { UserId = 13, IsIndependentTutor = false, ApprovalStatus = TeacherApprovalStatus.Pending, AccountApprovedAt = DateTime.UtcNow };
             ctx.Teachers.Add(teacher);
             await ctx.SaveChangesAsync();
             teacherId = teacher.Id;
@@ -335,7 +337,7 @@ public class TeacherApprovalServiceTests : IDisposable
         int teacherId;
         await using (var ctx = _db.NewContext())
         {
-            var teacher = new Teacher { UserId = 22, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved };
+            var teacher = new Teacher { UserId = 22, IsIndependentTutor = true, ApprovalStatus = TeacherApprovalStatus.Approved, AccountApprovedAt = DateTime.UtcNow };
             ctx.Teachers.Add(teacher);
             await ctx.SaveChangesAsync();
             teacherId = teacher.Id;

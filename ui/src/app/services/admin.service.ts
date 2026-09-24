@@ -13,9 +13,10 @@ import {
 } from '../models/taxonomy';
 import { AdminDashboardSummary, AdminDashboardTrends } from '../models/admin-dashboard.model';
 import {
-  PendingTeacherApplication,
   TeacherApplicationActionResult,
   TeacherApplicationDetail,
+  TeacherApplicationListItem,
+  TeacherApplicationListQuery,
   TeacherRejectRequest,
 } from '../models/teacher-application.model';
 import { AdminTeacherListItem, AdminTeacherListQuery } from '../models/admin-teacher.model';
@@ -136,13 +137,20 @@ export class AdminService {
   }
 
   // ---- bağımsız öğretmen başvuruları (Issue #94) ----
-  /** Pending durumdaki bağımsız öğretmen başvuruları, en eski önce. */
-  getPendingTeacherApplications(): Observable<PendingTeacherApplication[]> {
-    return this.http.get<PendingTeacherApplication[]>(`${this.baseUrl}/teacher-applications`);
+  /**
+   * Issue #187: sayfalı başvuru listesi. `status=pending` → yalnız bekleyenler (en eski önce); `status=all` → önce
+   * bekleyenler, sonra karar verilmişler (en yeni karar önce). E-posta maskeli (#262); 429 rate limit (`Retry-After`).
+   */
+  getTeacherApplications(query: TeacherApplicationListQuery): Observable<Paged<TeacherApplicationListItem>> {
+    const params = new HttpParams()
+      .set('status', query.status)
+      .set('page', query.page)
+      .set('pageSize', query.pageSize);
+    return this.http.get<Paged<TeacherApplicationListItem>>(`${this.baseUrl}/teacher-applications`, { params });
   }
   /**
-   * Issue #262: tek bekleyen başvurunun detayı, TAM e-posta ile (listede maskeli). Her çağrı audit'lenir;
-   * 404 başvuru artık bekleyen değil, 429 rate limit (`Retry-After`, liste uçlarıyla ortak kova).
+   * Issue #262: tek başvurunun detayı, TAM e-posta ile (listede maskeli). Her çağrı audit'lenir; issue #187: her
+   * durumdaki başvuru için döner, 404 başvuru yok; 429 rate limit (`Retry-After`, liste uçlarıyla ortak kova).
    */
   getTeacherApplication(teacherId: number): Observable<TeacherApplicationDetail> {
     return this.http.get<TeacherApplicationDetail>(`${this.baseUrl}/teacher-applications/${teacherId}`);

@@ -776,4 +776,22 @@ describe('AdminStudentsComponent', () => {
     expect(overlayButton('confirm').textContent).toContain(adminTr.studentSchool.retry);
     expect(cellTexts('school')).toEqual(['Ankara Lisesi']);
   });
+  it('changeSchool_StudentWithoutSchool_RowNoLongerNoSchool', async () => {
+    configure();
+    adminService.getStudents.and.returnValue(of(paged([student({ schoolId: null, schoolName: null })])));
+    adminService.changeStudentSchool.and.returnValue(
+      of({ studentId: 7, schoolId: 8, previousSchoolId: null, changed: true }),
+    );
+    create();
+    expect(component.rows()[0].noSchool).toBeTrue();
+    expect(cellTexts('school')).toEqual([adminTr.schoolFilter.unassignedStudent]);
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(component.rows()[0].noSchool).toBeFalse();
+    expect(component.rows()[0].schoolId).toBe(8);
+    expect(cellTexts('school')).toEqual(['İzmir Lisesi']);
+  });
 });

@@ -169,4 +169,17 @@ describe('SchoolSelectComponent (issue #277)', () => {
       Object.keys(trTranslations.shared.schoolSelect).sort(),
     );
   });
+  it('unmatchedChange_EmitsOnlyOnStateChanges', () => {
+    create();
+    const emitted: boolean[] = [];
+    component.unmatchedChange.subscribe((v) => emitted.push(v));
+
+    type('Ank');
+    type('Anka');
+    component.select(1);
+    type('Ankara Fen');
+    component.clear();
+
+    expect(emitted).toEqual([true, false, true, false]);
+  });
 });

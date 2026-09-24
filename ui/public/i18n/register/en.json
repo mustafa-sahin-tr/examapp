@@ -25,7 +25,8 @@
     "teacherAffiliated": "I work at a school",
     "teacherIndependent": "I am an independent private tutor",
     "teacherIndependentHint": "Independent tutor accounts become active after administrator approval.",
-    "teacherSchoolHint": "Optional. Your school link becomes active after administrator approval."
+    "teacherSchoolHint": "Optional. Your school link becomes active after administrator approval.",
+    "schoolNotPicked": "Pick the school you typed from the list, clear the field, or choose \"I am an independent private tutor\"."
   },
   "account": {
     "title": "Sign Up",

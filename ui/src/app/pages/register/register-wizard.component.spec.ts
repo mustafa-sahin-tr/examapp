@@ -432,4 +432,87 @@ describe('RegisterWizardComponent (Issue #234)', () => {
       expect(registerTr.fields.studentSchoolHint).toContain('yönetici');
     });
   });
+  // ── Issue #277 (review): okul metni yazılıp listeden seçilmediyse sessizce null gönderilmez ────────────
+
+  describe('unmatched school text (issue #277 review)', () => {
+    it('submit_AffiliatedTeacherWithUnmatchedText_BlocksAndShowsError', () => {
+      createComponent('teacher');
+      fixture.detectChanges();
+      component.teacherForm.setValue({ isIndependentTutor: false, schoolId: null });
+      component.teacherSchoolUnmatched.set(true);
+
+      component.submit();
+      fixture.detectChanges();
+
+      expect(teacherService.register).not.toHaveBeenCalled();
+      expect(component.teacherSchoolError()).toBeTrue();
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')?.textContent?.trim(),
+      ).toBe(registerTr.fields.schoolNotPicked);
+    });
+
+    it('submit_AfterPickingSchool_ErrorClearsAndSends', () => {
+      createComponent('teacher');
+      fixture.detectChanges();
+      component.teacherSchoolUnmatched.set(true);
+      component.submit();
+      teacherService.register.and.returnValue(NEVER);
+
+      // Seçici seçim yapınca `unmatchedChange(false)` yayınlar.
+      component.teacherSchoolUnmatched.set(false);
+      component.teacherForm.controls.schoolId.setValue(7);
+      fixture.detectChanges();
+      expect(component.teacherSchoolError()).toBeFalse();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')).toBeNull();
+
+      component.submit();
+      expect(teacherService.register).toHaveBeenCalledOnceWith({ schoolId: 7, isIndependentTutor: false });
+    });
+
+    it('submit_IndependentTeacherWithStaleUnmatchedText_IsNotBlocked', () => {
+      createComponent('teacher');
+      fixture.detectChanges();
+      component.teacherSchoolUnmatched.set(true);
+      component.teacherForm.controls.isIndependentTutor.setValue(true);
+      teacherService.register.and.returnValue(NEVER);
+
+      component.submit();
+
+      expect(teacherService.register).toHaveBeenCalledOnceWith({ schoolId: null, isIndependentTutor: true });
+    });
+
+    it('onTeacherModeChange_ResetsUnmatchedState', () => {
+      createComponent('teacher');
+      component.teacherSchoolUnmatched.set(true);
+      component.teacherSchoolErrorRequested.set(true);
+
+      component.onTeacherModeChange();
+
+      expect(component.teacherSchoolUnmatched()).toBeFalse();
+      expect(component.teacherSchoolError()).toBeFalse();
+    });
+
+    it('template_TypingUnmatchedTextInSchoolSelect_BlocksTeacherSubmit', () => {
+      createComponent('teacher');
+      fixture.detectChanges();
+      const input = (fixture.nativeElement as HTMLElement).querySelector(
+        '[data-testid="school-select-input"]',
+      ) as HTMLInputElement;
+      input.value = 'Olmayan Okul';
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      component.submit();
+      fixture.detectChanges();
+
+      expect(component.teacherSchoolUnmatched()).toBeTrue();
+      expect(teacherService.register).not.toHaveBeenCalled();
+      expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="teacher-school-error"]')).not.toBeNull();
+    });
+
+    it('i18n_SchoolNotPicked_TrAndEn', () => {
+      expect(registerTr.fields.schoolNotPicked).toBeTruthy();
+      expect(registerEn.fields.schoolNotPicked).toBeTruthy();
+    });
+  });
 });

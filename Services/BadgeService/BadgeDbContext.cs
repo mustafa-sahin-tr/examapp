@@ -17,6 +17,7 @@ public class BadgeDbContext : DbContext
     public DbSet<StudentBadgeProgress> StudentBadgeProgresses => Set<StudentBadgeProgress>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProcessedLoginAttempt> ProcessedLoginAttempts => Set<ProcessedLoginAttempt>();
+    public DbSet<ProcessedAnswerSubmission> ProcessedAnswerSubmissions => Set<ProcessedAnswerSubmission>();
     public DbSet<UserLocalePreference> UserLocalePreferences => Set<UserLocalePreference>();
 
     /// <summary>
@@ -97,6 +98,15 @@ public class BadgeDbContext : DbContext
         modelBuilder.Entity<ProcessedLoginAttempt>()
             .HasIndex(x => x.EventId)
             .IsUnique();
+
+        // Idempotency: aynı AnswerSubmittedEvent (EventId = outbox satırının Id'si, issue #243) en
+        // fazla bir kez aggregate'e uygulanır. EventId doğrudan PK — aggregate güncellemesiyle AYNI
+        // SaveChanges'te eklenir (bkz. AnswerSubmissionAggregationService), tekrar teslimde PK/unique
+        // ihlali (23505) no-op olarak ele alınır.
+        modelBuilder.Entity<ProcessedAnswerSubmission>().HasKey(x => x.EventId);
+        modelBuilder.Entity<ProcessedAnswerSubmission>()
+            .Property(x => x.EventId)
+            .ValueGeneratedNever();
 
         // UserId doğal PK: upsert "var mı" kontrolüne gerek bırakmadan tek satır garantiler.
         // ValueGeneratedNever ŞART — UserId auth-api'den (dış kaynak) geliyor, EF'in kendi

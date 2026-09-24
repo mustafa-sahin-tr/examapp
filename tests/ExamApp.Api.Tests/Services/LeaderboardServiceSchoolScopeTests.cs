@@ -11,8 +11,10 @@ namespace ExamApp.Api.Tests.Services;
 /// <summary>
 /// issue #193: GET /api/leaderboard — LeaderboardService okul/global kapsamı.
 /// Puan kaynağı StudentPoints.XP (profil XP formülüyle aynı); sıralama XP azalan, eşitlikte StudentId artan.
-/// Seed (UserId → FullName "User {UserId}"): Okul A: A1(u1)=300/L3, A2(u2)=100/L1, A3(u3)=puan yok → 0/L0;
-/// Okul B: B1(u4)=500/L5, B2(u5)=200/L2; Okulsuz: N1(u6)=400/L4.
+/// Seed (UserId → FullName "User {UserId}"): Okul A: A1(u1)=300, A2(u2)=100, A3(u3)=puan yok → 0;
+/// Okul B: B1(u4)=500, B2(u5)=200; Okulsuz: N1(u6)=400.
+/// Level (issue #243) StudentPoints.Level kolonundan DEĞİL, XP'den hesaplanır: 1 + floor(sqrt(XP/50)).
+/// Seed'deki kolon değerleri (99) bilerek formülle çelişir → kolonun okunmadığı kanıtlanır.
 /// Global sıra: B1 N1 A1 B2 A2 A3. Okul A: A1 A2 A3. Okul B: B1 B2.
 /// DTO PII taşımaz (UserId/StudentId/StudentNumber/SchoolId yok) → satırlar FullName/Xp ile tanınır.
 /// </summary>
@@ -49,11 +51,11 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         await ctx.SaveChangesAsync();
 
         ctx.StudentPoints.AddRange(
-            new StudentPoint { StudentId = a1.Id, XP = 300, Level = 3 },
-            new StudentPoint { StudentId = a2.Id, XP = 100, Level = 1 },
-            new StudentPoint { StudentId = b1.Id, XP = 500, Level = 5 },
-            new StudentPoint { StudentId = b2.Id, XP = 200, Level = 2 },
-            new StudentPoint { StudentId = n1.Id, XP = 400, Level = 4 });
+            new StudentPoint { StudentId = a1.Id, XP = 300, Level = 99 },
+            new StudentPoint { StudentId = a2.Id, XP = 100, Level = 99 },
+            new StudentPoint { StudentId = b1.Id, XP = 500, Level = 99 },
+            new StudentPoint { StudentId = b2.Id, XP = 200, Level = 99 },
+            new StudentPoint { StudentId = n1.Id, XP = 400, Level = 99 });
         await ctx.SaveChangesAsync();
 
         _authApi.GetUsersByIdsAsync(Arg.Any<IEnumerable<int>>(), Arg.Any<CancellationToken>())
@@ -83,7 +85,8 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         Names(dto).ShouldBe(new[] { "User 4", "User 6", "User 1", "User 5", "User 2", "User 3" });
         dto.Entries.Select(e => e.Rank).ShouldBe(new[] { 1, 2, 3, 4, 5, 6 });
         dto.Entries.Select(e => e.Xp).ShouldBe(new[] { 500, 400, 300, 200, 100, 0 });
-        dto.Entries.Select(e => e.Level).ShouldBe(new[] { 5, 4, 3, 2, 1, 0 });
+        // 500→1+floor(√10)=4, 400→1+floor(√8)=3, 300→3, 200→3, 100→1+floor(√2)=2, 0 (satır yok)→1
+        dto.Entries.Select(e => e.Level).ShouldBe(new[] { 4, 3, 3, 3, 2, 1 });
     }
 
     [Fact]
@@ -299,7 +302,7 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         dto.TotalCount.ShouldBe(3);
         Names(dto).ShouldBe(new[] { "User 2", "User 1", "User 3" }); // A2=100, A1=0 (Id küçük), A3=0
         dto.Entries.Select(e => e.Xp).ShouldBe(new[] { 100, 0, 0 });
-        dto.Entries.Select(e => e.Level).ShouldBe(new[] { 1, 0, 0 });
+        dto.Entries.Select(e => e.Level).ShouldBe(new[] { 2, 1, 1 });
         dto.MyRank.ShouldBe(2);
         dto.MyXp.ShouldBe(0);
     }
@@ -398,7 +401,8 @@ public class LeaderboardServiceSchoolScopeTests : IDisposable
         // Toplama yok (UNIQUE StudentId → tek satır alt sorgu)
         sql.ShouldNotContain("SUM(");
         sql.ShouldNotContain("LastUpdated");
-        // XP ve Level için birer korelasyonlu alt sorgu; dış sorgunun sayfalaması SON LIMIT/OFFSET'tir.
+        sql.ShouldNotContain("\"Level\"", customMessage: "#243: Level kolonu okunmaz");
+        // XP için korelasyonlu alt sorgu (Level SQL'de yok, #243); dış sorgunun sayfalaması SON LIMIT/OFFSET'tir.
         var whereIdx = sql.IndexOf("\"SchoolId\" = ", StringComparison.Ordinal);
         var orderIdx = sql.LastIndexOf("ORDER BY", StringComparison.Ordinal);
         var limitIdx = sql.LastIndexOf("LIMIT", StringComparison.Ordinal);

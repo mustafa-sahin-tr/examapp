@@ -401,8 +401,12 @@ public class TestSessionService : ITestSessionService
         _context.TestInstanceQuestions.Update(testInstanceQuestion);
 
         // 1. Event oluştur
+        // EventId = outbox satırının Id'si (LoginAttemptedEvent ile aynı desen, issue #243) —
+        // BadgeService bu satırı işlenmiş sayıp aynı SaveChanges'te idempotency defterine yazar.
+        var outboxId = Guid.NewGuid();
         var evt = new AnswerSubmittedEvent
         {
+            EventId = outboxId,
             UserId = user.Id,
             QuestionId = question.Id,
             SubjectId = question.SubjectId,
@@ -422,6 +426,7 @@ public class TestSessionService : ITestSessionService
         // 2. Outbox'a yaz
         var outbox = new OutboxMessage
         {
+            Id = outboxId,
             Type = OutboxEventRegistry.NameFor<AnswerSubmittedEvent>(),
             Content = JsonSerializer.Serialize(evt),
             CreatedAt = DateTime.UtcNow

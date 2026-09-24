@@ -282,6 +282,37 @@ services:
     networks:
       - exam-net
 
+  # Issue #84 / #243: second instance of the same OutboxPublisher code, pointed
+  # at auth-api's "auth_db" database. auth-api writes its own outbox events
+  # (e.g. account/notification events) to this DB; this relay publishes them
+  # to RabbitMQ. Same image as exam-outbox-publisher (see
+  # docker-compose.prod.images.yml); only the connection string differs.
+  identity-outbox-publisher:
+    build:
+      context: ..
+      dockerfile: deploy/dockerfiles/dotnet-worker.Dockerfile
+      args:
+        PROJECT_PATH: Services/OutboxPublisher/OutboxPublisherService.csproj
+        APP_DLL: OutboxPublisherService.dll
+    container_name: identity-outbox-publisher
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=auth_db;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASS}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      # auth-api applies the auth_db migrations (OutboxMessages table).
+      auth-api:
+        condition: service_started
+    networks:
+      - exam-net
+
   # Issue #225: third instance of the same OutboxPublisher code, pointed at
   # BadgeService's "badge" DB. BadgeService writes StudentPointsChangedEvent to
   # its own OutboxMessages table; this relay publishes it to RabbitMQ for

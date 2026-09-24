@@ -63,8 +63,7 @@ public class StudentControllerRegisterSchoolLockTests : IDisposable
             _cache,
             Options.Create(new KeycloakSettings()),
             _keycloak,
-            Substitute.For<IBackgroundJobClient>(),
-            new StudentResetJob(ctx, Substitute.For<IBadgeResetApiClient>()),
+            Substitute.For<IStudentResetScheduler>(),
             Substitute.For<ILoginEventService>(),
             Substitute.For<ILogger<StudentController>>());
 

@@ -1,0 +1,133 @@
+.ssd-dialog {
+  padding: 20px 24px 16px;
+  background: var(--ms-surface-weak);
+  color: var(--ms-text);
+  font-family: var(--paragraphFontFamily);
+}
+
+.ssd-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  h2 {
+    margin: 0;
+    padding: 0;
+    font-family: var(--mainFontFamily);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ms-text-strong);
+  }
+}
+
+.ssd-header__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ssd-icon {
+  flex-shrink: 0;
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+  color: var(--primaryColor);
+}
+
+.ssd-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssd-content {
+  padding: 0;
+  margin: 0;
+}
+
+.ssd-current {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--ms-text-medium);
+}
+
+.ssd-effects-title {
+  margin: 8px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ms-text-strong);
+}
+
+.ssd-effects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ms-text);
+  }
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--ms-text-medium);
+  }
+}
+
+.ssd-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-danger-border);
+  background: var(--ms-danger-surface-weak);
+  color: var(--ms-danger-text);
+  font-size: 13px;
+  line-height: 1.5;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.ssd-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 0 0;
+  margin: 0;
+  border-top: 1px solid var(--ms-border-weak);
+}
+
+.ssd-primary {
+  background: var(--ms-action-background);
+  color: var(--ms-action-text-inverse);
+
+  &:hover:not(:disabled) {
+    background: var(--ms-action-background-hover);
+  }
+}
+
+.ssd-spinner {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}

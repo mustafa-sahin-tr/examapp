@@ -3,13 +3,15 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, ParamMap, Params, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatPaginator } from '@angular/material/paginator';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { AdminResetPasswordDialogComponent } from '../../../shared/components/admin-reset-password-dialog/admin-reset-password-dialog.component';
 import { AdminAccountStatusDialogComponent } from '../../../shared/components/admin-account-status-dialog/admin-account-status-dialog.component';
+import { AdminStudentSchoolDialogComponent } from '../../../shared/components/admin-student-school-dialog/admin-student-school-dialog.component';
+import { SchoolService } from '../../../services/school.service';
 
 import { AdminStudentsComponent } from './admin-students.component';
 import { AdminService } from '../../../services/admin.service';
@@ -32,6 +34,17 @@ describe('AdminStudentsComponent', () => {
   const schools: School[] = [
     { id: 5, name: 'Ankara Lisesi', provinceId: null, provinceName: null, districtId: null, districtName: null, addressLine: null },
   ];
+
+  /** Issue #277: okul değişikliği dialog'unda seçilecek hedef okul. */
+  const izmir: School = {
+    id: 8,
+    name: 'İzmir Lisesi',
+    provinceId: null,
+    provinceName: null,
+    districtId: null,
+    districtName: null,
+    addressLine: null,
+  };
 
   function student(overrides: Partial<AdminStudentListItem> = {}): AdminStudentListItem {
     return {
@@ -66,6 +79,7 @@ describe('AdminStudentsComponent', () => {
       'getSchools',
       'resetPassword',
       'setAccountStatus',
+      'changeStudentSchool',
     ]);
     adminService.getSchools.and.returnValue(of(schools));
     adminService.getStudents.and.returnValue(of(paged([student()], 45)));
@@ -73,6 +87,7 @@ describe('AdminStudentsComponent', () => {
 
     const providers: (Provider | EnvironmentProviders)[] = [
       { provide: AdminService, useValue: adminService },
+      { provide: SchoolService, useValue: { getSchools: () => of([...schools, izmir]) } },
       provideRouter([]),
       provideNoopAnimations(),
       { provide: ActivatedRoute, useValue: { queryParamMap: queryParams$.asObservable(), snapshot: {} } },
@@ -653,5 +668,112 @@ describe('AdminStudentsComponent', () => {
     expect(adminService.setAccountStatus).toHaveBeenCalledOnceWith('student', 7, false);
     expect(adminService.getStudents).toHaveBeenCalledTimes(1);
     expect(cellTexts('accountStatus')).toEqual([adminTr.students.account.inactive]);
+  });
+  // ── Okul değişikliği (issue #277 madde 8) ─────────────────────────────────
+
+  function schoolButtons(): HTMLButtonElement[] {
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button[data-testid="change-school"]'));
+  }
+
+  /** Açık dialog'da okul seçer (seçim bileşeninin kendi testi ayrı; burada sayfa entegrasyonu doğrulanır). */
+  async function openSchoolDialogAndPick(school: School): Promise<AdminStudentSchoolDialogComponent> {
+    schoolButtons()[0].click();
+    await settle();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const instance = dialog.openDialogs[0].componentInstance as AdminStudentSchoolDialogComponent;
+    instance.selectedSchoolId.set(school.id);
+    instance.onSchoolSelected(school);
+    await settle();
+    return instance;
+  }
+
+  it('changeSchool_OpensDialogWithCurrentSchoolAndEffects_NoRequestYet', async () => {
+    configure();
+    create();
+    const dialog = fixture.debugElement.injector.get(MatDialog);
+    const openSpy = spyOn(dialog, 'open').and.callThrough();
+
+    expect(schoolButtons().length).toBe(1);
+    expect(schoolButtons()[0].getAttribute('aria-label')).toContain('Ali Veli');
+    schoolButtons()[0].click();
+    await settle();
+
+    expect(openSpy.calls.mostRecent().args[0]).toBe(AdminStudentSchoolDialogComponent);
+    const config = openSpy.calls.mostRecent().args[1];
+    expect(config?.data).toEqual({ id: 7, displayName: 'Ali Veli', currentSchoolId: 5, currentSchoolName: 'Ankara Lisesi' });
+    expect(config?.disableClose).toBeTrue();
+    expect(overlay().textContent).toContain(adminTr.studentSchool.effectAssignments);
+    expect(overlay().textContent).toContain(adminTr.studentSchool.effectOldTeachers);
+    expect(overlayButton('confirm').disabled).toBeTrue();
+    expect(adminService.changeStudentSchool).not.toHaveBeenCalled();
+  });
+
+  it('changeSchool_Success_UpdatesRowInstantlyWithoutReload', async () => {
+    configure();
+    adminService.changeStudentSchool.and.returnValue(
+      of({ studentId: 7, schoolId: 8, previousSchoolId: 5, changed: true }),
+    );
+    create();
+    adminService.getStudents.calls.reset();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(adminService.changeStudentSchool).toHaveBeenCalledOnceWith(7, 8);
+    expect(cellTexts('school')).toEqual(['İzmir Lisesi']);
+    expect(component.rows()[0].schoolId).toBe(8);
+    expect(adminService.getStudents).not.toHaveBeenCalled();
+    expect(component.schoolDialogOpen()).toBeFalse();
+  });
+
+  it('changeSchool_Conflict409_ShowsMessageAndReloadButtonReloadsList', async () => {
+    configure();
+    adminService.changeStudentSchool.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'Okul eşzamanlı değiştirildi.' } })),
+    );
+    create();
+    adminService.getStudents.calls.reset();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(overlay().querySelector('[data-testid="school-error"]')?.textContent).toContain('Okul eşzamanlı değiştirildi.');
+    expect(overlayButton('confirm')).toBeNull();
+    expect(adminService.getStudents).not.toHaveBeenCalled();
+
+    overlayButton('reload').click();
+    await settle();
+
+    expect(adminService.changeStudentSchool).toHaveBeenCalledTimes(1);
+    expect(adminService.getStudents).toHaveBeenCalledTimes(1);
+    expect(component.schoolDialogOpen()).toBeFalse();
+  });
+
+  it('changeSchool_RateLimited429_ShowsRetryAfterSecondsAndAllowsRetry', async () => {
+    configure();
+    adminService.changeStudentSchool.and.returnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 429,
+            error: 'Too many requests',
+            headers: new HttpHeaders({ 'Retry-After': '42' }),
+          }),
+      ),
+    );
+    create();
+
+    await openSchoolDialogAndPick(izmir);
+    overlayButton('confirm').click();
+    await settle();
+
+    expect(overlay().querySelector('[data-testid="school-error"]')?.textContent).toContain(
+      adminTr.studentSchool.errors.rateLimitedSeconds.replace('{{seconds}}', '42'),
+    );
+    expect(overlayButton('confirm').disabled).toBeFalse();
+    expect(overlayButton('confirm').textContent).toContain(adminTr.studentSchool.retry);
+    expect(cellTexts('school')).toEqual(['Ankara Lisesi']);
   });
 });

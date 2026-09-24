@@ -17,7 +17,15 @@
     "studentNumber": "Öğrenci Numarası",
     "schoolName": "Okul Adı",
     "grade": "Sınıf",
-    "gradePlaceholder": "Seçiniz"
+    "gradePlaceholder": "Seçiniz",
+    "school": "Okul",
+    "gradeRequired": "Sınıf seçimi zorunludur.",
+    "studentSchoolHint": "İsteğe bağlı. Seçtiğiniz okul kaydınıza kilitlenir; sonradan yalnızca yönetici değiştirebilir.",
+    "teacherMode": "Çalışma şekliniz",
+    "teacherAffiliated": "Bir okula bağlıyım",
+    "teacherIndependent": "Bağımsız özel ders veriyorum",
+    "teacherIndependentHint": "Bağımsız öğretmen hesapları yönetici onayından sonra etkinleşir.",
+    "teacherSchoolHint": "İsteğe bağlı. Okul bağlantınız yönetici onayından sonra etkinleşir."
   },
   "account": {
     "title": "Kayıt Ol",
@@ -54,7 +62,10 @@
     "error": "Kayıt başarısız! Lütfen tekrar deneyin.",
     "teacherAccountPending": "Öğretmen kaydınız alındı; hesabınız yönetici onayı bekliyor.",
     "schoolApprovalPendingTitle": "Okul bağlantınız yönetici onayı bekliyor",
-    "schoolApprovalPendingBody": "Hesabınız oluşturuldu. Okul bağlantınız bir yönetici tarafından onaylanana kadar okulun öğrencilerini ve sınıflarını göremezsiniz."
+    "schoolApprovalPendingBody": "Hesabınız oluşturuldu. Okul bağlantınız bir yönetici tarafından onaylanana kadar okulun öğrencilerini ve sınıflarını göremezsiniz.",
+    "schoolRequestCooldown": "Reddedilen okul talebinizden sonra bekleme süresi henüz dolmadı.",
+    "retryAfterHours": "Yeni bir okul talebini yaklaşık {{hours}} saat {{minutes}} dakika sonra gönderebilirsiniz.",
+    "retryAfterMinutes": "Yeni bir okul talebini yaklaşık {{minutes}} dakika sonra gönderebilirsiniz."
   },
   "student": {
     "title": "Öğrenci Kaydı",

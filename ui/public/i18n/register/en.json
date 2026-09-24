@@ -17,7 +17,15 @@
     "studentNumber": "Student Number",
     "schoolName": "School Name",
     "grade": "Grade",
-    "gradePlaceholder": "Select"
+    "gradePlaceholder": "Select",
+    "school": "School",
+    "gradeRequired": "Grade is required.",
+    "studentSchoolHint": "Optional. The school you pick is locked to your account; only an administrator can change it later.",
+    "teacherMode": "How do you work?",
+    "teacherAffiliated": "I work at a school",
+    "teacherIndependent": "I am an independent private tutor",
+    "teacherIndependentHint": "Independent tutor accounts become active after administrator approval.",
+    "teacherSchoolHint": "Optional. Your school link becomes active after administrator approval."
   },
   "account": {
     "title": "Sign Up",
@@ -54,7 +62,10 @@
     "error": "Registration failed. Please try again.",
     "teacherAccountPending": "Your teacher registration was received; your account is awaiting administrator approval.",
     "schoolApprovalPendingTitle": "Your school membership is awaiting administrator approval",
-    "schoolApprovalPendingBody": "Your account has been created. Until an administrator approves your school membership, you cannot see the school’s students or classes."
+    "schoolApprovalPendingBody": "Your account has been created. Until an administrator approves your school membership, you cannot see the school’s students or classes.",
+    "schoolRequestCooldown": "The waiting period after your rejected school request has not ended yet.",
+    "retryAfterHours": "You can send a new school request in about {{hours}} hours {{minutes}} minutes.",
+    "retryAfterMinutes": "You can send a new school request in about {{minutes}} minutes."
   },
   "student": {
     "title": "Student Registration",

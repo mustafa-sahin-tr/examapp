@@ -24,6 +24,7 @@ import { AdminStudentListItem, AdminStudentListQuery } from '../models/admin-stu
 import { AdminSchoolPagedQuery } from '../models/admin-paged-query.model';
 import { AdminPasswordResetResponse, AdminPasswordResetTarget } from '../models/admin-password-reset.model';
 import { AdminAccountStatusResponse, AdminAccountTarget } from '../models/admin-account-status.model';
+import { AdminStudentSchoolRequest, AdminStudentSchoolResponse } from '../models/admin-student-school.model';
 import { Paged } from '../models/test-instance';
 
 interface UpsertSubject {
@@ -214,6 +215,15 @@ export class AdminService {
   setAccountStatus(target: AdminAccountTarget, id: number, enabled: boolean): Observable<AdminAccountStatusResponse> {
     const segment = target === 'teacher' ? 'teachers' : 'students';
     return this.http.patch<AdminAccountStatusResponse>(`${this.baseUrl}/${segment}/${id}/account-status`, { enabled });
+  }
+
+  /**
+   * Issue #277 (madde 8) — öğrencinin (Student.Id) okulunu değiştirir; öğrenci okulu kayıttan sonra kilitlidir (#259).
+   * Hatalar: 400, 403, 404, 409 (eşzamanlı değişiklik → listeyi yenileyip tekrar dene), 429 (`Retry-After`), 502.
+   */
+  changeStudentSchool(studentId: number, schoolId: number): Observable<AdminStudentSchoolResponse> {
+    const body: AdminStudentSchoolRequest = { schoolId };
+    return this.http.put<AdminStudentSchoolResponse>(`${this.baseUrl}/students/${studentId}/school`, body);
   }
 
   // ---- classifier cache ----

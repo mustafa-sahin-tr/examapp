@@ -1,0 +1,52 @@
+:host {
+  display: block;
+}
+
+.ss__field {
+  width: 100%;
+}
+
+.ss__state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--ms-border-weak);
+  color: var(--ms-text-medium);
+  font-family: var(--paragraphFontFamily);
+  font-size: 13px;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &--error {
+    border-color: var(--ms-danger-border);
+    background: var(--ms-danger-surface-weak);
+    color: var(--ms-danger-text);
+  }
+}
+
+.ss__name {
+  display: block;
+}
+
+.ss__sub {
+  display: block;
+  font-size: 12px;
+  color: var(--ms-text-medium);
+}
+
+.ss__warn {
+  color: var(--ms-danger-text);
+}
+
+.ss__spinner {
+  margin-right: 12px;
+}

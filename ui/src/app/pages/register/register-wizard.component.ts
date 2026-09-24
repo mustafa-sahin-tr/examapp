@@ -1,5 +1,5 @@
 import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { combineLatest, take } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -10,6 +10,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
@@ -19,7 +20,13 @@ import { TeacherService } from '../../services/teacher.service';
 import { ParentService } from '../../services/parent.service';
 import { GradesService } from '../../services/grades.service';
 import { Grade } from '../../models/student';
-import { TeacherRegistrationError } from '../../models/teacher-registration.model';
+import {
+  RegisterTeacherRequest,
+  TeacherRegistrationError,
+  TeacherSchoolRequestCooldownError,
+} from '../../models/teacher-registration.model';
+import { RegisterStudentRequest } from '../../models/student-registration.model';
+import { SchoolSelectComponent } from '../../shared/components/school-select/school-select.component';
 import { REGISTER_SCOPE } from './register-scope';
 import { TEACHER_APPROVAL_PENDING_URL } from '../../models/teacher-approval.model';
 
@@ -48,9 +55,11 @@ interface RegistrationResult {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatRadioModule,
     MatSelectModule,
     MatSnackBarModule,
     TranslocoDirective,
+    SchoolSelectComponent,
   ],
   providers: [provideTranslocoScope(REGISTER_SCOPE)],
   templateUrl: './register-wizard.component.html',
@@ -77,15 +86,38 @@ export class RegisterWizardComponent implements OnInit {
   readonly schoolApprovalPending = signal(false);
   /** Issue #234: 409 gibi kullanıcıya gösterilecek backend mesajı; form kullanılabilir kalır. */
   readonly submitError = signal<string | null>(null);
-
-  studentForm = this.fb.group({
-    studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
-    schoolName: ['', [Validators.required, Validators.maxLength(100)]],
-    gradeId: [null as number | null],
+  /**
+   * Issue #277 (madde 2): reddedilen okul talebinden sonra bekleme (429). Kalan süre saniye cinsinden; şablon saat/dakika
+   * olarak gösterir. null → bekleme yok.
+   */
+  readonly retryAfterSeconds = signal<number | null>(null);
+  readonly retryAfter = computed(() => {
+    const seconds = this.retryAfterSeconds();
+    if (seconds == null) return null;
+    const totalMinutes = Math.max(1, Math.ceil(seconds / 60));
+    return { hours: Math.floor(totalMinutes / 60), minutes: totalMinutes % 60 };
   });
 
+  /**
+   * Issue #277 (madde 6): backend yalnız `studentNumber`, `schoolId`, `gradeId` okur (RegisterStudentDto); okul serbest
+   * metin değil, listeden seçilir. İlk atanan okul kilitlenir (#259).
+   */
+  studentForm = this.fb.group({
+    studentNumber: ['', [Validators.required, Validators.maxLength(50)]],
+    schoolId: [null as number | null],
+    gradeId: [null as number | null, [Validators.required]],
+  });
+
+  /** Issue #277 (madde 6): RegisterTeacherDto `{ schoolId, isIndependentTutor }` — auth-ui complete-profile ile aynı. */
   teacherForm = this.fb.group({
-    schoolName: ['', [Validators.required, Validators.maxLength(100)]],
+    /** false = bir okula bağlı (varsayılan), true = bağımsız özel ders öğretmeni. */
+    isIndependentTutor: [false],
+    schoolId: [null as number | null],
+  });
+
+  /** Şablonda okul alanını gizlemek için; form kontrolünün canlı değeri. */
+  readonly isIndependentTutor = toSignal(this.teacherForm.controls.isIndependentTutor.valueChanges, {
+    initialValue: this.teacherForm.controls.isIndependentTutor.value,
   });
 
   ngOnInit(): void {
@@ -111,7 +143,12 @@ export class RegisterWizardComponent implements OnInit {
 
   back() {
     this.role.set(null);
+    this.clearSubmitError();
+  }
+
+  private clearSubmitError(): void {
     this.submitError.set(null);
+    this.retryAfterSeconds.set(null);
   }
 
   /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
@@ -132,17 +169,20 @@ export class RegisterWizardComponent implements OnInit {
 
     let request$;
     if (role === 'student') {
-      if (this.studentForm.invalid) return;
-      request$ = this.studentService.register(this.studentForm.value);
+      if (this.studentForm.invalid) {
+        this.studentForm.markAllAsTouched();
+        return;
+      }
+      request$ = this.studentService.register(this.buildStudentRequest());
     } else if (role === 'teacher') {
       if (this.teacherForm.invalid) return;
-      request$ = this.teacherService.register(this.teacherForm.value);
+      request$ = this.teacherService.register(this.buildTeacherRequest());
     } else {
       request$ = this.parentService.register();
     }
 
     this.isSubmitting.set(true);
-    this.submitError.set(null);
+    this.clearSubmitError();
     request$.subscribe({
       next: (val: RegistrationResult) => {
         this.isSubmitting.set(false);
@@ -193,6 +233,13 @@ export class RegisterWizardComponent implements OnInit {
       },
       error: (err: unknown) => {
         this.isSubmitting.set(false);
+        // Issue #277 (madde 2): reddedilen okul talebinden sonra 24 saatlik bekleme → 429; mesaj + kalan süre gösterilir.
+        if (err instanceof HttpErrorResponse && err.status === 429) {
+          const body = (err.error && typeof err.error === 'object' ? err.error : null) as TeacherSchoolRequestCooldownError | null;
+          this.submitError.set(body?.message?.trim() || null);
+          this.retryAfterSeconds.set(retryAfterSecondsOf(err, body));
+          return;
+        }
         // Issue #234: mevcut kaydın okulunu/bağımsızlığını değiştirme denemesi → 409, backend mesajı gösterilir.
         if (err instanceof HttpErrorResponse && err.status === 409) {
           const body = err.error as TeacherRegistrationError | null;
@@ -204,6 +251,25 @@ export class RegisterWizardComponent implements OnInit {
         console.error('Register wizard error:', err);
       },
     });
+  }
+
+  private buildStudentRequest(): RegisterStudentRequest {
+    const { studentNumber, schoolId, gradeId } = this.studentForm.getRawValue();
+    return {
+      studentNumber: (studentNumber ?? '').trim(),
+      schoolId: schoolId ?? null,
+      gradeId: gradeId as number,
+    };
+  }
+
+  private buildTeacherRequest(): RegisterTeacherRequest {
+    const { schoolId, isIndependentTutor } = this.teacherForm.getRawValue();
+    const independent = isIndependentTutor === true;
+    return {
+      // Bağımsız seçildiyse önceden seçilmiş okul gönderilmez.
+      schoolId: independent ? null : (schoolId ?? null),
+      isIndependentTutor: independent,
+    };
   }
 
   /**
@@ -228,4 +294,23 @@ export class RegisterWizardComponent implements OnInit {
         this.snackBar.open(message, action, { duration: 3000 });
       });
   }
+}
+
+/**
+ * 429 kalan süresi (saniye): gövdedeki `retryAfterSeconds` → `Retry-After` başlığı → `retryAfterUtc`. Hiçbiri yoksa null
+ * (şablon yalnız mesajı gösterir).
+ */
+export function retryAfterSecondsOf(
+  err: HttpErrorResponse,
+  body: TeacherSchoolRequestCooldownError | null,
+  now: number = Date.now(),
+): number | null {
+  if (typeof body?.retryAfterSeconds === 'number' && body.retryAfterSeconds > 0) return body.retryAfterSeconds;
+  const header = Number.parseInt(err.headers?.get('Retry-After') ?? '', 10);
+  if (Number.isFinite(header) && header > 0) return header;
+  if (body?.retryAfterUtc) {
+    const until = Date.parse(body.retryAfterUtc);
+    if (Number.isFinite(until) && until > now) return Math.ceil((until - now) / 1000);
+  }
+  return null;
 }

@@ -1,4 +1,5 @@
 using ExamApp.Api.Data;
+using ExamApp.Api.Helpers;
 using ExamApp.Api.Services.Interfaces;
 using ExamApp.Foundation.Localization;
 using Microsoft.AspNetCore.Authorization;
@@ -39,7 +40,29 @@ namespace ExamApp.Api.Controllers
                 return UserNotResolved(new { message = _localizer["auth.userNotResolved"].Value });
             }
 
+            // issue #277 (madde 4): rol değişiyor mu — profil rolü (auth-api Users.Role) ile karşılaştırılır, Keycloak çağrısından
+            // ÖNCE (aşağıda user.Role üzerine yazılıyor).
+            var roleChange = new UserRoleChangeRequest(user.KeycloakId, user.Id, user.Role);
+            var publishRoleChange = UserRoleChangeOutbox.IsChange(roleChange, UserRole.Parent);
+
             await _keycloakService.SetRoleAsync(user.KeycloakId, UserRole.Parent);
+
+            // issue #277 (madde 4): Parent satırı + UserRoleChangedEvent outbox satırı TEK SaveChanges'te (atomik; EF bunu
+            // execution strategy altında kendi transaction'ında çalıştırır, değişiklikler commit'e kadar kabul edilmediği için
+            // retry güvenli). Veli akışında sıra bilinçli olarak Keycloak → DB (mevcut akış): SetRoleAsync başarısız olursa
+            // hiçbir şey yazılmaz; DB yazımı başarısız olursa Keycloak rolü atanmış ama event yok → auth-api rolü bir sonraki
+            // login'de Keycloak'tan senkronlar (#277 öncesi davranış). Satır eskiden token yenilemeden SONRA yazılıyordu;
+            // geçersiz refresh token'da rol atanmış ama satır/event yazılmamış kalmasın diye öne alındı.
+            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == user.Id);
+            if (parent == null)
+            {
+                parent = new Parent { UserId = user.Id };
+                _context.Parents.Add(parent);
+            }
+            if (publishRoleChange)
+                _context.OutboxMessages.Add(UserRoleChangeOutbox.Create(roleChange, UserRole.Parent, Guid.NewGuid(), DateTime.UtcNow));
+            if (_context.ChangeTracker.HasChanges())
+                await _context.SaveChangesAsync();
 
             // Rol Keycloak'ta güncellendi; GetAuthenticatedUserAsync yukarıda profili eski
             // (Role boş) haliyle Redis'e cache'lemiş olabilir. Cache'i güncel rolle tazele
@@ -53,14 +76,6 @@ namespace ExamApp.Api.Controllers
                 return Unauthorized(_localizer["auth.noRefreshToken"].Value);
 
             var tokenData = await _keycloakService.RefreshTokenAsync(refreshToken);
-
-            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == user.Id);
-            if (parent == null)
-            {
-                parent = new Parent { UserId = user.Id };
-                _context.Parents.Add(parent);
-                await _context.SaveChangesAsync();
-            }
 
             if (!string.IsNullOrEmpty(tokenData.RefreshToken))
             {

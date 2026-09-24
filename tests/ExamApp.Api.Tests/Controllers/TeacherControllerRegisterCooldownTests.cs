@@ -60,7 +60,7 @@ public class TeacherControllerRegisterCooldownTests
     public async Task Cooldown_maps_to_429_with_retry_after_header_and_body_and_skips_keycloak()
     {
         var retryAt = DateTime.UtcNow.AddHours(3);
-        _teacherService.Save(42, Arg.Any<RegisterTeacherDto>()).Returns(new TeacherRegistrationResultDto
+        _teacherService.Save(42, Arg.Any<RegisterTeacherDto>(), Arg.Any<ExamApp.Api.Helpers.UserRoleChangeRequest?>()).Returns(new TeacherRegistrationResultDto
         {
             Success = false,
             TooManyRequests = true,
@@ -89,7 +89,7 @@ public class TeacherControllerRegisterCooldownTests
     [Fact]
     public async Task Retry_after_is_at_least_one_second_even_if_the_moment_has_just_passed()
     {
-        _teacherService.Save(42, Arg.Any<RegisterTeacherDto>()).Returns(new TeacherRegistrationResultDto
+        _teacherService.Save(42, Arg.Any<RegisterTeacherDto>(), Arg.Any<ExamApp.Api.Helpers.UserRoleChangeRequest?>()).Returns(new TeacherRegistrationResultDto
         {
             Success = false, TooManyRequests = true, RetryAfterUtc = DateTime.UtcNow.AddSeconds(-5), Message = "m"
         });
@@ -104,7 +104,7 @@ public class TeacherControllerRegisterCooldownTests
     [Fact]
     public async Task Conflict_still_maps_to_409()
     {
-        _teacherService.Save(42, Arg.Any<RegisterTeacherDto>()).Returns(new TeacherRegistrationResultDto
+        _teacherService.Save(42, Arg.Any<RegisterTeacherDto>(), Arg.Any<ExamApp.Api.Helpers.UserRoleChangeRequest?>()).Returns(new TeacherRegistrationResultDto
         {
             Success = false, Conflict = true, Message = "c"
         });

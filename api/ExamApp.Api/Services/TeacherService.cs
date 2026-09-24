@@ -100,7 +100,7 @@ public class TeacherService : ITeacherService
             .FirstOrDefaultAsync();
     }
 
-    public async Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto)
+    public async Task<TeacherRegistrationResultDto> Save(int userId, RegisterTeacherDto dto, UserRoleChangeRequest? roleChange = null)
     {
         // issue #277 (madde 1): okul adı, talep bildirimi (TeacherSchoolRequestSubmittedEvent) metni için aynı sorguda okunur.
         string? requestedSchoolName = null;
@@ -284,6 +284,14 @@ public class TeacherService : ITeacherService
         var schoolRequestEventId = Guid.NewGuid();
         var schoolRequestSubmittedAt = DateTime.UtcNow;
 
+        // issue #277 (madde 4): rol Teacher'a değişiyorsa UserRoleChangedEvent bu kaydın transaction'ında yazılır (exam DB'de
+        // yerel Users tablosu yok). Sıra: DB commit → controller Keycloak SetRoleAsync. SetRole başarısız olursa istek 500
+        // döner ama event yayınlanmış olur; auth-api bir sonraki login'de rolü Keycloak'tan yeniden senkronlar ve kullanıcının
+        // register tekrarı (profil rolü hâlâ eski → yeni event) Keycloak'ı da düzeltir. EventId/an lambda dışında sabit.
+        var publishRoleChange = UserRoleChangeOutbox.IsChange(roleChange, UserRole.Teacher);
+        var roleChangeEventId = Guid.NewGuid();
+        var roleChangedAt = DateTime.UtcNow;
+
         // issue #277 takip (retry güvenliği): execution strategy (Aspire Npgsql retry-on-failure) geçici bir hatada —
         // özellikle SaveChanges'ler başarılı olup COMMIT düştüğünde — lambda'yı baştan çalıştırır. Önceki denemenin
         // SaveChanges'i değişiklikleri "kabul etmiş" olur (Unchanged + DB'de geri alınmış Id), bu yüzden eskiden retry'da
@@ -380,7 +388,11 @@ public class TeacherService : ITeacherService
                     });
                 }
 
-                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || shouldPublishSchoolRequestEvent)
+                if (publishRoleChange)
+                    _context.OutboxMessages.Add(UserRoleChangeOutbox.Create(roleChange!, UserRole.Teacher, roleChangeEventId, roleChangedAt));
+
+                if (shouldPublishIndependentTeacherEvent || shouldPublishApplicationSubmittedEvent || shouldPublishSchoolRequestEvent
+                    || publishRoleChange)
                 {
                     await _context.SaveChangesAsync();
                 }

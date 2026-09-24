@@ -429,6 +429,17 @@
         "customLoaded": "Your saved custom theme was loaded and can be edited!",
         "presetLoaded": "Your saved preset theme was loaded and can be edited!"
       }
+    },
+    "schoolSelect": {
+      "label": "School",
+      "placeholder": "Type a school name, district or province",
+      "loading": "Loading schools...",
+      "loadFailed": "Could not load the school list.",
+      "retry": "Try again",
+      "empty": "No schools are registered.",
+      "noMatch": "No matching school",
+      "pickFromList": "Pick a school from the list; free text is not saved.",
+      "clear": "Clear school selection"
     }
   },
   "dashboard": {

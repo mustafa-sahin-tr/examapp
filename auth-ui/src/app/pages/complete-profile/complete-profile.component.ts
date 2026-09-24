@@ -9,6 +9,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../services/auth.service';
 import {
   Grade,
+  RegisterCooldownErrorBody,
   RegisterErrorBody,
   RegisterProfileResponse,
   RegisterTeacherResponse,
@@ -197,6 +198,11 @@ export class CompleteProfileComponent implements OnInit {
       },
       error: (err: HttpErrorResponse) => {
         this.isLoading.set(false);
+        // Issue #277: reddedilen okul talebinden sonra 24 saatlik bekleme → 429; sunucu mesajı + kalan süre, formda kal.
+        if (role === 'Teacher' && err?.status === 429) {
+          this.submitError.set(cooldownMessage(err));
+          return;
+        }
         // Issue #234: öğretmen ucunda 409 = mevcut kaydın okulu/bağımsızlığı değiştirilemez; mesajı göster, yönlendirme.
         if (role === 'Teacher' && err?.status === 409) {
           const body = err.error as RegisterErrorBody | null;
@@ -289,4 +295,29 @@ export class CompleteProfileComponent implements OnInit {
       }
     }
   }
+}
+
+/** 429 (okul talebi bekleme süresi) için kullanıcı metni: sunucu mesajı (yoksa varsayılan) + kalan süre. */
+export function cooldownMessage(err: HttpErrorResponse, now: number = Date.now()): string {
+  const body = (err.error && typeof err.error === 'object' ? err.error : null) as RegisterCooldownErrorBody | null;
+  const message =
+    body?.message?.trim() || 'Reddedilen okul talebinizden sonra bekleme süresi henüz dolmadı.';
+  let seconds: number | null = null;
+  if (typeof body?.retryAfterSeconds === 'number' && body.retryAfterSeconds > 0) {
+    seconds = body.retryAfterSeconds;
+  } else {
+    const header = Number.parseInt(err.headers?.get('Retry-After') ?? '', 10);
+    if (Number.isFinite(header) && header > 0) {
+      seconds = header;
+    } else if (body?.retryAfterUtc) {
+      const until = Date.parse(body.retryAfterUtc);
+      if (Number.isFinite(until) && until > now) seconds = Math.ceil((until - now) / 1000);
+    }
+  }
+  if (seconds == null) return message;
+  const totalMinutes = Math.max(1, Math.ceil(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const remaining = hours > 0 ? `${hours} saat ${minutes} dakika` : `${minutes} dakika`;
+  return `${message} Yeni bir okul talebini yaklaşık ${remaining} sonra gönderebilirsin.`;
 }

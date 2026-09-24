@@ -34,6 +34,11 @@ export interface RegisterTeacherResponse extends RegisterProfileResponse {
   requestedSchoolId: number | null;
   /** true → okul bağlantısı yönetici onayı bekliyor. */
   schoolApprovalPending: boolean;
+  /**
+   * Issue #287: öğretmen hesabı onaylı mı. Yeni kayıtta her zaman false — öğretmen özellikleri yönetici onayına
+   * kadar kapalıdır; kullanıcı ana uygulamadaki başvuru durumu sayfasına yönlendirilir.
+   */
+  teacherAccountApproved: boolean;
 }
 
 /** 400 / 409 hata gövdesi (409 → teacher.registrationChangeNotAllowed, localize). */

@@ -1,0 +1,103 @@
+<section class="tap" *transloco="let t; prefix: 'teacher-approval'">
+  <header class="tap__head">
+    <h1>{{ t('title') }}</h1>
+    <p>{{ t('subtitle') }}</p>
+  </header>
+
+  @if (showSpinner()) {
+    <div class="tap__state" aria-busy="true" aria-live="polite" data-testid="loading">
+      <mat-spinner diameter="36"></mat-spinner>
+      <span>{{ t('loading') }}</span>
+    </div>
+  } @else if (error() && !loaded()) {
+    <div class="tap__state tap__state--error" role="alert" data-testid="error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ t('loadFailed') }}</span>
+      <button mat-stroked-button type="button" (click)="refresh()">{{ t('retry') }}</button>
+    </div>
+  } @else {
+    <mat-card class="tap__card" [class]="'tap__card--' + view()" [attr.data-view]="view()">
+      <mat-card-content>
+        @switch (view()) {
+          @case ('approved') {
+            <div class="tap__status" role="status">
+              <mat-icon class="tap__icon" aria-hidden="true">verified</mat-icon>
+              <div>
+                <h2>{{ t('approved.title') }}</h2>
+                <p>{{ t('approved.body') }}</p>
+              </div>
+            </div>
+          }
+          @case ('rejected') {
+            <div class="tap__status" role="status">
+              <mat-icon class="tap__icon" aria-hidden="true">block</mat-icon>
+              <div>
+                <h2>{{ t('rejected.title') }}</h2>
+                <p>{{ t('rejected.body') }}</p>
+                @if (rejectionReason(); as reason) {
+                  <p class="tap__reason" data-testid="rejection-reason">
+                    <strong>{{ t('rejected.reasonLabel') }}</strong> {{ reason }}
+                  </p>
+                } @else {
+                  <p class="tap__muted">{{ t('rejected.noReason') }}</p>
+                }
+                <h3>{{ t('rejected.nextTitle') }}</h3>
+                <ul class="tap__steps">
+                  <li>{{ t('rejected.stepReview') }}</li>
+                  <li>{{ t('rejected.stepContact') }}</li>
+                </ul>
+                <p class="tap__muted">{{ t('rejected.meanwhile') }}</p>
+              </div>
+            </div>
+          }
+          @case ('noRecord') {
+            <div class="tap__status" role="status">
+              <mat-icon class="tap__icon" aria-hidden="true">person_add</mat-icon>
+              <div>
+                <h2>{{ t('noRecord.title') }}</h2>
+                <p>{{ t('noRecord.body') }}</p>
+              </div>
+            </div>
+          }
+          @default {
+            <div class="tap__status" role="status">
+              <mat-icon class="tap__icon" aria-hidden="true">hourglass_top</mat-icon>
+              <div>
+                <h2>{{ t('pending.title') }}</h2>
+                <p>{{ t('pending.body') }}</p>
+                <p class="tap__muted">{{ t('pending.hint') }}</p>
+              </div>
+            </div>
+          }
+        }
+
+        @if (error() && loaded()) {
+          <p class="tap__inline-error" role="alert">{{ t('refreshFailed') }}</p>
+        }
+      </mat-card-content>
+
+      <mat-card-actions class="tap__actions">
+        @if (view() === 'approved') {
+          <button mat-flat-button color="primary" type="button" data-testid="go-dashboard" (click)="goToDashboard()">
+            {{ t('approved.cta') }}
+          </button>
+        } @else if (view() === 'noRecord') {
+          <a mat-flat-button color="primary" routerLink="/register" [queryParams]="{ role: 'teacher' }">
+            {{ t('noRecord.cta') }}
+          </a>
+        }
+        @if (view() !== 'approved') {
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="refresh"
+            (click)="refresh()"
+            [disabled]="loading()"
+          >
+            <mat-icon>sync</mat-icon> {{ loading() ? t('refreshing') : t('refresh') }}
+          </button>
+        }
+      </mat-card-actions>
+    </mat-card>
+  }
+</section>

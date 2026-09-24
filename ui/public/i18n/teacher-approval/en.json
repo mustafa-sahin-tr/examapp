@@ -1,0 +1,35 @@
+{
+  "title": "Teacher Application Status",
+  "subtitle": "Teacher features are unlocked after an administrator approves your teacher account.",
+  "loading": "Loading your application status...",
+  "loadFailed": "Your application status could not be loaded.",
+  "refreshFailed": "The status could not be refreshed. Please try again shortly.",
+  "retry": "Try again",
+  "refresh": "Refresh status",
+  "refreshing": "Refreshing...",
+  "pending": {
+    "title": "Your application is under review",
+    "body": "Your teacher registration was received and is being reviewed by an administrator. Until it is approved, exam authoring, study content, question transfer, bookings and the teacher dashboard are unavailable.",
+    "hint": "You will be notified once a decision is made; you can refresh the status on this page at any time."
+  },
+  "rejected": {
+    "title": "Your application was rejected",
+    "body": "An administrator rejected your teacher account application. Teacher features remain unavailable for this account.",
+    "reasonLabel": "Reason:",
+    "noReason": "No reason was given.",
+    "nextTitle": "What can you do?",
+    "stepReview": "Review the reason and prepare any missing or incorrect information.",
+    "stepContact": "Contact your school administrator or the platform administrator to have your application reconsidered.",
+    "meanwhile": "Meanwhile, you can keep using pages that do not require teacher features, such as settings."
+  },
+  "approved": {
+    "title": "Your account is approved",
+    "body": "Your teacher account has been approved; all teacher features are now available.",
+    "cta": "Go to the teacher dashboard"
+  },
+  "noRecord": {
+    "title": "No teacher record found",
+    "body": "Your account does not have a completed teacher record. Complete the teacher registration to continue.",
+    "cta": "Complete teacher registration"
+  }
+}

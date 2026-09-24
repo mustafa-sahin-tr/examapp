@@ -194,7 +194,7 @@
   },
   "approvals": {
     "title": "Teacher Applications",
-    "subtitle": "Independent-teacher applications and school membership requests. Until a school membership is approved, the teacher cannot see the school’s students or classes.",
+    "subtitle": "Teacher account approvals, independent-teacher applications and school membership requests. A teacher whose account is not approved cannot use teacher features; until a school membership is approved, the teacher cannot see the school’s students or classes.",
     "refresh": "Refresh",
     "loading": "Loading applications...",
     "empty": "No pending applications",
@@ -250,7 +250,13 @@
     "types": {
       "independent": "Independent",
       "school": "School: {{schoolName}}",
-      "schoolUnknown": "School #{{schoolId}}"
+      "schoolUnknown": "School #{{schoolId}}",
+      "account": "Teacher account",
+      "withAccountApproval": "{{type}} + account approval"
+    },
+    "accountApproval": {
+      "chip": "Account approval",
+      "hint": "Approving unlocks the teacher account; teacher features stay unavailable until then."
     },
     "status": {
       "pending": "Pending",

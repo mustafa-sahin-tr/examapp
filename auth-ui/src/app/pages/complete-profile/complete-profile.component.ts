@@ -17,6 +17,9 @@ import {
 
 type AppRole = 'Student' | 'Teacher' | 'Parent';
 
+/** Issue #287: ana uygulamadaki (ui) öğretmen başvuru durumu sayfası — `ui/src/app/models/teacher-approval.model.ts`. */
+export const TEACHER_APPROVAL_PENDING_URL = '/teacher-approval-pending';
+
 interface RoleOption {
   value: AppRole;
   label: string;
@@ -48,6 +51,8 @@ export class CompleteProfileComponent implements OnInit {
   readonly isLoading = signal(false);
   /** Issue #234: öğretmen kaydı tamamlandı, okul bağlantısı yönetici onayı bekliyor — yönlendirmeden önce bilgilendir. */
   readonly schoolApprovalPending = signal(false);
+  /** Issue #287: öğretmen hesabı yönetici onayı bekliyor — öğretmen özellikleri onaya kadar kapalı. */
+  readonly accountApprovalPending = signal(false);
   /** Issue #234: 409 (kayıt değişikliğine izin yok) backend mesajı; form kullanılabilir kalır. */
   readonly submitError = signal<string | null>(null);
 
@@ -109,9 +114,12 @@ export class CompleteProfileComponent implements OnInit {
     this.submitError.set(null);
   }
 
-  /** Okul onayı bilgilendirmesinden sonra öğretmen akışına devam. */
+  /**
+   * Onay bilgilendirmesinden sonra devam: hesap onayı bekleniyorsa başvuru durumu sayfası (issue #287),
+   * yalnız okul onayı bekleniyorsa öğretmen akışı.
+   */
   continueAfterPending(): void {
-    window.location.href = '/tests';
+    this.redirectTo(this.accountApprovalPending() ? TEACHER_APPROVAL_PENDING_URL : '/tests');
   }
 
   private loadGrades(): void {
@@ -170,6 +178,12 @@ export class CompleteProfileComponent implements OnInit {
       next: (res) => {
         this.isLoading.set(false);
         this.applySession(role, res);
+        if (role === 'Teacher' && 'teacherAccountApproved' in res && res.teacherAccountApproved === false) {
+          // Issue #287: yeni öğretmen hesabı yönetici onayı bekler; okul talebi varsa o da kartta belirtilir.
+          this.accountApprovalPending.set(true);
+          this.schoolApprovalPending.set(res.schoolApprovalPending === true);
+          return;
+        }
         if (role === 'Teacher' && 'schoolApprovalPending' in res && res.schoolApprovalPending) {
           // Oturum kaydedildi; kullanıcı bilgilendirme kartını görüp "Devam Et" ile ilerler.
           this.schoolApprovalPending.set(true);

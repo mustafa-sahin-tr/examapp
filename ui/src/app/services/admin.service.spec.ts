@@ -286,6 +286,7 @@ describe('AdminService.getTeacherApplication (issue #262)', () => {
       status: 'Rejected',
       rejectionReason: 'Belge eksik',
       decidedAt: '2026-09-21T08:00:00Z',
+      requiresAccountApproval: false,
     };
     let result: TeacherApplicationDetail | undefined;
 
@@ -337,6 +338,7 @@ describe('AdminService.getTeacherApplications (issue #187)', () => {
         status: 'Rejected',
         rejectionReason: 'Belge eksik',
         decidedAt: '2026-09-21T08:00:00Z',
+        requiresAccountApproval: false,
       },
     ],
   };

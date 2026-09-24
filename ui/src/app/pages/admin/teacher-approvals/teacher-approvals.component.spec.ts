@@ -69,6 +69,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
     };
 
     const label = component.typeLabel(app);
@@ -90,6 +91,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
     };
 
     const label = component.typeLabel(app);
@@ -111,6 +113,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
     };
 
     const label = component.typeLabel(app);
@@ -132,6 +135,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
     };
 
     const label = component.typeLabel(app);
@@ -153,6 +157,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
     };
 
     const schoolBased: TeacherApplicationListItem = {
@@ -166,6 +171,7 @@ describe('TeacherApprovalsComponent — Type Label (Issue #234)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
     };
 
     const independentLabel = component.typeLabel(independent);
@@ -197,6 +203,7 @@ describe('TeacherApprovalsComponent — PII hardening (issue #262)', () => {
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
       ...overrides,
     };
   }
@@ -475,6 +482,7 @@ describe('TeacherApprovalsComponent — status filter & paging (issue #187)', ()
       status: 'Pending',
       rejectionReason: null,
       decidedAt: null,
+      requiresAccountApproval: false,
       ...overrides,
     };
   }
@@ -796,5 +804,86 @@ describe('TeacherApprovalsComponent — status filter & paging (issue #187)', ()
     expect(el().querySelector('[data-testid="reject"]')).toBeNull();
     component.approve(component.applications()[0]);
     expect(adminService.approveTeacherApplication).toHaveBeenCalledTimes(2);
+  });
+});
+
+/** Issue #287: hesap onayı gerektiren başvurular — tür metni ve "Hesap onayı" etiketi. */
+describe('TeacherApprovalsComponent — account approval label (Issue #287)', () => {
+  let fixture: ComponentFixture<TeacherApprovalsComponent>;
+  let component: TeacherApprovalsComponent;
+  let adminService: jasmine.SpyObj<AdminService>;
+
+  function row(overrides: Partial<TeacherApplicationListItem> = {}): TeacherApplicationListItem {
+    return {
+      teacherId: 1,
+      fullName: 'Ali Öğretmen',
+      email: 'a***@okul.k12.tr',
+      appliedAt: '2026-09-20T10:00:00Z',
+      isIndependentTutor: false,
+      requestedSchoolId: null,
+      requestedSchoolName: null,
+      status: 'Pending',
+      rejectionReason: null,
+      decidedAt: null,
+      requiresAccountApproval: true,
+      ...overrides,
+    };
+  }
+
+  function create(items: TeacherApplicationListItem[]): void {
+    adminService = jasmine.createSpyObj('AdminService', [
+      'getTeacherApplications',
+      'approveTeacherApplication',
+      'rejectTeacherApplication',
+    ]);
+    adminService.getTeacherApplications.and.returnValue(of(paged(items)));
+    TestBed.configureTestingModule({
+      imports: [TeacherApprovalsComponent, translocoTestingModule({ langs: { 'admin/tr': adminTr } })],
+      providers: [
+        { provide: AdminService, useValue: adminService },
+        { provide: SignalRService, useValue: { teacherApplicationSubmitted$: EMPTY } },
+        { provide: MatSnackBar, useValue: jasmine.createSpyObj('MatSnackBar', ['open']) },
+        provideNoopAnimations(),
+      ],
+    });
+    fixture = TestBed.createComponent(TeacherApprovalsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  }
+
+  it('typeLabel_NoSchoolNotIndependentAccountApproval_ReturnsTeacherAccount', () => {
+    create([]);
+    expect(component.typeLabel(row())).toBe('Öğretmen hesabı');
+    expect(component.typeIcon(row())).toBe('badge');
+  });
+
+  it('typeLabel_IndependentWithAccountApproval_AppendsAccountApproval', () => {
+    create([]);
+    expect(component.typeLabel(row({ isIndependentTutor: true }))).toBe('Bağımsız + hesap onayı');
+  });
+
+  it('typeLabel_SchoolRequestWithAccountApproval_AppendsAccountApproval', () => {
+    create([]);
+    expect(
+      component.typeLabel(row({ requestedSchoolId: 5, requestedSchoolName: 'Atatürk Lisesi' })),
+    ).toBe('Okul: Atatürk Lisesi + hesap onayı');
+  });
+
+  it('typeLabel_ApprovedAccountLaterIndependentApplication_NoAccountSuffix', () => {
+    create([]);
+    expect(component.typeLabel(row({ isIndependentTutor: true, requiresAccountApproval: false }))).toBe('Bağımsız');
+  });
+
+  it('accountApprovalChip_RenderedOnlyForRowsRequiringAccountApproval', () => {
+    create([
+      row({ teacherId: 1 }),
+      row({ teacherId: 2, isIndependentTutor: true, requiresAccountApproval: false }),
+    ]);
+    const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('tr.mat-mdc-row'));
+
+    expect(rows.length).toBe(2);
+    expect(rows[0].querySelector('[data-testid="account-approval-chip"]')?.textContent?.trim()).toBe('Hesap onayı');
+    expect(rows[0].querySelector('td.mat-column-type')?.textContent).toContain('Öğretmen hesabı');
+    expect(rows[1].querySelector('[data-testid="account-approval-chip"]')).toBeNull();
   });
 });

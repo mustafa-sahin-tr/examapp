@@ -194,7 +194,7 @@
   },
   "approvals": {
     "title": "Öğretmen Başvuruları",
-    "subtitle": "Bağımsız öğretmen başvuruları ve okul bağlantısı talepleri. Okul bağlantısı onaylanana kadar öğretmen okulun öğrencilerini ve sınıflarını göremez.",
+    "subtitle": "Öğretmen hesabı onayları, bağımsız öğretmen başvuruları ve okul bağlantısı talepleri. Hesabı onaylanmamış öğretmen öğretmen özelliklerini kullanamaz; okul bağlantısı onaylanana kadar öğretmen okulun öğrencilerini ve sınıflarını göremez.",
     "refresh": "Yenile",
     "loading": "Başvurular yükleniyor...",
     "empty": "Bekleyen başvuru yok",
@@ -250,7 +250,13 @@
     "types": {
       "independent": "Bağımsız",
       "school": "Okul: {{schoolName}}",
-      "schoolUnknown": "Okul #{{schoolId}}"
+      "schoolUnknown": "Okul #{{schoolId}}",
+      "account": "Öğretmen hesabı",
+      "withAccountApproval": "{{type}} + hesap onayı"
+    },
+    "accountApproval": {
+      "chip": "Hesap onayı",
+      "hint": "Onay, öğretmenin hesabını açar; onaylanana kadar öğretmen özellikleri kapalıdır."
     },
     "status": {
       "pending": "Bekliyor",

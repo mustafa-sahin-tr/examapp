@@ -5,7 +5,7 @@
   </header>
 
   <form class="ts__filters" [formGroup]="filterForm" (ngSubmit)="search()">
-    <mat-form-field appearance="outline" class="ts__filter">
+    <mat-form-field appearance="outline" class="ts__subject" subscriptSizing="dynamic">
       <mat-label>{{ t('subject') }}</mat-label>
       <mat-select formControlName="subjectId">
         <mat-option [value]="null">{{ t('allSubjects') }}</mat-option>
@@ -18,17 +18,33 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline" class="ts__filter ts__filter--narrow">
-      <mat-label>{{ t('minPrice') }}</mat-label>
-      <input matInput type="number" min="0" formControlName="minPrice" />
-      <span matTextSuffix>₺</span>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="ts__filter ts__filter--narrow">
-      <mat-label>{{ t('maxPrice') }}</mat-label>
-      <input matInput type="number" min="0" formControlName="maxPrice" />
-      <span matTextSuffix>₺</span>
-    </mat-form-field>
+    <div class="ts__price" role="group" [attr.aria-label]="t('priceGroup')">
+      <span class="ts__price-label" aria-hidden="true">{{ t('price') }}</span>
+      <mat-form-field appearance="outline" class="ts__price-input" subscriptSizing="dynamic">
+        <input
+          matInput
+          type="number"
+          min="0"
+          inputmode="numeric"
+          formControlName="minPrice"
+          [placeholder]="t('minPlaceholder')"
+          [attr.aria-label]="t('minPriceAria')"
+        />
+      </mat-form-field>
+      <span class="ts__price-sep" aria-hidden="true">–</span>
+      <mat-form-field appearance="outline" class="ts__price-input" subscriptSizing="dynamic">
+        <input
+          matInput
+          type="number"
+          min="0"
+          inputmode="numeric"
+          formControlName="maxPrice"
+          [placeholder]="t('maxPlaceholder')"
+          [attr.aria-label]="t('maxPriceAria')"
+        />
+      </mat-form-field>
+      <span class="ts__price-suffix" aria-hidden="true">₺</span>
+    </div>
 
     <div class="ts__modes">
       <mat-checkbox formControlName="online">{{ t('online') }}</mat-checkbox>
@@ -55,7 +71,7 @@
       <button mat-stroked-button type="button" (click)="search()">{{ t('retry') }}</button>
     </div>
   } @else if (isEmpty()) {
-    <div class="ts__state">
+    <div class="ts__state" aria-live="polite">
       <mat-icon class="ts__state-icon">person_search</mat-icon>
       <span>{{ t('empty') }}</span>
     </div>

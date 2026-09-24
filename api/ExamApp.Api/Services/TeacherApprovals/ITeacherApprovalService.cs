@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ExamApp.Api.Data;
 using ExamApp.Api.Models.Dtos;
 using ExamApp.Api.Models.Dtos.Admin;
 
@@ -9,14 +10,21 @@ namespace ExamApp.Api.Services.TeacherApprovals;
 /// <summary>Admin tarafı: bağımsız öğretmen (issue #94) ve okul bağlantısı (issue #234) başvurularını listeleme / onaylama / reddetme.</summary>
 public interface ITeacherApprovalService
 {
-    /// <summary>Bekleyen başvurular, en eski önce. issue #262: e-posta MASKELİ (<c>a***@x.com</c>).</summary>
-    Task<List<PendingTeacherApplicationDto>> GetPendingApplicationsAsync(CancellationToken ct = default);
+    /// <summary>
+    /// issue #187: sayfalı başvuru listesi. <paramref name="status"/>=Pending → yalnızca bekleyenler (en eski önce);
+    /// All → bağımsız öğretmen / okul talebi olan ya da hakkında admin kararı (#157 audit) bulunan her öğretmen, her durumda:
+    /// önce bekleyenler (en eski önce), sonra karar verilmişler (en yeni karar önce). Sayfa/boyut
+    /// <c>AdminListPaging</c> ile normalize edilir. issue #262: e-posta MASKELİ (<c>a***@x.com</c>).
+    /// </summary>
+    Task<Paged<TeacherApplicationListItemDto>> ListApplicationsAsync(
+        TeacherApplicationStatusFilter status, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
-    /// issue #262: tek bekleyen başvurunun detayı — TAM e-posta ile. Başvuru yoksa / bekleyen değilse null (404).
+    /// issue #262 / #187: tek başvurunun detayı (her durumda). E-posta yalnızca Pending'de TAM, Approved/Rejected'da maskeli.
+    /// Başvuru olmayan / bilinmeyen id → null (404).
     /// Kişisel veri döndürdüğü için çağıran erişimi audit'lemelidir.
     /// </summary>
-    Task<TeacherApplicationDetailDto?> GetPendingApplicationAsync(int teacherId, CancellationToken ct = default);
+    Task<TeacherApplicationDetailDto?> GetApplicationAsync(int teacherId, CancellationToken ct = default);
 
     /// <summary>
     /// <paramref name="actorAdminKeycloakId"/> issue #157: admin karar audit'i (<c>AdminUserActionLogs</c>)

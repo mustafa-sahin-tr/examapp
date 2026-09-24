@@ -194,15 +194,23 @@
   },
   "approvals": {
     "title": "Öğretmen Başvuruları",
-    "subtitle": "Onay bekleyen bağımsız öğretmen başvuruları ve okul bağlantısı talepleri. Okul bağlantısı onaylanana kadar öğretmen okulun öğrencilerini ve sınıflarını göremez.",
+    "subtitle": "Bağımsız öğretmen başvuruları ve okul bağlantısı talepleri. Okul bağlantısı onaylanana kadar öğretmen okulun öğrencilerini ve sınıflarını göremez.",
     "refresh": "Yenile",
     "loading": "Başvurular yükleniyor...",
     "empty": "Bekleyen başvuru yok",
+    "emptyAll": "Henüz başvuru yok",
+    "filter": {
+      "label": "Başvuru filtresi",
+      "pending": "Onay bekleyenler",
+      "all": "Tümü"
+    },
     "columns": {
       "fullName": "Ad Soyad",
       "type": "Başvuru Türü",
       "email": "E-posta",
       "appliedAt": "Başvuru Tarihi",
+      "status": "Durum",
+      "decidedAt": "Karar Tarihi",
       "actions": "İşlem"
     },
     "unnamed": "İsimsiz (başvuru #{{teacherId}})",
@@ -221,7 +229,7 @@
     "emailUnavailable": "Bu başvurunun e-posta adresi şu anda alınamıyor.",
     "emailErrors": {
       "forbidden": "Bu bilgiyi görüntüleme yetkiniz yok.",
-      "notFound": "Başvuru artık onay beklemiyor; liste yenilendi.",
+      "notFound": "Başvuru bulunamadı; liste yenilendi.",
       "upstream": "Kimlik sunucusuna ulaşılamadı. Lütfen daha sonra tekrar deneyin.",
       "rateLimited": "Kısa sürede çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin.",
       "rateLimitedSeconds": "Kısa sürede çok fazla istek yapıldı. Lütfen {{seconds}} saniye sonra tekrar deneyin.",
@@ -233,6 +241,7 @@
       "description": "Red nedeni zorunludur. Girdiğiniz metin başvuru kaydına işlenir.",
       "reasonLabel": "Red nedeni",
       "reasonPlaceholder": "Başvurunun neden reddedildiğini kısaca yazın",
+      "privacyHint": "Gerekçe, geçmiş listesinde diğer yöneticilere görünür; kişisel veri (telefon, TC kimlik no, adres vb.) yazmayın.",
       "required": "Red nedeni boş olamaz.",
       "maxLength": "Red nedeni en fazla {{max}} karakter olabilir.",
       "cancel": "İptal",
@@ -242,7 +251,14 @@
       "independent": "Bağımsız",
       "school": "Okul: {{schoolName}}",
       "schoolUnknown": "Okul #{{schoolId}}"
-    }
+    },
+    "status": {
+      "pending": "Bekliyor",
+      "approved": "Onaylandı",
+      "rejected": "Reddedildi"
+    },
+    "rejectionReason": "Gerekçe: {{reason}}",
+    "noAction": "İşlem yok"
   },
   "schoolFilter": {
     "label": "Okul",

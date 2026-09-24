@@ -39,6 +39,7 @@
     },
 
     "teacherApplication": {
+      "invalidStatusFilter": "\"status\" must be \"pending\" or \"all\".",
       "notFound": "Application not found.",
       "approved": "Application approved.",
       "rejected": "Application rejected.",

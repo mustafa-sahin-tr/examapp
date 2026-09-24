@@ -84,3 +84,8 @@
     background: var(--ms-danger-background-hover);
   }
 }
+
+// Issue #187 (security review): ret gerekçesi diğer adminlerin geçmiş listesinde görünür — kişisel veri uyarısı.
+.privacy-hint {
+  color: var(--ms-text-medium);
+}

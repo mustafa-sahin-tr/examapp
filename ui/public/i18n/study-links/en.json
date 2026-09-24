@@ -68,5 +68,24 @@
     "loadFailed": "Study suggestions could not be loaded right now.",
     "topicGroup": "{{name}} (general)",
     "opensInNewTab": "opens in a new tab"
+  },
+  "page": {
+    "title": "Study Links",
+    "subtitle": "Pick a topic or subtopic; students see these links for questions they answered wrong on that topic.",
+    "subjectLabel": "Subject",
+    "topicLabel": "Topic",
+    "subTopicLabel": "Subtopic",
+    "subjectPlaceholder": "Select a subject",
+    "topicPlaceholder": "Select a topic",
+    "subTopicNone": "All (topic-level links)",
+    "topicOption": "{{name}} · {{grade}}",
+    "selectSubjectFirst": "Select a subject first",
+    "selectTopicFirst": "Select a topic first",
+    "noTopics": "This subject has no topics",
+    "noSubTopics": "This topic has no subtopics",
+    "subjectsLoadFailed": "Subjects could not be loaded.",
+    "topicsLoadFailed": "Topics could not be loaded.",
+    "subTopicsLoadFailed": "Subtopics could not be loaded.",
+    "loading": "Loading…"
   }
 }

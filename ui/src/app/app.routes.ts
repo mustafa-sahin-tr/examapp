@@ -102,6 +102,13 @@ export const routes: Routes = [
       { path: 'study-pages/new', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher')] },
       { path: 'study-pages/:id', component: StudyPageEditorComponent, canActivate: [authGuard, roleGuard('Teacher')] },
       {
+        // Issue #61: öğretmenin tüm konu/alt konular için çalışma linki yönetimi (admin taksonomi ekranından bağımsız).
+        path: 'study-links',
+        canActivate: [authGuard, roleGuard('Teacher')],
+        loadComponent: () =>
+          import('./pages/study-links/study-links.component').then((m) => m.StudyLinksComponent),
+      },
+      {
         path: 'question-transfer',
         component: QuestionTransferComponent,
         canActivate: [authGuard, roleGuard('Teacher')],

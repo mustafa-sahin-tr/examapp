@@ -377,22 +377,30 @@ public class TopicStudyLinkServiceTests : IDisposable
 
     private sealed record ResultWorld(int InstanceId, int OtherStudentInstanceId, int InProgressInstanceId,
         int QWrongMulti, int QCorrect, int QWrongNoLinks, int QBlank, int QWrongSingle, Taxonomy Tax,
-        int LinkA1, int LinkA2, int LinkB1);
+        int LinkA1, int LinkA2, int LinkB1, int LinkTopic1, int LinkOtherTopic1);
 
     /// <summary>
     /// Q1 (yanlış) → alt konu A + C + B (C'nin yalnızca pasif linki var); Q2 (doğru) → A; Q3 (yanlış) → yalnızca C;
-    /// Q4 (boş bırakıldı) → A; Q5 (yanlış) → B. Ayrıca aynı sınavın başka öğrenciye ait ve devam eden kopyaları.
+    /// Q4 (boş bırakıldı) → A; Q5 (yanlış) → B + doğrudan Question.TopicId = Geometri.
+    /// Ayrıca aynı sınavın başka öğrenciye ait ve devam eden kopyaları.
+    /// <paramref name="withTopicLinks"/>: Sayılar konusuna 1 aktif + 1 pasif, Geometri'ye 1 aktif konu seviyesi link.
     /// </summary>
-    private async Task<ResultWorld> SeedResultWorldAsync()
+    private async Task<ResultWorld> SeedResultWorldAsync(bool withTopicLinks = false)
     {
         var tax = await SeedTaxonomyAsync();
 
-        // Linkler: A → 2 aktif + 1 pasif; B → 1 aktif; C → yok; topic seviyesinde 1 aktif (öğrenciye gösterilmez).
+        // Linkler: A → 2 aktif + 1 pasif; B → 1 aktif; C → yalnızca pasif (aşağıda).
         var linkA2 = (await CreateAsync(NewLink(subTopicId: tax.SubTopicA, title: "A2", url: "https://youtu.be/a2"))).ObjectId;
         var linkA1 = (await CreateAsync(NewLink(subTopicId: tax.SubTopicA, title: "A1", url: "https://example.com/a1"))).ObjectId;
         await CreateAsync(NewLink(subTopicId: tax.SubTopicA, title: "A-pasif", isActive: false));
         var linkB1 = (await CreateAsync(NewLink(subTopicId: tax.SubTopicB, title: "B1"))).ObjectId;
-        await CreateAsync(NewLink(topicId: tax.TopicId, title: "Topic-level"));
+        int linkTopic1 = 0, linkOtherTopic1 = 0;
+        if (withTopicLinks)
+        {
+            await CreateAsync(NewLink(topicId: tax.TopicId, title: "Sayılar-pasif", isActive: false));
+            linkTopic1 = (await CreateAsync(NewLink(topicId: tax.TopicId, title: "Sayılar genel"))).ObjectId;
+            linkOtherTopic1 = (await CreateAsync(NewLink(topicId: tax.OtherTopicId, title: "Geometri genel"))).ObjectId;
+        }
 
         // A1'i A2'nin önüne al (SortOrder'a göre sıralama doğrulaması).
         await using (var ctx = _db.NewContext())
@@ -410,6 +418,7 @@ public class TopicStudyLinkServiceTests : IDisposable
         var other = new Student { UserId = OtherStudentUserId, StudentNumber = "s2", SchoolName = "Sch", GradeId = grade.Id };
         var ws = new Worksheet { Name = "Deneme", Description = "d", GradeId = grade.Id, MaxDurationSeconds = 600 };
         var qs = Enumerable.Range(1, 5).Select(i => new Question { Text = $"Q{i}", DifficultyLevel = 2 }).ToList();
+        qs[4].TopicId = tax.OtherTopicId; // doğrudan konu bağı (alt konusu B → Sayılar'dan farklı)
         db.AddRange(student, other, ws);
         db.Questions.AddRange(qs);
         await db.SaveChangesAsync();
@@ -468,7 +477,7 @@ public class TopicStudyLinkServiceTests : IDisposable
 
         return new ResultWorld(mine.Id, others.Id, inProgress.Id,
             qs[0].Id, qs[1].Id, qs[2].Id, qs[3].Id, qs[4].Id, tax,
-            linkA1, linkA2, linkB1);
+            linkA1, linkA2, linkB1, linkTopic1, linkOtherTopic1);
     }
 
     [Fact]
@@ -487,11 +496,12 @@ public class TopicStudyLinkServiceTests : IDisposable
         result.Items.ShouldNotContain(i => i.QuestionId == w.QWrongNoLinks);
 
         var q1 = result.Items[0];
-        q1.Groups.Select(g => g.SubTopicId).ShouldBe(new[] { w.Tax.SubTopicA, w.Tax.SubTopicB }); // C atlandı
-        q1.Groups[0].SubTopicName.ShouldBe("Kesirler");
+        q1.Groups.Select(g => g.SubTopicId).ShouldBe(new int?[] { w.Tax.SubTopicA, w.Tax.SubTopicB }); // C atlandı
+        q1.Groups.ShouldAllBe(g => g.Kind == StudyLinkGroupKind.SubTopic && g.TopicId == w.Tax.TopicId);
+        q1.Groups[0].Name.ShouldBe("Kesirler");
         q1.Groups[0].Links.Select(l => l.Id).ShouldBe(new[] { w.LinkA1, w.LinkA2 }); // SortOrder'a göre, pasif yok
         q1.Groups[0].Links[1].SourceType.ShouldBe(TopicStudyLinkSourceType.YouTube);
-        q1.Groups[1].SubTopicName.ShouldBe("Ondalık Sayılar");
+        q1.Groups[1].Name.ShouldBe("Ondalık Sayılar");
         q1.Groups[1].Links.Single().Id.ShouldBe(w.LinkB1);
 
         result.Items.SelectMany(i => i.Groups).ShouldAllBe(g => g.Links.Count > 0);
@@ -543,6 +553,60 @@ public class TopicStudyLinkServiceTests : IDisposable
 
         // Q5 yalnızca B'ye bağlıydı → tamamen düşer; Q1 yalnızca A grubunu taşır.
         result.Items.Select(i => i.QuestionId).ShouldBe(new[] { w.QWrongMulti });
-        result.Items[0].Groups.Select(g => g.SubTopicId).ShouldBe(new[] { w.Tax.SubTopicA });
+        result.Items[0].Groups.Select(g => g.SubTopicId).ShouldBe(new int?[] { w.Tax.SubTopicA });
+    }
+
+    [Fact]
+    public async Task ForResult_AddsOneTopicFallbackGroupPerDistinctTopic_AfterSubTopicGroups()
+    {
+        var w = await SeedResultWorldAsync(withTopicLinks: true);
+        await using var ctx = _db.NewContext();
+
+        var result = await NewService(ctx).GetSuggestionsForResultAsync(w.InstanceId, StudentUserId);
+
+        // Q3 artık dahil: alt konusu C'nin aktif linki yok ama konusu (Sayılar) konu seviyesi linke sahip.
+        // Q2 (doğru) ve Q4 (boş) hâlâ yok.
+        result.Items.Select(i => i.QuestionId).ShouldBe(new[] { w.QWrongMulti, w.QWrongNoLinks, w.QWrongSingle });
+
+        // Q1: A, C, B aynı konuda → alt konu grupları + TEK Sayılar grubu (pasif konu linki hariç).
+        var q1 = result.Items[0];
+        q1.Groups.Select(g => g.Kind).ShouldBe(new[] { StudyLinkGroupKind.SubTopic, StudyLinkGroupKind.SubTopic, StudyLinkGroupKind.Topic });
+        var topicGroup = q1.Groups[2];
+        topicGroup.SubTopicId.ShouldBeNull();
+        topicGroup.TopicId.ShouldBe(w.Tax.TopicId);
+        topicGroup.Name.ShouldBe("Sayılar");
+        topicGroup.Links.Select(l => l.Id).ShouldBe(new[] { w.LinkTopic1 });
+
+        // Q3: yalnızca konu grubu.
+        result.Items[1].Groups.Select(g => (g.Kind, g.TopicId)).ShouldBe(new[] { (StudyLinkGroupKind.Topic, (int?)w.Tax.TopicId) });
+
+        // Q5: alt konu B, sonra doğrudan konu (Geometri) ve alt konunun konusu (Sayılar).
+        var q5 = result.Items[2];
+        q5.Groups.Select(g => (g.Kind, g.Name)).ShouldBe(new[]
+        {
+            (StudyLinkGroupKind.SubTopic, "Ondalık Sayılar"),
+            (StudyLinkGroupKind.Topic, "Geometri"),
+            (StudyLinkGroupKind.Topic, "Sayılar"),
+        });
+        q5.Groups[1].Links.Single().Id.ShouldBe(w.LinkOtherTopic1);
+
+        result.Items.SelectMany(i => i.Groups).ShouldAllBe(g => g.Links.Count > 0);
+    }
+
+    [Fact]
+    public async Task ForResult_TopicGroupWithOnlyInactiveTopicLinks_IsOmitted()
+    {
+        var w = await SeedResultWorldAsync(withTopicLinks: true);
+        await using (var ctx = _db.NewContext())
+        {
+            var service = NewService(ctx);
+            await service.UpdateAsync(w.LinkTopic1, new UpdateTopicStudyLinkDto { Title = "x", Url = "https://example.com/video", IsActive = false }, TeacherUserId);
+        }
+
+        await using var read = _db.NewContext();
+        var result = await NewService(read).GetSuggestionsForResultAsync(w.InstanceId, StudentUserId);
+
+        result.Items.SelectMany(i => i.Groups).ShouldNotContain(g => g.Kind == StudyLinkGroupKind.Topic && g.TopicId == w.Tax.TopicId);
+        result.Items.ShouldNotContain(i => i.QuestionId == w.QWrongNoLinks);
     }
 }

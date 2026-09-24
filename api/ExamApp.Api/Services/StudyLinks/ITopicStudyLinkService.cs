@@ -30,7 +30,7 @@ public interface ITopicStudyLinkService
     Task<TopicStudyLinkListResultDto> ReorderAsync(ReorderTopicStudyLinksDto dto, int userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Öğrencinin tamamlanmış sınavında YANLIŞ cevapladığı sorular için, sorunun alt konularına göre gruplanmış
+    /// Öğrencinin tamamlanmış sınavında YANLIŞ cevapladığı sorular için, sorunun alt konularına göre gruplanmış (ardından konu seviyesi yedek gruplarla)
     /// aktif linkler. Sınav çağırana ait değilse NotFound (varlık sızdırılmaz). Sınav tamamlanmadıysa boş liste.
     /// Hiç linki olmayan grup/soru listeye girmez.
     /// </summary>

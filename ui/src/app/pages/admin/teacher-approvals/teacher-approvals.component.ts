@@ -43,13 +43,13 @@ import {
  * kullanılabilir kalır.
  *
  * Issue #187: "Onay bekleyenler / Tümü" filtresi + server-side sayfalama. Satırda durum chip'i, karar tarihi ve (ret
- * ise) gerekçe gösterilir; Onayla/Reddet yalnız bekleyen satırlarda. Onay/red sonrası mevcut filtre/sayfa yeniden
- * yüklenir (bekleyenlerde satır düşer, sayfa boşalırsa önceki sayfaya geçilir; Tümü'nde durum güncellenir).
+ * ise) gerekçe gösterilir; Onayla/Reddet yalnız bekleyen satırlarda. Onay/red sonucu yerelde uygulanır
+ * (bkz. `applyDecision`); yalnız sayfa boşalırsa yeniden yüklenir.
  * Filtre/sayfa URL'e YAZILMAZ (öğretmen/öğrenci listelerinden farklı): komponent admin-home'da sekme olarak da
  * gömülü; sayfaya ait olmayan `page`/`status` param'ları o rotayı kirletirdi. State komponent-yerel signal'lerdedir.
  *
  * Issue #262: listede e-posta maskeli gelir; admin satır bazında "E-postayı göster" ile audit'li detay ucundan
- * tam adresi ister (her durumdaki başvuru için). Tam adresler yalnız bellekte (`revealedEmails`, teacherId → e-posta)
+ * tam adresi ister (issue #187 security review: yalnız bekleyen başvurularda; karar verilmişlerde backend maskeli döner). Tam adresler yalnız bellekte (`revealedEmails`, teacherId → e-posta)
  * tutulur; satır mevcut sayfadan düşünce ilgili kayıt atılır.
  *
  * Yönetim ekranlarının ortak Transloco scope'u: `public/i18n/admin/<lang>.json` (issue #183).
@@ -62,6 +62,9 @@ const ADMIN_SCOPE = 'admin';
 export const PUSH_RELOAD_AUDIT_MS = 5000;
 
 type StatusKey = 'pending' | 'approved' | 'rejected';
+
+/** Başarılı onay/red'in satıra yerelde uygulanacak alanları. */
+type Decision = Pick<TeacherApplicationListItem, 'status' | 'rejectionReason'>;
 
 const STATUS_KEYS: Record<TeacherApplicationStatus, StatusKey> = {
   Pending: 'pending',
@@ -290,7 +293,8 @@ export class TeacherApprovalsComponent implements OnInit {
    */
   revealEmail(row: TeacherApplicationListItem): void {
     const id = row.teacherId;
-    if (this.isRevealing(id) || this.isEmailRevealed(id)) {
+    // Security review (#187): backend tam e-postayı yalnız bekleyen başvuru için döner.
+    if (!this.isPending(row) || this.isRevealing(id) || this.isEmailRevealed(id)) {
       return;
     }
     this.setFlag(this.revealingIds, id, true);
@@ -345,7 +349,10 @@ export class TeacherApprovalsComponent implements OnInit {
     if (this.isActing(row.teacherId) || !this.isPending(row)) {
       return;
     }
-    this.act(row, this.adminService.approveTeacherApplication(row.teacherId), this.text('approved'));
+    this.act(row, this.adminService.approveTeacherApplication(row.teacherId), this.text('approved'), {
+      status: 'Approved',
+      rejectionReason: null,
+    });
   }
 
   reject(row: TeacherApplicationListItem): void {
@@ -364,7 +371,10 @@ export class TeacherApprovalsComponent implements OnInit {
         if (!reason) {
           return;
         }
-        this.act(row, this.adminService.rejectTeacherApplication(row.teacherId, reason), this.text('rejected'));
+        this.act(row, this.adminService.rejectTeacherApplication(row.teacherId, reason), this.text('rejected'), {
+          status: 'Rejected',
+          rejectionReason: reason,
+        });
       });
   }
 
@@ -372,6 +382,7 @@ export class TeacherApprovalsComponent implements OnInit {
     row: TeacherApplicationListItem,
     call: Observable<TeacherApplicationActionResult>,
     successMessage: string,
+    decision: Decision,
   ): void {
     const id = row.teacherId;
     if (this.isActing(id)) {
@@ -391,8 +402,7 @@ export class TeacherApprovalsComponent implements OnInit {
             return;
           }
           this.snackBar.open(successMessage, this.text('close'), { duration: 3000 });
-          // Issue #187: bekleyenlerde satır düşer (sayfa boşalırsa önceki sayfa), Tümü'nde durum güncellenir.
-          this.load();
+          this.applyDecision(id, decision);
         },
         error: (err: HttpErrorResponse) => {
           this.snackBar.open(this.extractMessage(err, this.text('actionFailed')), this.text('close'), {
@@ -404,6 +414,46 @@ export class TeacherApprovalsComponent implements OnInit {
           }
         },
       });
+  }
+
+  /**
+   * Issue #187 (review): başarılı karar yerelde yansıtılır — yeniden yükleme adminin paylaşımlı rate limit kovasını
+   * (30/dk) ve bir audit satırını harcar; 429 alırsa karar verilmiş satır aksiyonlu kalırdı. Bekleyenlerde satır
+   * düşer ve toplam azalır; Tümü'nde satırın durumu/karar anı/gerekçesi güncellenir. Yalnız mevcut sayfa boşalırsa
+   * (ve başka kayıt varsa) yeniden yüklenir; gerekirse önceki sayfaya geçilir.
+   * Karar verilmiş başvurunun tam e-postası detay ucundan dönmez (yalnız Pending) → açılmış e-posta da atılır.
+   */
+  private applyDecision(id: number, decision: Decision): void {
+    this.forgetEmail(id);
+
+    if (this.filter() === 'all') {
+      const decidedAt = new Date().toISOString();
+      this.applications.update((list) =>
+        list.map((a) => (a.teacherId === id ? { ...a, ...decision, decidedAt } : a)),
+      );
+      return;
+    }
+
+    const before = this.applications().length;
+    this.applications.update((list) => list.filter((a) => a.teacherId !== id));
+    if (this.applications().length === before) {
+      return;
+    }
+    const total = Math.max(0, this.totalCount() - 1);
+    this.totalCount.set(total);
+    if (this.applications().length === 0 && total > 0) {
+      this.pageIndex.set(Math.min(this.pageIndex(), lastPageIndex(total, this.pageSize())));
+      this.load();
+    }
+  }
+
+  private forgetEmail(id: number): void {
+    this.revealedEmails.update((map) => {
+      if (!map.has(id)) return map;
+      const next = new Map(map);
+      next.delete(id);
+      return next;
+    });
   }
 
   private setActing(id: number, on: boolean): void {

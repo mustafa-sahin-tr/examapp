@@ -10,7 +10,7 @@
   <mat-dialog-content class="dialog-content">
     <p class="description">{{ t('description') }}</p>
 
-    <mat-form-field appearance="outline" class="reason-field">
+    <mat-form-field appearance="outline" class="reason-field" subscriptSizing="dynamic">
       <mat-label>{{ t('reasonLabel') }}</mat-label>
       <textarea
         matInput
@@ -20,6 +20,7 @@
         [placeholder]="t('reasonPlaceholder')"
         cdkFocusInitial
       ></textarea>
+      <mat-hint class="privacy-hint" data-testid="privacy-hint">{{ t('privacyHint') }}</mat-hint>
       <mat-hint align="end">{{ reasonLength() }} / {{ maxLength }}</mat-hint>
       @if (reasonControl.hasError('required') || reasonControl.hasError('whitespace')) {
         <mat-error>{{ t('required') }}</mat-error>

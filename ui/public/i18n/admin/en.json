@@ -241,6 +241,7 @@
       "description": "A rejection reason is required. The text you enter is stored on the application record.",
       "reasonLabel": "Rejection reason",
       "reasonPlaceholder": "Briefly describe why the application was rejected",
+      "privacyHint": "The reason is visible to other admins in the history list; do not include personal data (phone, ID number, address, etc.).",
       "required": "The rejection reason cannot be empty.",
       "maxLength": "The rejection reason can be at most {{max}} characters.",
       "cancel": "Cancel",

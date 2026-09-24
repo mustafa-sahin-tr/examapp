@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { signal } from '@angular/core';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -7,12 +8,13 @@ import { of, throwError } from 'rxjs';
 
 import { TopicStudyLinkManagerComponent } from './topic-study-link-manager.component';
 import { StudyLinkService } from '../../../services/study-link.service';
+import { AuthService } from '../../../services/auth.service';
 import { StudyLink, StudyLinkListResponse } from '../../../models/study-link';
 import { StudyLinkDialogComponent } from '../study-link-dialog/study-link-dialog.component';
 import { translocoTestingModule } from '../../testing/transloco-testing';
 import studyLinksTr from '../../../../../public/i18n/study-links/tr.json';
 
-function makeLink(id: number, sortOrder: number, isActive = true): StudyLink {
+function makeLink(id: number, sortOrder: number, isActive = true, createdByUserId = 1): StudyLink {
   return {
     id,
     topicId: 1,
@@ -22,10 +24,12 @@ function makeLink(id: number, sortOrder: number, isActive = true): StudyLink {
     sourceType: id % 2 ? 'YouTube' : 'Other',
     sortOrder,
     isActive,
-    createdByUserId: 1,
+    createdByUserId,
     createdByName: 'Admin',
     createdByRole: 'Admin',
     createTime: '2026-01-01T00:00:00Z',
+    updatedByUserId: null,
+    updatedByName: null,
     updateTime: null,
   };
 }
@@ -42,15 +46,32 @@ describe('TopicStudyLinkManagerComponent (issue #61)', () => {
   let dialog: jasmine.SpyObj<MatDialog>;
   let snack: jasmine.SpyObj<MatSnackBar>;
 
-  function configure(initial: StudyLinkListResponse, scope: { topicId?: number; subTopicId?: number } = { subTopicId: 2 }) {
+  /** Varsayılan kullanıcı Admin (id 1); öğretmen sahiplik testleri `{ admin: false, userId }` verir. */
+  function configure(
+    initial: StudyLinkListResponse | (() => ReturnType<StudyLinkService['list']>),
+    scope: { topicId?: number; subTopicId?: number } = { subTopicId: 2 },
+    user: { admin: boolean; userId: number } = { admin: true, userId: 1 }
+  ) {
     service = jasmine.createSpyObj<StudyLinkService>('StudyLinkService', ['list', 'update', 'delete', 'reorder', 'create']);
-    service.list.and.returnValue(of(initial));
+    if (typeof initial === 'function') service.list.and.callFake(initial);
+    else service.list.and.returnValue(of(initial));
     dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
     snack = jasmine.createSpyObj<MatSnackBar>('MatSnackBar', ['open']);
 
     TestBed.configureTestingModule({
       imports: [TopicStudyLinkManagerComponent, translocoTestingModule({ langs: { 'study-links/tr': studyLinksTr } })],
-      providers: [provideNoopAnimations(), { provide: StudyLinkService, useValue: service }],
+      providers: [
+        provideNoopAnimations(),
+        { provide: StudyLinkService, useValue: service },
+        {
+          provide: AuthService,
+          useValue: {
+            hasRealmRole: (role: string) => role === (user.admin ? 'Admin' : 'Teacher'),
+            hasRole: (role: string) => role === (user.admin ? 'Admin' : 'Teacher'),
+            user: signal({ id: user.userId }),
+          },
+        },
+      ],
     });
     // Komponent MatDialogModule/MatSnackBarModule import ettiği için mock'lar komponent seviyesinde verilir.
     TestBed.overrideComponent(TopicStudyLinkManagerComponent, {
@@ -254,5 +275,114 @@ describe('TopicStudyLinkManagerComponent (issue #61)', () => {
 
     expect(q('[data-testid="load-error"]')).toBeNull();
     expect(rows().length).toBe(1);
+  });
+
+  // ── Güvenlik (onaylı öğretmen, sahiplik, toplam sınır, rate limit, denetim bilgisi) ──────────────
+
+  function forbidden(errorCode: string, message?: string): HttpErrorResponse {
+    return new HttpErrorResponse({ status: 403, error: { success: false, forbidden: true, errorCode, message } });
+  }
+
+  it('list403TeacherNotApproved_ShowsServerNoticeInsteadOfErrorAndHidesControls', () => {
+    configure(() => throwError(() => forbidden('TeacherNotApproved', 'Öğretmen başvurunuz onay bekliyor.')));
+
+    const notice = q('[data-testid="not-approved"]')!;
+    expect(notice.textContent).toContain('Öğretmen başvurunuz onay bekliyor.');
+    expect(notice.getAttribute('role')).toBe('status');
+    expect(q('[data-testid="load-error"]')).toBeNull();
+    expect(q('[data-testid="add-link"]')).toBeNull();
+    expect(q('[data-testid="empty"]')).toBeNull();
+    expect(q('[data-testid="active-counter"]')).toBeNull();
+  });
+
+  it('list403TeacherNotApproved_NoMessage_UsesFallbackText', () => {
+    configure(() => throwError(() => forbidden('TeacherNotApproved')), { subTopicId: 2 }, { admin: false, userId: 5 });
+    expect(q('[data-testid="not-approved"]')?.textContent).toContain(texts.notApproved);
+  });
+
+  it('teacher_NonOwnedLinks_HideEditToggleDeleteButKeepReorder', () => {
+    configure(listOf([makeLink(1, 0, true, 5), makeLink(2, 1, true, 9)]), { subTopicId: 2 }, { admin: false, userId: 5 });
+
+    const [own, other] = rows();
+    expect(own.querySelector('[data-testid="edit"]')).toBeTruthy();
+    expect(own.querySelector('[data-testid="delete"]')).toBeTruthy();
+    expect(own.querySelector('[data-testid="active-toggle"]')).toBeTruthy();
+    expect(own.querySelector('[data-testid="not-owned"]')).toBeNull();
+
+    expect(other.querySelector('[data-testid="edit"]')).toBeNull();
+    expect(other.querySelector('[data-testid="delete"]')).toBeNull();
+    expect(other.querySelector('[data-testid="active-toggle"]')).toBeNull();
+    expect(other.querySelector('[data-testid="not-owned"]')).toBeTruthy();
+    expect(other.querySelector('[data-testid="move-up"]')).toBeTruthy();
+
+    expect(component.canModify(component.links()[1])).toBeFalse();
+  });
+
+  it('admin_CanModifyAnyLink', () => {
+    configure(listOf([makeLink(1, 0, true, 99)]));
+    expect(rows()[0].querySelector('[data-testid="edit"]')).toBeTruthy();
+    expect(rows()[0].querySelector('[data-testid="not-owned"]')).toBeNull();
+  });
+
+  it('delete403NotOwner_ShowsServerMessage', async () => {
+    configure(listOf([makeLink(1, 0, true, 5)]), { subTopicId: 2 }, { admin: false, userId: 5 });
+    dialog.open.and.returnValue({ afterClosed: () => of(true) } as never);
+    service.delete.and.returnValue(throwError(() => forbidden('NotOwner', 'Bu link size ait değil.')));
+
+    await component.remove(component.links()[0]);
+
+    expect(snack.open).toHaveBeenCalledWith('Bu link size ait değil.', texts.close, jasmine.any(Object));
+  });
+
+  it('totalLimitReached_DisablesAddAndShowsTotalWarning', () => {
+    const links = Array.from({ length: 30 }, (_, i) => makeLink(i + 1, i, i < 3));
+    configure(listOf(links));
+
+    expect(q('[data-testid="total-counter"]')?.textContent).toContain('Toplam 30 / 30');
+    expect(q<HTMLButtonElement>('[data-testid="add-link"]')?.disabled).toBeTrue();
+    expect(q('[data-testid="limit-warning"]')?.textContent).toContain('en fazla 30 link');
+
+    component.openCreate();
+    expect(dialog.open).not.toHaveBeenCalled();
+  });
+
+  it('toggle429EmptyBody_ShowsRetryAfterFallbackInSnackbar', () => {
+    const link = makeLink(1, 0);
+    configure(listOf([link]));
+    service.update.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 429, error: '', headers: new HttpHeaders({ 'Retry-After': '12' }) }))
+    );
+
+    q<HTMLButtonElement>('[data-testid="active-toggle"] button')!.click();
+    fixture.detectChanges();
+
+    expect(snack.open).toHaveBeenCalledWith(
+      'Çok fazla işlem yapıldı. 12 saniye sonra tekrar deneyin.',
+      texts.close,
+      jasmine.any(Object)
+    );
+  });
+
+  it('reorder429PlainText_ShowsServerTextInSnackbar', () => {
+    configure(listOf([makeLink(1, 0), makeLink(2, 1)]));
+    service.reorder.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429, error: 'Çok fazla istek.' })));
+
+    component.moveDown(0);
+
+    expect(snack.open).toHaveBeenCalledWith('Çok fazla istek.', texts.close, jasmine.any(Object));
+  });
+
+  it('row_ShowsLastUpdatedByWhenPresentElseCreatedBy', () => {
+    const updated: StudyLink = {
+      ...makeLink(1, 0),
+      updatedByUserId: 7,
+      updatedByName: 'Ayşe Öğretmen',
+      updateTime: '2026-02-03T10:00:00Z',
+    };
+    configure(listOf([updated, makeLink(2, 1)]));
+
+    const metas = Array.from(el().querySelectorAll('[data-testid="link-meta"]')).map((m) => m.textContent ?? '');
+    expect(metas[0]).toContain('Son güncelleyen: Ayşe Öğretmen');
+    expect(metas[1]).toContain('Ekleyen: Admin');
   });
 });

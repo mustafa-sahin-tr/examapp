@@ -5,7 +5,7 @@ import {
   CreateStudyLinkRequest,
   QuestionStudyLinkSuggestion,
   ReorderStudyLinksRequest,
-  STUDY_LINK_ACTIVE_LIMIT_REACHED,
+  STUDY_LINK_ERROR_CODES,
   StudyLink,
   StudyLinkErrorResponse,
   StudyLinkListResponse,
@@ -59,20 +59,46 @@ export class StudyLinkService {
   }
 }
 
+/** Hata gövdesindeki `errorCode` (bkz. `STUDY_LINK_ERROR_CODES`); yoksa null. */
+export function studyLinkErrorCode(err: unknown): string | null {
+  if (!(err instanceof HttpErrorResponse) || !err.error || typeof err.error !== 'object') return null;
+  return (err.error as StudyLinkErrorResponse).errorCode ?? null;
+}
+
 /** 409 `ActiveLimitReached` mı (7 aktif link sınırı)? */
 export function isActiveLimitError(err: unknown): boolean {
-  if (!(err instanceof HttpErrorResponse) || err.status !== 409) return false;
-  const body = err.error as StudyLinkErrorResponse | null;
-  return body?.errorCode === STUDY_LINK_ACTIVE_LIMIT_REACHED || body?.conflict === true;
+  return (
+    err instanceof HttpErrorResponse &&
+    err.status === 409 &&
+    studyLinkErrorCode(err) === STUDY_LINK_ERROR_CODES.activeLimitReached
+  );
+}
+
+/** 403 `TeacherNotApproved` mı (öğretmen başvurusu onaylanmamış)? */
+export function isTeacherNotApprovedError(err: unknown): boolean {
+  return (
+    err instanceof HttpErrorResponse &&
+    err.status === 403 &&
+    studyLinkErrorCode(err) === STUDY_LINK_ERROR_CODES.teacherNotApproved
+  );
+}
+
+/** 429 (yazma uçları rate limit) → `Retry-After` saniyesi (yoksa null). Başka durumlar için undefined. */
+export function rateLimitRetryAfter(err: unknown): number | null | undefined {
+  if (!(err instanceof HttpErrorResponse) || err.status !== 429) return undefined;
+  const seconds = Number(err.headers?.get('Retry-After'));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
 }
 
 /**
- * Sunucu hata gövdesinden gösterilecek metni çıkarır: `ResponseBaseDto.message`, yoksa model doğrulama
- * (`ValidationProblemDetails.errors`) içindeki ilk mesaj; hiçbiri yoksa `null` (çağıran genel metne düşer).
+ * Sunucu hata gövdesinden gösterilecek metni çıkarır: düz metin gövde (429 rate limit), `ResponseBaseDto.message`,
+ * yoksa model doğrulama (`ValidationProblemDetails.errors`) içindeki ilk mesaj; hiçbiri yoksa `null`
+ * (çağıran genel metne düşer).
  */
 export function studyLinkErrorMessage(err: unknown): string | null {
   if (!(err instanceof HttpErrorResponse)) return null;
   const body: unknown = err.error;
+  if (typeof body === 'string') return body.trim() || null;
   if (!body || typeof body !== 'object') return null;
   const message = (body as { message?: unknown }).message;
   if (typeof message === 'string' && message.trim()) return message;

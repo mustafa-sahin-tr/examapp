@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TranslocoDirective, TranslocoService, provideTranslocoScope } from '@jsverse/transloco';
 import { Observable, take } from 'rxjs';
 import {
@@ -18,7 +19,12 @@ import {
   StudyLinkScope,
   StudyLinkSourceType,
 } from '../../../models/study-link';
-import { StudyLinkService, isActiveLimitError, studyLinkErrorMessage } from '../../../services/study-link.service';
+import {
+  StudyLinkService,
+  isActiveLimitError,
+  rateLimitRetryAfter,
+  studyLinkErrorMessage,
+} from '../../../services/study-link.service';
 
 /** Çalışma linki bileşenlerinin Transloco scope'u: `public/i18n/study-links/<lang>.json`. */
 const STUDY_LINKS_SCOPE = 'study-links';
@@ -81,6 +87,7 @@ export function detectSourceType(value: string): StudyLinkSourceType {
     MatProgressSpinnerModule,
     MatRadioModule,
     MatSlideToggleModule,
+    MatSnackBarModule,
     TranslocoDirective,
   ],
   providers: [provideTranslocoScope(STUDY_LINKS_SCOPE)],
@@ -93,6 +100,7 @@ export class StudyLinkDialogComponent {
   private readonly service = inject(StudyLinkService);
   private readonly transloco = inject(TranslocoService);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly snack = inject(MatSnackBar);
 
   readonly titleMax = STUDY_LINK_TITLE_MAX_LENGTH;
   readonly urlMax = STUDY_LINK_URL_MAX_LENGTH;
@@ -130,6 +138,10 @@ export class StudyLinkDialogComponent {
     });
   }
 
+  private translate(key: string, params?: Record<string, unknown>): string {
+    return this.transloco.translate<string>(`${STUDY_LINKS_SCOPE}.${key}`, params) ?? '';
+  }
+
   cancel(): void {
     if (this.submitting()) return;
     this.dialogRef.close();
@@ -160,11 +172,20 @@ export class StudyLinkDialogComponent {
       },
       error: (err: unknown) => {
         this.submitting.set(false);
+        // 429 (yazma rate limit): geçici durum → snackbar; dialog açık kalır, kullanıcı biraz sonra tekrar kaydeder.
+        const retryAfter = rateLimitRetryAfter(err);
+        if (retryAfter !== undefined) {
+          const fallback =
+            retryAfter === null
+              ? this.translate('manager.rateLimitedNoWait')
+              : this.translate('manager.rateLimited', { seconds: retryAfter });
+          this.snack.open(studyLinkErrorMessage(err) ?? fallback, this.translate('manager.close'), { duration: 5000 });
+          return;
+        }
         // 409 ActiveLimitReached: sınır bu arada dolmuş olabilir; kullanıcı pasif olarak kaydedebilsin.
         if (isActiveLimitError(err)) this.form.controls.isActive.setValue(false);
-        this.error.set(
-          studyLinkErrorMessage(err) ?? this.transloco.translate<string>(`${STUDY_LINKS_SCOPE}.dialog.saveFailed`)
-        );
+        // 409 TotalLimitReached, 403 NotOwner/TeacherNotApproved, 400 doğrulama → sunucu metni dialog içinde.
+        this.error.set(studyLinkErrorMessage(err) ?? this.translate('dialog.saveFailed'));
       },
     });
   }

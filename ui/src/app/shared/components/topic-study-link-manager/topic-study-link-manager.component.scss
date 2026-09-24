@@ -351,3 +351,52 @@
     align-items: center;
   }
 }
+
+// ---- Issue #61 güvenlik: toplam sınır, onay bekleyen öğretmen, sahiplik, denetim bilgisi ----
+
+.sl-total {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--ms-text-medium);
+  white-space: nowrap;
+
+  &--full {
+    color: var(--ms-warning-text);
+    font-weight: 600;
+  }
+}
+
+.sl-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ms-info-border);
+  background: var(--ms-info-surface-weak);
+  color: var(--ms-info-text);
+  font-size: 13px;
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.sl-meta {
+  font-size: 11px;
+  color: var(--ms-text-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-lock {
+  margin: 0 10px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--ms-text-weak);
+}

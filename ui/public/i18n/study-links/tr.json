@@ -37,7 +37,16 @@
     "deactivated": "Link pasifleştirildi.",
     "reordered": "Sıralama güncellendi.",
     "actionFailed": "İşlem tamamlanamadı. Lütfen tekrar deneyin.",
-    "close": "Kapat"
+    "close": "Kapat",
+    "notApproved": "Başvurunuz onaylandıktan sonra çalışma linklerini yönetebilirsiniz.",
+    "totalLimitWarning": "Bu kapsamda en fazla {{max}} link (aktif + pasif) olabilir. Yeni link eklemek için önce bir linki silin.",
+    "addDisabledTotalTooltip": "Toplam link sınırı ({{max}}) dolu. Yeni link eklemek için bir linki silin.",
+    "totalCount": "Toplam {{total}} / {{max}}",
+    "updatedBy": "Son güncelleyen: {{name}}, {{date}}",
+    "createdBy": "Ekleyen: {{name}}, {{date}}",
+    "notOwned": "Yalnızca kendi eklediğiniz linkleri düzenleyebilir, aktif/pasif yapabilir veya silebilirsiniz.",
+    "rateLimited": "Çok fazla işlem yapıldı. {{seconds}} saniye sonra tekrar deneyin.",
+    "rateLimitedNoWait": "Çok fazla işlem yapıldı. Lütfen biraz sonra tekrar deneyin."
   },
   "dialog": {
     "createTitle": "Çalışma linki ekle",

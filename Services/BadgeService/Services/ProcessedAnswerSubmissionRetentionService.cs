@@ -61,9 +61,12 @@ public sealed class ProcessedAnswerSubmissionRetentionJob : IProcessedAnswerSubm
         {
             ct.ThrowIfCancellationRequested();
 
+            // issue #279 review (item 5): EventId (PK) değil ProcessedAt'a göre sırala — filtre zaten
+            // ProcessedAt üzerinde (IX_ProcessedAnswerSubmissions_ProcessedAt kullanılır), en eski satırlar
+            // önce silinir ve parti sınırları anlamlı/deterministik olur.
             var deleted = await _context.ProcessedAnswerSubmissions
                 .Where(r => r.ProcessedAt < cutoff)
-                .OrderBy(r => r.EventId)
+                .OrderBy(r => r.ProcessedAt)
                 .Take(batchSize)
                 .ExecuteDeleteAsync(ct);
 

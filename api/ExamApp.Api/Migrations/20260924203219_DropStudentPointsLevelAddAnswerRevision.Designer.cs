@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExamApp.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260924200735_DropStudentPointsLevel")]
-    partial class DropStudentPointsLevel
+    [Migration("20260924203219_DropStudentPointsLevelAddAnswerRevision")]
+    partial class DropStudentPointsLevelAddAnswerRevision
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -3301,6 +3301,9 @@ namespace ExamApp.Api.Migrations
 
                     b.Property<string>("AnswerPayload")
                         .HasColumnType("text");
+
+                    b.Property<int>("AnswerRevision")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("timestamp with time zone");

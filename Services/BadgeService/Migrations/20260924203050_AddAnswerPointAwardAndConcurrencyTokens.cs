@@ -28,6 +28,8 @@ namespace BadgeService.Migrations
                     TestInstanceId = table.Column<int>(type: "integer", nullable: false),
                     QuestionId = table.Column<int>(type: "integer", nullable: false),
                     UserId = table.Column<int>(type: "integer", nullable: false),
+                    TestInstanceQuestionId = table.Column<int>(type: "integer", nullable: false),
+                    LastAppliedRevision = table.Column<int>(type: "integer", nullable: false),
                     LastAppliedRevisionUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     PointsAwarded = table.Column<int>(type: "integer", nullable: false),
                     UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
@@ -36,6 +38,11 @@ namespace BadgeService.Migrations
                 {
                     table.PrimaryKey("PK_AnswerPointAwards", x => new { x.TestInstanceId, x.QuestionId });
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProcessedAnswerSubmissions_ProcessedAt",
+                table: "ProcessedAnswerSubmissions",
+                column: "ProcessedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProcessedAnswerSubmissions_UserId",
@@ -53,6 +60,10 @@ namespace BadgeService.Migrations
         {
             migrationBuilder.DropTable(
                 name: "AnswerPointAwards");
+
+            migrationBuilder.DropIndex(
+                name: "IX_ProcessedAnswerSubmissions_ProcessedAt",
+                table: "ProcessedAnswerSubmissions");
 
             migrationBuilder.DropIndex(
                 name: "IX_ProcessedAnswerSubmissions_UserId",

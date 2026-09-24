@@ -519,8 +519,19 @@ public class WorksheetDetailService : IWorksheetDetailService
         }
         else if (gradeId.HasValue)
         {
-            cohort = await _context.Students.AsNoTracking()
-                .Where(s => s.GradeId == gradeId.Value)
+            // issue #277 (madde 5): sınıf sıralama grubu öğrencinin OKULUYLA sınırlı — ISchoolAccessPolicy.ApplyScope'un
+            // okullu kuralıyla aynı (SchoolId eşitliği); başka okulların aynı sınıf öğrencilerinin skorları okullu
+            // öğrencinin sıralama/ortalamasına girmez. Okulsuz (bağımsız) öğrenci yalnızca platform geneli sınıf
+            // atamasıyla (IsPlatformWide, #277 madde 7) buraya ulaşabilir; o atamanın hedef kitlesi tüm okullar olduğu için
+            // grubu da platform geneli kalır. (Policy'nin okulsuz Student dalı — Approved Booking — ÖĞRETMEN istek sahibi
+            // içindir, burada uygulanamaz; bu yüzden filtre doğrudan yazıldı.) Yalnızca toplamlar döner, PII yok.
+            var studentSchoolId = studentScope?.SchoolId;
+            var gradeCohort = _context.Students.AsNoTracking()
+                .Where(s => s.GradeId == gradeId.Value);
+            if (studentSchoolId.HasValue)
+                gradeCohort = gradeCohort.Where(s => s.SchoolId == studentSchoolId.Value);
+
+            cohort = await gradeCohort
                 .Select(s => s.Id)
                 .ToListAsync(ct);
         }

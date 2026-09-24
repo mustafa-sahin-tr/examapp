@@ -30,6 +30,17 @@
       "enabledRequired": "The enabled field is required (true or false).",
       "rateLimited": "Too many account status changes in a short time. Please wait a moment and try again."
     },
+    "studentSchool": {
+      "schoolIdRequired": "The schoolId field is required.",
+      "studentNotFound": "Student not found.",
+      "schoolNotFound": "The selected school was not found.",
+      "accountNotFound": "No sign-in account is linked to this user.",
+      "self": "You cannot change the school of your own record from this screen.",
+      "protectedRole": "The school of administrator or service accounts cannot be changed from this screen.",
+      "concurrentChange": "The student's school was changed by another operation at the same time. Please refresh and try again.",
+      "upstreamFailed": "The student's school could not be changed right now. Please try again shortly.",
+      "rateLimited": "Too many school changes in a short time. Please wait a moment and try again."
+    },
     "userList": {
       "rateLimited": "Too many list requests in a short time. Please wait a moment and try again."
     },

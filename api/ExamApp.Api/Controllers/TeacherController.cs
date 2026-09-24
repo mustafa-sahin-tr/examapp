@@ -61,6 +61,21 @@ namespace ExamApp.Api.Controllers
 
             if (response.Success == false)
             {
+                // issue #277 (madde 2): retten sonra bekleme süresi dolmadan yeni okul talebi → 429 + Retry-After (saniye).
+                if (response.TooManyRequests)
+                {
+                    var retryAfterSeconds = response.RetryAfterUtc is { } retryAt
+                        ? Math.Max(1, (int)Math.Ceiling((retryAt - DateTime.UtcNow).TotalSeconds))
+                        : 1;
+                    Response.Headers.RetryAfter = retryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    return StatusCode(StatusCodes.Status429TooManyRequests, new
+                    {
+                        message = response.Message,
+                        retryAfterSeconds,
+                        retryAfterUtc = response.RetryAfterUtc
+                    });
+                }
+
                 // issue #234: mevcut kaydın okul/bağımsızlık bilgisini değiştirme denemesi → 409.
                 return response.Conflict
                     ? Conflict(new { message = response.Message })

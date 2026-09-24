@@ -70,6 +70,16 @@ public class Teacher : BaseEntity, ISchoolScoped
     [MaxLength(500)]
     public string? RejectionReason { get; set; }
 
+    /// <summary>
+    /// issue #277 (madde 2): son admin RET kararının anı (UTC). <c>TeacherApprovalService.RejectAsync</c> set eder;
+    /// onay/yeni talep TEMİZLEMEZ (son reddin izi kalır). Reddedilen öğretmen, bu andan itibaren
+    /// <c>TeacherApprovals:SchoolRequestCooldownHours</c> (varsayılan 24) dolmadan yeni okul talebi açamaz
+    /// (<c>TeacherService.Save</c> → 429). <see cref="BaseEntity.UpdateTime"/> kullanılmaz: sonraki her profil/tema
+    /// kaydı onu da günceller ve bekleme süresini yanlışlıkla uzatırdı. Migration <c>AddTeacherLastRejectedAt</c> mevcut
+    /// Rejected satırları UpdateTime/CreateTime ile geri doldurur.
+    /// </summary>
+    public DateTime? LastRejectedAt { get; set; }
+
     [MaxLength(20)]
     public string? ThemePreset { get; set; } = "standard"; // 🎨 Theme tercihi (minimal, standard, enhanced, full)
 

@@ -30,6 +30,17 @@
       "enabledRequired": "enabled alanı zorunludur (true veya false).",
       "rateLimited": "Kısa sürede çok fazla hesap durumu değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },
+    "studentSchool": {
+      "schoolIdRequired": "schoolId alanı zorunludur.",
+      "studentNotFound": "Öğrenci bulunamadı.",
+      "schoolNotFound": "Seçilen okul bulunamadı.",
+      "accountNotFound": "Bu kullanıcıya bağlı bir oturum açma hesabı bulunamadı.",
+      "self": "Kendi kaydınızın okulunu bu ekrandan değiştiremezsiniz.",
+      "protectedRole": "Yönetici veya servis hesaplarının okulu bu ekrandan değiştirilemez.",
+      "concurrentChange": "Öğrencinin okulu aynı anda başka bir işlemle değişti. Lütfen sayfayı yenileyip tekrar deneyin.",
+      "upstreamFailed": "Öğrencinin okulu şu anda değiştirilemedi. Lütfen biraz sonra tekrar deneyin.",
+      "rateLimited": "Kısa sürede çok fazla okul değişikliği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
+    },
     "userList": {
       "rateLimited": "Kısa sürede çok fazla liste isteği yapıldı. Lütfen biraz bekleyip tekrar deneyin."
     },

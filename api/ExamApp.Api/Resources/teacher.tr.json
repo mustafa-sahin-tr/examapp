@@ -13,6 +13,7 @@
     "studentRecordExists": "Öğrenci kaydı olan bir hesap öğretmen olarak kaydolamaz.",
     "registrationChangeNotAllowed": "Mevcut öğretmen kaydının okul veya bağımsız öğretmen bilgisi bu adımla değiştirilemez.",
     "registrationConflict": "Kaydınız aynı anda başka bir istekle oluşturuldu. Lütfen sayfayı yenileyip tekrar deneyin.",
+    "schoolRequestCooldown": "Okul bağlantısı talebiniz yakın zamanda reddedildi. Yeni bir okul talebini yaklaşık {0} saat sonra açabilirsiniz.",
     "updated": "Öğretmen başarıyla güncellendi.",
     "themeUpdated": "Theme tercihi güncellendi.",
     "themeUpdateFailed": "Theme güncellenirken hata oluştu.",

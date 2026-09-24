@@ -1,3 +1,4 @@
+using System;
 using ExamApp.Api.Data;
 
 namespace ExamApp.Api.Models.Dtos;
@@ -19,6 +20,15 @@ public class TeacherRegistrationResultDto : ResponseBaseDto
 
     /// <summary>issue #287: öğretmen hesabı onaylı mı (Teachers.AccountApprovedAt dolu). Yeni kayıtta her zaman false.</summary>
     public bool AccountApproved { get; set; }
+
+    /// <summary>
+    /// issue #277 (madde 2): reddedilen öğretmenin yeni okul talebi bekleme süresine takıldı → controller 429 +
+    /// <c>Retry-After</c> döner. <see cref="RetryAfterUtc"/> yeni talebin açılabileceği an.
+    /// </summary>
+    public bool TooManyRequests { get; set; }
+
+    /// <summary>issue #277 (madde 2): <see cref="TooManyRequests"/> ise yeni okul talebinin açılabileceği en erken an (UTC).</summary>
+    public DateTime? RetryAfterUtc { get; set; }
 
     /// <summary>Okul bağlantısı talebi admin onayı bekliyor mu (RequestedSchoolId dolu + Pending).</summary>
     public bool SchoolApprovalPending =>

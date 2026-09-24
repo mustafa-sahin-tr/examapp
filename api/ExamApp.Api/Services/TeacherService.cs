@@ -974,19 +974,29 @@ public class TeacherService : ITeacherService
 
     /// <summary>
     /// issue #265: <see cref="GetStudentActivityAsync"/>'i iki aktivite ucu arasında paylaştırır (bkz. <see cref="ITeacherActivityCache"/>).
-    /// Anahtar = öğretmen + kapsam (okul / kısıtsız) + pencere başlangıcı; pencere başlangıcı days'i, saat dilimini ve yerel
-    /// tarihi zaten kodlar — gün dönünce ya da farklı days'te ayrı girdi olur. Paylaşılan liste salt okunur kullanılır.
+    /// Anahtar = öğretmen + ÇÖZÜLMÜŞ öğrenci kapsamı + pencere başlangıcı. Kapsam, token'daki okul değil öğretmen KAYDINDAN
+    /// doğrulanmış kapsamdır (<see cref="ResolveStudentTargetScopeAsync"/>; hafif tek sorgu, her istekte önbellek dışında
+    /// çalışır) — öğretmenin okulu/onayı TTL içinde değişirse (ör. okul bağlantısı onaylandı/kaldırıldı) eski kapsamla
+    /// hesaplanmış sonuç yeni kapsama DÖNMEZ (security review LOW-1). Pencere başlangıcı days'i, saat dilimini ve yerel tarihi
+    /// kodlar. Paylaşılan liste salt okunur kullanılır; girdi boyutu liste uzunluğuyla orantılıdır (LOW-2).
     /// </summary>
     private async Task<IReadOnlyList<StudentActivity>> GetStudentActivityCachedAsync(
         SchoolScope requester, DateTime cutoff, CancellationToken ct)
     {
+        var target = await ResolveStudentTargetScopeAsync(requester, ct);
         if (_activityCache is null)
-            return await GetStudentActivityAsync(requester, cutoff, ct);
+            return await GetStudentActivityAsync(requester.UserId, target, cutoff, ct);
 
+        var scopeKey = target.StudentScope is { } scope
+            ? $"{(target.ExpandGradeAssignments ? "school" : "narrow")}:{scope.SchoolId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-"}"
+            : "unrestricted";
         var key = string.Create(System.Globalization.CultureInfo.InvariantCulture,
-            $"teacher-activity:v1:{requester.UserId}:{requester.SchoolId?.ToString() ?? "-"}:{requester.IsUnrestricted}:{cutoff.Ticks}");
+            $"teacher-activity:v2:{requester.UserId}:{scopeKey}:{cutoff.Ticks}");
         return await _activityCache.GetOrCreateAsync<IReadOnlyList<StudentActivity>>(
-            key, async token => await GetStudentActivityAsync(requester, cutoff, token), ct);
+            key,
+            async token => await GetStudentActivityAsync(requester.UserId, target, cutoff, token),
+            list => list.Count,
+            ct);
     }
 
     /// <summary>
@@ -996,10 +1006,9 @@ public class TeacherService : ITeacherService
     /// sınavında ya da bu öğretmenin kendisine atanmamış bir worksheet'inde çözdüğü sorular dahil edilmez.
     /// Ürün kararı (#56): çift atanmışsa cevap, atamanın StartAt/EndAt penceresinden bağımsız sayılır.
     /// </summary>
-    private async Task<List<StudentActivity>> GetStudentActivityAsync(SchoolScope requester, DateTime cutoff, CancellationToken ct)
+    private async Task<List<StudentActivity>> GetStudentActivityAsync(
+        int teacherId, StudentTargetScope target, DateTime cutoff, CancellationToken ct)
     {
-        var teacherId = requester.UserId;
-
         var worksheetIds = await _context.Worksheets
             .AsNoTracking()
             .Where(w => w.CreateUserId == teacherId)
@@ -1009,7 +1018,6 @@ public class TeacherService : ITeacherService
         if (worksheetIds.Count == 0)
             return new List<StudentActivity>();
 
-        var target = await ResolveStudentTargetScopeAsync(requester, ct);
         var (studentsById, windowsByPair) = await ResolveAssignedPairsAsync(worksheetIds, target, ct);
 
         if (windowsByPair.Count == 0)

@@ -19,9 +19,10 @@ public sealed class DashboardOptions
 
     /// <summary>
     /// Öğretmen aktivite toplamasının (own/students-activity-summary ortak hesabı) süreç içi önbellek süresi (saniye).
-    /// 0 → önbellek kapalı (eşzamanlı istekler yine tek hesabı paylaşır).
+    /// 0 → önbellek kapalı (eşzamanlı istekler yine tek hesabı paylaşır). Üst sınır 300 sn (security review LOW-1):
+    /// uzun TTL, kaldırılan atama/öğrenci verisinin dashboard'da görünmeye devam ettiği süreyi uzatırdı.
     /// </summary>
-    [Range(0, 3600)]
+    [Range(0, 300)]
     public int TeacherActivityCacheSeconds { get; set; } = 60;
 }
 

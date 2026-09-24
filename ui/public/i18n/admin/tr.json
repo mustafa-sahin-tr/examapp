@@ -241,6 +241,7 @@
       "description": "Red nedeni zorunludur. Girdiğiniz metin başvuru kaydına işlenir.",
       "reasonLabel": "Red nedeni",
       "reasonPlaceholder": "Başvurunun neden reddedildiğini kısaca yazın",
+      "privacyHint": "Gerekçe, geçmiş listesinde diğer yöneticilere görünür; kişisel veri (telefon, TC kimlik no, adres vb.) yazmayın.",
       "required": "Red nedeni boş olamaz.",
       "maxLength": "Red nedeni en fazla {{max}} karakter olabilir.",
       "cancel": "İptal",

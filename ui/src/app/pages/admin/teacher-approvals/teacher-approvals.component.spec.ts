@@ -646,54 +646,6 @@ describe('TeacherApprovalsComponent — status filter & paging (issue #187)', ()
     expect(dialog.open).not.toHaveBeenCalled();
   });
 
-  it('approve_PendingView_ReloadsCurrentPageAndRowDisappears', () => {
-    create(paged([app(), app({ teacherId: 10 })], 2));
-    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
-    adminService.getTeacherApplications.calls.reset();
-    adminService.getTeacherApplications.and.returnValue(of(paged([app({ teacherId: 10 })], 1)));
-
-    component.approve(app());
-
-    expect(adminService.getTeacherApplications).toHaveBeenCalledOnceWith({ status: 'pending', page: 1, pageSize: 20 });
-    expect(component.applications().map((a) => a.teacherId)).toEqual([10]);
-    expect(snackBar.open).toHaveBeenCalledWith(approvals.approved, approvals.close, jasmine.any(Object));
-  });
-
-  it('approve_LastRowOnLastPage_GoesToPreviousPage', () => {
-    create(paged([app()], 21));
-    adminService.getTeacherApplications.and.returnValue(of(paged([app()], 21, 2)));
-    component.onPage({ pageIndex: 1, pageSize: 20, length: 21, previousPageIndex: 0 });
-    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
-    adminService.getTeacherApplications.calls.reset();
-    const prevPage = Array.from({ length: 20 }, (_, i) => app({ teacherId: 100 + i }));
-    adminService.getTeacherApplications.and.returnValues(of(paged([], 20, 2)), of(paged(prevPage, 20, 1)));
-
-    component.approve(app());
-
-    const pages = adminService.getTeacherApplications.calls.allArgs().map(([q]) => q.page);
-    expect(pages).toEqual([2, 1]);
-    expect(component.pageIndex()).toBe(0);
-    expect(component.applications().length).toBe(20);
-  });
-
-  it('reject_AllView_ReloadsSoStatusUpdates', () => {
-    create();
-    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved])));
-    component.setFilter('all');
-    dialog.open.and.returnValue({ afterClosed: () => of('Belge eksik') } as ReturnType<MatDialog['open']>);
-    adminService.rejectTeacherApplication.and.returnValue(of({ success: true, message: '' }));
-    const updated = app({ status: 'Rejected', rejectionReason: 'Belge eksik', decidedAt: '2026-09-24T10:00:00Z' });
-    adminService.getTeacherApplications.calls.reset();
-    adminService.getTeacherApplications.and.returnValue(of(paged([approved, updated])));
-
-    component.reject(app());
-    fixture.detectChanges();
-
-    expect(adminService.rejectTeacherApplication).toHaveBeenCalledOnceWith(7, 'Belge eksik');
-    expect(adminService.getTeacherApplications).toHaveBeenCalledOnceWith({ status: 'all', page: 1, pageSize: 20 });
-    expect(component.applications().find((a) => a.teacherId === 7)?.status).toBe('Rejected');
-  });
-
   it('approve_409_ReloadsList', () => {
     create();
     adminService.approveTeacherApplication.and.returnValue(
@@ -734,19 +686,115 @@ describe('TeacherApprovalsComponent — status filter & paging (issue #187)', ()
     expect(snackBar.open).toHaveBeenCalledWith(approvals.rateLimited, approvals.close, jasmine.any(Object));
   });
 
-  it('revealEmail_WorksForDecidedRows', () => {
+  it('revealButton_OnlyOnPendingRows_DecidedRowsKeepMaskedEmail', () => {
     create();
-    adminService.getTeacherApplications.and.returnValue(of(paged([approved])));
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved, rejected])));
     component.setFilter('all');
-    adminService.getTeacherApplication.and.returnValue(
-      of({ ...approved, email: 'ali@okul.k12.tr' }),
-    );
     fixture.detectChanges();
 
-    el().querySelector<HTMLButtonElement>('button.ta__reveal')!.click();
+    const rows = Array.from(el().querySelectorAll('tr.mat-mdc-row'));
+    expect(rows[0].querySelector('button.ta__reveal')).not.toBeNull();
+    expect(rows[1].querySelector('button.ta__reveal')).toBeNull();
+    expect(rows[2].querySelector('button.ta__reveal')).toBeNull();
+    expect(rows[1].textContent).toContain('a***@okul.k12.tr');
+
+    component.revealEmail(approved);
+    expect(adminService.getTeacherApplication).not.toHaveBeenCalled();
+  });
+
+  it('approve_PendingView_RemovesRowLocallyAndDecrementsTotal_NoReload', () => {
+    create(paged([app(), app({ teacherId: 10 })], 25));
+    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.calls.reset();
+
+    component.approve(app());
+
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
+    expect(component.applications().map((a) => a.teacherId)).toEqual([10]);
+    expect(component.totalCount()).toBe(24);
+    expect(snackBar.open).toHaveBeenCalledWith(approvals.approved, approvals.close, jasmine.any(Object));
+  });
+
+  it('approve_LastRowOnLastPage_ReloadsPreviousPageOnce', () => {
+    create(paged([app()], 21));
+    adminService.getTeacherApplications.and.returnValue(of(paged([app()], 21, 2)));
+    component.onPage({ pageIndex: 1, pageSize: 20, length: 21, previousPageIndex: 0 });
+    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.calls.reset();
+    const prevPage = Array.from({ length: 20 }, (_, i) => app({ teacherId: 100 + i }));
+    adminService.getTeacherApplications.and.returnValue(of(paged(prevPage, 20, 1)));
+
+    component.approve(app());
+
+    expect(adminService.getTeacherApplications).toHaveBeenCalledOnceWith({ status: 'pending', page: 1, pageSize: 20 });
+    expect(component.pageIndex()).toBe(0);
+    expect(component.applications().length).toBe(20);
+  });
+
+  it('approve_OnlyRowOfOnlyPage_ShowsEmptyState_NoReload', () => {
+    create(paged([app()], 1));
+    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.calls.reset();
+
+    component.approve(app());
     fixture.detectChanges();
 
-    expect(adminService.getTeacherApplication).toHaveBeenCalledOnceWith(8);
-    expect(el().textContent).toContain('ali@okul.k12.tr');
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
+    expect(component.totalCount()).toBe(0);
+    expect(el().textContent).toContain(approvals.empty);
+  });
+
+  it('reject_AllView_PatchesRowLocally_NoReload', () => {
+    create();
+    adminService.getTeacherApplications.and.returnValue(of(paged([app(), approved])));
+    component.setFilter('all');
+    fixture.detectChanges();
+    dialog.open.and.returnValue({ afterClosed: () => of('Belge eksik') } as ReturnType<MatDialog['open']>);
+    adminService.rejectTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.calls.reset();
+
+    component.reject(app());
+    fixture.detectChanges();
+
+    expect(adminService.rejectTeacherApplication).toHaveBeenCalledOnceWith(7, 'Belge eksik');
+    expect(adminService.getTeacherApplications).not.toHaveBeenCalled();
+    const row = component.applications().find((a) => a.teacherId === 7)!;
+    expect(row.status).toBe('Rejected');
+    expect(row.rejectionReason).toBe('Belge eksik');
+    expect(row.decidedAt).not.toBeNull();
+    expect(component.applications().length).toBe(2);
+    const firstRow = el().querySelector('tr.mat-mdc-row')!;
+    expect(firstRow.querySelector('[data-testid="approve"]')).toBeNull();
+    expect(firstRow.querySelector('[data-testid="status-chip"]')!.textContent?.trim()).toBe(approvals.status.rejected);
+    expect(firstRow.querySelector('button.ta__reveal')).toBeNull();
+  });
+
+  it('approve_Succeeds_ReloadWould429_RowNoLongerActionable', () => {
+    // Pending görünümü: sayfada başka satır var → yeniden yükleme yapılmaz, satır yerelde düşer.
+    create(paged([app(), app({ teacherId: 10 })], 2));
+    adminService.approveTeacherApplication.and.returnValue(of({ success: true, message: '' }));
+    adminService.getTeacherApplications.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429 })));
+
+    component.approve(app());
+    fixture.detectChanges();
+
+    expect(component.applications().some((a) => a.teacherId === 7)).toBeFalse();
+    expect(snackBar.open).not.toHaveBeenCalledWith(approvals.rateLimited, jasmine.anything(), jasmine.anything());
+
+    // Tümü görünümü: satır kalır ama Onaylandı olur, aksiyonları kaybolur.
+    adminService.getTeacherApplications.and.returnValue(of(paged([app({ teacherId: 11 })])));
+    component.setFilter('all');
+    fixture.detectChanges();
+    adminService.getTeacherApplications.and.returnValue(throwError(() => new HttpErrorResponse({ status: 429 })));
+
+    component.approve(app({ teacherId: 11 }));
+    fixture.detectChanges();
+
+    expect(component.applications()[0].status).toBe('Approved');
+    expect(component.isPending(component.applications()[0])).toBeFalse();
+    expect(el().querySelector('[data-testid="approve"]')).toBeNull();
+    expect(el().querySelector('[data-testid="reject"]')).toBeNull();
+    component.approve(component.applications()[0]);
+    expect(adminService.approveTeacherApplication).toHaveBeenCalledTimes(2);
   });
 });

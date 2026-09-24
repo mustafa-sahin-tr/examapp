@@ -35,12 +35,18 @@ namespace ExamApp.Api.Consumers;
 /// <c>Users.Role</c> DOKUNULMAZ, yalnızca loglanır.
 /// </para>
 ///
-/// Idempotency / sırasız teslim: <see cref="User.RoleUpdatedAtUtc"/> (mikrosaniyeye
-/// yuvarlanmış, bkz. <see cref="TruncateToMicroseconds"/>) event'in <c>ChangedAtUtc</c>'inden
-/// daha yeniyse Keycloak'a gidilmez — yalnızca gereksiz tekrar senkron/HTTP çağrısını önleyen
-/// bir OPTİMİZASYON (doğruluk için şart değil: her senkron zaten Keycloak'taki GÜNCEL durumu
-/// okur, bu yüzden sırasız/tekrar teslim her zaman aynı doğru sonuca yakınsar — review'daki
-/// "ChangedAtUtc yazma sırasını garanti etmez" endişesi böylece kapanır).
+/// Idempotency / sırasız teslim: BİR "tazelik" kısayolu (event'in <c>ChangedAtUtc</c>'i
+/// depolanan <see cref="User.RoleUpdatedAtUtc"/>'tan eskiyse Keycloak'a hiç gitmeden atla)
+/// KASITLI OLARAK YOKTUR (issue #277 re-review, LOW-1). Böyle bir kısayol yanlış pozitif
+/// üretebilirdi: <c>RoleUpdatedAtUtc</c>, login/complete-profile'ın JWT/istek zaman
+/// damgalarından geldiği için Keycloak'a gerçek yazma anıyla SIRALI DEĞİLDİR (ör. eşzamanlı
+/// complete-profile ile exam API register yarışı, ya da host'lar arası saat kayması) — event
+/// "eski" görünse bile Keycloak'taki GERÇEK durum hâlâ farklı olabilir. Bu yüzden HER event
+/// Keycloak'ı YENİDEN OKUR (ucuz, idempotent, doğal olarak sırasız-teslime dayanıklı — hangi
+/// sırayla işlenirse işlensin sonuç her zaman Keycloak'taki güncel duruma yakınsar).
+/// <see cref="User.RoleUpdatedAtUtc"/> (mikrosaniyeye yuvarlanmış, bkz.
+/// <see cref="TruncateToMicroseconds"/>) yalnızca TEŞHİS amaçlı damgalanır ("en son ne zaman
+/// senkronlandı"), karşılaştırma/atlama mantığında KULLANILMAZ.
 ///
 /// Hata yolu: KeycloakId'ye ait kullanıcı bulunamazsa (auth-api'nin kendi register akışı
 /// henüz o satırı yazmamış olabilir — geçici olabilir) <see cref="UserNotFoundForRoleSyncException"/>
@@ -91,17 +97,6 @@ public sealed class UserRoleChangedConsumer : IConsumer<UserRoleChangedEvent>
             throw new UserNotFoundForRoleSyncException(e.KeycloakId, e.EventId);
         }
 
-        var eventChangedAtUtc = TruncateToMicroseconds(e.ChangedAtUtc);
-        if (user.RoleUpdatedAtUtc is { } lastUpdated && eventChangedAtUtc <= TruncateToMicroseconds(lastUpdated))
-        {
-            _logger.LogInformation(
-                "UserRoleChanged eski/duplicate — yerel kayıt zaten en az bu kadar taze " +
-                "(KeycloakId={KeycloakId}, EventId={EventId}, EventChangedAt={EventChangedAt}, " +
-                "StoredRoleUpdatedAt={StoredRoleUpdatedAt}); Keycloak'a gidilmeden atlanıyor.",
-                e.KeycloakId, e.EventId, eventChangedAtUtc, lastUpdated);
-            return;
-        }
-
         // Event yalnızca tetikleyici — GERÇEK rol her zaman Keycloak'tan taze okunur (yukarıdaki
         // güvenlik notuna bkz.). Geçici Keycloak hatası (KeycloakException) burada YAKALANMAZ,
         // consumer definition'ın retry/dead-letter yoluna düşer.
@@ -114,9 +109,9 @@ public sealed class UserRoleChangedConsumer : IConsumer<UserRoleChangedEvent>
         if (resolvedRole is null)
         {
             // Keycloak'ta hiç app rolü yok (henüz atanmamış / temizlenmiş) — Users.Role'e
-            // DOKUNULMAZ. RoleUpdatedAtUtc yine de damgalanır: bu, "bu ana kadar Keycloak'ı
-            // kontrol ettik, app rolü yok" bilgisini taşır ve aynı/daha eski event'in tekrar
-            // teslimini gereksiz Keycloak çağrısı yapmadan atlamayı sağlar.
+            // DOKUNULMAZ. RoleUpdatedAtUtc yine de damgalanır — yalnızca TEŞHİS amaçlı
+            // ("en son ne zaman senkronlandı"), bir sonraki event'in işlenmesini ETKİLEMEZ
+            // (yukarıdaki sınıf yorumu — tazelik kısayolu kasıtlı olarak yok).
             user.RoleUpdatedAtUtc = now;
             await _db.SaveChangesAsync(ct);
 

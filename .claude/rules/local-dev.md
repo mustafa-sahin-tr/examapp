@@ -57,6 +57,71 @@ alone is not enough. Pick one:
 Otherwise, drop the Keycloak container + its Postgres `keycloak` database/volume
 and let it re-import fresh with the new dev-only secret.
 
+**Issue #279 (item 1)**: RabbitMQ no longer has a single shared admin user
+(`RABBITMQ_DEFAULT_USER`/`PASS`) that every consumer/publisher reused. Each
+service now connects as its own least-privilege user, defined in
+`rabbitmq/definitions.json` and loaded via `management.load_definitions`
+(`rabbitmq/rabbitmq.conf`, bind-mounted by both `docker-compose.yml` and
+`AppHost.cs`):
+
+RabbitMQ permission semantics matter here: `basic.publish` (actually sending
+a message to an exchange) requires **`write`** on that exchange; `configure`
+only covers declaring/deleting it. Consumers *must not* get `write` on the
+message-type exchanges they subscribe to — MassTransit's receive-endpoint
+setup only needs `configure` (declare) + `read` (bind-as-source, matching
+`exchange.bind`'s "read on source, write on destination" rule) on those
+exchanges, and `write` only on the consumer's own endpoint queue/exchange
+(the bind *destination*). Giving a consumer `write` on a message exchange
+would let it publish (forge) that event, not just consume it — exactly the
+risk this issue closes. Exchange names follow MassTransit's default RabbitMQ
+formatter, `<Namespace>:<TypeName>` (colon, not dot) — e.g.
+`ExamApp.Foundation.Contracts:AnswerSubmittedEvent` (verified: no
+`SetEntityNameFormatter`/custom `MessageTopology` override anywhere in the
+codebase).
+
+| User | Service | `configure` (declare) | `write` (publish / bind-destination) | `read` (bind-source / consume) |
+|---|---|---|---|---|
+| `rabbituser` | (admin — management UI, `:15672`) | `.*` | `.*` | `.*` |
+| `exam_outbox_pub` | exam-outbox-publisher (publisher only, no queue) | worksheet-DB outbox event exchanges (`AnswerSubmittedEvent`, `QuestionCreatedEvent`, `WorksheetReminderDueEvent`, `WorksheetAccessRequested/Approved/RejectedEvent`, `TeacherApplicationSubmitted/DecidedEvent`, `IndependentTeacherRegisteredEvent`, `BookingRequestCreated/DecisionEvent`, `UserPreferredLocaleChangedEvent`) | same as `configure` | nothing (`^$`) |
+| `identity_outbox_pub` | identity-outbox-publisher (publisher only) | `LoginAttemptedEvent`, `UserPreferredLocaleChangedEvent` | same | nothing (`^$`) |
+| `badge_outbox_pub` | badge-outbox-publisher (publisher only) | `StudentPointsChangedEvent` — the **only** user allowed to declare/publish it | same | nothing (`^$`) |
+| `badge_service` | exam-badge-api (BadgeService, consumer) | own `badge-service`(`_error`\|`_skipped`) queue/exchange **+** every event exchange except `StudentPointsChangedEvent` (to declare/bind them) | own `badge-service`(`_error`\|`_skipped`) **only** — no message exchange | own queue/exchange/error/skipped **+** every event exchange except `StudentPointsChangedEvent` (bind source + consume) |
+| `exam_api` | exam-dotnet-api (consumer) | own `exam-api`(`_error`\|`_skipped`) queue/exchange **+** `StudentPointsChangedEvent` | own `exam-api`(`_error`\|`_skipped`) **only** — no message exchange | own queue/exchange/error/skipped **+** `StudentPointsChangedEvent` |
+
+This closes the "fake event" risk called out in issue #279 on two levels:
+first, only `badge_outbox_pub`/`exam_outbox_pub`/`identity_outbox_pub` have
+any exchange access at all (consumers never do beyond `read`+`configure`, no
+consumer has `write` on a message exchange); second, within the publishers,
+only `badge_outbox_pub` can publish `StudentPointsChangedEvent` and only
+`exam_outbox_pub` can publish `AnswerSubmittedEvent`/`TeacherApplicationDecidedEvent`
+— `badge_service`/`exam_api` cannot forge any of these even though they
+consume them, since `basic.publish` needs `write`, which they don't have on
+those exchanges.
+
+Passwords are dev-only defaults in `.env.example`
+(`RABBITMQ_EXAM_OUTBOX_PASSWORD`, `RABBITMQ_IDENTITY_OUTBOX_PASSWORD`,
+`RABBITMQ_BADGE_OUTBOX_PASSWORD`, `RABBITMQ_BADGE_SERVICE_PASSWORD`,
+`RABBITMQ_EXAM_API_PASSWORD`) and `AppHost/appsettings.json`'s `Parameters`
+section (`rabbitmq-*-password`) — same pattern as the Keycloak secrets above:
+if you change one, change both **and** regenerate that user's
+`password_hash` in `rabbitmq/definitions.json` with
+`python3 rabbitmq/generate-password-hashes.py` (usernames themselves are
+fixed, non-secret literals, not `.env` values).
+
+**`load_definitions` only imports on a fresh RabbitMQ node** — if you already
+have a local RabbitMQ volume/container from before this change (it was
+created with just `RABBITMQ_DEFAULT_USER`/`PASS` and no `definitions.json`),
+the new per-service users won't appear automatically and every consumer/
+publisher will fail to authenticate. Pick one:
+- **(a) Recreate the node (simplest for local dev)** — `docker-compose down`,
+  delete `./rabbitmq/data` (docker-compose) or the Aspire RabbitMQ volume,
+  then start again; definitions import fresh.
+- **(b) Import into the running node without wiping it** — RabbitMQ
+  management UI (http://localhost:15672, or the Aspire dashboard's RabbitMQ
+  management link) → Overview → **Import definitions** → upload
+  `rabbitmq/definitions.json`. This adds the new users/permissions without
+  touching existing queues/messages.
+
 ## Port map (host → container)
 
 | Service | Host port | Notes |
